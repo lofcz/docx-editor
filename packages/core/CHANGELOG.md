@@ -1,5 +1,24 @@
 # @docx-editor.dev/core
 
+## 2.32.0
+
+### Minor Changes
+
+- b16195d: Packages ship task recipes in `docs/`, `DocxEditorReview.Draft` takes the host's position and can render inside custom cards, and review writes such as accept, reject, and comment no longer scroll the page. Editing API tracked changes save their dates to the second like editor edits, and refusals and toolbar reasons name the API to use instead.
+- e63b697: Add `setFonts()` to replace host fonts without resetting document edits, selection, or undo history.
+- 9770e78: Merge and split table cells from the context menu, the table toolbar, and the automation object model through `Table.mergeCells` and `TableCell.split`. Column insertion, deletion, and resizing work on tables with merged cells.
+
+### Patch Changes
+
+- c85001c: Fix table pagination around wrapping pictures, oversized rows, captions, repeated headers, and empty header frames.
+- e658e4b: Fix extra or missing blank pages around continuous section restarts and restarted odd-page or even-page breaks.
+- a91ff98: Copied pictures with an extension-style content type, such as `image/.png`, now carry the standard image type, so earlier editor versions also paste them.
+- 1b19b22: Fix documents that stay gray and reject clicks after an external file refresh.
+- 8f541b3: Pictures whose content type carries the file extension, such as `image/.jpg`, now survive copy and paste, and documents that also declare a conflicting standard type still open.
+- c85001c: Fix blank pages and header selection after section numbering restarts, and missing borders beside omitted table cells.
+- b6625f4: Lines now break after zero-width spaces and after a dash that starts a run, and Khmer and Myanmar stacked consonants and Myanmar spacing vowels stay together on one line.
+- Updated dependencies: @docx-editor.dev/i18n@2.32.0
+
 ## 2.31.0
 
 ### Minor Changes
