@@ -73,8 +73,21 @@ function replaceIn(node: OoxmlNode, target: OoxmlElement): OoxmlNode {
 }
 
 /** Empty-mark cleanup cannot discard a remaining section or independent property revision. */
-function canRemoveEmptyParagraph(node: OoxmlNode): boolean {
-  if (node.kind !== 'paragraph' || node.children.some((child) => !properties(child))) return false;
+export function canRemoveEmptyParagraph(node: OoxmlNode): boolean {
+  if (
+    node.kind !== 'paragraph' ||
+    node.children.some(
+      (child) =>
+        !properties(child) &&
+        !(
+          child.kind === 'run' &&
+          child.children.every(
+            (entry) => entry.namespaceUri === WML_NAMESPACE_URI && entry.localName === 'rPr'
+          )
+        )
+    )
+  )
+    return false;
   const structure = (child: OoxmlNode): boolean =>
     child.kind !== 'textValue' &&
     ((child.namespaceUri === WML_NAMESPACE_URI &&
@@ -85,7 +98,7 @@ function canRemoveEmptyParagraph(node: OoxmlNode): boolean {
   return !node.children.some(structure);
 }
 
-function lastBlock(children: readonly OoxmlNode[]): OoxmlNode | undefined {
+export function lastBlock(children: readonly OoxmlNode[]): OoxmlNode | undefined {
   for (let index = children.length - 1; index >= 0; index--) {
     const child = children[index]!;
     if (

@@ -1663,6 +1663,7 @@ export interface FragmentPasteInput {
     // (undocumented)
     readonly paragraphId: string;
     readonly priorOps?: readonly TreeDocOp[];
+    readonly revision?: RevisionAttributionInput;
 }
 
 // @public (undocumented)
@@ -3581,9 +3582,11 @@ export function planRevisionAuthorChange(part: OoxmlPart, revision: RevisionAttr
 // @internal
 export function planRevisionBatch(part: OoxmlPart, action: 'accept' | 'reject', keys?: readonly string[], scopeRoot?: OoxmlNode, options?: {
     readonly countRemaining?: boolean;
+    readonly explicit?: boolean;
 }): {
     ops: readonly TreeDocOp[];
     result: RevisionBatchResult;
+    swept?: readonly string[];
 };
 
 // @public
@@ -4174,7 +4177,7 @@ export interface RevisionBatchResult {
 }
 
 // @public
-export type RevisionBatchSkipDetail = RevisionSiteRefusal | 'unrecorded-properties' | 'read-only' | 'no-sites';
+export type RevisionBatchSkipDetail = RevisionSiteRefusal | 'unrecorded-properties' | 'read-only' | 'no-sites' | 'paired-change' | 'removed-content' | 'replaced-properties' | 'emptied-change' | 'enclosing-change' | 'grouped-change' | 'nested-table' | 'locked-content' | 'bound-content';
 
 // @public
 export type RevisionBatchSkipReason = 'unsupported-revision' | 'incomplete-group' | 'retained-structure' | 'unknown-revision';

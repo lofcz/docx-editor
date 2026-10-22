@@ -110,7 +110,22 @@ for (const mode of ['direct', 'tracked'] as const)
               });
         if (!applied.success) throw new Error(applied.error);
         if (mode === 'tracked') {
-          expect(editor.getReviewItems()).toHaveLength(kind === 'row' ? 1 : 4);
+          const items = editor.getReviewItems();
+          // Upstream groups the three inserted cells into one column decision.
+          expect(items).toHaveLength(kind === 'row' ? 1 : 2);
+          if (kind === 'column') {
+            const insertion = items.find(
+              (item) => item.kind === 'revision' && item.revisionKind === 'structural'
+            )?.item;
+            expect(insertion).toMatchObject({
+              kind: 'revision',
+              revisionKind: 'structural',
+              structuralChanges: ['cellInsert'],
+            });
+            if (insertion?.kind !== 'revision') throw new Error('Missing column decision');
+            expect(insertion.addresses).toHaveLength(3);
+            expect(insertion.ranges).toHaveLength(3);
+          }
           expect(editor.exec({ type: 'resolveAllReviewChanges', action: 'reject' }).ok).toBe(true);
           expect(canonicalOoxmlFingerprint(session.part())).toBe(originalMain);
           expect(editor.exec({ type: 'undo' }).ok).toBe(true);

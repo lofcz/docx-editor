@@ -68,7 +68,12 @@ import type {
 import { createSuccessfulValueCache, provisionWithExportDeadline } from './export-deadline.ts';
 
 export { ExportResourceError } from '@docx-editor.dev/core/export';
-export type { FontShapingOptions } from '@docx-editor.dev/core/layout';
+export type {
+  FontShapingOptions,
+  InlineWidgetMetrics,
+  InlineWidgetMetricsProvider,
+  InlineWidgetRequest,
+} from '@docx-editor.dev/core/layout';
 export {
   forEachSemanticDrawing,
   HARD_MAX_AGGREGATE_FONT_BYTES,
@@ -139,6 +144,7 @@ export type {
   RevisionAttribution,
   RevisionDisplayMode,
   SourceCrop,
+  TextboxOutlineProjection,
   TextboxStoryLayout,
   TextMeasurer,
   VectorShapeProjection,

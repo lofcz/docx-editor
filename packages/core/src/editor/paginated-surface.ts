@@ -24,6 +24,7 @@ import {
 } from './surface-revision-markup.ts';
 import { createDrawingGestures } from './surface-drawing-gestures.ts';
 import { createTextboxEditing } from './surface-textbox-editing.ts';
+import { storyOutsideTextbox, textboxOwnerDeps } from './surface-textbox-owner.ts';
 import { createCaretComplexScriptResolver } from './surface-complex-script.ts';
 import { setSurfaceAccessibleLabel } from './surface-accessibility.ts';
 import { refreshWriteBlocked, registerRefreshComposition } from './refresh-write-guard.ts';
@@ -895,8 +896,8 @@ export function mountPaginatedSurface(
     return next?.kind === 'paragraph' ? next.id : null;
   };
 
-  const paragraphOrder = () =>
-    scopedDocumentOrder(editingLayout(), hfScope?.getActive() ?? null, noteScopeId());
+  const hfOutsideBox = () => storyOutsideTextbox(textboxEditing, hfScope);
+  const paragraphOrder = () => scopedDocumentOrder(editingLayout(), hfOutsideBox(), noteScopeId());
   const remoteCaret = createRemoteCaret({
     textOf: (id) => textOf(id),
     order: paragraphOrder,
@@ -3074,10 +3075,10 @@ export function mountPaginatedSurface(
   }
 
   /** Suggesting attributes text and structural row edits as Word tracked changes. */
-  function trackedOps(ops: readonly TreeDocOp[]): TreeDocOp[] {
+  function trackedOps(ops: readonly TreeDocOp[], date = revisionDateNow()): TreeDocOp[] {
     const author = trackedAuthorOrNone();
     if (author === undefined) return [...ops];
-    return attributeTrackedOps(ops, { author, date: revisionDateNow() }, formattingTracked());
+    return attributeTrackedOps(ops, { author, date }, formattingTracked());
   }
 
   /**
@@ -4387,6 +4388,13 @@ export function mountPaginatedSurface(
       consumePendingFormatOps,
       withoutPendingOnRejection,
       caretMark,
+      suggestion: () => {
+        const writer = trackedAuthorOrNone();
+        return writer === undefined ? undefined : { author: writer, date: revisionDateNow() };
+      },
+      trackedOps,
+      trackedChangeLanded: () => runtimeOptions.onTrackedChange?.(),
+      revisionDisplayMode,
       commit,
     });
 
@@ -6118,10 +6126,7 @@ export function mountPaginatedSurface(
     selection: () => selection,
     setSelection: (next) => setSelection(next, false, 'none'),
     flush: flushPendingInputAndLayout,
-    leaveOtherStories: () => {
-      noteOps?.exitNote();
-      hfScope?.exitHeaderFooter();
-    },
+    ...textboxOwnerDeps(session, sectionAtPage, () => ({ hfScope, noteOps })),
     writable: () => hostEditable && editingMode === 'edit' && session.editable,
   });
   pointer = createPointerController(
@@ -6171,7 +6176,7 @@ export function mountPaginatedSurface(
       // An armed format painter paints the selection the gesture just produced. Word's
       // gesture exactly: arm, then drag over the text that should take the formatting.
       onSelectionSettled: () => formatPainter.applyIfArmed(),
-      activeHeaderFooter: () => pointerHeaderFooterState(hfScope?.getActive() ?? null),
+      activeHeaderFooter: () => pointerHeaderFooterState(hfOutsideBox()),
       activeNote: () => {
         const scope = noteOps?.activeNoteScope();
         return scope

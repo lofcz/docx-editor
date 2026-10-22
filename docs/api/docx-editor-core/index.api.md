@@ -1760,7 +1760,6 @@ export interface Editor extends EditorAnchorNavigation, EditorHighlights, Editor
     // (undocumented)
     focus(scope?: EditorScope): InteractionOutcome<void>;
     getActivatedReviewItemKey(query?: ReviewItemQuery): string | null;
-    // (undocumented)
     getActiveScope(): ViewScope;
     getAvailableFonts(): readonly string[];
     getComments(): readonly {
@@ -1881,7 +1880,6 @@ export interface Editor extends EditorAnchorNavigation, EditorHighlights, Editor
     scrollToPage(pageNumber: number): boolean;
     selectMatch(match: TextMatch): ExecResult;
     setActiveReviewItem(key: string | null, options?: ReviewActivationOptions): ExecResult;
-    // (undocumented)
     setActiveScope(scope: ViewScope): void;
     setCommentResolved(key: string, resolved: boolean, options?: HistoryGroupOptions): ExecResult;
     // (undocumented)
@@ -2199,6 +2197,7 @@ export interface EditorEvents {
     // (undocumented)
     historyDiagnostic: (diagnostic: HistoryDiagnostic) => void;
     hostChange: (event: EditorHostChange) => void;
+    reviewChangesResolved: (event: ReviewChangesResolvedEvent) => void;
     reviewItemReveal: (event: ReviewItemRevealEvent) => void;
     revisionMarkupChange: (settings: ResolvedRevisionMarkup) => void;
     selectionChange: (snapshot: EditorSnapshot) => void;
@@ -3429,6 +3428,27 @@ export interface ReviewChangesAttribution {
 }
 
 // @public
+export interface ReviewChangesResolvedEvent {
+    readonly action: 'accept' | 'reject';
+    readonly resolvedCount: number;
+    readonly skipped: readonly {
+        readonly detail?: RevisionBatchSkipDetail;
+        readonly key: string;
+        readonly pairKey?: string;
+        readonly reason: 'unsupported-revision' | 'incomplete-group' | 'retained-structure' | 'unknown-revision';
+    }[];
+}
+
+// @public
+export function reviewCodeOfRefusal(reason: string): ReviewDiagnosticCode | null;
+
+// @public
+export function reviewCodeOfSkip(skip: {
+    readonly detail?: string;
+    readonly reason: string;
+}): ReviewDiagnosticCode | null;
+
+// @public
 export interface ReviewCommentItem {
     // (undocumented)
     readonly comment: CommentRecord;
@@ -3484,7 +3504,7 @@ export interface ReviewCustomPlacement extends ReviewItemPlacementBase {
 }
 
 // @public
-export type ReviewDiagnosticCode = 'review.revision-unsupported' | 'review.incomplete-group' | 'review.retained-structure' | 'review.stale-revision';
+export type ReviewDiagnosticCode = 'review.revision-unsupported' | 'review.incomplete-group' | 'review.retained-structure' | 'review.locked-content' | 'review.bound-content' | 'review.stale-revision';
 
 // @public
 export type ReviewDisplayMode = RevisionDisplayMode | 'simple-markup';
@@ -3762,7 +3782,7 @@ export interface RevisionBatchResult {
 }
 
 // @public
-export type RevisionBatchSkipDetail = RevisionSiteRefusal | 'unrecorded-properties' | 'read-only' | 'no-sites';
+export type RevisionBatchSkipDetail = RevisionSiteRefusal | 'unrecorded-properties' | 'read-only' | 'no-sites' | 'paired-change' | 'removed-content' | 'replaced-properties' | 'emptied-change' | 'enclosing-change' | 'grouped-change' | 'nested-table' | 'locked-content' | 'bound-content';
 
 // @public
 export type RevisionBatchSkipReason = 'unsupported-revision' | 'incomplete-group' | 'retained-structure' | 'unknown-revision';
@@ -3982,13 +4002,9 @@ export interface SectionProperties {
 
 // @public
 export interface SelectedImageState {
-    // (undocumented)
     readonly canChangeWrap: boolean;
-    // (undocumented)
     readonly canCrop: boolean;
-    // (undocumented)
     readonly canMove: boolean;
-    // (undocumented)
     readonly canResize: boolean;
     readonly crop: ImageCropPercent;
     // (undocumented)

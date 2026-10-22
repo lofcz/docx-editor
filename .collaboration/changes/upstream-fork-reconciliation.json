@@ -1,0 +1,16 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The fork retained actor-bound paragraph identities, paste history groups, and run-origin normalization. Upstream added tracked rich paste and broader native review resolution.",
+  "after": "Paste carries both its existing history group and upstream revision attribution. Review resolution applies upstream alignment and control restoration before normalizing run origins. Collaborative paragraph joins retain source addresses for late peer edits.",
+  "reason": "Reconciliation combines existing operation and history paths without introducing shared fields or changing journal schemas. Existing fork and upstream compatibility decisions retain their own scope.",
+  "tests": [
+    "packages/sciobot/src/react-blocks/upstream-tracked-paste.test.ts",
+    "packages/sciobot/src/review/terminal-paragraph-conflict.test.ts",
+    "packages/sciobot/src/review/joined-paragraph-conflicts.test.ts",
+    "packages/sciobot/src/diff/target-new-cell-lists.test.ts",
+    "packages/core/src/editor/__tests__/suggesting-rich-paste.test.ts"
+  ],
+  "changeset": "upstream-fork-reconciliation",
+  "migration": null
+}

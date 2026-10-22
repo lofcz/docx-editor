@@ -5,6 +5,7 @@ import { inlineWidgetDocument } from '../../test/support/react-block-document';
 import { buildBlockIndex } from '../blocks/block-index';
 import { mountBlockClipboard, SCIOBOT_BLOCKS_MIME } from './clipboard';
 import { mountInlineInput } from './inline-input';
+import { isolateWidgetInput } from './input-boundary';
 
 function mounted() {
   const container = document.createElement('div');
@@ -116,6 +117,10 @@ test('partial copy expands to one atom; shared clipboard leases paste once and d
 test('widget form cut and rich paste keep clipboard metadata and native content isolated', () => {
   const m = mounted(),
     input = mountInlineInput(m.editor);
+  const root = document.createElement('div');
+  m.pages.append(root);
+  // Production React roots install this boundary before the native page's bubble handlers.
+  const release = isolateWidgetInput(root);
   try {
     m.select(7, 13);
     const copy = clipboard('copy', m.pages).data;
@@ -123,7 +128,7 @@ test('widget form cut and rich paste keep clipboard metadata and native content 
     ui.dataset.sciobotBlockUi = '';
     ui.dataset.docxHostUi = '';
     ui.value = 'local';
-    m.pages.append(ui);
+    root.append(ui);
     ui.focus();
     const before = m.fingerprint(),
       revision = m.surface.session.packageRevision();
@@ -133,6 +138,7 @@ test('widget form cut and rich paste keep clipboard metadata and native content 
     expect(m.surface.session.packageRevision()).toBe(revision);
     expect(ui.value).toBe('local');
   } finally {
+    release();
     input.dispose();
     m.destroy();
   }
