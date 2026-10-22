@@ -1,0 +1,19 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The private adapter had separate native planners and logical source bindings, but no complete-target composition entry point.",
+  "after": "An in-progress pure composer routes retained paragraphs, nested container metadata, known source atoms, and sibling gaps through existing semantic planners. Unresolved paths refuse the complete request without a partial plan. D15 remains open for required list/table/rich insertion and application coverage.",
+  "reason": "The change constructs existing immutable plan DTOs. It adds no canonical operation, native document mutation, live write, shared state, payload schema, or journal format. Application and review executors still own revision, geometry, protection, allocation, and transaction checks.",
+  "tests": [
+    "packages/sciobot/src/diff/plan-target.test.ts",
+    "packages/sciobot/src/diff/sibling-blocks.test.ts",
+    "packages/sciobot/src/diff/bind-source.test.ts",
+    "packages/sciobot/src/diff/paragraph-text.test.ts",
+    "packages/sciobot/src/diff/run-format.test.ts",
+    "packages/sciobot/src/diff/domain-properties.test.ts",
+    "packages/sciobot/src/diff/atomic-blocks.test.ts",
+    "packages/sciobot/src/diff/lists.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

@@ -1,0 +1,15 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Tracked inline replacements inserted their new text after the deleted text, so an unseen concurrent append could land inside the proposal depending on Yjs client order. The owned-text boundary repaired attributes on every transaction, including while the room held updates with missing dependencies; a peer repair delivered ahead of that peer's intents was reverted and the peers looped.",
+  "after": "The private tracked-inline transaction moves only its own fresh insertion wrappers ahead of their touching deletions, so an unseen append follows the replacement in either client order. The owned-text boundary defers repair while pendingStructs or pendingDs exist and repairs every deferred text once the dependencies integrate.",
+  "reason": "Native Word revision markup remains ordinary w:ins/w:del pairs; R40 pairs insertion-first halves. Owned-text wire records, protocol version 1, published codecs, journals, and evaluated transport implementation are unchanged. Repair timing is local and deterministic after full delivery. No published package source changes.",
+  "tests": [
+    "packages/sciobot/src/review/track-table-cells-collaboration.test.ts",
+    "packages/sciobot/src/review/replacement-boundary-collaboration.test.ts",
+    "packages/sciobot/src/review/leading-replacement-collaboration.test.ts",
+    "packages/sciobot/src/collaboration/owned-text.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

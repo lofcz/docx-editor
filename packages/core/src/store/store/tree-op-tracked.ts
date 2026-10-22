@@ -1,3 +1,11 @@
+import { copy, insertedRunProperties } from './tracked-run-inheritance.ts';
+import { inheritOriginPayload, inheritOriginRun } from './run-origin-payload.ts';
+export { copy, insertedRunProperties } from './tracked-run-inheritance.ts';
+import {
+  inlineRunSlice,
+  inlineTextSlice,
+  sameInlineTextMetadata,
+} from './tree-op-inline-slices.ts';
 // Typing AS A TRACKED CHANGE — what suggesting mode writes — and the node builders, wrapper
 // merging and adjacency rules that striking text (`tree-op-tracked-delete.ts`) shares.
 //
@@ -26,6 +34,7 @@ import {
   type OoxmlNode,
   type OoxmlParagraphNode,
   type OoxmlPart,
+  type OoxmlRunNode,
 } from '../package/ooxml-tree.ts';
 import {
   isContentRevisionKind,
@@ -80,45 +89,16 @@ export function textNode(mint: () => string, value: string, deleted: boolean): O
 }
 
 /** A `w:r` over its children — the ONE spelling of the run shape this module writes. */
-function runOf(mint: () => string, children: readonly OoxmlNode[]): OoxmlNode {
-  return build(mint(), 'run', 'r', [], children);
+function runOf(
+  mint: () => string,
+  children: readonly OoxmlNode[],
+  source?: OoxmlNode | null
+): OoxmlNode {
+  return inheritOriginRun(build(mint(), 'run', 'r', [], children), source);
 }
 
 export function isRunProperties(node: OoxmlNode): boolean {
   return node.kind !== 'textValue' && node.kind === 'runProperties';
-}
-
-/**
- * The face a NEW run takes from the run it is being inserted into — never that run's pending
- * FORMAT RECORD.
- *
- * A split copies the record into both halves, correctly: the same characters are still under
- * the same proposal. A run being inserted is different. Its characters were never in the state
- * the record describes, so inheriting it put them under somebody's pending decision — reject
- * the format card and the words just typed came back in a colour nobody had ever given them,
- * while their own insertion card was still unanswered. The mirror of `insideOwnInsertion`,
- * which refuses to WRITE a record in the same position.
- */
-export function insertedRunProperties(mint: () => string, run: OoxmlNode): OoxmlNode[] {
-  const out: OoxmlNode[] = [];
-  for (const child of childrenOf(run)) {
-    if (!isRunProperties(child)) continue;
-    const kept = childrenOf(child).filter((entry) => !isWmlNamed(entry, 'rPrChange'));
-    // A container holding nothing but the record is not a face to inherit.
-    if (kept.length === 0) continue;
-    out.push(copy(mint, { ...child, children: kept } as OoxmlNode));
-  }
-  return out;
-}
-
-/** Deep copy with fresh ids, so a split run's halves are two nodes and not one twice. */
-export function copy(mint: () => string, node: OoxmlNode): OoxmlNode {
-  if (node.kind === 'textValue') return { id: mint(), kind: 'textValue', value: node.value };
-  return {
-    ...node,
-    id: mint(),
-    children: node.children.map((child) => copy(mint, child)),
-  } as OoxmlNode;
 }
 
 /** How many deletion wrappers with this `@w:id` live under the node, itself included. */
@@ -366,7 +346,10 @@ function applyTrackedInsertion(
   // backdate today's edit into last month's revision and make rejecting one reject both.
   const replaced = adjacentDeletion(paragraph, offsets, aim, aim, revision.author, revision.date);
   const attribution: RevisionAttributionInput = replaced
-    ? { author: revision.author, ...(replaced.date === undefined ? {} : { date: replaced.date }) }
+    ? {
+        author: revision.author,
+        ...(replaced.date === undefined ? {} : { date: replaced.date }),
+      }
     : revision;
   // THE REPLACEMENT FOLLOWS THE WORDS IT REPLACES. The struck text keeps its offsets, so a
   // caller that aims at the front edge of THIS TRANSACTION's own strike — where the range
@@ -487,7 +470,12 @@ function applyTrackedInsertion(
   };
   let exceedsDepth = false;
   const wrappers = new Set<string>();
-  const wrap = (properties: readonly OoxmlNode[], depth: number): OoxmlNode => {
+  const wrap = (
+    properties: readonly OoxmlNode[],
+    depth: number,
+    source?: OoxmlNode,
+    local = 0
+  ): OoxmlNode => {
     const wrapper = build(
       mint(),
       'revisionInsert',
@@ -495,12 +483,21 @@ function applyTrackedInsertion(
       revisionAttributes(mintedInsertionId(), attribution),
       payload.nodes
         ? [
-            runOf(mint, [
-              ...(replacementRun
-                ? insertedRunProperties(mint, replacementRun)
-                : (markStyled() ?? besideProperties() ?? properties)),
-              ...payload.nodes(mint),
-            ]),
+            runOf(
+              mint,
+              [
+                ...(replacementRun
+                  ? insertedRunProperties(mint, replacementRun)
+                  : (markStyled() ?? besideProperties() ?? properties)),
+                ...inheritOriginPayload(
+                  payload.nodes(mint),
+                  replacementRun ?? source,
+                  replacementRun ? 0 : local,
+                  offsets
+                ),
+              ],
+              replacementRun ?? source
+            ),
           ]
         : payload.runs!(mint)
     );
@@ -570,11 +567,15 @@ function applyTrackedInsertion(
           cursor.offset = end;
           continue;
         }
-        if (fieldSite?.kind === 'atRunIndex' && node.id === fieldSite.run.id) {
+        if (
+          node.kind === 'run' &&
+          fieldSite?.kind === 'atRunIndex' &&
+          node.id === fieldSite.run.id
+        ) {
           const children = childrenOf(node);
           const properties = () => insertedRunProperties(mint, node);
-          const head = runOf(mint, children.slice(0, fieldSite.index));
-          const tail = runOf(mint, [
+          const head = inlineRunSlice(mint, node, children.slice(0, fieldSite.index));
+          const tail = inlineRunSlice(mint, node, [
             ...children.filter(isRunProperties).map((child) => copy(mint, child)),
             ...children.slice(fieldSite.index),
           ]);
@@ -776,12 +777,12 @@ function applyTrackedInsertion(
         }
         const properties = insertedRunProperties(mint, node);
         if (offset === start) {
-          out.push(wrap(properties, containerDepth), node);
+          out.push(wrap(properties, containerDepth, node, offset - start), node);
         } else if (offset === end) {
-          out.push(node, wrap(properties, containerDepth));
+          out.push(node, wrap(properties, containerDepth, node, offset - start));
         } else {
           const [head, tail] = splitRun(mint, offsets, node, offset - start);
-          out.push(head, wrap(properties, containerDepth), tail);
+          out.push(head, wrap(properties, containerDepth, node, offset - start), tail);
         }
         placed = true;
         cursor.offset = end;
@@ -803,7 +804,11 @@ function applyTrackedInsertion(
   if (!placed) {
     // An empty paragraph, or an offset at the very end with no run to hang it on.
     if (offset !== cursor.offset) {
-      return { ok: false, reason: 'offset-out-of-range', detail: 'offset past the paragraph' };
+      return {
+        ok: false,
+        reason: 'offset-out-of-range',
+        detail: 'offset past the paragraph',
+      };
     }
     children = [...children, wrap(fieldDestination ? fieldProperties() : [], 0)];
   }
@@ -815,7 +820,7 @@ function applyTrackedInsertion(
 export function splitRun(
   mint: () => string,
   offsets: ParagraphOffsetIndex,
-  run: OoxmlNode,
+  run: OoxmlRunNode,
   local: number
 ): [OoxmlNode, OoxmlNode] {
   const properties = childrenOf(run).filter(isRunProperties);
@@ -831,14 +836,14 @@ export function splitRun(
       const value = childrenOf(child).find((grand) => grand.kind === 'textValue');
       const raw = value && value.kind === 'textValue' ? value.value : '';
       const at = local - seen;
-      head.push(textNode(mint, raw.slice(0, at), child.kind === 'deletedText'));
-      tail.push(textNode(mint, raw.slice(at), child.kind === 'deletedText'));
+      head.push(inlineTextSlice(mint, raw.slice(0, at), child));
+      tail.push(inlineTextSlice(mint, raw.slice(at), child));
     } else tail.push(child);
     seen += length;
   }
   return [
-    runOf(mint, [...properties.map((child) => copy(mint, child)), ...head]),
-    runOf(mint, [...properties.map((child) => copy(mint, child)), ...tail]),
+    inlineRunSlice(mint, run, [...properties.map((child) => copy(mint, child)), ...head]),
+    inlineRunSlice(mint, run, [...properties.map((child) => copy(mint, child)), ...tail]),
   ];
 }
 
@@ -846,7 +851,7 @@ export function splitRun(
 function splitRunAndInsert(
   mint: () => string,
   offsets: ParagraphOffsetIndex,
-  run: OoxmlNode,
+  run: OoxmlRunNode,
   local: number,
   payload: TrackedInsertionPayload
 ): OoxmlNode[] {
@@ -854,13 +859,13 @@ function splitRunAndInsert(
   if (payload.nodes) {
     const content = [
       ...childrenOf(head).filter((child) => !isRunProperties(child)),
-      ...payload.nodes(mint),
+      ...inheritOriginPayload(payload.nodes(mint), run, local, offsets),
       ...childrenOf(tail).filter((child) => !isRunProperties(child)),
     ];
     const properties = childrenOf(run)
       .filter(isRunProperties)
       .map((child) => copy(mint, child));
-    return [runOf(mint, [...properties, ...coalesced(mint, content)])];
+    return [inlineRunSlice(mint, run, [...properties, ...coalesced(mint, content)])];
   }
   // A whole-run payload keeps its OWN `w:rPr`, so it goes between the halves as a sibling
   // run inside the same wrapper — spliced into the host run, the citation would take on
@@ -886,7 +891,8 @@ function coalesced(mint: () => string, nodes: readonly OoxmlNode[]): OoxmlNode[]
     const mergeable =
       previous !== undefined &&
       previous.kind === node.kind &&
-      (node.kind === 'text' || node.kind === 'deletedText');
+      (node.kind === 'text' || node.kind === 'deletedText') &&
+      sameInlineTextMetadata(previous, node);
     if (!mergeable) {
       out.push(node);
       continue;
@@ -896,7 +902,7 @@ function coalesced(mint: () => string, nodes: readonly OoxmlNode[]): OoxmlNode[]
     const value =
       (left && left.kind === 'textValue' ? left.value : '') +
       (right && right.kind === 'textValue' ? right.value : '');
-    out[out.length - 1] = textNode(mint, value, node.kind === 'deletedText');
+    out[out.length - 1] = inlineTextSlice(mint, value, previous);
   }
   return out;
 }
@@ -960,7 +966,10 @@ function mergedRevisionRuns(
     ...previous.children.filter((child) => !isRunProperties(child)),
     ...next.children.filter((child) => !isRunProperties(child)),
   ]);
-  const merged = { ...previous, children: [...previousProperties, ...content] } as OoxmlNode;
+  const merged = {
+    ...previous,
+    children: [...previousProperties, ...content],
+  } as OoxmlNode;
   return [...left.slice(0, -1), merged, ...right.slice(1)];
 }
 
@@ -988,11 +997,4 @@ function sameRevision(a: OoxmlElement, b: OoxmlElement): boolean {
   );
 }
 
-/** Shared with `tree-op-tracked-marks.ts`, which writes the paragraph-mark wrappers. */
-export function isWmlNamed(node: OoxmlNode, localName: string): boolean {
-  return (
-    node.kind !== 'textValue' &&
-    node.namespaceUri === WML_NAMESPACE_URI &&
-    node.localName === localName
-  );
-}
+export { isWmlNamed } from './tree-op-tracked-builders.ts';

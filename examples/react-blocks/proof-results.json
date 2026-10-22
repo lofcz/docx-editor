@@ -1,0 +1,52 @@
+{
+  "upstream_commit": "9770e78f880ee92ecc6531f0ea747a01135b5400",
+  "fork": "https://github.com/lofcz/docx-editor",
+  "branch": "codex/react-block-proof",
+  "source_changes": "local working tree",
+  "demo": "http://127.0.0.1:5188",
+  "verification": {
+    "chromium_browser_tests": {
+      "passed": 6,
+      "failed": 0,
+      "config": "e2e/react-blocks.config.ts"
+    },
+    "unit_and_integration_tests": {
+      "passed": 12,
+      "failed": 0,
+      "assertions": 91
+    },
+    "core_build": "passed",
+    "fonts_build": "passed",
+    "demo_production_build": "passed",
+    "core_typecheck": "passed",
+    "demo_typecheck": "passed",
+    "changed_source_lint": "passed",
+    "repository_lint": "passed with existing warnings",
+    "core_api_check": "passed with reviewed existing warnings",
+    "adapter_parity_contract": "passed",
+    "format_check": "passed",
+    "git_diff_check": "passed",
+    "exported_word_fallback_and_form_input_isolation": "passed",
+    "final_browser_artifact_page_errors": []
+  },
+  "tested": [
+    "nested React containers with native paragraphs and tables",
+    "real native typing under React wrappers",
+    "stateful React widgets and dynamic height",
+    "React state across page movement",
+    "native tracked replacements and accept/reject",
+    "metadata and content persistence in DOCX",
+    "unregistered tag fallback preservation",
+    "two real collaboration replicas: concurrency, reconnect, remote selections, undo/redo, deletion, and save convergence"
+  ],
+  "runtime_packages": "Apache core/react/i18n and open-licensed packaged fonts; application review module",
+  "collaboration_test_dependency": "The optional internal compatibility test evaluates the upstream collaboration runtime under the EigenPal Pro License. The demo does not import it.",
+  "limits": [
+    "opaque React widgets must fit a page; native containers can span pages",
+    "Word stores fallback content and application data, not React DOM",
+    "application providers must be supplied for independent fragment roots",
+    "full Plate AI diff parity is not implemented",
+    "block insertion, clipboard, IME/touch, production metadata, and large-document performance remain work",
+    "desktop Word visual interoperability was not tested"
+  ]
+}

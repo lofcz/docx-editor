@@ -3,7 +3,7 @@ import type { ResolvedRevisionMarkup } from '../contracts/revision-markup.ts';
 // paginated-surface.ts implements and re-exports this public surface contract.
 import type { SurfaceParagraphFormat, ParagraphPropertyEdit } from './paragraph-format-contract.ts';
 import type { TreeApplyResult, TreeDocxSessionView } from '@docx-editor.dev/core/binding';
-import type { BookmarkIndex, SelectionMark } from '@docx-editor.dev/core/store';
+import type { BookmarkIndex } from '@docx-editor.dev/core/store';
 import type { StoryScope } from '../store/store/tree-package-store.ts';
 import type { TreeDocOp } from '../store/store/tree-op-types.ts';
 import type {
@@ -34,9 +34,9 @@ import type {
  * refuses edits outright.
  */
 export type SurfaceEditingMode = 'edit' | 'suggest' | 'view';
-
 import type { ReviewWriteIntent } from './review-write-intent.ts';
 import type { SurfaceOverlayPainter } from './surface-overlay-sheet.ts';
+import type { SurfacePaintObserver } from './surface-paint-observer.ts';
 import type {
   ContentControlOps,
   ContentControlSurfaceState,
@@ -59,6 +59,7 @@ import type { RemoteCaretLabelAnchor, RemoteCaretLabelHost } from './surface-rem
 export type { RemoteCaretLabelAnchor, RemoteCaretLabelHost };
 
 import type { PaginatedSurfaceOptions } from './paginated-surface-options.ts';
+import type { SurfaceBlockReservations } from './surface-block-reservations.ts';
 import type { SurfaceBookmarks } from './surface-bookmarks.ts';
 
 export type { PaginatedSurfaceOptions } from './paginated-surface-options.ts';
@@ -97,7 +98,7 @@ export type SectionBreakInsertType = 'nextPage' | 'continuous';
  * Every write goes through the guarded mutation path on this object. Reaching past it into
  * `session` to apply ops directly bypasses the layout invalidation and the caret bookkeeping.
  */
-export interface PaginatedSurface {
+export interface PaginatedSurface extends SurfaceBlockReservations {
   readonly session: TreeDocxSessionView;
   /** The collaboration replica a `collaborationModule` attached, or null. */
   collaborationSession(): import('../collaboration/index.ts').EditorCollaborationSession | null;
@@ -613,6 +614,8 @@ export interface PaginatedSurface {
   setHighlightPainter(painter: SurfaceOverlayPainter | null): void;
   /** Call the installed highlight painter against the current frame. */
   repaintHighlights(): void;
+  /** Observe page paints. Unsubscribe before disposing custom document components. */
+  observePaint(observer: SurfacePaintObserver): () => void;
   /**
    * Commit ops that came from automation, through the gate a keystroke goes through.
    *
@@ -622,15 +625,11 @@ export interface PaginatedSurface {
    * change with no proposal and no author. Here, viewing refuses, suggesting attributes, the
    * refusal reason is reported like any other, and the pages repaint from the commit.
    *
-   * The ops address the story the CALLER named, whatever story the reader is in: the caller
-   * identified its target before calling, so following the caret into a header would write
-   * somewhere else entirely. They default to the body rather than to the reader's story.
+   * Ops address the caller's story, defaulting to the body regardless of the reader's active story.
    *
    * They arrive as a BUILDER, given a way to mint the relationship an external hyperlink names.
-   * That mint changes the package outside the transaction and outside the undo stack, so it must not
-   * happen until the mode has allowed the write — a link minted while the batch was still being
-   * planned left its target in a read-only document's `.rels`. A builder answering null means the
-   * target is one this engine will not author, and the write is refused having changed nothing.
+   * Mint relationships only after write gates pass. Planning must not change a read-only package.
+   * A builder answering null refuses an unsupported target without changing the document.
    */
   applyAutomationOps(
     staged: (relate: (url: string) => string | null) => readonly TreeDocOp[] | null,
@@ -638,7 +637,11 @@ export interface PaginatedSurface {
     packageEdits?: readonly ((
       pkg: import('../store/package/ooxml-package.ts').OoxmlPackage
     ) => import('../store/package/ooxml-package.ts').OoxmlPackage)[],
-    requiresReview?: boolean
+    requiresReview?: boolean,
+    /** Start a fresh undo unit for this call. Streaming callers retain default capture behavior. */
+    separateHistory?: boolean,
+    /** Run package hooks after native operations when they need newly allocated identities. */
+    packageEditPhase?: 'before' | 'after'
   ): TreeApplyResult;
   /**
    * Which revision halves this surface is SHOWING.
@@ -975,26 +978,4 @@ export type {
   SurfaceParagraphFormat,
 } from './paragraph-format-contract.ts';
 
-/** The surface with the internal members that other editor modules reach by cast. */
-export type ScaleMutableSurface = PaginatedSurface & {
-  setScale(nextScale: number): boolean;
-  /**
-   * Why the mode rules would refuse these automation ops now, or null: the check
-   * `applyAutomationOps` makes, without writing. A preview fork asks it so it refuses what a
-   * commit would.
-   */
-  automationWriteRefusal(ops: readonly TreeDocOp[], packageEdits: boolean): string | null;
-  /**
-   * The gated, attributed session write for command lanes that live OUTSIDE this file —
-   * today the content-control commands. Same collaboration gate and actor attribution as
-   * the typing lane (`applyJournaledOps`); the command's own mode/lock gate has already
-   * run. Internal, reached by cast like `setScale` — see `applyGatedSurfaceTreeOps` in
-   * `content-controls.ts` for the accessor.
-   */
-  applyGatedTreeOps(
-    ops: readonly TreeDocOp[],
-    selectionBefore?: SelectionMark | null,
-    selectionAfter?: SelectionMark | null,
-    scope?: StoryScope
-  ): TreeApplyResult;
-};
+export type { ScaleMutableSurface } from './surface-write-contract.ts';

@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Independent React block roots had no explicit application provider boundary.",
+  "after": "Each host supplies provider elements and scope to its own roots. Provider value updates retain widget identity and native selection.",
+  "reason": "Provider callbacks, context values, and local widget state remain outside canonical document state. The adapter changes no shared operations, identities, or formats.",
+  "tests": [
+    "packages/sciobot/src/react-blocks/providers.test.tsx",
+    "e2e/sciobot-block-host.spec.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

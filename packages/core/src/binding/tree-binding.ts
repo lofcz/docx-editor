@@ -15,6 +15,7 @@ import { isRunLevelMcAlternateContent } from '../store/package/drawing-projectio
 
 import type { OoxmlProperty, TreeDocOp } from '../store/store/tree-op-types.ts';
 import { createRecentRootCache } from '../store/store/recent-root-cache.ts';
+import { hiddenRetiredParagraphs } from '../store/package/retired-paragraph.ts';
 import { createSubtreeAggregateMemo } from '../store/package/subtree-memo-policy.ts';
 import { Node as PMNode } from 'prosemirror-model';
 import {
@@ -243,7 +244,9 @@ export function bodyParagraphs(part: OoxmlPart): OoxmlNode[] {
   const walk = (node: OoxmlNode): void => {
     if (node.kind === 'textValue') return;
     if (node.kind === 'body') {
+      const hidden = hiddenRetiredParagraphs(node.children);
       for (const child of node.children) {
+        if (hidden.has(child.id)) continue;
         if (child.kind === 'paragraph') paragraphs.push(child);
       }
       return;
@@ -302,7 +305,9 @@ export function allParagraphs(part: OoxmlPart): OoxmlNode[] {
   const paragraphs: OoxmlNode[] = [];
   for (const story of storyRootsOf(part)) {
     if (story.root.kind === 'textValue') continue;
-    for (const child of story.root.children) appendStoryChildParagraphs(child, paragraphs);
+    const hidden = hiddenRetiredParagraphs(story.root.children);
+    for (const child of story.root.children)
+      if (!hidden.has(child.id)) appendStoryChildParagraphs(child, paragraphs);
   }
   paragraphsByPart.set(part, paragraphs);
   return paragraphs;

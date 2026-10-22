@@ -36,3 +36,12 @@ export function revisionAttributes(id: string, revision: RevisionAttributionInpu
   if (revision.date !== undefined) attributes.push(attr('date', revision.date));
   return attributes;
 }
+
+/** Shared with `tree-op-tracked-marks.ts`, which writes the paragraph-mark wrappers. */
+export function isWmlNamed(node: OoxmlNode, localName: string): boolean {
+  return (
+    node.kind !== 'textValue' &&
+    node.namespaceUri === WML_NAMESPACE_URI &&
+    node.localName === localName
+  );
+}

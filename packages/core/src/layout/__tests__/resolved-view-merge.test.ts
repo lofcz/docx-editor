@@ -88,9 +88,7 @@ describe('a resolved view merges what its decisions merge', () => {
     expect(textPerLine(accepted.part, 'proposed')).toEqual(['one two three four']);
   });
 
-  test('a table between two marks ends the group', () => {
-    // A merge that crossed a container would move content into a different parent, which is
-    // the same refusal the store makes.
+  test('a removed mark before a table joins its first cell and stops at that table', () => {
     const table =
       '<w:tbl><w:tblPr><w:tblW w:w="0" w:type="auto"/></w:tblPr>' +
       '<w:tblGrid><w:gridCol w:w="4000"/></w:tblGrid><w:tr><w:tc>' +
@@ -98,7 +96,12 @@ describe('a resolved view merges what its decisions merge', () => {
       plain('cell') +
       '</w:tc></w:tr></w:tbl>';
     const part = load(marked('<w:del w:id="1" w:author="A"/>', 'before ') + table + plain('after'));
-    expect(textPerLine(part, 'proposed')).toEqual(['before ', 'cell', 'after']);
+    expect(textPerLine(part, 'proposed')).toEqual(['before cell', 'after']);
+    expect(textPerLine(part, 'original')).toEqual(['before ', 'cell', 'after']);
+    expect(textPerLine(part, 'all-markup')).toEqual(['before ', 'cell', 'after']);
+    const accepted = applyTreeOp(part, { op: 'acceptAllRevisions' });
+    if (!accepted.ok) throw new Error(accepted.reason);
+    expect(textPerLine(part, 'proposed')).toEqual(textPerLine(accepted.part, 'proposed'));
   });
 
   test('a trailing mark has nothing to merge into and keeps its content', () => {

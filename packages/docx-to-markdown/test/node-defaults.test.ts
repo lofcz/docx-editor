@@ -122,12 +122,15 @@ describe('server-first defaults', () => {
         // Small table text no longer reserves an inherited, taller cell-end mark.
         pages: 25,
         bodyLineCount: 280,
-        // Includes the four checkbox symbols and two authored nonbreaking hyphens.
-        markdownLength: 17_201,
+        // Includes the four checkbox symbols, two nonbreaking hyphens, and three bookmark links.
+        markdownLength: 17_241,
         headers: 24,
         footers: 24,
-        markdownHash: 'e6da51e7832a8859bedddf028a16d9bc7265871924f2393ea9f2fae06dfda263',
+        markdownHash: 'c1684571c79d1e7609b3f41aaa5779353bbf6fe644c83fe45890d7b6e5e9f558',
       });
+      expect(translated.markdown).toContain('[Section 1](#section1)');
+      expect(translated.markdown).toContain('[Section 6 – Nested Tables](#section6)');
+      expect(translated.markdown).toContain('[Section 12 – Form Elements](#section12)');
       expect(translated.markdown).toStartWith('**COMPREHENSIVE WORD ELEMENT**');
       expect(translated.markdown).toEndWith(
         'Endnote 2: Additional bibliography reference – Smith et al\\., 2025\\.'

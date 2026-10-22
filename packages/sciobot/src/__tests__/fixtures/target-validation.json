@@ -1,0 +1,904 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "revision": "da9081adad1b54d17d9f24647adfd117bdffb942",
+    "files": {
+      "src/lib/lesson-plan-validation.ts": "894b6e44924e43f49430bdb6e82423c2d1fc5366307e0917b81a6da0e4c44591",
+      "src/lib/lesson-plan-validation.test.ts": "34507662db0fd505bf902134e10df0732036593a7abc7ea376e1dedc60ded142",
+      "src/lib/agent-edit-feedback.ts": "6e76980d3e16bc4774ab289f612b52669914cb60ba50f63da03273fb702f6365",
+      "src/lib/agent-edit-feedback.test.ts": "ec12673e859376d9d7ca1f7407abe4827dc5f3999a8fadfc1874277ed40bf1a3",
+      "supabase/functions/ai-material-draft/validate-mdx.ts": "41401543ecbdb2259b5ee8532f2c7f663d8e6b2203e6873956379008115e8149",
+      "supabase/functions/ai-material-draft/lesson-plan-schema.ts": "bc1d070e5f19cddea09bd8a9377585090ca65e53a2177c343d2ecf9d9a22dcc1",
+      "supabase/functions/_shared/normalize-mdx-line-breaks.ts": "9ccbb929d5c65b7cf7824cf65f40a4796ce6cac81b12b799b0d8c9a0eb2244fd"
+    },
+    "scope": "Application-owned syntax/schema validators and exact feedback; no native implementation is used as the oracle."
+  },
+  "cases": [
+    {
+      "name": "valid complete lesson",
+      "input": "<lesson_title grade=\"8. třída\">\nUhlovodíky\n</lesson_title>\n\n<preparation_recap>\n<recap_goals>\nŽák vysvětlí pojem uhlovodíky.\n</recap_goals>\n\n<recap_phase type=\"evocation\">\nEvokace obsah.\n</recap_phase>\n\n<recap_phase type=\"understanding\">\nUvědomění obsah.\n</recap_phase>\n\n<recap_phase type=\"reflection\">\nReflexe obsah.\n</recap_phase>\n</preparation_recap>\n\n<phase type=\"evocation\">\n  <activity name=\"Úvod\" duration=\"10\">\n    **Otázka:** Co mají společného parafín a plast?\n  </activity>\n</phase>\n\n<phase type=\"understanding\">\n  <activity name=\"Výklad\" duration=\"20\">\n    Rozdělení uhlovodíků.\n  </activity>\n</phase>\n\n<phase type=\"reflection\">\n  <activity name=\"Shrnutí\" duration=\"15\">\n    Ověření chápání.\n  </activity>\n</phase>\n",
+      "syntax": {
+        "ok": true,
+        "issues": []
+      },
+      "locatedSyntax": {
+        "ok": true,
+        "issues": []
+      },
+      "lesson": {
+        "ok": true,
+        "issues": []
+      }
+    },
+    {
+      "name": "generic document",
+      "input": "# Replacement\n\nOrdinary text.",
+      "syntax": {
+        "ok": true,
+        "issues": []
+      },
+      "locatedSyntax": {
+        "ok": true,
+        "issues": []
+      },
+      "lesson": {
+        "ok": false,
+        "issues": [
+          {
+            "code": "missing-lesson-title",
+            "message": "Document must start with a single <lesson_title grade=\"…\">…</lesson_title> element (not a bare # H1)."
+          },
+          {
+            "code": "missing-preparation-recap",
+            "message": "Document must contain exactly one <preparation_recap> block immediately after <lesson_title>."
+          },
+          {
+            "code": "phase-count",
+            "message": "Document must contain <phase> (expected exactly 3)."
+          }
+        ]
+      },
+      "rejection": "Edit REJECTED — the document parses correctly but does not satisfy the lesson-plan structure. It was NOT applied. Fix the listed schema requirements.\n\n1. [missing-lesson-title]: Document must start with a single <lesson_title grade=\"…\">…</lesson_title> element (not a bare # H1).\n2. [missing-preparation-recap]: Document must contain exactly one <preparation_recap> block immediately after <lesson_title>.\n3. [phase-count]: Document must contain <phase> (expected exactly 3).",
+      "warning": "WARNING: the document now violates the lesson-plan schema. You MUST fix every issue below with further edits before ending your turn:\n1. [missing-lesson-title]: Document must start with a single <lesson_title grade=\"…\">…</lesson_title> element (not a bare # H1).\n2. [missing-preparation-recap]: Document must contain exactly one <preparation_recap> block immediately after <lesson_title>.\n3. [phase-count]: Document must contain <phase> (expected exactly 3).",
+      "locatedRejection": "Edit REJECTED — the document parses correctly but does not satisfy the lesson-plan structure. It was NOT applied. Fix the listed schema requirements.\n\n1. [missing-lesson-title]: Document must start with a single <lesson_title grade=\"…\">…</lesson_title> element (not a bare # H1).\n2. [missing-preparation-recap]: Document must contain exactly one <preparation_recap> block immediately after <lesson_title>.\n3. [phase-count]: Document must contain <phase> (expected exactly 3)."
+    },
+    {
+      "name": "empty document",
+      "input": "",
+      "syntax": {
+        "ok": false,
+        "issues": [
+          {
+            "code": "empty-document",
+            "message": "Document is empty."
+          }
+        ]
+      },
+      "locatedSyntax": {
+        "ok": false,
+        "issues": [
+          {
+            "code": "empty-document",
+            "message": "Document is empty."
+          }
+        ]
+      },
+      "lesson": {
+        "ok": false,
+        "issues": [
+          {
+            "code": "empty-document",
+            "message": "Document is empty."
+          }
+        ]
+      },
+      "rejection": "Edit REJECTED — the resulting document is not valid MDX and was NOT applied.\nThe most common cause: old_string and new_string disagree about a tag pair (e.g. old_string swallowed a closing </activity> that new_string does not re-emit, or new_string left an opening tag unclosed). Keep BOTH halves of every tag pair consistently kept or removed.\n\n1. [empty-document]: Document is empty.",
+      "locatedRejection": "Edit REJECTED — the resulting document is not valid MDX and was NOT applied.\nThe most common cause: old_string and new_string disagree about a tag pair (e.g. old_string swallowed a closing </activity> that new_string does not re-emit, or new_string left an opening tag unclosed). Keep BOTH halves of every tag pair consistently kept or removed.\n\n1. [empty-document]: Document is empty."
+    },
+    {
+      "name": "whitespace only",
+      "input": " \n\t",
+      "syntax": {
+        "ok": false,
+        "issues": [
+          {
+            "code": "empty-document",
+            "message": "Document is empty."
+          }
+        ]
+      },
+      "locatedSyntax": {
+        "ok": false,
+        "issues": [
+          {
+            "code": "empty-document",
+            "message": "Document is empty."
+          }
+        ]
+      },
+      "lesson": {
+        "ok": false,
+        "issues": [
+          {
+            "code": "empty-document",
+            "message": "Document is empty."
+          }
+        ]
+      },
+      "rejection": "Edit REJECTED — the resulting document is not valid MDX and was NOT applied.\nThe most common cause: old_string and new_string disagree about a tag pair (e.g. old_string swallowed a closing </activity> that new_string does not re-emit, or new_string left an opening tag unclosed). Keep BOTH halves of every tag pair consistently kept or removed.\n\n1. [empty-document]: Document is empty.",
+      "locatedRejection": "Edit REJECTED — the resulting document is not valid MDX and was NOT applied.\nThe most common cause: old_string and new_string disagree about a tag pair (e.g. old_string swallowed a closing </activity> that new_string does not re-emit, or new_string left an opening tag unclosed). Keep BOTH halves of every tag pair consistently kept or removed.\n\n1. [empty-document]: Document is empty."
+    },
+    {
+      "name": "malformed unclosed tag",
+      "input": "<activity>Broken",
+      "syntax": {
+        "ok": false,
+        "issues": [
+          {
+            "code": "end-tag-mismatch",
+            "message": "Expected a closing tag for `<activity>` (1:1-1:11) before the end of `paragraph`",
+            "line": 1,
+            "column": 1
+          }
+        ]
+      },
+      "locatedSyntax": {
+        "ok": false,
+        "issues": [
+          {
+            "code": "end-tag-mismatch",
+            "message": "Expected a closing tag for `<activity>` (1:1-1:11) before the end of `paragraph`",
+            "line": 1,
+            "column": 1
+          }
+        ]
+      },
+      "lesson": {
+        "ok": false,
+        "issues": [
+          {
+            "code": "end-tag-mismatch",
+            "message": "Expected a closing tag for `<activity>` (1:1-1:11) before the end of `paragraph`",
+            "line": 1,
+            "column": 1
+          }
+        ]
+      },
+      "rejection": "Edit REJECTED — the resulting document is not valid MDX and was NOT applied.\nThe most common cause: old_string and new_string disagree about a tag pair (e.g. old_string swallowed a closing </activity> that new_string does not re-emit, or new_string left an opening tag unclosed). Keep BOTH halves of every tag pair consistently kept or removed.\n\n1. [end-tag-mismatch] line 1:1: Expected a closing tag for `<activity>` (1:1-1:11) before the end of `paragraph`\n\nContext of the rejected result around the first issue (these lines were NOT applied):\n>>>    1 | <activity>Broken",
+      "locatedRejection": "Edit REJECTED — the resulting document is not valid MDX and was NOT applied.\nThe most common cause: old_string and new_string disagree about a tag pair (e.g. old_string swallowed a closing </activity> that new_string does not re-emit, or new_string left an opening tag unclosed). Keep BOTH halves of every tag pair consistently kept or removed.\n\n1. [end-tag-mismatch] line 1:1: Expected a closing tag for `<activity>` (1:1-1:11) before the end of `paragraph`\n\nContext of the rejected result around the first issue (these lines were NOT applied):\n>>>    1 | <activity>Broken"
+    },
+    {
+      "name": "malformed stray closing tag",
+      "input": "<lesson_title grade=\"8. třída\">\nUhlovodíky\n</lesson_title>\n\n<preparation_recap>\n<recap_goals>\nŽák vysvětlí pojem uhlovodíky.\n</recap_goals>\n\n<recap_phase type=\"evocation\">\nEvokace obsah.\n</recap_phase>\n\n<recap_phase type=\"understanding\">\nUvědomění obsah.\n</recap_phase>\n\n<recap_phase type=\"reflection\">\nReflexe obsah.\n</recap_phase>\n</preparation_recap>\n\n<phase type=\"evocation\">\n  <activity name=\"Úvod\" duration=\"10\">\n    **Otázka:** Co mají společného parafín a plast?\n  </activity>\n</phase>\n\n<phase type=\"understanding\">\n  <activity name=\"Výklad\" duration=\"20\">\n    Rozdělení uhlovodíků.\n  </activity>\n</phase>\n\n<phase type=\"reflection\">\n  <activity name=\"Shrnutí\" duration=\"15\">\n    Ověření chápání.\n  </activity>\n</phase>\n\n</story>\n",
+      "syntax": {
+        "ok": false,
+        "issues": [
+          {
+            "code": "unexpected-closing-slash",
+            "message": "Unexpected closing slash `/` in tag, expected an open tag first",
+            "line": 41,
+            "column": 2
+          }
+        ]
+      },
+      "locatedSyntax": {
+        "ok": false,
+        "issues": [
+          {
+            "code": "unexpected-closing-slash",
+            "message": "Unexpected closing slash `/` in tag, expected an open tag first",
+            "line": 41,
+            "column": 2
+          }
+        ]
+      },
+      "lesson": {
+        "ok": false,
+        "issues": [
+          {
+            "code": "unexpected-closing-slash",
+            "message": "Unexpected closing slash `/` in tag, expected an open tag first",
+            "line": 41,
+            "column": 2
+          }
+        ]
+      },
+      "rejection": "Edit REJECTED — the resulting document is not valid MDX and was NOT applied.\nThe most common cause: old_string and new_string disagree about a tag pair (e.g. old_string swallowed a closing </activity> that new_string does not re-emit, or new_string left an opening tag unclosed). Keep BOTH halves of every tag pair consistently kept or removed.\n\n1. [unexpected-closing-slash] line 41:2: Unexpected closing slash `/` in tag, expected an open tag first\n\nContext of the rejected result around the first issue (these lines were NOT applied):\n      38 |   </activity>\n      39 | </phase>\n      40 | \n>>>   41 | </story>\n      42 | ",
+      "locatedRejection": "Edit REJECTED — the resulting document is not valid MDX and was NOT applied.\nThe most common cause: old_string and new_string disagree about a tag pair (e.g. old_string swallowed a closing </activity> that new_string does not re-emit, or new_string left an opening tag unclosed). Keep BOTH halves of every tag pair consistently kept or removed.\n\n1. [unexpected-closing-slash] line 41:2: Unexpected closing slash `/` in tag, expected an open tag first\n\nContext of the rejected result around the first issue (these lines were NOT applied):\n      38 |   </activity>\n      39 | </phase>\n      40 | \n>>>   41 | </story>\n      42 | "
+    },
+    {
+      "name": "invalid expression",
+      "input": "Text {broken(}",
+      "syntax": {
+        "ok": false,
+        "issues": [
+          {
+            "code": "acorn",
+            "message": "Could not parse expression with acorn"
+          }
+        ]
+      },
+      "locatedSyntax": {
+        "ok": false,
+        "issues": [
+          {
+            "code": "acorn",
+            "message": "Could not parse expression with acorn",
+            "line": 1,
+            "column": 14
+          }
+        ]
+      },
+      "lesson": {
+        "ok": false,
+        "issues": [
+          {
+            "code": "acorn",
+            "message": "Could not parse expression with acorn"
+          }
+        ]
+      },
+      "rejection": "Edit REJECTED — the resulting document is not valid MDX and was NOT applied.\nThe most common cause: old_string and new_string disagree about a tag pair (e.g. old_string swallowed a closing </activity> that new_string does not re-emit, or new_string left an opening tag unclosed). Keep BOTH halves of every tag pair consistently kept or removed.\n\n1. [acorn]: Could not parse expression with acorn",
+      "locatedRejection": "Edit REJECTED — the resulting document is not valid MDX and was NOT applied.\nThe most common cause: old_string and new_string disagree about a tag pair (e.g. old_string swallowed a closing </activity> that new_string does not re-emit, or new_string left an opening tag unclosed). Keep BOTH halves of every tag pair consistently kept or removed.\n\n1. [acorn] line 1:14: Could not parse expression with acorn\n\nContext of the rejected result around the first issue (these lines were NOT applied):\n>>>    1 | Text {broken(}"
+    },
+    {
+      "name": "missing title",
+      "input": "<preparation_recap>\n<recap_goals>\nŽák vysvětlí pojem uhlovodíky.\n</recap_goals>\n\n<recap_phase type=\"evocation\">\nEvokace obsah.\n</recap_phase>\n\n<recap_phase type=\"understanding\">\nUvědomění obsah.\n</recap_phase>\n\n<recap_phase type=\"reflection\">\nReflexe obsah.\n</recap_phase>\n</preparation_recap>\n\n<phase type=\"evocation\">\n  <activity name=\"Úvod\" duration=\"10\">\n    **Otázka:** Co mají společného parafín a plast?\n  </activity>\n</phase>\n\n<phase type=\"understanding\">\n  <activity name=\"Výklad\" duration=\"20\">\n    Rozdělení uhlovodíků.\n  </activity>\n</phase>\n\n<phase type=\"reflection\">\n  <activity name=\"Shrnutí\" duration=\"15\">\n    Ověření chápání.\n  </activity>\n</phase>\n",
+      "syntax": {
+        "ok": true,
+        "issues": []
+      },
+      "locatedSyntax": {
+        "ok": true,
+        "issues": []
+      },
+      "lesson": {
+        "ok": false,
+        "issues": [
+          {
+            "code": "missing-lesson-title",
+            "message": "Document must start with a single <lesson_title grade=\"…\">…</lesson_title> element (not a bare # H1)."
+          }
+        ]
+      },
+      "rejection": "Edit REJECTED — the document parses correctly but does not satisfy the lesson-plan structure. It was NOT applied. Fix the listed schema requirements.\n\n1. [missing-lesson-title]: Document must start with a single <lesson_title grade=\"…\">…</lesson_title> element (not a bare # H1).",
+      "warning": "WARNING: the document now violates the lesson-plan schema. You MUST fix every issue below with further edits before ending your turn:\n1. [missing-lesson-title]: Document must start with a single <lesson_title grade=\"…\">…</lesson_title> element (not a bare # H1).",
+      "locatedRejection": "Edit REJECTED — the document parses correctly but does not satisfy the lesson-plan structure. It was NOT applied. Fix the listed schema requirements.\n\n1. [missing-lesson-title]: Document must start with a single <lesson_title grade=\"…\">…</lesson_title> element (not a bare # H1)."
+    },
+    {
+      "name": "duplicate title",
+      "input": "<lesson_title>Extra</lesson_title>\n\n<lesson_title grade=\"8. třída\">\nUhlovodíky\n</lesson_title>\n\n<preparation_recap>\n<recap_goals>\nŽák vysvětlí pojem uhlovodíky.\n</recap_goals>\n\n<recap_phase type=\"evocation\">\nEvokace obsah.\n</recap_phase>\n\n<recap_phase type=\"understanding\">\nUvědomění obsah.\n</recap_phase>\n\n<recap_phase type=\"reflection\">\nReflexe obsah.\n</recap_phase>\n</preparation_recap>\n\n<phase type=\"evocation\">\n  <activity name=\"Úvod\" duration=\"10\">\n    **Otázka:** Co mají společného parafín a plast?\n  </activity>\n</phase>\n\n<phase type=\"understanding\">\n  <activity name=\"Výklad\" duration=\"20\">\n    Rozdělení uhlovodíků.\n  </activity>\n</phase>\n\n<phase type=\"reflection\">\n  <activity name=\"Shrnutí\" duration=\"15\">\n    Ověření chápání.\n  </activity>\n</phase>\n",
+      "syntax": {
+        "ok": true,
+        "issues": []
+      },
+      "locatedSyntax": {
+        "ok": true,
+        "issues": []
+      },
+      "lesson": {
+        "ok": false,
+        "issues": [
+          {
+            "code": "duplicate-lesson-title",
+            "message": "Expected exactly 1 <lesson_title>, found 2."
+          }
+        ]
+      },
+      "rejection": "Edit REJECTED — the document parses correctly but does not satisfy the lesson-plan structure. It was NOT applied. Fix the listed schema requirements.\n\n1. [duplicate-lesson-title]: Expected exactly 1 <lesson_title>, found 2.",
+      "warning": "WARNING: the document now violates the lesson-plan schema. You MUST fix every issue below with further edits before ending your turn:\n1. [duplicate-lesson-title]: Expected exactly 1 <lesson_title>, found 2.",
+      "locatedRejection": "Edit REJECTED — the document parses correctly but does not satisfy the lesson-plan structure. It was NOT applied. Fix the listed schema requirements.\n\n1. [duplicate-lesson-title]: Expected exactly 1 <lesson_title>, found 2."
+    },
+    {
+      "name": "missing recap",
+      "input": "<lesson_title grade=\"8. třída\">\nUhlovodíky\n</lesson_title>\n\n<phase type=\"evocation\">\n  <activity name=\"Úvod\" duration=\"10\">\n    **Otázka:** Co mají společného parafín a plast?\n  </activity>\n</phase>\n\n<phase type=\"understanding\">\n  <activity name=\"Výklad\" duration=\"20\">\n    Rozdělení uhlovodíků.\n  </activity>\n</phase>\n\n<phase type=\"reflection\">\n  <activity name=\"Shrnutí\" duration=\"15\">\n    Ověření chápání.\n  </activity>\n</phase>\n",
+      "syntax": {
+        "ok": true,
+        "issues": []
+      },
+      "locatedSyntax": {
+        "ok": true,
+        "issues": []
+      },
+      "lesson": {
+        "ok": false,
+        "issues": [
+          {
+            "code": "missing-preparation-recap",
+            "message": "Document must contain exactly one <preparation_recap> block immediately after <lesson_title>."
+          }
+        ]
+      },
+      "rejection": "Edit REJECTED — the document parses correctly but does not satisfy the lesson-plan structure. It was NOT applied. Fix the listed schema requirements.\n\n1. [missing-preparation-recap]: Document must contain exactly one <preparation_recap> block immediately after <lesson_title>.",
+      "warning": "WARNING: the document now violates the lesson-plan schema. You MUST fix every issue below with further edits before ending your turn:\n1. [missing-preparation-recap]: Document must contain exactly one <preparation_recap> block immediately after <lesson_title>.",
+      "locatedRejection": "Edit REJECTED — the document parses correctly but does not satisfy the lesson-plan structure. It was NOT applied. Fix the listed schema requirements.\n\n1. [missing-preparation-recap]: Document must contain exactly one <preparation_recap> block immediately after <lesson_title>."
+    },
+    {
+      "name": "missing goals",
+      "input": "<lesson_title grade=\"8. třída\">\nUhlovodíky\n</lesson_title>\n\n<preparation_recap>\n\n\n<recap_phase type=\"evocation\">\nEvokace obsah.\n</recap_phase>\n\n<recap_phase type=\"understanding\">\nUvědomění obsah.\n</recap_phase>\n\n<recap_phase type=\"reflection\">\nReflexe obsah.\n</recap_phase>\n</preparation_recap>\n\n<phase type=\"evocation\">\n  <activity name=\"Úvod\" duration=\"10\">\n    **Otázka:** Co mají společného parafín a plast?\n  </activity>\n</phase>\n\n<phase type=\"understanding\">\n  <activity name=\"Výklad\" duration=\"20\">\n    Rozdělení uhlovodíků.\n  </activity>\n</phase>\n\n<phase type=\"reflection\">\n  <activity name=\"Shrnutí\" duration=\"15\">\n    Ověření chápání.\n  </activity>\n</phase>\n",
+      "syntax": {
+        "ok": true,
+        "issues": []
+      },
+      "locatedSyntax": {
+        "ok": true,
+        "issues": []
+      },
+      "lesson": {
+        "ok": false,
+        "issues": [
+          {
+            "code": "missing-recap-goals",
+            "message": "<preparation_recap> must contain a <recap_goals> slot."
+          }
+        ]
+      },
+      "rejection": "Edit REJECTED — the document parses correctly but does not satisfy the lesson-plan structure. It was NOT applied. Fix the listed schema requirements.\n\n1. [missing-recap-goals]: <preparation_recap> must contain a <recap_goals> slot.",
+      "warning": "WARNING: the document now violates the lesson-plan schema. You MUST fix every issue below with further edits before ending your turn:\n1. [missing-recap-goals]: <preparation_recap> must contain a <recap_goals> slot.",
+      "locatedRejection": "Edit REJECTED — the document parses correctly but does not satisfy the lesson-plan structure. It was NOT applied. Fix the listed schema requirements.\n\n1. [missing-recap-goals]: <preparation_recap> must contain a <recap_goals> slot."
+    },
+    {
+      "name": "wrong phase order",
+      "input": "<lesson_title grade=\"8. třída\">\nUhlovodíky\n</lesson_title>\n\n<preparation_recap>\n<recap_goals>\nŽák vysvětlí pojem uhlovodíky.\n</recap_goals>\n\n<recap_phase type=\"evocation\">\nEvokace obsah.\n</recap_phase>\n\n<recap_phase type=\"understanding\">\nUvědomění obsah.\n</recap_phase>\n\n<recap_phase type=\"reflection\">\nReflexe obsah.\n</recap_phase>\n</preparation_recap>\n\n<phase type=\"reflection\">\n  <activity name=\"Úvod\" duration=\"10\">\n    **Otázka:** Co mají společného parafín a plast?\n  </activity>\n</phase>\n\n<phase type=\"understanding\">\n  <activity name=\"Výklad\" duration=\"20\">\n    Rozdělení uhlovodíků.\n  </activity>\n</phase>\n\n<phase type=\"reflection\">\n  <activity name=\"Shrnutí\" duration=\"15\">\n    Ověření chápání.\n  </activity>\n</phase>\n",
+      "syntax": {
+        "ok": true,
+        "issues": []
+      },
+      "locatedSyntax": {
+        "ok": true,
+        "issues": []
+      },
+      "lesson": {
+        "ok": false,
+        "issues": [
+          {
+            "code": "phase-order",
+            "message": "<phase> #1 must have type=\"evocation\" (got type=\"reflection\").",
+            "line": 23,
+            "column": 1
+          }
+        ]
+      },
+      "rejection": "Edit REJECTED — the document parses correctly but does not satisfy the lesson-plan structure. It was NOT applied. Fix the listed schema requirements.\n\n1. [phase-order] line 23:1: <phase> #1 must have type=\"evocation\" (got type=\"reflection\").\n\nContext of the rejected result around the first issue (these lines were NOT applied):\n      20 | </recap_phase>\n      21 | </preparation_recap>\n      22 | \n>>>   23 | <phase type=\"reflection\">\n      24 |   <activity name=\"Úvod\" duration=\"10\">\n      25 |     **Otázka:** Co mají společného parafín a plast?\n      26 |   </activity>",
+      "warning": "WARNING: the document now violates the lesson-plan schema. You MUST fix every issue below with further edits before ending your turn:\n1. [phase-order] line 23:1: <phase> #1 must have type=\"evocation\" (got type=\"reflection\").",
+      "locatedRejection": "Edit REJECTED — the document parses correctly but does not satisfy the lesson-plan structure. It was NOT applied. Fix the listed schema requirements.\n\n1. [phase-order] line 23:1: <phase> #1 must have type=\"evocation\" (got type=\"reflection\").\n\nContext of the rejected result around the first issue (these lines were NOT applied):\n      20 | </recap_phase>\n      21 | </preparation_recap>\n      22 | \n>>>   23 | <phase type=\"reflection\">\n      24 |   <activity name=\"Úvod\" duration=\"10\">\n      25 |     **Otázka:** Co mají společného parafín a plast?\n      26 |   </activity>"
+    },
+    {
+      "name": "wrong recap phase order",
+      "input": "<lesson_title grade=\"8. třída\">\nUhlovodíky\n</lesson_title>\n\n<preparation_recap>\n<recap_goals>\nŽák vysvětlí pojem uhlovodíky.\n</recap_goals>\n\n<recap_phase type=\"reflection\">\nEvokace obsah.\n</recap_phase>\n\n<recap_phase type=\"understanding\">\nUvědomění obsah.\n</recap_phase>\n\n<recap_phase type=\"reflection\">\nReflexe obsah.\n</recap_phase>\n</preparation_recap>\n\n<phase type=\"evocation\">\n  <activity name=\"Úvod\" duration=\"10\">\n    **Otázka:** Co mají společného parafín a plast?\n  </activity>\n</phase>\n\n<phase type=\"understanding\">\n  <activity name=\"Výklad\" duration=\"20\">\n    Rozdělení uhlovodíků.\n  </activity>\n</phase>\n\n<phase type=\"reflection\">\n  <activity name=\"Shrnutí\" duration=\"15\">\n    Ověření chápání.\n  </activity>\n</phase>\n",
+      "syntax": {
+        "ok": true,
+        "issues": []
+      },
+      "locatedSyntax": {
+        "ok": true,
+        "issues": []
+      },
+      "lesson": {
+        "ok": false,
+        "issues": [
+          {
+            "code": "recap_phase-order",
+            "message": "<recap_phase> #1 must have type=\"evocation\" (got type=\"reflection\").",
+            "line": 10,
+            "column": 1
+          }
+        ]
+      },
+      "rejection": "Edit REJECTED — the document parses correctly but does not satisfy the lesson-plan structure. It was NOT applied. Fix the listed schema requirements.\n\n1. [recap_phase-order] line 10:1: <recap_phase> #1 must have type=\"evocation\" (got type=\"reflection\").\n\nContext of the rejected result around the first issue (these lines were NOT applied):\n       7 | Žák vysvětlí pojem uhlovodíky.\n       8 | </recap_goals>\n       9 | \n>>>   10 | <recap_phase type=\"reflection\">\n      11 | Evokace obsah.\n      12 | </recap_phase>\n      13 | ",
+      "warning": "WARNING: the document now violates the lesson-plan schema. You MUST fix every issue below with further edits before ending your turn:\n1. [recap_phase-order] line 10:1: <recap_phase> #1 must have type=\"evocation\" (got type=\"reflection\").",
+      "locatedRejection": "Edit REJECTED — the document parses correctly but does not satisfy the lesson-plan structure. It was NOT applied. Fix the listed schema requirements.\n\n1. [recap_phase-order] line 10:1: <recap_phase> #1 must have type=\"evocation\" (got type=\"reflection\").\n\nContext of the rejected result around the first issue (these lines were NOT applied):\n       7 | Žák vysvětlí pojem uhlovodíky.\n       8 | </recap_goals>\n       9 | \n>>>   10 | <recap_phase type=\"reflection\">\n      11 | Evokace obsah.\n      12 | </recap_phase>\n      13 | "
+    },
+    {
+      "name": "empty phase",
+      "input": "<lesson_title grade=\"8. třída\">\nUhlovodíky\n</lesson_title>\n\n<preparation_recap>\n<recap_goals>\nŽák vysvětlí pojem uhlovodíky.\n</recap_goals>\n\n<recap_phase type=\"evocation\">\nEvokace obsah.\n</recap_phase>\n\n<recap_phase type=\"understanding\">\nUvědomění obsah.\n</recap_phase>\n\n<recap_phase type=\"reflection\">\nReflexe obsah.\n</recap_phase>\n</preparation_recap>\n\n<phase type=\"evocation\">\n  </phase>\n\n<phase type=\"understanding\">\n  <activity name=\"Výklad\" duration=\"20\">\n    Rozdělení uhlovodíků.\n  </activity>\n</phase>\n\n<phase type=\"reflection\">\n  <activity name=\"Shrnutí\" duration=\"15\">\n    Ověření chápání.\n  </activity>\n</phase>\n",
+      "syntax": {
+        "ok": true,
+        "issues": []
+      },
+      "locatedSyntax": {
+        "ok": true,
+        "issues": []
+      },
+      "lesson": {
+        "ok": false,
+        "issues": [
+          {
+            "code": "empty-phase",
+            "message": "A phase must contain an activity unless it explicitly has duration=\"0\" (a continuation with no time allocated to this phase).",
+            "line": 23,
+            "column": 1
+          }
+        ]
+      },
+      "rejection": "Edit REJECTED — the document parses correctly but does not satisfy the lesson-plan structure. It was NOT applied. Fix the listed schema requirements.\n\n1. [empty-phase] line 23:1: A phase must contain an activity unless it explicitly has duration=\"0\" (a continuation with no time allocated to this phase).\n\nContext of the rejected result around the first issue (these lines were NOT applied):\n      20 | </recap_phase>\n      21 | </preparation_recap>\n      22 | \n>>>   23 | <phase type=\"evocation\">\n      24 |   </phase>\n      25 | \n      26 | <phase type=\"understanding\">",
+      "warning": "WARNING: the document now violates the lesson-plan schema. You MUST fix every issue below with further edits before ending your turn:\n1. [empty-phase] line 23:1: A phase must contain an activity unless it explicitly has duration=\"0\" (a continuation with no time allocated to this phase).",
+      "locatedRejection": "Edit REJECTED — the document parses correctly but does not satisfy the lesson-plan structure. It was NOT applied. Fix the listed schema requirements.\n\n1. [empty-phase] line 23:1: A phase must contain an activity unless it explicitly has duration=\"0\" (a continuation with no time allocated to this phase).\n\nContext of the rejected result around the first issue (these lines were NOT applied):\n      20 | </recap_phase>\n      21 | </preparation_recap>\n      22 | \n>>>   23 | <phase type=\"evocation\">\n      24 |   </phase>\n      25 | \n      26 | <phase type=\"understanding\">"
+    },
+    {
+      "name": "zero minute continuation",
+      "input": "<lesson_title grade=\"8. třída\">\nUhlovodíky\n</lesson_title>\n\n<preparation_recap>\n<recap_goals>\nŽák vysvětlí pojem uhlovodíky.\n</recap_goals>\n\n<recap_phase type=\"evocation\">\nEvokace obsah.\n</recap_phase>\n\n<recap_phase type=\"understanding\">\nUvědomění obsah.\n</recap_phase>\n\n<recap_phase type=\"reflection\">\nReflexe obsah.\n</recap_phase>\n</preparation_recap>\n\n<phase type=\"evocation\" duration=\"0\"></phase>\n\n<phase type=\"understanding\">\n  <activity name=\"Výklad\" duration=\"20\">\n    Rozdělení uhlovodíků.\n  </activity>\n</phase>\n\n<phase type=\"reflection\">\n  <activity name=\"Shrnutí\" duration=\"15\">\n    Ověření chápání.\n  </activity>\n</phase>\n",
+      "syntax": {
+        "ok": true,
+        "issues": []
+      },
+      "locatedSyntax": {
+        "ok": true,
+        "issues": []
+      },
+      "lesson": {
+        "ok": true,
+        "issues": []
+      }
+    },
+    {
+      "name": "missing activity name",
+      "input": "<lesson_title grade=\"8. třída\">\nUhlovodíky\n</lesson_title>\n\n<preparation_recap>\n<recap_goals>\nŽák vysvětlí pojem uhlovodíky.\n</recap_goals>\n\n<recap_phase type=\"evocation\">\nEvokace obsah.\n</recap_phase>\n\n<recap_phase type=\"understanding\">\nUvědomění obsah.\n</recap_phase>\n\n<recap_phase type=\"reflection\">\nReflexe obsah.\n</recap_phase>\n</preparation_recap>\n\n<phase type=\"evocation\">\n  <activity  duration=\"10\">\n    **Otázka:** Co mají společného parafín a plast?\n  </activity>\n</phase>\n\n<phase type=\"understanding\">\n  <activity name=\"Výklad\" duration=\"20\">\n    Rozdělení uhlovodíků.\n  </activity>\n</phase>\n\n<phase type=\"reflection\">\n  <activity name=\"Shrnutí\" duration=\"15\">\n    Ověření chápání.\n  </activity>\n</phase>\n",
+      "syntax": {
+        "ok": true,
+        "issues": []
+      },
+      "locatedSyntax": {
+        "ok": true,
+        "issues": []
+      },
+      "lesson": {
+        "ok": false,
+        "issues": [
+          {
+            "code": "activity-missing-name",
+            "message": "<activity> is missing a non-empty name=\"…\" attribute.",
+            "line": 24,
+            "column": 3
+          }
+        ]
+      },
+      "rejection": "Edit REJECTED — the document parses correctly but does not satisfy the lesson-plan structure. It was NOT applied. Fix the listed schema requirements.\n\n1. [activity-missing-name] line 24:3: <activity> is missing a non-empty name=\"…\" attribute.\n\nContext of the rejected result around the first issue (these lines were NOT applied):\n      21 | </preparation_recap>\n      22 | \n      23 | <phase type=\"evocation\">\n>>>   24 |   <activity  duration=\"10\">\n      25 |     **Otázka:** Co mají společného parafín a plast?\n      26 |   </activity>\n      27 | </phase>",
+      "warning": "WARNING: the document now violates the lesson-plan schema. You MUST fix every issue below with further edits before ending your turn:\n1. [activity-missing-name] line 24:3: <activity> is missing a non-empty name=\"…\" attribute.",
+      "locatedRejection": "Edit REJECTED — the document parses correctly but does not satisfy the lesson-plan structure. It was NOT applied. Fix the listed schema requirements.\n\n1. [activity-missing-name] line 24:3: <activity> is missing a non-empty name=\"…\" attribute.\n\nContext of the rejected result around the first issue (these lines were NOT applied):\n      21 | </preparation_recap>\n      22 | \n      23 | <phase type=\"evocation\">\n>>>   24 |   <activity  duration=\"10\">\n      25 |     **Otázka:** Co mají společného parafín a plast?\n      26 |   </activity>\n      27 | </phase>"
+    },
+    {
+      "name": "empty activity name",
+      "input": "<lesson_title grade=\"8. třída\">\nUhlovodíky\n</lesson_title>\n\n<preparation_recap>\n<recap_goals>\nŽák vysvětlí pojem uhlovodíky.\n</recap_goals>\n\n<recap_phase type=\"evocation\">\nEvokace obsah.\n</recap_phase>\n\n<recap_phase type=\"understanding\">\nUvědomění obsah.\n</recap_phase>\n\n<recap_phase type=\"reflection\">\nReflexe obsah.\n</recap_phase>\n</preparation_recap>\n\n<phase type=\"evocation\">\n  <activity name=\"  \" duration=\"10\">\n    **Otázka:** Co mají společného parafín a plast?\n  </activity>\n</phase>\n\n<phase type=\"understanding\">\n  <activity name=\"Výklad\" duration=\"20\">\n    Rozdělení uhlovodíků.\n  </activity>\n</phase>\n\n<phase type=\"reflection\">\n  <activity name=\"Shrnutí\" duration=\"15\">\n    Ověření chápání.\n  </activity>\n</phase>\n",
+      "syntax": {
+        "ok": true,
+        "issues": []
+      },
+      "locatedSyntax": {
+        "ok": true,
+        "issues": []
+      },
+      "lesson": {
+        "ok": false,
+        "issues": [
+          {
+            "code": "invalid-attribute",
+            "message": "<activity> has an empty name attribute.",
+            "line": 24,
+            "column": 3
+          }
+        ]
+      },
+      "rejection": "Edit REJECTED — the document parses correctly but does not satisfy the lesson-plan structure. It was NOT applied. Fix the listed schema requirements.\n\n1. [invalid-attribute] line 24:3: <activity> has an empty name attribute.\n\nContext of the rejected result around the first issue (these lines were NOT applied):\n      21 | </preparation_recap>\n      22 | \n      23 | <phase type=\"evocation\">\n>>>   24 |   <activity name=\"  \" duration=\"10\">\n      25 |     **Otázka:** Co mají společného parafín a plast?\n      26 |   </activity>\n      27 | </phase>",
+      "warning": "WARNING: the document now violates the lesson-plan schema. You MUST fix every issue below with further edits before ending your turn:\n1. [invalid-attribute] line 24:3: <activity> has an empty name attribute.",
+      "locatedRejection": "Edit REJECTED — the document parses correctly but does not satisfy the lesson-plan structure. It was NOT applied. Fix the listed schema requirements.\n\n1. [invalid-attribute] line 24:3: <activity> has an empty name attribute.\n\nContext of the rejected result around the first issue (these lines were NOT applied):\n      21 | </preparation_recap>\n      22 | \n      23 | <phase type=\"evocation\">\n>>>   24 |   <activity name=\"  \" duration=\"10\">\n      25 |     **Otázka:** Co mají společného parafín a plast?\n      26 |   </activity>\n      27 | </phase>"
+    },
+    {
+      "name": "missing activity duration",
+      "input": "<lesson_title grade=\"8. třída\">\nUhlovodíky\n</lesson_title>\n\n<preparation_recap>\n<recap_goals>\nŽák vysvětlí pojem uhlovodíky.\n</recap_goals>\n\n<recap_phase type=\"evocation\">\nEvokace obsah.\n</recap_phase>\n\n<recap_phase type=\"understanding\">\nUvědomění obsah.\n</recap_phase>\n\n<recap_phase type=\"reflection\">\nReflexe obsah.\n</recap_phase>\n</preparation_recap>\n\n<phase type=\"evocation\">\n  <activity name=\"Úvod\" >\n    **Otázka:** Co mají společného parafín a plast?\n  </activity>\n</phase>\n\n<phase type=\"understanding\">\n  <activity name=\"Výklad\" duration=\"20\">\n    Rozdělení uhlovodíků.\n  </activity>\n</phase>\n\n<phase type=\"reflection\">\n  <activity name=\"Shrnutí\" duration=\"15\">\n    Ověření chápání.\n  </activity>\n</phase>\n",
+      "syntax": {
+        "ok": true,
+        "issues": []
+      },
+      "locatedSyntax": {
+        "ok": true,
+        "issues": []
+      },
+      "lesson": {
+        "ok": false,
+        "issues": [
+          {
+            "code": "activity-missing-duration",
+            "message": "<activity> is missing duration=\"…\". duration must be a positive whole-minute integer (e.g. duration=\"10\").",
+            "line": 24,
+            "column": 3
+          }
+        ]
+      },
+      "rejection": "Edit REJECTED — the document parses correctly but does not satisfy the lesson-plan structure. It was NOT applied. Fix the listed schema requirements.\n\n1. [activity-missing-duration] line 24:3: <activity> is missing duration=\"…\". duration must be a positive whole-minute integer (e.g. duration=\"10\").\n\nContext of the rejected result around the first issue (these lines were NOT applied):\n      21 | </preparation_recap>\n      22 | \n      23 | <phase type=\"evocation\">\n>>>   24 |   <activity name=\"Úvod\" >\n      25 |     **Otázka:** Co mají společného parafín a plast?\n      26 |   </activity>\n      27 | </phase>",
+      "warning": "WARNING: the document now violates the lesson-plan schema. You MUST fix every issue below with further edits before ending your turn:\n1. [activity-missing-duration] line 24:3: <activity> is missing duration=\"…\". duration must be a positive whole-minute integer (e.g. duration=\"10\").",
+      "locatedRejection": "Edit REJECTED — the document parses correctly but does not satisfy the lesson-plan structure. It was NOT applied. Fix the listed schema requirements.\n\n1. [activity-missing-duration] line 24:3: <activity> is missing duration=\"…\". duration must be a positive whole-minute integer (e.g. duration=\"10\").\n\nContext of the rejected result around the first issue (these lines were NOT applied):\n      21 | </preparation_recap>\n      22 | \n      23 | <phase type=\"evocation\">\n>>>   24 |   <activity name=\"Úvod\" >\n      25 |     **Otázka:** Co mají společného parafín a plast?\n      26 |   </activity>\n      27 | </phase>"
+    },
+    {
+      "name": "zero activity duration",
+      "input": "<lesson_title grade=\"8. třída\">\nUhlovodíky\n</lesson_title>\n\n<preparation_recap>\n<recap_goals>\nŽák vysvětlí pojem uhlovodíky.\n</recap_goals>\n\n<recap_phase type=\"evocation\">\nEvokace obsah.\n</recap_phase>\n\n<recap_phase type=\"understanding\">\nUvědomění obsah.\n</recap_phase>\n\n<recap_phase type=\"reflection\">\nReflexe obsah.\n</recap_phase>\n</preparation_recap>\n\n<phase type=\"evocation\">\n  <activity name=\"Úvod\" duration=\"0\">\n    **Otázka:** Co mají společného parafín a plast?\n  </activity>\n</phase>\n\n<phase type=\"understanding\">\n  <activity name=\"Výklad\" duration=\"20\">\n    Rozdělení uhlovodíků.\n  </activity>\n</phase>\n\n<phase type=\"reflection\">\n  <activity name=\"Shrnutí\" duration=\"15\">\n    Ověření chápání.\n  </activity>\n</phase>\n",
+      "syntax": {
+        "ok": true,
+        "issues": []
+      },
+      "locatedSyntax": {
+        "ok": true,
+        "issues": []
+      },
+      "lesson": {
+        "ok": false,
+        "issues": [
+          {
+            "code": "activity-invalid-duration",
+            "message": "<activity> has invalid duration=\"0\". Use a positive whole-minute integer (e.g. duration=\"10\").",
+            "line": 24,
+            "column": 3
+          }
+        ]
+      },
+      "rejection": "Edit REJECTED — the document parses correctly but does not satisfy the lesson-plan structure. It was NOT applied. Fix the listed schema requirements.\n\n1. [activity-invalid-duration] line 24:3: <activity> has invalid duration=\"0\". Use a positive whole-minute integer (e.g. duration=\"10\").\n\nContext of the rejected result around the first issue (these lines were NOT applied):\n      21 | </preparation_recap>\n      22 | \n      23 | <phase type=\"evocation\">\n>>>   24 |   <activity name=\"Úvod\" duration=\"0\">\n      25 |     **Otázka:** Co mají společného parafín a plast?\n      26 |   </activity>\n      27 | </phase>",
+      "warning": "WARNING: the document now violates the lesson-plan schema. You MUST fix every issue below with further edits before ending your turn:\n1. [activity-invalid-duration] line 24:3: <activity> has invalid duration=\"0\". Use a positive whole-minute integer (e.g. duration=\"10\").",
+      "locatedRejection": "Edit REJECTED — the document parses correctly but does not satisfy the lesson-plan structure. It was NOT applied. Fix the listed schema requirements.\n\n1. [activity-invalid-duration] line 24:3: <activity> has invalid duration=\"0\". Use a positive whole-minute integer (e.g. duration=\"10\").\n\nContext of the rejected result around the first issue (these lines were NOT applied):\n      21 | </preparation_recap>\n      22 | \n      23 | <phase type=\"evocation\">\n>>>   24 |   <activity name=\"Úvod\" duration=\"0\">\n      25 |     **Otázka:** Co mají společného parafín a plast?\n      26 |   </activity>\n      27 | </phase>"
+    },
+    {
+      "name": "fractional activity duration",
+      "input": "<lesson_title grade=\"8. třída\">\nUhlovodíky\n</lesson_title>\n\n<preparation_recap>\n<recap_goals>\nŽák vysvětlí pojem uhlovodíky.\n</recap_goals>\n\n<recap_phase type=\"evocation\">\nEvokace obsah.\n</recap_phase>\n\n<recap_phase type=\"understanding\">\nUvědomění obsah.\n</recap_phase>\n\n<recap_phase type=\"reflection\">\nReflexe obsah.\n</recap_phase>\n</preparation_recap>\n\n<phase type=\"evocation\">\n  <activity name=\"Úvod\" duration=\"1.5\">\n    **Otázka:** Co mají společného parafín a plast?\n  </activity>\n</phase>\n\n<phase type=\"understanding\">\n  <activity name=\"Výklad\" duration=\"20\">\n    Rozdělení uhlovodíků.\n  </activity>\n</phase>\n\n<phase type=\"reflection\">\n  <activity name=\"Shrnutí\" duration=\"15\">\n    Ověření chápání.\n  </activity>\n</phase>\n",
+      "syntax": {
+        "ok": true,
+        "issues": []
+      },
+      "locatedSyntax": {
+        "ok": true,
+        "issues": []
+      },
+      "lesson": {
+        "ok": false,
+        "issues": [
+          {
+            "code": "activity-invalid-duration",
+            "message": "<activity> has invalid duration=\"1.5\". Use a positive whole-minute integer (e.g. duration=\"10\").",
+            "line": 24,
+            "column": 3
+          }
+        ]
+      },
+      "rejection": "Edit REJECTED — the document parses correctly but does not satisfy the lesson-plan structure. It was NOT applied. Fix the listed schema requirements.\n\n1. [activity-invalid-duration] line 24:3: <activity> has invalid duration=\"1.5\". Use a positive whole-minute integer (e.g. duration=\"10\").\n\nContext of the rejected result around the first issue (these lines were NOT applied):\n      21 | </preparation_recap>\n      22 | \n      23 | <phase type=\"evocation\">\n>>>   24 |   <activity name=\"Úvod\" duration=\"1.5\">\n      25 |     **Otázka:** Co mají společného parafín a plast?\n      26 |   </activity>\n      27 | </phase>",
+      "warning": "WARNING: the document now violates the lesson-plan schema. You MUST fix every issue below with further edits before ending your turn:\n1. [activity-invalid-duration] line 24:3: <activity> has invalid duration=\"1.5\". Use a positive whole-minute integer (e.g. duration=\"10\").",
+      "locatedRejection": "Edit REJECTED — the document parses correctly but does not satisfy the lesson-plan structure. It was NOT applied. Fix the listed schema requirements.\n\n1. [activity-invalid-duration] line 24:3: <activity> has invalid duration=\"1.5\". Use a positive whole-minute integer (e.g. duration=\"10\").\n\nContext of the rejected result around the first issue (these lines were NOT applied):\n      21 | </preparation_recap>\n      22 | \n      23 | <phase type=\"evocation\">\n>>>   24 |   <activity name=\"Úvod\" duration=\"1.5\">\n      25 |     **Otázka:** Co mají společného parafín a plast?\n      26 |   </activity>\n      27 | </phase>"
+    },
+    {
+      "name": "empty activity",
+      "input": "<lesson_title grade=\"8. třída\">\nUhlovodíky\n</lesson_title>\n\n<preparation_recap>\n<recap_goals>\nŽák vysvětlí pojem uhlovodíky.\n</recap_goals>\n\n<recap_phase type=\"evocation\">\nEvokace obsah.\n</recap_phase>\n\n<recap_phase type=\"understanding\">\nUvědomění obsah.\n</recap_phase>\n\n<recap_phase type=\"reflection\">\nReflexe obsah.\n</recap_phase>\n</preparation_recap>\n\n<phase type=\"evocation\">\n  <activity name=\"Úvod\" duration=\"10\">\n</activity>\n</phase>\n\n<phase type=\"understanding\">\n  <activity name=\"Výklad\" duration=\"20\">\n    Rozdělení uhlovodíků.\n  </activity>\n</phase>\n\n<phase type=\"reflection\">\n  <activity name=\"Shrnutí\" duration=\"15\">\n    Ověření chápání.\n  </activity>\n</phase>\n",
+      "syntax": {
+        "ok": true,
+        "issues": []
+      },
+      "locatedSyntax": {
+        "ok": true,
+        "issues": []
+      },
+      "lesson": {
+        "ok": false,
+        "issues": [
+          {
+            "code": "activity-empty",
+            "message": "<activity> has no body. An activity must contain a bold opener paragraph followed by teachable content.",
+            "line": 24,
+            "column": 3
+          }
+        ]
+      },
+      "rejection": "Edit REJECTED — the document parses correctly but does not satisfy the lesson-plan structure. It was NOT applied. Fix the listed schema requirements.\n\n1. [activity-empty] line 24:3: <activity> has no body. An activity must contain a bold opener paragraph followed by teachable content.\n\nContext of the rejected result around the first issue (these lines were NOT applied):\n      21 | </preparation_recap>\n      22 | \n      23 | <phase type=\"evocation\">\n>>>   24 |   <activity name=\"Úvod\" duration=\"10\">\n      25 | </activity>\n      26 | </phase>\n      27 | ",
+      "warning": "WARNING: the document now violates the lesson-plan schema. You MUST fix every issue below with further edits before ending your turn:\n1. [activity-empty] line 24:3: <activity> has no body. An activity must contain a bold opener paragraph followed by teachable content.",
+      "locatedRejection": "Edit REJECTED — the document parses correctly but does not satisfy the lesson-plan structure. It was NOT applied. Fix the listed schema requirements.\n\n1. [activity-empty] line 24:3: <activity> has no body. An activity must contain a bold opener paragraph followed by teachable content.\n\nContext of the rejected result around the first issue (these lines were NOT applied):\n      21 | </preparation_recap>\n      22 | \n      23 | <phase type=\"evocation\">\n>>>   24 |   <activity name=\"Úvod\" duration=\"10\">\n      25 | </activity>\n      26 | </phase>\n      27 | "
+    },
+    {
+      "name": "duplicate adaptations",
+      "input": "<lesson_title grade=\"8. třída\">\nUhlovodíky\n</lesson_title>\n\n<preparation_recap>\n<recap_adaptations>A</recap_adaptations>\n\n<recap_adaptations>B</recap_adaptations>\n\n<recap_goals>\nŽák vysvětlí pojem uhlovodíky.\n</recap_goals>\n\n<recap_phase type=\"evocation\">\nEvokace obsah.\n</recap_phase>\n\n<recap_phase type=\"understanding\">\nUvědomění obsah.\n</recap_phase>\n\n<recap_phase type=\"reflection\">\nReflexe obsah.\n</recap_phase>\n</preparation_recap>\n\n<phase type=\"evocation\">\n  <activity name=\"Úvod\" duration=\"10\">\n    **Otázka:** Co mají společného parafín a plast?\n  </activity>\n</phase>\n\n<phase type=\"understanding\">\n  <activity name=\"Výklad\" duration=\"20\">\n    Rozdělení uhlovodíků.\n  </activity>\n</phase>\n\n<phase type=\"reflection\">\n  <activity name=\"Shrnutí\" duration=\"15\">\n    Ověření chápání.\n  </activity>\n</phase>\n",
+      "syntax": {
+        "ok": true,
+        "issues": []
+      },
+      "locatedSyntax": {
+        "ok": true,
+        "issues": []
+      },
+      "lesson": {
+        "ok": false,
+        "issues": [
+          {
+            "code": "duplicate-recap-adaptations",
+            "message": "Expected at most one <recap_adaptations> block inside <preparation_recap>, found 2. Merge the rows into a single block."
+          }
+        ]
+      },
+      "rejection": "Edit REJECTED — the document parses correctly but does not satisfy the lesson-plan structure. It was NOT applied. Fix the listed schema requirements.\n\n1. [duplicate-recap-adaptations]: Expected at most one <recap_adaptations> block inside <preparation_recap>, found 2. Merge the rows into a single block.",
+      "warning": "WARNING: the document now violates the lesson-plan schema. You MUST fix every issue below with further edits before ending your turn:\n1. [duplicate-recap-adaptations]: Expected at most one <recap_adaptations> block inside <preparation_recap>, found 2. Merge the rows into a single block.",
+      "locatedRejection": "Edit REJECTED — the document parses correctly but does not satisfy the lesson-plan structure. It was NOT applied. Fix the listed schema requirements.\n\n1. [duplicate-recap-adaptations]: Expected at most one <recap_adaptations> block inside <preparation_recap>, found 2. Merge the rows into a single block."
+    },
+    {
+      "name": "valid summary visual",
+      "input": "<lesson_title grade=\"8. třída\">\nUhlovodíky\n</lesson_title>\n\n<preparation_recap>\n<recap_goals>\nŽák vysvětlí pojem uhlovodíky.\n</recap_goals>\n\n<recap_phase type=\"evocation\">\nEvokace obsah.\n</recap_phase>\n\n<recap_phase type=\"understanding\">\nUvědomění obsah.\n</recap_phase>\n\n<recap_phase type=\"reflection\">\nReflexe obsah.\n</recap_phase>\n</preparation_recap>\n\n<lesson_visual kind=\"summary\" src=\"asset.png\" />\n\n<phase type=\"evocation\">\n  <activity name=\"Úvod\" duration=\"10\">\n    **Otázka:** Co mají společného parafín a plast?\n  </activity>\n</phase>\n\n<phase type=\"understanding\">\n  <activity name=\"Výklad\" duration=\"20\">\n    Rozdělení uhlovodíků.\n  </activity>\n</phase>\n\n<phase type=\"reflection\">\n  <activity name=\"Shrnutí\" duration=\"15\">\n    Ověření chápání.\n  </activity>\n</phase>\n",
+      "syntax": {
+        "ok": true,
+        "issues": []
+      },
+      "locatedSyntax": {
+        "ok": true,
+        "issues": []
+      },
+      "lesson": {
+        "ok": true,
+        "issues": []
+      }
+    },
+    {
+      "name": "misplaced summary visual",
+      "input": "<lesson_visual kind=\"summary\" src=\"asset.png\" />\n\n<lesson_title grade=\"8. třída\">\nUhlovodíky\n</lesson_title>\n\n<preparation_recap>\n<recap_goals>\nŽák vysvětlí pojem uhlovodíky.\n</recap_goals>\n\n<recap_phase type=\"evocation\">\nEvokace obsah.\n</recap_phase>\n\n<recap_phase type=\"understanding\">\nUvědomění obsah.\n</recap_phase>\n\n<recap_phase type=\"reflection\">\nReflexe obsah.\n</recap_phase>\n</preparation_recap>\n\n<phase type=\"evocation\">\n  <activity name=\"Úvod\" duration=\"10\">\n    **Otázka:** Co mají společného parafín a plast?\n  </activity>\n</phase>\n\n<phase type=\"understanding\">\n  <activity name=\"Výklad\" duration=\"20\">\n    Rozdělení uhlovodíků.\n  </activity>\n</phase>\n\n<phase type=\"reflection\">\n  <activity name=\"Shrnutí\" duration=\"15\">\n    Ověření chápání.\n  </activity>\n</phase>\n",
+      "syntax": {
+        "ok": true,
+        "issues": []
+      },
+      "locatedSyntax": {
+        "ok": true,
+        "issues": []
+      },
+      "lesson": {
+        "ok": false,
+        "issues": [
+          {
+            "code": "lesson-visual-position",
+            "message": "A root-level <lesson_visual kind=\"summary\" … /> must be placed directly after </preparation_recap> (before the first <phase>).",
+            "line": 1,
+            "column": 1
+          }
+        ]
+      },
+      "rejection": "Edit REJECTED — the document parses correctly but does not satisfy the lesson-plan structure. It was NOT applied. Fix the listed schema requirements.\n\n1. [lesson-visual-position] line 1:1: A root-level <lesson_visual kind=\"summary\" … /> must be placed directly after </preparation_recap> (before the first <phase>).\n\nContext of the rejected result around the first issue (these lines were NOT applied):\n>>>    1 | <lesson_visual kind=\"summary\" src=\"asset.png\" />\n       2 | \n       3 | <lesson_title grade=\"8. třída\">\n       4 | Uhlovodíky",
+      "warning": "WARNING: the document now violates the lesson-plan schema. You MUST fix every issue below with further edits before ending your turn:\n1. [lesson-visual-position] line 1:1: A root-level <lesson_visual kind=\"summary\" … /> must be placed directly after </preparation_recap> (before the first <phase>).",
+      "locatedRejection": "Edit REJECTED — the document parses correctly but does not satisfy the lesson-plan structure. It was NOT applied. Fix the listed schema requirements.\n\n1. [lesson-visual-position] line 1:1: A root-level <lesson_visual kind=\"summary\" … /> must be placed directly after </preparation_recap> (before the first <phase>).\n\nContext of the rejected result around the first issue (these lines were NOT applied):\n>>>    1 | <lesson_visual kind=\"summary\" src=\"asset.png\" />\n       2 | \n       3 | <lesson_title grade=\"8. třída\">\n       4 | Uhlovodíky"
+    },
+    {
+      "name": "duplicate summary visual",
+      "input": "<lesson_title grade=\"8. třída\">\nUhlovodíky\n</lesson_title>\n\n<preparation_recap>\n<recap_goals>\nŽák vysvětlí pojem uhlovodíky.\n</recap_goals>\n\n<recap_phase type=\"evocation\">\nEvokace obsah.\n</recap_phase>\n\n<recap_phase type=\"understanding\">\nUvědomění obsah.\n</recap_phase>\n\n<recap_phase type=\"reflection\">\nReflexe obsah.\n</recap_phase>\n</preparation_recap>\n\n<lesson_visual kind=\"summary\" src=\"one.png\" />\n\n<lesson_visual kind=\"summary\" src=\"two.png\" />\n\n<phase type=\"evocation\">\n  <activity name=\"Úvod\" duration=\"10\">\n    **Otázka:** Co mají společného parafín a plast?\n  </activity>\n</phase>\n\n<phase type=\"understanding\">\n  <activity name=\"Výklad\" duration=\"20\">\n    Rozdělení uhlovodíků.\n  </activity>\n</phase>\n\n<phase type=\"reflection\">\n  <activity name=\"Shrnutí\" duration=\"15\">\n    Ověření chápání.\n  </activity>\n</phase>\n",
+      "syntax": {
+        "ok": true,
+        "issues": []
+      },
+      "locatedSyntax": {
+        "ok": true,
+        "issues": []
+      },
+      "lesson": {
+        "ok": false,
+        "issues": [
+          {
+            "code": "duplicate-lesson-visual",
+            "message": "Expected at most one root-level <lesson_visual> (the lesson summary), found 2."
+          }
+        ]
+      },
+      "rejection": "Edit REJECTED — the document parses correctly but does not satisfy the lesson-plan structure. It was NOT applied. Fix the listed schema requirements.\n\n1. [duplicate-lesson-visual]: Expected at most one root-level <lesson_visual> (the lesson summary), found 2.",
+      "warning": "WARNING: the document now violates the lesson-plan schema. You MUST fix every issue below with further edits before ending your turn:\n1. [duplicate-lesson-visual]: Expected at most one root-level <lesson_visual> (the lesson summary), found 2.",
+      "locatedRejection": "Edit REJECTED — the document parses correctly but does not satisfy the lesson-plan structure. It was NOT applied. Fix the listed schema requirements.\n\n1. [duplicate-lesson-visual]: Expected at most one root-level <lesson_visual> (the lesson summary), found 2."
+    },
+    {
+      "name": "visual missing attributes",
+      "input": "<lesson_title grade=\"8. třída\">\nUhlovodíky\n</lesson_title>\n\n<preparation_recap>\n<recap_goals>\nŽák vysvětlí pojem uhlovodíky.\n</recap_goals>\n\n<recap_phase type=\"evocation\">\nEvokace obsah.\n</recap_phase>\n\n<recap_phase type=\"understanding\">\nUvědomění obsah.\n</recap_phase>\n\n<recap_phase type=\"reflection\">\nReflexe obsah.\n</recap_phase>\n</preparation_recap>\n\n<lesson_visual />\n\n<phase type=\"evocation\">\n  <activity name=\"Úvod\" duration=\"10\">\n    **Otázka:** Co mají společného parafín a plast?\n  </activity>\n</phase>\n\n<phase type=\"understanding\">\n  <activity name=\"Výklad\" duration=\"20\">\n    Rozdělení uhlovodíků.\n  </activity>\n</phase>\n\n<phase type=\"reflection\">\n  <activity name=\"Shrnutí\" duration=\"15\">\n    Ověření chápání.\n  </activity>\n</phase>\n",
+      "syntax": {
+        "ok": true,
+        "issues": []
+      },
+      "locatedSyntax": {
+        "ok": true,
+        "issues": []
+      },
+      "lesson": {
+        "ok": false,
+        "issues": [
+          {
+            "code": "lesson-visual-missing-kind",
+            "message": "<lesson_visual> is missing kind=\"summary|explainer\".",
+            "line": 23,
+            "column": 1
+          },
+          {
+            "code": "lesson-visual-missing-src",
+            "message": "<lesson_visual> is missing a non-empty src=\"…\" image URL.",
+            "line": 23,
+            "column": 1
+          }
+        ]
+      },
+      "rejection": "Edit REJECTED — the document parses correctly but does not satisfy the lesson-plan structure. It was NOT applied. Fix the listed schema requirements.\n\n1. [lesson-visual-missing-kind] line 23:1: <lesson_visual> is missing kind=\"summary|explainer\".\n2. [lesson-visual-missing-src] line 23:1: <lesson_visual> is missing a non-empty src=\"…\" image URL.\n\nContext of the rejected result around the first issue (these lines were NOT applied):\n      20 | </recap_phase>\n      21 | </preparation_recap>\n      22 | \n>>>   23 | <lesson_visual />\n      24 | \n      25 | <phase type=\"evocation\">\n      26 |   <activity name=\"Úvod\" duration=\"10\">",
+      "warning": "WARNING: the document now violates the lesson-plan schema. You MUST fix every issue below with further edits before ending your turn:\n1. [lesson-visual-missing-kind] line 23:1: <lesson_visual> is missing kind=\"summary|explainer\".\n2. [lesson-visual-missing-src] line 23:1: <lesson_visual> is missing a non-empty src=\"…\" image URL.",
+      "locatedRejection": "Edit REJECTED — the document parses correctly but does not satisfy the lesson-plan structure. It was NOT applied. Fix the listed schema requirements.\n\n1. [lesson-visual-missing-kind] line 23:1: <lesson_visual> is missing kind=\"summary|explainer\".\n2. [lesson-visual-missing-src] line 23:1: <lesson_visual> is missing a non-empty src=\"…\" image URL.\n\nContext of the rejected result around the first issue (these lines were NOT applied):\n      20 | </recap_phase>\n      21 | </preparation_recap>\n      22 | \n>>>   23 | <lesson_visual />\n      24 | \n      25 | <phase type=\"evocation\">\n      26 |   <activity name=\"Úvod\" duration=\"10\">"
+    },
+    {
+      "name": "visual invalid attributes",
+      "input": "<lesson_title grade=\"8. třída\">\nUhlovodíky\n</lesson_title>\n\n<preparation_recap>\n<recap_goals>\nŽák vysvětlí pojem uhlovodíky.\n</recap_goals>\n\n<recap_phase type=\"evocation\">\nEvokace obsah.\n</recap_phase>\n\n<recap_phase type=\"understanding\">\nUvědomění obsah.\n</recap_phase>\n\n<recap_phase type=\"reflection\">\nReflexe obsah.\n</recap_phase>\n</preparation_recap>\n\n<lesson_visual kind=\"wrong\" src=\"  \" />\n\n<phase type=\"evocation\">\n  <activity name=\"Úvod\" duration=\"10\">\n    **Otázka:** Co mají společného parafín a plast?\n  </activity>\n</phase>\n\n<phase type=\"understanding\">\n  <activity name=\"Výklad\" duration=\"20\">\n    Rozdělení uhlovodíků.\n  </activity>\n</phase>\n\n<phase type=\"reflection\">\n  <activity name=\"Shrnutí\" duration=\"15\">\n    Ověření chápání.\n  </activity>\n</phase>\n",
+      "syntax": {
+        "ok": true,
+        "issues": []
+      },
+      "locatedSyntax": {
+        "ok": true,
+        "issues": []
+      },
+      "lesson": {
+        "ok": false,
+        "issues": [
+          {
+            "code": "lesson-visual-invalid-kind",
+            "message": "<lesson_visual> has invalid kind=\"wrong\". Use \"summary\" or \"explainer\".",
+            "line": 23,
+            "column": 1
+          },
+          {
+            "code": "lesson-visual-missing-src",
+            "message": "<lesson_visual> has an empty src=\"\" — it needs an image URL.",
+            "line": 23,
+            "column": 1
+          }
+        ]
+      },
+      "rejection": "Edit REJECTED — the document parses correctly but does not satisfy the lesson-plan structure. It was NOT applied. Fix the listed schema requirements.\n\n1. [lesson-visual-invalid-kind] line 23:1: <lesson_visual> has invalid kind=\"wrong\". Use \"summary\" or \"explainer\".\n2. [lesson-visual-missing-src] line 23:1: <lesson_visual> has an empty src=\"\" — it needs an image URL.\n\nContext of the rejected result around the first issue (these lines were NOT applied):\n      20 | </recap_phase>\n      21 | </preparation_recap>\n      22 | \n>>>   23 | <lesson_visual kind=\"wrong\" src=\"  \" />\n      24 | \n      25 | <phase type=\"evocation\">\n      26 |   <activity name=\"Úvod\" duration=\"10\">",
+      "warning": "WARNING: the document now violates the lesson-plan schema. You MUST fix every issue below with further edits before ending your turn:\n1. [lesson-visual-invalid-kind] line 23:1: <lesson_visual> has invalid kind=\"wrong\". Use \"summary\" or \"explainer\".\n2. [lesson-visual-missing-src] line 23:1: <lesson_visual> has an empty src=\"\" — it needs an image URL.",
+      "locatedRejection": "Edit REJECTED — the document parses correctly but does not satisfy the lesson-plan structure. It was NOT applied. Fix the listed schema requirements.\n\n1. [lesson-visual-invalid-kind] line 23:1: <lesson_visual> has invalid kind=\"wrong\". Use \"summary\" or \"explainer\".\n2. [lesson-visual-missing-src] line 23:1: <lesson_visual> has an empty src=\"\" — it needs an image URL.\n\nContext of the rejected result around the first issue (these lines were NOT applied):\n      20 | </recap_phase>\n      21 | </preparation_recap>\n      22 | \n>>>   23 | <lesson_visual kind=\"wrong\" src=\"  \" />\n      24 | \n      25 | <phase type=\"evocation\">\n      26 |   <activity name=\"Úvod\" duration=\"10\">"
+    },
+    {
+      "name": "misplaced phase visual",
+      "input": "<lesson_title grade=\"8. třída\">\nUhlovodíky\n</lesson_title>\n\n<preparation_recap>\n<recap_goals>\nŽák vysvětlí pojem uhlovodíky.\n</recap_goals>\n\n<recap_phase type=\"evocation\">\nEvokace obsah.\n</recap_phase>\n\n<recap_phase type=\"understanding\">\nUvědomění obsah.\n</recap_phase>\n\n<recap_phase type=\"reflection\">\nReflexe obsah.\n</recap_phase>\n</preparation_recap>\n\n<phase type=\"evocation\">\n  <lesson_visual kind=\"explainer\" src=\"asset.png\" />\n\n<activity name=\"Úvod\" duration=\"10\">\n    **Otázka:** Co mají společného parafín a plast?\n  </activity>\n</phase>\n\n<phase type=\"understanding\">\n  <activity name=\"Výklad\" duration=\"20\">\n    Rozdělení uhlovodíků.\n  </activity>\n</phase>\n\n<phase type=\"reflection\">\n  <activity name=\"Shrnutí\" duration=\"15\">\n    Ověření chápání.\n  </activity>\n</phase>\n",
+      "syntax": {
+        "ok": true,
+        "issues": []
+      },
+      "locatedSyntax": {
+        "ok": true,
+        "issues": []
+      },
+      "lesson": {
+        "ok": false,
+        "issues": [
+          {
+            "code": "lesson-visual-position",
+            "message": "A <lesson_visual> inside a <phase> must be its LAST child, after every <activity>.",
+            "line": 23,
+            "column": 1
+          }
+        ]
+      },
+      "rejection": "Edit REJECTED — the document parses correctly but does not satisfy the lesson-plan structure. It was NOT applied. Fix the listed schema requirements.\n\n1. [lesson-visual-position] line 23:1: A <lesson_visual> inside a <phase> must be its LAST child, after every <activity>.\n\nContext of the rejected result around the first issue (these lines were NOT applied):\n      20 | </recap_phase>\n      21 | </preparation_recap>\n      22 | \n>>>   23 | <phase type=\"evocation\">\n      24 |   <lesson_visual kind=\"explainer\" src=\"asset.png\" />\n      25 | \n      26 | <activity name=\"Úvod\" duration=\"10\">",
+      "warning": "WARNING: the document now violates the lesson-plan schema. You MUST fix every issue below with further edits before ending your turn:\n1. [lesson-visual-position] line 23:1: A <lesson_visual> inside a <phase> must be its LAST child, after every <activity>.",
+      "locatedRejection": "Edit REJECTED — the document parses correctly but does not satisfy the lesson-plan structure. It was NOT applied. Fix the listed schema requirements.\n\n1. [lesson-visual-position] line 23:1: A <lesson_visual> inside a <phase> must be its LAST child, after every <activity>.\n\nContext of the rejected result around the first issue (these lines were NOT applied):\n      20 | </recap_phase>\n      21 | </preparation_recap>\n      22 | \n>>>   23 | <phase type=\"evocation\">\n      24 |   <lesson_visual kind=\"explainer\" src=\"asset.png\" />\n      25 | \n      26 | <activity name=\"Úvod\" duration=\"10\">"
+    },
+    {
+      "name": "inline JSX children",
+      "input": "<lesson_title grade=\"8. třída\">\nUhlovodíky\n</lesson_title>\n\n<preparation_recap>\n<recap_goals>\nŽák vysvětlí pojem uhlovodíky.\n</recap_goals>\n\n<recap_phase type=\"evocation\">\nEvokace obsah.\n</recap_phase>\n\n<recap_phase type=\"understanding\">\nUvědomění obsah.\n</recap_phase>\n\n<recap_phase type=\"reflection\">\nReflexe obsah.\n</recap_phase>\n</preparation_recap>\n\n<phase type=\"evocation\">\n  <activity name=\"Úvod\" duration=\"10\">Inline body.</activity>\n</phase>\n\n<phase type=\"understanding\">\n  <activity name=\"Výklad\" duration=\"20\">\n    Rozdělení uhlovodíků.\n  </activity>\n</phase>\n\n<phase type=\"reflection\">\n  <activity name=\"Shrnutí\" duration=\"15\">\n    Ověření chápání.\n  </activity>\n</phase>\n",
+      "syntax": {
+        "ok": true,
+        "issues": []
+      },
+      "locatedSyntax": {
+        "ok": true,
+        "issues": []
+      },
+      "lesson": {
+        "ok": true,
+        "issues": []
+      }
+    },
+    {
+      "name": "inert expression attributes",
+      "input": "<lesson_title grade=\"8. třída\">\nUhlovodíky\n</lesson_title>\n\n<preparation_recap>\n<recap_goals>\nŽák vysvětlí pojem uhlovodíky.\n</recap_goals>\n\n<recap_phase type=\"evocation\">\nEvokace obsah.\n</recap_phase>\n\n<recap_phase type=\"understanding\">\nUvědomění obsah.\n</recap_phase>\n\n<recap_phase type=\"reflection\">\nReflexe obsah.\n</recap_phase>\n</preparation_recap>\n\n<phase type=\"evocation\">\n  <activity name={globalThis.__validationProbe()} duration=\"10\">\n    **Otázka:** Co mají společného parafín a plast?\n  </activity>\n</phase>\n\n<phase type=\"understanding\">\n  <activity name=\"Výklad\" duration=\"20\">\n    Rozdělení uhlovodíků.\n  </activity>\n</phase>\n\n<phase type=\"reflection\">\n  <activity name=\"Shrnutí\" duration=\"15\">\n    Ověření chápání.\n  </activity>\n</phase>\n",
+      "syntax": {
+        "ok": true,
+        "issues": []
+      },
+      "locatedSyntax": {
+        "ok": true,
+        "issues": []
+      },
+      "lesson": {
+        "ok": false,
+        "issues": [
+          {
+            "code": "activity-missing-name",
+            "message": "<activity> is missing a non-empty name=\"…\" attribute.",
+            "line": 24,
+            "column": 3
+          }
+        ]
+      },
+      "rejection": "Edit REJECTED — the document parses correctly but does not satisfy the lesson-plan structure. It was NOT applied. Fix the listed schema requirements.\n\n1. [activity-missing-name] line 24:3: <activity> is missing a non-empty name=\"…\" attribute.\n\nContext of the rejected result around the first issue (these lines were NOT applied):\n      21 | </preparation_recap>\n      22 | \n      23 | <phase type=\"evocation\">\n>>>   24 |   <activity name={globalThis.__validationProbe()} duration=\"10\">\n      25 |     **Otázka:** Co mají společného parafín a plast?\n      26 |   </activity>\n      27 | </phase>",
+      "warning": "WARNING: the document now violates the lesson-plan schema. You MUST fix every issue below with further edits before ending your turn:\n1. [activity-missing-name] line 24:3: <activity> is missing a non-empty name=\"…\" attribute.",
+      "locatedRejection": "Edit REJECTED — the document parses correctly but does not satisfy the lesson-plan structure. It was NOT applied. Fix the listed schema requirements.\n\n1. [activity-missing-name] line 24:3: <activity> is missing a non-empty name=\"…\" attribute.\n\nContext of the rejected result around the first issue (these lines were NOT applied):\n      21 | </preparation_recap>\n      22 | \n      23 | <phase type=\"evocation\">\n>>>   24 |   <activity name={globalThis.__validationProbe()} duration=\"10\">\n      25 |     **Otázka:** Co mají společného parafín a plast?\n      26 |   </activity>\n      27 | </phase>"
+    },
+    {
+      "name": "unknown tags stay tolerated",
+      "input": "<lesson_title grade=\"8. třída\">\nUhlovodíky\n</lesson_title>\n\n<preparation_recap>\n<recap_goals>\nŽák vysvětlí pojem uhlovodíky.\n</recap_goals>\n\n<recap_phase type=\"evocation\">\nEvokace obsah.\n</recap_phase>\n\n<recap_phase type=\"understanding\">\nUvědomění obsah.\n</recap_phase>\n\n<recap_phase type=\"reflection\">\nReflexe obsah.\n</recap_phase>\n</preparation_recap>\n\n<phase type=\"evocation\">\n  <activity name=\"Úvod\" duration=\"10\">\n    **Otázka:** Co mají společného parafín a plast?\n  </activity>\n</phase>\n\n<phase type=\"understanding\">\n  <activity name=\"Výklad\" duration=\"20\">\n    <future-widget expr={globalThis.__validationProbe()}>Text.</future-widget>\n  </activity>\n</phase>\n\n<phase type=\"reflection\">\n  <activity name=\"Shrnutí\" duration=\"15\">\n    Ověření chápání.\n  </activity>\n</phase>\n",
+      "syntax": {
+        "ok": true,
+        "issues": []
+      },
+      "locatedSyntax": {
+        "ok": true,
+        "issues": []
+      },
+      "lesson": {
+        "ok": true,
+        "issues": []
+      }
+    },
+    {
+      "name": "math braces and line breaks",
+      "input": "<lesson_title grade=\"8. třída\">\nUhlovodíky\n</lesson_title>\n\n<preparation_recap>\n<recap_goals>\nŽák vysvětlí pojem uhlovodíky.\n</recap_goals>\n\n<recap_phase type=\"evocation\">\nEvokace obsah.\n</recap_phase>\n\n<recap_phase type=\"understanding\">\nUvědomění obsah.\n</recap_phase>\n\n<recap_phase type=\"reflection\">\nReflexe obsah.\n</recap_phase>\n</preparation_recap>\n\n<phase type=\"evocation\">\n  <activity name=\"Úvod\" duration=\"10\">\n    **Otázka:** Co mají společného parafín a plast?\n  </activity>\n</phase>\n\n<phase type=\"understanding\">\n  <activity name=\"Výklad\" duration=\"20\">\n    Vzorec $C_8H_{16}$ a $\\frac{a}{b}$.<br>Text.\n  </activity>\n</phase>\n\n<phase type=\"reflection\">\n  <activity name=\"Shrnutí\" duration=\"15\">\n    Ověření chápání.\n  </activity>\n</phase>\n",
+      "syntax": {
+        "ok": true,
+        "issues": []
+      },
+      "locatedSyntax": {
+        "ok": true,
+        "issues": []
+      },
+      "lesson": {
+        "ok": true,
+        "issues": []
+      }
+    }
+  ],
+  "tagCases": [
+    {
+      "oldString": "    </callout>\n  </activity>",
+      "newString": "    </callout>",
+      "hints": [
+        "Your old_string contains </activity> which closes a <activity> that opens OUTSIDE the edited text, but your new_string does not re-emit it — the document would lose that closing tag. Either re-emit </activity> in new_string, or shorten old_string so it does not include the closing tag."
+      ]
+    },
+    {
+      "oldString": "<story>\n  first sentence",
+      "newString": "  first sentence",
+      "hints": [
+        "Your old_string contains <story> whose closing </story> lies OUTSIDE the edited text, but your new_string does not re-emit it — the document would keep an orphaned </story>. Either re-emit <story> in new_string, or extend old_string to include the closing tag as well."
+      ]
+    },
+    {
+      "oldString": "plain paragraph",
+      "newString": "<callout>\n  tip",
+      "hints": [
+        "Your new_string opens <callout> but never closes it, and old_string did not leave a matching </callout> in place. Close the tag inside new_string."
+      ]
+    },
+    {
+      "oldString": "plain paragraph",
+      "newString": "text\n</phase>",
+      "hints": [
+        "Your new_string adds </phase> with no matching <phase> — the document would gain a stray closing tag. Remove it or add the opening tag."
+      ]
+    },
+    {
+      "oldString": "<source title=\"a\" url=\"b\" type=\"verified\" />",
+      "newString": "replacement text",
+      "hints": []
+    },
+    {
+      "oldString": "<story>\nbody\n</story>",
+      "newString": "",
+      "hints": []
+    },
+    {
+      "oldString": "<callout icon=\"a>b\" meta={x > 1}>\nbody\n</callout>\n</activity>",
+      "newString": "",
+      "hints": [
+        "Your old_string contains </activity> which closes a <activity> that opens OUTSIDE the edited text, but your new_string does not re-emit it — the document would lose that closing tag. Either re-emit </activity> in new_string, or shorten old_string so it does not include the closing tag."
+      ]
+    },
+    {
+      "oldString": "</solution>\n<callout id=\"x\">body</callout>\n</activity>",
+      "newString": "</solution>\n</activity>",
+      "hints": []
+    },
+    {
+      "oldString": "<a><a>",
+      "newString": "<a>",
+      "hints": [
+        "Your old_string contains <a> whose closing </a> lies OUTSIDE the edited text, but your new_string does not re-emit it — the document would keep an orphaned </a>. Either re-emit <a> in new_string, or extend old_string to include the closing tag as well."
+      ]
+    }
+  ]
+}

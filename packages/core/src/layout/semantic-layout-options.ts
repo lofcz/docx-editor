@@ -1,3 +1,4 @@
+import type { BlockLayoutOptions as ColumnBalanceBlockLayoutOptions } from './column-balance-layout.ts';
 import type { DocumentProperties, OoxmlNode } from '@docx-editor.dev/core/store';
 import type { FieldResultsMode } from '../store/package/field-result-mode.ts';
 import type { ExclusionZone } from './drawing-exclusion.ts';
@@ -202,6 +203,11 @@ export interface SemanticLayoutOptions {
   readonly inlineDrawingLayout?: InlineDrawingLayoutContext;
   /** Per-paragraph drawing projection/resource token for break cache keys. */
   readonly drawingTokenForParagraph?: (paragraph: OoxmlNode) => string;
+  /**
+   * Host widget reservations: extra flow height after body paragraphs. A live-view input
+   * only; it never changes the document, and save-time passes omit it.
+   */
+  readonly blockReservations?: import('./block-reservations.ts').BlockReservations;
   /** Per-paragraph identity for projected links and live document-property text. */
   readonly projectionTokenForParagraph?: (paragraph: OoxmlNode) => string;
   /** Memoized aggregate projection identity for an immutable table subtree. */
@@ -239,3 +245,10 @@ export interface SemanticLayoutOptions {
    */
   readonly bodyBlockLimit?: number;
 }
+
+export type BlockLayoutOptions = ColumnBalanceBlockLayoutOptions<SemanticLayoutOptions> & {
+  readonly disabledParagraphFrameIds?: ReadonlySet<string>;
+  readonly paragraphFrameFallbackRound?: number;
+  /** Set by the one retry of `layoutBlocksWithGeometry`: hidden furniture zones yield. */
+  readonly yieldHiddenFurnitureZones?: boolean;
+};

@@ -14,6 +14,7 @@ import type {
   OoxmlElement,
   OoxmlPackage,
   OoxmlPart,
+  TreeTransactionContext,
 } from '@docx-editor.dev/core/store';
 import type { ReviewItem } from '../store/store/review-items.ts';
 import type {
@@ -65,6 +66,15 @@ export type TreeApplyOptions = Pick<
   readonly historyGroup?: HistoryGroup;
   /** Package resources committed in the same transaction as the tree operations. */
   readonly packageEdits?: readonly ((pkg: OoxmlPackage) => OoxmlPackage)[];
+  /** Package edits that read landed native identities before the same transaction publishes. */
+  readonly packageEditsAfterOps?: readonly ((pkg: OoxmlPackage) => OoxmlPackage)[];
+  /**
+   * Synchronously plan and apply dependent operations after the initial operations.
+   * Reads see the intermediate working package. Writes use the same native gates and
+   * transaction; a refusal or throw discards every stage. Final package hooks run afterward.
+   * The context is valid only during this callback. Lifecycle operations cannot enter a stage.
+   */
+  readonly stage?: (ctx: TreeTransactionContext) => void;
   /** Canonical operations on related package parts, committed in the same undo unit. */
   readonly partOps?: readonly { readonly partName: string; readonly ops: readonly TreeDocOp[] }[];
 };

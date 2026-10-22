@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Full preparation tried code styles before the group carrier and refused a valid DOCX without the document owner relationship part.",
+  "after": "Full preparation initializes the existing group carrier first. Its native helper creates missing owner relationships before code styles are added. Original native content bytes stay exact and room bootstrap owns no user history.",
+  "reason": "Only private pre-open initialization order changes. Existing native package helpers create the same auxiliary parts and ordinary relationships. No native operation schema, shared journal, provider, public API, or evaluated implementation changes. Opaque existing owner relationships still refuse without replacement. This private adapter change needs no published changeset.",
+  "tests": [
+    "packages/sciobot/src/native/prepare-document.test.ts",
+    "packages/sciobot/src/native/prepare-document-collaboration.test.ts",
+    "packages/sciobot/src/native/inline-code-collaboration.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

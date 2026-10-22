@@ -1,0 +1,14 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The private adapter planned paragraph sibling changes without a guarded tracked executor.",
+  "after": "The adapter creates attributed native paragraph insertion/deletion proposals and returns allocated Word revision receipts. Native insertion/deletion recovery preserves peer content. New tracked paragraphs retain code, emphasis, and hyperlinks through canonical code styles and native revision receipts.",
+  "reason": "The private executor composes existing public Apache native operations and package hooks. It adds no canonical operation types, shared fields, or production transport dependency. Real-session regressions retain required peer-preservation assertions.",
+  "tests": [
+    "packages/sciobot/src/review/track-blocks.test.ts",
+    "packages/sciobot/src/review/track-blocks-collaboration.test.ts",
+    "packages/sciobot/src/review/track-blocks-inline-code.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

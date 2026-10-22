@@ -1,0 +1,10 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The application's per-path document bridge waited for a Plate editor and could not read a native workspace's proposed document state.",
+  "after": "The flagged native workspace exposes an owned document identity and mount epoch. Native read/search calls project the live working view asynchronously, preserve pending proposals and history, and refuse results from replaced documents. Legacy and non-text executors keep their existing route.",
+  "reason": "Application-only wiring over existing native/private read APIs. No native operations, shared schema, codecs, journals, providers or saved document shapes change. Application tests live outside this fork at app:src/hooks/chat/docxFileExecutor.test.ts, app:src/hooks/chat/useWorkspaceEditBridge.native.test.tsx, and app:scripts/docx-native/harness/file-executor.test.ts. The policy's test-path vocabulary accepts only fork paths; detailed application commands and two-real-session evidence are recorded under I02.",
+  "tests": [],
+  "changeset": null,
+  "migration": null
+}

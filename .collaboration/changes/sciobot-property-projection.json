@@ -1,0 +1,17 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Private committed and working readers projected native review text and checklists without pending application property values.",
+  "after": "Detached property-only plans retain explicit old/proposed presence. Pure read candidates select earliest old or latest proposed attributes, validate ordered proposal steps, preserve unrelated native values, and compose domain Markdown with native review text. Reads snapshot pending input before asynchronous layout and refuse stale native ownership or divergent values.",
+  "reason": "Only private pure view derivation and ephemeral caller-supplied proposal data change. No shared proposal store, native operation, collaboration state, journal format, live decision, or persisted payload schema changes. Native story trees, fallback labels, history, and live proposals remain unchanged. R12 and R14-R16 retain persistence, transactions, attribution, grouping, and two-session lifecycle evidence. The private package requires no published changeset or public API extraction.",
+  "tests": [
+    "packages/sciobot/src/review/property-projection.test.ts",
+    "packages/sciobot/src/review/committed-view.test.ts",
+    "packages/sciobot/src/review/working-view.test.ts",
+    "packages/sciobot/src/diff/domain-properties.test.ts",
+    "packages/sciobot/src/projection/blocks.test.ts",
+    "packages/sciobot/src/projection/mdx.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

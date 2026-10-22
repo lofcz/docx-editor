@@ -1,3 +1,5 @@
+import { wmlElement, textRun } from './content-control-element-builders.ts';
+export { wmlElement, textRun } from './content-control-element-builders.ts';
 import { formatContentControlDate, parseIsoDate } from './content-control-dates.ts';
 export { formsProtectionCommandRefusal } from './forms-protection-command.ts';
 import { withDisplayedHyphens } from '../package/hyphen-text.ts';
@@ -5,7 +7,6 @@ import {
   isInsertableText,
   LINE_BREAK_TEXT,
   propertiesHoldLineBreaks,
-  textWithHyphens,
 } from './tree-op-inline-elements.ts';
 import {
   checkboxContent,
@@ -385,6 +386,7 @@ const TREE_OP_REACH: {
   insertContentControl: (op) => over(op.paragraphId, op.start, op.end),
   insertInlineContentControl: (op) => splittingControlAt(op.paragraphId, op.offset),
   insertFragment: (op) => siblingAt(op.paragraphId, op.offset),
+  insertParagraphs: (op) => whole(op.parentId),
   // A split at a control's edge moves the whole control to one side of the break and changes
   // nothing it holds, so neither edge is inside. A split WITHIN it is, and the range says so.
   splitParagraph: (op) => beside(op.paragraphId, op.offset),
@@ -1205,51 +1207,6 @@ export function formsProtectionRefusal(
 // Node construction
 // ---------------------------------------------------------------------------
 
-export function wmlElement(
-  nextId: () => string,
-  localName: string,
-  options: {
-    readonly kind?: OoxmlNode['kind'];
-    readonly attributes?: readonly (readonly [string, string])[];
-    readonly children?: readonly OoxmlNode[];
-  } = {}
-): OoxmlElement {
-  return {
-    id: nextId(),
-    kind: options.kind ?? 'generic',
-    namespaceUri: WML_NAMESPACE_URI,
-    localName,
-    prefix: 'w',
-    namespaceBindings: [],
-    attributes: (options.attributes ?? []).map(([name, value]) => ({
-      kind: 'generic',
-      namespaceUri: WML_NAMESPACE_URI,
-      localName: name,
-      prefix: 'w',
-      value,
-    })),
-    children: options.children ?? [],
-  } as unknown as OoxmlElement;
-}
-
-export function textRun(
-  nextId: () => string,
-  text: string,
-  properties: OoxmlNode | undefined
-): OoxmlNode {
-  const content = textWithHyphens(nextId, text);
-  return {
-    id: nextId(),
-    kind: 'run',
-    namespaceUri: WML_NAMESPACE_URI,
-    localName: 'r',
-    prefix: 'w',
-    namespaceBindings: [],
-    attributes: [],
-    children: properties ? [properties, ...content] : content,
-  } as unknown as OoxmlNode;
-}
-
 export function cloneWithFreshIds(node: OoxmlNode, nextId: () => string): OoxmlNode {
   if (node.kind === 'textValue') return { id: nextId(), kind: 'textValue', value: node.value };
   return {
@@ -1478,9 +1435,26 @@ export function editedProperties(
       if (index >= 0) children.splice(index, 1);
       return;
     }
-    const next = wmlElement(nextId, localName, { attributes: [['val', value]] });
-    if (index >= 0) children[index] = next;
-    else children.push(next);
+    if (index < 0) {
+      children.push(wmlElement(nextId, localName, { attributes: [['val', value]] }));
+      return;
+    }
+    // Keep the property's identity. A fresh element per write makes two concurrent writers
+    // each delete the old child and insert their own, so the merged room holds two `w:tag`
+    // or `w:alias` children, which no reader accepts. In place, the write is one attribute.
+    const existing = children[index] as OoxmlElement;
+    const current = existing.attributes.find(
+      (attribute) => attribute.localName === 'val' && attribute.namespaceUri === WML_NAMESPACE_URI
+    );
+    if (current?.value === value) return;
+    children[index] = current
+      ? ({
+          ...existing,
+          attributes: existing.attributes.map((attribute) =>
+            attribute === current ? { ...attribute, value } : attribute
+          ),
+        } as OoxmlElement)
+      : wmlElement(() => existing.id, localName, { attributes: [['val', value]] });
   };
   const setFlag = (localName: string, on: boolean): void => {
     const index = children.findIndex(

@@ -1,0 +1,14 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Application-owned native checkbox markers projected as ordinary glyphs without task state targets.",
+  "after": "Private read projections emit mapped GFM tasks and typed control-state targets while retaining canonical body offsets and native review visibility.",
+  "reason": "The adapter derives detached export records and Markdown only. It adds no canonical writes, native operations, collaboration fields, or production transport dependencies. Protected body-text boundaries remain separate from generated owned state properties.",
+  "tests": [
+    "packages/sciobot/src/projection/lists.test.ts",
+    "packages/sciobot/src/projection/protected-content.test.ts",
+    "packages/sciobot/src/projection/resolve-patch.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

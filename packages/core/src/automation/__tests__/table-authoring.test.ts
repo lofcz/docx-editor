@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import {
   readOoxmlPart,
+  canonicalOoxmlFingerprint,
   serializeOoxmlPart,
   WML_NAMESPACE_URI,
   type OoxmlNode,
@@ -68,6 +69,80 @@ function mutate(
 }
 
 describe('canonical table authoring', () => {
+  test('fresh direct and tracked rows share property holders when the source row has none', () => {
+    const part = load(
+      '<w:tbl><w:tblGrid><w:gridCol w:w="2400"/></w:tblGrid><w:tr><w:tc><w:p><w:r><w:t>A</w:t></w:r></w:p></w:tc></w:tr></w:tbl>'
+    );
+    const table = tableNodes(part.root)[0]!,
+      rowId = tableRead(read(part), table.id)!.rowIds[0]!;
+    const op = { op: 'insertTableRow', tableId: table.id, rowId, where: 'below' } as const;
+    const direct = applyTreeOp(part, op),
+      tracked = applyTreeOp(part, {
+        ...op,
+        revision: { author: 'ScioBot', date: '2026-10-19T12:00:00Z' },
+      });
+    if (!direct.ok || !tracked.ok) throw new Error('Native row creation failed');
+    const accepted = applyTreeOp(tracked.part, { op: 'acceptAllRevisions' }),
+      rejected = applyTreeOp(tracked.part, { op: 'rejectAllRevisions' });
+    if (!accepted.ok || !rejected.ok) throw new Error('Native row decision failed');
+    expect(canonicalOoxmlFingerprint(accepted.part)).toBe(canonicalOoxmlFingerprint(direct.part));
+    expect(canonicalOoxmlFingerprint(rejected.part)).toBe(canonicalOoxmlFingerprint(part));
+    expect(serializeOoxmlPart(part)).not.toMatch(/trPr|tcPr/);
+  });
+  test('populated tracked rows accept to the direct formatted tree and reject to the original', () => {
+    const part = load(
+      '<w:tbl><w:tblGrid><w:gridCol w:w="2400"/><w:gridCol w:w="2400"/></w:tblGrid><w:tr><w:trPr><w:cantSplit/><w:trHeight w:val="360"/></w:trPr>' +
+        ['Old A', 'Old B']
+          .map(
+            (text) =>
+              '<w:tc><w:p><w:pPr><w:rPr><w:i/><w:rFonts w:ascii="Calibri"/><w:sz w:val="26"/></w:rPr></w:pPr><w:r><w:rPr><w:b/></w:rPr><w:t>' +
+              text +
+              '</w:t></w:r></w:p></w:tc>'
+          )
+          .join('') +
+        '</w:tr></w:tbl>'
+    );
+    const table = tableNodes(part.root)[0]!,
+      rowId = tableRead(read(part), table.id)!.rowIds[0]!;
+    for (const where of ['above', 'below'] as const) {
+      const action = {
+        kind: 'existing',
+        tableId: table.id,
+        mutation: {
+          kind: 'insertRows',
+          rowId,
+          location: where === 'above' ? 'before' : 'after',
+          count: 1,
+          values: [['Three', 'Four']],
+        },
+      } as const;
+      const direct = applyTreeOp(part, { op: 'authorTable', action });
+      const tracked = applyTreeOp(part, {
+        op: 'authorTable',
+        action,
+        revision: { author: 'ScioBot', date: '2026-10-19T12:00:00Z' },
+      });
+      if (!direct.ok || !tracked.ok) throw new Error('Native row insertion failed');
+      const accepted = applyTreeOp(tracked.part, { op: 'acceptAllRevisions' }),
+        rejected = applyTreeOp(tracked.part, { op: 'rejectAllRevisions' });
+      if (!accepted.ok || !rejected.ok) throw new Error('Native row decision failed');
+      expect(canonicalOoxmlFingerprint(accepted.part)).toBe(canonicalOoxmlFingerprint(direct.part));
+      expect(canonicalOoxmlFingerprint(rejected.part)).toBe(canonicalOoxmlFingerprint(part));
+      expect(tableRead(read(accepted.part), table.id)?.values).toEqual(
+        where === 'above'
+          ? [
+              ['Three', 'Four'],
+              ['Old A', 'Old B'],
+            ]
+          : [
+              ['Old A', 'Old B'],
+              ['Three', 'Four'],
+            ]
+      );
+      const pending = serializeOoxmlPart(tracked.part);
+      expect((pending.match(/<w:ins\b/g) ?? []).length).toBe(1);
+    }
+  });
   test('semantic table operation allocates, populates, and retains split mapping in one application', () => {
     const part = load('<w:p><w:r><w:t>BeforeAfter</w:t></w:r></w:p>');
     const body = part.root.children[0]!;

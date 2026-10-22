@@ -101,10 +101,12 @@ export type TreeApplyOptions = Pick<TransactOptions, 'origin' | 'actorId' | 'ope
     readonly historyGroup?: HistoryGroup;
     readonly historyToken?: HistoryGroup;
     readonly packageEdits?: readonly ((pkg: OoxmlPackage) => OoxmlPackage)[];
+    readonly packageEditsAfterOps?: readonly ((pkg: OoxmlPackage) => OoxmlPackage)[];
     readonly partOps?: readonly {
         readonly ops: readonly TreeDocOp[];
         readonly partName: string;
     }[];
+    readonly stage?: (ctx: TreeTransactionContext) => void;
 };
 
 // @public
@@ -262,5 +264,15 @@ export interface TreeSurfaceState {
 
 // @public
 export function treeToDoc(part: OoxmlPart): Node_2;
+
+// @public
+export interface TreeTransactionContext {
+    apply(op: TreeDocOp): boolean;
+    applyPackage(edit: (pkg: OoxmlPackage) => OoxmlPackage): boolean;
+    applyTo(partName: string, op: TreeDocOp): boolean;
+    currentPackage(): OoxmlPackage;
+    selectionAfter(selection: SelectionMark | null): void;
+    selectionBefore(selection: SelectionMark | null): void;
+}
 
 ```

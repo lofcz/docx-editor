@@ -1,0 +1,10 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Direct AI edits had no request-session record of changed content for highlights.",
+  "after": "DirectChangeLedger records changed native paragraphs against a request-session baseline, groups them by registered block owner or top-level block, and seals the baseline on any non-AI commit.",
+  "reason": "Editor-local presentation state built from canonical fingerprints. It writes nothing to the document, shared state, payloads, or journals, and never decides review items.",
+  "tests": ["packages/sciobot/src/ai/change-ledger.test.ts"],
+  "changeset": null,
+  "migration": null
+}

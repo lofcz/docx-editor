@@ -8,6 +8,9 @@ import { WML_NAMESPACE_URI, type OoxmlElement, type OoxmlNode } from '../package
 import { isWmlNamed } from './tree-op-tracked.ts';
 import { revisionAttribute } from './revision-table-plan.ts';
 import { readTwipsMeasure } from '../units.ts';
+import { transactionActorId } from '../package/actor-scoped-ids.ts';
+import { retireParagraph } from '../package/retired-paragraph.ts';
+import { captureReplaceChildren } from '../package/canonical-primitive-lower.ts';
 
 function elements(node: OoxmlElement): OoxmlElement[] {
   const result: OoxmlElement[] = [];
@@ -30,11 +33,12 @@ function element(
   source: OoxmlElement,
   name: string,
   attrs: Record<string, string>,
-  mint: () => string
+  mint: () => string,
+  id?: string
 ): OoxmlElement {
   return {
     ...source,
-    id: mint(),
+    id: id ?? mint(),
     kind: 'generic',
     localName: name,
     children: [],
@@ -47,15 +51,26 @@ function element(
     })),
   } as OoxmlElement;
 }
-function properties(cell: OoxmlElement, mint: () => string): OoxmlElement {
-  return child(cell, 'tcPr') ?? element(cell, 'tcPr', {}, mint);
+type ResolutionPropertyIds = Readonly<Record<string, string | undefined>>;
+
+function properties(cell: OoxmlElement, mint: () => string, id?: string): OoxmlElement {
+  return child(cell, 'tcPr') ?? element(cell, 'tcPr', {}, mint, id);
+}
+
+// A resolved cell marker and its removed container already have shared identities.
+// Carry those identities into missing geometry instead of creating one node per reviewer.
+function removedCellGeometryIds(cell: OoxmlElement): ResolutionPropertyIds | undefined {
+  const pr = child(cell, 'tcPr');
+  const marker = pr && (child(pr, 'cellDel') ?? child(pr, 'cellIns'));
+  return marker && pr ? { tcPr: pr.id, gridSpan: marker.id } : undefined;
 }
 function patch(
   cell: OoxmlElement,
   values: Record<string, Record<string, string> | null>,
-  mint: () => string
+  mint: () => string,
+  ids?: ResolutionPropertyIds
 ): OoxmlElement {
-  const pr = properties(cell, mint);
+  const pr = properties(cell, mint, ids?.tcPr);
   const order = [
     'cnfStyle',
     'tcW',
@@ -89,7 +104,7 @@ function patch(
         order.indexOf(n.localName) > order.indexOf(name)
     );
     const existing = child(pr, name);
-    const replacement = element(existing ?? pr, name, attrs, mint);
+    const replacement = element(existing ?? pr, name, attrs, mint, ids?.[name]);
     const updated = existing
       ? ({
           ...existing,
@@ -115,12 +130,14 @@ function patch(
 export function applyCellMerge(
   cell: OoxmlElement,
   value: string | undefined,
-  mint: () => string
+  mint: () => string,
+  markerId?: string
 ): OoxmlElement {
   return patch(
     cell,
     { vMerge: value === undefined ? null : { val: value === 'cont' ? 'continue' : 'restart' } },
-    mint
+    mint,
+    { vMerge: markerId }
   );
 }
 
@@ -228,40 +245,75 @@ export function rebuildRevisionTable(
     row = restoreUnrecordedCells(prior, row, restoredProperties, mint);
     const priorCells = tableChildren(prior, 'tableCell');
     if (!priorCells.some((c) => removed.has(c.id))) return row;
-    const additions = new Map<string, { span: number; width: number; type: string | undefined }>();
+    const additions = new Map<
+      string,
+      {
+        span: number;
+        width: number;
+        type: string | undefined;
+        ids?: ResolutionPropertyIds;
+        retired?: readonly OoxmlNode[];
+      }
+    >();
     let previous: string | undefined;
     let leadingSpan = 0,
       leadingWidth = 0;
     let leadingType: string | undefined;
+    let leadingIds: ResolutionPropertyIds | undefined;
+    let leadingRetired: OoxmlNode[] = [];
     for (const cell of priorCells) {
       const pr = child(cell, 'tcPr');
       if (removed.has(cell.id)) {
+        const ids = removedCellGeometryIds(cell);
+        const retired: OoxmlNode[] = [];
+        if (transactionActorId() !== undefined) {
+          const pending = [...cell.children];
+          while (pending.length) {
+            const node = pending.pop()!;
+            if (node.kind === 'paragraph') retired.push(node);
+            else if (node.kind !== 'textValue')
+              for (const nested of node.children) pending.push(nested);
+          }
+        }
         const span = number(pr && child(pr, 'gridSpan'), 'val', 1);
         const widthNode = pr && child(pr, 'tcW');
         const width = positiveWidth(widthNode, 0);
         const type = widthNode && revisionAttribute(widthNode, 'type');
         if (previous) {
-          const existing = additions.get(previous) ?? { span: 0, width: 0, type };
+          const existing = additions.get(previous);
           additions.set(previous, {
-            span: existing.span + span,
-            width: existing.width + width,
-            type: existing.type === type ? type : undefined,
+            span: (existing?.span ?? 0) + span,
+            width: (existing?.width ?? 0) + width,
+            type: !existing || existing.type === type ? type : undefined,
+            ids: existing?.ids ?? ids,
+            retired: [...(existing?.retired ?? []), ...retired],
           });
         } else {
           leadingType = leadingSpan === 0 ? type : leadingType === type ? type : undefined;
           leadingSpan += span;
           leadingWidth += width;
+          leadingIds ??= ids;
+          for (const paragraph of retired) leadingRetired.push(paragraph);
         }
       } else {
         previous = cell.id;
         if (leadingSpan) {
-          additions.set(cell.id, { span: leadingSpan, width: leadingWidth, type: leadingType });
+          additions.set(cell.id, {
+            span: leadingSpan,
+            width: leadingWidth,
+            type: leadingType,
+            ids: leadingIds,
+            retired: leadingRetired,
+          });
           leadingSpan = 0;
           leadingWidth = 0;
           leadingType = undefined;
+          leadingIds = undefined;
+          leadingRetired = [];
         }
       }
     }
+    const transfers = new Map<string, { container: boolean; marker: string }>();
     const cells = tableChildren(row, 'tableCell').map((c) => {
       const extra = additions.get(c.id);
       if (!extra || c.kind !== 'tableCell') return c;
@@ -291,7 +343,9 @@ export function rebuildRevisionTable(
         revisionAttribute(historicalWidth, 'type') === extra.type
           ? Math.max(0, positiveWidth(width, 0) - positiveWidth(historicalWidth, 0))
           : 0;
-      return patch(
+      if (extra.ids?.tcPr && extra.ids.gridSpan && (!pr || !child(pr, 'gridSpan')))
+        transfers.set(extra.ids.tcPr, { container: !pr, marker: extra.ids.gridSpan });
+      const patched = patch(
         c,
         {
           gridSpan: { val: String(currentSpan + extra.span - absorbedSpan) },
@@ -307,9 +361,46 @@ export function rebuildRevisionTable(
               }
             : {}),
         },
-        mint
+        mint,
+        extra.ids
       );
+      if (child(c, 'tcPr') || !extra.ids?.tcPr || !extra.retired?.length) return patched;
+      return {
+        ...patched,
+        children: [
+          ...patched.children,
+          ...extra.retired.map((paragraph) => {
+            if (paragraph.kind !== 'paragraph') return paragraph;
+            return retireParagraph(
+              {
+                ...paragraph,
+                children: paragraph.children.filter((node) => node.kind === 'paragraphProperties'),
+              },
+              mint
+            );
+          }),
+        ],
+      } as OoxmlElement;
     });
+    if (transactionActorId() !== undefined)
+      for (const cell of priorCells) {
+        if (!removed.has(cell.id)) continue;
+        const pr = child(cell, 'tcPr'),
+          transfer = pr && transfers.get(pr.id);
+        // Publish each moved identity's original slot before its removed ancestor
+        // disappears. Retain unrelated property identities and their child order.
+        captureReplaceChildren(
+          cell,
+          transfer?.container
+            ? []
+            : cell.children.filter((node) => node.kind === 'paragraph' || isWmlNamed(node, 'tcPr'))
+        );
+        if (pr && transfer && !transfer.container)
+          captureReplaceChildren(
+            pr,
+            pr.children.filter((node) => node.id !== transfer.marker)
+          );
+      }
     return replaceTableChildren(row, new Map(cells.map((c) => [c.id, c])));
   });
   let above = new Set<string>();
@@ -436,18 +527,23 @@ export function compactRevisionGrid(table: OoxmlElement, mint: () => string): Oo
   const sorted = [...boundaries].sort((a, b) => a - b);
   if (sorted.at(-1)! > columns.length || sorted.length < 2) return table;
   if (sorted.length === columns.length + 1) return table;
-  const newColumns = sorted.slice(1).map((end, i) =>
-    element(
-      columns[sorted[i]!]!,
-      'gridCol',
-      {
-        w: String(
-          columns.slice(sorted[i], end).reduce((sum, col) => sum + positiveWidth(col, 0), 0)
-        ),
-      },
-      mint
-    )
-  );
+  const newColumns = sorted.slice(1).map((end, i) => {
+    const source = columns[sorted[i]!]!;
+    return {
+      ...element(
+        source,
+        'gridCol',
+        {
+          w: String(
+            columns.slice(sorted[i], end).reduce((sum, col) => sum + positiveWidth(col, 0), 0)
+          ),
+        },
+        mint,
+        source.id
+      ),
+      children: source.children,
+    } as OoxmlElement;
+  });
   const positions = new Map(sorted.map((pos, index) => [pos, index]));
   return {
     ...table,

@@ -235,3 +235,11 @@ Never push the `chore: release` commit by hand, delete `.changeset/*.md` outside
 - **Tailwind** — scoped to `.docx-editor`; the scoping is baked into `dist/editor.css` at core build time (`scripts/build-core-styles.mjs` + `packages/core/tailwind.dist.config.cjs`), so the shipped file carries no raw `@tailwind` directive. Rendered output isn't always protected, so use inline styles on painted elements. Never put Tailwind utilities on the element that carries `docx-editor` itself — scoped utilities only match descendants.
 - **Focus stealing** — painted pages are the editable surface, so any mousedown reaching them moves the caret.
 - **Icons** — inline SVG (Material Symbol paths), not a font. A missing name renders raw text.
+
+## Efficient implementation
+
+Follow [Efficient implementation](docs/engineering/efficient-implementation.md). Keep the user's requested TODO as the implementation target. Batch related code changes before focused verification. Reserve full suites for completed integration boundaries, and continue independent work in an isolated checkout while slow checks run. Never weaken completion criteria or acceptance oracles to increase throughput.
+
+## Commit discipline
+
+Commit all non-scratchpad work progressively, including clearly labeled work in progress. Keep local uncommitted changes to a minimum. Commit each coherent batch before changing tasks. Backup refs do not replace normal commits. Never discard work to clean the working tree.

@@ -8,13 +8,20 @@
 // the index-backed reads against a hand-walk of the tree.
 
 import { describe, expect, test } from 'bun:test';
-import { readOoxmlPart, type OoxmlNode, type OoxmlPart } from '../package/ooxml-tree.ts';
+import {
+  readOoxmlPart,
+  validateOoxmlPart,
+  type OoxmlNode,
+  type OoxmlPart,
+} from '../package/ooxml-tree.ts';
 import {
   carryIndexToRebuiltRoot,
+  cachedUniqueNode,
   carryIndexToHistoryRoot,
   collectNodeIds,
   createNodeIdAllocator,
   findNode,
+  replaceNode,
   nodeIndexSteps,
   nodeIndexTestRecorder,
   parentNodeOf,
@@ -333,4 +340,138 @@ describe('node index built in steps', () => {
     expect(step(() => true)).toBe(true);
     expect(recorder.completeBuilds).toBe(1);
   });
+});
+
+function crossParentFixture(): OoxmlPart {
+  const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+  const p = (value: string) => `<w:p><w:r><w:rPr><w:b/></w:rPr><w:t>${value}</w:t></w:r></w:p>`;
+  const read = readOoxmlPart(
+    `<w:document xmlns:w="${W}"><w:body><w:tbl><w:tblGrid><w:gridCol w:w="2400"/></w:tblGrid>` +
+      `<w:tr><w:tc>${p('A')}${p('Keep A')}</w:tc></w:tr><w:tr><w:tc>${p('B')}${p('Keep B')}</w:tc></w:tr></w:tbl></w:body></w:document>`,
+    {
+      name: '/word/document.xml',
+      contentType:
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml',
+    }
+  );
+  if (!read.ok) throw new Error(read.reason);
+  return read.part;
+}
+const childrenOf = (node: OoxmlNode): readonly OoxmlNode[] =>
+  node.kind === 'textValue' ? [] : node.children;
+function crossParentNodes(part: OoxmlPart) {
+  const table = childrenOf(childrenOf(part.root)[0]!)[0]!;
+  const rows = childrenOf(table).filter((node) => node.kind === 'tableRow');
+  const cells = rows.map((row) => childrenOf(row).find((node) => node.kind === 'tableCell')!);
+  return { table, rows, cells };
+}
+
+for (const direction of ['later-to-earlier', 'earlier-to-later'] as const)
+  test(`index retains every moved subtree address across parent cleanup; ${direction}`, () => {
+    const part = crossParentFixture(),
+      { table, cells } = crossParentNodes(part);
+    const from = direction === 'later-to-earlier' ? 1 : 0,
+      to = 1 - from;
+    const moved = childrenOf(cells[from]!).find((node) => node.kind === 'paragraph')!;
+    expectIndexMatchesTree(part, 'before move');
+    const recorder = nodeIndexTestRecorder();
+    recorder.reset();
+    const replacement = {
+      ...table,
+      children: childrenOf(table).map((row) =>
+        row.kind !== 'tableRow'
+          ? row
+          : {
+              ...row,
+              children: row.children.map((cell) =>
+                cell.id === cells[from]!.id
+                  ? { ...cell, children: childrenOf(cell).filter((node) => node.id !== moved.id) }
+                  : cell.id === cells[to]!.id
+                    ? { ...cell, children: [...childrenOf(cell), moved] }
+                    : cell
+              ),
+            }
+      ),
+    } as OoxmlNode;
+    const changed = replaceNode(part, table.id, replacement);
+    expect(changed.ok).toBe(true);
+    if (!changed.ok) return;
+    expectIndexMatchesTree(changed.part, direction);
+    expect(findNode(changed.part, moved.id) === moved).toBe(true);
+    expect(parentNodeOf(changed.part, moved.id)?.id).toBe(cells[to]!.id);
+    expect(cachedUniqueNode(changed.part.root, moved.id) === moved).toBe(true);
+    expect(recorder.completeBuilds).toBe(0);
+    const edited = applyTreeOp(changed.part, {
+      op: 'insertText',
+      paragraphId: moved.id,
+      offset: 1,
+      text: '!',
+    });
+    expect(edited.ok).toBe(true);
+    if (!edited.ok) return;
+    expect(paragraphTextOf(edited.part, moved.id)).toBe(
+      direction === 'later-to-earlier' ? 'B!' : 'A!'
+    );
+    expectIndexMatchesTree(edited.part, 'subsequent text edit');
+    expectIndexMatchesTree(part, 'detached source snapshot');
+    expect(parentNodeOf(part, moved.id)?.id).toBe(cells[from]!.id);
+  });
+
+test('vertical merge indexes survive preview reuse, text edits, undo, and redo without whole-index rebuilding', () => {
+  const part = crossParentFixture(),
+    { table, cells } = crossParentNodes(part);
+  const moved = childrenOf(cells[1]!).find((node) => node.kind === 'paragraph')!;
+  const op = {
+    op: 'mergeTableCells',
+    tableId: table.id,
+    cellIds: cells.map((cell) => cell.id),
+  } as const;
+  expectIndexMatchesTree(part, 'original');
+  const preview = applyTreeOp(part, op);
+  expect(preview.ok).toBe(true);
+  if (!preview.ok) return;
+  expectIndexMatchesTree(preview.part, 'preview');
+  expectIndexMatchesTree(part, 'source after discarded preview');
+  const store = new TreeDocumentStore(part),
+    recorder = nodeIndexTestRecorder();
+  recorder.reset();
+  const applied = store.transact((transaction) => transaction.apply(op));
+  expect(applied.ok).toBe(true);
+  expectIndexMatchesTree(store.part, 'merged');
+  expect(paragraphTextOf(store.part, moved.id)).toBe('B');
+  expect(recorder.completeBuilds).toBe(0);
+  expect(store.undo()).not.toBeNull();
+  expectIndexMatchesTree(store.part, 'undo merge');
+  expect(store.redo()).not.toBeNull();
+  expectIndexMatchesTree(store.part, 'redo merge');
+  expect(parentNodeOf(store.part, moved.id)?.id).toBe(cells[0]!.id);
+  expect(recorder.completeBuilds).toBe(0);
+});
+
+test('cross-parent duplicate subtrees still refuse and retain non-unique cache status when validation is deferred', () => {
+  const part = crossParentFixture(),
+    { table, cells } = crossParentNodes(part);
+  const moved = childrenOf(cells[1]!).find((node) => node.kind === 'paragraph')!;
+  const replacement = {
+    ...table,
+    children: childrenOf(table).map((row) =>
+      row.kind !== 'tableRow'
+        ? row
+        : {
+            ...row,
+            children: row.children.map((cell) =>
+              cell.id === cells[0]!.id ? { ...cell, children: [...childrenOf(cell), moved] } : cell
+            ),
+          }
+    ),
+  } as OoxmlNode;
+  expectIndexMatchesTree(part, 'before duplicate');
+  expect(replaceNode(part, table.id, replacement).ok).toBe(false);
+  findNode(part, moved.id);
+  const deferred = replaceNode(part, table.id, replacement, { deferValidation: true });
+  expect(deferred.ok).toBe(true);
+  if (!deferred.ok) return;
+  expect(validateOoxmlPart(deferred.part).ok).toBe(false);
+  expect(cachedUniqueNode(deferred.part.root, moved.id)).toBeUndefined();
+  expectIndexMatchesTree(part, 'source after refused duplicate');
 });

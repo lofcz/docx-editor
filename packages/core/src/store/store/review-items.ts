@@ -331,26 +331,31 @@ export function replacementPairId(deletionId: string, insertionId: string): stri
 }
 
 /**
- * Whether a deletion and the insertion after it read as one replacement: the same author,
- * review state and nesting, and the deletion ends exactly where the insertion starts.
+ * Whether touching deletion and insertion halves read as one replacement: the same author,
+ * review state and nesting, in either physical order.
  */
 export function isReplacementPair(
   deletion: ReviewRevisionItem,
   insertion: ReviewRevisionItem
 ): boolean {
-  const end = deletion.ranges[deletion.ranges.length - 1];
-  const start = insertion.ranges[0];
+  const touches = (left: ReviewRevisionItem, right: ReviewRevisionItem) => {
+    const end = left.ranges.at(-1),
+      start = right.ranges[0];
+    return (
+      end !== undefined &&
+      start !== undefined &&
+      end.partName === start.partName &&
+      end.end.paragraphId === start.start.paragraphId &&
+      end.end.offset === start.start.offset
+    );
+  };
   return (
     deletion.revisionKind === 'delete' &&
     insertion.revisionKind === 'insert' &&
     deletion.author === insertion.author &&
     deletion.readOnly === insertion.readOnly &&
     deletion.nesting === insertion.nesting &&
-    end !== undefined &&
-    start !== undefined &&
-    end.partName === start.partName &&
-    end.end.paragraphId === start.start.paragraphId &&
-    end.end.offset === start.start.offset
+    (touches(deletion, insertion) || touches(insertion, deletion))
   );
 }
 

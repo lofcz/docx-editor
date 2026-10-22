@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The private adapter planned native merges and splits but had no guarded tracked executor for them.",
+  "after": "trackTableMergePlan applies D10 merge and split plans as native tracked cell revisions in one gated, separately undoable transaction.",
+  "reason": "The executor reuses the native tracked merge/split operations and review decisions. It adds no shared operation, schema, or transport field.",
+  "tests": [
+    "packages/sciobot/src/review/track-table-merges.test.ts",
+    "packages/sciobot/src/review/track-table-merges-collaboration.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

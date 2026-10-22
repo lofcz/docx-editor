@@ -1,0 +1,105 @@
+:root {
+  font-family: system-ui, sans-serif;
+  color: var(--doc-text, CanvasText);
+  background: var(--doc-surface, ButtonFace);
+}
+body {
+  margin: 0;
+}
+main > h1,
+main > p {
+  margin: 16px 24px;
+}
+h1 {
+  font-size: 22px;
+}
+.proof-toolbar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 12px 24px;
+  background: var(--doc-bg, Canvas);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  border-bottom: 1px solid var(--doc-border, ButtonBorder);
+}
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+button {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: default;
+}
+.docx-editor__scroll-container {
+  height: calc(100vh - 170px);
+  overflow: auto;
+}
+.proof-react-layer {
+  pointer-events: none;
+}
+.react-frame {
+  position: absolute;
+  pointer-events: none;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  opacity: 0.3;
+}
+.react-frame.phase {
+  border-width: 2px;
+}
+.react-frame.activity {
+  border-style: dashed;
+}
+.react-header {
+  position: absolute;
+  box-sizing: border-box;
+  pointer-events: auto;
+  background: var(--doc-bg, Canvas);
+  border: 1px solid var(--doc-border, ButtonBorder);
+  border-radius: 6px;
+  padding: 10px;
+  font:
+    13px/1.4 system-ui,
+    sans-serif;
+  color: var(--doc-text, CanvasText);
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.activity-row {
+  width: 100%;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+.react-header input {
+  width: 50px;
+}
+.react-header svg {
+  display: block;
+}
+.badge {
+  font-size: 10px;
+  opacity: 0.7;
+}
+.quiz-explanation {
+  width: 100%;
+}
+.quiz-explanation textarea {
+  width: 90%;
+  height: 85px;
+}
+.quiz-explanation p {
+  margin: 0 0 8px;
+}
+[data-react-fallback] {
+  visibility: hidden;
+  pointer-events: none;
+}

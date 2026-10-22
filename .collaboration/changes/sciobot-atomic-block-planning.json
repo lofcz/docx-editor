@@ -1,0 +1,15 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Atomic domain pairs had no private planner for complete payload replacement, and sibling keys could ignore position-shaped values inside opaque typed metadata.",
+  "after": "A pure planner emits one root payload replacement for a changed atomic block. Equal targets retain stored payloads and assets. Shared AST comparison preserves opaque data while ignoring actual parser locations.",
+  "reason": "The planner returns detached JSON plans through the existing payload edit contract. It applies no native or shared operations and changes no persisted review fields or transport formats. Root payload execution and review remain separate leaves.",
+  "tests": [
+    "packages/sciobot/src/diff/atomic-blocks.test.ts",
+    "packages/sciobot/src/diff/sibling-blocks.test.ts",
+    "packages/sciobot/src/diff/domain-containers.test.ts",
+    "packages/sciobot/src/diff/plan.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

@@ -1,9 +1,12 @@
+import { isTrackedTableOp } from './table-transaction-state.ts';
 import { createFormsTextReplacementContext } from './forms-text-replacement.ts';
 import { restoreHistoryPackage } from './history-package-index.ts';
 import { reportHistoryGroup, type HistoryGroup } from './history-group.ts';
 import { withFieldResultsMode } from '../package/field-result-mode.ts';
 import type { TransactOptions, TreeDocumentStoreOptions } from './tree-store-options.ts';
 export type { TransactOptions, TreeDocumentStoreOptions } from './tree-store-options.ts';
+import type { TransactionContext } from './tree-transaction-context.ts';
+export type { TransactionContext } from './tree-transaction-context.ts';
 import { textFormFieldForEdit } from './text-form-fields.ts';
 import { applyProtectedTextFormEdit } from './tree-op-field-results.ts';
 // Tree-backed document store with intent-scoped semantic history (tasks 5.2, 5.4-5.6).
@@ -47,6 +50,7 @@ import type { ContentLockPolicy, TransactionRevisionIds } from '../package/ooxml
  */
 const TRACKED_WRAPPER_OPS: ReadonlySet<string> = new Set([
   'insertText',
+  'insertParagraphs',
   'insertTab',
   'insertHardBreak',
   'insertPageBreak',
@@ -55,6 +59,9 @@ const TRACKED_WRAPPER_OPS: ReadonlySet<string> = new Set([
   'insertEquation',
   'insertDrawing',
   'deleteText',
+  'insertHyperlink',
+  'removeHyperlink',
+  'setHyperlinkTarget',
   'setParagraphMarkRevision', // Mints from the same counter, so it does not reset it.
 ]);
 
@@ -144,35 +151,6 @@ export interface TreeModelChange {
 export type TransactResult =
   | { readonly ok: true; readonly change: TreeModelChange | null }
   | { readonly ok: false; readonly reason: TreeOpRejection; readonly detail?: string };
-
-/** What a transaction body is handed: the working tree, and the means to stage ops against it. */
-export interface TransactionContext {
-  /** Stage one op against the STORY part. Returns false once the transaction has failed. */
-  apply(op: TreeDocOp): boolean;
-  /**
-   * Stage one op against a named part.
-   *
-   * A comment body lives in `comments.xml` and is edited by the same ops that edit the story,
-   * so this is `apply` with the target named rather than a second vocabulary.
-   */
-  applyTo(partName: string, op: TreeDocOp): boolean;
-  /**
-   * Stage a whole-package edit: a new part, a relationship, a content-type override.
-   *
-   * The edit is a pure function of the working package, so a rejected transaction discards it
-   * with everything else. Returning the SAME package is a no-op, not a failure — a primitive
-   * that finds nothing to do says so that way.
-   *
-   * Engine package edits refuse by throwing the internal `PackageEditRefusal`
-   * (`package-edit-refusal.ts`): the transaction is refused with its reason, `package-changed`
-   * by default, and nothing is applied. Any other throw escapes `transact` as a crash.
-   */
-  applyPackage(edit: (pkg: OoxmlPackage) => OoxmlPackage): boolean;
-  /** The selection to restore when this entry is undone. */
-  selectionBefore(selection: SelectionMark | null): void;
-  /** The selection to restore when this entry is redone. */
-  selectionAfter(selection: SelectionMark | null): void;
-}
 
 interface HistoryEntry {
   /**
@@ -505,7 +483,12 @@ export class TreeDocumentStore {
      */
     const revisionIdsOfPart = new Map<
       string,
-      { mint: (() => string) | null; readonly written: Set<string> }
+      {
+        mint: (() => string) | null;
+        readonly written: Set<string>;
+        readonly wrote: TransactionRevisionIds['wrote'];
+        readonly wroteUnder: TransactionRevisionIds['wroteUnder'];
+      }
     >();
     /**
      * The bookkeeping for one part, bound to the part AS IT STANDS FOR THIS OP.
@@ -518,15 +501,22 @@ export class TreeDocumentStore {
     const revisionIdsFor = (part: OoxmlPart): TransactionRevisionIds => {
       let held = revisionIdsOfPart.get(part.name);
       if (!held) {
-        held = { mint: null, written: new Set<string>() };
+        const written = new Set<string>();
+        held = {
+          mint: null,
+          written,
+          wrote: (key) => void written.add(key),
+          wroteUnder: (key) => written.has(key),
+        };
         revisionIdsOfPart.set(part.name, held);
       }
       const state = held;
       return {
         // The walk itself is LAZY: an untracked transaction never pays for one.
         mint: (): string => (state.mint ??= nextRevisionId(part))(),
-        wrote: (key: string): void => void state.written.add(key),
-        wroteUnder: (key: string): boolean => state.written.has(key),
+        // Stable callbacks also scope native structural-site ownership to this part/frame.
+        wrote: state.wrote,
+        wroteUnder: state.wroteUnder,
       };
     };
     /** Drop the counters; the next mint walks the part it is given. The record stays. */
@@ -562,6 +552,10 @@ export class TreeDocumentStore {
       op: TreeDocOp,
       part: OoxmlPart
     ): TransactionRevisionIds | null => {
+      if (isTrackedTableOp(op)) {
+        resetRevisionCounters();
+        return revisionIdsFor(part);
+      }
       const writes = TRACKED_WRAPPER_OPS.has(op.op);
       // A property op keeps the counter: its group takes one id and imports none.
       if (!writes && PROPERTY_CHANGE_WRAPPER_OF_OP.get(op.op) !== undefined) return null;
@@ -667,6 +661,7 @@ export class TreeDocumentStore {
     };
 
     build({
+      currentPackage: () => working,
       apply: (op) => applyToPart(this.storyPartName, op),
       applyTo: (partName, op) => applyToPart(partName, op),
       applyPackage: (edit) => {

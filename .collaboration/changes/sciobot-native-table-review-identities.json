@@ -1,0 +1,20 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Concurrent native table review could create duplicate geometry and restore stale fields or property order during partial undo.",
+  "after": "Canonical resolution reuses source geometry identities and original child slots. Private history 4 owns bounded opaque fields and string sequence entry presence and order.",
+  "reason": "The public core emits existing canonical descriptors and child-list primitives that released native readers already support. Native provider version fields and evaluated implementation remain unchanged. The unpublished private app format advances to history 4 and flag protocol 2; all app participants must upgrade together through stopped-writer DOCX export and a fresh room. See docs/engineering/sciobot-port/evidence/review-history-scope.md#upgrade-private-history-scopes. Source and installed gates remain required before closing R51.",
+  "tests": [
+    "packages/core/src/store/__tests__/revision-table-shared-identity.test.ts",
+    "packages/core/src/store/__tests__/revision-table-geometry.test.ts",
+    "packages/core/src/store/__tests__/tracked-table-merges.test.ts",
+    "packages/sciobot/src/collaboration/review-fields.test.ts",
+    "packages/sciobot/src/collaboration/review-sequences.test.ts",
+    "packages/sciobot/src/collaboration/review-history.test.ts",
+    "packages/sciobot/src/review/group-field-budget.test.ts",
+    "packages/sciobot/src/review/group-field-capacity-collaboration.test.ts",
+    "packages/sciobot/src/review/native-table-property-history-collaboration.test.ts"
+  ],
+  "changeset": "native-table-review-identities",
+  "migration": null
+}

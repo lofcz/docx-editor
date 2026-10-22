@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Markdown export modeled bold, italic, and strike only, so no native run could project as a code span.",
+  "after": "An opt-in codeCharacterStyles list projects runs whose own w:rStyle names a listed style as code spans with content-dependent fences and literal, exactly mapped content. A styled island is checked for HTML fallback once as a whole.",
+  "reason": "Read-only converter output change behind a new option. It adds no document writes, operations, shared fields, or transport dependencies.",
+  "tests": [
+    "packages/docx-to-markdown/test/markdown-code-spans.test.ts",
+    "packages/docx-to-markdown/test/future-proof-boundaries.test.ts"
+  ],
+  "changeset": "markdown-code-character-styles",
+  "migration": null
+}

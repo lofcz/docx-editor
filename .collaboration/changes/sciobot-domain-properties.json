@@ -1,0 +1,14 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The private plan contract could represent payload deltas, but no domain property planner read native old-value presence or container identity.",
+  "after": "A pure planner resolves native block addresses, validates registered property ownership and retained identity, and returns individual payload deltas with explicit old and new presence.",
+  "reason": "The planner reads canonical package data and returns detached plans. It changes no editor state, shared operations, persisted review fields, or transport formats. Direct and review execution remain separate leaves.",
+  "tests": [
+    "packages/sciobot/src/diff/domain-properties.test.ts",
+    "packages/sciobot/src/diff/domain-containers.test.ts",
+    "packages/sciobot/src/diff/plan.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

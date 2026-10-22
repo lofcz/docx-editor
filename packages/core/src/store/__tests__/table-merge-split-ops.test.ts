@@ -2,6 +2,7 @@
 
 import { describe, expect, test } from 'bun:test';
 import {
+  canonicalOoxmlFingerprint,
   readOoxmlPart,
   serializeOoxmlPart,
   WML_NAMESPACE_URI,
@@ -526,5 +527,188 @@ describe('column edits in a table with merged cells', () => {
         cellIds: cellIds(broken)[0]!,
       })
     ).toMatchObject({ ok: false, reason: 'row-hides-cell' });
+  });
+});
+
+describe('splitTableCell existing-grid distribution', () => {
+  test('restores unequal original column slots and preserves moved paragraph identities and imported XML', () => {
+    const original = load(
+      TABLE(
+        GRID(1200, 2400, 3600),
+        ROW(
+          CELL('A', '<keep:extra xmlns:keep="urn:keep" keep:value="retain"/>'),
+          CELL('B'),
+          CELL('C')
+        ),
+        ROW(CELL('D'), CELL('E'), CELL('F'))
+      )
+    );
+    const ids = cellIds(original),
+      originalGrid = wmlChildNamed(all(original.root, 'table')[0]!, 'tblGrid')!;
+    const paragraphs = all(original.root, 'paragraph').slice(0, 2);
+    const merged = apply(original, {
+      op: 'mergeTableCells',
+      tableId: tableId(original),
+      cellIds: ids[0]!.slice(0, 2),
+    });
+    const split = apply(merged, {
+      op: 'splitTableCell',
+      tableId: tableId(merged),
+      cellId: ids[0]![0]!,
+      rows: 1,
+      columns: 2,
+      columnDistribution: 'existing-grid',
+    });
+    expect(shape(split)).toEqual(['A+B _ C', 'D E F']);
+    expect(gridOf(split)).toEqual(['1200', '2400', '3600']);
+    expect(wmlChildNamed(all(split.root, 'table')[0]!, 'tblGrid') === originalGrid).toBe(true);
+    expect(cellIds(split)[0]![0]).toBe(ids[0]![0]!);
+    const owner = all(split.root, 'tableCell')[0]!;
+    for (const paragraph of paragraphs)
+      expect(owner.children.some((node) => node === paragraph)).toBe(true);
+    expect(serializeOoxmlPart(split)).toContain('keep:value="retain"');
+    const first = all(split.root, 'tableCell').slice(0, 2);
+    expect(
+      first.map((cell) =>
+        wmlAttributeValue(
+          wmlChildNamed(cell, 'tcPr')!.children.find(
+            (node) => node.kind !== 'textValue' && node.localName === 'tcW'
+          ) as OoxmlElement,
+          'w'
+        )
+      )
+    ).toEqual(['1200', '2400']);
+    expect(canonicalOoxmlFingerprint(reopen(split))).toBe(canonicalOoxmlFingerprint(split));
+    const equal = apply(merged, {
+      op: 'splitTableCell',
+      tableId: tableId(merged),
+      cellId: ids[0]![0]!,
+      rows: 1,
+      columns: 2,
+    });
+    expect(gridOf(equal)).toEqual(['1200', '600', '1800', '3600']);
+    const explicitEqual = apply(merged, {
+      op: 'splitTableCell',
+      tableId: tableId(merged),
+      cellId: ids[0]![0]!,
+      rows: 1,
+      columns: 2,
+      columnDistribution: 'equal-width',
+    });
+    expect(shape(explicitEqual)).toEqual(shape(equal));
+    expect(gridOf(explicitEqual)).toEqual(gridOf(equal));
+  });
+
+  test('restores horizontal and vertical slots together without changing the grid', () => {
+    const part = load(
+      TABLE(
+        GRID(1200, 2400),
+        ROW(CELL('All', '<w:gridSpan w:val="2"/><w:vMerge w:val="restart"/>')),
+        ROW(CELL('', '<w:gridSpan w:val="2"/><w:vMerge/>'))
+      )
+    );
+    const owner = cellIds(part)[0]![0]!,
+      originalGrid = wmlChildNamed(all(part.root, 'table')[0]!, 'tblGrid');
+    const split = apply(part, {
+      op: 'splitTableCell',
+      tableId: tableId(part),
+      cellId: owner,
+      rows: 2,
+      columns: 2,
+      columnDistribution: 'existing-grid',
+    });
+    expect(shape(split)).toEqual(['All _', '_ _']);
+    expect(gridOf(split)).toEqual(['1200', '2400']);
+    expect(wmlChildNamed(all(split.root, 'table')[0]!, 'tblGrid') === originalGrid).toBe(true);
+    expect(cellIds(split)[0]![0]).toBe(owner);
+    expect(canonicalOoxmlFingerprint(reopen(split))).toBe(canonicalOoxmlFingerprint(split));
+  });
+
+  test('groups whole original columns and derives each unequal group width from its covered grid', () => {
+    const part = load(
+      TABLE(GRID(600, 900, 1200, 1500), ROW(CELL('All', '<w:gridSpan w:val="4"/>')))
+    );
+    const split = apply(part, {
+      op: 'splitTableCell',
+      tableId: tableId(part),
+      cellId: cellIds(part)[0]![0]!,
+      rows: 1,
+      columns: 2,
+      columnDistribution: 'existing-grid',
+    });
+    expect(shape(split)).toEqual(['All/2 _/2']);
+    expect(gridOf(split)).toEqual(['600', '900', '1200', '1500']);
+    const splitCells = all(split.root, 'tableCell');
+    expect(
+      splitCells.map((cell) =>
+        wmlAttributeValue(wmlChildNamed(wmlChildNamed(cell, 'tcPr')!, 'tcW')!, 'w')
+      )
+    ).toEqual(['1500', '2700']);
+  });
+
+  test('can restore existing narrow slots without adding a narrower grid boundary', () => {
+    const part = load(TABLE(GRID(100, 200), ROW(CELL('All', '<w:gridSpan w:val="2"/>'))));
+    const split = apply(part, {
+      op: 'splitTableCell',
+      tableId: tableId(part),
+      cellId: cellIds(part)[0]![0]!,
+      rows: 1,
+      columns: 2,
+      columnDistribution: 'existing-grid',
+    });
+    expect(shape(split)).toEqual(['All _']);
+    expect(gridOf(split)).toEqual(['100', '200']);
+    expect(
+      applyTreeOp(part, {
+        op: 'splitTableCell',
+        tableId: tableId(part),
+        cellId: cellIds(part)[0]![0]!,
+        rows: 1,
+        columns: 2,
+      }).ok
+    ).toBe(false);
+  });
+
+  test.each(['missing grid', 'unknown widths'])(
+    'restores whole slots with %s without guessing grid cuts',
+    (name) => {
+      const columns =
+        name === 'missing grid' ? '' : '<w:tblGrid><w:gridCol/><w:gridCol/></w:tblGrid>';
+      const part = load(
+        TABLE(columns, ROW(CELL('All', '<w:gridSpan w:val="2"/>')), ROW(CELL('D'), CELL('E')))
+      );
+      const before = all(part.root, 'tableGrid');
+      const split = apply(part, {
+        op: 'splitTableCell',
+        tableId: tableId(part),
+        cellId: cellIds(part)[0]![0]!,
+        rows: 1,
+        columns: 2,
+        columnDistribution: 'existing-grid',
+      });
+      expect(shape(split)).toEqual(['All _', 'D E']);
+      expect(all(split.root, 'tableGrid')).toEqual(before);
+      expect(canonicalOoxmlFingerprint(reopen(split))).toBe(canonicalOoxmlFingerprint(split));
+    }
+  );
+
+  test('invalid distribution values and non-dividing slot counts fail without writes', () => {
+    const part = load(TABLE(GRID(1200, 2400, 3600), ROW(CELL('All', '<w:gridSpan w:val="3"/>'))));
+    const op = {
+      op: 'splitTableCell',
+      tableId: tableId(part),
+      cellId: cellIds(part)[0]![0]!,
+      rows: 1,
+      columns: 3,
+    } as const;
+    const before = canonicalOoxmlFingerprint(part);
+    for (const columnDistribution of ['guess', null, 0, true])
+      expect(applyTreeOp(part, { ...op, columnDistribution } as unknown as TreeDocOp).ok).toBe(
+        false
+      );
+    expect(applyTreeOp(part, { ...op, columns: 2, columnDistribution: 'existing-grid' }).ok).toBe(
+      false
+    );
+    expect(canonicalOoxmlFingerprint(part)).toBe(before);
   });
 });

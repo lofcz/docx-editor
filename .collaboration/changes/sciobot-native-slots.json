@@ -1,0 +1,15 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The private React host could display widgets but could not contain native paint elements. Layout skipped content controls around table rows.",
+  "after": "Transparent React containers borrow original paragraphs, tables, rows, and cells. Layout includes wrapped-row controls and nested cell controls in its boundary records.",
+  "reason": "The host only moves and restores paint elements. The core fix reads existing canonical nodes and publishes geometry. Neither change writes document content, shared state, identities, or transport data.",
+  "tests": [
+    "packages/core/src/layout/__tests__/content-control-row-boundaries.test.ts",
+    "packages/sciobot/src/react-blocks/native-slots.test.tsx",
+    "packages/sciobot/src/react-blocks/native-slots-collaboration.test.tsx",
+    "e2e/sciobot-native-slots.spec.ts"
+  ],
+  "changeset": "content-control-row-boundaries",
+  "migration": null
+}

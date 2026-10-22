@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Saved DOCX files retained native review groups, property proposal records, and decision receipts. The private adapter had no combined recovery read for host availability.",
+  "after": "A pure private read recovers pending groups, property plans rebound to current native owners, and intrinsic review availability from the loaded DOCX and current identity/revision. It does not require chat state or mutate the document.",
+  "reason": "Recovery composes the existing canonical native-group and persisted-proposal readers. It writes no canonical content, metadata, shared state, display mode, or history. The R51 private history upgrade remains unchanged. Original transport fixtures stay test-only; no published API or shared format changes.",
+  "tests": [
+    "packages/sciobot/src/review/restore.test.ts",
+    "packages/sciobot/src/review/restore-collaboration.test.ts",
+    "e2e/sciobot-review-restore.spec.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

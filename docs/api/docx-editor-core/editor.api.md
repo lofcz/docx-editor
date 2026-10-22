@@ -78,6 +78,9 @@ export function beginEditorPreview(editor: DocxEditorInstance): {
     readonly reason: EditorPreviewRefusal;
 };
 
+// @internal
+export function beginHistoryGroupFrames(editor: DocxEditorInstance, group: HistoryGroup): HistoryGroupFrames | null;
+
 // @public
 export function bindHistoryGroup(editor: Editor, element: HTMLElement, config: HistoryGroupBindingOptions): HistoryGroupBinding;
 
@@ -1272,6 +1275,12 @@ export interface ContentLockPolicy {
     readonly allowFormattingInLockedContent?: boolean;
 }
 
+// @public
+export interface ContentTypeIndex {
+    readonly defaults: ReadonlyMap<string, string>;
+    readonly overrides: ReadonlyMap<string, string>;
+}
+
 // @internal
 export function controlsOverflow(bar: HTMLElement, style: CSSStyleDeclaration): boolean | null;
 
@@ -1954,6 +1963,12 @@ export interface HistoryGroupBindingOptions {
     readonly kind: 'native-color' | 'range' | 'repeat' | 'keyboard';
 }
 
+// @internal
+export interface HistoryGroupFrames {
+    finish(): HistoryGroupOutcome | null;
+    run<T>(write: () => T): T;
+}
+
 // @public
 export interface HistoryGroupOptions {
     readonly historyGroup?: HistoryGroup;
@@ -2342,6 +2357,31 @@ export function observeContentControlPopup(panel: HTMLElement, anchor: HTMLEleme
 export function observeUnsupportedElements(container: HTMLElement, listener: (hosts: readonly UnsupportedElementHost[]) => void): () => void;
 
 // @public
+export interface OoxmlExternalTarget {
+    // (undocumented)
+    readonly id: string;
+    // (undocumented)
+    readonly ownerPart: string;
+    // (undocumented)
+    readonly rawTarget: string;
+    readonly sinkSafe: boolean;
+    // (undocumented)
+    readonly type: string;
+}
+
+// @public
+export interface OoxmlPackage {
+    // (undocumented)
+    readonly contentTypes: ContentTypeIndex;
+    // (undocumented)
+    readonly externalTargets: readonly OoxmlExternalTarget[];
+    readonly mainDocumentPart: string;
+    readonly partBytes: ReadonlyMap<string, Uint8Array>;
+    readonly parts: ReadonlyMap<string, OoxmlPart>;
+    readonly relationships: ReadonlyMap<string, readonly RelationshipRecord[]>;
+}
+
+// @public
 export function openEditorWindow(options?: OpenEditorWindowOptions): Promise<EditorWindow | null>;
 
 // @public
@@ -2405,7 +2445,7 @@ export function overlayHostOrigin(surfaceElement: HTMLElement | null): {
 };
 
 // @public
-export interface PaginatedSurface {
+export interface PaginatedSurface extends SurfaceBlockReservations {
     activatedReviewKey(): string | null;
     activateReview(key: string, selection?: SemanticSelection, options?: {
         readonly allowExcluded?: boolean;
@@ -2414,7 +2454,9 @@ export interface PaginatedSurface {
     activeReviewKey(): string | null;
     activeScope(): ViewScope;
     adjustIndent(direction: 'increase' | 'decrease'): boolean;
-    applyAutomationOps(staged: (relate: (url: string) => string | null) => readonly TreeDocOp[] | null, scope?: StoryScope, packageEdits?: readonly ((pkg: OoxmlPackage) => OoxmlPackage)[], requiresReview?: boolean): TreeApplyResult;
+    applyAutomationOps(staged: (relate: (url: string) => string | null) => readonly TreeDocOp[] | null, scope?: StoryScope, packageEdits?: readonly ((pkg: OoxmlPackage) => OoxmlPackage)[], requiresReview?: boolean,
+    separateHistory?: boolean,
+    packageEditPhase?: 'before' | 'after'): TreeApplyResult;
     // (undocumented)
     applyDrawingOps(ops: readonly DrawingTreeDocOp[]): TreeApplyResult;
     applyHeaderFooterLifecycle(op: {
@@ -2554,6 +2596,7 @@ export interface PaginatedSurface {
     readonly navigation: SurfaceNavigation;
     notePreviewText(scopeId: string): string | null;
     notePropertiesState(): NotePropertiesStateSnapshot | null;
+    observePaint(observer: SurfacePaintObserver): () => void;
     overlayCoordinates(): SurfaceOverlayCoordinates;
     park(): void;
     parked(): boolean;
@@ -3105,6 +3148,22 @@ export interface RefreshUpdate {
 }
 
 // @public
+export interface RelationshipRecord {
+    // (undocumented)
+    readonly id: string;
+    // (undocumented)
+    readonly order: number;
+    // (undocumented)
+    readonly ownerPart: string;
+    // (undocumented)
+    readonly rawTarget: string;
+    // (undocumented)
+    readonly targetMode: TargetMode;
+    // (undocumented)
+    readonly type: string;
+}
+
+// @public
 export interface RemoteCaretLabelAnchor {
     // (undocumented)
     readonly element: HTMLElement;
@@ -3238,6 +3297,7 @@ export interface ReviewModuleContribution {
     readonly createRevisionMarkupDialog?: (host: RevisionMarkupDialogHost) => RevisionMarkupDialog;
     readonly displayModes: readonly ReviewDisplayMode[];
     readonly pane?: ReviewPaneOptions;
+    readonly reservedRevisionIds?: RevisionIdReservationSource;
     readonly revisionItemsOfParagraph: (part: OoxmlPart, paragraphId: string) => readonly ReviewRevisionItem[];
 }
 
@@ -3297,6 +3357,17 @@ export type RevisionDeletionMark = RevisionMarkupMark | 'hidden' | 'caret' | 'po
 
 // @public
 export type RevisionDisplay = 'pane' | 'balloons';
+
+// @public
+export interface RevisionIdReservation {
+    // (undocumented)
+    readonly ids: readonly string[];
+    // (undocumented)
+    readonly partName: string;
+}
+
+// @public
+export type RevisionIdReservationSource = (pkg: OoxmlPackage) => readonly RevisionIdReservation[];
 
 // @public
 export interface RevisionMarkupChromeHandlers {
@@ -3709,6 +3780,11 @@ export interface SplitCellLimits {
 export type SupportedImageMime = 'image/png' | 'image/jpeg' | 'image/gif' | 'image/bmp' | 'image/webp';
 
 // @public
+export interface SurfaceBlockReservations {
+    setBlockReservations(reservations: ReadonlyMap<string, number>): void;
+}
+
+// @public
 export interface SurfaceEquation {
     // (undocumented)
     readonly end: number;
@@ -3821,6 +3897,26 @@ export interface SurfaceOverlayCoordinates {
     readonly pageOffsetX: ReadonlyMap<number, number>;
     // (undocumented)
     readonly paintScale: number;
+}
+
+// @public
+export interface SurfacePaintFrame {
+    // (undocumented)
+    readonly layout: SemanticLayout;
+    // (undocumented)
+    readonly pagesLayer: HTMLElement;
+    // (undocumented)
+    readonly part: OoxmlPart;
+    // (undocumented)
+    readonly scale: number;
+}
+
+// @public
+export interface SurfacePaintObserver {
+    // (undocumented)
+    afterPaint(frame: SurfacePaintFrame): void;
+    // (undocumented)
+    beforePaint?(): void;
 }
 
 // @public
@@ -3956,6 +4052,9 @@ export function tableCommandToolbarState(surface: PaginatedSurface | null, comma
 
 // @public
 export type TableInteractionLabelKey = 'table.insertRowBelow' | 'table.insertColumnRight';
+
+// @public
+export type TargetMode = 'Internal' | 'External';
 
 // @public
 export const TEXT_FORM_FORMATS: {

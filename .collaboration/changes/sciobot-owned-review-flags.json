@@ -1,0 +1,17 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Two actors could accept a complete native table group and undo both decisions, but redo left native cell property-change snapshots pending. A scalar removal flag did not retain each actor's ownership through restored Yjs map values.",
+  "after": "The private review scope records independent removal-flag intents inside each original native transaction. The existing Yjs undo manager owns those intent rows before it steps history. Active intents normalize the original shared boolean fields before native materialization, so either actor's redo removes every native property snapshot and either actor's undo preserves peer acceptance.",
+  "reason": "Only private application code and private Yjs metadata change. Pinned MIT Yjs supplies map item identities, transaction events, UndoManager origins, trackedOrigins, and addToScope. No provider field names, evaluated implementation, native core source, public document API, native journal, or native shared schema changes. The owned-text protocol remains version 1. Separate review-flag target/intent ledgers use private protocol 1; the local session capability advances to version 2. All private participants must upgrade together before these writes. Hosts must gate that application protocol separately and use stopped-writer DOCX export with fresh-room bootstrap for legacy live rooms. No legacy history conversion or mixed-client support is claimed. DOCX exports persist actual resolved native XML, not these room-local CRDT addresses. Snapshot reopening retains the private ledgers. Normalization transactions use an untracked origin and add no undo entry; no review action is replayed or hidden from group reads. R50 now preflights complete local capacity before native mutation. The local session capability advances to version 3 for that admission contract; shared ledger formats remain version 1. The original near-limit countercase and exact-boundary native/payload checks pass. R49 closes; R15 retains final artifact and installed/application verification.",
+  "tests": [
+    "packages/sciobot/src/collaboration/review-flags.test.ts",
+    "packages/sciobot/src/collaboration/review-history.test.ts",
+    "packages/sciobot/src/review/accept-native-group-collaboration.test.ts",
+    "packages/sciobot/src/review/native-property-history-collaboration.test.ts",
+    "packages/sciobot/src/review/accept-group-collaboration.test.ts",
+    "packages/sciobot/src/review/group-history-collaboration.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

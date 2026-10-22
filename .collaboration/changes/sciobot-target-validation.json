@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The private adapter parsed target Markdown without lesson schema gates or application tool feedback.",
+  "after": "A pure preflight reuses the bounded target AST and application-owned schema and feedback. Syntax failures reject; incremental lesson shape failures warn; full lesson shape failures reject.",
+  "reason": "Validation accepts strings and plain options. It has no document, editor, operation callback, or persistent state and cannot write shared content. The R29 diagnostic only inspects independent test Yjs documents.",
+  "tests": [
+    "packages/sciobot/src/tools/validate-target.test.ts",
+    "packages/sciobot/src/projection/parse-target.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Run property writes preserved w:rStyle and offered no way to set or remove a character style; only insertHyperlink wrote one.",
+  "after": "setRunProperties accepts an optional characterStyle. A string sets each covered run's w:rStyle, null removes it, and omission keeps today's behavior. Tracked writes keep the prior reference in the existing w:rPrChange record.",
+  "reason": "The optional field lowers to existing run-property node writes and the existing tracked formatting record. Collaboration replicates the resulting run property nodes; the shared journal, codecs, operation kinds, and WordprocessingML shapes do not change. Two real sessions verify concurrent peer text, both client orders and receivers, review decisions, history, deletion during peer editing, remote geometry, reconnect, and saved convergence.",
+  "tests": [
+    "packages/core/src/store/__tests__/run-character-style.test.ts",
+    "packages/sciobot/src/native/inline-code-collaboration.test.ts"
+  ],
+  "changeset": "run-character-style-writes",
+  "migration": null
+}

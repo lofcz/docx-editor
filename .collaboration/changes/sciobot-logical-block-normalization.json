@@ -1,0 +1,15 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Parsed Markdown kept list wrappers, inline and flow container forms, and GFM/native HTML table representations separate. Native planners needed caller-supplied logical sibling streams.",
+  "after": "A detached immutable read model exposes logical paragraphs, containers, table rows/cells, complete atoms, and explicit list syntax metadata. It retains the entire original AST and follows independently captured application recap and empty-source rules.",
+  "reason": "This private transform reads bounded parsed data and creates no native IDs, document nodes, relationships, live writes, shared state, or numbering requests. Matching keys do not authorize edits. Native document, payload, collaboration, and journal formats remain unchanged.",
+  "tests": [
+    "packages/sciobot/src/diff/logical-blocks.test.ts",
+    "packages/sciobot/src/projection/parse-target.test.ts",
+    "packages/sciobot/src/diff/inline-target.test.ts",
+    "packages/sciobot/src/diff/target-source.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

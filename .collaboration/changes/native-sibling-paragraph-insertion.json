@@ -1,0 +1,16 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Rich paragraph insertion used clipboard split and merge behavior, which rewrote an existing anchor paragraph.",
+  "after": "A native sibling insertion operation clones bounded self-contained paragraph seeds with fresh identities. Native content and mark revisions share one address. Empty terminal mark resolution retains required paragraphs and peer content already visible to the deciding session.",
+  "reason": "The new local operation emits existing canonical insertion primitives. No shared journal or transport fields change. A separate preserved four-case regression records offline peer content hidden by structural rejection; R36 remains required for R05 parity. The frozen authorable mutation manifest lists the new kind as a single-part, all-story, automation-only operation.",
+  "tests": [
+    "packages/core/src/store/__tests__/insert-paragraphs.test.ts",
+    "packages/core/src/store/__tests__/canonical-primitive-journal-coverage.test.ts",
+    "packages/sciobot/src/review/insert-paragraphs-collaboration.test.ts",
+    "packages/sciobot/src/review/terminal-paragraph-conflict.test.ts",
+    "packages/core/src/store/__tests__/authorable-mutation-manifest.test.ts"
+  ],
+  "changeset": "native-sibling-paragraph-insertion",
+  "migration": null
+}

@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "React block widgets rendered over a fixed native fragment box with no way to reserve room for taller content.",
+  "after": "`reserveHeight` registrations measure the widget's intrinsic height and publish layout-only reservations for the block's last body paragraph; disposal clears them.",
+  "reason": "The private host only reads payloads and native geometry and calls the local reservation input. It writes no document content, payload, history, or shared state.",
+  "tests": [
+    "packages/sciobot/src/react-blocks/measurement.test.tsx",
+    "e2e/sciobot-block-measurement.spec.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

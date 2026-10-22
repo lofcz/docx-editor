@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The private adapter did not plan native column insertion/deletion with canonical grid or reference-cell anchors.",
+  "after": "A pure planner validates one column edit through the public native dispatcher, including grid widths, spanning cells, vertical continuations, and implicit regular grids. Plans retain only original anchors and native operations.",
+  "reason": "Planning changes no live package or shared format. The existing Apache dispatcher already supports merged columns. A01/R09 retain guarded direct/review mutations and two-session verification. Rich newly inserted cell fragments require deferred native ID resolution in D17.",
+  "tests": [
+    "packages/sciobot/src/diff/table-columns.test.ts",
+    "packages/sciobot/src/diff/plan.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

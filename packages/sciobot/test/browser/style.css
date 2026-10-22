@@ -1,0 +1,27 @@
+body {
+  font-family: sans-serif;
+  margin: 20px;
+}
+.editor-pane {
+  height: 620px;
+  overflow: auto;
+  position: relative;
+  border: 1px solid #888;
+}
+.widget-ui {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 170px;
+  background: white;
+  border: 1px solid #555;
+  font: 12px sans-serif;
+  display: grid;
+  padding: 4px;
+}
+.widget-ui input {
+  max-width: 140px;
+}
+.widget-ui small {
+  font-size: 8px;
+}

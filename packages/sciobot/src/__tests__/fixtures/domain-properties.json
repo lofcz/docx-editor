@@ -1,0 +1,164 @@
+{
+  "applicationRevision": "da9081adad1b54d17d9f24647adfd117bdffb942",
+  "sources": {
+    "src/lib/suggestion-views.ts": "671fb63d75f06d7264f4ba3a309f131e1a7e1d0d0fbe4fe48722028dced63c31"
+  },
+  "cases": [
+    {
+      "name": "rename",
+      "before": {
+        "name": "Old",
+        "duration": 10
+      },
+      "after": {
+        "name": "New",
+        "duration": 10
+      },
+      "keys": ["name"],
+      "committed": {
+        "duration": 10,
+        "name": "Old"
+      },
+      "working": {
+        "name": "New",
+        "duration": 10
+      }
+    },
+    {
+      "name": "duration and resource",
+      "before": {
+        "name": "Old",
+        "duration": 10,
+        "resource": "A"
+      },
+      "after": {
+        "name": "Old",
+        "duration": 15,
+        "resource": "B"
+      },
+      "keys": ["duration", "resource"],
+      "committed": {
+        "name": "Old",
+        "duration": 10,
+        "resource": "A"
+      },
+      "working": {
+        "name": "Old",
+        "duration": 15,
+        "resource": "B"
+      }
+    },
+    {
+      "name": "add absent name",
+      "before": {
+        "duration": 10
+      },
+      "after": {
+        "name": "New",
+        "duration": 10
+      },
+      "keys": ["name"],
+      "committed": {
+        "duration": 10
+      },
+      "working": {
+        "name": "New",
+        "duration": 10
+      }
+    },
+    {
+      "name": "remove duration",
+      "before": {
+        "name": "Old",
+        "duration": 10
+      },
+      "after": {
+        "name": "Old"
+      },
+      "keys": ["duration"],
+      "committed": {
+        "name": "Old",
+        "duration": 10
+      },
+      "working": {
+        "name": "Old"
+      }
+    },
+    {
+      "name": "null to zero",
+      "before": {
+        "name": "Old",
+        "duration": null
+      },
+      "after": {
+        "name": "Old",
+        "duration": 0
+      },
+      "keys": ["duration"],
+      "committed": {
+        "name": "Old",
+        "duration": null
+      },
+      "working": {
+        "name": "Old",
+        "duration": 0
+      }
+    },
+    {
+      "name": "zero to null",
+      "before": {
+        "name": "Old",
+        "duration": 0
+      },
+      "after": {
+        "name": "Old",
+        "duration": null
+      },
+      "keys": ["duration"],
+      "committed": {
+        "name": "Old",
+        "duration": 0
+      },
+      "working": {
+        "name": "Old",
+        "duration": null
+      }
+    },
+    {
+      "name": "remove explicit null",
+      "before": {
+        "name": null,
+        "duration": 10
+      },
+      "after": {
+        "duration": 10
+      },
+      "keys": ["name"],
+      "committed": {
+        "duration": 10,
+        "name": null
+      },
+      "working": {
+        "duration": 10
+      }
+    },
+    {
+      "name": "add explicit null",
+      "before": {
+        "duration": 10
+      },
+      "after": {
+        "name": null,
+        "duration": 10
+      },
+      "keys": ["name"],
+      "committed": {
+        "duration": 10
+      },
+      "working": {
+        "name": null,
+        "duration": 10
+      }
+    }
+  ]
+}

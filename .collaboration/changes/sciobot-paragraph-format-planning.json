@@ -1,0 +1,10 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The private adapter had no canonical paragraph property planner.",
+  "after": "A pure planner emits paragraph property deltas over authored native values without changing document state.",
+  "reason": "Private semantic plans do not change shared operations, schemas, or collaboration transport behavior.",
+  "tests": ["packages/sciobot/src/diff/paragraph-format.test.ts"],
+  "changeset": null,
+  "migration": null
+}

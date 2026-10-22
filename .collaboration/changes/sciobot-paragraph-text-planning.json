@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The private adapter had no canonical paragraph text planner.",
+  "after": "The private adapter plans grapheme-safe paragraph edits using existing native text operations.",
+  "reason": "Private semantic plans do not change shared operation formats, journal schemas, or the native collaboration transport.",
+  "tests": [
+    "packages/sciobot/src/diff/paragraph-text.test.ts",
+    "packages/sciobot/src/diff/paragraph-text-collaboration.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

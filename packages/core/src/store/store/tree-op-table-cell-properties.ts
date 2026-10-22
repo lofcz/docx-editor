@@ -2,6 +2,7 @@
 //
 // Physical grid ownership drives edge planning; property patches are in-place and lossless.
 
+import { retainTablePropertyAttributes } from './table-property-attributes.ts';
 import {
   createNodeIdAllocator,
   replaceNode,
@@ -45,8 +46,10 @@ import type {
   TreeOpResult,
 } from './tree-op-types.ts';
 
+/** Selected-cell border, fill, and alignment operations, before optional tracked attribution. @public */
 export type TableCellPropertyOp =
   | {
+      /** Clear the active edge target on a bounded rectangular cell selection. */
       readonly op: 'setTableCellBorders';
       readonly tableId: string;
       readonly cellIds: readonly string[];
@@ -54,6 +57,7 @@ export type TableCellPropertyOp =
       readonly target: TableBorderEdgeTarget;
     }
   | {
+      /** Apply a complete border spec to the requested edge target. */
       readonly op: 'setTableCellBorders';
       readonly tableId: string;
       readonly cellIds: readonly string[];
@@ -61,12 +65,14 @@ export type TableCellPropertyOp =
       readonly spec: TableBorderSpecInput;
     }
   | {
+      /** Write or remove direct selected-cell shading (`w:tcPr/w:shd`). */
       readonly op: 'setTableCellFill';
       readonly tableId: string;
       readonly cellIds: readonly string[];
       readonly color: TreeDocColorValue | null;
     }
   | {
+      /** Set direct selected-cell vertical alignment (`w:tcPr/w:vAlign`). */
       readonly op: 'setTableCellVerticalAlignment';
       readonly tableId: string;
       readonly cellIds: readonly string[];
@@ -1302,7 +1308,7 @@ function patchCellVerticalAlignment(
     },
   ]);
   const tcPr = existingTcPr ?? freshWmlElement('tcPr', nextId, wml, []);
-  const patched = patchTcPrChild(tcPr, property);
+  const patched = patchTcPrChild(tcPr, retainTablePropertyAttributes(tcPr, property));
   if (!patched.ok) return null;
   if (existingTcPr) {
     const children = cell.children.map((child) =>

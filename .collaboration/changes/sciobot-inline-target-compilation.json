@@ -1,0 +1,14 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Existing pure planners consumed native text and resolved format ranges. No shared compiler exposed parsed inline text, semantic marks, distinct hyperlink owners, and complete opaque atoms for composition.",
+  "after": "A bounded pure compiler returns detached immutable inline tokens, link paths/targets/titles, complete inert atoms, and the full input AST. Plain text is unavailable until atom ownership is resolved.",
+  "reason": "The compiler creates no canonical nodes, native IDs, relationships, live writes, or shared state. D15 retains native mapping and complete-target planner composition. Unknown inline data and expressions remain inert. No collaboration, payload, journal, or document format changes.",
+  "tests": [
+    "packages/sciobot/src/diff/inline-target.test.ts",
+    "packages/sciobot/src/projection/parse-target.test.ts",
+    "packages/sciobot/src/diff/run-format.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

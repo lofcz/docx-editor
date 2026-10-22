@@ -1,0 +1,13 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Changing a content control tag, alias, or lock replaced the property element with a new identity. Two concurrent writers each removed the old element and inserted their own, so the merged control held two w:tag or w:alias children, every remote apply failed known-node validation, and both sessions entered error.",
+  "after": "An existing property element keeps its identity and only its w:val attribute changes; an unchanged value writes nothing. Missing properties are still added and removed properties are still dropped.",
+  "reason": "The writer emits an existing setAttribute on an existing identity instead of a child splice. Unchanged provider readers already replicate attributes as registers. No shared schema, protocol, journal, or materialization rule changes.",
+  "tests": [
+    "packages/core/src/store/__tests__/content-control-property-identity.test.ts",
+    "packages/sciobot/src/blocks/payload-concurrency-collaboration.test.ts"
+  ],
+  "changeset": "content-control-property-identity",
+  "migration": null
+}

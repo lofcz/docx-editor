@@ -1,0 +1,278 @@
+{
+  "schemaVersion": 1,
+  "command": "bun packages/sciobot/test/diagnostics/yjs-owned-format-proof.ts",
+  "cases": [
+    {
+      "clients": [41, 73],
+      "receiver": 0,
+      "pending": [
+        {
+          "insert": "Changed",
+          "attributes": {
+            "shell": "replacement",
+            "insertion": "alice",
+            "bold": true
+          }
+        },
+        {
+          "insert": "Two",
+          "attributes": {
+            "shell": "deleted",
+            "bold": true,
+            "deletion": "alice"
+          }
+        },
+        {
+          "insert": " Bob",
+          "attributes": {
+            "shell": "original"
+          }
+        }
+      ],
+      "undone": [
+        {
+          "insert": "Two",
+          "attributes": {
+            "shell": "original"
+          }
+        },
+        {
+          "insert": " Bob",
+          "attributes": {
+            "shell": "original"
+          }
+        }
+      ],
+      "redone": [
+        {
+          "insert": "Changed",
+          "attributes": {
+            "shell": "replacement",
+            "insertion": "alice",
+            "bold": true
+          }
+        },
+        {
+          "insert": "Two",
+          "attributes": {
+            "shell": "deleted",
+            "bold": true,
+            "deletion": "alice"
+          }
+        },
+        {
+          "insert": " Bob",
+          "attributes": {
+            "shell": "original"
+          }
+        }
+      ],
+      "proposed": "Changed Bob",
+      "converged": true
+    },
+    {
+      "clients": [41, 73],
+      "receiver": 1,
+      "pending": [
+        {
+          "insert": "Changed",
+          "attributes": {
+            "shell": "replacement",
+            "insertion": "alice",
+            "bold": true
+          }
+        },
+        {
+          "insert": "Two",
+          "attributes": {
+            "shell": "deleted",
+            "bold": true,
+            "deletion": "alice"
+          }
+        },
+        {
+          "insert": " Bob",
+          "attributes": {
+            "shell": "original"
+          }
+        }
+      ],
+      "undone": [
+        {
+          "insert": "Two",
+          "attributes": {
+            "shell": "original"
+          }
+        },
+        {
+          "insert": " Bob",
+          "attributes": {
+            "shell": "original"
+          }
+        }
+      ],
+      "redone": [
+        {
+          "insert": "Changed",
+          "attributes": {
+            "shell": "replacement",
+            "insertion": "alice",
+            "bold": true
+          }
+        },
+        {
+          "insert": "Two",
+          "attributes": {
+            "shell": "deleted",
+            "bold": true,
+            "deletion": "alice"
+          }
+        },
+        {
+          "insert": " Bob",
+          "attributes": {
+            "shell": "original"
+          }
+        }
+      ],
+      "proposed": "Changed Bob",
+      "converged": true
+    },
+    {
+      "clients": [73, 41],
+      "receiver": 0,
+      "pending": [
+        {
+          "insert": "Changed",
+          "attributes": {
+            "shell": "replacement",
+            "insertion": "alice",
+            "bold": true
+          }
+        },
+        {
+          "insert": "Two",
+          "attributes": {
+            "shell": "deleted",
+            "bold": true,
+            "deletion": "alice"
+          }
+        },
+        {
+          "insert": " Bob",
+          "attributes": {
+            "shell": "original"
+          }
+        }
+      ],
+      "undone": [
+        {
+          "insert": "Two",
+          "attributes": {
+            "shell": "original"
+          }
+        },
+        {
+          "insert": " Bob",
+          "attributes": {
+            "shell": "original"
+          }
+        }
+      ],
+      "redone": [
+        {
+          "insert": "Changed",
+          "attributes": {
+            "shell": "replacement",
+            "insertion": "alice",
+            "bold": true
+          }
+        },
+        {
+          "insert": "Two",
+          "attributes": {
+            "shell": "deleted",
+            "bold": true,
+            "deletion": "alice"
+          }
+        },
+        {
+          "insert": " Bob",
+          "attributes": {
+            "shell": "original"
+          }
+        }
+      ],
+      "proposed": "Changed Bob",
+      "converged": true
+    },
+    {
+      "clients": [73, 41],
+      "receiver": 1,
+      "pending": [
+        {
+          "insert": "Changed",
+          "attributes": {
+            "shell": "replacement",
+            "insertion": "alice",
+            "bold": true
+          }
+        },
+        {
+          "insert": "Two",
+          "attributes": {
+            "shell": "deleted",
+            "bold": true,
+            "deletion": "alice"
+          }
+        },
+        {
+          "insert": " Bob",
+          "attributes": {
+            "shell": "original"
+          }
+        }
+      ],
+      "undone": [
+        {
+          "insert": "Two",
+          "attributes": {
+            "shell": "original"
+          }
+        },
+        {
+          "insert": " Bob",
+          "attributes": {
+            "shell": "original"
+          }
+        }
+      ],
+      "redone": [
+        {
+          "insert": "Changed",
+          "attributes": {
+            "shell": "replacement",
+            "insertion": "alice",
+            "bold": true
+          }
+        },
+        {
+          "insert": "Two",
+          "attributes": {
+            "shell": "deleted",
+            "bold": true,
+            "deletion": "alice"
+          }
+        },
+        {
+          "insert": " Bob",
+          "attributes": {
+            "shell": "original"
+          }
+        }
+      ],
+      "proposed": "Changed Bob",
+      "converged": true
+    }
+  ]
+}

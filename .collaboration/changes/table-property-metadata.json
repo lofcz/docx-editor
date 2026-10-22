@@ -1,0 +1,15 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Divider, right-edge, row-height, and vertical-alignment writers replaced existing property leaves and discarded their imported extensions and IDs.",
+  "after": "Writers change only operation-owned Word attributes and retain existing property identities, children, foreign attributes, and sibling properties.",
+  "reason": "This fidelity fix retains existing canonical data through standard primitive attribute writes. No journal, collaboration codec, private payload, or WordprocessingML schema changes. Two real sessions verify geometry, concurrent peer text, reconnect, history, deletion, and saved convergence.",
+  "tests": [
+    "packages/core/src/store/__tests__/table-property-fidelity.test.ts",
+    "packages/core/src/store/__tests__/table-resize-ops.test.ts",
+    "packages/core/src/store/__tests__/table-cell-properties.test.ts",
+    "packages/sciobot/src/diff/table-format-collaboration.test.ts"
+  ],
+  "changeset": "table-property-metadata",
+  "migration": null
+}

@@ -1,0 +1,17 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Pure planners required caller-provided native owners and contiguous sibling windows. Source projection metadata omitted registry kind and could retain explicitly undefined native fallback boundaries.",
+  "after": "An immutable read index resolves original body owners, native parent positions, table scopes, source ranges, checklist bindings, complete opaque ASTs, and actual contiguous sibling windows. Private projections retain registry kind and omit absent optional boundary fields without changing fallback precision.",
+  "reason": "The change creates no canonical nodes, native IDs, relationships, live writes, or shared state. Existing protection and executor checks still own writability. Only private read DTOs and bounded JSON copying change. Native document, payload, collaboration, and journal formats stay unchanged.",
+  "tests": [
+    "packages/sciobot/src/diff/target-source.test.ts",
+    "packages/sciobot/src/projection/blocks.test.ts",
+    "packages/sciobot/src/projection/markdown.test.ts",
+    "packages/sciobot/src/projection/protected-content.test.ts",
+    "packages/sciobot/src/diff/sibling-blocks.test.ts",
+    "packages/sciobot/src/diff/inline-target.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

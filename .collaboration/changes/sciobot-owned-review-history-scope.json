@@ -1,0 +1,15 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Private group decisions could use a bare shared session. Two peers accepting one group then undoing one decision restored a native insertion mark because shared formatting did not preserve each actor's removal intent.",
+  "after": "A private review history scope installs the existing owned-text protocol before bootstrap and binds the native session while preserving native receivers and actor/session identities. Shared group writes require its live capability. The original same-group oracle and an expanded history matrix preserve canonical native acceptance until the final actor undoes its decision.",
+  "reason": "The existing private owned-text protocol already retains actor-owned native attribute removal through history and normalizes before native publication. The change wires and enforces that established prerequisite. It introduces no provider edit, native core change, operation schema, shared field, protocol version, history replay, or document repair. The scope capability is local and uses one Symbol.for key across private bundles. Older private clients need the same owned protocol before participating in shared native editing. Legacy rooms without its protocol need the established explicit upgrade route; this scope does not migrate them. Supported configurations pass real two-editor native Word fidelity tests; missing or disposed scopes refuse before mutation.",
+  "tests": [
+    "packages/sciobot/src/collaboration/review-history.test.ts",
+    "packages/sciobot/src/review/group-history-collaboration.test.ts",
+    "packages/sciobot/src/review/accept-group-collaboration.test.ts",
+    "packages/sciobot/src/collaboration/owned-native.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

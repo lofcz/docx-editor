@@ -1,0 +1,173 @@
+import {
+  applyTreeOp,
+  contentControlPropertiesOf,
+  directParagraphProperties,
+  ensureListDefinition,
+  findNode,
+  insertChildren,
+  readOoxmlPart,
+  withPart,
+  type OoxmlPackage,
+  type OoxmlPart,
+  type TreeDocOp,
+} from '@docx-editor.dev/core/store';
+import { SCIOBOT_CHECKLIST_TAG } from '../diff/lists';
+import type { ListSourceState, ListTarget } from '../diff/list-types';
+
+const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+const W14 = 'http://schemas.microsoft.com/office/word/2010/wordml';
+const NUMBERING = '/word/numbering.xml';
+
+/** One paragraph's list destination inside a direct transaction. */
+export interface DirectListAssignment {
+  readonly paragraphId: string;
+  /** Null for a paragraph created in this transaction. */
+  readonly before: ListSourceState | null;
+  readonly target: ListTarget;
+}
+
+class ListWriteError extends Error {}
+
+function seedNodes(part: OoxmlPart, xml: string, name: string) {
+  const parsed = readOoxmlPart(
+    `<w:document xmlns:w="${W}" xmlns:w14="${W14}"><w:body>${xml}</w:body></w:document>`,
+    { name, contentType: part.contentType }
+  );
+  if (!parsed.ok) throw new ListWriteError(`Invalid list seed: ${parsed.reason}`);
+  const body = parsed.part.root.children.find(
+    (node) => node.kind !== 'textValue' && node.localName === 'body'
+  );
+  return body && body.kind !== 'textValue' ? body.children : [];
+}
+
+/**
+ * Apply owned list membership after native identity allocation. New instances share one Word
+ * definition per plan key; existing instances keep their definitions and later ordinals.
+ */
+export function applyDirectListAssignments(
+  input: OoxmlPackage,
+  partName: string,
+  assignments: readonly DirectListAssignment[]
+): OoxmlPackage {
+  let pkg = input,
+    seeds = 0;
+  const instances = new Map<string, string>(),
+    levels = new Set<string>();
+  const part = () => pkg.parts.get(partName)!;
+  const apply = (op: TreeDocOp) => {
+    const result = applyTreeOp(part(), op);
+    if (!result.ok) throw new ListWriteError(`Native list write refused: ${result.reason}.`);
+    pkg = withPart(pkg, result.part);
+  };
+  const numId = (target: Extract<ListTarget, { kind: 'ordered' | 'bullet' }>): string => {
+    if (target.instance.kind === 'existing') return target.instance.numId;
+    let id = instances.get(target.instance.key);
+    if (!id) {
+      const made = ensureListDefinition(pkg, target.kind);
+      if (!made) throw new ListWriteError('The native engine refused a new list definition.');
+      pkg = made.pkg;
+      id = made.numId;
+      instances.set(target.instance.key, id);
+    }
+    const levelKey = `${id}:${target.level}`;
+    if (target.instance.start !== undefined && !levels.has(levelKey)) {
+      // An authored start belongs to this new instance only; its abstract template stays shared.
+      const numbering = pkg.parts.get(NUMBERING)!;
+      const num = numbering.root.children.find(
+        (node) =>
+          node.kind !== 'textValue' &&
+          node.localName === 'num' &&
+          node.attributes.some(
+            (attribute) => attribute.localName === 'numId' && attribute.value === id
+          )
+      );
+      if (!num || num.kind === 'textValue')
+        throw new ListWriteError('The new native list instance is missing.');
+      const parsed = readOoxmlPart(
+        `<w:numbering xmlns:w="${W}"><w:num w:numId="${id}"><w:lvlOverride w:ilvl="${target.level}"><w:startOverride w:val="${target.instance.start}"/></w:lvlOverride></w:num></w:numbering>`,
+        { name: `/sciobot-direct-list-${++seeds}.xml`, contentType: numbering.contentType }
+      );
+      if (!parsed.ok) throw new ListWriteError('Invalid native list start.');
+      const wrapper = parsed.part.root.children[0]!;
+      if (wrapper.kind === 'textValue') throw new ListWriteError('Invalid native list start.');
+      const inserted = insertChildren(numbering, num.id, num.children.length, [
+        wrapper.children[0]!,
+      ]);
+      if (!inserted.ok) throw new ListWriteError('The native list start was refused.');
+      pkg = withPart(pkg, inserted.part);
+      levels.add(levelKey);
+    }
+    return id;
+  };
+  for (const { paragraphId, before, target } of assignments) {
+    const paragraph = findNode(part(), paragraphId);
+    if (paragraph?.kind !== 'paragraph')
+      throw new ListWriteError('A list paragraph disappeared during the transaction.');
+    const checkbox = before?.checkbox ?? null;
+    if (checkbox && target.kind !== 'checklist')
+      apply({ op: 'removeContentControl', controlId: checkbox.controlId, keepContent: false });
+    if (target.kind === 'checklist') {
+      if (checkbox)
+        apply({
+          op: 'setContentControlValue',
+          controlId: checkbox.controlId,
+          value: { kind: 'checkbox', checked: target.checked },
+        });
+      else {
+        const marker = seedNodes(
+          part(),
+          `<w:p><w:sdt><w:sdtPr><w:tag w:val="${SCIOBOT_CHECKLIST_TAG}"/><w14:checkbox><w14:checked w14:val="${target.checked ? 1 : 0}"/></w14:checkbox></w:sdtPr><w:sdtContent><w:r><w:t>${target.checked ? '☒' : '☐'}</w:t></w:r></w:sdtContent></w:sdt></w:p>`,
+          `/sciobot-direct-list-${++seeds}.xml`
+        )[0];
+        const control =
+          marker?.kind === 'paragraph' &&
+          marker.children.find((node) => node.kind === 'contentControl');
+        if (!control || !contentControlPropertiesOf(control).checkbox)
+          throw new ListWriteError('Invalid native checklist marker.');
+        const current = findNode(part(), paragraphId)!;
+        if (current.kind !== 'paragraph') throw new ListWriteError('Missing list paragraph.');
+        const inserted = insertChildren(
+          part(),
+          current.id,
+          current.children[0]?.localName === 'pPr' ? 1 : 0,
+          [control]
+        );
+        if (!inserted.ok) throw new ListWriteError('The native checklist marker was refused.');
+        pkg = withPart(pkg, inserted.part);
+      }
+      apply({ op: 'setListNumbering', paragraphId, numId: '0' });
+    } else
+      apply({
+        op: 'setListNumbering',
+        paragraphId,
+        numId: target.kind === 'none' ? '0' : numId(target),
+        ...(target.kind === 'none' ? {} : { level: target.level }),
+      });
+    if (target.kind === 'checklist' || checkbox) {
+      const properties = directParagraphProperties(part(), paragraphId),
+        attributes = { ...properties.find((property) => property.localName === 'ind')?.attributes };
+      for (const name of ['left', 'start', 'hanging']) delete attributes[name];
+      if (target.kind === 'checklist') {
+        for (const name of [
+          'firstLine',
+          'firstLineChars',
+          'hangingChars',
+          'leftChars',
+          'startChars',
+        ])
+          delete attributes[name];
+        attributes.left = String(720 * (target.level + 1));
+        attributes.hanging = '360';
+      }
+      apply({
+        op: 'setParagraphProperties',
+        paragraphId,
+        properties: [
+          ...properties.filter((property) => property.localName !== 'ind'),
+          ...(Object.keys(attributes).length ? [{ localName: 'ind', attributes }] : []),
+        ],
+      });
+    }
+  }
+  return pkg;
+}

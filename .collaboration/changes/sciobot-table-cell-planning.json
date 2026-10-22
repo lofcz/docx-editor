@@ -1,0 +1,10 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The private adapter could plan paragraph text and marks but had no table cell ownership boundary.",
+  "after": "A pure planner composes cell text and mark deltas after checking native table, row, cell, and paragraph ownership.",
+  "reason": "Private plans use existing native text and formatting operations. Shared formats, journal schemas, and collaboration transport behavior stay unchanged.",
+  "tests": ["packages/sciobot/src/diff/table-cells.test.ts"],
+  "changeset": null,
+  "migration": null
+}

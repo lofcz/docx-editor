@@ -1,0 +1,14 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Private canonical plans had no explicit list membership or checklist intents.",
+  "after": "Pure list planning emits validated membership, nesting, new-instance, and owned checklist intents while excluding derived display ordinals.",
+  "reason": "The private plan schema is detached JSON. The planner reads existing canonical snapshots and applies no document, package, or collaboration operations. Native test oracles use unchanged public operations.",
+  "tests": [
+    "packages/sciobot/src/diff/lists.test.ts",
+    "packages/sciobot/src/diff/plan.test.ts",
+    "packages/sciobot/src/diff/sibling-blocks.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

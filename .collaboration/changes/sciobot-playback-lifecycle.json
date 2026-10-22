@@ -1,0 +1,10 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Playback followed abort signals and the initial motion preference but could retain overlays until its timer ended after detach, document replacement, or destruction.",
+  "after": "Playback stops when its surface disappears or changes, and when the system motion preference changes to reduced motion. Cancellation releases listeners, observers, overlays, animation frames, and timers without reverting the committed edit.",
+  "reason": "Private presentation lifecycle only. It writes no document content, history, serialized fields, or shared state. Two real sessions verify detach through concurrent peer text, reconnect, undo/redo, and saved convergence.",
+  "tests": ["packages/sciobot/src/ai/playback.test.ts", "e2e/sciobot-playback.spec.ts"],
+  "changeset": null,
+  "migration": null
+}

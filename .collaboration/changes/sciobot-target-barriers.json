@@ -1,0 +1,10 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Complete-target plans refused logical streams that span several native sibling windows.",
+  "after": "The composer covers a stream with its physical windows, aligns target blocks by content keys, and plans each window separately; unmatched new blocks at a boundary stay before the barrier.",
+  "reason": "Pure private planning change. No native operation, shared state, payload schema, or journal format changes.",
+  "tests": ["packages/sciobot/src/diff/target-barriers.test.ts"],
+  "changeset": null,
+  "migration": null
+}

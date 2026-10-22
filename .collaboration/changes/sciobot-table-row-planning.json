@@ -1,0 +1,14 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The private adapter could plan cell content but did not plan native row insertion/deletion with inherited properties and plain cell values.",
+  "after": "A pure planner validates canonical row ownership, native geometry, locks, and reference cells through an immutable native preview. It returns native table intents with original anchors and no preview IDs.",
+  "reason": "The planner applies no live edits and adds no shared format. It reuses existing table operations. The native tracked-row fix has its own compatibility decision. Rich inserted fragments and explicit properties remain a required prerequisite for complete target planning and row review.",
+  "tests": [
+    "packages/sciobot/src/diff/table-rows.test.ts",
+    "packages/sciobot/src/diff/table-cells.test.ts",
+    "packages/sciobot/src/diff/plan.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

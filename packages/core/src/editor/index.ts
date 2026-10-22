@@ -209,6 +209,7 @@ export {
   type ChromeMenuSubmenuEntry,
   type ChromeSlotId,
 } from './chrome-controls.ts';
+export type { SurfaceBlockReservations } from './surface-block-reservations.ts';
 export {
   mountPaginatedSurface,
   type DrawingSelectionIntent,
@@ -261,6 +262,8 @@ export {
   type BrowserAutomationHost,
   type HistoryGroupRun,
 } from './automation-host.ts';
+// Frames that let an application adapter extend one explicit undo step with native writes.
+export { beginHistoryGroupFrames, type HistoryGroupFrames } from './editor-history-group-frames.ts';
 // The fork a browser automation preview paints from. Internal to the editor-api runtime.
 export {
   beginEditorPreview,
@@ -274,11 +277,18 @@ export { reportAutomationException, reportAutomationRefusal } from './editor-dia
 export {
   resolveEditorModules,
   type CollectReviewItems,
+  type ContentTypeIndex,
+  type OoxmlExternalTarget,
+  type RelationshipRecord,
+  type TargetMode,
+  type OoxmlPackage,
   type EditorModule,
   type EditorModuleRegistry,
   type ReviewModelInput,
   type ReviewDisplayMode,
   type ReviewModuleContribution,
+  type RevisionIdReservation,
+  type RevisionIdReservationSource,
   type CollaborationModuleContribution,
 } from '../contracts/modules.ts';
 export {
@@ -632,6 +642,7 @@ export type {
   RevisionMarkupTextStyle,
 } from '../contracts/revision-markup.ts';
 export type { RevisionMarkupDialog, RevisionMarkupDialogHost } from '../contracts/modules.ts';
+export type { SurfacePaintObserver, SurfacePaintFrame } from './surface-paint-observer.ts';
 
 /** The watermark shape box that `setWatermark` writes, for previews. */
 export {

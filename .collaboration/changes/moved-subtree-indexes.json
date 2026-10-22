@@ -1,0 +1,14 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Index cleanup in a later old parent removed paragraph/control addresses already registered under an earlier new parent. Canonical XML retained the moved content but live lookups could not find it.",
+  "after": "Incremental index updates finish removals across the changed spine before registering new locations. Independent tree walks match live node/parent lookups after moves, history, and subsequent edits.",
+  "reason": "The fix changes local lookup-cache maintenance. Canonical output, shared primitive journals, codecs, and WordprocessingML shapes remain unchanged. Two real sessions verify peer edits, history, reconnect, moved selection geometry, deletion, and saved convergence.",
+  "tests": [
+    "packages/core/src/store/__tests__/ooxml-edit-index.test.ts",
+    "packages/core/src/store/__tests__/table-merge-split-ops.test.ts",
+    "packages/sciobot/src/diff/table-merge-index-collaboration.test.ts"
+  ],
+  "changeset": "moved-subtree-indexes",
+  "migration": null
+}

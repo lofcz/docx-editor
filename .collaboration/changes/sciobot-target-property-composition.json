@@ -1,0 +1,17 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The private complete-target composer refused retained table property requests and could include a generated cell separator in native paragraph text offsets.",
+  "after": "Private immutable composition separates explicit table properties from structural matching and lowers supported retained table, row, cell, and paragraph intentions through existing native planners. Source-mapped separator removal requires exact canonical paragraph text. Topology changes that transfer merged content ownership refuse until source reconciliation exists.",
+  "reason": "Only private pure planning and test-only native application change. No native operation, shared state, payload schema, journal format, or live executor changes. Original canonical identities remain the only plan addresses. A01 and review leaves retain guarded transactions and two-session lifecycle evidence. The private package requires no published changeset or public API extraction.",
+  "tests": [
+    "packages/sciobot/src/diff/target-table-properties.test.ts",
+    "packages/sciobot/src/diff/target-table.test.ts",
+    "packages/sciobot/src/diff/target-table-columns.test.ts",
+    "packages/sciobot/src/diff/plan-target.test.ts",
+    "packages/sciobot/src/diff/paragraph-format.test.ts",
+    "packages/sciobot/src/diff/table-format.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

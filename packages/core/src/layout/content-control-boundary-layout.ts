@@ -225,17 +225,17 @@ function collectControlLists(part: OoxmlPart): readonly (readonly CollectedContr
       if (child.kind === 'table') {
         if (contentControlSubtreeToken(child, depth) === '') continue;
         for (const row of child.children) {
-          if (row.kind !== 'tableRow') continue;
+          if (row.kind !== 'tableRow' && !isContentControl(row)) continue;
           walkBlocks([row], depth, lockStack, containerDepth);
         }
         continue;
       }
-      if (child.kind === 'tableRow') {
-        for (const cell of child.children) {
-          if (cell.kind === 'tableCell')
-            walkBlocks(cell.children, depth, lockStack, containerDepth);
-          else if (isContentControl(cell)) walkBlocks([cell], depth, lockStack, containerDepth);
-        }
+      if (child.kind === 'tableRow' || child.kind === 'tableCell') {
+        const children =
+          child.kind === 'tableCell'
+            ? child.children
+            : child.children.filter((cell) => cell.kind === 'tableCell' || isContentControl(cell));
+        walkBlocks(children, depth, lockStack, containerDepth);
         continue;
       }
       if (!isContentControl(child)) {

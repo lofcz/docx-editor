@@ -134,3 +134,8 @@ packages/*/.test-dist-*/
 
 # Local PDF exporter rendering checks.
 .cache/pdf/
+
+# Browser proof run artifacts
+screenshots/react-blocks-test-results/
+
+screenshots/sciobot-block-host-test-results/

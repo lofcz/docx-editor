@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Hosts had no public observer for native surface paint frames.",
+  "after": "Hosts can observe native paint frames and preserve editable document content around custom components.",
+  "reason": "Paint observers add a read-only host integration seam. Canonical operations, document schemas, and collaboration transport formats do not change.",
+  "tests": [
+    "packages/core/src/editor/__tests__/surface-paint-observer.test.ts",
+    "e2e/react-blocks.spec.ts"
+  ],
+  "changeset": "react-block-paint-observer",
+  "migration": null
+}

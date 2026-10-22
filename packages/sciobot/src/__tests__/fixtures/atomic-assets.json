@@ -1,0 +1,543 @@
+{
+  "applicationRevision": "da9081adad1b54d17d9f24647adfd117bdffb942",
+  "sources": {
+    "src/components/lesson-plan/diff-strategy.ts": "29f7138d83424493ed34102ca3a974b25019cb22859cee5ce86c59bb44793f99",
+    "src/lib/reconcileListeningNodes.ts": "cd1144becfbbec7bd46ed6bfc47b47ad2fe7dba0f134c448c76299f36e013d72",
+    "src/lib/ai-review-diff.ts": "5233a070f764270172fdc03ca7df564e16483aac958acfce42748ebf1fa7d701",
+    "supabase/functions/_shared/activities/audio-exercise/empty.ts": "43bd51a2b16142bb39b93cca31eab4f2bb5af7930da46becc9d48297141f36e4",
+    "supabase/functions/_shared/activities/audio-exercise/hash.ts": "2faf814559e9724450505f705ddb3dd18be663af18d87d457b19b6b628a9ccc6",
+    "supabase/functions/_shared/activities/audio-exercise/merge.ts": "27e971f747102b0782aea7532213a4a4fa30c86e261f94c6ee70b8327bd51ab6",
+    "supabase/functions/_shared/activities/audio-exercise/normalize.ts": "133da4d0feb8c4ade6f659c1b20c54842c8a0d9c5ed4439fccb340acb48e9852",
+    "supabase/functions/_shared/activities/audio-exercise/portrait-catalog.ts": "0a36d6d739ad474c7a1f0bb1f2a24fb4c95dc33b58402db67f22f0ef1792f7ce",
+    "supabase/functions/_shared/activities/audio-exercise/questions.ts": "8fc3bd8d5e2bc385a28982166c5b07b98a5badcb3c9a1fef70a40d2c7051488b",
+    "supabase/functions/_shared/activities/audio-exercise/types.ts": "d7728125fefb5d7a564e311d4f147bcd67efd6cc81f29f6a9e5603ac0c4087ab",
+    "supabase/functions/_shared/voice/registry.ts": "aef596676caec5628ca93f25adacb6cadd2954af3a982fbebc1cb801d418eb91",
+    "supabase/functions/_shared/voice/taxonomy.ts": "e8ddc3e9cb77c96c0baf7f9981e70d161fbb1159221456a221361abfbee4d8a2",
+    "supabase/functions/_shared/voice/voices.generated.ts": "0f2a35e35a3e23805519e38a18f08737ca90e9395ecbe6001dc32987623c68b4",
+    "node_modules/@platejs/diff/dist/index.js": "208cd97e3c489ac30a38b714903f15029c7ed1bed8b541a60a62c785289eb828"
+  },
+  "cases": [
+    {
+      "name": "same script with omitted derived fields",
+      "before": {
+        "type": "listening",
+        "blockKey": "budget-keep",
+        "exercise": {
+          "title": "At the market",
+          "intro": "Listen.",
+          "languageCode": "en",
+          "speakers": [
+            {
+              "id": "s1",
+              "name": "Anna",
+              "gender": "female",
+              "voiceKey": "en-sarah",
+              "voiceId": "a6e73tX9Bfj4tBaFTgCA",
+              "color": "violet",
+              "portraitUrl": "https://example.com/portrait.png"
+            }
+          ],
+          "turns": [
+            {
+              "id": "turn-1",
+              "speakerId": "s1",
+              "text": "Good morning!"
+            }
+          ],
+          "tasks": [
+            {
+              "id": "task-1",
+              "type": "open",
+              "question": "Who speaks?"
+            }
+          ],
+          "settings": {
+            "model": "eleven_v3",
+            "allowTranscriptReveal": true
+          },
+          "level": "A2"
+        },
+        "audioRef": {
+          "hash": "98332c0ce977d492",
+          "seed": 7
+        },
+        "children": [
+          {
+            "text": ""
+          }
+        ]
+      },
+      "after": {
+        "type": "listening",
+        "blockKey": "budget-keep",
+        "exercise": {
+          "title": "At the market",
+          "intro": "Listen.",
+          "languageCode": "en",
+          "speakers": [
+            {
+              "id": "s1",
+              "name": "Anna",
+              "gender": "female",
+              "voiceKey": "en-sarah",
+              "voiceId": "a6e73tX9Bfj4tBaFTgCA",
+              "color": "violet",
+              "portraitUrl": "https://example.com/portrait.png"
+            }
+          ],
+          "turns": [
+            {
+              "id": "turn-1",
+              "speakerId": "s1",
+              "text": "Good morning!"
+            }
+          ],
+          "tasks": [
+            {
+              "id": "task-1",
+              "type": "open",
+              "question": "Who speaks?"
+            }
+          ],
+          "settings": {
+            "model": "eleven_v3",
+            "allowTranscriptReveal": true
+          },
+          "level": "A2"
+        },
+        "children": [
+          {
+            "text": ""
+          }
+        ],
+        "audioRef": {
+          "hash": "98332c0ce977d492",
+          "seed": 7
+        }
+      },
+      "rootChanges": []
+    },
+    {
+      "name": "title change retains audio reference",
+      "before": {
+        "type": "listening",
+        "blockKey": "budget-keep",
+        "exercise": {
+          "title": "At the market",
+          "intro": "Listen.",
+          "languageCode": "en",
+          "speakers": [
+            {
+              "id": "s1",
+              "name": "Anna",
+              "gender": "female",
+              "voiceKey": "en-sarah",
+              "voiceId": "a6e73tX9Bfj4tBaFTgCA",
+              "color": "violet",
+              "portraitUrl": "https://example.com/portrait.png"
+            }
+          ],
+          "turns": [
+            {
+              "id": "turn-1",
+              "speakerId": "s1",
+              "text": "Good morning!"
+            }
+          ],
+          "tasks": [
+            {
+              "id": "task-1",
+              "type": "open",
+              "question": "Who speaks?"
+            }
+          ],
+          "settings": {
+            "model": "eleven_v3",
+            "allowTranscriptReveal": true
+          },
+          "level": "A2"
+        },
+        "audioRef": {
+          "hash": "98332c0ce977d492",
+          "seed": 7
+        },
+        "children": [
+          {
+            "text": ""
+          }
+        ]
+      },
+      "after": {
+        "type": "listening",
+        "blockKey": "budget-keep",
+        "exercise": {
+          "title": "At the shop",
+          "intro": "Listen.",
+          "languageCode": "en",
+          "speakers": [
+            {
+              "id": "s1",
+              "name": "Anna",
+              "gender": "female",
+              "voiceKey": "en-sarah",
+              "voiceId": "a6e73tX9Bfj4tBaFTgCA",
+              "color": "violet",
+              "portraitUrl": "https://example.com/portrait.png"
+            }
+          ],
+          "turns": [
+            {
+              "id": "turn-1",
+              "speakerId": "s1",
+              "text": "Good morning!"
+            }
+          ],
+          "tasks": [
+            {
+              "id": "task-1",
+              "type": "open",
+              "question": "Who speaks?"
+            }
+          ],
+          "settings": {
+            "model": "eleven_v3",
+            "allowTranscriptReveal": true
+          },
+          "level": "A2"
+        },
+        "children": [
+          {
+            "text": ""
+          }
+        ],
+        "audioRef": {
+          "hash": "98332c0ce977d492",
+          "seed": 7
+        }
+      },
+      "rootChanges": ["delete", "insert"]
+    },
+    {
+      "name": "script change invalidates audio reference",
+      "before": {
+        "type": "listening",
+        "blockKey": "budget-keep",
+        "exercise": {
+          "title": "At the market",
+          "intro": "Listen.",
+          "languageCode": "en",
+          "speakers": [
+            {
+              "id": "s1",
+              "name": "Anna",
+              "gender": "female",
+              "voiceKey": "en-sarah",
+              "voiceId": "a6e73tX9Bfj4tBaFTgCA",
+              "color": "violet",
+              "portraitUrl": "https://example.com/portrait.png"
+            }
+          ],
+          "turns": [
+            {
+              "id": "turn-1",
+              "speakerId": "s1",
+              "text": "Good morning!"
+            }
+          ],
+          "tasks": [
+            {
+              "id": "task-1",
+              "type": "open",
+              "question": "Who speaks?"
+            }
+          ],
+          "settings": {
+            "model": "eleven_v3",
+            "allowTranscriptReveal": true
+          },
+          "level": "A2"
+        },
+        "audioRef": {
+          "hash": "98332c0ce977d492",
+          "seed": 7
+        },
+        "children": [
+          {
+            "text": ""
+          }
+        ]
+      },
+      "after": {
+        "type": "listening",
+        "blockKey": "budget-keep",
+        "exercise": {
+          "title": "At the market",
+          "intro": "Listen.",
+          "languageCode": "en",
+          "speakers": [
+            {
+              "id": "s1",
+              "name": "Anna",
+              "gender": "female",
+              "voiceKey": "en-sarah",
+              "voiceId": "a6e73tX9Bfj4tBaFTgCA",
+              "color": "violet",
+              "portraitUrl": "https://example.com/portrait.png"
+            }
+          ],
+          "turns": [
+            {
+              "id": "parsed-turn",
+              "speakerId": "s1",
+              "text": "Good evening!"
+            }
+          ],
+          "tasks": [
+            {
+              "id": "task-1",
+              "type": "open",
+              "question": "Who speaks?"
+            }
+          ],
+          "settings": {
+            "model": "eleven_v3",
+            "allowTranscriptReveal": true
+          },
+          "level": "A2"
+        },
+        "children": [
+          {
+            "text": ""
+          }
+        ]
+      },
+      "rootChanges": ["delete", "insert"]
+    },
+    {
+      "name": "hydrated unchanged audio",
+      "before": {
+        "type": "listening",
+        "blockKey": "budget-keep",
+        "exercise": {
+          "title": "At the market",
+          "intro": "Listen.",
+          "languageCode": "en",
+          "speakers": [
+            {
+              "id": "s1",
+              "name": "Anna",
+              "gender": "female",
+              "voiceKey": "en-sarah",
+              "voiceId": "a6e73tX9Bfj4tBaFTgCA",
+              "color": "violet",
+              "portraitUrl": "https://example.com/portrait.png"
+            }
+          ],
+          "turns": [
+            {
+              "id": "turn-1",
+              "speakerId": "s1",
+              "text": "Good morning!"
+            }
+          ],
+          "tasks": [
+            {
+              "id": "task-1",
+              "type": "open",
+              "question": "Who speaks?"
+            }
+          ],
+          "settings": {
+            "model": "eleven_v3",
+            "allowTranscriptReveal": true
+          },
+          "level": "A2",
+          "audio": {
+            "url": "https://example.com/dialogue.mp3",
+            "hash": "98332c0ce977d492",
+            "seed": 7,
+            "durationMs": 1000,
+            "turns": [
+              {
+                "turnId": "turn-1",
+                "startMs": 0,
+                "endMs": 1000,
+                "words": []
+              }
+            ]
+          }
+        },
+        "children": [
+          {
+            "text": ""
+          }
+        ]
+      },
+      "after": {
+        "type": "listening",
+        "blockKey": "budget-keep",
+        "exercise": {
+          "title": "At the market",
+          "intro": "Listen.",
+          "languageCode": "en",
+          "speakers": [
+            {
+              "id": "s1",
+              "name": "Anna",
+              "gender": "female",
+              "voiceKey": "en-sarah",
+              "voiceId": "a6e73tX9Bfj4tBaFTgCA",
+              "color": "violet",
+              "portraitUrl": "https://example.com/portrait.png"
+            }
+          ],
+          "turns": [
+            {
+              "id": "turn-1",
+              "speakerId": "s1",
+              "text": "Good morning!"
+            }
+          ],
+          "tasks": [
+            {
+              "id": "task-1",
+              "type": "open",
+              "question": "Who speaks?"
+            }
+          ],
+          "settings": {
+            "model": "eleven_v3",
+            "allowTranscriptReveal": true
+          },
+          "level": "A2",
+          "audio": {
+            "url": "https://example.com/dialogue.mp3",
+            "hash": "98332c0ce977d492",
+            "seed": 7,
+            "durationMs": 1000,
+            "turns": [
+              {
+                "turnId": "turn-1",
+                "startMs": 0,
+                "endMs": 1000,
+                "words": []
+              }
+            ]
+          }
+        },
+        "children": [
+          {
+            "text": ""
+          }
+        ]
+      },
+      "rootChanges": []
+    },
+    {
+      "name": "hydrated script change",
+      "before": {
+        "type": "listening",
+        "blockKey": "budget-keep",
+        "exercise": {
+          "title": "At the market",
+          "intro": "Listen.",
+          "languageCode": "en",
+          "speakers": [
+            {
+              "id": "s1",
+              "name": "Anna",
+              "gender": "female",
+              "voiceKey": "en-sarah",
+              "voiceId": "a6e73tX9Bfj4tBaFTgCA",
+              "color": "violet",
+              "portraitUrl": "https://example.com/portrait.png"
+            }
+          ],
+          "turns": [
+            {
+              "id": "turn-1",
+              "speakerId": "s1",
+              "text": "Good morning!"
+            }
+          ],
+          "tasks": [
+            {
+              "id": "task-1",
+              "type": "open",
+              "question": "Who speaks?"
+            }
+          ],
+          "settings": {
+            "model": "eleven_v3",
+            "allowTranscriptReveal": true
+          },
+          "level": "A2",
+          "audio": {
+            "url": "https://example.com/dialogue.mp3",
+            "hash": "98332c0ce977d492",
+            "seed": 7,
+            "durationMs": 1000,
+            "turns": [
+              {
+                "turnId": "turn-1",
+                "startMs": 0,
+                "endMs": 1000,
+                "words": []
+              }
+            ]
+          }
+        },
+        "children": [
+          {
+            "text": ""
+          }
+        ]
+      },
+      "after": {
+        "type": "listening",
+        "blockKey": "budget-keep",
+        "exercise": {
+          "title": "At the market",
+          "intro": "Listen.",
+          "languageCode": "en",
+          "speakers": [
+            {
+              "id": "s1",
+              "name": "Anna",
+              "gender": "female",
+              "voiceKey": "en-sarah",
+              "voiceId": "a6e73tX9Bfj4tBaFTgCA",
+              "color": "violet",
+              "portraitUrl": "https://example.com/portrait.png"
+            }
+          ],
+          "turns": [
+            {
+              "id": "parsed-turn",
+              "speakerId": "s1",
+              "text": "Good evening!"
+            }
+          ],
+          "tasks": [
+            {
+              "id": "task-1",
+              "type": "open",
+              "question": "Who speaks?"
+            }
+          ],
+          "settings": {
+            "model": "eleven_v3",
+            "allowTranscriptReveal": true
+          },
+          "level": "A2"
+        },
+        "children": [
+          {
+            "text": ""
+          }
+        ]
+      },
+      "rootChanges": ["delete", "insert"]
+    }
+  ]
+}

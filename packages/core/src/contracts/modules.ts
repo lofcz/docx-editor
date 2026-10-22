@@ -21,7 +21,7 @@ import type { EditorDiagnostic, EditorDiagnosticKind } from './diagnostics.ts';
  * @public
  */
 
-import type { OoxmlPart } from '@docx-editor.dev/core/store';
+import type { OoxmlPart, RevisionIdReservationSource } from '@docx-editor.dev/core/store';
 import type { CollaborationModuleContribution } from '../collaboration/index.ts';
 import type { ReviewDisplayMode } from '../layout/revision-projection.ts';
 import type {
@@ -45,12 +45,19 @@ export type {
   ReviewRevisionItem,
   ReviewRevisionKind,
 } from '../store/store/review-items.ts';
-// `OoxmlPart` is the argument `revisionItemsOfParagraph` takes, so it belongs here. The rest of
-// the canonical tree deliberately does NOT: re-exporting `OoxmlElement` pulls its ~85-member
-// node union onto this entry point, which would make the module seam the second published
-// definition of the document model. A module author reaches the tree at
-// `@docx-editor.dev/core/store`, which is a published subpath written for exactly that.
-export type { OoxmlPart, RevisionAddress } from '@docx-editor.dev/core/store';
+// Modules name the immutable snapshots supplied to review reads and retained-ID allocation.
+// Mutation capabilities remain in `@docx-editor.dev/core/store`; this seam defines no second model.
+export type {
+  ContentTypeIndex,
+  OoxmlExternalTarget,
+  RelationshipRecord,
+  TargetMode,
+  OoxmlPackage,
+  OoxmlPart,
+  RevisionAddress,
+  RevisionIdReservation,
+  RevisionIdReservationSource,
+} from '@docx-editor.dev/core/store';
 export type { ReviewDisplayMode, RevisionDisplayMode } from '../layout/revision-projection.ts';
 
 /**
@@ -83,6 +90,12 @@ export interface RevisionMarkupDialogHost extends RevisionMarkupDialogSession {
  * @public
  */
 export interface ReviewModuleContribution {
+  /**
+   * Pure read of native IDs retained by the module after Word revision elements disappear.
+   * Every session transaction reserves them before native creation or attribution renumbering.
+   * This allocation contribution changes no Word content, history, provider, or shared format.
+   */
+  readonly reservedRevisionIds?: RevisionIdReservationSource;
   /** Create local review settings chrome when a host opens the dialog. */
   readonly createRevisionMarkupDialog?: (host: RevisionMarkupDialogHost) => RevisionMarkupDialog;
   /**

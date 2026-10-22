@@ -1,0 +1,14 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The private row planner carried blank rows and scalar cell values, without rich new cell fragments or explicit row height.",
+  "after": "A pure planner carries new cell AST streams, exact row height, and owned payload bindings. Native previews validate physical cell count, merge continuations, locks, and storage. A test-only immutable oracle verifies native insertion and save/reopen.",
+  "reason": "Planning changes no live document or shared format. Executors must allocate native IDs after row creation and revalidate the canonical revision. A01/R08 retain actual guarded mutations and their two-session verification. No publishable package code changes.",
+  "tests": [
+    "packages/sciobot/src/diff/inserted-table-rows.test.ts",
+    "packages/sciobot/src/diff/plan.test.ts",
+    "packages/sciobot/test/support/inserted-row-oracle.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

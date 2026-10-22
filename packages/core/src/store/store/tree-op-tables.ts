@@ -6,6 +6,7 @@
 
 import { actorScopedSeed } from '../package/actor-scoped-ids.ts';
 import {
+  createMarkContainerIdAllocator,
   createNodeIdAllocator,
   insertChildren,
   removeNode,
@@ -51,6 +52,8 @@ import {
   patchTrPrChild,
 } from './tree-op-table-properties.ts';
 import { resizedGridCells, validateTableResizeGrid } from './table-resize-grid.ts';
+import { freshWmlElement, retainTablePropertyAttributes } from './table-property-attributes.ts';
+export { freshWmlElement } from './table-property-attributes.ts';
 import { readTwipsMeasure } from '../units.ts';
 import { paragraphIdsWithin } from './tree-op-blocks.ts';
 import { fromEdit, TEXT_DEPS } from './tree-op-nodes.ts';
@@ -121,17 +124,24 @@ export type TableColumnDocOp =
       readonly tableId: string;
       readonly where: 'left' | 'right';
       readonly gridColumnId: string;
+      readonly revision?: RevisionAttributionInput;
+      /** Tracked insertion only: size the new grid column before its history is recorded. */
+      readonly widthTwips?: number;
     }
   | {
       readonly op: 'insertTableColumn';
       readonly tableId: string;
       readonly where: 'left' | 'right';
       readonly referenceCellId: string;
+      readonly revision?: RevisionAttributionInput;
+      /** Tracked insertion only: size the new grid column before its history is recorded. */
+      readonly widthTwips?: number;
     }
   | {
       readonly op: 'deleteTableColumn';
       readonly tableId: string;
       readonly gridColumnId: string;
+      readonly revision?: RevisionAttributionInput;
     };
 
 export type TableResizeDocOp =
@@ -260,25 +270,6 @@ function projectWmlAttributes(
   return projected;
 }
 
-export function freshWmlElement(
-  localName: string,
-  nextId: () => string,
-  wml: WmlFreshNamespaceContext,
-  attributes: readonly OoxmlAttribute[],
-  children: readonly OoxmlNode[] = []
-): OoxmlElement {
-  return {
-    id: nextId(),
-    kind: 'generic',
-    namespaceUri: WML_NAMESPACE_URI,
-    localName,
-    ...(wml.elementPrefix === undefined ? {} : { prefix: wml.elementPrefix }),
-    namespaceBindings: [],
-    attributes,
-    children,
-  } as OoxmlElement;
-}
-
 function trackedRevisionAttributes(
   revisionId: string,
   revision: RevisionAttributionInput,
@@ -304,7 +295,9 @@ export function withTrackedRowMarker(
   revisionId: string,
   revision: RevisionAttributionInput,
   nextId: () => string,
-  wml: WmlFreshNamespaceContext
+  wml: WmlFreshNamespaceContext,
+  /** Missing holders created for a deletion use mark ids, so rejection removes them again. */
+  holderId: () => string = nextId
 ): OoxmlTableRowNode {
   const rowMarker = freshWmlElement(
     markerKind,
@@ -313,7 +306,7 @@ export function withTrackedRowMarker(
     trackedRevisionAttributes(revisionId, revision, wml)
   );
   const existingTrPr = wmlChildNamed(row, 'trPr');
-  const trPr = existingTrPr ?? freshWmlElement('trPr', nextId, wml, []);
+  const trPr = existingTrPr ?? freshWmlElement('trPr', holderId, wml, []);
   const patchedTrPr = patchTrPrChild(trPr, rowMarker);
   if (!patchedTrPr.ok) return row;
 
@@ -329,7 +322,7 @@ export function withTrackedRowMarker(
       trackedRevisionAttributes(revisionId, revision, wml)
     );
     const existingTcPr = wmlChildNamed(child, 'tcPr');
-    const tcPr = existingTcPr ?? freshWmlElement('tcPr', nextId, wml, []);
+    const tcPr = existingTcPr ?? freshWmlElement('tcPr', holderId, wml, []);
     const patchedTcPr = patchTcPrChild(tcPr, marker);
     if (!patchedTcPr.ok) return child;
     const cellChildren = existingTcPr
@@ -525,18 +518,16 @@ function planRowInsertion(
 ): RowInsertionPlan | null {
   const cells = sourceRow.children.filter((child) => child.kind === 'tableCell');
   if (cells.length === 0) return null;
-  let structureBudget = 1;
+  let structureBudget = 2; // Row plus its property holder in both direct and tracked creation.
   for (let index = 0; index < cells.length; index += 1) {
-    structureBudget += 2;
+    structureBudget += 3; // Cell, property holder, and paragraph.
     const tcPr = wmlChildNamed(cells[index]!, 'tcPr');
-    if (tcPr) structureBudget += countAllowlistedLeaves(tcPr, SAFE_TCPR_LEAVES);
+    if (tcPr) structureBudget += countAllowlistedLeaves(tcPr, SAFE_TCPR_LEAVES) - 1;
     structureBudget += insertedCellParagraphNodeCount(cells[index]!);
-    // A continued merge adds `w:vMerge`, plus a `w:tcPr` to carry it whenever the copy has
-    // none — including a source `w:tcPr` whose every leaf is stripped. Budget the ceiling.
-    if (continuations.has(index)) structureBudget += 2;
+    if (continuations.has(index)) structureBudget += 1; // The continuation marker.
   }
   const trPr = wmlChildNamed(sourceRow, 'trPr');
-  if (trPr) structureBudget += countAllowlistedLeaves(trPr, SAFE_TRPR_LEAVES);
+  if (trPr) structureBudget += countAllowlistedLeaves(trPr, SAFE_TRPR_LEAVES) - 1;
   return { sourceRow, cellCount: cells.length, structureBudget, continuations };
 }
 
@@ -600,9 +591,10 @@ function buildFreshCell(
   const copiedTcPr = tcPr ? copySafePropertyContainer(tcPr, SAFE_TCPR_LEAVES, nextId, wml) : null;
   const finalTcPr = continuesVerticalMerge
     ? withVerticalMergeContinuation(copiedTcPr, nextId, wml)
-    : copiedTcPr;
-  const children: OoxmlNode[] = [];
-  if (finalTcPr) children.push(finalTcPr);
+    : (copiedTcPr ?? freshWmlElement('tcPr', nextId, wml, []));
+  // Tracking needs this holder for cellIns. Create it in both modes so acceptance
+  // retains the same new-cell shape as direct insertion, including absent source properties.
+  const children: OoxmlNode[] = [finalTcPr];
   const content = insertedCellParagraphContent(sourceCell, nextId, wml);
   children.push(emptyParagraph(part, targetTable, nextId, `${seed}:p`, used, wml, content));
   return freshTableCell(nextId, children, wml);
@@ -622,14 +614,14 @@ function buildInsertedRow(
   const wml = wmlFreshNamespaceContextAt(part, targetTable);
   const sourceRow = plan.sourceRow;
   const trPr = wmlChildNamed(sourceRow, 'trPr');
-  const copiedTrPr = trPr
-    ? copySafePropertyContainer(trPr, SAFE_TRPR_LEAVES, nextId, wml)
-    : undefined;
+  const copiedTrPr =
+    (trPr ? copySafePropertyContainer(trPr, SAFE_TRPR_LEAVES, nextId, wml) : null) ??
+    freshWmlElement('trPr', nextId, wml, []);
   const used = new Set(usedParaIds(part.root));
   const children: OoxmlNode[] = [];
   const paragraphIds: string[] = [];
   let caretParagraphId: string | undefined;
-  if (copiedTrPr) children.push(copiedTrPr);
+  children.push(copiedTrPr);
   let cellIndex = 0;
   for (const child of sourceRow.children) {
     if (child.kind !== 'tableCell') continue;
@@ -787,7 +779,7 @@ export function applyInsertTableRow(
     ? withTrackedRowMarker(
         built.row,
         'ins',
-        nextRevisionId(part)(),
+        options?.trackedRevisionIds?.mint() ?? nextRevisionId(part)(),
         op.revision,
         nextId,
         wmlFreshNamespaceContextAt(part, topology.table)
@@ -858,10 +850,11 @@ export function applyDeleteTableRow(
     const trackedRow = withTrackedRowMarker(
       row,
       'del',
-      nextRevisionId(part)(),
+      options?.trackedRevisionIds?.mint() ?? nextRevisionId(part)(),
       op.revision,
       nextId,
-      wmlFreshNamespaceContextAt(part, topologyResult.topology.table)
+      wmlFreshNamespaceContextAt(part, topologyResult.topology.table),
+      createMarkContainerIdAllocator(part)
     );
     const effect: TreeOpEffect = {
       dirty: [op.tableId, op.rowId],
@@ -1490,13 +1483,19 @@ function buildFixedLayoutTblPr(
   | { readonly ok: false } {
   const existing = wmlChildNamed(table, 'tblPr');
   let tblPr = existing ?? freshWmlElement('tblPr', nextId, wml, [], []);
-  const layoutPatch = patchTblPrChild(tblPr, freshTblLayoutFixed(nextId, wml));
+  const layoutPatch = patchTblPrChild(
+    tblPr,
+    retainTablePropertyAttributes(tblPr, freshTblLayoutFixed(nextId, wml))
+  );
   if (!layoutPatch.ok) return { ok: false };
   tblPr = layoutPatch.container;
   if (tableWidthTwips !== undefined) {
     const widthPatch = patchTblPrChild(
       tblPr,
-      freshWidthDxaElement('tblW', nextId, wml, tableWidthTwips)
+      retainTablePropertyAttributes(
+        tblPr,
+        freshWidthDxaElement('tblW', nextId, wml, tableWidthTwips)
+      )
     );
     if (!widthPatch.ok) return { ok: false };
     tblPr = widthPatch.container;
@@ -1536,7 +1535,7 @@ function patchCellTcWidthDxa(
   const tcW = freshWidthDxaElement('tcW', nextId, wml, widthTwips);
   const existingTcPr = wmlChildNamed(cell, 'tcPr');
   if (existingTcPr) {
-    const patched = patchTcPrChild(existingTcPr, tcW);
+    const patched = patchTcPrChild(existingTcPr, retainTablePropertyAttributes(existingTcPr, tcW));
     if (!patched.ok) return cell;
     if (patched.container === existingTcPr) return cell;
     const children = cell.children.map((child) =>
@@ -1862,7 +1861,7 @@ function applySetTableRowHeight(
   ]);
   const existingTrPr = wmlChildNamed(row, 'trPr');
   const trPr = existingTrPr ?? freshWmlElement('trPr', nextId, wml, []);
-  const patched = patchTrPrChild(trPr, trHeight);
+  const patched = patchTrPrChild(trPr, retainTablePropertyAttributes(trPr, trHeight));
   if (!patched.ok) return { ok: false, reason: 'tree-invariant' };
   const children = existingTrPr
     ? row.children.map((child) => (child === existingTrPr ? patched.container : child))

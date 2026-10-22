@@ -1,0 +1,6 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": { "noUnusedLocals": true, "jsx": "react-jsx" },
+  "include": ["src", "../../packages/core/src", "../../packages/react/src"],
+  "exclude": ["../../packages/core/src/**/__tests__"]
+}

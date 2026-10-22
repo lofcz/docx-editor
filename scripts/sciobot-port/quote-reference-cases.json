@@ -1,0 +1,529 @@
+[
+  {
+    "name": "single paragraph partial selection",
+    "value": [
+      {
+        "type": "p",
+        "children": [
+          {
+            "text": "Hello world"
+          }
+        ]
+      }
+    ],
+    "selection": {
+      "anchor": {
+        "path": [0, 0],
+        "offset": 2
+      },
+      "focus": {
+        "path": [0, 0],
+        "offset": 7
+      }
+    }
+  },
+  {
+    "name": "heading",
+    "value": [
+      {
+        "type": "h1",
+        "children": [
+          {
+            "text": "Title"
+          }
+        ]
+      },
+      {
+        "type": "p",
+        "children": [
+          {
+            "text": "Tail"
+          }
+        ]
+      }
+    ],
+    "selection": {
+      "anchor": {
+        "path": [0, 0],
+        "offset": 0
+      },
+      "focus": {
+        "path": [0, 0],
+        "offset": 5
+      }
+    }
+  },
+  {
+    "name": "backward cross paragraph",
+    "value": [
+      {
+        "type": "p",
+        "children": [
+          {
+            "text": "Alpha"
+          }
+        ]
+      },
+      {
+        "type": "p",
+        "children": [
+          {
+            "text": "Beta"
+          }
+        ]
+      },
+      {
+        "type": "p",
+        "children": [
+          {
+            "text": "Tail"
+          }
+        ]
+      }
+    ],
+    "selection": {
+      "anchor": {
+        "path": [1, 0],
+        "offset": 3
+      },
+      "focus": {
+        "path": [0, 0],
+        "offset": 2
+      }
+    }
+  },
+  {
+    "name": "escaped emoji",
+    "value": [
+      {
+        "type": "p",
+        "children": [
+          {
+            "text": "A😀&*B"
+          }
+        ]
+      }
+    ],
+    "selection": {
+      "anchor": {
+        "path": [0, 0],
+        "offset": 1
+      },
+      "focus": {
+        "path": [0, 0],
+        "offset": 3
+      }
+    }
+  },
+  {
+    "name": "multiline paragraph",
+    "value": [
+      {
+        "type": "p",
+        "children": [
+          {
+            "text": "First\nSecond\nThird"
+          }
+        ]
+      }
+    ],
+    "selection": {
+      "anchor": {
+        "path": [0, 0],
+        "offset": 6
+      },
+      "focus": {
+        "path": [0, 0],
+        "offset": 12
+      }
+    }
+  },
+  {
+    "name": "new pending block",
+    "value": [
+      {
+        "type": "p",
+        "children": [
+          {
+            "text": "Old"
+          }
+        ],
+        "suggestion": {
+          "id": "s-remove",
+          "type": "remove",
+          "userId": "ai",
+          "createdAt": 1
+        }
+      },
+      {
+        "type": "p",
+        "children": [
+          {
+            "text": "New"
+          }
+        ],
+        "suggestion": {
+          "id": "s-insert",
+          "type": "insert",
+          "userId": "ai",
+          "createdAt": 1
+        }
+      },
+      {
+        "type": "p",
+        "children": [
+          {
+            "text": "Tail"
+          }
+        ]
+      }
+    ],
+    "selection": {
+      "anchor": {
+        "path": [1, 0],
+        "offset": 0
+      },
+      "focus": {
+        "path": [1, 0],
+        "offset": 3
+      }
+    }
+  },
+  {
+    "name": "removed pending block fallback",
+    "value": [
+      {
+        "type": "p",
+        "children": [
+          {
+            "text": "Old"
+          }
+        ],
+        "suggestion": {
+          "id": "s-remove",
+          "type": "remove",
+          "userId": "ai",
+          "createdAt": 1
+        }
+      },
+      {
+        "type": "p",
+        "children": [
+          {
+            "text": "New"
+          }
+        ],
+        "suggestion": {
+          "id": "s-insert",
+          "type": "insert",
+          "userId": "ai",
+          "createdAt": 1
+        }
+      },
+      {
+        "type": "p",
+        "children": [
+          {
+            "text": "Tail"
+          }
+        ]
+      }
+    ],
+    "selection": {
+      "anchor": {
+        "path": [0, 0],
+        "offset": 0
+      },
+      "focus": {
+        "path": [0, 0],
+        "offset": 3
+      }
+    }
+  },
+  {
+    "name": "new pending text",
+    "review": {
+      "before": "AOldZ",
+      "after": "ANewZ"
+    },
+    "selectText": "New"
+  },
+  {
+    "name": "nested activity body",
+    "value": [
+      {
+        "type": "lesson_phase",
+        "phaseType": "evocation",
+        "children": [
+          {
+            "type": "lesson_activity",
+            "name": "Warmup",
+            "duration": "5",
+            "children": [
+              {
+                "type": "p",
+                "children": [
+                  {
+                    "text": "Question"
+                  }
+                ]
+              },
+              {
+                "type": "p",
+                "children": [
+                  {
+                    "text": "Answer"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "p",
+        "children": [
+          {
+            "text": "Tail"
+          }
+        ]
+      }
+    ],
+    "selection": {
+      "anchor": {
+        "path": [0, 0, 1, 0],
+        "offset": 1
+      },
+      "focus": {
+        "path": [0, 0, 1, 0],
+        "offset": 5
+      }
+    }
+  },
+  {
+    "name": "nested activity container",
+    "value": [
+      {
+        "type": "lesson_activity",
+        "name": "Warmup",
+        "duration": "5",
+        "children": [
+          {
+            "type": "p",
+            "children": [
+              {
+                "text": "Question"
+              }
+            ]
+          },
+          {
+            "type": "p",
+            "children": [
+              {
+                "text": "Answer"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "p",
+        "children": [
+          {
+            "text": "Tail"
+          }
+        ]
+      }
+    ],
+    "selection": {
+      "anchor": {
+        "path": [0],
+        "offset": 0
+      },
+      "focus": {
+        "path": [0],
+        "offset": 2
+      }
+    }
+  },
+  {
+    "name": "table cell",
+    "value": [
+      {
+        "type": "table",
+        "children": [
+          {
+            "type": "tr",
+            "children": [
+              {
+                "type": "td",
+                "children": [
+                  {
+                    "type": "p",
+                    "children": [
+                      {
+                        "text": "A"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "td",
+                "children": [
+                  {
+                    "type": "p",
+                    "children": [
+                      {
+                        "text": "B"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "tr",
+            "children": [
+              {
+                "type": "td",
+                "children": [
+                  {
+                    "type": "p",
+                    "children": [
+                      {
+                        "text": "One"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "td",
+                "children": [
+                  {
+                    "type": "p",
+                    "children": [
+                      {
+                        "text": "Two"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "p",
+        "children": [
+          {
+            "text": "Tail"
+          }
+        ]
+      }
+    ],
+    "selection": {
+      "anchor": {
+        "path": [0, 1, 1, 0, 0],
+        "offset": 0
+      },
+      "focus": {
+        "path": [0, 1, 1, 0, 0],
+        "offset": 3
+      }
+    }
+  },
+  {
+    "name": "inline source",
+    "value": [
+      {
+        "type": "p",
+        "children": [
+          {
+            "text": "Before "
+          },
+          {
+            "type": "source",
+            "url": "https://example.com",
+            "title": "Citation",
+            "children": [
+              {
+                "text": ""
+              }
+            ]
+          },
+          {
+            "text": " after"
+          }
+        ]
+      }
+    ],
+    "selection": {
+      "anchor": {
+        "path": [0, 0],
+        "offset": 1
+      },
+      "focus": {
+        "path": [0, 2],
+        "offset": 3
+      }
+    }
+  },
+  {
+    "name": "neither endpoint maps",
+    "value": [
+      {
+        "type": "p",
+        "children": [
+          {
+            "text": "Actual"
+          }
+        ]
+      }
+    ],
+    "selection": {
+      "anchor": {
+        "path": [9, 0],
+        "offset": 0
+      },
+      "focus": {
+        "path": [10, 0],
+        "offset": 2
+      }
+    }
+  },
+  {
+    "name": "one endpoint maps",
+    "value": [
+      {
+        "type": "p",
+        "children": [
+          {
+            "text": "Actual"
+          }
+        ]
+      }
+    ],
+    "selection": {
+      "anchor": {
+        "path": [0, 0],
+        "offset": 0
+      },
+      "focus": {
+        "path": [9, 0],
+        "offset": 2
+      }
+    }
+  },
+  {
+    "name": "removed pending text fallback",
+    "review": {
+      "before": "AOldZ",
+      "after": "ANewZ"
+    },
+    "selectText": "Old"
+  }
+]

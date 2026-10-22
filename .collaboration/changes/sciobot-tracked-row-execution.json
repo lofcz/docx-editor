@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The private adapter planned native row insertions and deletions but had no guarded tracked executor for them.",
+  "after": "trackTableRowPlan applies planned row insertions and deletions as native Word row revisions in one gated, separately undoable transaction. New paragraph and heading row content lands under its row insertion revision.",
+  "reason": "The executor reuses existing native row operations, package hooks, and review decisions. It adds no shared operation, schema, or transport field.",
+  "tests": [
+    "packages/sciobot/src/review/track-table-rows.test.ts",
+    "packages/sciobot/src/review/track-table-rows-collaboration.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

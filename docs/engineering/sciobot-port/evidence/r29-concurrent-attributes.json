@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "baseline": "9770e78f880ee92ecc6531f0ea747a01135b5400 plus working tree",
+  "transportLicense": "EigenPal Pro License",
+  "case": {
+    "clients": [73, 41],
+    "firstReceiver": 0,
+    "proposal": "Two to bold Changed",
+    "peer": "append plain Bob with leading space"
+  },
+  "sharedText": {
+    "alice": {
+      "path": "docx-package-nodes-v1//word/document.xml#0.0.0.3.2.1/inline",
+      "delta": [
+        {
+          "insert": "Two",
+          "attributes": {
+            "r": "{\"i\":\"lid:35d92443dc0a244f9ffff4b3bfc9ffca:6\"}",
+            "rp": "{\"i\":\"lid:35d92443dc0a244f9ffff4b3bfc9ffca:7\",\"o\":[\"p:b\",\"p:color\",\"p:customKeep\",\"p:rPrChange\"]}",
+            "p:b": "{}",
+            "p:rPrChange": "{\"a\":[[\"id\",\"5095\"],[\"author\",\"ScioBot\"],[\"date\",\"2026-10-19T09:00:00.000Z\"]],\"c\":[{\"l\":\"rPr\",\"k\":\"runProperties\",\"c\":[{\"l\":\"color\",\"a\":[[\"val\",\"123456\"]]},{\"l\":\"customKeep\",\"a\":[[\"val\",\"keep\"]]}]}]}",
+            "t": "{\"i\":\"lid:35d92443dc0a244f9ffff4b3bfc9ffca:15\",\"l\":\"delText\",\"k\":\"deletedText\",\"v\":\"+1\"}",
+            "v:lid:35d92443dc0a244f9ffff4b3bfc9ffca:5": "{\"e\":{\"i\":\"lid:35d92443dc0a244f9ffff4b3bfc9ffca:5\",\"l\":\"del\",\"k\":\"revisionDelete\",\"a\":[[\"id\",\"70631\"],[\"author\",\"ScioBot\"],[\"date\",\"2026-10-19T09:00:00.000Z\"]],\"c\":[]},\"d\":1}",
+            "p:color": "{\"a\":[[\"val\",\"123456\"]]}",
+            "p:customKeep": "{\"a\":[[\"val\",\"keep\"]]}"
+          }
+        },
+        {
+          "insert": "Changed",
+          "attributes": {
+            "r": "{\"i\":\"lid:35d92443dc0a244f9ffff4b3bfc9ffca:18\"}",
+            "rp": "{\"i\":\"lid:35d92443dc0a244f9ffff4b3bfc9ffca:19\",\"o\":[\"p:b\",\"p:color\",\"p:customKeep\"]}",
+            "t": "{\"i\":\"lid:35d92443dc0a244f9ffff4b3bfc9ffca:23\",\"v\":\"+1\"}",
+            "p:color": "{\"a\":[[\"val\",\"123456\"]]}",
+            "p:customKeep": "{\"a\":[[\"val\",\"keep\"]]}",
+            "p:b": "{}",
+            "v:lid:35d92443dc0a244f9ffff4b3bfc9ffca:17": "{\"e\":{\"i\":\"lid:35d92443dc0a244f9ffff4b3bfc9ffca:17\",\"l\":\"ins\",\"k\":\"revisionInsert\",\"a\":[[\"id\",\"136167\"],[\"author\",\"ScioBot\"],[\"date\",\"2026-10-19T09:00:00.000Z\"]],\"c\":[]},\"d\":1}"
+          }
+        }
+      ]
+    },
+    "bob": {
+      "path": "docx-package-nodes-v1//word/document.xml#0.0.0.3.2.1/inline",
+      "delta": [
+        {
+          "insert": "Two Bob",
+          "attributes": {
+            "r": "{\"i\":\"^.0\"}",
+            "rp": "{\"i\":\"^.0.0\",\"o\":[\"p:color\",\"p:customKeep\"]}",
+            "p:color": "{\"a\":[[\"val\",\"123456\"]]}",
+            "p:customKeep": "{\"a\":[[\"val\",\"keep\"]]}",
+            "t": "{\"i\":\"^.0.1\",\"v\":\"^.0\"}"
+          }
+        }
+      ]
+    },
+    "merged": {
+      "path": "docx-package-nodes-v1//word/document.xml#0.0.0.3.2.1/inline",
+      "delta": [
+        {
+          "insert": "Two Bob",
+          "attributes": {
+            "r": "{\"i\":\"lid:35d92443dc0a244f9ffff4b3bfc9ffca:6\"}",
+            "rp": "{\"i\":\"lid:35d92443dc0a244f9ffff4b3bfc9ffca:7\",\"o\":[\"p:b\",\"p:color\",\"p:customKeep\",\"p:rPrChange\"]}",
+            "p:b": "{}",
+            "p:rPrChange": "{\"a\":[[\"id\",\"5095\"],[\"author\",\"ScioBot\"],[\"date\",\"2026-10-19T09:00:00.000Z\"]],\"c\":[{\"l\":\"rPr\",\"k\":\"runProperties\",\"c\":[{\"l\":\"color\",\"a\":[[\"val\",\"123456\"]]},{\"l\":\"customKeep\",\"a\":[[\"val\",\"keep\"]]}]}]}",
+            "t": "{\"i\":\"lid:35d92443dc0a244f9ffff4b3bfc9ffca:15\",\"l\":\"delText\",\"k\":\"deletedText\",\"v\":\"+1\"}",
+            "v:lid:35d92443dc0a244f9ffff4b3bfc9ffca:5": "{\"e\":{\"i\":\"lid:35d92443dc0a244f9ffff4b3bfc9ffca:5\",\"l\":\"del\",\"k\":\"revisionDelete\",\"a\":[[\"id\",\"70631\"],[\"author\",\"ScioBot\"],[\"date\",\"2026-10-19T09:00:00.000Z\"]],\"c\":[]},\"d\":1}",
+            "p:color": "{\"a\":[[\"val\",\"123456\"]]}",
+            "p:customKeep": "{\"a\":[[\"val\",\"keep\"]]}"
+          }
+        },
+        {
+          "insert": "Changed",
+          "attributes": {
+            "r": "{\"i\":\"lid:35d92443dc0a244f9ffff4b3bfc9ffca:18\"}",
+            "rp": "{\"i\":\"lid:35d92443dc0a244f9ffff4b3bfc9ffca:19\",\"o\":[\"p:b\",\"p:color\",\"p:customKeep\"]}",
+            "t": "{\"i\":\"lid:35d92443dc0a244f9ffff4b3bfc9ffca:23\",\"v\":\"+1\"}",
+            "p:color": "{\"a\":[[\"val\",\"123456\"]]}",
+            "p:customKeep": "{\"a\":[[\"val\",\"keep\"]]}",
+            "p:b": "{}",
+            "v:lid:35d92443dc0a244f9ffff4b3bfc9ffca:17": "{\"e\":{\"i\":\"lid:35d92443dc0a244f9ffff4b3bfc9ffca:17\",\"l\":\"ins\",\"k\":\"revisionInsert\",\"a\":[[\"id\",\"136167\"],[\"author\",\"ScioBot\"],[\"date\",\"2026-10-19T09:00:00.000Z\"]],\"c\":[]},\"d\":1}"
+          }
+        }
+      ]
+    }
+  },
+  "views": [
+    "| A | B |\n| --- | --- |\n| One | Two Bob |\n\nTail",
+    "| A | B |\n| --- | --- |\n| One | **Changed** |\n\nTail"
+  ],
+  "finding": "The merged Two Bob segment has the same deletion and formatting attributes as the proposer's observed Two. The provider expands revision scope to the unseen peer suffix before native materialization."
+}

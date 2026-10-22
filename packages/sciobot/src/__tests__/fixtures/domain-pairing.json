@@ -1,0 +1,793 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "revision": "da9081adad1b54d17d9f24647adfd117bdffb942",
+    "files": {
+      "src/components/lesson-plan/diff-strategy.ts": "29f7138d83424493ed34102ca3a974b25019cb22859cee5ce86c59bb44793f99",
+      "src/components/source/diff-strategy.ts": "4d347374774a3d8b574faff5024022f7bccb05c845188b8f8a944344ffb61fc5",
+      "node_modules/@platejs/diff/dist/index.js": "208cd97e3c489ac30a38b714903f15029c7ed1bed8b541a60a62c785289eb828"
+    }
+  },
+  "cases": [
+    {
+      "name": "phase child edit",
+      "before": {
+        "type": "lesson_phase",
+        "phaseType": "evocation",
+        "children": [
+          {
+            "type": "p",
+            "children": [
+              {
+                "text": "Old question"
+              }
+            ]
+          }
+        ]
+      },
+      "after": {
+        "type": "lesson_phase",
+        "phaseType": "evocation",
+        "children": [
+          {
+            "type": "p",
+            "children": [
+              {
+                "text": "New question"
+              }
+            ]
+          }
+        ]
+      },
+      "strategy": {
+        "kind": "container",
+        "identityProps": ["phaseType"]
+      },
+      "retainsContainer": true,
+      "rootChanges": [],
+      "update": null
+    },
+    {
+      "name": "phase type replacement",
+      "before": {
+        "type": "lesson_phase",
+        "phaseType": "evocation",
+        "children": [
+          {
+            "type": "p",
+            "children": [
+              {
+                "text": "Old question"
+              }
+            ]
+          }
+        ]
+      },
+      "after": {
+        "type": "lesson_phase",
+        "phaseType": "reflection",
+        "children": [
+          {
+            "type": "p",
+            "children": [
+              {
+                "text": "New question"
+              }
+            ]
+          }
+        ]
+      },
+      "strategy": {
+        "kind": "container",
+        "identityProps": ["phaseType"]
+      },
+      "retainsContainer": false,
+      "rootChanges": ["delete", "insert"],
+      "update": null
+    },
+    {
+      "name": "recap phase replacement",
+      "before": {
+        "type": "recap_phase",
+        "phaseType": "evocation",
+        "children": [
+          {
+            "type": "p",
+            "children": [
+              {
+                "text": "Old question"
+              }
+            ]
+          }
+        ]
+      },
+      "after": {
+        "type": "recap_phase",
+        "phaseType": "reflection",
+        "children": [
+          {
+            "type": "p",
+            "children": [
+              {
+                "text": "New question"
+              }
+            ]
+          }
+        ]
+      },
+      "strategy": {
+        "kind": "container",
+        "identityProps": ["phaseType"]
+      },
+      "retainsContainer": false,
+      "rootChanges": ["delete", "insert"],
+      "update": null
+    },
+    {
+      "name": "title grade replacement",
+      "before": {
+        "type": "lesson_title",
+        "grade": "7",
+        "children": [
+          {
+            "type": "p",
+            "children": [
+              {
+                "text": "Old question"
+              }
+            ]
+          }
+        ]
+      },
+      "after": {
+        "type": "lesson_title",
+        "grade": "8",
+        "children": [
+          {
+            "type": "p",
+            "children": [
+              {
+                "text": "New question"
+              }
+            ]
+          }
+        ]
+      },
+      "strategy": {
+        "kind": "container",
+        "identityProps": ["grade"]
+      },
+      "retainsContainer": false,
+      "rootChanges": ["delete", "insert"],
+      "update": null
+    },
+    {
+      "name": "deep equal identity",
+      "before": {
+        "type": "lesson_title",
+        "grade": {
+          "label": "7",
+          "track": ["A"]
+        },
+        "children": [
+          {
+            "type": "p",
+            "children": [
+              {
+                "text": "Old question"
+              }
+            ]
+          }
+        ]
+      },
+      "after": {
+        "type": "lesson_title",
+        "grade": {
+          "track": ["A"],
+          "label": "7"
+        },
+        "children": [
+          {
+            "type": "p",
+            "children": [
+              {
+                "text": "New question"
+              }
+            ]
+          }
+        ]
+      },
+      "strategy": {
+        "kind": "container",
+        "identityProps": ["grade"]
+      },
+      "retainsContainer": true,
+      "rootChanges": [],
+      "update": null
+    },
+    {
+      "name": "curriculum source replacement",
+      "before": {
+        "type": "recap_curriculum",
+        "framework": "RVP",
+        "source": "catalog",
+        "children": [
+          {
+            "type": "p",
+            "children": [
+              {
+                "text": "Old question"
+              }
+            ]
+          }
+        ]
+      },
+      "after": {
+        "type": "recap_curriculum",
+        "framework": "RVP",
+        "source": "school",
+        "children": [
+          {
+            "type": "p",
+            "children": [
+              {
+                "text": "New question"
+              }
+            ]
+          }
+        ]
+      },
+      "strategy": {
+        "kind": "container",
+        "identityProps": ["framework", "source"]
+      },
+      "retainsContainer": false,
+      "rootChanges": ["delete", "insert"],
+      "update": null
+    },
+    {
+      "name": "preparation_recap children",
+      "before": {
+        "type": "preparation_recap",
+        "children": [
+          {
+            "type": "p",
+            "children": [
+              {
+                "text": "Old question"
+              }
+            ]
+          }
+        ]
+      },
+      "after": {
+        "type": "preparation_recap",
+        "children": [
+          {
+            "type": "p",
+            "children": [
+              {
+                "text": "New question"
+              }
+            ]
+          }
+        ]
+      },
+      "strategy": {
+        "kind": "container"
+      },
+      "retainsContainer": true,
+      "rootChanges": [],
+      "update": null
+    },
+    {
+      "name": "recap_goals children",
+      "before": {
+        "type": "recap_goals",
+        "children": [
+          {
+            "type": "p",
+            "children": [
+              {
+                "text": "Old question"
+              }
+            ]
+          }
+        ]
+      },
+      "after": {
+        "type": "recap_goals",
+        "children": [
+          {
+            "type": "p",
+            "children": [
+              {
+                "text": "New question"
+              }
+            ]
+          }
+        ]
+      },
+      "strategy": {
+        "kind": "container"
+      },
+      "retainsContainer": true,
+      "rootChanges": [],
+      "update": null
+    },
+    {
+      "name": "recap_materials children",
+      "before": {
+        "type": "recap_materials",
+        "children": [
+          {
+            "type": "p",
+            "children": [
+              {
+                "text": "Old question"
+              }
+            ]
+          }
+        ]
+      },
+      "after": {
+        "type": "recap_materials",
+        "children": [
+          {
+            "type": "p",
+            "children": [
+              {
+                "text": "New question"
+              }
+            ]
+          }
+        ]
+      },
+      "strategy": {
+        "kind": "container"
+      },
+      "retainsContainer": true,
+      "rootChanges": [],
+      "update": null
+    },
+    {
+      "name": "recap_adaptations children",
+      "before": {
+        "type": "recap_adaptations",
+        "children": [
+          {
+            "type": "p",
+            "children": [
+              {
+                "text": "Old question"
+              }
+            ]
+          }
+        ]
+      },
+      "after": {
+        "type": "recap_adaptations",
+        "children": [
+          {
+            "type": "p",
+            "children": [
+              {
+                "text": "New question"
+              }
+            ]
+          }
+        ]
+      },
+      "strategy": {
+        "kind": "container"
+      },
+      "retainsContainer": true,
+      "rootChanges": [],
+      "update": null
+    },
+    {
+      "name": "recap own property replacement",
+      "before": {
+        "type": "recap_goals",
+        "extra": "old",
+        "children": [
+          {
+            "type": "p",
+            "children": [
+              {
+                "text": "Old question"
+              }
+            ]
+          }
+        ]
+      },
+      "after": {
+        "type": "recap_goals",
+        "extra": "new",
+        "children": [
+          {
+            "type": "p",
+            "children": [
+              {
+                "text": "New question"
+              }
+            ]
+          }
+        ]
+      },
+      "strategy": {
+        "kind": "container"
+      },
+      "retainsContainer": false,
+      "rootChanges": ["delete", "insert"],
+      "update": null
+    },
+    {
+      "name": "activity name and duration",
+      "before": {
+        "type": "lesson_activity",
+        "name": "Warmup",
+        "duration": 10,
+        "children": [
+          {
+            "type": "p",
+            "children": [
+              {
+                "text": "Old question"
+              }
+            ]
+          }
+        ]
+      },
+      "after": {
+        "type": "lesson_activity",
+        "name": "Opening",
+        "duration": 15,
+        "children": [
+          {
+            "type": "p",
+            "children": [
+              {
+                "text": "New question"
+              }
+            ]
+          }
+        ]
+      },
+      "strategy": {
+        "kind": "container",
+        "updateProps": ["name", "duration"]
+      },
+      "retainsContainer": true,
+      "rootChanges": [],
+      "update": {
+        "old": {
+          "name": "Warmup",
+          "duration": 10
+        },
+        "next": {
+          "name": "Opening",
+          "duration": 15
+        }
+      }
+    },
+    {
+      "name": "activity resource only",
+      "before": {
+        "type": "lesson_activity",
+        "name": "Warmup",
+        "duration": 10,
+        "resource": "A",
+        "children": [
+          {
+            "type": "p",
+            "children": [
+              {
+                "text": "Old question"
+              }
+            ]
+          }
+        ]
+      },
+      "after": {
+        "type": "lesson_activity",
+        "name": "Warmup",
+        "duration": 10,
+        "resource": "B",
+        "children": [
+          {
+            "type": "p",
+            "children": [
+              {
+                "text": "New question"
+              }
+            ]
+          }
+        ]
+      },
+      "strategy": {
+        "kind": "container",
+        "updateProps": ["name", "duration"]
+      },
+      "retainsContainer": false,
+      "rootChanges": ["delete", "insert"],
+      "update": null
+    },
+    {
+      "name": "activity resource with duration",
+      "before": {
+        "type": "lesson_activity",
+        "name": "Warmup",
+        "duration": 10,
+        "resource": "A",
+        "children": [
+          {
+            "type": "p",
+            "children": [
+              {
+                "text": "Old question"
+              }
+            ]
+          }
+        ]
+      },
+      "after": {
+        "type": "lesson_activity",
+        "name": "Warmup",
+        "duration": 15,
+        "resource": "B",
+        "children": [
+          {
+            "type": "p",
+            "children": [
+              {
+                "text": "New question"
+              }
+            ]
+          }
+        ]
+      },
+      "strategy": {
+        "kind": "container",
+        "updateProps": ["name", "duration"]
+      },
+      "retainsContainer": true,
+      "rootChanges": [],
+      "update": {
+        "old": {
+          "duration": 10
+        },
+        "next": {
+          "duration": 15
+        }
+      }
+    },
+    {
+      "name": "ignored generated properties",
+      "before": {
+        "type": "lesson_activity",
+        "id": "old",
+        "listStart": 2,
+        "name": "Warmup",
+        "children": [
+          {
+            "type": "p",
+            "children": [
+              {
+                "text": "Old question"
+              }
+            ]
+          }
+        ]
+      },
+      "after": {
+        "type": "lesson_activity",
+        "id": "new",
+        "listStart": 3,
+        "name": "Warmup",
+        "children": [
+          {
+            "type": "p",
+            "children": [
+              {
+                "text": "New question"
+              }
+            ]
+          }
+        ]
+      },
+      "strategy": {
+        "kind": "container",
+        "updateProps": ["name", "duration"]
+      },
+      "retainsContainer": true,
+      "rootChanges": [],
+      "update": null
+    },
+    {
+      "name": "source excerpt children",
+      "before": {
+        "type": "source_excerpt",
+        "url": "https://a.example",
+        "trust": "verified",
+        "children": [
+          {
+            "type": "p",
+            "children": [
+              {
+                "text": "Old question"
+              }
+            ]
+          }
+        ]
+      },
+      "after": {
+        "type": "source_excerpt",
+        "url": "https://a.example",
+        "trust": "verified",
+        "children": [
+          {
+            "type": "p",
+            "children": [
+              {
+                "text": "New question"
+              }
+            ]
+          }
+        ]
+      },
+      "strategy": {
+        "kind": "container",
+        "identityProps": ["url", "title", "author", "bookId", "trust"]
+      },
+      "retainsContainer": true,
+      "rootChanges": [],
+      "update": null
+    },
+    {
+      "name": "source excerpt citation replacement",
+      "before": {
+        "type": "source_excerpt",
+        "url": "https://a.example",
+        "trust": "verified",
+        "children": [
+          {
+            "type": "p",
+            "children": [
+              {
+                "text": "Old question"
+              }
+            ]
+          }
+        ]
+      },
+      "after": {
+        "type": "source_excerpt",
+        "url": "https://b.example",
+        "trust": "verified",
+        "children": [
+          {
+            "type": "p",
+            "children": [
+              {
+                "text": "New question"
+              }
+            ]
+          }
+        ]
+      },
+      "strategy": {
+        "kind": "container",
+        "identityProps": ["url", "title", "author", "bookId", "trust"]
+      },
+      "retainsContainer": false,
+      "rootChanges": ["delete", "insert"],
+      "update": null
+    },
+    {
+      "name": "lesson_visual atomic",
+      "before": {
+        "type": "lesson_visual",
+        "children": [
+          {
+            "type": "p",
+            "children": [
+              {
+                "text": "Old question"
+              }
+            ]
+          }
+        ]
+      },
+      "after": {
+        "type": "lesson_visual",
+        "children": [
+          {
+            "type": "p",
+            "children": [
+              {
+                "text": "New question"
+              }
+            ]
+          }
+        ]
+      },
+      "strategy": {
+        "kind": "atomic"
+      },
+      "retainsContainer": false,
+      "rootChanges": ["delete", "insert"],
+      "update": null
+    },
+    {
+      "name": "listening atomic",
+      "before": {
+        "type": "listening",
+        "children": [
+          {
+            "type": "p",
+            "children": [
+              {
+                "text": "Old question"
+              }
+            ]
+          }
+        ]
+      },
+      "after": {
+        "type": "listening",
+        "children": [
+          {
+            "type": "p",
+            "children": [
+              {
+                "text": "New question"
+              }
+            ]
+          }
+        ]
+      },
+      "strategy": {
+        "kind": "atomic"
+      },
+      "retainsContainer": false,
+      "rootChanges": ["delete", "insert"],
+      "update": null
+    },
+    {
+      "name": "source atomic",
+      "before": {
+        "type": "source",
+        "children": [
+          {
+            "type": "p",
+            "children": [
+              {
+                "text": "Old question"
+              }
+            ]
+          }
+        ]
+      },
+      "after": {
+        "type": "source",
+        "children": [
+          {
+            "type": "p",
+            "children": [
+              {
+                "text": "New question"
+              }
+            ]
+          }
+        ]
+      },
+      "strategy": {
+        "kind": "atomic"
+      },
+      "retainsContainer": false,
+      "rootChanges": ["delete", "insert"],
+      "update": null
+    }
+  ]
+}

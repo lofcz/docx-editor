@@ -28,6 +28,12 @@ export interface CommentRecord {
 }
 
 // @public
+export interface ContentTypeIndex {
+    readonly defaults: ReadonlyMap<string, string>;
+    readonly overrides: ReadonlyMap<string, string>;
+}
+
+// @public
 export interface EditorModule {
     readonly collaboration?: CollaborationModuleContribution;
     readonly customNodePayloadNamespaces?: readonly string[];
@@ -54,6 +60,31 @@ export interface EditorModuleRegistry {
 }
 
 // @public
+export interface OoxmlExternalTarget {
+    // (undocumented)
+    readonly id: string;
+    // (undocumented)
+    readonly ownerPart: string;
+    // (undocumented)
+    readonly rawTarget: string;
+    readonly sinkSafe: boolean;
+    // (undocumented)
+    readonly type: string;
+}
+
+// @public
+export interface OoxmlPackage {
+    // (undocumented)
+    readonly contentTypes: ContentTypeIndex;
+    // (undocumented)
+    readonly externalTargets: readonly OoxmlExternalTarget[];
+    readonly mainDocumentPart: string;
+    readonly partBytes: ReadonlyMap<string, Uint8Array>;
+    readonly parts: ReadonlyMap<string, OoxmlPart>;
+    readonly relationships: ReadonlyMap<string, readonly RelationshipRecord[]>;
+}
+
+// @public
 export interface OoxmlPart {
     // (undocumented)
     readonly contentType: string;
@@ -62,6 +93,22 @@ export interface OoxmlPart {
     readonly name: string;
     // (undocumented)
     readonly root: OoxmlElement;
+}
+
+// @public
+export interface RelationshipRecord {
+    // (undocumented)
+    readonly id: string;
+    // (undocumented)
+    readonly order: number;
+    // (undocumented)
+    readonly ownerPart: string;
+    // (undocumented)
+    readonly rawTarget: string;
+    // (undocumented)
+    readonly targetMode: TargetMode;
+    // (undocumented)
+    readonly type: string;
 }
 
 // @public
@@ -131,6 +178,7 @@ export interface ReviewModuleContribution {
     readonly createRevisionMarkupDialog?: (host: RevisionMarkupDialogHost) => RevisionMarkupDialog;
     readonly displayModes: readonly ReviewDisplayMode[];
     readonly pane?: ReviewPaneOptions;
+    readonly reservedRevisionIds?: RevisionIdReservationSource;
     readonly revisionItemsOfParagraph: (part: OoxmlPart, paragraphId: string) => readonly ReviewRevisionItem[];
 }
 
@@ -210,6 +258,17 @@ export interface RevisionAddress {
 export type RevisionDisplayMode = 'all-markup' | 'proposed' | 'original';
 
 // @public
+export interface RevisionIdReservation {
+    // (undocumented)
+    readonly ids: readonly string[];
+    // (undocumented)
+    readonly partName: string;
+}
+
+// @public
+export type RevisionIdReservationSource = (pkg: OoxmlPackage) => readonly RevisionIdReservation[];
+
+// @public
 export interface RevisionMarkupDialog {
     // (undocumented)
     destroy(): void;
@@ -224,5 +283,8 @@ export interface RevisionMarkupDialogHost extends RevisionMarkupDialogSession {
     // (undocumented)
     readonly translate?: (key: string) => string | undefined;
 }
+
+// @public
+export type TargetMode = 'Internal' | 'External';
 
 ```

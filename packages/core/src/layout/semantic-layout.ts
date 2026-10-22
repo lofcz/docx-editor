@@ -184,6 +184,7 @@ import {
   layoutSemanticDocumentWithNotesSteps,
 } from './note-pagination.ts';
 import { closingSpaceAfterPt } from './note-area-fit.ts';
+import { blockReservationToken, reservedAfterOf } from './block-reservations.ts';
 import { passProducerOf } from './pass-producer.ts';
 import { documentProjectionProducer } from './document-property-context.ts';
 
@@ -213,10 +214,7 @@ import { withInterimLayout, withRelabeledProgress } from './interim-layout.ts';
 import { layoutWithFurnitureRetry } from './furniture-retry-layout.ts';
 import { drainLayoutSteps, stepsInFieldResultsMode, type LayoutSteps } from './layout-steps.ts';
 import { preparedBlocks } from './prepared-block-memo.ts';
-import {
-  type BlockLayoutOptions as ColumnBalanceBlockLayoutOptions,
-  type BlockLayoutResult,
-} from './column-balance-layout.ts';
+import { type BlockLayoutResult } from './column-balance-layout.ts';
 
 export {
   createLayoutSession,
@@ -227,18 +225,11 @@ export {
 // they are re-exported here because this module is the import site every caller already has.
 export { type HeaderFooterVariantName, type PageFurniture } from './page-furniture-insets.ts';
 
-import type { SemanticLayoutOptions } from './semantic-layout-options.ts';
-export type { SemanticLayoutOptions } from './semantic-layout-options.ts';
+import type { SemanticLayoutOptions, BlockLayoutOptions } from './semantic-layout-options.ts';
+export type { SemanticLayoutOptions, BlockLayoutOptions } from './semantic-layout-options.ts';
 import type { PreparedBlock, SectionPrepass } from './section-prepass-types.ts';
 import { sectionFlowKeys } from './section-flow-keys.ts';
 export type { SectionPrepass } from './section-prepass-types.ts';
-
-export type BlockLayoutOptions = ColumnBalanceBlockLayoutOptions<SemanticLayoutOptions> & {
-  readonly disabledParagraphFrameIds?: ReadonlySet<string>;
-  readonly paragraphFrameFallbackRound?: number;
-  /** Set by the one retry of `layoutBlocksWithGeometry`: hidden furniture zones yield. */
-  readonly yieldHiddenFurnitureZones?: boolean;
-};
 
 /**
  * Lay one story part out into pages.
@@ -776,7 +767,8 @@ function* layoutBlocksPass(
           : options.drawingLayoutToken || '';
     const projectionToken = `${
       block.kind === 'paragraph'
-        ? styleSeparatorToken(block, options.projectionTokenForParagraph)
+        ? styleSeparatorToken(block, options.projectionTokenForParagraph) +
+          blockReservationToken(options.blockReservations, block.id)
         : block.kind === 'table' && options.projectionTokenForParagraph
           ? (options.projectionTokenForTable?.(block) ??
             aggregateParagraphTokensForTableBlock(block, options.projectionTokenForParagraph))
@@ -963,7 +955,7 @@ function* layoutBlocksPass(
   const projectionEpoch =
     options.projectionTokenForParagraph !== undefined && options.projectionEpoch === undefined
       ? null
-      : (options.projectionEpoch ?? '');
+      : (options.projectionEpoch ?? '') + (options.blockReservations?.epoch ?? '');
   const framePolicy =
     sectionPrep.framePolicy(columns.count, options.disabledParagraphFrameIds) +
     `|${options.paragraphLineUnitPt ?? '-'}`;
@@ -2122,6 +2114,12 @@ function* layoutBlocksPass(
       flowNeighbourStyle(paragraph, -1, previousEntry, styleCascade),
       flowNeighbourStyle(paragraph, 1, nextEntry, styleCascade)
     );
+    // A host widget's flow room after the paragraph. It joins after contextual suppression
+    // and stays outside the paragraph's box: the room belongs to the rendered widget, so the
+    // paragraph, its control boundary, and hit testing keep their native extent.
+    const reservedAfter = collapsedMark
+      ? 0
+      : reservedAfterOf(options.blockReservations, paragraphId);
     const rebreakInCurrentColumn = (startOffset: number, placedParagraphStartY?: number): void => {
       const next = prepareBlock(paragraph, columnWidth());
       if (next.kind !== 'paragraph') return;
@@ -2332,7 +2330,7 @@ function* layoutBlocksPass(
         outdent: paragraphBoxOutdent(indent, rtl),
         drawn: !breakLinesOnly,
       });
-      if (isLast) cursorY = Math.max(cursorY, bottom);
+      if (isLast) cursorY = Math.max(cursorY, bottom + reservedAfter);
       // A resolved view lays a run of paragraphs out as one. The layout is what the document
       // becomes; the identity has to stay what the document HAS, or an edit in the merged half
       // addresses a position the store does not hold.
@@ -2768,7 +2766,10 @@ function* layoutBlocksPass(
     }
     flushFragment(true);
     releasePlacedBreaks(paragraphId);
-    previousSpaceAfter = collapsingSpaceAfter(endedWithPageBreak ? 0 : spacing.after, styleCascade);
+    previousSpaceAfter = collapsingSpaceAfter(
+      endedWithPageBreak ? 0 : spacing.after + reservedAfter,
+      styleCascade
+    );
     if (savedFrameFlow) {
       cursorY = savedFrameFlow.cursorY;
       previousSpaceAfter = savedFrameFlow.previousSpaceAfter;

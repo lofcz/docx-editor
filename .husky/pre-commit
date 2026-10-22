@@ -24,6 +24,12 @@ run_check 'staged formatting and lint' npx lint-staged
 # what this commit adds. It compares against the merge base with main; a checkout without a
 # main ref (a shallow clone, a fork) skips it and leaves CI to enforce it.
 collaboration_base=$(git merge-base HEAD origin/main 2>/dev/null || git merge-base HEAD main 2>/dev/null)
+# A fork can pull upstream while origin/main still points to an older release.
+# Use the newest merged base so upstream's test renames remain merged policy records.
+upstream_base=$(git merge-base HEAD upstream/main 2>/dev/null)
+if [ -n "$upstream_base" ] && { [ -z "$collaboration_base" ] || git merge-base --is-ancestor "$collaboration_base" "$upstream_base"; }; then
+  collaboration_base="$upstream_base"
+fi
 if [ -n "$collaboration_base" ]; then
   run_check 'collaboration policy' node scripts/collaboration/cli.mjs check --base "$collaboration_base"
 else

@@ -1,0 +1,24 @@
+{
+  "name": "docx-editor-example-react-blocks",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 5188",
+    "build": "vite build",
+    "typecheck": "bun check -p tsconfig.json"
+  },
+  "dependencies": {
+    "@docx-editor.dev/core": "workspace:*",
+    "@docx-editor.dev/react": "workspace:*",
+    "@docx-editor.dev/i18n": "workspace:*",
+    "fflate": "^0.8.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "@docx-editor.dev/fonts": "workspace:*"
+  },
+  "devDependencies": {
+    "@docx-editor.dev/pro": "workspace:*",
+    "yjs": "^13.6.32",
+    "y-protocols": "^1.0.7"
+  }
+}

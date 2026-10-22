@@ -1,0 +1,15 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Target AST positions addressed normalized Markdown, but native projection source maps addressed the original string. The parser retained no exact coordinate trace for HTML-break rewrites or inserted list separators.",
+  "after": "The existing string normalizers record their actual changes. Parsed targets retain an immutable UTF-16 trace with source range helpers, rewritten-boundary refusal, generated-span flags, and surrogate protection. Existing normalized strings and AST behavior remain unchanged.",
+  "reason": "This private read trace creates no native identities, document nodes, operations, relationships, live writes, or shared state. Original projection maps and native ownership checks remain authoritative. Native document, payload, collaboration, and journal formats stay unchanged.",
+  "tests": [
+    "packages/sciobot/src/projection/target-source-map.test.ts",
+    "packages/sciobot/src/projection/parse-target.test.ts",
+    "packages/sciobot/src/diff/logical-blocks.test.ts",
+    "packages/sciobot/src/diff/target-source.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

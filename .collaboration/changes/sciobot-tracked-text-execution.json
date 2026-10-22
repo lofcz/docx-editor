@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The private adapter could plan paragraph text but could not apply native review proposals.",
+  "after": "The private adapter applies guarded text plans through existing native tracked operations and returns native review addresses.",
+  "reason": "Private adapter code uses existing native operations. Shared formats, journal schemas, and transport behavior stay unchanged.",
+  "tests": [
+    "packages/sciobot/src/review/track-text.test.ts",
+    "packages/sciobot/src/review/track-text-collaboration.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

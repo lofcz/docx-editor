@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The private adapter had no canonical sibling block planner.",
+  "after": "A pure planner retains native sibling identities and emits anchored structural gaps with separate changed content pairs.",
+  "reason": "Private plans use existing canonical addresses and AST fragments. Shared operations, schemas, and collaboration transport formats stay unchanged.",
+  "tests": [
+    "packages/sciobot/src/diff/sibling-blocks.test.ts",
+    "packages/sciobot/src/diff/plan.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

@@ -1,0 +1,14 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Later AI waves had no pure revision-bound plan for removing selected owned native and application proposals.",
+  "after": "A private pure planner validates complete explicit ownership receipts, previews exact native inverses, preserves foreign revision identities, and returns frozen operations and metadata intents.",
+  "reason": "Planning does not mutate canonical packages, live editors, history, payload records, native revisions, journals, or collaboration state. The plan carries no canonical snapshots. R25 retains fresh live preflight, atomic application, history and collaboration. R52 separately fixes the native empty paragraph counterexample. No published API, runtime dependency or shared format changes are introduced by this private planner.",
+  "tests": [
+    "packages/sciobot/src/review/owned-proposal-plan.test.ts",
+    "packages/sciobot/src/review/committed-view.test.ts",
+    "packages/sciobot/src/review/working-view.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

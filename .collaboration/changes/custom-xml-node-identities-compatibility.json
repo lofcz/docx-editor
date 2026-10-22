@@ -1,0 +1,13 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Updating imported custom XML payloads replaced their canonical wrapper and value identities, so collaboration undo could leave an empty node beside the restored original.",
+  "after": "Updates retain imported wrapper and value identities, preserve unrelated XML, and restore a valid payload store through undo and redo.",
+  "reason": "The corrected writer emits existing attribute and text edits on existing identities. Unchanged provider readers already interpret those operations. No shared schema, protocol, or materialization rules change.",
+  "tests": [
+    "packages/core/src/store/package/__tests__/custom-xml-node-identities.test.ts",
+    "packages/sciobot/src/react-blocks/host.test.tsx"
+  ],
+  "changeset": "custom-xml-node-identities",
+  "migration": null
+}

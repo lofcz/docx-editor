@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Native part lookup required a canonical part prefix in every node ID.",
+  "after": "Local collaboration IDs resolve through live native package indexes, keeping review decisions available after history changes.",
+  "reason": "The lookup opens no story stores and changes no shared operations, schemas, or transport formats.",
+  "tests": [
+    "packages/core/src/editor/__tests__/local-node-part-routing.test.ts",
+    "packages/sciobot/src/review/track-table-cells-collaboration.test.ts"
+  ],
+  "changeset": "local-collaboration-node-routing",
+  "migration": null
+}

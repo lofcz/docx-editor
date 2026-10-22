@@ -24,6 +24,7 @@ import {
 import type { OoxmlNode, OoxmlPart } from './ooxml-tree.ts';
 import { isInlineRunContainer, WML_NAMESPACE_URI } from './ooxml-shared.ts';
 import { isNormalNote } from './note-nodes.ts';
+import { hiddenRetiredParagraphs } from './retired-paragraph.ts';
 
 /** How deep transparent block wrappers may nest before the walk stops descending. */
 export const MAX_STORY_SDT_NESTING = 32;
@@ -146,7 +147,9 @@ export function collectStoryParagraphs(
   out: OoxmlNode[],
   sdtDepth: number
 ): void {
+  const hidden = hiddenRetiredParagraphs(children);
   for (const child of children) {
+    if (hidden.has(child.id)) continue;
     if (child.kind === 'paragraph') {
       out.push(child);
       continue;

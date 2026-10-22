@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The private adapter had pure canonical edit plans but no live direct executor; only immutable test oracles applied them.",
+  "after": "applyDirectPlan rechecks every planned old value, previews the complete lowering immutably, and applies it through one gated surface transaction with a separate undo unit. Identity-dependent completions (new-paragraph links and lists, new rows and columns, payload records) run in the existing after-allocation package-edit phase.",
+  "reason": "Application-owned composition of existing native operations and package-edit hooks. No native operation, shared state, payload schema, or journal format changes. Suggestion mode refuses instead of disabling tracking. Two real sessions verify concurrent peer text, undo/redo, deletion during peer editing, remote caret geometry, and saved convergence. The private package needs no published changeset or public API extraction.",
+  "tests": [
+    "packages/sciobot/src/ai/apply-direct.test.ts",
+    "packages/sciobot/src/diff/target-c01-matrix.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

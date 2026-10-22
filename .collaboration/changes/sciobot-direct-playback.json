@@ -1,0 +1,10 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Direct AI edits recorded pending ledger changes but had no presentation; pending changes stayed unrevealed until a host revealed them.",
+  "after": "playDirectChanges presents the pending changes of one committed direct edit with fixed-position overlays and a labelled AI caret, reveals each target through the native reveal API, reveals each change in the ledger as its step ends, and caps a burst at 4000 ms.",
+  "reason": "Presentation only. Playback reads the canonical part and painted fragments and never writes the document, shared state, payloads, or journals; cancelling keeps the committed edit.",
+  "tests": ["packages/sciobot/src/ai/playback.test.ts", "e2e/sciobot-playback.spec.ts"],
+  "changeset": null,
+  "migration": null
+}

@@ -1,0 +1,15 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Cell merge and split had no tracked form, and suggesting mode refused them.",
+  "after": "mergeTableCells and splitTableCell accept revision attribution. Splits write cellIns, row ins, tcPrChange, tblGridChange, and tblPrChange markup; merges write cellDel, cellMerge, and a tracked paragraph insertion of the gathered content. Existing review decisions resolve them. Resolved views read pending cellMerge values.",
+  "reason": "The optional local operation field lowers to existing canonical primitive edits. The merge computes its content layout from a scratch direct merge outside journal capture, so peers receive only the tracked markup. No shared journal or transport field changes.",
+  "tests": [
+    "packages/core/src/store/__tests__/tracked-table-merges.test.ts",
+    "packages/core/src/layout/__tests__/table-cell-revision-view.test.ts",
+    "packages/sciobot/src/review/track-table-merges.test.ts",
+    "packages/sciobot/src/review/track-table-merges-collaboration.test.ts"
+  ],
+  "changeset": "tracked-table-merges",
+  "migration": null
+}

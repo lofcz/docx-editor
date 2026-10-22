@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The private adapter planned native column insertions and deletions but had no guarded tracked executor for them.",
+  "after": "trackTableColumnPlan applies D09 column operations and D17 rich column intents as native tracked column revisions in one gated, separately undoable transaction, with new cell content under the cell insertions.",
+  "reason": "The executor reuses the native tracked column operation, package hooks, and review decisions. It adds no shared operation, schema, or transport field.",
+  "tests": [
+    "packages/sciobot/src/review/track-table-columns.test.ts",
+    "packages/sciobot/src/review/track-table-columns-collaboration.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

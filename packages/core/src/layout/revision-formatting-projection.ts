@@ -1,3 +1,4 @@
+import { isRetiredParagraphMarker } from '../store/package/retired-paragraph.ts';
 import { withoutUnlistedChanges } from './revision-hidden-sites.ts';
 import { WML_NAMESPACE_URI, type OoxmlElement, type OoxmlNode } from '@docx-editor.dev/core/store';
 import { MAX_XML_DEPTH } from '../store/package/xml-reader.ts';
@@ -47,6 +48,16 @@ export function resolvedFormatChangeOf(
       : null;
   return change && filter?.unlisted?.sites.has(change.nodeId) ? null : change;
 }
+
+/** Table property containers and the records that restore them in the Original view. */
+const TABLE_CHANGES: ReadonlyMap<string, string> = new Map([
+  ['tblPr', 'tblPrChange'],
+  ['tblPrEx', 'tblPrExChange'],
+  ['tblGrid', 'tblGridChange'],
+  ['trPr', 'trPrChange'],
+  ['tcPr', 'tcPrChange'],
+]);
+const TABLE_STRUCTURE_MARKERS = ['ins', 'del', 'cellIns', 'cellDel', 'cellMerge'];
 
 function named(node: OoxmlNode, name: string): boolean {
   return (
@@ -111,7 +122,13 @@ function projectedFormatting(
   if (cached) return cached;
   let children: readonly OoxmlNode[] = node.children;
   let resolvedChange: RevisionAttribution | null = null;
-  const changeName = named(node, 'pPr') ? 'pPrChange' : named(node, 'rPr') ? 'rPrChange' : null;
+  const changeName = named(node, 'pPr')
+    ? 'pPrChange'
+    : named(node, 'rPr')
+      ? 'rPrChange'
+      : node.namespaceUri === WML_NAMESPACE_URI
+        ? (TABLE_CHANGES.get(node.localName) ?? null)
+        : null;
   const change = changeName ? children.find((child) => named(child, changeName)) : undefined;
   if (change && change.kind !== 'textValue') {
     const attribute = (name: string): string =>
@@ -138,8 +155,20 @@ function projectedFormatting(
       if (changeName === 'pPrChange') {
         // CT_PPrBase records neither the paragraph mark nor the section break.
         children = [
-          ...recorded.filter((child) => !named(child, 'rPr') && !named(child, 'sectPr')),
-          ...children.filter((child) => named(child, 'rPr') || named(child, 'sectPr')),
+          ...recorded.filter(
+            (child) =>
+              !named(child, 'rPr') && !named(child, 'sectPr') && !isRetiredParagraphMarker(child)
+          ),
+          ...children.filter(
+            (child) =>
+              named(child, 'rPr') || named(child, 'sectPr') || isRetiredParagraphMarker(child)
+          ),
+        ];
+      } else if (changeName !== 'rPrChange') {
+        // Table records hold properties only; row and cell structure markers stay live decisions.
+        children = [
+          ...recorded,
+          ...children.filter((child) => TABLE_STRUCTURE_MARKERS.some((name) => named(child, name))),
         ];
       } else {
         // Mark insertion/deletion remains its own decision, independent of formatting.

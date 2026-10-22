@@ -208,6 +208,16 @@ If your change lands on the properties another author's record holds, their reco
 
 Lists, indent level, and tab stops are not recorded. Changing them in suggesting mode applies the change with no card. Table property changes made in the editor are not recorded either; a `w:tblPrChange` a file already carries still renders.
 
+Canonical store integrations can propose a table column change through `insertTableColumn` or `deleteTableColumn` with `revision`. An insertion records `w:cellIns` on new cells, the old properties of every other cell, and the old grid and table width. Rejecting it restores the original table. A deletion records `w:cellDel` on the column's cells. Accepting it gives each deleted cell's width to its neighbor, as Word does. A deletion through a horizontally merged cell is refused. The Original view shows recorded table, row, and cell properties and omits proposed cells; No Markup omits deleted cells.
+
+`mergeTableCells` and `splitTableCell` also accept `revision`. A proposed split records new rows and cells as insertions and the old properties of every other cell. A proposed merge keeps the original cells: cells beside each row's first cell are marked deleted, the first cells of a multi-row merge carry `w:cellMerge`, and the gathered content arrives as a tracked insertion in the top-left cell. Accepting lands the merge; rejecting restores the original cells and content. When a merge covers every row, accepting removes a grid boundary that no row uses any more, as Word does, so the result can have fewer grid columns than a direct merge with the same cell widths.
+
+To combine edits, issue tracked text writes and a tracked merge in one `TreeDocumentStore.transact()` call. The merge resolves only wrappers that this transaction created. Earlier text proposals cause an explicit refusal when the merge must copy them. A merge preserves the original cells and revisions until review decisions resolve them.
+
+The table property commands — `setTableProperties`, `setTableColumnWidths`, `setTableRightEdgeWidth`, `setTableRowHeight`, `setTableCellBorders`, `setTableCellFill`, and `setTableCellVerticalAlignment` — also accept `revision`. Each container the command changes keeps its new values and records its old ones in `w:tblPrChange`, `w:trPrChange`, `w:tcPrChange`, or `w:tblGridChange`. Rejecting a row's record resets that row's unrecorded cells, so a changed row records every cell, and a grid change records every row. A later proposal on the same container keeps the original record, and one that lands back on the original removes its own record. Without `revision`, suggesting mode applies these commands directly, as before.
+
+`setHyperlinkTarget` accepts `revision` too. Word has no record for a link's target, so the proposal replaces the link: its runs are struck, and a copy with the new target or tooltip follows as a tracked insertion. Accepting keeps the copy; rejecting restores the original link. Relationships are never rewritten, so another link sharing the old target keeps it. A subrange retarget, and a link holding fields, notes, drawings, bookmarks, or other revisions, is refused.
+
 A document that sets `w:doNotTrackFormatting` in `settings.xml` gets no formatting records. Its text edits stay tracked.
 
 Paragraph marks stay hidden until **Review → Show paragraph breaks** is enabled, even when a review card is selected. Use the Review menu, **Cmd+8** on Mac, or **Ctrl+Shift+8** on Windows. This changes the view only, including ordinary paragraph ends (¶) and manual line breaks (↵, Shift+Enter). Tracked line-break marks use their revision color and decoration. Automatic line wraps, page breaks, and column breaks do not receive a line-break arrow. Showing these symbols does not change copied text or saved documents. Adjacent inserted text and breaks by the same author form one review decision. A decision containing only breaks shows their count.
@@ -219,6 +229,8 @@ The editor draws Word's change bar: a rule in the left margin beside every line 
 In **All Markup** the bar is a neutral gray hairline, as in Word. In **Simple Markup** the text reads as the proposed result, with no underlines, strikes, or author colors, and the bar is red and heavier beside every line a change touched, including a deleted word that is no longer shown. A click on the bar switches between Simple Markup and All Markup, as in Word. The resolved views, **No Markup** and **Original**, draw no bar. To change the bar's color or width, or to color it by change kind, see [Review colors and styling](/docs/2.x/pro/review-styling#style-the-change-bar).
 
 Use `revisionMarkup.changedLines.mark` to choose the change bar position.
+
+Paragraph decisions retain source identities for late peer text. Resolved paragraph marks join that text into the next paragraph or first table cell. DOCX export writes the equivalent ordinary Word structure. Collaboration keeps its recovery state separately.
 
 One paragraph mark can contain two decisions. For example, one author can insert a break before another author suggests its removal.
 
@@ -675,9 +687,11 @@ for (const entry of items) {
 
 A deletion and an insertion pair when all of these are true:
 
-- The insertion is the next revision in the queue after the deletion.
+- The halves are consecutive revisions in the queue, in either order.
 - Both have the same author, nesting level, and `readOnly` value.
-- The deletion ends at the same paragraph and offset where the insertion starts.
+- One half ends at the same paragraph and offset where the other half starts.
+
+If three touching halves allow either pairing, the editor keeps deletion-first pairing precedence.
 
 A pair acts as one item:
 
@@ -1064,6 +1078,26 @@ A tracked formatting change can leave the formatting unchanged. For example, it 
 - A loop over `useReview().items`, like the `AcceptAll` sample, never reaches these changes. Run the command when the file must end up without them.
 - A tracked edit that touches another author's change of this kind refuses with `edit.tracked-foreign-revision-unsupported`, and the diagnostic message names this case.
 
+## Reserve revision IDs retained by a host
+
+Native allocation excludes live Word revision IDs. A host can also retain IDs after a decision removes the corresponding Word elements. Reserve those IDs before new edits, so undo cannot restore an earlier change with the same identity as a later change.
+
+A review module can supply `reservedRevisionIds` on its `ReviewModuleContribution`. The callback reads the current package before each session transaction. Return part names and retained Word IDs. Keep the callback pure. Include IDs from inactive and removed records while undo can still restore their native revisions. Core does not interpret the host's metadata.
+
+A host that constructs a package store directly can use the same source:
+
+```ts
+import { TreePackageStore } from '@docx-editor.dev/core/store';
+
+const store = new TreePackageStore(pkg, mainPart, {
+  reservedRevisionIds: () => [{ partName: '/word/document.xml', ids: ['17', '18'] }],
+});
+```
+
+Use `runWithRevisionIdReservations(reservations, callback)` around synchronous immutable preflights outside a package store. Nested scopes replace the previous reservations and restore them after return or throw. Do not return asynchronous work from the callback.
+
+Reservations do not write Word content, history, or collaboration state. Native actor allocation still applies. Text, formatting, structural revisions, attribution renumbering, and clipboard revisions use the same retained IDs. Decimal aliases such as `0017` reserve ID `17`. Strings outside Word's nonnegative signed decimal range cannot equal a newly allocated ID and are ignored. The exported `REVISION_ID_RESERVATION_LIMITS` bounds one scope. This host infrastructure API requires no review implementation or collaboration provider dependency.
+
 ## Detect review content without Pro
 
 The snapshot field `hasReviewContent` detects revisions or comment anchors without a registered review module.
@@ -1089,3 +1123,17 @@ Without the module, the editor renders revisions in their final state. It keeps 
 - [Comments](/docs/2.x/pro/comments): Add discussion threads.
 - [React composition](/docs/2.x/react/composition): Arrange React review parts.
 - [Vue composition](/docs/2.x/vue/composition): Arrange Vue review parts.
+
+Native table changes can compose within one `TreeDocumentStore` transaction. Original property histories and marker identities survive ordered row, column, merge, split, and property commands. Establish topology before geometry. A later change inside an already proposed virtual merge needs a fresh region plan and refuses atomically. Earlier pending table structure stays separate, including revisions with the same author and date. Cells carrying both insertion and deletion markers disappear from both resolved views; accepted deletion still transfers their geometry.
+
+## Native hyperlink proposals
+
+Store integrations can pass `revision` attribution to `insertHyperlink` and `removeHyperlink`. The native operations retain original runs as deletions and insert their linked or unlinked proposed copy. Acceptance keeps the proposal; rejection restores the original text, marks, and extension metadata. Relationships shared with other links stay unchanged.
+
+Tracked insertion accepts ordinary text ranges. Whole-link removal is supported; a tracked subrange removal refuses. Fields, drawings, note references, range markers, earlier revisions, and pending property histories refuse when copying them would change their ownership or identity. Exact inline revisions created in the same open native transaction can compose with link changes. Matching author, date, or revision ID does not make an imported revision part of that transaction.
+
+Native range splitting retains run and text attributes and namespace declarations. Rejection keeps the native run divisions made for a partial range, as native text revision operations do. Existing text proposals also keep their native run divisions when a later link operation wraps them. These divisions preserve text and formatting. The operations use standard Word content revision markup and require no application-owned review format.
+
+Concurrent text at the end of a link can move before the proposed copy when that proposal is accepted. Both peers converge, but the order depends on client IDs. This limit affects tracked insertion, removal, and retargeting.
+
+Retargeting can follow text revisions created in the same open native transaction. Removing a link whose text that transaction already deletes adds no empty insertion. A later link can span that deleted source wrapper; Original retains the old wrapper outside the proposed copy. Copying retains source run boundaries. Earlier or imported deletion-only wrappers remain separate and refuse this composition.

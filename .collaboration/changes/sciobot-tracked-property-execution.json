@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Stored property proposals and pure read views had no live transaction tying metadata to attributed Word fallback revisions and decisions.",
+  "after": "Private tracked property execution creates an owned record and exact native fallback revisions atomically. Acceptance commits selected attributes and fallback text; rejection retains original attributes and restores fallback text. Each decision has its own undo unit and keeps unrelated metadata, native owners, and peer text.",
+  "reason": "The private executor uses existing native text/review operations, generic custom XML records, actor attribution, and history tokens. Its record extension identifies its fallback execution metadata. No shared transport, operation schema, or version fields change. R34 supplies the additive native post-operation hook. R14/R19/R22 retain group composition, later-wave replacement, and external Word reconciliation. No published changeset or public API extraction applies to this private package.",
+  "tests": [
+    "packages/sciobot/src/review/track-properties.test.ts",
+    "packages/sciobot/src/review/track-properties-collaboration.test.ts",
+    "packages/core/src/editor/__tests__/automation-post-ops.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

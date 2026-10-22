@@ -1,0 +1,15 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Native session transactions accepted prebuilt operations and package hooks but could not plan later native operations against intermediate results.",
+  "after": "An optional synchronous native session stage reads the current working package and applies dependent operations through the existing canonical transaction context. Ordinary protection, package cleanup, actor attribution, journals and history remain authoritative. Failed and asynchronous stages publish nothing.",
+  "reason": "Stages emit the same canonical primitives and retained node identities as existing native operations. No native or private shared schema, version field, transport implementation or serialized record changes. The application-owned history scope retains the existing complete capacity preflight. R25 separately validates ownership and composes application replacement proposals.",
+  "tests": [
+    "packages/core/src/binding/__tests__/tree-session-stages.test.ts",
+    "packages/core/src/binding/__tests__/tree-session.test.ts",
+    "packages/core/src/store/__tests__/tree-package-store.test.ts",
+    "packages/sciobot/src/review/staged-review-operations-collaboration.test.ts"
+  ],
+  "changeset": "native-dependent-operation-stages",
+  "migration": null
+}

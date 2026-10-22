@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The private adapter planned hyperlink target and tooltip changes but could only apply them directly.",
+  "after": "trackHyperlinkPlan rechecks old values and the package revision, mints relationships inside the gated transaction, and proposes each retarget through the native tracked command.",
+  "reason": "The executor reuses the native tracked retarget and existing relationship minting. It adds no shared operation, schema, or transport field.",
+  "tests": [
+    "packages/sciobot/src/review/track-hyperlinks.test.ts",
+    "packages/sciobot/src/review/track-hyperlinks-collaboration.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

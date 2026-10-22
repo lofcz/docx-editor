@@ -5,13 +5,26 @@ import {
   resolveMedia,
   withExportAbort,
 } from './media-extract.ts';
-import type { MarkdownImageData, MarkdownProjectionOptions } from './media-types.ts';
+import type {
+  MarkdownImageData,
+  MarkdownProjectionOptions,
+  MarkdownLayoutOptions,
+} from './media-types.ts';
+export type {
+  MarkdownSourceBoundary,
+  MarkdownSourceMap,
+  MarkdownSourceMapOptions,
+  MarkdownSourceParagraph,
+  MarkdownSourceSlice,
+  MarkdownSourceTable,
+} from './markdown-source-types.ts';
 export type {
   MarkdownImageData,
   MarkdownImageAsset,
   MarkdownImageOccurrence,
   MarkdownImageOptions,
   MarkdownProjectionOptions,
+  MarkdownLayoutOptions,
 } from './media-types.ts';
 export { MarkdownMediaError, MarkdownBundleError } from './media-errors.ts';
 export { toMarkdownJSON, createMarkdownZip } from './markdown-bundle.ts';
@@ -404,7 +417,11 @@ export async function exportMarkdownFrom(
   checkExportAbort(options.signal);
   const data = extractMedia(layout, session, images);
   const media = images ? await resolveMedia(data, options) : undefined;
-  const result = translateMarkdownLayout(layout, media, images?.syntax);
+  const result = translateMarkdownLayout(layout, media, images?.syntax, {
+    sourceMap: options.sourceMap,
+    tableSyntax: options.tableSyntax,
+    codeCharacterStyles: options.codeCharacterStyles,
+  });
   return withFontResolution(
     result,
     'fontResolution' in session
@@ -414,8 +431,15 @@ export async function exportMarkdownFrom(
 }
 
 /** Translate a detached immutable core layout after its producer session is disposed. @public */
-export function exportMarkdownLayout(layout: ExportSemanticLayout): MarkdownExportResult {
-  return translateMarkdownLayout(layout);
+export function exportMarkdownLayout(
+  layout: ExportSemanticLayout,
+  options: MarkdownLayoutOptions = {}
+): MarkdownExportResult {
+  return translateMarkdownLayout(layout, undefined, undefined, {
+    sourceMap: options.sourceMap,
+    tableSyntax: options.tableSyntax,
+    codeCharacterStyles: options.codeCharacterStyles,
+  });
 }
 
 /** Convert untrusted DOCX bytes with Node-safe resource and shaping defaults. @public */
@@ -425,7 +449,7 @@ export async function exportMarkdown(
 ): Promise<MarkdownExportResult> {
   const images = imageOptions(options);
   checkExportAbort(options.signal);
-  const { images: _images, ...openOptions } = options;
+  const { images: _images, sourceMap, tableSyntax, codeCharacterStyles, ...openOptions } = options;
   const opened = await openDocumentForExport(source, openOptions);
   if (!opened.ok) {
     if (opened.reason === 'aborted') {
@@ -444,8 +468,15 @@ export async function exportMarkdown(
   } finally {
     opened.session.dispose();
   }
+  // Only the layout options reach record-only translation; open options stay with the session.
+  const layoutOptions = { sourceMap, tableSyntax, codeCharacterStyles };
   const result = images
-    ? translateMarkdownLayout(layout, await resolveMedia(data, options), images.syntax)
-    : translateMarkdownLayout(layout);
+    ? translateMarkdownLayout(
+        layout,
+        await resolveMedia(data, options),
+        images.syntax,
+        layoutOptions
+      )
+    : translateMarkdownLayout(layout, undefined, undefined, layoutOptions);
   return withFontResolution(result, opened.session.fontResolution);
 }

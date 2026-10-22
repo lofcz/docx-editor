@@ -1,0 +1,15 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Resolving an empty paragraph mark before a block content control could leave an extra visible blank paragraph despite a surviving ordinary sibling paragraph.",
+  "after": "Native mark resolution removes an owned empty paragraph or reuses existing actor-bound retirement. It preserves independent pending property revisions and their original paragraph owners, required paragraphs, section properties and opaque inline content.",
+  "reason": "The existing canonical operations and versioned retired-paragraph metadata express the change. Empty cleanup cannot discard independent pending properties in pure or shared resolution. No public member, transport implementation, native journal or shared-format field changes. Native, pure-plan and real-session regressions preserve exact Word results, peer revisions, both actors history, reconnect, peer text, owner deletion and reopening.",
+  "tests": [
+    "packages/core/src/store/__tests__/retired-paragraph.test.ts",
+    "packages/core/src/store/__tests__/joined-paragraph.test.ts",
+    "packages/sciobot/src/review/leading-control-paragraph-collaboration.test.ts",
+    "packages/sciobot/src/review/owned-proposal-plan.test.ts"
+  ],
+  "changeset": "empty-paragraph-before-control",
+  "migration": null
+}

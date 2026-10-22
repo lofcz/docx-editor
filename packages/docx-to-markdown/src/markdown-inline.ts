@@ -10,7 +10,9 @@ import {
   type MarkdownSourceSlice,
 } from './markdown-source-map.ts';
 
-type MarkdownInlineStyle = 'strike' | 'italic' | 'bold';
+// `code` is always innermost and literal: its content is never escaped and it opens with a
+// content-dependent backtick fence rather than a fixed delimiter.
+type MarkdownInlineStyle = 'strike' | 'italic' | 'bold' | 'code';
 
 export interface MarkdownTextToken {
   readonly span: StyleSpanRecord;
@@ -41,9 +43,13 @@ interface MarkdownInlineContext {
   readonly displayMode: SemanticLayout['displayMode'];
   readonly sourceScope: string;
   readonly sourceCapture?: MarkdownSourceCapture;
+  /** Character style IDs whose runs project as code spans. */
+  readonly codeCharacterStyles?: ReadonlySet<string>;
 }
 
 export interface MarkdownSourceCapture {
+  /** Capture all text with enough sparse boundaries to resolve ordinary native positions. */
+  readonly allSources?: boolean;
   /** Scopes whose cross-paragraph occurrences require every paragraph's source slices. */
   readonly allSourceScopes: ReadonlySet<string>;
   /** Sorted source boundaries needed for each reviewed paragraph. */
@@ -88,8 +94,18 @@ function escapedText(
   value: string,
   tableCell: boolean,
   requestedBoundaries: ReadonlySet<number> = new Set(),
-  adjacent: { readonly before?: string; readonly after?: string } = {}
+  adjacent: { readonly before?: string; readonly after?: string } = {},
+  complete = false,
+  literal = false
 ): { readonly markdown: string; readonly boundaries: ReadonlyMap<number, number> } {
+  if (literal) {
+    // Code span content is copied verbatim, so every native offset is its own Markdown offset.
+    const boundaries = new Map<number, number>();
+    for (const offset of requestedBoundaries) {
+      if (offset >= 0 && offset <= value.length) boundaries.set(offset, offset);
+    }
+    return { markdown: value, boundaries };
+  }
   let markdown = '';
   const boundaries = new Map<number, number>();
   const record = (offset: number): void => {
@@ -98,12 +114,17 @@ function escapedText(
   record(0);
   let index = 0;
   while (index < value.length) {
+    const sourceStart = index;
+    const markdownStart = markdown.length;
     const character = value[index]!;
     if (character === '\r' && value[index + 1] === '\n') {
+      if (complete) boundaries.set(index, markdown.length);
       markdown += tableCell ? '<br>' : '  \n';
       index += 1;
+      if (complete) boundaries.set(index, markdown.length);
       record(index);
       index += 1;
+      if (complete) boundaries.set(index, markdown.length);
       record(index);
       continue;
     }
@@ -124,6 +145,10 @@ function escapedText(
       markdown += character;
     }
     index += 1;
+    if (complete && markdown.length - markdownStart !== index - sourceStart) {
+      boundaries.set(sourceStart, markdownStart);
+      boundaries.set(index, markdown.length);
+    }
     record(index);
   }
   return { markdown, boundaries };
@@ -139,8 +164,15 @@ function mappedTextChunk(
   const requested = capture?.offsetsBySource.get(
     markdownSourceCaptureKey(sourceScope, chunk.paragraphId)
   );
-  if (!capture || (!capture.allSourceScopes.has(sourceScope) && !requested)) {
-    return literalMarkdown(escapedText(chunk.sourceText, tableCell, new Set(), adjacent).markdown);
+  if (
+    !capture ||
+    (!capture.allSources && !capture.allSourceScopes.has(sourceScope) && !requested)
+  ) {
+    return literalMarkdown(
+      isCodeChunk(chunk)
+        ? chunk.sourceText
+        : escapedText(chunk.sourceText, tableCell, new Set(), adjacent).markdown
+    );
   }
   const relativeBoundaries = new Set<number>([0, chunk.sourceText.length]);
   if (chunk.exact) {
@@ -158,12 +190,21 @@ function mappedTextChunk(
       relativeBoundaries.add(offset - chunk.sourceStart);
     }
   }
-  const escaped = escapedText(chunk.sourceText, tableCell, relativeBoundaries, adjacent);
+  const escaped = escapedText(
+    chunk.sourceText,
+    tableCell,
+    relativeBoundaries,
+    adjacent,
+    capture.allSources && chunk.exact,
+    isCodeChunk(chunk)
+  );
   const markdownBoundaries = chunk.exact
-    ? [...escaped.boundaries].map(([sourceOffset, markdownOffset]) => ({
-        sourceOffset: chunk.sourceStart + sourceOffset,
-        markdownOffset,
-      }))
+    ? [...escaped.boundaries]
+        .sort(([left], [right]) => left - right)
+        .map(([sourceOffset, markdownOffset]) => ({
+          sourceOffset: chunk.sourceStart + sourceOffset,
+          markdownOffset,
+        }))
     : undefined;
   const source: MarkdownSourceSlice = {
     sourceScope,
@@ -174,6 +215,7 @@ function mappedTextChunk(
     markdownEnd: escaped.markdown.length,
     ...(markdownBoundaries ? { markdownBoundaries } : {}),
     exact: chunk.exact,
+    ...(capture.allSources ? { completeBoundaries: true } : {}),
   };
   return { markdown: escaped.markdown, sources: [source] };
 }
@@ -192,7 +234,74 @@ function markdownInlineStyles(
     ...(span.style.italic ? (['italic'] as const) : []),
     ...(span.style.bold && !context.suppressBold ? (['bold'] as const) : []),
     ...(span.style.strike || span.style.doubleStrike || deleted ? (['strike'] as const) : []),
+    ...(isCodeSpan(span, context) ? (['code'] as const) : []),
   ];
+}
+
+/** An explicit application code identity: the run's own `w:rStyle`, never its font. */
+function isCodeSpan(span: StyleSpanRecord, context: MarkdownInlineContext): boolean {
+  const styles = context.codeCharacterStyles;
+  if (!styles || styles.size === 0 || span.equation !== undefined) return false;
+  const reference = span.props.find((property) => property.localName === 'rStyle');
+  const styleId = reference?.attributes?.val;
+  return typeof styleId === 'string' && styles.has(styleId);
+}
+
+function isCodeChunk(chunk: MarkdownInlineChunk | undefined): boolean {
+  return chunk?.kind === 'text' && chunk.styles[chunk.styles.length - 1] === 'code';
+}
+
+/** The first or last character a reader sees for a chunk; a code span shows its fence. */
+function visibleEdge(chunk: MarkdownInlineChunk, edge: 'first' | 'last'): string | undefined {
+  if (chunk.kind !== 'text') return sourceEdge(chunk.value.markdown, edge);
+  return isCodeChunk(chunk) ? '`' : sourceEdge(chunk.sourceText, edge);
+}
+
+/** Styles that use flanking delimiters or tags; code spans have no flanking rules. */
+function delimitedStyles(styles: readonly MarkdownInlineStyle[]): readonly MarkdownInlineStyle[] {
+  return styles[styles.length - 1] === 'code' ? styles.slice(0, -1) : styles;
+}
+
+/**
+ * CommonMark code span delimiters for one contiguous code group.
+ *
+ * The fence is the shortest backtick string whose length occurs nowhere inside the content.
+ * One space pads both sides when the content touches a backtick, or when it begins and ends
+ * with a space without being all spaces, because a parser strips exactly one such pair.
+ */
+function codeSpanDelimiters(content: string): { readonly open: string; readonly close: string } {
+  const lengths = new Set<number>();
+  for (const match of content.matchAll(/`+/gu)) lengths.add(match[0].length);
+  let length = 1;
+  while (lengths.has(length)) length += 1;
+  const fence = '`'.repeat(length);
+  const pad =
+    content.startsWith('`') ||
+    content.endsWith('`') ||
+    (content.length > 1 &&
+      content.startsWith(' ') &&
+      content.endsWith(' ') &&
+      /[^ ]/u.test(content))
+      ? ' '
+      : '';
+  return { open: fence + pad, close: pad + fence };
+}
+
+/** Content of the code group starting at `index`: following chunks with identical styles. */
+function codeGroupContent(
+  chunks: readonly MarkdownInlineChunk[],
+  index: number,
+  end = chunks.length
+): string {
+  const first = chunks[index];
+  if (first?.kind !== 'text') return '';
+  let content = '';
+  for (let at = index; at < end; at += 1) {
+    const chunk = chunks[at];
+    if (chunk?.kind !== 'text' || !sameInlineStyles(chunk.styles, first.styles)) break;
+    content += chunk.sourceText;
+  }
+  return content;
 }
 
 function sameInlineStyles(
@@ -252,16 +361,16 @@ function bridgeMatchingStylesAcrossWhitespace(
       previous.paragraphId !== chunk.paragraphId ||
       next.paragraphId !== chunk.paragraphId ||
       !matchingWhitespaceStyles ||
-      previous.styles.length === 0 ||
-      !sameInlineStyles(chunk.semanticStyles, previous.styles) ||
-      !sameInlineStyles(previous.styles, next.styles)
+      delimitedStyles(previous.styles).length === 0 ||
+      !sameInlineStyles(chunk.semanticStyles, delimitedStyles(previous.styles)) ||
+      !sameInlineStyles(delimitedStyles(previous.styles), delimitedStyles(next.styles))
     ) {
       continue;
     }
     for (let whitespace = start; whitespace < index; whitespace += 1) {
       const candidate = chunks[whitespace];
       if (candidate?.kind === 'text')
-        bridged[whitespace] = { ...candidate, styles: previous.styles };
+        bridged[whitespace] = { ...candidate, styles: delimitedStyles(previous.styles) };
     }
   }
   return bridged;
@@ -275,6 +384,8 @@ function markdownStyleDelimiter(style: MarkdownInlineStyle): string {
       return '*';
     case 'bold':
       return '**';
+    case 'code':
+      throw new TypeError('Code span delimiters depend on their content');
     default:
       return assertNever(style);
   }
@@ -288,6 +399,8 @@ function markdownStyleTag(style: MarkdownInlineStyle): string {
       return 'em';
     case 'bold':
       return 'strong';
+    case 'code':
+      throw new TypeError('Code spans keep backtick syntax inside HTML islands');
     default:
       return assertNever(style);
   }
@@ -346,19 +459,17 @@ function inlineIslandNeedsHtml(
     if (chunk.kind !== 'text') continue;
     const previous = chunks[index - 1];
     const next = chunks[index + 1];
+    const styles = delimitedStyles(chunk.styles);
     const previousStyles =
-      index > start && previous?.kind === 'text' ? previous.styles : ([] as const);
-    const nextStyles = index + 1 < end && next?.kind === 'text' ? next.styles : ([] as const);
-    const opensStyle = sharedStylePrefix(previousStyles, chunk.styles) < chunk.styles.length;
-    const closesStyle = sharedStylePrefix(chunk.styles, nextStyles) < chunk.styles.length;
-    const first = sourceEdge(chunk.sourceText, 'first');
-    const last = sourceEdge(chunk.sourceText, 'last');
-    const before = previous
-      ? sourceEdge(previous.kind === 'text' ? previous.sourceText : previous.value.markdown, 'last')
-      : undefined;
-    const after = next
-      ? sourceEdge(next.kind === 'text' ? next.sourceText : next.value.markdown, 'first')
-      : undefined;
+      index > start && previous?.kind === 'text' ? delimitedStyles(previous.styles) : ([] as const);
+    const nextStyles =
+      index + 1 < end && next?.kind === 'text' ? delimitedStyles(next.styles) : ([] as const);
+    const opensStyle = sharedStylePrefix(previousStyles, styles) < styles.length;
+    const closesStyle = sharedStylePrefix(styles, nextStyles) < styles.length;
+    const first = visibleEdge(chunk, 'first');
+    const last = visibleEdge(chunk, 'last');
+    const before = previous ? visibleEdge(previous, 'last') : undefined;
+    const after = next ? visibleEdge(next, 'first') : undefined;
     // Backslash escaping punctuation does not change CommonMark delimiter flanking. Use fixed
     // semantic tags for this island when a delimiter would open or close against that boundary.
     if (
@@ -393,15 +504,23 @@ function htmlInlineIsland(
 ): MappedMarkdown {
   const parts: MappedMarkdown[] = [];
   let openStyles: readonly MarkdownInlineStyle[] = [];
+  let codeClose = '';
+  const close = (style: MarkdownInlineStyle): string =>
+    style === 'code' ? codeClose : `</${markdownStyleTag(style)}>`;
   for (let index = start; index < end; index += 1) {
     const chunk = chunks[index]!;
     if (chunk.kind !== 'text') continue;
     const retained = sharedStylePrefix(openStyles, chunk.styles);
     for (let styleIndex = openStyles.length - 1; styleIndex >= retained; styleIndex -= 1) {
-      parts.push(literalMarkdown(`</${markdownStyleTag(openStyles[styleIndex]!)}>`));
+      parts.push(literalMarkdown(close(openStyles[styleIndex]!)));
     }
     for (let styleIndex = retained; styleIndex < chunk.styles.length; styleIndex += 1) {
-      parts.push(literalMarkdown(`<${markdownStyleTag(chunk.styles[styleIndex]!)}>`));
+      const style = chunk.styles[styleIndex]!;
+      if (style === 'code') {
+        const delimiters = codeSpanDelimiters(codeGroupContent(chunks, index, end));
+        codeClose = delimiters.close;
+        parts.push(literalMarkdown(delimiters.open));
+      } else parts.push(literalMarkdown(`<${markdownStyleTag(style)}>`));
     }
     parts.push(
       mappedTextChunk(chunk, tableCell, capture, sourceScope, chunkAdjacency(chunks, index))
@@ -409,7 +528,7 @@ function htmlInlineIsland(
     openStyles = chunk.styles;
   }
   for (let index = openStyles.length - 1; index >= 0; index -= 1) {
-    parts.push(literalMarkdown(`</${markdownStyleTag(openStyles[index]!)}>`));
+    parts.push(literalMarkdown(close(openStyles[index]!)));
   }
   return concatMarkdown(parts);
 }
@@ -464,6 +583,23 @@ export class MarkdownInlineWriter {
         token.span.equation === undefined &&
         token.sourceText.length === token.span.range.end - token.span.range.start);
     const styles = markdownInlineStyles(token.span, this.#context);
+    if (styles[styles.length - 1] === 'code') {
+      // Code keeps its own whitespace. A manual break cannot sit inside a code span, so it
+      // closes the span and keeps only the surrounding emphasis.
+      const outer = styles.slice(0, -1);
+      let offset = 0;
+      for (const piece of source.split(/(\r\n|[\r\n\f])/u)) {
+        this.#writeSourceText(
+          token,
+          piece,
+          offset,
+          /^[\r\n\f]/u.test(piece) ? outer : styles,
+          exact
+        );
+        offset += piece.length;
+      }
+      return;
+    }
     this.#writeSourceText(token, leading, 0, [], exact, styles);
     this.#writeSourceText(token, text, leading.length, styles, exact);
     this.#writeSourceText(token, trailing, leading.length + text.length, [], exact, styles);
@@ -482,13 +618,20 @@ export class MarkdownInlineWriter {
     const chunks = bridgeMatchingStylesAcrossWhitespace(this.#chunks);
     const parts: MappedMarkdown[] = [];
     let openStyles: readonly MarkdownInlineStyle[] = [];
-    const transition = (nextStyles: readonly MarkdownInlineStyle[]): void => {
+    let codeClose = '';
+    const transition = (nextStyles: readonly MarkdownInlineStyle[], at = -1): void => {
       const retained = sharedStylePrefix(openStyles, nextStyles);
       for (let index = openStyles.length - 1; index >= retained; index -= 1) {
-        parts.push(literalMarkdown(markdownStyleDelimiter(openStyles[index]!)));
+        const style = openStyles[index]!;
+        parts.push(literalMarkdown(style === 'code' ? codeClose : markdownStyleDelimiter(style)));
       }
       for (let index = retained; index < nextStyles.length; index += 1) {
-        parts.push(literalMarkdown(markdownStyleDelimiter(nextStyles[index]!)));
+        const style = nextStyles[index]!;
+        if (style === 'code') {
+          const delimiters = codeSpanDelimiters(codeGroupContent(chunks, at));
+          codeClose = delimiters.close;
+          parts.push(literalMarkdown(delimiters.open));
+        } else parts.push(literalMarkdown(markdownStyleDelimiter(style)));
       }
       openStyles = nextStyles;
     };
@@ -525,8 +668,14 @@ export class MarkdownInlineWriter {
         index = end - 1;
         continue;
       }
-      transition(chunk.styles);
-      parts.push(this.#mappedSourceChunk(chunk, index, chunks));
+      // The island was checked as a whole, with real neighbouring styles. Re-checking a suffix
+      // would treat a retained style as newly opened at a code fence or punctuation.
+      for (let at = index; at < end; at += 1) {
+        const member = chunks[at] as Extract<MarkdownInlineChunk, { kind: 'text' }>;
+        transition(member.styles, at);
+        parts.push(this.#mappedSourceChunk(member, at, chunks));
+      }
+      index = end - 1;
     }
     transition([]);
     return concatMarkdown(parts);

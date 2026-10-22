@@ -1,0 +1,10 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The private adapter had no user-facing operation that inserts a registered container block.",
+  "after": "insertBlock places one registered container with its alias, short tag, optional generated label, editable paragraphs, and payload record in one native automation transaction, then places the caret in the first editable paragraph.",
+  "reason": "The insertion uses the existing gated automation package-edit channel, native element insertion, and the existing payload record writer. New paragraphs receive native w14:paraId identities through the published minting helpers, as native insertion does. No shared operations, schemas, journals, or transport formats change.",
+  "tests": ["packages/sciobot/src/blocks/insert.test.ts"],
+  "changeset": null,
+  "migration": null
+}

@@ -1138,6 +1138,12 @@ export interface ContentLockPolicy {
 }
 
 // @public
+export interface ContentTypeIndex {
+    readonly defaults: ReadonlyMap<string, string>;
+    readonly overrides: ReadonlyMap<string, string>;
+}
+
+// @public
 export type CountBucket = '0' | '1' | '2-9' | '10-99' | '100-999' | '1000+';
 
 // @public
@@ -3126,6 +3132,31 @@ export interface NumberingRef {
 }
 
 // @public
+export interface OoxmlExternalTarget {
+    // (undocumented)
+    readonly id: string;
+    // (undocumented)
+    readonly ownerPart: string;
+    // (undocumented)
+    readonly rawTarget: string;
+    readonly sinkSafe: boolean;
+    // (undocumented)
+    readonly type: string;
+}
+
+// @public
+export interface OoxmlPackage {
+    // (undocumented)
+    readonly contentTypes: ContentTypeIndex;
+    // (undocumented)
+    readonly externalTargets: readonly OoxmlExternalTarget[];
+    readonly mainDocumentPart: string;
+    readonly partBytes: ReadonlyMap<string, Uint8Array>;
+    readonly parts: ReadonlyMap<string, OoxmlPart>;
+    readonly relationships: ReadonlyMap<string, readonly RelationshipRecord[]>;
+}
+
+// @public
 export interface PageMargins {
     // (undocumented)
     readonly bottomTwips: number;
@@ -3290,6 +3321,22 @@ export interface Rect {
     readonly x: number;
     // (undocumented)
     readonly y: number;
+}
+
+// @public
+export interface RelationshipRecord {
+    // (undocumented)
+    readonly id: string;
+    // (undocumented)
+    readonly order: number;
+    // (undocumented)
+    readonly ownerPart: string;
+    // (undocumented)
+    readonly rawTarget: string;
+    // (undocumented)
+    readonly targetMode: TargetMode;
+    // (undocumented)
+    readonly type: string;
 }
 
 // @public
@@ -3512,6 +3559,7 @@ export interface ReviewModuleContribution {
     readonly createRevisionMarkupDialog?: (host: RevisionMarkupDialogHost) => RevisionMarkupDialog;
     readonly displayModes: readonly ReviewDisplayMode[];
     readonly pane?: ReviewPaneOptions;
+    readonly reservedRevisionIds?: RevisionIdReservationSource;
     readonly revisionItemsOfParagraph: (part: OoxmlPart, paragraphId: string) => readonly ReviewRevisionItem[];
 }
 
@@ -3730,6 +3778,17 @@ export type RevisionDisplay = 'pane' | 'balloons';
 
 // @public
 export type RevisionDisplayMode = 'all-markup' | 'proposed' | 'original';
+
+// @public
+export interface RevisionIdReservation {
+    // (undocumented)
+    readonly ids: readonly string[];
+    // (undocumented)
+    readonly partName: string;
+}
+
+// @public
+export type RevisionIdReservationSource = (pkg: OoxmlPackage) => readonly RevisionIdReservation[];
 
 // @public
 export interface RevisionMarkupChromeHandlers {
@@ -4205,6 +4264,9 @@ export interface TableRowOccurrenceTarget {
     // (undocumented)
     readonly tableId: string;
 }
+
+// @public
+export type TargetMode = 'Internal' | 'External';
 
 // @public
 export interface TextMatch {

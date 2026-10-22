@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The private adapter had no native inline-code representation; projections could not emit code spans and planners refused code marks.",
+  "after": "The private adapter marks application code with the SciobotCode character style, or a derived style based on an imported character style. Removing code restores the original reference. Initial document preparation seeds default and imported-character-style definitions outside actor history. Run changes use one gated transaction, and projections emit exact Markdown code spans.",
+  "reason": "Application-owned private code over Apache operations and package helpers. It adds no shared state, journal fields, or transport behavior. Two real sessions verify peer text, imported styles, review decisions, history, geometry, deletion, reconnect, and saved convergence. N20 closes first-write and derived-style history through private document preparation before editor or room bootstrap. The evaluated provider stays unchanged; bypassing this initialization remains unsupported for application room creation.",
+  "tests": [
+    "packages/sciobot/src/native/inline-code.test.ts",
+    "packages/sciobot/src/native/inline-code-collaboration.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

@@ -413,6 +413,27 @@ export function semanticSelectionFromDom(
 }
 
 /**
+ * Host-owned interactive UI that a host places inside the painted pages.
+ *
+ * Mark the container with `data-docx-host-ui`. Form controls in it keep their own focus and
+ * text selection. Their selections are never document positions, so the selection mirror
+ * neither adopts them nor writes the document selection over them.
+ */
+export const HOST_UI_ATTRIBUTE = 'data-docx-host-ui';
+
+/** Whether a DOM node lies inside host-owned UI. Text, element, or null. */
+export function isInHostUi(node: Node | null | undefined): boolean {
+  const element = node?.nodeType === 1 ? (node as Element) : (node?.parentElement ?? null);
+  return !!element?.closest(`[${HOST_UI_ATTRIBUTE}]`);
+}
+
+/** Whether either end of a native selection lies inside host-owned UI. */
+export function domSelectionInHostUi(domSelection: Selection | null): boolean {
+  if (!domSelection || domSelection.rangeCount === 0) return false;
+  return isInHostUi(domSelection.anchorNode) || isInHostUi(domSelection.focusNode);
+}
+
+/**
  * Whether a native selection is inside the painted pages at all.
  *
  * Tells "the user gestured here and it did not map" from "the selection belongs to something

@@ -1,0 +1,15 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Upstream paragraph-split acceptance removed empty paragraph and paragraph-mark property containers from whole copied paragraphs.",
+  "after": "Whole sibling paragraph insertions carry versioned source-container presence on their native inserted marks. Acceptance preserves those source containers and consumes the marker. Ordinary tracked splits retain upstream cleanup. Witnessed unused namespace aliases are removed after decisions.",
+  "reason": "The writer emits existing generic XML attributes and native canonical primitives. It changes no journal, transport encoding, materializer, or format field. No source text or formatting snapshot is stored. Earlier fork readers preserve the extension as opaque data; source tests do not certify mixed released-reader decisions or application installation.",
+  "tests": [
+    "packages/core/src/store/__tests__/insert-paragraphs.test.ts",
+    "packages/core/src/store/__tests__/tracked-table-composition.test.ts",
+    "packages/core/src/store/__tests__/split-mark-revisions.test.ts",
+    "packages/core/src/store/__tests__/revision-marker-content.test.ts"
+  ],
+  "changeset": "inserted-paragraph-property-presence",
+  "migration": null
+}

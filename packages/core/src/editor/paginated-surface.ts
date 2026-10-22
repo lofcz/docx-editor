@@ -74,6 +74,7 @@ import { litReviewKeys, reviewItemsByKey } from './review-replacement-pairs.ts';
 import { bodyBlockCountOf, bodyBlockLimitAfter, bodyBlocksOf } from '../layout/body-block-limit.ts';
 import { snapshotLayoutSession } from '../layout/layout-session-snapshot.ts';
 import { furnitureLaterSteps } from './surface-furniture-later.ts';
+import { createBlockReservationState } from '../layout/block-reservations.ts';
 import {
   createContentControlWidgetSessions,
   contentControlValueOps,
@@ -112,6 +113,7 @@ import { formsProtectionEnabled, sectionProtectsForms } from '@docx-editor.dev/c
 import { attributeTrackedOps, isTrackedEdit } from './surface-tracked-ops.ts';
 import { isMissingAuthorRefusal } from './docx-editor-author.ts';
 import { openTreeSession, type TreeDocxSession } from '@docx-editor.dev/core/binding';
+import type { TreeApplyOptions } from '@docx-editor.dev/core/binding';
 import {
   TOC_MAX_PAGE_PASSES,
   detectBodyTocs,
@@ -338,6 +340,7 @@ import type { OoxmlPart } from '../store/package/ooxml-tree.ts';
 import { contentLockedOrBound, removalLocked, treeLockRefusal } from './content-control-locks.ts';
 import { overlaySheet, sizeOverlaySheets } from './surface-overlay-sheet.ts';
 import type { SurfaceOverlayFrame, SurfaceOverlayPainter } from './surface-overlay-sheet.ts';
+import type { SurfacePaintObserver } from './surface-paint-observer.ts';
 
 export type {
   ContentControlOps,
@@ -468,6 +471,7 @@ export function mountPaginatedSurface(
   // Host text highlights (search results, glossary terms): painted by a facade-owned painter.
   const highlightLayer = overlaySheet(mountDocument, 'docx-text-highlight-overlay');
   let highlightPainter: SurfaceOverlayPainter | null = null;
+  const paintObservers = new Set<SurfacePaintObserver>();
   const remoteSelectionLayer = overlaySheet(mountDocument, 'docx-remote-selection-overlay');
   const bookmarkLayer = overlaySheet(mountDocument, 'docx-bookmark-overlay');
   const tableFurnitureLayer = overlaySheet(mountDocument, 'docx-table-furniture', false);
@@ -727,7 +731,7 @@ export function mountPaginatedSurface(
     withoutFormat: readonly TreeDocOp[],
     mark: ReturnType<typeof selectionMark>,
     redoMark?: { paragraphId: string; start: number; end: number },
-    packageEdits?: NonNullable<Parameters<TreeDocxSession['applyTreeOps']>[4]>['packageEdits']
+    packageEdits?: TreeApplyOptions['packageEdits']
   ): ReturnType<TreeDocxSession['applyTreeOps']> {
     const result = applyOps([...withFormat], mark, redoMark, storyScope(), true, packageEdits);
     if (withFormat.length === withoutFormat.length || !result.rejected) return result;
@@ -956,6 +960,7 @@ export function mountPaginatedSurface(
   });
   // Layout, furniture, and formatting writes share the view's current projection (#497).
   let showFieldCodes = false;
+  const blockReservations = createBlockReservationState();
   const reviewView = createReviewViewState(
     options.revisionDisplayMode,
     !!options.reviewModel,
@@ -1457,6 +1462,7 @@ export function mountPaginatedSurface(
       displayMode: revisionDisplayMode(),
       showFieldCodes: context && !context.live ? false : showFieldCodes,
       fieldResults: fieldScope.mode,
+      blockReservations: context && !context.live ? undefined : blockReservations.option(),
       revisionAuthorFilter: activeAuthorFilter,
       bodyBlockLimit,
     } satisfies LayoutDocumentViewOptions & Record<keyof LayoutDocumentViewOptions, unknown>);
@@ -2722,6 +2728,7 @@ export function mountPaginatedSurface(
     // than erase it — see `adoptBeforePaint`.
     commitPaintOwed = false;
     const adopted = selectionSync.adoptBeforePaint();
+    for (const observer of paintObservers) observer.beforePaint?.();
     const paintBegan = now();
     materializedSet = visiblePages();
     // Shared furniture: keep the visual occurrence on a built page before paint marks
@@ -2795,6 +2802,9 @@ export function mountPaginatedSurface(
     // book the paint's own cost to the selection phase.
     lastPaintMs = now() - paintBegan;
     options.onTiming?.('paint', lastPaintMs);
+    for (const observer of paintObservers) {
+      observer.afterPaint({ pagesLayer, layout: currentLayout, part: session.part(), scale });
+    }
     renderOverlay();
     renderRemoteSelections();
     renderCommentHighlights(true);
@@ -2870,14 +2880,7 @@ export function mountPaginatedSurface(
   const BODY_STORY: StoryScope = Object.freeze({ kind: 'body' as const });
   let collaborationOperationCounter = 0;
 
-  /**
-   * Commit ops, attributing them when the surface is suggesting.
-   *
-   * ONE interception point rather than an argument threaded through a dozen emit sites: the
-   * ops are built all over this file, and a site that forgot to pass the attribution would
-   * silently write an untracked edit in suggesting mode — the failure nobody notices until
-   * the document has already lost the proposal.
-   */
+  /** Attribute every write here, so no input path silently bypasses suggestion tracking. */
   const dateLocale = createSurfaceDateLocale(options.locale, flushTypeBuffer);
   let translate = options.translate;
   let textFormInteraction: ReturnType<typeof createTextFormFieldInteraction> | null = null;
@@ -2887,25 +2890,21 @@ export function mountPaginatedSurface(
     ops: readonly TreeDocOp[],
     selectionBefore?: Parameters<TreeDocxSession['applyTreeOps']>[1],
     selectionAfter?: Parameters<TreeDocxSession['applyTreeOps']>[2],
-    // Defaulted, and therefore evaluated per call: every input path wants the story the
-    // reader is in. Only a caller that ALREADY knows which story its ops address — an
-    // automation handle names one — passes this, and then the reader's position is irrelevant.
+    // Input follows the active story. Automation supplies the story it actually addresses.
     scope: StoryScope = storyScope(),
     checkSelection = true,
-    packageEdits?: NonNullable<Parameters<TreeDocxSession['applyTreeOps']>[4]>['packageEdits']
+    packageEdits?: TreeApplyOptions['packageEdits'],
+    packageEditsAfterOps?: TreeApplyOptions['packageEditsAfterOps']
   ): ReturnType<TreeDocxSession['applyTreeOps']> {
-    // Every live lane reaches here inside `commit`, whose head-flush already ran, so this
-    // is a defensive no-op — kept so a future direct caller still lands buffered typing
-    // before its ops address the document.
+    // Settle buffered typing defensively before operations use native offsets.
     flushTypeBuffer();
     const refusal = writeRefusal(
-      ops.some(isDocumentEdit) || !!packageEdits?.length,
+      ops.some(isDocumentEdit) || !!packageEdits?.length || !!packageEditsAfterOps?.length,
       ops,
       checkSelection
     );
     if (refusal !== null) return { committed: false, rejected: true, opCount: 0, reason: refusal };
-    // The scope resolves to `storyScope()` unless the caller named one, so an edit inside a
-    // header, a footer or a note is applied to that story rather than to the body.
+    // Explicit scope prevents header, footer, or note edits from reaching the body.
     const attributed = trackedOps(
       checkSelection && textFormInteraction ? textFormInteraction.annotate(ops) : ops
     );
@@ -2914,7 +2913,8 @@ export function mountPaginatedSurface(
       selectionBefore,
       selectionAfter,
       scope,
-      packageEdits
+      packageEdits,
+      packageEditsAfterOps
     );
     if (checkSelection) textFormInteraction?.afterApply(result.committed);
     if (result.committed && attributed.some(isTrackedEdit)) {
@@ -2923,18 +2923,15 @@ export function mountPaginatedSurface(
     return result;
   }
 
-  /**
-   * Gate and attribute a write the way typing does, without the TOC-read-only rule.
-   *
-   * Refresh rewrites TOC result paragraphs, so `applyOps` would refuse the write that
-   * exists to update them. The collaboration gate and the actor still apply.
-   */
+  /** Gate native writes without the TOC read-only rule used by ordinary input.
+   * TOC refresh needs this route. Collaboration gates and actor attribution still apply. */
   function applyJournaledOps(
     ops: readonly TreeDocOp[],
     selectionBefore?: Parameters<TreeDocxSession['applyTreeOps']>[1],
     selectionAfter?: Parameters<TreeDocxSession['applyTreeOps']>[2],
     scope: StoryScope = storyScope(),
-    packageEdits?: NonNullable<Parameters<TreeDocxSession['applyTreeOps']>[4]>['packageEdits']
+    packageEdits?: TreeApplyOptions['packageEdits'],
+    packageEditsAfterOps?: TreeApplyOptions['packageEditsAfterOps']
   ): ReturnType<TreeDocxSession['applyTreeOps']> {
     const collaborationRefusal = collaborationSession?.gateOperations(ops, scope);
     if (collaborationRefusal) {
@@ -2957,13 +2954,14 @@ export function mountPaginatedSurface(
       collaborationSession
         ? {
             packageEdits,
+            packageEditsAfterOps,
             origin: ORIGIN_IDS.mutationHuman,
             actorId: collaborationSession.identity.actorId,
             operationId: `${collaborationSession.identity.actorId}:${collaborationSession.sessionId}:browser:${collaborationOperationCounter}`,
             recordsHistory: false,
             historyToken: historyGroup,
           }
-        : { packageEdits, historyToken: historyGroup }
+        : { packageEdits, packageEditsAfterOps, historyToken: historyGroup }
     );
   }
 
@@ -4373,6 +4371,7 @@ export function mountPaginatedSurface(
       storyScope,
       paragraphOrder,
       actorId: () => collaborationSession?.identity.actorId,
+      historyGroup: () => commitHistoryGroup.value,
       collaborationGate: (ops, scope) => collaborationSession?.gateOperations(ops, scope) ?? null,
       now,
       flushPendingInputAndLayout,
@@ -5231,19 +5230,21 @@ export function mountPaginatedSurface(
 
     revisionDisplayMode: reviewDisplayMode,
     replacementLanding,
-    applyAutomationOps: (staged, scope, packageEdits, requiresReview = false) => {
-      // Automation shares edit gates and repainting but retains its capture policy.
-      // Its explicit story remains independent of the reader's active story.
+    applyAutomationOps: (
+      staged,
+      scope,
+      packageEdits,
+      requiresReview = false,
+      separateHistory = false,
+      packageEditPhase = 'before'
+    ) => {
+      // Automation shares edit gates and repainting. Its story and history boundaries remain explicit.
       let result: ReturnType<TreeDocxSession['applyTreeOps']> | null = null;
       const story = scope ?? BODY_STORY;
       const refusal = commit(
         () => {
-          // THE GATE BEFORE THE OPS EXIST. Building them mints the relationship an external
-          // hyperlink names, which changes the PACKAGE — outside the transaction, outside the undo
-          // stack, and left behind by a refusal. Viewing is asked first, so a document open for
-          // reading comes out of this byte-identical; `edits: false` keeps the question to the rule
-          // that holds for every op, because a batch of tracked-change DECISIONS is not an edit and
-          // `applyOps` below judges it on its own ops.
+          // Check viewing before building ops can mint relationships outside the transaction and undo stack.
+          // `edits: false` also permits revision decisions. `applyOps` checks each resulting operation.
           const viewing = writeRefusal(false);
           if (viewing !== null) {
             return (result = { committed: false, rejected: true, opCount: 0, reason: viewing });
@@ -5280,7 +5281,15 @@ export function mountPaginatedSurface(
               reason: 'review-module-required',
             });
           }
-          return (result = applyOps(ops, undefined, undefined, story, false, packageEdits));
+          return (result = applyOps(
+            ops,
+            undefined,
+            undefined,
+            story,
+            false,
+            packageEditPhase === 'before' ? packageEdits : undefined,
+            packageEditPhase === 'after' ? packageEdits : undefined
+          ));
         },
         () => {
           // Flushed before the clamp for the same reason `commitReviewOps` does it: the clamp
@@ -5298,10 +5307,9 @@ export function mountPaginatedSurface(
           if (order.length === 0) return null;
           return clampedToDocument(editingLayout(), order, selection);
         },
-        { automation: true }
+        { automation: !separateHistory }
       );
-      // Null only when the refresh guard skipped the commit before the thunk ran.
-      const reason = refusal ?? UNEXPLAINED_WRITE_REFUSAL;
+      const reason = refusal ?? UNEXPLAINED_WRITE_REFUSAL; // Null means the refresh guard skipped the thunk.
       return result ?? { committed: false, rejected: true, opCount: 0, reason };
     },
 
@@ -5407,6 +5415,18 @@ export function mountPaginatedSurface(
       applyRevisionAuthorVisibility(revisionAuthorVisibility.setPredicate(predicate, mode));
     },
     collaborationSession: () => collaborationSession ?? null,
+    setBlockReservations(next) {
+      if (!destroyed && blockReservations.set(next))
+        scheduler.invalidateAll(session.packageRevision(), 'block-reservations');
+    },
+    observePaint(observer) {
+      paintObservers.add(observer);
+      render(false);
+      return () => {
+        observer.beforePaint?.();
+        paintObservers.delete(observer);
+      };
+    },
     remotePresenceColor,
     setShowParagraphMarks: paragraphMarks.set,
     setRevisionMarkup: markupSettings.set,

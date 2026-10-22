@@ -1,3 +1,4 @@
+import { captureInlineSites, rememberInlineSites } from './inline-transaction-state.ts';
 // Paragraph semantic operations over the canonical tree (task 5.1 / 5.2).
 //
 // Every op addresses STABLE NODE IDENTITIES and UTF-16 offsets, never byte ranges — that is
@@ -9,6 +10,8 @@
 // runs BEFORE any tree work, so a rejected op leaves the tree, revision and indexes exactly
 // as they were.
 
+import { composeTrackedTableOp } from './table-transaction-compose.ts';
+import { rememberTableSites } from './table-transaction-state.ts';
 import { withFieldResultsMode } from '../package/field-result-mode.ts';
 import type { EditOptions } from '../package/ooxml-edit.ts';
 import type { OoxmlPart } from '../package/ooxml-tree.ts';
@@ -55,6 +58,16 @@ export { paragraphTextOf } from './tree-op-apply.ts';
  * op's whole run (`field-result-mode.ts`); absent keeps the enclosing mode.
  */
 export function applyTreeOp(part: OoxmlPart, op: TreeDocOp, options?: EditOptions): TreeOpResult {
+  const inlineSites = captureInlineSites(part, op, options?.trackedRevisionIds);
+  const result =
+    composeTrackedTableOp(part, op, options, (current) => applyCoreTreeOp(current, op, options)) ??
+    applyCoreTreeOp(part, op, options);
+  if (result.ok) rememberTableSites(part, result.part, op, options?.trackedRevisionIds);
+  if (result.ok) rememberInlineSites(result.part, inlineSites, options?.trackedRevisionIds);
+  return result;
+}
+
+function applyCoreTreeOp(part: OoxmlPart, op: TreeDocOp, options?: EditOptions): TreeOpResult {
   return withFieldResultsMode(options?.fieldResults, () => {
     // A deletion across editable saved results keeps every field's markers balanced.
     if (savedResultOpRefusal(part, op)) return { ok: false, reason: 'field-result-unsupported' };

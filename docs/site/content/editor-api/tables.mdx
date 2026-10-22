@@ -98,9 +98,13 @@ await context.sync();
 | `Table.mergeCells(topRow, firstCell, bottomRow, lastCell)` | Merge a rectangle of cells into one; return the merged `TableCell` |
 | `TableCell.split(rowCount, columnCount)` | Split a cell into rows and columns of equal size; return `void` |
 
-`mergeCells()` takes two cells by zero-based row index and in-row cell index, the way `rows.items[r].cells` lists them, and merges the rectangle they span. A merged cell counts once in its row. `bottomRow` must not be above `topRow`, but either cell can lie further left. The rectangle grows to include whole merged cells. If a cell crosses the rectangle's edge, or the rectangle holds only one cell, the merge refuses with `InvalidArgument` and the diagnostic code `edit.table-merge-not-rectangle`. The merged cell keeps the content of every cell that had content, in reading order. You can edit the returned cell in the same sync.
+`mergeCells()` takes two cells by zero-based row index and in-row cell index, the way `rows.items[r].cells` lists them, and merges the rectangle they span. A merged cell counts once in its row. `bottomRow` must not be above `topRow`, but either cell can lie further left. The rectangle grows to include whole merged cells. If a cell crosses the rectangle's edge, or the rectangle holds only one cell, the merge refuses with `InvalidArgument` and the diagnostic code `edit.table-merge-not-rectangle`. The merged cell keeps the content of every cell that had content, in reading order. Moved paragraphs and content controls retain their native addresses for subsequent edits. You can edit the returned cell in the same sync.
 
 `split()` takes counts from 1 through 63. New columns get equal widths, and cells in other rows widen so they keep their width. A cell that is merged over several rows splits only into a number of rows that divides its row count. Splitting a one-row cell into rows adds rows to the table, and the other cells of that row stay merged across the new rows. The first new cell keeps the content. Counts the cell cannot take refuse with `InvalidArgument` and the diagnostic code `edit.table-split-unsupported`, for example columns narrower than the minimum column width.
+
+Native tree integrations can also select `columnDistribution: 'existing-grid'` on `splitTableCell`. That distribution partitions whole existing grid slots and retains their widths and IDs. The column count must divide the covered slot count. It supports restoring unequal original columns after a merge. The Office-shaped `TableCell.split()` follows the equal-width behavior documented above.
+
+Native divider and right-edge resize commands preserve imported property attributes, children, and IDs. Row-height and cell vertical-alignment commands preserve this metadata too. These commands retain cell content and merge boundaries. Width values use twips; exact row heights follow the native command limits.
 
 For example, build a table with a merged header row:
 
@@ -154,6 +158,8 @@ Each row or column addition or deletion must run alone in its sync, even across 
 Set `document.changeTrackingMode = 'TrackMineOnly'` before `Table.addRows()`, `TableRow.insertRows()`, or `Table.deleteRows()`. Added rows can include initial cell values. The runtime saves native `w:trPr/w:ins` and `w:trPr/w:del` revisions.
 
 Save and reopen preserve the suggestions. Formatting inside the author's own proposed row records no separate revision, because rejecting the row removes its formatting too. Use `body.revisions.acceptAll()` or `body.revisions.rejectAll()` to resolve complete tracked rows. The revision collection omits row revisions from `items`.
+
+Initial cell values belong to the row insertion revision. They keep the inherited paragraph-mark formatting. Accepting the row retains the same cell content and formatting as direct insertion, including empty property holders. Existing cell value changes retain their separate text revisions.
 
 Delete fewer than all rows when you suggest a deletion. Deleting every row refuses in tracking mode. Changing columns and table properties requires an eligible complete proposed table. Row insertion retains the source-row and vertical-merge limits described earlier. The runtime never changes tracking mode to complete an unsupported edit.
 

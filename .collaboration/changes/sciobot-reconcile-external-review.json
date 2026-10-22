@@ -1,0 +1,16 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "External Word acceptance or rejection could leave retained application property/atomic metadata pending after its native fallback revisions disappeared.",
+  "after": "A private inspection reports exact pending, externally accepted/rejected, resolved, or conflicting blocks. One guarded metadata-only transaction reconciles unambiguous values through existing immutable decision receipts and preserves every native Word part.",
+  "reason": "The feature uses existing payload/receipt codecs and native package-edit primitives. It does not recreate revisions, replace Word text, infer properties from free text, or change native/private shared formats. Group and legacy property/atomic decisions share the same reentry guard. Complete staged removal/field preflight and private history-4 ownership stay in force. Ambiguous external content remains unchanged and reports a conflict. Desktop Microsoft Word capture remains V06.",
+  "tests": [
+    "packages/sciobot/src/review/reconcile-external.test.ts",
+    "packages/sciobot/src/review/reconcile-external-collaboration.test.ts",
+    "packages/sciobot/src/review/reconcile-external-capacity-collaboration.test.ts",
+    "packages/sciobot/src/review/accept-all.test.ts",
+    "packages/sciobot/src/review/reject-all.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

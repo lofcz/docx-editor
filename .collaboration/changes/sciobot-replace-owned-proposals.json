@@ -1,0 +1,13 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "The private SDK had no atomic command to replace selected owned proposals with a new body text plan.",
+  "after": "The command validates exact ownership and the current revision inside the native review gate. It applies selected inverses, immutable decision records, and replacement body text in one native history unit. It refuses changes to unselected revisions.",
+  "reason": "The private SDK orchestrates existing native operations and existing review record schemas. Replacement coordinates refer to the document after selected inverses. Other replacement edit kinds remain unsupported. Pure inverse planning runs before the observed live transaction, so preview primitives cannot enter its journal. A detached unobserved coordinator previews operation stages and package cascades. The command reserves removal and field capacity before live writes. Canonical fingerprints protect remaining unselected revisions, including revisions with matching authors. The existing owned review history capability and native journal retain their meanings. This change adds no shared field, wire protocol, schema, public package API, or migration requirement. No published package code changes, so this private decision has no Changeset.",
+  "tests": [
+    "packages/sciobot/src/review/replace-owned-proposals.test.ts",
+    "packages/sciobot/src/review/replace-owned-proposals-collaboration.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

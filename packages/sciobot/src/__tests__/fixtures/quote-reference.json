@@ -1,0 +1,687 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "revision": "da9081adad1b54d17d9f24647adfd117bdffb942",
+    "files": {
+      "src/lib/quote-focus.ts": "be81cb44458580d6fa7fbb38c0bf6577ebbd65f64bafcb79410cf4bb60950e58",
+      "src/lib/suggestion-views.ts": "671fb63d75f06d7264f4ba3a309f131e1a7e1d0d0fbe4fe48722028dced63c31",
+      "src/lib/ai-review-diff.test.ts": "c319408f7dca1bd5eb07a37d330804febb14d8ce1b9ad3845919fa01b5b58c66",
+      "src/components/lesson-plan/md-rules.ts": "62cb5ac18e0ba83e0be143a723fca69226487cd460938b8a4dabc6b2603d21a3",
+      "src/components/source/md-rules.ts": "188ecb608c5961b081781f505de80f339c9730563c96e0cd390fa213139ddc4e",
+      "src/components/markdown-kit.tsx": "ce17115475c5ec3509ba483fdb81d3786ab7af92891b1b10b96367fdd7cf9c34",
+      "src/components/mdx/rules.ts": "b058e3cfad2a31ade1d2f22e45489b3794ac273b2970cc6a6d0de70ee321d433",
+      "node_modules/@platejs/markdown/dist/index.js": "664a30cf3646efb1b755d94dbc9999456fa3d2a458878f215fe0be4fa9f26704"
+    },
+    "inputHash": "b99d7925b76f62284fce068765c420506871f2542e266313a6b5eaa498d3fa8a",
+    "scope": "The actual source resolver and working view run with the C01 reference editor plugins and production MarkdownKit. UI and stores are not loaded."
+  },
+  "cases": [
+    {
+      "name": "single paragraph partial selection",
+      "value": [
+        {
+          "type": "p",
+          "children": [
+            {
+              "text": "Hello world"
+            }
+          ]
+        }
+      ],
+      "selection": {
+        "anchor": {
+          "path": [0, 0],
+          "offset": 2
+        },
+        "focus": {
+          "path": [0, 0],
+          "offset": 7
+        }
+      },
+      "workingText": "Hello world",
+      "expected": {
+        "containsMdx": false,
+        "endLine": 1,
+        "resolved": true,
+        "startLine": 1,
+        "text": "Hello world"
+      }
+    },
+    {
+      "name": "heading",
+      "value": [
+        {
+          "type": "h1",
+          "children": [
+            {
+              "text": "Title"
+            }
+          ]
+        },
+        {
+          "type": "p",
+          "children": [
+            {
+              "text": "Tail"
+            }
+          ]
+        }
+      ],
+      "selection": {
+        "anchor": {
+          "path": [0, 0],
+          "offset": 0
+        },
+        "focus": {
+          "path": [0, 0],
+          "offset": 5
+        }
+      },
+      "workingText": "TitleTail",
+      "expected": {
+        "containsMdx": false,
+        "endLine": 1,
+        "resolved": true,
+        "startLine": 1,
+        "text": "# Title"
+      }
+    },
+    {
+      "name": "backward cross paragraph",
+      "value": [
+        {
+          "type": "p",
+          "children": [
+            {
+              "text": "Alpha"
+            }
+          ]
+        },
+        {
+          "type": "p",
+          "children": [
+            {
+              "text": "Beta"
+            }
+          ]
+        },
+        {
+          "type": "p",
+          "children": [
+            {
+              "text": "Tail"
+            }
+          ]
+        }
+      ],
+      "selection": {
+        "anchor": {
+          "path": [1, 0],
+          "offset": 3
+        },
+        "focus": {
+          "path": [0, 0],
+          "offset": 2
+        }
+      },
+      "workingText": "AlphaBetaTail",
+      "expected": {
+        "containsMdx": false,
+        "endLine": 3,
+        "resolved": true,
+        "startLine": 1,
+        "text": "Alpha\n\nBeta"
+      }
+    },
+    {
+      "name": "escaped emoji",
+      "value": [
+        {
+          "type": "p",
+          "children": [
+            {
+              "text": "A😀&*B"
+            }
+          ]
+        }
+      ],
+      "selection": {
+        "anchor": {
+          "path": [0, 0],
+          "offset": 1
+        },
+        "focus": {
+          "path": [0, 0],
+          "offset": 3
+        }
+      },
+      "workingText": "A😀&*B",
+      "expected": {
+        "containsMdx": false,
+        "endLine": 1,
+        "resolved": true,
+        "startLine": 1,
+        "text": "A😀&\\*B"
+      }
+    },
+    {
+      "name": "multiline paragraph",
+      "value": [
+        {
+          "type": "p",
+          "children": [
+            {
+              "text": "First\nSecond\nThird"
+            }
+          ]
+        }
+      ],
+      "selection": {
+        "anchor": {
+          "path": [0, 0],
+          "offset": 6
+        },
+        "focus": {
+          "path": [0, 0],
+          "offset": 12
+        }
+      },
+      "workingText": "First\nSecond\nThird",
+      "expected": {
+        "containsMdx": false,
+        "endLine": 2,
+        "resolved": true,
+        "startLine": 2,
+        "text": "Second\\"
+      }
+    },
+    {
+      "name": "new pending block",
+      "value": [
+        {
+          "type": "p",
+          "children": [
+            {
+              "text": "Old"
+            }
+          ],
+          "suggestion": {
+            "id": "s-remove",
+            "type": "remove",
+            "userId": "ai",
+            "createdAt": 1
+          }
+        },
+        {
+          "type": "p",
+          "children": [
+            {
+              "text": "New"
+            }
+          ],
+          "suggestion": {
+            "id": "s-insert",
+            "type": "insert",
+            "userId": "ai",
+            "createdAt": 1
+          }
+        },
+        {
+          "type": "p",
+          "children": [
+            {
+              "text": "Tail"
+            }
+          ]
+        }
+      ],
+      "selection": {
+        "anchor": {
+          "path": [1, 0],
+          "offset": 0
+        },
+        "focus": {
+          "path": [1, 0],
+          "offset": 3
+        }
+      },
+      "workingText": "NewTail",
+      "expected": {
+        "containsMdx": false,
+        "endLine": 1,
+        "resolved": true,
+        "startLine": 1,
+        "text": "New"
+      }
+    },
+    {
+      "name": "removed pending block fallback",
+      "value": [
+        {
+          "type": "p",
+          "children": [
+            {
+              "text": "Old"
+            }
+          ],
+          "suggestion": {
+            "id": "s-remove",
+            "type": "remove",
+            "userId": "ai",
+            "createdAt": 1
+          }
+        },
+        {
+          "type": "p",
+          "children": [
+            {
+              "text": "New"
+            }
+          ],
+          "suggestion": {
+            "id": "s-insert",
+            "type": "insert",
+            "userId": "ai",
+            "createdAt": 1
+          }
+        },
+        {
+          "type": "p",
+          "children": [
+            {
+              "text": "Tail"
+            }
+          ]
+        }
+      ],
+      "selection": {
+        "anchor": {
+          "path": [0, 0],
+          "offset": 0
+        },
+        "focus": {
+          "path": [0, 0],
+          "offset": 3
+        }
+      },
+      "workingText": "NewTail",
+      "expected": {
+        "containsMdx": false,
+        "endLine": 1,
+        "resolved": true,
+        "startLine": 1,
+        "text": "Old"
+      }
+    },
+    {
+      "name": "new pending text",
+      "review": {
+        "before": "AOldZ",
+        "after": "ANewZ"
+      },
+      "selectText": "New",
+      "selection": {
+        "anchor": {
+          "path": [1, 0],
+          "offset": 1
+        },
+        "focus": {
+          "path": [1, 0],
+          "offset": 4
+        }
+      },
+      "workingText": "ANewZ",
+      "expected": {
+        "containsMdx": false,
+        "endLine": 1,
+        "resolved": true,
+        "startLine": 1,
+        "text": "ANewZ"
+      }
+    },
+    {
+      "name": "nested activity body",
+      "value": [
+        {
+          "type": "lesson_phase",
+          "phaseType": "evocation",
+          "children": [
+            {
+              "type": "lesson_activity",
+              "name": "Warmup",
+              "duration": "5",
+              "children": [
+                {
+                  "type": "p",
+                  "children": [
+                    {
+                      "text": "Question"
+                    }
+                  ]
+                },
+                {
+                  "type": "p",
+                  "children": [
+                    {
+                      "text": "Answer"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "p",
+          "children": [
+            {
+              "text": "Tail"
+            }
+          ]
+        }
+      ],
+      "selection": {
+        "anchor": {
+          "path": [0, 0, 1, 0],
+          "offset": 1
+        },
+        "focus": {
+          "path": [0, 0, 1, 0],
+          "offset": 5
+        }
+      },
+      "workingText": "QuestionAnswerTail",
+      "expected": {
+        "containsMdx": false,
+        "endLine": 5,
+        "resolved": true,
+        "startLine": 5,
+        "text": "    Answer"
+      }
+    },
+    {
+      "name": "nested activity container",
+      "value": [
+        {
+          "type": "lesson_activity",
+          "name": "Warmup",
+          "duration": "5",
+          "children": [
+            {
+              "type": "p",
+              "children": [
+                {
+                  "text": "Question"
+                }
+              ]
+            },
+            {
+              "type": "p",
+              "children": [
+                {
+                  "text": "Answer"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "p",
+          "children": [
+            {
+              "text": "Tail"
+            }
+          ]
+        }
+      ],
+      "selection": {
+        "anchor": {
+          "path": [0],
+          "offset": 0
+        },
+        "focus": {
+          "path": [0],
+          "offset": 2
+        }
+      },
+      "workingText": "QuestionAnswerTail",
+      "expected": {
+        "containsMdx": true,
+        "endLine": 5,
+        "resolved": true,
+        "startLine": 1,
+        "text": "<activity name=\"Warmup\" duration=\"5\">\n  Question\n\n  Answer\n</activity>"
+      }
+    },
+    {
+      "name": "table cell",
+      "value": [
+        {
+          "type": "table",
+          "children": [
+            {
+              "type": "tr",
+              "children": [
+                {
+                  "type": "td",
+                  "children": [
+                    {
+                      "type": "p",
+                      "children": [
+                        {
+                          "text": "A"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "td",
+                  "children": [
+                    {
+                      "type": "p",
+                      "children": [
+                        {
+                          "text": "B"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tr",
+              "children": [
+                {
+                  "type": "td",
+                  "children": [
+                    {
+                      "type": "p",
+                      "children": [
+                        {
+                          "text": "One"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "td",
+                  "children": [
+                    {
+                      "type": "p",
+                      "children": [
+                        {
+                          "text": "Two"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "p",
+          "children": [
+            {
+              "text": "Tail"
+            }
+          ]
+        }
+      ],
+      "selection": {
+        "anchor": {
+          "path": [0, 1, 1, 0, 0],
+          "offset": 0
+        },
+        "focus": {
+          "path": [0, 1, 1, 0, 0],
+          "offset": 3
+        }
+      },
+      "workingText": "ABOneTwoTail",
+      "expected": {
+        "containsMdx": false,
+        "endLine": 3,
+        "resolved": true,
+        "startLine": 3,
+        "text": "| One | Two |"
+      }
+    },
+    {
+      "name": "inline source",
+      "value": [
+        {
+          "type": "p",
+          "children": [
+            {
+              "text": "Before "
+            },
+            {
+              "type": "source",
+              "url": "https://example.com",
+              "title": "Citation",
+              "children": [
+                {
+                  "text": ""
+                }
+              ]
+            },
+            {
+              "text": " after"
+            }
+          ]
+        }
+      ],
+      "selection": {
+        "anchor": {
+          "path": [0, 0],
+          "offset": 1
+        },
+        "focus": {
+          "path": [0, 2],
+          "offset": 3
+        }
+      },
+      "workingText": "Before  after",
+      "expected": {
+        "containsMdx": true,
+        "endLine": 1,
+        "resolved": true,
+        "startLine": 1,
+        "text": "Before <source url=\"https://example.com\" title=\"Citation\" /> after"
+      }
+    },
+    {
+      "name": "neither endpoint maps",
+      "value": [
+        {
+          "type": "p",
+          "children": [
+            {
+              "text": "Actual"
+            }
+          ]
+        }
+      ],
+      "selection": {
+        "anchor": {
+          "path": [9, 0],
+          "offset": 0
+        },
+        "focus": {
+          "path": [10, 0],
+          "offset": 2
+        }
+      },
+      "workingText": "Actual",
+      "expected": {
+        "containsMdx": false,
+        "endLine": 1,
+        "resolved": false,
+        "startLine": 1,
+        "text": ""
+      }
+    },
+    {
+      "name": "one endpoint maps",
+      "value": [
+        {
+          "type": "p",
+          "children": [
+            {
+              "text": "Actual"
+            }
+          ]
+        }
+      ],
+      "selection": {
+        "anchor": {
+          "path": [0, 0],
+          "offset": 0
+        },
+        "focus": {
+          "path": [9, 0],
+          "offset": 2
+        }
+      },
+      "workingText": "Actual",
+      "expected": {
+        "containsMdx": false,
+        "endLine": 1,
+        "resolved": true,
+        "startLine": 1,
+        "text": "Actual"
+      }
+    },
+    {
+      "name": "removed pending text fallback",
+      "review": {
+        "before": "AOldZ",
+        "after": "ANewZ"
+      },
+      "selectText": "Old",
+      "selection": {
+        "anchor": {
+          "path": [0, 0],
+          "offset": 1
+        },
+        "focus": {
+          "path": [0, 0],
+          "offset": 4
+        }
+      },
+      "workingText": "ANewZ",
+      "expected": {
+        "containsMdx": false,
+        "endLine": 1,
+        "resolved": true,
+        "startLine": 1,
+        "text": ""
+      }
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Complete atomic payload plans had no persisted native review executor.",
+  "after": "Application review records retain complete old and proposed payloads plus exact native fallback receipts. Atomic acceptance selects the proposed assets; rejection restores the original fallback and payload. Native decisions and history preserve peer work.",
+  "reason": "The private application adapter reuses existing custom XML storage, native revision operations, attribution, and atomic history hooks. The executor tag and reserved payload slot belong to the application record extension. Shared operations, transport, and format versions do not change. Groups and later waves remain separate backlog leaves. No published changeset applies.",
+  "tests": [
+    "packages/sciobot/src/review/track-atomic.test.ts",
+    "packages/sciobot/src/review/track-atomic-collaboration.test.ts",
+    "packages/sciobot/src/review/property-projection.test.ts",
+    "packages/sciobot/src/review/track-properties.test.ts",
+    "packages/sciobot/src/review/track-properties-collaboration.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

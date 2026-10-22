@@ -1,0 +1,20 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "The private adapter accepted one complete native/property/atomic group per transaction. Bulk acceptance had no native private command.",
+  "after": "The private adapter preflights every group and accepts the exact combined native sites with immutable payload receipts in one scoped native history transaction. Reentrant calls refuse and empty calls add no history.",
+  "reason": "Bulk acceptance reuses the native operations, immutable decision records, staged capacity preflight, and owned history capability verified by R51. R51 separately records the Apache geometry fix and private history-4/flag-2 upgrade. Bulk acceptance adds no native or private shared-format change and no published document-model API. Strict source and installed Word/history oracles pass after R51; no serializer filter or weakened assertion is used.",
+  "tests": [
+    "packages/sciobot/src/review/accept-all.test.ts",
+    "packages/sciobot/src/review/accept-all-collaboration.test.ts",
+    "packages/sciobot/src/review/accept-all-native-collaboration.test.ts",
+    "packages/sciobot/src/review/accept-all-capacity-collaboration.test.ts",
+    "packages/sciobot/src/review/accept-group.test.ts",
+    "packages/sciobot/src/review/reject-group.test.ts",
+    "packages/sciobot/src/review/group-capacity-collaboration.test.ts",
+    "packages/sciobot/src/review/group-payload-capacity-collaboration.test.ts",
+    "packages/sciobot/src/review/native-table-property-history-collaboration.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

@@ -73,11 +73,16 @@ test('one-shot APIs keep layout options out of record-only translation', () => {
   const oneShot = wrapperSource.slice(
     wrapperSource.indexOf('export async function exportMarkdown(')
   );
-  expect(oneShot).toContain('translateMarkdownLayout(layout)');
+  expect(oneShot).toContain(
+    'const layoutOptions = { sourceMap, tableSyntax, codeCharacterStyles };'
+  );
+  expect(oneShot).toContain('translateMarkdownLayout(layout, undefined, undefined, layoutOptions)');
   expect(oneShot).not.toContain('translateMarkdownLayout(layout, options)');
   expect(oneShot.indexOf('opened.session.dispose()')).toBeLessThan(
-    oneShot.indexOf('translateMarkdownLayout(layout)')
+    oneShot.indexOf('translateMarkdownLayout(layout,')
   );
+  expect(oneShot).not.toContain('undefined, undefined, options');
+  expect(oneShot).not.toContain('images.syntax, options');
 });
 
 test('font configuration sampling and cache identity both exhaust every public key', () => {

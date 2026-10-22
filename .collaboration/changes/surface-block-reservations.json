@@ -1,0 +1,14 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "A rendered block widget taller than its native fallback overlapped the following content, unless a host wrote paragraph spacing into the shared document and its undo history.",
+  "after": "`setBlockReservations` adds quarter-point, live-view-only flow height after named body paragraphs. Each session measures and reserves for its own rendering; save, export, and PAGEREF layouts omit reservations.",
+  "reason": "Reservations are a local layout input. They write no model, operation, journal, schema, awareness, or transport field, and saved packages are byte-identical with or without them. Peers converge on identical documents while each lays out its own widget geometry.",
+  "tests": [
+    "packages/core/src/editor/__tests__/block-reservations.test.ts",
+    "packages/sciobot/src/react-blocks/measurement.test.tsx",
+    "e2e/sciobot-block-measurement.spec.ts"
+  ],
+  "changeset": "surface-block-reservations",
+  "migration": null
+}

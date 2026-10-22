@@ -2,15 +2,13 @@
 import type { TreeDocOp } from '../store/store/tree-ops.ts';
 import type { RevisionAttributionInput } from '../store/store/tree-op-types.ts';
 import { PROPERTY_CHANGE_WRAPPER_OF_OP } from '../store/store/tree-op-tracked-properties.ts';
-import type { OoxmlParagraphNode } from '../store/package/ooxml-tree.ts';
-import { retractedLengthOf } from '../store/store/tree-op-retraction.ts';
-import { trackedInsertionLanding } from '../store/store/tree-op-tracked-adjacency.ts';
 
 type RevisionCapableOp = Extract<
   TreeDocOp,
   {
     op:
       | 'insertText'
+      | 'insertParagraphs'
       | 'deleteText'
       | 'insertTab'
       | 'insertHardBreak'
@@ -31,6 +29,7 @@ type RevisionCapableOp = Extract<
 >;
 const REVISION_CAPABLE_OPS: ReadonlySet<TreeDocOp['op']> = new Set<RevisionCapableOp['op']>([
   'insertText',
+  'insertParagraphs',
   'deleteText',
   'insertTab',
   'insertHardBreak',
@@ -63,6 +62,18 @@ export function isTrackedEdit(op: TreeDocOp): boolean {
     // tracked edit with no `insertText` beside it to report for it.
     case 'insertContentControl':
     case 'authorTable':
+    case 'insertTableColumn':
+    case 'deleteTableColumn':
+    case 'mergeTableCells':
+    case 'splitTableCell':
+    case 'setHyperlinkTarget':
+    case 'setTableProperties':
+    case 'setTableColumnWidths':
+    case 'setTableRightEdgeWidth':
+    case 'setTableRowHeight':
+    case 'setTableCellBorders':
+    case 'setTableCellFill':
+    case 'setTableCellVerticalAlignment':
     case 'setListNumbering':
     case 'setListLevel':
     case 'splitParagraphMany':
@@ -133,23 +144,4 @@ export function attributeTrackedOps(
   });
 }
 
-/**
- * Where a tracked replacement of `[start, end)` in `paragraph` lands, from the paragraph's own
- * tree: after the struck words, minus what of the range was the author's own pending insertion,
- * which retracts. The store's rule, so a caller cannot predict a landing the store will not use.
- */
-export function trackedReplacementLanding(
-  paragraph: OoxmlParagraphNode,
-  start: number,
-  end: number,
-  author: string,
-  date: string | undefined
-): number {
-  const { past, landing } = trackedInsertionLanding(paragraph, { start, end }, end, author, date);
-  const retracted = retractedLengthOf(paragraph, start, past, author);
-  // NOTHING STRUCK, nothing to land after: a zero-width range, or one covering only this
-  // author's own pending insertion, which retracts and writes no strike at all. The store
-  // then places at the aim, and so must this.
-  const strikes = past - start > retracted;
-  return (strikes ? landing : past) - retracted;
-}
+export { trackedReplacementLanding } from '../store/store/tracked-replacement-landing.ts';

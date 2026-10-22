@@ -1,0 +1,10 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The private adapter had no native selection-to-chat-quote resolver.",
+  "after": "A pure reader maps native selection endpoints to complete working-view Markdown lines and preserves an explicit live-view fallback for deleted content.",
+  "reason": "This private read path consumes immutable projections and canonical ownership queries. It changes no editor operations, shared state, transport, or published API.",
+  "tests": ["packages/sciobot/src/projection/quote-selection.test.ts"],
+  "changeset": null,
+  "migration": null
+}

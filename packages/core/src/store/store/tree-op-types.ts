@@ -7,7 +7,10 @@ import type { InsertTextOp, DeleteTextOp } from './text-edit-op-types.ts';
 import type { SetTextFormFieldDefaultOp, CommitTextFormFieldOp } from './text-form-fields.ts';
 import type { SetLegacyCheckboxOp } from './legacy-checkbox-fields.ts';
 import type { InsertBuildingBlockOp } from './building-block-insert.ts';
+import type { InsertParagraphsOp } from './tree-op-insert-paragraphs.ts';
+import type { InsertFragmentOp } from './tree-op-fragment.ts';
 import type { InsertBookmarkOp, DeleteBookmarkOp } from './tree-op-bookmarks.ts';
+import type { TableCellPropertyOp } from './tree-op-table-cell-properties.ts';
 // The op vocabulary and effect/rejection contracts (tree-ops seam).
 //
 // This module owns what an op IS — the declarative, JSON-safe `TreeDocOp` shapes, the
@@ -16,7 +19,7 @@ import type { InsertBookmarkOp, DeleteBookmarkOp } from './tree-op-bookmarks.ts'
 
 import type { ParagraphTabStop } from '../../contracts/types.ts';
 import type { ContentControlLock } from '../package/content-control-nodes.ts';
-import type { OoxmlDrawingNode, OoxmlNode, OoxmlPart } from '../package/ooxml-tree.ts';
+import type { OoxmlDrawingNode, OoxmlPart } from '../package/ooxml-tree.ts';
 import type {
   DrawingLocksInput,
   DrawingPositionInput,
@@ -420,6 +423,8 @@ export type TreeDocOp =
       readonly start: number;
       readonly end: number;
       readonly properties: readonly OoxmlProperty[];
+      /** Set (`string`) or remove (`null`) each run's `w:rStyle`; omitted keeps it as authored. */
+      readonly characterStyle?: string | null;
       /**
        * Record this as a TRACKED format change: each run keeps its new `w:rPr` and gains a
        * `w:rPrChange` (§17.13.5.30) holding the properties it had, so Reject restores them.
@@ -513,6 +518,8 @@ export type TreeDocOp =
        * Omitted for a document that declares no such style.
        */
       readonly styleId?: string;
+      /** Strike the original runs and insert their linked copy as native content revisions. */
+      readonly revision?: RevisionAttributionInput;
     }
   | {
       /**
@@ -527,6 +534,8 @@ export type TreeDocOp =
       readonly relationshipId?: string;
       readonly anchor?: string;
       readonly tooltip?: string;
+      /** Propose the retarget: strike the link's content and insert a retargeted copy. */
+      readonly revision?: RevisionAttributionInput;
     }
   | {
       /**
@@ -541,6 +550,8 @@ export type TreeDocOp =
       readonly linkId: string;
       /** Optional exact paragraph offsets for an ordinary text subrange of this link. */
       readonly range?: { readonly start: number; readonly end: number };
+      /** Propose whole-link removal; tracked subrange removal refuses explicitly. */
+      readonly revision?: RevisionAttributionInput;
     }
   | {
       /**
@@ -671,6 +682,10 @@ export type TreeDocOp =
       readonly tableId: string;
       readonly where: 'left' | 'right';
       readonly gridColumnId: string;
+      /** Record new cells, survivor properties, and the old grid as Word revisions. */
+      readonly revision?: RevisionAttributionInput;
+      /** Tracked insertion only: size the new grid column before its history is recorded. */
+      readonly widthTwips?: number;
     }
   | {
       /**
@@ -681,26 +696,37 @@ export type TreeDocOp =
       readonly tableId: string;
       readonly where: 'left' | 'right';
       readonly referenceCellId: string;
+      readonly revision?: RevisionAttributionInput;
+      /** Tracked insertion only: size the new grid column before its history is recorded. */
+      readonly widthTwips?: number;
     }
   | {
       /** Delete one canonical grid column; refuses the final column. */
       readonly op: 'deleteTableColumn';
       readonly tableId: string;
       readonly gridColumnId: string;
+      /** Mark the column's cells with `w:cellDel` and keep them until the decision. */
+      readonly revision?: RevisionAttributionInput;
     }
   | {
       /** Merge cells covering one rectangle into its top-left cell, content in reading order. */
       readonly op: 'mergeTableCells';
       readonly tableId: string;
       readonly cellIds: readonly string[];
+      /** Keep the cells pending with Word cell revisions; gathered content is a tracked insertion. */
+      readonly revision?: RevisionAttributionInput;
     }
   | {
-      /** Split one cell into `rows` by `columns` equal cells; a one-row cell adds rows. */
+      /** Split one cell into `rows` by `columns` cells; a one-row cell adds rows. */
       readonly op: 'splitTableCell';
       readonly tableId: string;
       readonly cellId: string;
       readonly rows: number;
       readonly columns: number;
+      /** Omission uses equal widths. Existing-grid distribution retains authored column boundaries. */
+      readonly columnDistribution?: 'equal-width' | 'existing-grid';
+      /** Record new rows and cells as insertions and every other cell's old properties. */
+      readonly revision?: RevisionAttributionInput;
     }
   | {
       /**
@@ -713,6 +739,8 @@ export type TreeDocOp =
       readonly rightGridColumnId: string;
       readonly leftWidthTwips: number;
       readonly rightWidthTwips: number;
+      /** Record old values as Word property-change markup (`w:*PrChange`). */
+      readonly revision?: RevisionAttributionInput;
     }
   | {
       /**
@@ -723,6 +751,8 @@ export type TreeDocOp =
       readonly gridColumnId: string;
       readonly columnWidthTwips: number;
       readonly tableWidthTwips: number;
+      /** Record old values as Word property-change markup (`w:*PrChange`). */
+      readonly revision?: RevisionAttributionInput;
     }
   | {
       /** Atomic semantic table authoring. Newly created nodes never need caller-supplied IDs. */
@@ -751,6 +781,8 @@ export type TreeDocOp =
       readonly styleId?: string;
       readonly headerRowCount?: number;
       readonly columnWidthsTwips?: readonly number[];
+      /** Record old values as Word property-change markup (`w:*PrChange`). */
+      readonly revision?: RevisionAttributionInput;
     }
   | {
       /** Set one authored table row to an exact height in twips. */
@@ -758,37 +790,11 @@ export type TreeDocOp =
       readonly tableId: string;
       readonly rowId: string;
       readonly heightTwips: number;
+      /** Record old values as Word property-change markup (`w:*PrChange`). */
+      readonly revision?: RevisionAttributionInput;
     }
-  | {
-      /** Clear the active edge target on a bounded rectangular cell selection. */
-      readonly op: 'setTableCellBorders';
-      readonly tableId: string;
-      readonly cellIds: readonly string[];
-      readonly scope: 'none';
-      readonly target: TableBorderEdgeTarget;
-    }
-  | {
-      /** Apply a complete border spec to the requested edge target. */
-      readonly op: 'setTableCellBorders';
-      readonly tableId: string;
-      readonly cellIds: readonly string[];
-      readonly scope: TableBorderEdgeTarget;
-      readonly spec: TableBorderSpecInput;
-    }
-  | {
-      /** Write or remove direct selected-cell shading (`w:tcPr/w:shd`). */
-      readonly op: 'setTableCellFill';
-      readonly tableId: string;
-      readonly cellIds: readonly string[];
-      readonly color: TreeDocColorValue | null;
-    }
-  | {
-      /** Set direct selected-cell vertical alignment (`w:tcPr/w:vAlign`). */
-      readonly op: 'setTableCellVerticalAlignment';
-      readonly tableId: string;
-      readonly cellIds: readonly string[];
-      readonly alignment: 'top' | 'center' | 'bottom';
-    }
+  /** Cell borders, fill, and vertical alignment; `revision` records old `w:tcPr` values. */
+  | (TableCellPropertyOp & { readonly revision?: RevisionAttributionInput })
   | {
       /** Allocate an empty header/footer part and declare it on a section. Package-level. */
       readonly op: 'createHeaderFooter';
@@ -965,23 +971,7 @@ export type TreeDocOp =
         readonly numStart?: number;
       };
     }
-  | {
-      /**
-       * Insert clipboard-fragment blocks at a paragraph position, atomically.
-       *
-       * Blocks only — resources (styles, numbering, media, rels, note parts) merge through
-       * the package-edit path in the same transaction, and the whole commit is promoted to
-       * a package undo unit. A merged edge paragraph takes the properties of the paragraph
-       * mark that ends it: the fragment's first mark leading, the host's original mark
-       * trailing. Nodes receive fresh ids at apply.
-       */
-      readonly op: 'insertFragment';
-      readonly paragraphId: string;
-      readonly offset: number;
-      readonly blocks: readonly OoxmlNode[];
-      /** True when the fragment's last paragraph mark travelled (its paragraph stays whole). */
-      readonly lastMarkCovered?: boolean;
-    }
+  | InsertFragmentOp
   | {
       readonly op: 'insertDrawing';
       readonly paragraphId: string;
@@ -1071,6 +1061,7 @@ export type TreeDocOp =
   | SetLegacyCheckboxOp
   | SetLegacyDropdownOp
   | InsertBuildingBlockOp
+  | InsertParagraphsOp
   | InsertBookmarkOp
   | DeleteBookmarkOp
   | {

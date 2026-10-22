@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Table property commands had no tracked form; suggesting mode applied them directly.",
+  "after": "setTableProperties, setTableColumnWidths, setTableRightEdgeWidth, setTableRowHeight, setTableCellBorders, setTableCellFill, and setTableCellVerticalAlignment accept optional revision attribution. They write tblPrChange, trPrChange, tcPrChange, and tblGridChange records that existing review decisions resolve. Created mark-family holders emptied by a restored record are removed.",
+  "reason": "The optional local operation field lowers to the untracked command's primitive edits plus one table replacement holding the records. Peers receive canonical primitive edits only; no shared journal, schema, or transport field changes. Suggesting mode still applies unattributed property commands directly.",
+  "tests": [
+    "packages/core/src/store/__tests__/tracked-table-properties.test.ts",
+    "packages/sciobot/src/review/track-table-format.test.ts",
+    "packages/sciobot/src/review/track-table-format-collaboration.test.ts"
+  ],
+  "changeset": "tracked-table-properties",
+  "migration": null
+}

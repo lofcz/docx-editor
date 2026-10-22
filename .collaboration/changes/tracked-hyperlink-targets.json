@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "setHyperlinkTarget had no revision attribution, so a retarget could not be proposed.",
+  "after": "setHyperlinkTarget accepts optional revision attribution. The old link keeps its target with struck runs and a retargeted copy follows with the same runs as a tracked insertion. Resolution hoists markers out of a link it empties of runs.",
+  "reason": "The untracked retarget runs outside journal capture only to compute the new link attributes; peers receive the paragraph splice and the native tracked deletion. No relationship is rewritten and no shared journal, schema, or transport field changes.",
+  "tests": [
+    "packages/core/src/store/__tests__/tracked-hyperlink-target.test.ts",
+    "packages/sciobot/src/review/track-hyperlinks.test.ts",
+    "packages/sciobot/src/review/track-hyperlinks-collaboration.test.ts"
+  ],
+  "changeset": "tracked-hyperlink-targets",
+  "migration": null
+}

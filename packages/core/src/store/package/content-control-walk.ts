@@ -15,6 +15,7 @@ import {
   WML_NAMESPACE_URI,
 } from './ooxml-shared.ts';
 import { blockStoryContainerChildren } from './story-blocks.ts';
+import { hiddenRetiredParagraphs } from './retired-paragraph.ts';
 import type {
   OoxmlContentControlContentNode,
   OoxmlContentControlNode,
@@ -109,7 +110,9 @@ export function collectFlowBlocks(
 ): OoxmlElement[] {
   const blocks: OoxmlElement[] = [];
   const collect = (nodes: readonly OoxmlNode[], nest: number): void => {
+    const hidden = hiddenRetiredParagraphs(nodes);
     for (const child of nodes) {
+      if (hidden.has(child.id)) continue;
       if (child.kind === 'textValue') continue;
       if (child.kind === 'paragraph' || child.kind === 'table') {
         if (accept(child)) blocks.push(child);
@@ -134,7 +137,9 @@ export function walkStoryBlocks(
   depth: number,
   visit: (block: OoxmlElement) => void
 ): void {
+  const hidden = hiddenRetiredParagraphs(children);
   for (const child of children) {
+    if (hidden.has(child.id)) continue;
     if (child.kind === 'textValue') continue;
     if (child.kind === 'paragraph' || child.kind === 'table') {
       visit(child);
@@ -155,7 +160,9 @@ export function walkAllStoryParagraphs(
   sdtDepth: number,
   visit: (paragraph: OoxmlElement) => void
 ): void {
+  const hidden = hiddenRetiredParagraphs(children);
   for (const child of children) {
+    if (hidden.has(child.id)) continue;
     if (child.kind === 'textValue') continue;
     if (child.kind === 'paragraph') {
       visit(child);

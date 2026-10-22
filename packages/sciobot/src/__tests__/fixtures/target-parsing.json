@@ -1,0 +1,1754 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "revision": "da9081adad1b54d17d9f24647adfd117bdffb942",
+    "files": {
+      "src/components/markdown-kit.tsx": "ce17115475c5ec3509ba483fdb81d3786ab7af92891b1b10b96367fdd7cf9c34",
+      "src/components/gallery-remark-plugin.ts": "13b18659ef5c521c056346a12318c9123eeed0e90492ec8e6373d5611d33cbd4",
+      "src/lib/lesson-plan-deserialize.ts": "6293cee4ca05d2c8a43fdf7f1cc7407aed3792623fe1571d1c959a7376107700",
+      "supabase/functions/_shared/normalize-mdx-line-breaks.ts": "9ccbb929d5c65b7cf7824cf65f40a4796ce6cac81b12b799b0d8c9a0eb2244fd",
+      "node_modules/@platejs/markdown/dist/index.js": "664a30cf3646efb1b755d94dbc9999456fa3d2a458878f215fe0be4fa9f26704"
+    },
+    "aiPairsHash": "9aa7bac4fbbb3b2d6e2c7a563e0e51085e5fb3e8362d92ca66f8e28cb83917c6"
+  },
+  "cases": [
+    {
+      "name": "formatting and lists:before",
+      "input": "**Bold** and *italic*.\n\n1. First\n2. Second\n\n- Apple\n- Pear",
+      "markdown": "**Bold** and *italic*.\n\n1. First\n2. Second\n\n- Apple\n- Pear",
+      "normalizedAst": {
+        "type": "root",
+        "children": [
+          {
+            "type": "paragraph",
+            "children": [
+              {
+                "type": "strong",
+                "children": [
+                  {
+                    "type": "text",
+                    "value": "Bold"
+                  }
+                ]
+              },
+              {
+                "type": "text",
+                "value": " and "
+              },
+              {
+                "type": "emphasis",
+                "children": [
+                  {
+                    "type": "text",
+                    "value": "italic"
+                  }
+                ]
+              },
+              {
+                "type": "text",
+                "value": "."
+              }
+            ]
+          },
+          {
+            "type": "list",
+            "ordered": true,
+            "start": 1,
+            "spread": false,
+            "children": [
+              {
+                "type": "listItem",
+                "spread": false,
+                "checked": null,
+                "children": [
+                  {
+                    "type": "paragraph",
+                    "children": [
+                      {
+                        "type": "text",
+                        "value": "First"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "listItem",
+                "spread": false,
+                "checked": null,
+                "children": [
+                  {
+                    "type": "paragraph",
+                    "children": [
+                      {
+                        "type": "text",
+                        "value": "Second"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "list",
+            "ordered": false,
+            "start": null,
+            "spread": false,
+            "children": [
+              {
+                "type": "listItem",
+                "spread": false,
+                "checked": null,
+                "children": [
+                  {
+                    "type": "paragraph",
+                    "children": [
+                      {
+                        "type": "text",
+                        "value": "Apple"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "listItem",
+                "spread": false,
+                "checked": null,
+                "children": [
+                  {
+                    "type": "paragraph",
+                    "children": [
+                      {
+                        "type": "text",
+                        "value": "Pear"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "formatting and lists:after",
+      "input": "**Bold** and *updated italic*.\n\n1. First\n2. Added\n3. Second\n\n- Apple\n- Pear",
+      "markdown": "**Bold** and *updated italic*.\n\n1. First\n2. Added\n3. Second\n\n- Apple\n- Pear",
+      "normalizedAst": {
+        "type": "root",
+        "children": [
+          {
+            "type": "paragraph",
+            "children": [
+              {
+                "type": "strong",
+                "children": [
+                  {
+                    "type": "text",
+                    "value": "Bold"
+                  }
+                ]
+              },
+              {
+                "type": "text",
+                "value": " and "
+              },
+              {
+                "type": "emphasis",
+                "children": [
+                  {
+                    "type": "text",
+                    "value": "updated italic"
+                  }
+                ]
+              },
+              {
+                "type": "text",
+                "value": "."
+              }
+            ]
+          },
+          {
+            "type": "list",
+            "ordered": true,
+            "start": 1,
+            "spread": false,
+            "children": [
+              {
+                "type": "listItem",
+                "spread": false,
+                "checked": null,
+                "children": [
+                  {
+                    "type": "paragraph",
+                    "children": [
+                      {
+                        "type": "text",
+                        "value": "First"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "listItem",
+                "spread": false,
+                "checked": null,
+                "children": [
+                  {
+                    "type": "paragraph",
+                    "children": [
+                      {
+                        "type": "text",
+                        "value": "Added"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "listItem",
+                "spread": false,
+                "checked": null,
+                "children": [
+                  {
+                    "type": "paragraph",
+                    "children": [
+                      {
+                        "type": "text",
+                        "value": "Second"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "list",
+            "ordered": false,
+            "start": null,
+            "spread": false,
+            "children": [
+              {
+                "type": "listItem",
+                "spread": false,
+                "checked": null,
+                "children": [
+                  {
+                    "type": "paragraph",
+                    "children": [
+                      {
+                        "type": "text",
+                        "value": "Apple"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "listItem",
+                "spread": false,
+                "checked": null,
+                "children": [
+                  {
+                    "type": "paragraph",
+                    "children": [
+                      {
+                        "type": "text",
+                        "value": "Pear"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "tables and links:before",
+      "input": "| A | B |\n| --- | --- |\n| One | Two |\n\n[Link](https://example.com)",
+      "markdown": "| A | B |\n| --- | --- |\n| One | Two |\n\n[Link](https://example.com)",
+      "normalizedAst": {
+        "type": "root",
+        "children": [
+          {
+            "type": "table",
+            "align": [null, null],
+            "children": [
+              {
+                "type": "tableRow",
+                "children": [
+                  {
+                    "type": "tableCell",
+                    "children": [
+                      {
+                        "type": "text",
+                        "value": "A"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "tableCell",
+                    "children": [
+                      {
+                        "type": "text",
+                        "value": "B"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "tableRow",
+                "children": [
+                  {
+                    "type": "tableCell",
+                    "children": [
+                      {
+                        "type": "text",
+                        "value": "One"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "tableCell",
+                    "children": [
+                      {
+                        "type": "text",
+                        "value": "Two"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "children": [
+              {
+                "type": "link",
+                "title": null,
+                "url": "https://example.com",
+                "children": [
+                  {
+                    "type": "text",
+                    "value": "Link"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "tables and links:after",
+      "input": "| A | B |\n| --- | --- |\n| One | Changed |\n| Three | Four |\n\n[Link](https://example.org)",
+      "markdown": "| A | B |\n| --- | --- |\n| One | Changed |\n| Three | Four |\n\n[Link](https://example.org)",
+      "normalizedAst": {
+        "type": "root",
+        "children": [
+          {
+            "type": "table",
+            "align": [null, null],
+            "children": [
+              {
+                "type": "tableRow",
+                "children": [
+                  {
+                    "type": "tableCell",
+                    "children": [
+                      {
+                        "type": "text",
+                        "value": "A"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "tableCell",
+                    "children": [
+                      {
+                        "type": "text",
+                        "value": "B"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "tableRow",
+                "children": [
+                  {
+                    "type": "tableCell",
+                    "children": [
+                      {
+                        "type": "text",
+                        "value": "One"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "tableCell",
+                    "children": [
+                      {
+                        "type": "text",
+                        "value": "Changed"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "tableRow",
+                "children": [
+                  {
+                    "type": "tableCell",
+                    "children": [
+                      {
+                        "type": "text",
+                        "value": "Three"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "tableCell",
+                    "children": [
+                      {
+                        "type": "text",
+                        "value": "Four"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "children": [
+              {
+                "type": "link",
+                "title": null,
+                "url": "https://example.org",
+                "children": [
+                  {
+                    "type": "text",
+                    "value": "Link"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "section insertion:before",
+      "input": "Opening.\n\nClosing.",
+      "markdown": "Opening.\n\nClosing.",
+      "normalizedAst": {
+        "type": "root",
+        "children": [
+          {
+            "type": "paragraph",
+            "children": [
+              {
+                "type": "text",
+                "value": "Opening."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "children": [
+              {
+                "type": "text",
+                "value": "Closing."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "section insertion:after",
+      "input": "Opening.\n\n## New section\n\nFirst addition.\n\nSecond addition.\n\nClosing.",
+      "markdown": "Opening.\n\n## New section\n\nFirst addition.\n\nSecond addition.\n\nClosing.",
+      "normalizedAst": {
+        "type": "root",
+        "children": [
+          {
+            "type": "paragraph",
+            "children": [
+              {
+                "type": "text",
+                "value": "Opening."
+              }
+            ]
+          },
+          {
+            "type": "heading",
+            "depth": 2,
+            "children": [
+              {
+                "type": "text",
+                "value": "New section"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "children": [
+              {
+                "type": "text",
+                "value": "First addition."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "children": [
+              {
+                "type": "text",
+                "value": "Second addition."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "children": [
+              {
+                "type": "text",
+                "value": "Closing."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "nested MDX and attributes:before",
+      "input": "<lesson_title grade=\"7\">Lesson</lesson_title>\n\n<phase type=\"evocation\">\n<activity name=\"Warmup\" duration=\"10\">\nFirst question.\n\n<source title=\"Source\" url=\"https://example.com\" type=\"verified\" />\n\nLast question.\n</activity>\n</phase>",
+      "markdown": "<lesson_title grade=\"7\">Lesson</lesson_title>\n\n<phase type=\"evocation\">\n<activity name=\"Warmup\" duration=\"10\">\nFirst question.\n\n<source title=\"Source\" url=\"https://example.com\" type=\"verified\" />\n\nLast question.\n</activity>\n</phase>",
+      "normalizedAst": {
+        "type": "root",
+        "children": [
+          {
+            "type": "paragraph",
+            "children": [
+              {
+                "type": "mdxJsxTextElement",
+                "name": "lesson_title",
+                "attributes": [
+                  {
+                    "type": "mdxJsxAttribute",
+                    "name": "grade",
+                    "value": "7"
+                  }
+                ],
+                "children": [
+                  {
+                    "type": "text",
+                    "value": "Lesson"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "mdxJsxFlowElement",
+            "name": "phase",
+            "attributes": [
+              {
+                "type": "mdxJsxAttribute",
+                "name": "type",
+                "value": "evocation"
+              }
+            ],
+            "children": [
+              {
+                "type": "mdxJsxFlowElement",
+                "name": "activity",
+                "attributes": [
+                  {
+                    "type": "mdxJsxAttribute",
+                    "name": "name",
+                    "value": "Warmup"
+                  },
+                  {
+                    "type": "mdxJsxAttribute",
+                    "name": "duration",
+                    "value": "10"
+                  }
+                ],
+                "children": [
+                  {
+                    "type": "paragraph",
+                    "children": [
+                      {
+                        "type": "text",
+                        "value": "First question."
+                      }
+                    ]
+                  },
+                  {
+                    "type": "mdxJsxFlowElement",
+                    "name": "source",
+                    "attributes": [
+                      {
+                        "type": "mdxJsxAttribute",
+                        "name": "title",
+                        "value": "Source"
+                      },
+                      {
+                        "type": "mdxJsxAttribute",
+                        "name": "url",
+                        "value": "https://example.com"
+                      },
+                      {
+                        "type": "mdxJsxAttribute",
+                        "name": "type",
+                        "value": "verified"
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "type": "paragraph",
+                    "children": [
+                      {
+                        "type": "text",
+                        "value": "Last question."
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "nested MDX and attributes:after",
+      "input": "<lesson_title grade=\"7\">Lesson</lesson_title>\n\n<phase type=\"evocation\">\n<activity name=\"Warmup\" duration=\"15\">\nA better question.\n\n<source title=\"Source\" url=\"https://example.com\" type=\"verified\" />\n\nLast question.\n</activity>\n</phase>",
+      "markdown": "<lesson_title grade=\"7\">Lesson</lesson_title>\n\n<phase type=\"evocation\">\n<activity name=\"Warmup\" duration=\"15\">\nA better question.\n\n<source title=\"Source\" url=\"https://example.com\" type=\"verified\" />\n\nLast question.\n</activity>\n</phase>",
+      "normalizedAst": {
+        "type": "root",
+        "children": [
+          {
+            "type": "paragraph",
+            "children": [
+              {
+                "type": "mdxJsxTextElement",
+                "name": "lesson_title",
+                "attributes": [
+                  {
+                    "type": "mdxJsxAttribute",
+                    "name": "grade",
+                    "value": "7"
+                  }
+                ],
+                "children": [
+                  {
+                    "type": "text",
+                    "value": "Lesson"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "mdxJsxFlowElement",
+            "name": "phase",
+            "attributes": [
+              {
+                "type": "mdxJsxAttribute",
+                "name": "type",
+                "value": "evocation"
+              }
+            ],
+            "children": [
+              {
+                "type": "mdxJsxFlowElement",
+                "name": "activity",
+                "attributes": [
+                  {
+                    "type": "mdxJsxAttribute",
+                    "name": "name",
+                    "value": "Warmup"
+                  },
+                  {
+                    "type": "mdxJsxAttribute",
+                    "name": "duration",
+                    "value": "15"
+                  }
+                ],
+                "children": [
+                  {
+                    "type": "paragraph",
+                    "children": [
+                      {
+                        "type": "text",
+                        "value": "A better question."
+                      }
+                    ]
+                  },
+                  {
+                    "type": "mdxJsxFlowElement",
+                    "name": "source",
+                    "attributes": [
+                      {
+                        "type": "mdxJsxAttribute",
+                        "name": "title",
+                        "value": "Source"
+                      },
+                      {
+                        "type": "mdxJsxAttribute",
+                        "name": "url",
+                        "value": "https://example.com"
+                      },
+                      {
+                        "type": "mdxJsxAttribute",
+                        "name": "type",
+                        "value": "verified"
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "type": "paragraph",
+                    "children": [
+                      {
+                        "type": "text",
+                        "value": "Last question."
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "source content:before",
+      "input": "<lesson_title grade=\"7\">Lesson</lesson_title>\n\n<phase type=\"evocation\">\n<activity name=\"Warmup\" duration=\"10\">\nFirst question.\n\n<source title=\"Source\" url=\"https://example.com\" type=\"verified\" />\n\nLast question.\n</activity>\n</phase>",
+      "markdown": "<lesson_title grade=\"7\">Lesson</lesson_title>\n\n<phase type=\"evocation\">\n<activity name=\"Warmup\" duration=\"10\">\nFirst question.\n\n<source title=\"Source\" url=\"https://example.com\" type=\"verified\" />\n\nLast question.\n</activity>\n</phase>",
+      "normalizedAst": {
+        "type": "root",
+        "children": [
+          {
+            "type": "paragraph",
+            "children": [
+              {
+                "type": "mdxJsxTextElement",
+                "name": "lesson_title",
+                "attributes": [
+                  {
+                    "type": "mdxJsxAttribute",
+                    "name": "grade",
+                    "value": "7"
+                  }
+                ],
+                "children": [
+                  {
+                    "type": "text",
+                    "value": "Lesson"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "mdxJsxFlowElement",
+            "name": "phase",
+            "attributes": [
+              {
+                "type": "mdxJsxAttribute",
+                "name": "type",
+                "value": "evocation"
+              }
+            ],
+            "children": [
+              {
+                "type": "mdxJsxFlowElement",
+                "name": "activity",
+                "attributes": [
+                  {
+                    "type": "mdxJsxAttribute",
+                    "name": "name",
+                    "value": "Warmup"
+                  },
+                  {
+                    "type": "mdxJsxAttribute",
+                    "name": "duration",
+                    "value": "10"
+                  }
+                ],
+                "children": [
+                  {
+                    "type": "paragraph",
+                    "children": [
+                      {
+                        "type": "text",
+                        "value": "First question."
+                      }
+                    ]
+                  },
+                  {
+                    "type": "mdxJsxFlowElement",
+                    "name": "source",
+                    "attributes": [
+                      {
+                        "type": "mdxJsxAttribute",
+                        "name": "title",
+                        "value": "Source"
+                      },
+                      {
+                        "type": "mdxJsxAttribute",
+                        "name": "url",
+                        "value": "https://example.com"
+                      },
+                      {
+                        "type": "mdxJsxAttribute",
+                        "name": "type",
+                        "value": "verified"
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "type": "paragraph",
+                    "children": [
+                      {
+                        "type": "text",
+                        "value": "Last question."
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "source content:after",
+      "input": "<lesson_title grade=\"7\">Lesson</lesson_title>\n\n<phase type=\"evocation\">\n<activity name=\"Warmup\" duration=\"10\">\nFirst question.\n\n<source title=\"Source\" url=\"https://example.org\" type=\"verified\" />\n\nFinal reflection.\n</activity>\n</phase>",
+      "markdown": "<lesson_title grade=\"7\">Lesson</lesson_title>\n\n<phase type=\"evocation\">\n<activity name=\"Warmup\" duration=\"10\">\nFirst question.\n\n<source title=\"Source\" url=\"https://example.org\" type=\"verified\" />\n\nFinal reflection.\n</activity>\n</phase>",
+      "normalizedAst": {
+        "type": "root",
+        "children": [
+          {
+            "type": "paragraph",
+            "children": [
+              {
+                "type": "mdxJsxTextElement",
+                "name": "lesson_title",
+                "attributes": [
+                  {
+                    "type": "mdxJsxAttribute",
+                    "name": "grade",
+                    "value": "7"
+                  }
+                ],
+                "children": [
+                  {
+                    "type": "text",
+                    "value": "Lesson"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "mdxJsxFlowElement",
+            "name": "phase",
+            "attributes": [
+              {
+                "type": "mdxJsxAttribute",
+                "name": "type",
+                "value": "evocation"
+              }
+            ],
+            "children": [
+              {
+                "type": "mdxJsxFlowElement",
+                "name": "activity",
+                "attributes": [
+                  {
+                    "type": "mdxJsxAttribute",
+                    "name": "name",
+                    "value": "Warmup"
+                  },
+                  {
+                    "type": "mdxJsxAttribute",
+                    "name": "duration",
+                    "value": "10"
+                  }
+                ],
+                "children": [
+                  {
+                    "type": "paragraph",
+                    "children": [
+                      {
+                        "type": "text",
+                        "value": "First question."
+                      }
+                    ]
+                  },
+                  {
+                    "type": "mdxJsxFlowElement",
+                    "name": "source",
+                    "attributes": [
+                      {
+                        "type": "mdxJsxAttribute",
+                        "name": "title",
+                        "value": "Source"
+                      },
+                      {
+                        "type": "mdxJsxAttribute",
+                        "name": "url",
+                        "value": "https://example.org"
+                      },
+                      {
+                        "type": "mdxJsxAttribute",
+                        "name": "type",
+                        "value": "verified"
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "type": "paragraph",
+                    "children": [
+                      {
+                        "type": "text",
+                        "value": "Final reflection."
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "deletion:before",
+      "input": "Keep.\n\nRemove.\n\nTail.",
+      "markdown": "Keep.\n\nRemove.\n\nTail.",
+      "normalizedAst": {
+        "type": "root",
+        "children": [
+          {
+            "type": "paragraph",
+            "children": [
+              {
+                "type": "text",
+                "value": "Keep."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "children": [
+              {
+                "type": "text",
+                "value": "Remove."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "children": [
+              {
+                "type": "text",
+                "value": "Tail."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "deletion:after",
+      "input": "Keep.\n\nTail.",
+      "markdown": "Keep.\n\nTail.",
+      "normalizedAst": {
+        "type": "root",
+        "children": [
+          {
+            "type": "paragraph",
+            "children": [
+              {
+                "type": "text",
+                "value": "Keep."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "children": [
+              {
+                "type": "text",
+                "value": "Tail."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "complete rewrite:before",
+      "input": "Old document.\n\nOld end.",
+      "markdown": "Old document.\n\nOld end.",
+      "normalizedAst": {
+        "type": "root",
+        "children": [
+          {
+            "type": "paragraph",
+            "children": [
+              {
+                "type": "text",
+                "value": "Old document."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "children": [
+              {
+                "type": "text",
+                "value": "Old end."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "complete rewrite:after",
+      "input": "# Replacement\n\nNew body.\n\nNew ending.",
+      "markdown": "# Replacement\n\nNew body.\n\nNew ending.",
+      "normalizedAst": {
+        "type": "root",
+        "children": [
+          {
+            "type": "heading",
+            "depth": 1,
+            "children": [
+              {
+                "type": "text",
+                "value": "Replacement"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "children": [
+              {
+                "type": "text",
+                "value": "New body."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "children": [
+              {
+                "type": "text",
+                "value": "New ending."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "line breaks preserve code examples",
+      "input": "Before<br>after.\n\n`<br>`\n\n```html\n<br>\n```",
+      "markdown": "Before<br />after.\n\n`<br>`\n\n```html\n<br>\n```",
+      "normalizedAst": {
+        "type": "root",
+        "children": [
+          {
+            "type": "paragraph",
+            "children": [
+              {
+                "type": "text",
+                "value": "Before"
+              },
+              {
+                "type": "mdxJsxTextElement",
+                "name": "br",
+                "attributes": [],
+                "children": []
+              },
+              {
+                "type": "text",
+                "value": "after."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "children": [
+              {
+                "type": "inlineCode",
+                "value": "<br>"
+              }
+            ]
+          },
+          {
+            "type": "code",
+            "lang": "html",
+            "meta": null,
+            "value": "<br>"
+          }
+        ]
+      }
+    },
+    {
+      "name": "interrupting ordered list",
+      "input": "Label:\n6. First\n7. Second",
+      "markdown": "Label:\n\n6. First\n7. Second",
+      "normalizedAst": {
+        "type": "root",
+        "children": [
+          {
+            "type": "paragraph",
+            "children": [
+              {
+                "type": "text",
+                "value": "Label:"
+              }
+            ]
+          },
+          {
+            "type": "list",
+            "ordered": true,
+            "start": 6,
+            "spread": false,
+            "children": [
+              {
+                "type": "listItem",
+                "spread": false,
+                "checked": null,
+                "children": [
+                  {
+                    "type": "paragraph",
+                    "children": [
+                      {
+                        "type": "text",
+                        "value": "First"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "listItem",
+                "spread": false,
+                "checked": null,
+                "children": [
+                  {
+                    "type": "paragraph",
+                    "children": [
+                      {
+                        "type": "text",
+                        "value": "Second"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "ordinary numbered prose",
+      "input": "The war began\n2. světová válka.\n\nDate:\n15. května.",
+      "markdown": "The war began\n2. světová válka.\n\nDate:\n15. května.",
+      "normalizedAst": {
+        "type": "root",
+        "children": [
+          {
+            "type": "paragraph",
+            "children": [
+              {
+                "type": "text",
+                "value": "The war began\n2. světová válka."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "children": [
+              {
+                "type": "text",
+                "value": "Date:\n15. května."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "code and math fences preserve lists",
+      "input": "```text\nLabel:\n6. First\n7. Second\n```\n\n$$\nLabel:\n6. First\n7. Second\n$$",
+      "markdown": "```text\nLabel:\n6. First\n7. Second\n```\n\n$$\nLabel:\n6. First\n7. Second\n$$",
+      "normalizedAst": {
+        "type": "root",
+        "children": [
+          {
+            "type": "code",
+            "lang": "text",
+            "meta": null,
+            "value": "Label:\n6. First\n7. Second"
+          },
+          {
+            "type": "math",
+            "meta": null,
+            "value": "Label:\n6. First\n7. Second",
+            "data": {
+              "hName": "pre",
+              "hChildren": [
+                {
+                  "type": "element",
+                  "tagName": "code",
+                  "properties": {
+                    "className": ["language-math", "math-display"]
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "value": "Label:\n6. First\n7. Second"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "mentions and encoded identities",
+      "input": "@anna and @jan.\n\n[Display Name](mention:user%20id) and [@kept](https://example.com).\n\n`@code`",
+      "markdown": "@anna and @jan.\n\n[Display Name](mention:user%20id) and [@kept](https://example.com).\n\n`@code`",
+      "normalizedAst": {
+        "type": "root",
+        "children": [
+          {
+            "type": "paragraph",
+            "children": [
+              {
+                "children": [
+                  {
+                    "type": "text",
+                    "value": "@anna"
+                  }
+                ],
+                "type": "mention",
+                "username": "anna"
+              },
+              {
+                "type": "text",
+                "value": " and "
+              },
+              {
+                "children": [
+                  {
+                    "children": [
+                      {
+                        "type": "text",
+                        "value": "@jan"
+                      }
+                    ],
+                    "type": "mention",
+                    "username": "jan"
+                  }
+                ],
+                "type": "mention",
+                "username": "jan"
+              },
+              {
+                "type": "text",
+                "value": "."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "children": [
+              {
+                "children": [
+                  {
+                    "type": "text",
+                    "value": "Display Name"
+                  }
+                ],
+                "displayText": "Display Name",
+                "type": "mention",
+                "username": "user id"
+              },
+              {
+                "type": "text",
+                "value": " and "
+              },
+              {
+                "type": "link",
+                "title": null,
+                "url": "https://example.com",
+                "children": [
+                  {
+                    "type": "text",
+                    "value": "@kept"
+                  }
+                ]
+              },
+              {
+                "type": "text",
+                "value": "."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "children": [
+              {
+                "type": "inlineCode",
+                "value": "@code"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "gallery runs and linked images",
+      "input": "![One](one.png)\n\n[![Two](two.png)](https://example.com)\n\nText ![Inline](inline.png) stays.\n\n![Three](three.png)",
+      "markdown": "![One](one.png)\n\n[![Two](two.png)](https://example.com)\n\nText ![Inline](inline.png) stays.\n\n![Three](three.png)",
+      "normalizedAst": {
+        "type": "root",
+        "children": [
+          {
+            "type": "mdxJsxFlowElement",
+            "name": "image_gallery",
+            "attributes": [
+              {
+                "type": "mdxJsxAttribute",
+                "name": "layout",
+                "value": "row-fit"
+              },
+              {
+                "type": "mdxJsxAttribute",
+                "name": "images",
+                "value": {
+                  "type": "mdxJsxAttributeValueExpression",
+                  "value": "[{\"url\":\"one.png\",\"caption\":\"One\"},{\"url\":\"two.png\",\"caption\":\"Two\"}]"
+                }
+              }
+            ],
+            "children": []
+          },
+          {
+            "type": "paragraph",
+            "children": [
+              {
+                "type": "text",
+                "value": "Text "
+              },
+              {
+                "type": "image",
+                "title": null,
+                "url": "inline.png",
+                "alt": "Inline"
+              },
+              {
+                "type": "text",
+                "value": " stays."
+              }
+            ]
+          },
+          {
+            "type": "mdxJsxFlowElement",
+            "name": "image_gallery",
+            "attributes": [
+              {
+                "type": "mdxJsxAttribute",
+                "name": "layout",
+                "value": "row-fit"
+              },
+              {
+                "type": "mdxJsxAttribute",
+                "name": "images",
+                "value": {
+                  "type": "mdxJsxAttributeValueExpression",
+                  "value": "[{\"url\":\"three.png\",\"caption\":\"Three\"}]"
+                }
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "nested image galleries",
+      "input": "<activity name=\"Gallery\" duration=\"10\">\n\n![One](one.png)\n![Two](two.png)\n\nText.\n\n![Three](three.png)\n\n</activity>",
+      "markdown": "<activity name=\"Gallery\" duration=\"10\">\n\n![One](one.png)\n![Two](two.png)\n\nText.\n\n![Three](three.png)\n\n</activity>",
+      "normalizedAst": {
+        "type": "root",
+        "children": [
+          {
+            "type": "mdxJsxFlowElement",
+            "name": "activity",
+            "attributes": [
+              {
+                "type": "mdxJsxAttribute",
+                "name": "name",
+                "value": "Gallery"
+              },
+              {
+                "type": "mdxJsxAttribute",
+                "name": "duration",
+                "value": "10"
+              }
+            ],
+            "children": [
+              {
+                "type": "mdxJsxFlowElement",
+                "name": "image_gallery",
+                "attributes": [
+                  {
+                    "type": "mdxJsxAttribute",
+                    "name": "layout",
+                    "value": "row-fit"
+                  },
+                  {
+                    "type": "mdxJsxAttribute",
+                    "name": "images",
+                    "value": {
+                      "type": "mdxJsxAttributeValueExpression",
+                      "value": "[{\"url\":\"one.png\",\"caption\":\"One\"},{\"url\":\"two.png\",\"caption\":\"Two\"}]"
+                    }
+                  }
+                ],
+                "children": []
+              },
+              {
+                "type": "paragraph",
+                "children": [
+                  {
+                    "type": "text",
+                    "value": "Text."
+                  }
+                ]
+              },
+              {
+                "type": "mdxJsxFlowElement",
+                "name": "image_gallery",
+                "attributes": [
+                  {
+                    "type": "mdxJsxAttribute",
+                    "name": "layout",
+                    "value": "row-fit"
+                  },
+                  {
+                    "type": "mdxJsxAttribute",
+                    "name": "images",
+                    "value": {
+                      "type": "mdxJsxAttributeValueExpression",
+                      "value": "[{\"url\":\"three.png\",\"caption\":\"Three\"}]"
+                    }
+                  }
+                ],
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "opaque nested payloads",
+      "input": "<suggestions>\n\n<suggestion message=\"Continue\">Next <competence code=\"ABC\">Goal</competence>.</suggestion>\n\n</suggestions>\n\n<listening title=\"Listening\"><speaker id=\"s1\" name=\"Anna\" /><line speaker=\"s1\">Hello 😀.</line></listening>",
+      "markdown": "<suggestions>\n\n<suggestion message=\"Continue\">Next <competence code=\"ABC\">Goal</competence>.</suggestion>\n\n</suggestions>\n\n<listening title=\"Listening\"><speaker id=\"s1\" name=\"Anna\" /><line speaker=\"s1\">Hello 😀.</line></listening>",
+      "normalizedAst": {
+        "type": "root",
+        "children": [
+          {
+            "type": "mdxJsxFlowElement",
+            "name": "suggestions",
+            "attributes": [],
+            "children": [
+              {
+                "type": "paragraph",
+                "children": [
+                  {
+                    "type": "mdxJsxTextElement",
+                    "name": "suggestion",
+                    "attributes": [
+                      {
+                        "type": "mdxJsxAttribute",
+                        "name": "message",
+                        "value": "Continue"
+                      }
+                    ],
+                    "children": [
+                      {
+                        "type": "text",
+                        "value": "Next "
+                      },
+                      {
+                        "type": "mdxJsxTextElement",
+                        "name": "competence",
+                        "attributes": [
+                          {
+                            "type": "mdxJsxAttribute",
+                            "name": "code",
+                            "value": "ABC"
+                          }
+                        ],
+                        "children": [
+                          {
+                            "type": "text",
+                            "value": "Goal"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "text",
+                        "value": "."
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "children": [
+              {
+                "type": "mdxJsxTextElement",
+                "name": "listening",
+                "attributes": [
+                  {
+                    "type": "mdxJsxAttribute",
+                    "name": "title",
+                    "value": "Listening"
+                  }
+                ],
+                "children": [
+                  {
+                    "type": "mdxJsxTextElement",
+                    "name": "speaker",
+                    "attributes": [
+                      {
+                        "type": "mdxJsxAttribute",
+                        "name": "id",
+                        "value": "s1"
+                      },
+                      {
+                        "type": "mdxJsxAttribute",
+                        "name": "name",
+                        "value": "Anna"
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "type": "mdxJsxTextElement",
+                    "name": "line",
+                    "attributes": [
+                      {
+                        "type": "mdxJsxAttribute",
+                        "name": "speaker",
+                        "value": "s1"
+                      }
+                    ],
+                    "children": [
+                      {
+                        "type": "text",
+                        "value": "Hello 😀."
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "rich Word table cells",
+      "input": "<table><tr><td>\n\n**First**\n\nSecond\n\n<listening title=\"Audio\">\n\n<line speaker=\"s1\">Hello.</line>\n\n</listening>\n\n</td><td>\n\nOther\n\n</td></tr></table>",
+      "markdown": "<table><tr><td>\n\n**First**\n\nSecond\n\n<listening title=\"Audio\">\n\n<line speaker=\"s1\">Hello.</line>\n\n</listening>\n\n</td><td>\n\nOther\n\n</td></tr></table>",
+      "normalizedAst": {
+        "type": "root",
+        "children": [
+          {
+            "type": "mdxJsxFlowElement",
+            "name": "table",
+            "attributes": [],
+            "children": [
+              {
+                "type": "mdxJsxFlowElement",
+                "name": "tr",
+                "attributes": [],
+                "children": [
+                  {
+                    "type": "mdxJsxFlowElement",
+                    "name": "td",
+                    "attributes": [],
+                    "children": [
+                      {
+                        "type": "paragraph",
+                        "children": [
+                          {
+                            "type": "strong",
+                            "children": [
+                              {
+                                "type": "text",
+                                "value": "First"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "paragraph",
+                        "children": [
+                          {
+                            "type": "text",
+                            "value": "Second"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "mdxJsxFlowElement",
+                        "name": "listening",
+                        "attributes": [
+                          {
+                            "type": "mdxJsxAttribute",
+                            "name": "title",
+                            "value": "Audio"
+                          }
+                        ],
+                        "children": [
+                          {
+                            "type": "paragraph",
+                            "children": [
+                              {
+                                "type": "mdxJsxTextElement",
+                                "name": "line",
+                                "attributes": [
+                                  {
+                                    "type": "mdxJsxAttribute",
+                                    "name": "speaker",
+                                    "value": "s1"
+                                  }
+                                ],
+                                "children": [
+                                  {
+                                    "type": "text",
+                                    "value": "Hello."
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "mdxJsxFlowElement",
+                    "name": "td",
+                    "attributes": [],
+                    "children": [
+                      {
+                        "type": "paragraph",
+                        "children": [
+                          {
+                            "type": "text",
+                            "value": "Other"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "inert expressions",
+      "input": "<future-widget title={globalThis.__targetProbe()}>\n\n{globalThis.__targetProbe()}\n\n</future-widget>",
+      "markdown": "<future-widget title={globalThis.__targetProbe()}>\n\n{globalThis.__targetProbe()}\n\n</future-widget>",
+      "normalizedAst": {
+        "type": "root",
+        "children": [
+          {
+            "type": "mdxJsxFlowElement",
+            "name": "future-widget",
+            "attributes": [
+              {
+                "type": "mdxJsxAttribute",
+                "name": "title",
+                "value": {
+                  "type": "mdxJsxAttributeValueExpression",
+                  "value": "globalThis.__targetProbe()"
+                }
+              }
+            ],
+            "children": [
+              {
+                "type": "mdxFlowExpression",
+                "value": "globalThis.__targetProbe()"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "failures": [
+    {
+      "input": "<activity name=\"Open\">\n\nText.",
+      "message": "Expected a closing tag for `<activity>` (1:1-1:23)"
+    },
+    {
+      "input": "<phase>\n\n</activity>",
+      "message": "Unexpected closing tag `</activity>`, expected corresponding closing tag for `<phase>` (1:1-1:8)",
+      "line": 3,
+      "column": 1
+    },
+    {
+      "input": "Text {broken(}",
+      "message": "Could not parse expression with acorn",
+      "line": 1,
+      "column": 14
+    }
+  ]
+}

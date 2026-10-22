@@ -73,8 +73,8 @@ function pairOf(deletion: ReviewRevisionItem, insertion: ReviewRevisionItem): Re
 }
 
 /**
- * Replace each deletion that is followed, among the queue's revisions, by a touching
- * insertion from the same author with one `replace` item at the deletion's position.
+ * Replace touching deletion and insertion halves with one `replace` item at the first
+ * half's queue position. Keep deletion-first address and range semantics in either order.
  */
 function pairReplacements(items: readonly ReviewItem[]): {
   readonly items: readonly ReviewItem[];
@@ -84,17 +84,23 @@ function pairReplacements(items: readonly ReviewItem[]): {
   const pairs = new Map<ReviewItem, ReviewRevisionItem>();
   const absorbed = new Set<ReviewItem>();
   const renamed = new Map<string, string>();
-  for (let index = 0; index + 1 < revisions.length; index += 1) {
-    const deletion = revisions[index]!;
-    const insertion = revisions[index + 1]!;
-    if (!pairable(deletion, insertion)) continue;
-    const pair = pairOf(deletion, insertion);
-    pairs.set(deletion, pair);
-    absorbed.add(insertion);
-    renamed.set(deletion.id, pair.id);
-    renamed.set(insertion.id, pair.id);
-    index += 1;
-  }
+  // Preserve the established deletion-first choice when three touching halves are ambiguous.
+  for (const leadingInsertion of [false, true])
+    for (let index = 0; index + 1 < revisions.length; index += 1) {
+      const first = revisions[index]!,
+        second = revisions[index + 1]!;
+      if (pairs.has(first) || pairs.has(second) || absorbed.has(first) || absorbed.has(second))
+        continue;
+      const deletion = leadingInsertion ? second : first;
+      const insertion = leadingInsertion ? first : second;
+      if (!pairable(deletion, insertion)) continue;
+      const pair = pairOf(deletion, insertion);
+      pairs.set(first, pair);
+      absorbed.add(second);
+      renamed.set(deletion.id, pair.id);
+      renamed.set(insertion.id, pair.id);
+      index += 1;
+    }
   if (pairs.size === 0) return { items, renamed };
   const next: ReviewItem[] = [];
   for (const item of items) {

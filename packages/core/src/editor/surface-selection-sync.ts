@@ -21,7 +21,9 @@ import type {
 import type { TreeDocOp } from '@docx-editor.dev/core/store';
 import {
   applySelectionToDom,
+  domSelectionInHostUi,
   domSelectionTouchesPages,
+  isInHostUi,
   pageIndexOfNode,
   selectionsEqual,
   semanticSelectionFromDom,
@@ -329,7 +331,8 @@ export function createSurfaceSelectionSync(deps: SurfaceSelectionSyncDeps): Surf
    */
   function ownsSelection(): boolean {
     const active = hostDocument().activeElement;
-    if (active && pagesLayer.contains(active)) return true;
+    // A form control in host UI owns its own caret, even inside these pages.
+    if (active && pagesLayer.contains(active)) return !isInHostUi(active);
     // Text inputs can own focus while the document Selection is empty or still
     // points into our pages. Their native caret is not represented by that Selection.
     if (active && active !== hostDocument().body && active !== hostDocument().documentElement)
@@ -342,12 +345,14 @@ export function createSurfaceSelectionSync(deps: SurfaceSelectionSyncDeps): Surf
     // nobody — a surface that was torn down, or a re-rendered host. Refusing to write over
     // it would leave this surface unable to show its own caret.
     if (!anchor.isConnected) return true;
-    return pagesLayer.contains(anchor);
+    return pagesLayer.contains(anchor) && !isInHostUi(anchor);
   }
 
   /** Mirror the native selection into the model. Ignores selections outside painted text. */
   const adoptDomSelection = (): void => {
     const domSelection = hostDocument().getSelection();
+    // Host UI selections belong to its form controls, not to the document.
+    if (domSelectionInHostUi(domSelection)) return;
     const next = semanticSelectionFromDom(pagesLayer, domSelection);
     if (!next) {
       // NOT MAPPING IS NOT NOTHING HAPPENING.
@@ -493,6 +498,7 @@ export function createSurfaceSelectionSync(deps: SurfaceSelectionSyncDeps): Surf
   /** Arm one adoption opportunity. Secondary buttons are not a caret gesture. */
   function noteUserSelectionGesture(event: Event): void {
     if (event.type.startsWith('pointer') && (event as PointerEvent).button !== 0) return;
+    if (isInHostUi(event.target as Node | null)) return;
     userSelectionGesture = true;
   }
 

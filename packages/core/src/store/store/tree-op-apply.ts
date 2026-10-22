@@ -1,3 +1,9 @@
+import { contains, textKindOfValue, findTextParent } from './tree-op-text-node-lookup.ts';
+import { inlineRunSlice, inlineTextSlice } from './tree-op-inline-slices.ts';
+import {
+  isTrackedHyperlinkStructure,
+  applyTrackedHyperlinkStructure,
+} from './tree-op-tracked-link-structure.ts';
 import { withDisplayedHyphens } from '../package/hyphen-text.ts';
 import { withTailStyle } from './tree-op-paragraph-tail.ts';
 import { applySetFieldCode } from './tree-op-field-code.ts';
@@ -128,6 +134,7 @@ import {
   PARAGRAPH_VOCABULARY,
   RUN_VOCABULARY,
   mergedPropertyChildren,
+  withRunCharacterStyle,
 } from './tree-op-properties.ts';
 import {
   applySetListLevel,
@@ -190,9 +197,25 @@ import {
 import { applyMergeTableCells } from './tree-op-table-merge.ts';
 import { applySplitTableCell } from './tree-op-table-split.ts';
 import { addressesMergedColumns, applyMergedColumnOp } from './tree-op-table-merged-columns.ts';
+import { applyTrackedTableColumnOp } from './tree-op-tracked-table-columns.ts';
+import {
+  applyTrackedMergeTableCells,
+  applyTrackedSplitTableCell,
+} from './tree-op-tracked-table-merges.ts';
+import { applyTrackedHyperlinkTarget } from './tree-op-tracked-hyperlink.ts';
+import {
+  applyTrackedTablePropertyOp,
+  isTablePropertyOp,
+} from './tree-op-tracked-table-properties.ts';
 import { contentControlAtCaret, validateTreeOp } from './tree-op-validate.ts';
 import { isDrawingTreeDocOp } from './tree-op-drawings.ts';
 import { applyInsertFragment } from './tree-op-fragment.ts';
+import { applyInsertParagraphs } from './tree-op-insert-paragraphs.ts';
+import {
+  withoutRetiredParagraphMetadata,
+  isJoinedParagraph,
+  retireParagraph,
+} from '../package/retired-paragraph.ts';
 import { applyDrawingContentEdit } from './drawing-content-edit.ts';
 import { applyInsertBuildingBlock } from './building-block-insert.ts';
 import { applyBookmarkOp, isBookmarkTreeOp, withBookmarkEditRules } from './tree-op-bookmarks.ts';
@@ -287,16 +310,45 @@ function applyValidatedTreeOp(part: OoxmlPart, op: TreeDocOp, options?: EditOpti
     }
   }
 
-  if (op.op === 'authorTable') return applyTableAuthoring(part, op);
+  if (op.op === 'authorTable') return applyTableAuthoring(part, op, options);
+  if (isTablePropertyOp(op) && op.revision !== undefined)
+    return applyTrackedTablePropertyOp(
+      part,
+      { ...op, revision: op.revision },
+      (current, plain) => applyTreeOp(current, plain, options),
+      options
+    );
   if (op.op === 'setTableProperties') return applyTableProperties(part, op, options);
   if (op.op === 'insertTableRow' || op.op === 'deleteTableRow')
     return applyTableRowOp(part, op, options);
   if (op.op === 'insertTableColumn' || op.op === 'deleteTableColumn') {
-    if (addressesMergedColumns(part, op)) return applyMergedColumnOp(part, op, options);
-    return applyTableColumnOp(part, op, options);
+    const untracked = (current: OoxmlPart, column: typeof op) =>
+      addressesMergedColumns(current, column)
+        ? applyMergedColumnOp(current, column, options)
+        : applyTableColumnOp(current, column, options);
+    if (op.revision)
+      return applyTrackedTableColumnOp(part, { ...op, revision: op.revision }, untracked, options);
+    return untracked(part, op);
   }
-  if (op.op === 'mergeTableCells') return applyMergeTableCells(part, op, options);
-  if (op.op === 'splitTableCell') return applySplitTableCell(part, op, options);
+  if (op.op === 'mergeTableCells') {
+    if (!op.revision) return applyMergeTableCells(part, op, options);
+    return applyTrackedMergeTableCells(
+      part,
+      { ...op, revision: op.revision },
+      (current, plain) => applyTreeOp(current, plain, options),
+      (current, next) => applyTreeOp(current, next, options),
+      options
+    );
+  }
+  if (op.op === 'splitTableCell') {
+    if (!op.revision) return applySplitTableCell(part, op, options);
+    return applyTrackedSplitTableCell(
+      part,
+      { ...op, revision: op.revision },
+      (current, plain) => applyTreeOp(current, plain, options),
+      options
+    );
+  }
   if (
     op.op === 'setTableColumnWidths' ||
     op.op === 'setTableRightEdgeWidth' ||
@@ -314,6 +366,7 @@ function applyValidatedTreeOp(part: OoxmlPart, op: TreeDocOp, options?: EditOpti
   if (isDrawingTreeDocOp(op)) return applyDrawingContentEdit(part, op, options);
 
   if (op.op === 'insertFragment') return applyInsertFragment(part, op, options);
+  if (op.op === 'insertParagraphs') return applyInsertParagraphs(part, op, options);
   if (op.op === 'insertBuildingBlock') return applyInsertBuildingBlock(part, op, options);
   if (isBookmarkTreeOp(op)) return applyBookmarkOp(part, op, options);
   if (op.op === 'insertTable') return applyInsertTable(part, op, options);
@@ -326,6 +379,21 @@ function applyValidatedTreeOp(part: OoxmlPart, op: TreeDocOp, options?: EditOpti
   if (op.op === 'setFieldResult') return applySetFieldResult(part, op, options);
   if (op.op === 'insertEquation') return applyInsertEquation(part, op, options);
   if (op.op === 'joinParagraphs') return applyJoin(part, op.firstId, op.secondId, options);
+  if (isTrackedHyperlinkStructure(op, part))
+    return applyTrackedHyperlinkStructure(
+      part,
+      op,
+      (current, next) => applyTreeOp(current, next, options),
+      distributeInline,
+      options
+    );
+  if (op.op === 'setHyperlinkTarget' && op.revision !== undefined)
+    return applyTrackedHyperlinkTarget(
+      part,
+      { ...op, revision: op.revision },
+      (current, next) => applyTreeOp(current, next, options),
+      options
+    );
   if ((op.op === 'setHyperlinkTarget' || op.op === 'removeHyperlink') && op.range) {
     return applyPartialHyperlink(part, op, options);
   }
@@ -586,7 +654,8 @@ function applyValidatedTreeOp(part: OoxmlPart, op: TreeDocOp, options?: EditOpti
         op.properties,
         options,
         op.targetRunIds,
-        op.revision
+        op.revision,
+        op.characterStyle
       );
     case 'setParagraphProperties': {
       const existing = paragraphPropertiesNodeOf(paragraph);
@@ -1195,49 +1264,6 @@ function crossesContentControlBoundary(
   const beforeControl = innermostContentControlAround(part, before.runId)?.id;
   const afterControl = after ? innermostContentControlAround(part, after.runId)?.id : undefined;
   return beforeControl !== afterControl;
-}
-
-function contains(node: OoxmlNode, id: string): boolean {
-  if (node.id === id) return true;
-  if (node.kind === 'textValue') return false;
-  return node.children.some((child) => contains(child, id));
-}
-
-/** Whether the element holding a text value is a `w:t` or a `w:delText`. */
-function textKindOfValue(root: OoxmlNode, valueId: string): 'text' | 'deletedText' {
-  const walk = (node: OoxmlNode): 'text' | 'deletedText' | null => {
-    if (node.kind === 'textValue') return null;
-    if (
-      (node.kind === 'text' || node.kind === 'deletedText') &&
-      node.children.some((child) => child.id === valueId)
-    ) {
-      return node.kind;
-    }
-    for (const child of node.children) {
-      const found = walk(child);
-      if (found) return found;
-    }
-    return null;
-  };
-  return walk(root) ?? 'text';
-}
-
-function findTextParent(paragraph: OoxmlParagraphNode, valueId: string): OoxmlNode | null {
-  const walk = (node: OoxmlNode): OoxmlNode | null => {
-    if (node.kind === 'textValue') return null;
-    if (
-      (node.kind === 'text' || node.kind === 'deletedText') &&
-      node.children.some((child) => child.id === valueId)
-    ) {
-      return node;
-    }
-    for (const child of node.children) {
-      const found = walk(child);
-      if (found) return found;
-    }
-    return null;
-  };
-  return walk(paragraph);
 }
 
 function applyDeleteText(
@@ -2526,6 +2552,8 @@ function applySplit(
   options?: EditOptions,
   tailStyleId?: string | null
 ): TreeOpResult {
+  const joined = isJoinedParagraph(paragraph);
+  paragraph = withoutRetiredParagraphMetadata(paragraph);
   const nextId = createNodeIdAllocator(part);
   const { children, segments, endIds } = fieldSplitChildren(paragraph, [offset], nextId);
   const headChildren: OoxmlNode[] = [];
@@ -2580,7 +2608,7 @@ function applySplit(
   // new id to the paragraph an Enter creates. Seeded by (head id, offset) so one
   // `splitParagraphMany` and its equivalent sequence of single splits mint identically.
   const identity = splitIdentityOf(part, paragraph);
-  const tailParagraph = {
+  let tailParagraph = {
     id: nextId(),
     kind: 'paragraph',
     namespaceUri: WML_NAMESPACE_URI,
@@ -2597,7 +2625,8 @@ function applySplit(
       const tailPPr = withTailStyle(pPr, tailStyleId, nextId);
       return tailPPr ? [tailPPr, ...tailChildren] : tailChildren;
     })(),
-  } as unknown as OoxmlNode;
+  } as unknown as OoxmlParagraphNode;
+  if (joined) tailParagraph = retireParagraph(tailParagraph, nextId, true);
 
   const effect: TreeOpEffect = {
     dirty: [paragraph.id],
@@ -2823,9 +2852,7 @@ export function distributeInline(
       // emitted, exactly as a split at a paragraph edge emits no text.
       const slice = segment.node.value.slice(sliceStart - from, boundary - from);
       if (slice.length > 0) {
-        contentByPiece[piece]!.push(
-          textElement(nextId, slice, textKindOfValue(segmentOwner, segment.node.id))
-        );
+        contentByPiece[piece]!.push(inlineTextSlice(nextId, slice, segmentOwner));
       }
       sliceStart = boundary;
       piece += 1;
@@ -2838,9 +2865,7 @@ export function distributeInline(
     }
     const lastSlice = segment.node.value.slice(sliceStart - from);
     if (lastSlice.length > 0) {
-      contentByPiece[piece]!.push(
-        textElement(nextId, lastSlice, textKindOfValue(segmentOwner, segment.node.id))
-      );
+      contentByPiece[piece]!.push(inlineTextSlice(nextId, lastSlice, segmentOwner));
     }
   }
   let keptOriginalRpr = false;
@@ -2849,7 +2874,9 @@ export function distributeInline(
     if (content.length === 0) continue;
     const pieceRpr = rPr ? (keptOriginalRpr ? cloneWithNewIds(rPr, nextId) : rPr) : null;
     keptOriginalRpr = true;
-    byPiece[piece]!.push(runElement(nextId, pieceRpr ? [pieceRpr, ...content] : content));
+    byPiece[piece]!.push(
+      inlineRunSlice(nextId, child, pieceRpr ? [pieceRpr, ...content] : content)
+    );
   }
   return byPiece;
 }
@@ -2871,6 +2898,8 @@ function applySplitMany(
   offsets: readonly number[],
   options?: EditOptions
 ): TreeOpResult {
+  const joined = isJoinedParagraph(paragraph);
+  paragraph = withoutRetiredParagraphMetadata(paragraph);
   const nextId = createNodeIdAllocator(part);
   const { children, segments, endIds } = fieldSplitChildren(paragraph, offsets, nextId);
   const pPr = paragraphPropertiesNodeOf(paragraph);
@@ -2940,7 +2969,7 @@ function applySplitMany(
   for (let piece = 1; piece < pieceCount; piece += 1) {
     const last = piece === pieceCount - 1;
     const source = last ? pPr : strippedPPr;
-    tailParagraphs.push({
+    const tail = {
       id: nextId(),
       kind: 'paragraph',
       namespaceUri: WML_NAMESPACE_URI,
@@ -2949,7 +2978,8 @@ function applySplitMany(
       namespaceBindings: [],
       attributes: tailIdentityAttributes[piece] ?? [],
       children: source ? [cloneWithNewIds(source, nextId), ...pieces[piece]!] : pieces[piece]!,
-    } as unknown as OoxmlNode);
+    } as unknown as OoxmlParagraphNode;
+    tailParagraphs.push(joined && last ? retireParagraph(tail, nextId, true) : tail);
   }
 
   const effect: TreeOpEffect = {
@@ -3107,7 +3137,9 @@ function applyJoin(
     return { ok: false, reason: 'tree-invariant', detail: 'survivor missing' };
   }
   const nextId = createNodeIdAllocator(part);
-  const kept = withSectionMarkOf(first, second, nextId);
+  let kept = withSectionMarkOf(withoutRetiredParagraphMetadata(first), second, nextId);
+  if (kept.kind === 'paragraph' && isJoinedParagraph(second))
+    kept = retireParagraph(kept, nextId, true);
   const merged = Object.freeze({ ...kept, children: [...kept.children, ...moved] }) as OoxmlNode;
   const siblings = parent.children.flatMap((child) =>
     child.id === firstId ? [merged] : child.id === secondId ? [] : [child]
@@ -3274,7 +3306,8 @@ function applySetRunProperties(
   properties: readonly OoxmlProperty[],
   options?: EditOptions,
   targetRunIds?: readonly string[],
-  revision?: RevisionAttributionInput
+  revision?: RevisionAttributionInput,
+  characterStyle?: string | null
 ): TreeOpResult {
   const effect: TreeOpEffect = {
     dirty: [paragraph.id],
@@ -3325,10 +3358,9 @@ function applySetRunProperties(
     const existing = runPropertiesNodeOf(run);
     const content = run.children.filter((child) => !isRunPropertiesNode(child));
     const prior = existing?.children ?? [];
-    let children: readonly OoxmlNode[] = mergedPropertyChildren(
-      prior,
-      properties,
-      RUN_VOCABULARY,
+    let children: readonly OoxmlNode[] = withRunCharacterStyle(
+      mergedPropertyChildren(prior, properties, RUN_VOCABULARY, nextId),
+      characterStyle,
       nextId
     );
     // A tracked format change keeps the run's NEW properties and records the old ones in a

@@ -221,7 +221,7 @@ export function exportMarkdown(source: ExportDocumentSource, options?: MarkdownE
 export function exportMarkdownFrom(session: ExportSession, options?: MarkdownProjectionOptions): Promise<MarkdownExportResult>;
 
 // @public
-export function exportMarkdownLayout(layout: ExportSemanticLayout): MarkdownExportResult;
+export function exportMarkdownLayout(layout: ExportSemanticLayout, options?: MarkdownLayoutOptions): MarkdownExportResult;
 
 // @public
 export class ExportResourceError extends Error {
@@ -485,6 +485,7 @@ export interface MarkdownExportResult {
     readonly pagination: MarkdownPaginationInfo;
     readonly reviewArtifacts: readonly MarkdownReviewArtifact[];
     readonly reviewBindings: readonly MarkdownReviewBinding[];
+    readonly sourceMap?: MarkdownSourceMap;
     readonly warnings: readonly MarkdownWarning[];
 }
 
@@ -568,6 +569,12 @@ export type MarkdownJSONResult = Omit<MarkdownExportResult, 'media' | 'fontResol
 };
 
 // @public
+export interface MarkdownLayoutOptions extends MarkdownSourceMapOptions {
+    readonly codeCharacterStyles?: readonly string[];
+    readonly tableSyntax?: 'gfm' | 'html' | 'auto';
+}
+
+// @public
 export class MarkdownMediaError extends Error {
     constructor(code: 'media-limit' | 'url-resolution-failed' | 'invalid-image-url' | 'image-bytes-unavailable', message: string, details?: {
         readonly actualBytes?: number;
@@ -607,7 +614,7 @@ export interface MarkdownPaginationInfo {
 }
 
 // @public
-export interface MarkdownProjectionOptions {
+export interface MarkdownProjectionOptions extends MarkdownLayoutOptions {
     readonly images?: boolean | MarkdownImageOptions;
     readonly signal?: AbortSignal;
 }
@@ -655,6 +662,55 @@ export type MarkdownReviewRangePrecision = 'exact' | 'containing-construct';
 
 // @public
 export type MarkdownReviewUnmappedReason = 'not-represented-in-markdown' | 'non-linear-structural-change' | 'omitted-story-content';
+
+// @public
+export interface MarkdownSourceBoundary {
+    readonly markdownOffset: number;
+    readonly sourceOffset: number;
+}
+
+// @public
+export interface MarkdownSourceMap {
+    readonly paragraphs: readonly MarkdownSourceParagraph[];
+    readonly sources: readonly MarkdownSourceSlice[];
+    readonly tables: readonly MarkdownSourceTable[];
+    readonly unit: 'utf16-code-unit';
+}
+
+// @public
+export interface MarkdownSourceMapOptions {
+    readonly sourceMap?: boolean;
+}
+
+// @public
+export interface MarkdownSourceParagraph {
+    readonly markdownEnd?: number;
+    readonly markdownStart?: number;
+    readonly paragraphId: string;
+    readonly sourceEnd: number;
+    readonly sourceScope: string;
+    readonly sourceStart: number;
+}
+
+// @public
+export interface MarkdownSourceSlice {
+    readonly exact: boolean;
+    readonly markdownBoundaries?: readonly MarkdownSourceBoundary[];
+    readonly markdownEnd: number;
+    readonly markdownStart: number;
+    readonly paragraphId: string;
+    readonly sourceEnd: number;
+    readonly sourceScope: string;
+    readonly sourceStart: number;
+}
+
+// @public
+export interface MarkdownSourceTable {
+    readonly markdownEnd: number;
+    readonly markdownStart: number;
+    readonly sourceScope: string;
+    readonly tableId: string;
+}
 
 // @public
 export type MarkdownTrackedChange = SemanticTrackedChangeArtifactRecord;

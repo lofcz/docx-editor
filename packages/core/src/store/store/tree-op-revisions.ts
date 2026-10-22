@@ -1,5 +1,9 @@
 import { revisionSiteRefusal, type RevisionSiteRefusal } from './revision-site-refusal.ts';
 import {
+  captureRunOriginResolution,
+  normalizeResolvedRunOrigins,
+} from './run-origin-resolution.ts';
+import {
   hasRevisionMarkerContent,
   heldOnlyResolvedMarks,
   isInertMarker,
@@ -613,7 +617,7 @@ function rebuildChildren(children: readonly OoxmlNode[], plan: RebuildPlan): Oox
       continue;
     if (
       hollow?.children.length === 0 &&
-      heldOnlyResolvedMarks(child, plan.dropMarks, plan.acceptedMarks)
+      heldOnlyResolvedMarks(child, plan.dropMarks, plan.acceptedMarks, plan.restoreProperties)
     )
       continue;
     // A revision wrapper the resolution emptied goes the same way. Accepting one author's
@@ -626,10 +630,13 @@ function rebuildChildren(children: readonly OoxmlNode[], plan: RebuildPlan): Oox
     // range markers are siblings of the wrapper, so the other half still resolves by name.
     // Only a wrapper THIS resolution emptied is swept — one that arrived empty is not this
     // decision's to remove.
+    // A link the resolution emptied of its runs goes the same way: a link to nowhere holding a
+    // relationship alive, now holding only markers. A tracked retarget strikes the old link's
+    // runs beside its bookmarks, so accepting it reduces the old link to exactly that.
     if (
       hollow !== null &&
       child.kind !== 'textValue' &&
-      isContentRevisionKind(child.kind) &&
+      (isContentRevisionKind(child.kind) || child.kind === 'hyperlink') &&
       child.children.some((entry) => !isInertMarker(entry)) &&
       hollow.children.every(isInertMarker)
     ) {
@@ -662,7 +669,8 @@ function rebuild(node: OoxmlNode, plan: RebuildPlan): OoxmlNode[] {
         : result;
     }
     const merge = plan.mergeCells.get(result.id);
-    if (merge) result = applyCellMerge(result, revisionAttribute(merge, 'vMerge'), plan.mint);
+    if (merge)
+      result = applyCellMerge(result, revisionAttribute(merge, 'vMerge'), plan.mint, merge.id);
     if (
       result.kind === 'tableCell' &&
       !result.children.some(
@@ -933,6 +941,10 @@ export function resolveRevisions(
     }
   }
 
+  const runOrigins = captureRunOriginResolution(
+    part,
+    matched.map((site) => site.node)
+  );
   const plan: RebuildPlan = {
     actions,
     relocate: movePlan.relocate,
@@ -964,9 +976,11 @@ export function resolveRevisions(
   if (!replaced.ok) {
     return { ok: false, reason: 'tree-invariant' };
   }
+  const normalized = normalizeResolvedRunOrigins(replaced.part, runOrigins, options);
+  if (!normalized.ok) return normalized;
   return {
     ok: true,
-    part: replaced.part,
+    part: normalized.part,
     effect: {
       dirty: [],
       created: [],

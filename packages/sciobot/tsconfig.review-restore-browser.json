@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "types": ["bun", "vite/client"] },
+  "include": [
+    "test/browser/restore.tsx",
+    "../../e2e/sciobot-review-restore.config.ts",
+    "../../e2e/sciobot-review-restore.spec.ts"
+  ]
+}

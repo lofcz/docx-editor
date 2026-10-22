@@ -177,13 +177,44 @@ export function withCustomXmlNode(
   if (!part) return pkg;
   const ns = part.root.namespaceUri;
   const base = `${partName}#node-${node.id}`;
-  const authored = element(base, ns, NODE, { id: node.id }, [
+  let authored = element(base, ns, NODE, { id: node.id }, [
     textElement(`${base}-label`, ns, LABEL, node.label),
     textElement(`${base}-data`, ns, DATA, node.data),
   ]);
 
   const existing = nodeElements(part).find((candidate) => idOf(candidate) === node.id);
   if (existing) {
+    // Imported payload nodes already have canonical identities. Replacing those identities
+    // makes undo restore both the imported node and an empty copy of its replacement.
+    const values = new Map([
+      [LABEL, node.label],
+      [DATA, node.data],
+    ]);
+    const children: OoxmlNode[] = existing.children.map((child): OoxmlNode => {
+      if (child.kind === 'textValue' || child.namespaceUri !== ns || !values.has(child.localName))
+        return child;
+      const value = values.get(child.localName)!;
+      values.delete(child.localName);
+      const current =
+        child.children.length === 1 && child.children[0]!.kind === 'textValue'
+          ? child.children[0]!
+          : null;
+      const updated = textElement(child.id, ns, child.localName, value);
+      return {
+        ...child,
+        attributes: [
+          ...child.attributes.filter(
+            (attribute) =>
+              !(attribute.namespaceUri === XML_NAMESPACE_URI && attribute.localName === 'space')
+          ),
+          ...updated.attributes,
+        ],
+        children: [{ id: current?.id ?? `${child.id}#text`, kind: 'textValue' as const, value }],
+      } as OoxmlElement;
+    });
+    for (const [name, value] of values)
+      children.push(textElement(`${base}-${name}`, ns, name, value));
+    authored = { ...existing, children } as OoxmlElement;
     const replaced = replaceChildren(part, part.root.id, [
       ...part.root.children.map((child) => (child.id === existing.id ? authored : child)),
     ]);

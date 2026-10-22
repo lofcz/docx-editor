@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "A fragment paste always pushed its own package undo unit and published its journal without a history group. Pasted registered blocks kept their source tags, so the block index reported duplicate references.",
+  "after": "A fragment paste carries the history group of the commit in flight into its package unit and journal. The private block clipboard adds a payload flavour, pastes native flavours, and retags pasted blocks with fresh IDs and payload records in the same undo step.",
+  "reason": "The history group already travels in local history and in the existing journal field. Retagging uses existing content-control and custom XML writes. No shared format field, identity rule, or transport message changes.",
+  "tests": [
+    "packages/core/src/editor/__tests__/history-group-frames-paste.test.ts",
+    "e2e/sciobot-block-clipboard.spec.ts"
+  ],
+  "changeset": "history-group-fragment-paste",
+  "migration": null
+}

@@ -1,0 +1,14 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Tracked replacement landing was an internal editor helper.",
+  "after": "The canonical store exports the same pure helper for application transaction planners.",
+  "reason": "The editor and applications reuse one unchanged landing implementation. Shared operations, schemas, and transport formats stay unchanged.",
+  "tests": [
+    "packages/core/src/store/__tests__/tracked-replacement-landing.test.ts",
+    "packages/core/src/store/__tests__/tracked-replacement.test.ts",
+    "packages/core/src/editor/__tests__/propose-commands.test.ts"
+  ],
+  "changeset": "tracked-replacement-landing",
+  "migration": null
+}

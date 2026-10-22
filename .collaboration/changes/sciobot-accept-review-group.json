@@ -1,0 +1,19 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Private review groups could be read and persisted but lacked complete group acceptance. Whole-property decisions always resolved every block in one proposal. Property fallback IDs were not reserved after decisions.",
+  "after": "The private adapter accepts one complete native/property/atomic group through the native review gate. Exact selected site IDs resolve together per part through the existing acceptAllRevisions operation. Coupled merge/split members share that selection. Exact body/header sites and payload changes retain one transaction and undo unit. Immutable block receipts filter resolved groups and property views. Whole-proposal APIs decide only remaining blocks. Active and removed property records reserve fallback native IDs.",
+  "reason": "Existing native operations, package hooks, history tokens, actor scope, and retained IDs provide the transaction. One selected-set operation preserves native structural dependencies without broadening selection to neighboring groups. Sixteen real-session merge/split cases retain peer text, independent neighbors, native Word projections, remote geometry, both actors undo, complete redo, and saved convergence. R48 supplies inline ownership. R49 preserves complete native property-group redo. R50 preflights complete local ownership capacity through pure canonical previews and a scope at version 3 before mutation. Capacity failures preserve native XML, payloads, vectors, peers, and prior redo. R15 closes after the complete 1642-test private suite, 32 installed structural/capacity cases, actual installed main/collaboration checks, 53 application unit cases, 16 Chromium cases, both typechecks, production build, and exact artifact/source provenance checks pass. No native core/provider implementation, evaluated implementation, published package, public document API, operation schema, shared field, or protocol version changes.",
+  "tests": [
+    "packages/sciobot/src/review/accept-group.test.ts",
+    "packages/sciobot/src/review/accept-group-collaboration.test.ts",
+    "packages/sciobot/src/review/track-properties.test.ts",
+    "packages/sciobot/src/review/track-atomic.test.ts",
+    "packages/sciobot/src/review/payload-group-decisions.test.ts",
+    "packages/sciobot/src/review/accept-native-group-collaboration.test.ts",
+    "packages/sciobot/src/review/group-history-collaboration.test.ts",
+    "packages/sciobot/src/review/accept-group-table-merges.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

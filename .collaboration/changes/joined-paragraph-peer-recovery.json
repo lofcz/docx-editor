@@ -1,0 +1,15 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "A middle paragraph review decision physically removed its source owner before unseen peer text arrived.",
+  "after": "Actor-bound decisions retain the source owner and its runs with a recognized generic joined marker. Layout joins its content forward in every view. Word export produces the equivalent physical join without mutating live state. Ordinary splits preserve the original tail mark, and explicit owner deletion keeps its established behavior.",
+  "reason": "The marker uses existing generic XML descriptors and canonical primitives. Journal, codec, registry, and transport fields remain unchanged. Older engines preserve the metadata but require an engine upgrade for correct join visibility and Word export. The evaluated transport remains test-only and unchanged.",
+  "tests": [
+    "packages/core/src/store/__tests__/joined-paragraph.test.ts",
+    "packages/core/src/store/__tests__/retired-paragraph.test.ts",
+    "packages/sciobot/src/review/track-blocks-collaboration.test.ts",
+    "packages/sciobot/src/review/joined-paragraph-conflicts.test.ts"
+  ],
+  "changeset": "joined-paragraph-peer-recovery",
+  "migration": null
+}

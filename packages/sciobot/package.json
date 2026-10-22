@@ -1,0 +1,67 @@
+{
+  "name": "@sciobot/docx",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./dist/index.js"
+    },
+    "./react": {
+      "types": "./src/react-blocks/index.ts",
+      "import": "./dist/react-blocks/index.js"
+    },
+    "./collaboration": {
+      "types": "./src/collaboration/index.ts",
+      "import": "./dist/collaboration/index.js"
+    }
+  },
+  "scripts": {
+    "build": "bun build src/index.ts src/react-blocks/index.ts src/collaboration/index.ts --root src --outdir dist --target browser --packages external --external '@docx-editor.dev/*' --metafile=dist/metafile.json && bun scripts/check-build.mjs",
+    "typecheck": "bun check",
+    "test": "bun test --preload ../../scripts/test/preload-dom.ts ./src"
+  },
+  "peerDependencies": {
+    "@docx-editor.dev/core": "~2.31.0",
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0",
+    "yjs": "13.6.32"
+  },
+  "dependencies": {
+    "@docx-editor.dev/docx-to-markdown": "workspace:*",
+    "diff": "9.0.0",
+    "remark-gfm": "4.0.1",
+    "remark-math": "6.0.0",
+    "remark-mdx": "3.1.1",
+    "remark-parse": "11.0.0",
+    "remark-stringify": "11.0.0",
+    "unified": "11.0.5",
+    "unist-util-visit": "5.1.0"
+  },
+  "devDependencies": {
+    "@docx-editor.dev/pro": "workspace:*",
+    "@types/mdast": "4.0.4",
+    "@types/unist": "3.0.3",
+    "fflate": "^0.8.2",
+    "y-protocols": "1.0.7",
+    "yjs": "13.6.32",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@docx-editor.dev/fonts": "workspace:*"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    },
+    "yjs": {
+      "optional": true
+    }
+  }
+}

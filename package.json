@@ -11,6 +11,7 @@
     "examples/editor-api-consumers",
     "examples/docx-to-markdown",
     "examples/custom-nodes",
+    "examples/react-blocks",
     "examples/collaboration",
     "examples/collaboration-hocuspocus",
     "examples/telemetry-single-user",

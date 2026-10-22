@@ -44,6 +44,7 @@ import { paragraphLinesFor } from '../layout/paragraph-lines.ts';
 import { clipParagraphBox } from '../layout/paragraph-frame-clip.ts';
 import { selectionRunStyle } from './surface-formatting.ts';
 import { hostTimers } from './host-realm.ts';
+import { isInHostUi } from './dom-selection.ts';
 
 /** What the caret reads at paint time. Both move independently of the caret itself. */
 export interface SurfaceCaretInput {
@@ -139,7 +140,10 @@ export function createSurfaceCaret(
 
   function hasFocus(): boolean {
     const active = pagesLayer.ownerDocument.activeElement;
-    return active === pagesLayer || (!!active && pagesLayer.contains(active));
+    // A focused host UI control shows its own native caret.
+    return (
+      active === pagesLayer || (!!active && pagesLayer.contains(active) && !isInHostUi(active))
+    );
   }
 
   function isCollapsed(selection: SemanticSelection): boolean {
@@ -311,7 +315,7 @@ export function createSurfaceCaret(
     // `document.activeElement` is mid-transition here; the related target is what focus is
     // moving TO, and a move that stays inside the pages is not a blur.
     const next = event.relatedTarget as Node | null;
-    if (next && pagesLayer.contains(next)) return;
+    if (next && pagesLayer.contains(next) && !isInHostUi(next)) return;
     hide();
   };
 

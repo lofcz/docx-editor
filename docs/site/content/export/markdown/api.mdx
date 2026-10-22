@@ -24,6 +24,8 @@ See [getting started](/docs/2.x/export/markdown#get-started) for installation in
 | --- | --- |
 | `displayMode` | `'all-markup'` (default) shows pending insertions and deletions. `'proposed'` hides deletions; `'original'` hides insertions. Applies to layout and output without modifying the DOCX. |
 | `images` | `false` by default. Use `true` for image links and bytes, or an object with `syntax`, `resolveUrl`, and `maxTotalBytes`. |
+| `sourceMap` | `false` by default. Use `true` for native paragraph IDs and UTF-16 boundaries in logical Markdown. |
+| `tableSyntax` | `'gfm'` by default. Use `'html'` for structured cells or `'auto'` for spans and rich cells. |
 | `signal` | Cancels resource waits and later work at cancellation checks. Cannot interrupt synchronous parsing or layout. |
 | `resourceTimeoutMs` | Positive finite timeout applied separately to resource-wait phases, including font provisioning. Not a deadline for the whole conversion. |
 | `fonts` / `fallbackFonts` | Caller font sources or resolvers. `fonts` precedes bundled substitutes; `fallbackFonts` follows them. Requires immutable DOCX bytes. |
@@ -44,6 +46,7 @@ For custom measurement, image decoders, and session controls, see the [complete 
 | `media` | Unique extracted images with bytes and occurrence metadata. Empty when images are disabled. |
 | `reviewArtifacts` | All normalized comments and tracked changes, including artifacts without a page occurrence. |
 | `reviewBindings` | Ranges linking review occurrences to generated Markdown strings. |
+| `sourceMap` | Optional native text provenance for `markdown`. Includes source scopes, paragraph extents, and sparse text boundaries. |
 | `fontResolution` | Resolved and substituted fonts, coverage, and origin failures. `null` when font-origin evidence is unavailable. |
 | `warnings` | Content omissions, image placement fallback, and font problems. |
 
@@ -104,7 +107,29 @@ for (const binding of result.reviewBindings) {
 
 Ranges use UTF-16 offsets with an inclusive start and exclusive end, matching JavaScript `slice()`. Check `coverage` (`complete`, `partial`, or `none`) and range `precision` (`exact` or `containing-construct`) before treating a mapping as exact. IDs and offsets belong to this immutable result; editing or splitting the strings invalidates their offsets. Artifacts without occurrences have no bindings. See the [review binding reference](https://github.com/eigenpal/docx-editor/blob/main/packages/docx-to-markdown/docs/api.md#comments-and-tracked-changes).
 
+### Native text boundaries
+
+Set `sourceMap: true` to map logical Markdown text to native paragraph positions. This option works with `exportMarkdown`, `exportMarkdownFrom`, and `exportMarkdownLayout`. The map describes `result.markdown` only. Page strings have separate offsets.
+
+Each source slice identifies its story scope, paragraph, source extent, and Markdown extent. Check `exact` before using its `markdownBoundaries`. Interpolate between boundaries only when the source and Markdown distances are equal. Other intervals contain escaping or generated syntax without interior native text boundaries. Reject edit positions that split a UTF-16 surrogate pair.
+
+Paragraph `markdownStart` and `markdownEnd` locate complete constructs, including headings, list markers, quote prefixes, and emphasis delimiters. These construct extents can include generated syntax. Use source slice boundaries to locate native text positions.
+
+The `tables` array maps canonical `tableId` values to complete table constructs. Table extents include GFM divider rows and nested HTML wrappers. Page fragments share one logical table entry. Empty cells retain their table's construct range. Story scopes distinguish body and note tables.
+
+Set `tableSyntax: 'html'` when cells need multiline MDX content. HTML table wrappers retain Markdown cell content and paragraph boundaries. Your consumer must support Markdown inside HTML cells, such as an MDX parser. This option works with all three export entry points and retains source maps. It does not change document layout or the source DOCX.
+
+Use `tableSyntax: 'auto'` to preserve merged cells and structured content while keeping simple tables in GFM. HTML cells retain `colspan` and `rowspan`; continuation cells do not repeat their content. All export entry points retain source maps in this mode. The default remains GFM.
+
+Resolved revision records retain physical grid coordinates for layout and expose logical grid coordinates for export. Deleted columns therefore do not become empty Markdown columns. Canonical cells and physical geometry stay intact.
+
+Generated headings, emphasis delimiters, and table separators have no text slices. Generated drawing and note references can have slices with `exact: false`. The paragraph list includes empty paragraphs that emit no text. The map belongs to this export snapshot. It provides provenance, not an editing API. Reading or generating the map never changes the source document.
+
+Built-in `Quote` and `IntenseQuote` paragraph styles emit Markdown blockquotes outside table cells. Custom inherited quote styles require application normalization.
+
 ### Images and serialization
+
+Hyperlinks preserve sanitized external destinations, internal bookmark references, and tooltips as Markdown titles. Missing bookmark targets retain their references. Unsafe and unresolved external relationships remain plain text. Source maps address label text separately from generated link syntax.
 
 Set `images: true` for relative image links and `media` assets. Each asset includes `id`, `path`, `url`, `mimeType`, `bytes`, intrinsic pixel dimensions, and `occurrences`. Occurrences record the page, story, source location, and displayed dimensions. The default extraction limit is 64 MiB of unique image bytes, not total conversion memory.
 

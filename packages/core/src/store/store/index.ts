@@ -1,7 +1,17 @@
+export {
+  REVISION_ID_RESERVATION_LIMITS,
+  runWithRevisionIdReservations,
+  type RevisionIdReservation,
+  type RevisionIdReservationSource,
+} from './revision-id-reservations.ts';
 // Semantic document store — the canonical-tree lane (document-engine section 4).
 // The legacy PackageModel store (DocOps, DocumentStore, history periphery) was deleted
 // with the legacy editor pipeline; `TreeDocumentStore` over the ordered OOXML tree is
 // the only store.
+export { trackedReplacementLanding } from './tracked-replacement-landing.ts';
+export type { InsertParagraphsOp } from './tree-op-insert-paragraphs.ts';
+export type { InsertFragmentOp } from './tree-op-fragment.ts';
+export type { TableCellPropertyOp } from './tree-op-table-cell-properties.ts';
 export {
   ACCEPTED_PARAGRAPH_PROPERTIES,
   ACCEPTED_RUN_PROPERTIES,
@@ -244,3 +254,8 @@ export {
 } from './history-group.ts';
 
 export type { SetLegacyDropdownOp } from './legacy-dropdown-fields.ts';
+export {
+  prepareTrackedRunOrigins,
+  sealTrackedRunOrigins,
+  type TrackedRunOriginPreparation,
+} from './run-origin-authoring.ts';

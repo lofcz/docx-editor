@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Complete-target plans refused inserted tables and block quotes, and the direct executor inserted paragraphs only.",
+  "after": "The private plan vocabulary adds optional sibling style bindings for new block quotes. A shared fragment materializer seeds new paragraphs, applies resolved Quote styles, and builds new GFM tables through native insertTable and cell paragraph operations after allocation. Trailing and adjacent tables receive the empty paragraphs Word requires.",
+  "reason": "Private plan format and application-owned composition of existing native operations. No native operation, shared state, payload schema, or journal format changes.",
+  "tests": [
+    "packages/sciobot/src/diff/fragment-seeds.test.ts",
+    "packages/sciobot/src/ai/apply-direct.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

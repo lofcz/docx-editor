@@ -1,0 +1,10 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The private adapter had no registered React root manager.",
+  "after": "Registered React roots follow canonical block identity and native paint fragments without changing document content.",
+  "reason": "This optional React entry reads existing native package and geometry records. Registration, local widget state, parking, and disposal change only host DOM.",
+  "tests": ["packages/sciobot/src/react-blocks/host.test.tsx", "e2e/sciobot-block-host.spec.ts"],
+  "changeset": null,
+  "migration": null
+}

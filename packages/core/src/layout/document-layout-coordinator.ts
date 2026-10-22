@@ -2,6 +2,7 @@
 
 import type { HeadlessDocumentView, OoxmlNode } from '@docx-editor.dev/core/store';
 import { withFieldResultsMode, type FieldResultsMode } from '../store/package/field-result-mode.ts';
+import type { BlockReservations } from './block-reservations.ts';
 import type { InlineDrawingLayoutContext } from './drawing-layout.ts';
 import type { DocumentLinkProjectors } from './document-link-projector.ts';
 import type { FieldLinkProjector } from './field-pieces.ts';
@@ -67,6 +68,7 @@ export const SEMANTIC_LAYOUT_OPTION_ROLES = Object.freeze({
   drawingTokenForParagraph: 'document-coordinator',
   projectionTokenForParagraph: 'document-coordinator',
   projectionTokenForTable: 'document-coordinator',
+  blockReservations: 'document-coordinator',
   drawingLayoutToken: 'layout-internal',
   drawingExclusionPass: 'layout-internal',
   drawingExclusionConverged: 'layout-internal',
@@ -120,6 +122,8 @@ export interface LayoutDocumentViewOptions {
   readonly revisionAuthorFilter?: RevisionAuthorFilter;
   /** Lay out only this many body blocks; see `SemanticLayoutOptions.bodyBlockLimit`. */
   readonly bodyBlockLimit?: number;
+  /** Live-view widget reservations; see `SemanticLayoutOptions.blockReservations`. */
+  readonly blockReservations?: BlockReservations;
 }
 
 type LayoutDocumentViewSink = 'notes' | 'semantic-layout' | 'both';
@@ -151,6 +155,7 @@ const _LAYOUT_DOCUMENT_VIEW_OPTION_SINKS = {
   displayMode: 'both',
   revisionAuthorFilter: 'both',
   bodyBlockLimit: 'semantic-layout',
+  blockReservations: 'semantic-layout',
 } as const satisfies Readonly<Record<keyof LayoutDocumentViewOptions, LayoutDocumentViewSink>>;
 
 type CoordinatorInputsFor<Sink extends Exclude<LayoutDocumentViewSink, 'both'>> = {
@@ -232,6 +237,7 @@ function* layoutDocumentViewInModeSteps(
     displayMode: options.displayMode,
     revisionAuthorFilter: options.revisionAuthorFilter,
     bodyBlockLimit: options.bodyBlockLimit,
+    blockReservations: options.blockReservations,
   } satisfies Record<CoordinatorInputsFor<'semantic-layout'>, unknown>;
   const semanticOptions = {
     measurer: semanticInputs.measurer,
@@ -264,6 +270,7 @@ function* layoutDocumentViewInModeSteps(
     displayMode: semanticInputs.displayMode,
     revisionAuthorFilter: semanticInputs.revisionAuthorFilter,
     bodyBlockLimit: semanticInputs.bodyBlockLimit,
+    blockReservations: semanticInputs.blockReservations,
   } satisfies SemanticLayoutOptions & Record<DocumentCoordinatedSemanticOption, unknown>;
   return yield* layoutSemanticDocumentSteps(
     semanticInputs.view.part(),

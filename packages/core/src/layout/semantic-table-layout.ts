@@ -1574,6 +1574,13 @@ export function layoutRowFragmentBounded(
           }
         : {}),
       gridColumn: entry.gridColumn,
+      ...(entry.cell.resolvedGridColumn === undefined
+        ? {}
+        : {
+            resolvedGridColumn: entry.cell.resolvedGridColumn,
+            resolvedGridSpan: entry.cell.resolvedGridSpan,
+            resolvedGridColumnCount: entry.cell.resolvedGridColumnCount,
+          }),
       ...(entry.cell.logicalGridColumn === undefined
         ? {}
         : { logicalGridColumn: entry.cell.logicalGridColumn }),

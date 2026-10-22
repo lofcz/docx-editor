@@ -1,0 +1,169 @@
+# Direct AI edits and streaming lifecycle
+
+Direct edits commit before animation. Presentation never owns document state.
+
+Read the [dispatch and completion rules](../../../SCIOBOT_PORT_TODO.md) before claiming a leaf.
+
+Each named test or artifact is a deliverable. These specifications do not claim those checks already exist.
+
+## A01
+
+- [x] Apply a direct plan in one transaction
+
+**Depends:** [D15](04-edit-planner.md#d15), [C07](01-contracts.md#c07), [V01](11-verification.md#v01)
+
+**Primary files:** `fork:packages/sciobot/src/ai/apply-direct.ts`; `sibling apply-direct.test.ts`
+
+**Read:** [S03](sources.md#s03), [S18](sources.md#s18), [S25](sources.md#s25)
+
+**Change:** Apply a validated plan with one history boundary and one committed notification. Roll back completely if any operation fails.
+
+**Close when:** C01 pairs each create one undo entry and no transient review items. Undo and redo restore exact semantic results.
+
+**Check:** Add a focused native document regression. Include save/reopen and undo/redo. Add the focused two-session scenario described in the shared completion rules.
+
+**Claim:** claude, branch `codex/react-block-proof`. **Evidence:** Native baseline `9770e78`, local working tree. `packages/sciobot/src/ai/apply-direct.ts` adds `applyDirectPlan(editor, plan, { documentId, epoch })`, exported from the private entry. It decodes a detached copy of the plan, checks the mount revision, and refuses view and suggestion modes without changing them (direct edits never disable tracking). It rechecks every old value against the live canonical package: paragraph text slices, run property bags (shared `trackedRunFormatOps` lowering without attribution), paragraph properties, hyperlink targets/tooltips, exact sibling gaps, list source fingerprints (re-read through `planListMembership`), table row anchors, and payload values at their JSON paths. Existing-ID work lowers to native operations; identity-dependent work (links and list membership of new paragraphs, new rows/columns with their cell paragraphs, payload records, list instances via `direct-lists.ts`) runs in the existing after-allocation package-edit phase. A complete immutable preview, including relationship mints and completions, runs before the live write, so a refused plan leaves the document, history, and review state untouched. The live write is one `applyAutomationOps` call with `separateHistory`, so it publishes once and creates one undo unit. Focused run: `packages/sciobot/src/ai/apply-direct.test.ts`, 19 tests, all passing. All seven C01 pairs, inside the imported document with header, footer, notes, media, and unknown parts: one publication, revision +1, no review items, empty replanning against the target, live native Markdown equal to the immutable oracle, one undo restoring the exact canonical fingerprint with `canUndo()` false, redo restoring the landed fingerprint, unchanged header/footer/notes/unknown parts versus an unedited save, identical media bytes, no `w:ins`, and exact reopen. Six further plan kinds (run marks, heading style, new bullet list, checklist creation/state, inserted ordered list with a new instance, inserted linked paragraph) pass the same history and reopen checks. Refusals: wrong epoch, invalid context, suggestion mode, view mode, forged same-length old text, and a plan whose completion fails in preview; each leaves fingerprint, history, and review items unchanged. An empty plan commits nothing. Two real sessions (both receivers) run direct C01 complete rewrite, tables/links (relationship mint plus new row), and nested MDX (payload record) beside an offline peer edit: both converge on the target plus peer text, no review items, remote caret geometry follows the peer paragraph, undo removes only the direct transaction and keeps the peer text, redo restores it, deleting the peer paragraph during concurrent editing converges, and saved semantic digests match. Full private suite during this leaf: 1060 pass; the one failure was another worker's spike test that was deleted mid-run (ENOENT). Private typecheck has no errors in these files (remaining errors belong to the concurrent R08 worker); private build verifies 112 modules with the core external; scoped oxlint and prettier pass; compatibility passes with `.collaboration/changes/sciobot-direct-plan-execution.json`. Limits: inserted rich blocks, registered blocks in new rows/columns, nested inserted list paths, and tooltip removal refuse here and belong to D27-D30. A02-A09 keep request-session ledgers and presentation.
+
+## A02
+
+- [x] Record direct AI changes by request session
+
+**Depends:** [A01](06-direct-ai.md#a01)
+
+**Primary files:** `fork:packages/sciobot/src/ai/change-ledger.ts`; `sibling change-ledger.test.ts`
+
+**Read:** [S18](sources.md#s18)
+
+**Change:** Track changed ranges relative to the request baseline. Merge repeated edits and settle previous highlights when a new request starts.
+
+**Close when:** Two edits to one activity form one change. A new session settles earlier highlights without accepting unrelated Word review items.
+
+**Check:** Add or extend a focused Bun test with explicit expected results.
+
+**Claim:** claude, branch `codex/react-block-proof`. **Evidence:** Native baseline `9770e78`, local working tree. `packages/sciobot/src/ai/change-ledger.ts` adds `DirectChangeLedger`, the native counterpart of the Plate `AIChangeLedger`. Callers run `applyDirectPlan` inside `ledger.mute(...)` and then `ledger.record(partBefore, { session })`. Changes are recomputed against the request-session baseline from canonical paragraph fingerprints and grouped by the nearest registered block control, otherwise by top-level body block, so repeated edits merge. Statuses, pending playback (`reveal`), `acknowledge` with fade, `settle`, and `settleAll` follow the Plate contract. Any unmuted commit (typing, undo, review decision, remote revision) seals the baseline and drops only the changes it touched. A new session settles earlier changes. The ledger only reads fingerprints; it never writes the document or decides review items. Focused run: `change-ledger.test.ts`, 4 tests, 33 assertions. Two direct edits to two paragraphs of one C01 activity in one request form one change owned by `activity`, with a stable ID; a third edit of the same paragraph keeps it. A second request settles the first request's highlight while an imported tracked insertion keeps the same review item, also after `settleAll`. Removal-only edits produce no change; inserted paragraphs are `insert` changes; pending reveal by node and for all; acknowledgement fades and folds content into the baseline so a later edit highlights only new text. User typing drops only the touched change and keeps the manual text through a later direct edit; undo of the direct edit clears its change. Private typecheck shows no errors in these files; oxlint and prettier pass; compatibility decision `.collaboration/changes/sciobot-direct-change-ledger.json`. Limit: highlight painting and acknowledgement wiring belong to A03/A04/U leaves.
+
+## A03
+
+- [x] Acknowledge highlights after user edits
+
+**Depends:** [A02](06-direct-ai.md#a02), [V01](11-verification.md#v01)
+
+**Primary files:** `fork:packages/sciobot/src/ai/acknowledge.ts`; `sibling acknowledge.test.ts`
+
+**Read:** [S18](sources.md#s18)
+
+**Change:** Map ledger references through native operations. Settle touched changes and preserve unaffected highlights.
+
+**Close when:** Typing in a highlighted block settles that change only. Undo, deletion, and remote edits never leave dangling highlight ranges.
+
+**Check:** Add a focused native document regression. Include save/reopen and undo/redo. Add the focused two-session scenario described in the shared completion rules.
+
+**Claim:** claude, branch `codex/react-block-proof`. **Evidence:** Native baseline `9770e78`, local working tree. Native IDs are stable through operations, so ledger references need no positional remapping. A02's ledger keys changes by paragraph ID and fingerprint and drops exactly the changes an unmuted commit touched. `packages/sciobot/src/ai/acknowledge.ts` adds `directHighlights(editor, ledger)`: it flushes queued typing first (that commit settles touched changes) and resolves visible changes to whole live paragraph ranges, skipping pending playback and any vanished node. Focused run: `acknowledge.test.ts`, 3 tests. Real `surface.type` in one of two highlighted paragraphs settles only that change; the other keeps its change ID and every range addresses a live paragraph at its full length. Deleting the remaining highlighted paragraph clears it. Undo of that deletion does not resurrect a stale highlight. A later direct edit highlights only its new paragraph, and undo/redo of it leaves no dangling range. A reopened document has no highlights and keeps the text. Two real sessions (both receivers): a remote insertion in a highlighted paragraph settles that change on the author's peer while preserving the other; a remote deletion clears the last; saved digests match. Private typecheck shows no errors in these files; oxlint passes; compatibility decision `.collaboration/changes/sciobot-direct-highlights.json`. Limit: painting the ranges and fade styling belong to A04/U leaves.
+
+## A04
+
+- [x] Render bounded AI edit playback
+
+**Depends:** [A02](06-direct-ai.md#a02), [B06](02-react-blocks.md#b06), [V01](11-verification.md#v01)
+
+**Primary files:** `fork:packages/sciobot/src/ai/playback.ts`; `sibling playback browser test`
+
+**Read:** [S18](sources.md#s18), [S24](sources.md#s24)
+
+**Change:** Animate committed changed ranges, reveal targets, and show the AI caret. Keep playback within the existing 4000 ms cap.
+
+**Close when:** The full target is readable before playback finishes. Cancelling playback retains the edit. Deletions create no stale highlight.
+
+**Check:** Add a focused Chromium case with real input and native selection where applicable. Add the focused two-session scenario described in the shared completion rules.
+
+**Claim:** claude, branch `codex/react-block-proof`. **Evidence:** Native baseline `9770e78`, local working tree. `packages/sciobot/src/ai/playback.ts` adds `playDirectChanges(editor, ledger, options)`. Callers commit through `applyDirectPlan` inside `ledger.mute`, record with `pending: true`, and then start playback. The edit is already canonical and painted, so overlays only tint changed paragraphs and never hide text. Changes play in document order. Each step reveals its first paragraph through `surface.revealParagraph` (falling back to the painted fragment when the host lacks `.docx-editor__scroll-container`), sweeps a fixed-position overlay across the paragraph's painted line rectangles, moves a labelled AI caret along them, and then reveals that change in the ledger. Each frame re-reads the canonical part, so a paragraph that the user, undo, or a peer deletes loses its overlay at once; a change whose nodes vanished is revealed without painting. The budget is `clamp(duration ?? 2400, 0, 4000)`. A newer playback on the same editor cancels the older one and inherits its start, so a burst shares one deadline. Cancel and abort remove every overlay, reveal the rest, and never write the document; reduced motion reveals at once. Chromium (`e2e/sciobot-playback.spec.ts` with `e2e/sciobot-playback.config.ts`, harness `packages/sciobot/test/browser/playback.tsx`, two real rooms): 3 cases pass. (1) A projection-derived target edits two paragraphs 33 paragraphs apart and deletes one. Before any step completes, both new texts are in the canonical part and painted, the deleted text is gone, one sweep and the `✦ ScioBot` caret show, and changes are pending. A requested 10 s budget ends between 1 and 4.4 s. Afterwards no overlay remains, nothing is pending, both edited paragraphs are highlighted and the deleted one is not, and the far target was scrolled into view (pane `scrollTop` 1052). (2) Real clicking and typing into a changed paragraph during playback, then cancel: no overlays, the typed and committed text stays, the typed change settles, and the other change stays highlighted. (3) The peer deletes a played paragraph mid-playback: no overlay or highlight remains, both peers hold the same paragraphs, and saved digests match. Bun (`src/ai/playback.test.ts`): 4 cases, 43 assertions. A 60 s request plus a second burst commit ends inside `4000 + 500` ms with all three changes revealed. Cancel keeps the package revision. Reduced motion plays nothing. Undo plus abort during playback leaves no highlight for the undone text. Two real sessions in both receiver orders: a peer edit and a peer deletion during playback converge (`Alpha changed.`, `Gamma. Bob`), only the surviving change is highlighted, Alice's undo keeps the peer's work, and saved digests match. Scoped Prettier/oxlint pass. Private typecheck reports no errors in these files; its remaining errors are in the R worker's in-progress `track-table-format.ts` and core `tree-op-tracked-table-properties.ts`. Compatibility: `.collaboration/changes/sciobot-direct-playback.json`. Limits: playback tints whole paragraphs and does not animate removed blocks as ghosts; A05 owns document-switch and detach cancellation evidence.
+
+## A05
+
+- [x] Honor reduced motion and playback cancellation
+
+**Depends:** [A04](06-direct-ai.md#a04), [V01](11-verification.md#v01)
+
+**Primary files:** `fork:packages/sciobot/src/ai/playback-lifecycle.ts`; `sibling playback-lifecycle browser test`
+
+**Read:** [S18](sources.md#s18)
+
+**Change:** Honor reduced motion and abort signals. Cancel on document switch, detach, or newer playback; clean overlays and timers.
+
+**Close when:** Reduced motion leaves no animation delay. Abort and document switch leave no overlay or canonical edit rollback.
+
+**Check:** Add a focused Chromium case with real input and native selection where applicable. Add the focused two-session scenario described in the shared completion rules.
+
+**Claim:** codex, branch `codex/react-block-proof`. **Evidence:** Engine baseline `9770e78f` plus local work. `watchPlaybackLifecycle` observes editor document/selection/host events, native host disposal, and system motion preference changes. Playback stops on detach, document replacement, destruction, explicit abort, a newer playback, or reduced motion. Cleanup releases event listeners, MutationObserver, preference listener, animation frame, timer, sweep and caret nodes. Reduced motion reveals immediately; cancellation preserves the committed edit and history. Document replacement also forgets old presentation highlights, so matching paragraph IDs cannot tint an unrelated file. The root private package exports `playDirectChanges`. `bun test --preload ./scripts/test/preload-dom.ts --timeout 30000 packages/sciobot/src/ai/playback.test.ts`: 9 pass, 78 assertions; `/tmp/codex-docx-playback-lifecycle-final.log`. The final switch/highlight regression also passes separately (1 pass, 6 assertions; `/tmp/codex-docx-playback-switch.log`). Tests prove immediate completion through microtasks instead of waiting out the timer. Two real sessions cover both reconnect receivers, detach beside offline peer typing, independent undo/redo, shared saved convergence, and deletion during playback. `bunx playwright test --config e2e/sciobot-playback.config.ts`: 6 pass; `/tmp/codex-docx-playback-browser.log`. Chromium covers system reduced motion with real native typing, real Abort/Detach/Attach buttons, changing motion preference during playback, the 4000 ms cap, cancellation during typing, and peer deletion. Private typecheck/build, scoped formatting/lint, and compatibility policy pass. No canonical write or review decision occurs in lifecycle cleanup.
+
+## A06
+
+- [ ] Coalesce streamed suggestion targets safely
+
+**Depends:** [R19](05-suggestions.md#r19), [C07](01-contracts.md#c07), [V01](11-verification.md#v01)
+
+**Primary files:** `fork:packages/sciobot/src/ai/review-stream.ts`; `sibling review-stream.test.ts`
+
+**Read:** [S08](sources.md#s08), [S02](sources.md#s02)
+
+**Change:** Keep only the latest complete target per animation frame. Flush the final target and group one stream into one AI history batch.
+
+**Close when:** Three same-frame targets apply only the last target. A final target applies once. Undo returns to the pre-stream document.
+
+**Check:** Add a focused native document regression. Include save/reopen and undo/redo. Add the focused two-session scenario described in the shared completion rules.
+
+**Claim:** unclaimed. **Evidence:** pending.
+
+## A07
+
+- [ ] Cancel stale suggestion callbacks
+
+**Depends:** [A06](06-direct-ai.md#a06), [A01](06-direct-ai.md#a01), [V01](11-verification.md#v01)
+
+**Primary files:** `fork:packages/sciobot/src/ai/session-lifecycle.ts`; `sibling session-lifecycle.test.ts`
+
+**Read:** [S08](sources.md#s08), [S02](sources.md#s02)
+
+**Change:** Guard queued callbacks by document identity and session generation. Cancel queued review work before a direct edit or document switch.
+
+**Close when:** A delayed review frame cannot overwrite a newer direct edit. Ending a session flushes or cancels its target exactly once.
+
+**Check:** Add a focused native document regression. Include save/reopen and undo/redo. Add the focused two-session scenario described in the shared completion rules.
+
+**Claim:** unclaimed. **Evidence:** pending.
+
+## A08
+
+- [ ] Insert generated content at a stable AI anchor
+
+**Depends:** [D05](04-edit-planner.md#d05), [A01](06-direct-ai.md#a01), [B11](02-react-blocks.md#b11), [V01](11-verification.md#v01)
+
+**Primary files:** `fork:packages/sciobot/src/ai/stream-insert.ts`; `sibling stream-insert.test.ts`
+
+**Read:** [S19](sources.md#s19)
+
+**Change:** Insert generated content after the selected blocks or caret scope. Keep the anchor outside serialized document content.
+
+**Close when:** Generate inserts after the selected activity. Cancel and finish remove the anchor. One undo removes the generated insertion.
+
+**Check:** Add a focused native document regression. Include save/reopen and undo/redo. Add the focused two-session scenario described in the shared completion rules.
+
+**Claim:** unclaimed. **Evidence:** pending.
+
+## A09
+
+- [x] Reuse canonical direct targets until document changes
+
+**Depends:** [A01](06-direct-ai.md#a01), [P09](03-agent-projection.md#p09), [V01](11-verification.md#v01)
+
+**Primary files:** `fork:packages/sciobot/src/ai/direct-baseline.ts`; `sibling direct-baseline.test.ts`
+
+**Read:** [S03](sources.md#s03), [S02](sources.md#s02)
+
+**Change:** Reuse the landed normalized target across consecutive direct calls. Invalidate on manual edits, undo, review decisions, and remote revisions.
+
+**Close when:** The existing consecutive-tool-call fixture passes. A manual sentence between calls remains present after the next direct edit.
+
+**Check:** Add a focused native document regression. Include save/reopen and undo/redo. Add the focused two-session scenario described in the shared completion rules.
+
+**Claim:** claude, branch `codex/react-block-proof`. **Evidence:** Native baseline `9770e78`, local working tree. `packages/sciobot/src/ai/direct-baseline.ts` adds `DirectTargetBaseline`. Native planning needs the document's real source map, so the reusable baseline is the working projection a direct edit landed, not the requested Markdown (native projection normalizes it). `remember` reads that projection once after a commit, and P13 echoes also need it. `prepare` reuses it only while the editor still holds the identical canonical package at the same revision token, as Plate compares tree identity. Typing, undo, redo, review decisions, and remote revisions all replace the package or advance the revision, so the next call reads a fresh projection. Focused run: `direct-baseline.test.ts`, 4 tests, 35 assertions. Port of the application consecutive-tool-call fixture (`Opening/Middle/Closing`): the second call reuses the landed projection object, whose Markdown equals a fresh read of a document holding the intermediate target, and lands `Closing, revised.`. A manual sentence between calls invalidates the landing; the next direct edit plans against the live document and the sentence remains. Undo and redo invalidate, save/reopen keeps the text, and accepting an imported review item invalidates. Two real sessions (both receivers): a remote peer edit invalidates Alice's landing; her next direct call keeps Bob's text on both peers; undo/redo of her transaction keeps it; saved digests match. Private typecheck shows no errors in these files; oxlint and prettier pass; compatibility decision `.collaboration/changes/sciobot-direct-baseline.json`.

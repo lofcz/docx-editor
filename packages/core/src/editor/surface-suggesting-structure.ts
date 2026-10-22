@@ -15,9 +15,9 @@ export function suggestingStructureRefusal(ops: readonly TreeDocOp[]): string | 
   if (ops.some(removesControl)) {
     return 'suggesting cannot remove a content control outright';
   }
-  // Cell merge and split have no tracked form either, so applying them would be untracked.
+  // Cell merge and split are tracked only when the caller attributes them.
   const restructuresCells = (op: TreeDocOp) =>
-    op.op === 'mergeTableCells' || op.op === 'splitTableCell';
+    (op.op === 'mergeTableCells' || op.op === 'splitTableCell') && op.revision === undefined;
   if (ops.some(restructuresCells)) return SUGGESTING_CELL_STRUCTURE_REFUSAL;
   return null;
 }

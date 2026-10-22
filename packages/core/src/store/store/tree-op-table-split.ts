@@ -4,6 +4,7 @@
 // existing grid boundary uses it; any other boundary cuts that grid column in two, and every
 // cell in other rows that covers a cut column widens its `w:gridSpan`, so those cells keep
 // their width. A table without a readable `w:tblGrid` splits only along whole grid columns.
+// Existing-grid distribution partitions whole authored slots, preserving their widths and IDs.
 //
 // Rows: a cell merged over several rows splits into bands of a divisor of them, each band its
 // own `w:vMerge` chain. A one-row cell adds rows after its row, and every other cell of that
@@ -103,7 +104,8 @@ function startsOf(gridLength: number, cuts: ReadonlyMap<number, readonly number[
 function planGridColumns(
   table: MergeableTable,
   visual: VisualCell,
-  count: number
+  count: number,
+  distribution: 'equal-width' | 'existing-grid'
 ):
   | { readonly ok: true; readonly plan: ColumnPlan }
   | { readonly ok: false; readonly reason: TreeOpRejection } {
@@ -112,18 +114,27 @@ function planGridColumns(
   if (!widths)
     for (const entry of table.index.placed) gridLength = Math.max(gridLength, entry.endCol + 1);
   const span = visual.colTo - visual.colFrom + 1;
-  if (!widths) {
-    // Without widths only whole grid columns can be shared out.
+  if (!widths || distribution === 'existing-grid') {
+    // Existing-grid distribution shares whole authored slots without cutting or resizing them.
+    // Without widths, equal-width distribution also needs whole slots to avoid guessing boundaries.
     if (span % count !== 0) return { ok: false, reason: 'split-needs-grid' };
     const own = declaredDxaWidth(visual.owner.cell);
-    if (own !== null && own / count < MIN_TABLE_COLUMN_WIDTH_TWIPS) {
+    if (
+      distribution === 'equal-width' &&
+      own !== null &&
+      own / count < MIN_TABLE_COLUMN_WIDTH_TWIPS
+    ) {
       return { ok: false, reason: 'cell-too-narrow' };
     }
     const step = span / count;
     const parts = Array.from({ length: count }, (_, k) => ({
       from: visual.colFrom + k * step,
       to: visual.colFrom + (k + 1) * step - 1,
-      width: own === null ? null : own / count,
+      width: widths
+        ? gridWidthOver(table, visual.colFrom + k * step, visual.colFrom + (k + 1) * step - 1)
+        : own === null
+          ? null
+          : own / count,
     }));
     return { ok: true, plan: { cuts: new Map(), parts, gridLength } };
   }
@@ -201,7 +212,15 @@ function planSplit(
   | { readonly ok: false; readonly reason: TreeOpRejection } {
   const rows = splitCount(op.rows);
   const columns = splitCount(op.columns);
-  if (rows === null || columns === null || rows * columns < 2 || typeof op.cellId !== 'string') {
+  if (
+    rows === null ||
+    columns === null ||
+    rows * columns < 2 ||
+    typeof op.cellId !== 'string' ||
+    (op.columnDistribution !== undefined &&
+      op.columnDistribution !== 'equal-width' &&
+      op.columnDistribution !== 'existing-grid')
+  ) {
     return { ok: false, reason: 'invalidArgs' };
   }
   const read = readMergeableTable(part, op.tableId, limits);
@@ -220,7 +239,7 @@ function planSplit(
   if (height === 1 && table.topology.rows.length + rows - 1 > table.limits.maxRows) {
     return { ok: false, reason: 'resource-limit' };
   }
-  const planned = planGridColumns(table, visual, columns);
+  const planned = planGridColumns(table, visual, columns, op.columnDistribution ?? 'equal-width');
   if (!planned.ok) return planned;
   const cutCount = [...planned.plan.cuts.values()].reduce((sum, list) => sum + list.length, 0);
   if (planned.plan.gridLength + cutCount > table.limits.maxColumns) {

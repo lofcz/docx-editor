@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Concurrent first code writes could each create the missing styles part. Undo removed a shared target while another actor's relationship still referenced it.",
+  "after": "The private native document initializer creates the code style and imported-character-style variants before an editor opens or a collaboration room bootstraps. Style infrastructure is initial content; subsequent code formatting has independent actor history.",
+  "reason": "Application-owned initialization over Apache OPC, XML and ZIP APIs. No shared schema, journal, codec, provider implementation or native operation changes. Original non-style parts retain their bytes. Tests cover both client orders, delivery receivers and history owners, later writes, DOCX reopen and complete shared-room reopen.",
+  "tests": [
+    "packages/sciobot/src/native/prepare-document.test.ts",
+    "packages/sciobot/src/native/inline-code-collaboration.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

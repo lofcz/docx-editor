@@ -165,7 +165,12 @@ function runIsBlank(run: OoxmlElement): boolean {
 export function cellIsBlank(cell: OoxmlTableCellNode): boolean {
   const blocks = cellBlocks(cell);
   if (blocks.length !== 1 || blocks[0]!.kind !== 'paragraph') return false;
-  return blocks[0]!.children.every(
+  return paragraphIsBlank(blocks[0]!);
+}
+
+/** The same exact blank-paragraph rule for cell edits and tracked merge copies. */
+export function paragraphIsBlank(paragraph: OoxmlElement): boolean {
+  return paragraph.children.every(
     (child) =>
       isWmlElement(child, 'pPr') ||
       isWmlElement(child, 'proofErr') ||

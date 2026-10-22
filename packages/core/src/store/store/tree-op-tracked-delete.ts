@@ -1,3 +1,4 @@
+import { inlineRunSlice, inlineTextSlice } from './tree-op-inline-slices.ts';
 // Striking text in SUGGESTING mode: `applyDeleteTracked` and the run surgery it needs.
 //
 // Split out of `tree-op-tracked.ts`, which keeps the insertion appliers and the node builders,
@@ -10,7 +11,12 @@ import {
   nextInlineContainerDepth,
 } from '../package/ooxml-shared.ts';
 import { isInlineContainerProperty } from '../package/inline-container-properties.ts';
-import type { OoxmlNode, OoxmlParagraphNode, OoxmlPart } from '../package/ooxml-tree.ts';
+import type {
+  OoxmlNode,
+  OoxmlParagraphNode,
+  OoxmlPart,
+  OoxmlRunNode,
+} from '../package/ooxml-tree.ts';
 import {
   createNodeIdAllocator,
   findNode,
@@ -40,7 +46,6 @@ import {
   isWmlNamed,
   mergedRevisions,
   revisionAttributes,
-  textNode,
 } from './tree-op-tracked.ts';
 
 /**
@@ -285,7 +290,7 @@ export function applyDeleteTracked(
 function splitRunThree(
   mint: () => string,
   offsets: ParagraphOffsetIndex,
-  run: OoxmlNode,
+  run: OoxmlRunNode,
   from: number,
   to: number,
   /** Nodes an atom being struck swallows; covered by identity, since they measure nothing. */
@@ -295,13 +300,7 @@ function splitRunThree(
   const withProperties = (content: readonly OoxmlNode[]): OoxmlNode | null =>
     content.length === 0
       ? null
-      : build(
-          mint(),
-          'run',
-          'r',
-          [],
-          [...properties.map((child) => copy(mint, child)), ...content]
-        );
+      : inlineRunSlice(mint, run, [...properties.map((child) => copy(mint, child)), ...content]);
 
   const before: OoxmlNode[] = [];
   const covered: OoxmlNode[] = [];
@@ -334,13 +333,12 @@ function splitRunThree(
     }
     const value = childrenOf(child).find((grand) => grand.kind === 'textValue');
     const raw = value && value.kind === 'textValue' ? value.value : '';
-    const deleted = child.kind === 'deletedText';
     const head = raw.slice(0, Math.max(0, from - childFrom));
     const middle = raw.slice(Math.max(0, from - childFrom), Math.min(raw.length, to - childFrom));
     const tail = raw.slice(Math.min(raw.length, to - childFrom));
-    if (head) before.push(textNode(mint, head, deleted));
-    if (middle) covered.push(textNode(mint, middle, deleted));
-    if (tail) after.push(textNode(mint, tail, deleted));
+    if (head) before.push(inlineTextSlice(mint, head, child));
+    if (middle) covered.push(inlineTextSlice(mint, middle, child));
+    if (tail) after.push(inlineTextSlice(mint, tail, child));
   }
   return {
     before: withProperties(before),
@@ -390,14 +388,22 @@ function toDeleted(mint: () => string, run: OoxmlNode): OoxmlNode {
       const value = childrenOf(child).find((grand) => grand.kind === 'textValue');
       const raw = value && value.kind === 'textValue' ? value.value : '';
       const valueId = mint();
-      return build(mint(), 'generic', 'delInstrText', child.attributes, [
-        { id: valueId, kind: 'textValue', value: raw } as OoxmlNode,
-      ]);
+      return {
+        ...child,
+        kind: 'generic',
+        id: mint(),
+        localName: 'delInstrText',
+        children: [{ id: valueId, kind: 'textValue', value: raw }],
+      } as OoxmlNode;
     }
     if (child.kind !== 'text') return child;
     const value = childrenOf(child).find((grand) => grand.kind === 'textValue');
     const raw = value && value.kind === 'textValue' ? value.value : '';
-    return textNode(mint, raw, true);
+    return {
+      ...inlineTextSlice(mint, raw, child),
+      kind: 'deletedText',
+      localName: 'delText',
+    } as OoxmlNode;
   });
   return { ...run, id: mint(), children } as OoxmlNode;
 }

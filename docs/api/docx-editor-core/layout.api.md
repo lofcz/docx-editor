@@ -118,6 +118,12 @@ export interface BidiEmbeddingLevels {
 export type BlockFragmentRecord = ParagraphFragmentRecord | TableFragmentRecord;
 
 // @public
+export interface BlockReservations {
+    readonly epoch: string;
+    extraAfter(paragraphId: string): number;
+}
+
+// @public
 export function borderExtentPt(edge: ResolvedTableBorderEdge | TableBorderSide | undefined): number;
 
 // @public
@@ -3693,6 +3699,7 @@ export interface SemanticLayout {
 
 // @public
 export interface SemanticLayoutOptions {
+    readonly blockReservations?: BlockReservations;
     // @internal
     readonly bodyBlockLimit?: number;
     readonly cache?: ParagraphLayoutCache<readonly PendingLine[]>;
@@ -3920,6 +3927,9 @@ export interface SemanticTableCell {
         readonly top: number;
     };
     readonly preferredWidth: PreferredWidth;
+    readonly resolvedGridColumn?: number;
+    readonly resolvedGridColumnCount?: number;
+    readonly resolvedGridSpan?: number;
     // (undocumented)
     readonly revisionShading?: 'inserted' | 'deleted' | 'merged' | 'split';
     // (undocumented)
@@ -4572,6 +4582,9 @@ export interface TableCellFragmentRecord {
     readonly id: string;
     readonly logicalGridColumn?: number;
     readonly paintInert?: boolean;
+    readonly resolvedGridColumn?: number;
+    readonly resolvedGridColumnCount?: number;
+    readonly resolvedGridSpan?: number;
     // (undocumented)
     readonly revisionShading?: 'inserted' | 'deleted' | 'merged' | 'split';
     readonly revisionShadingAuthor?: string;

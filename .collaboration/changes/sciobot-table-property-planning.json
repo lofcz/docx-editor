@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The private adapter did not plan independent existing table and cell property changes.",
+  "after": "A pure planner validates one native property command through an immutable preview, omits authored no-ops, and preserves original canonical selectors without copied native content.",
+  "reason": "The private planner applies no live or shared changes. Existing native commands own property semantics and merge validation. N17 separately records the native fidelity fix. A01/R11 retain guarded direct/review execution.",
+  "tests": [
+    "packages/sciobot/src/diff/table-format.test.ts",
+    "packages/sciobot/src/diff/plan.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

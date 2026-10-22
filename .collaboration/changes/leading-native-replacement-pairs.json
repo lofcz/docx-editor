@@ -1,0 +1,13 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Native review paired touching deletion and insertion halves only when the deletion came first.",
+  "after": "Native review also pairs insertion-first halves. The paired item retains deletion-first addresses and ranges, stable pair keys, query opt-out, and established deletion-first precedence for ambiguous chains.",
+  "reason": "This read and decision-key change uses existing canonical revisions, addresses, operations, journals, and native transport. Shared format fields remain unchanged. Both original halves retain their independent representations.",
+  "tests": [
+    "packages/core/src/editor/__tests__/leading-replacement.test.ts",
+    "packages/sciobot/src/review/leading-replacement-collaboration.test.ts"
+  ],
+  "changeset": "leading-native-replacement-pairs",
+  "migration": null
+}

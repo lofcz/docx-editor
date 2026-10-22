@@ -1,0 +1,17 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The private complete-target composer refused column changes and matched retained table rows without projecting through retained columns.",
+  "after": "Private planning composes original grid-column deletion and deferred rich column insertion, maps retained cells across grid changes, and validates combined row/column topology. Matching uses complete vectors, header text, unambiguous body evidence, and positional fallback. New paragraph fragments retain authorability checks and reject unmapped metadata. All native addresses in plans come from the source snapshot.",
+  "reason": "Only private immutable composition and test-only native application change. No native operation, shared state, payload schema, journal format, or live executor changes. Native preview identities remain internal. Guarded transaction application and two-session lifecycle checks remain A01 and review requirements. The private package requires no published changeset or public API extraction.",
+  "tests": [
+    "packages/sciobot/src/diff/target-table-columns.test.ts",
+    "packages/sciobot/src/diff/target-table.test.ts",
+    "packages/sciobot/src/diff/table-columns.test.ts",
+    "packages/sciobot/src/diff/inserted-table-columns.test.ts",
+    "packages/sciobot/src/diff/inserted-table-rows.test.ts",
+    "packages/sciobot/src/diff/plan-target.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

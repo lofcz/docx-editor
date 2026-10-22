@@ -5,6 +5,7 @@
 // half both of them need.
 
 import { findNode, parentNodeOf, type OoxmlEditResult } from '../package/ooxml-edit.ts';
+import { withoutRetiredParagraphMetadata } from '../package/retired-paragraph.ts';
 import {
   isInlineRunContainer,
   MAX_INLINE_CONTAINER_DEPTH,
@@ -649,6 +650,7 @@ export function fromEdit(result: OoxmlEditResult, effect: TreeOpEffect): TreeOpR
 /** A deep copy with freshly minted identities, for content duplicated by a split. */
 export function cloneWithNewIds(node: OoxmlNode, nextId: () => string): OoxmlNode {
   if (node.kind === 'textValue') return { id: nextId(), kind: 'textValue', value: node.value };
+  if (node.kind === 'paragraph') node = withoutRetiredParagraphMetadata(node);
   return {
     ...node,
     id: nextId(),

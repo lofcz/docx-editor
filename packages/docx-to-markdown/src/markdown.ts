@@ -13,7 +13,7 @@ import {
   remainingAnchors,
 } from './markdown-media.ts';
 import { markdownWarnings } from './markdown-warnings.ts';
-import type { MarkdownImageAsset } from './media-types.ts';
+import type { MarkdownImageAsset, MarkdownLayoutOptions } from './media-types.ts';
 // Record-only Markdown translation. No OOXML or package reads belong in this file.
 
 import {
@@ -35,11 +35,13 @@ import {
 } from './markdown-inline.ts';
 import {
   concatMarkdown,
+  freezeMarkdownSourceMap,
   EMPTY_MAPPED_MARKDOWN,
   indentContinuationLines,
   literalMarkdown,
   quoteMarkdownLines,
   preserveLeadingWhitespace,
+  shiftedParagraphs,
   wrapMarkdown,
   withSourceParagraphs,
   type MappedMarkdown,
@@ -50,6 +52,7 @@ import {
   logicalBlocks,
   mergeRows,
   nestedTableMarkdown,
+  tableNeedsHtml,
   tableMarkdown,
   type LogicalBlock,
   type TableProjection,
@@ -111,7 +114,8 @@ function capturesParagraph(context: TranslationContext, paragraphId: string): bo
   const capture = context.sourceCapture;
   return Boolean(
     capture &&
-    (capture.allSourceScopes.has(context.sourceScope) ||
+    (capture.allSources ||
+      capture.allSourceScopes.has(context.sourceScope) ||
       capture.offsetsBySource.has(markdownSourceCaptureKey(context.sourceScope, paragraphId)))
   );
 }
@@ -209,19 +213,33 @@ function textTokensMarkdown(
 function linkedSpansMarkdown(
   tokens: readonly MarkdownTextToken[],
   href: string,
-  context: TranslationContext
+  context: TranslationContext,
+  tooltip?: string
 ): MappedMarkdown {
+  // Entity references preserve authored title characters without creating Markdown syntax.
+  const entities: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    '\\': '&#92;',
+    '\r': '&#13;',
+    '\n': '&#10;',
+  };
+  const title =
+    tooltip === undefined ? '' : ` "${tooltip.replace(/[&<>"\\\r\n]/g, (c) => entities[c]!)}"`;
+  const suffix = `](${destination(href)}${title})`;
   const { leading, content, trailing } = trimTokenWhitespace(tokens);
   const before = textTokensMarkdown(leading, context);
   const label = textTokensMarkdown(content, context);
   const after = textTokensMarkdown(trailing, context);
   if (label.markdown.length === 0 && before.markdown.length + after.markdown.length > 0) {
-    return wrapMarkdown(concatMarkdown([before, after]), '[', `](${destination(href)})`);
+    return wrapMarkdown(concatMarkdown([before, after]), '[', suffix);
   }
   return concatMarkdown([
     before,
     label.markdown.length > 0
-      ? concatMarkdown([literalMarkdown('['), label, literalMarkdown(`](${destination(href)})`)])
+      ? concatMarkdown([literalMarkdown('['), label, literalMarkdown(suffix)])
       : EMPTY_MAPPED_MARKDOWN,
     after,
   ]);
@@ -276,7 +294,10 @@ function writeSpanAtoms(
       } else writer.writeBoundary(navigation);
       continue;
     }
-    if (atom.span.link?.kind === 'external' && atom.span.link.href) {
+    if (
+      (atom.span.link?.kind === 'external' || atom.span.link?.kind === 'internal') &&
+      atom.span.link.href
+    ) {
       const linked: MarkdownTextToken[] = [atomToken(atom)];
       while (atoms[index + 1]?.kind === 'span') {
         const next = atoms[index + 1];
@@ -290,7 +311,9 @@ function writeSpanAtoms(
         linked.push(atomToken(next));
         index += 1;
       }
-      writer.writeMappedBoundary(linkedSpansMarkdown(linked, atom.span.link.href, context));
+      writer.writeMappedBoundary(
+        linkedSpansMarkdown(linked, atom.span.link.href, context, atom.span.link.tooltip)
+      );
       continue;
     }
     writer.writeText(atomToken(atom));
@@ -391,7 +414,15 @@ function paragraphMarkdown(
     // numbered Word heading remains navigable without losing its visible ordinal.
     projected = wrapMarkdown(body, `${indent}${bullet} ${heading}`);
   } else projected = wrapMarkdown(body, heading);
-  if (!context.sourceCapture?.allSourceScopes.has(context.sourceScope)) return projected;
+  const styleId = first.styleId?.trim().toLowerCase();
+  if (!context.tableCell && (styleId === 'quote' || styleId === 'intensequote')) {
+    projected = quoteMarkdownLines(projected);
+  }
+  if (
+    !context.sourceCapture?.allSources &&
+    !context.sourceCapture?.allSourceScopes.has(context.sourceScope)
+  )
+    return projected;
   const extentOf = (fragment: ParagraphFragmentRecord): { start: number; end: number } => {
     if (fragment.range) return fragment.range;
     const ranges = fragment.lines.map((line) => line.range);
@@ -407,6 +438,9 @@ function paragraphMarkdown(
       paragraphId: first.paragraphId,
       sourceStart: Math.min(...extents.map((extent) => extent.start)),
       sourceEnd: Math.max(...extents.map((extent) => extent.end)),
+      ...(context.sourceCapture?.allSources
+        ? { markdownStart: 0, markdownEnd: projected.markdown.length }
+        : {}),
     },
   ]);
 }
@@ -422,21 +456,42 @@ function renderLogicalBlocks(
       case 'paragraph':
         return paragraphMarkdown(block.fragments, context, !pageScoped);
       case 'table':
-        return context.tableCell
+        return context.tableCell ||
+          context.tableSyntax === 'html' ||
+          (context.tableSyntax === 'auto' && tableNeedsHtml(block.fragments, context))
           ? nestedTableMarkdown(block.fragments, context, pageScoped, renderLogicalBlocks)
           : tableMarkdown(block.fragments, context, pageScoped, renderLogicalBlocks);
       default:
         return assertNever(block);
     }
   });
+  const kept = rendered.filter(
+    (value, index) => value.markdown.length > 0 || index < rendered.length - 1
+  );
+  // Consecutive paragraphs of one quote style form one multi-paragraph blockquote.
+  const quoteOf = (index: number): string | null => {
+    const block = blocks[index];
+    if (context.tableCell || block?.kind !== 'paragraph') return null;
+    const style = block.fragments[0]?.styleId?.trim().toLowerCase();
+    return style === 'quote' || style === 'intensequote' ? style : null;
+  };
+  const groups: MappedMarkdown[][] = [];
+  kept.forEach((value, index) => {
+    const quote = quoteOf(index);
+    if (index > 0 && quote && quote === quoteOf(index - 1)) groups.at(-1)!.push(value);
+    else groups.push([value]);
+  });
   const visible = concatMarkdown(
-    rendered.filter((value, index) => value.markdown.length > 0 || index < rendered.length - 1),
-    nested ? '\n' : '\n\n'
+    groups.map((group) => (group.length === 1 ? group[0]! : concatMarkdown(group, '\n>\n'))),
+    nested && (context.tableSyntax === undefined || context.tableSyntax === 'gfm') ? '\n' : '\n\n'
   );
-  return withSourceParagraphs(
-    visible,
-    rendered.flatMap((value) => value.paragraphs ?? [])
-  );
+  return withSourceParagraphs(visible, [
+    ...(visible.paragraphs ?? []),
+    ...shiftedParagraphs(
+      rendered.slice(kept.length).flatMap((value) => value.paragraphs ?? []),
+      visible.markdown.length
+    ),
+  ]);
 }
 
 function bodyBlocks(layout: SemanticLayout): LogicalBlock[] {
@@ -618,18 +673,50 @@ function noteDefinitions(
 }
 
 function withDefinitions(markdown: MappedMarkdown, definitions: MappedMarkdown): MappedMarkdown {
-  return concatMarkdown(
-    [markdown, definitions].filter((value) => value.markdown.length > 0),
-    '\n\n'
+  return joinVisibleMarkdown([markdown, definitions]);
+}
+
+function joinVisibleMarkdown(values: readonly MappedMarkdown[]): MappedMarkdown {
+  const paragraphs: NonNullable<MappedMarkdown['paragraphs']>[number][] = [];
+  let cursor = 0;
+  let hasVisible = false;
+  for (const value of values) {
+    if (value.markdown.length > 0 && hasVisible) cursor += 2;
+    paragraphs.push(...shiftedParagraphs(value.paragraphs ?? [], cursor));
+    cursor += value.markdown.length;
+    if (value.markdown.length > 0) hasVisible = true;
+  }
+  return withSourceParagraphs(
+    concatMarkdown(
+      values.filter((value) => value.markdown.length > 0),
+      '\n\n'
+    ),
+    paragraphs
   );
+}
+
+function codeStyleSet(value: unknown): ReadonlySet<string> | undefined {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value) || value.some((entry) => typeof entry !== 'string' || entry === ''))
+    throw new TypeError('codeCharacterStyles must be an array of style IDs');
+  return value.length > 0 ? new Set(value as readonly string[]) : undefined;
 }
 
 /** Translate an immutable exporter-neutral layout snapshot without retaining its producer. @public */
 export function exportMarkdownLayout(
   layout: ExportSemanticLayout,
   assets?: readonly MarkdownImageAsset[],
-  imageSyntax: 'markdown' | 'html' = 'markdown'
+  imageSyntax: 'markdown' | 'html' = 'markdown',
+  options: MarkdownLayoutOptions = {}
 ): MarkdownExportResult {
+  if (
+    options.tableSyntax !== undefined &&
+    options.tableSyntax !== 'gfm' &&
+    options.tableSyntax !== 'html' &&
+    options.tableSyntax !== 'auto'
+  )
+    throw new TypeError('tableSyntax must be gfm, html, or auto');
+  const codeCharacterStyles = codeStyleSet(options.codeCharacterStyles);
   // Core export sessions always publish the array. The fallback keeps detached layouts produced
   // by older/custom hosts translatable while preserving the same empty immutable contract.
   const reviewArtifacts = layout.reviewArtifacts ?? EMPTY_REVIEW_ARTIFACTS;
@@ -645,18 +732,25 @@ export function exportMarkdownLayout(
     ),
     noteLabelByScope: buildNoteLabels(layout),
     tableCell: false,
+    tableSyntax: options.tableSyntax ?? 'gfm',
+    ...(codeCharacterStyles ? { codeCharacterStyles } : {}),
     displayMode,
     sourceScope: markdownSourceScope('body', '', null),
-    sourceCapture: buildMarkdownSourceCapture(reviewArtifacts),
+    sourceCapture: options.sourceMap
+      ? {
+          allSources: true,
+          allSourceScopes: new Set(),
+          offsetsBySource: new Map(),
+          ...buildMarkdownSourceCapture(reviewArtifacts),
+        }
+      : buildMarkdownSourceCapture(reviewArtifacts),
     ...indexes,
   };
   const markdown = withDefinitions(
-    concatMarkdown(
-      [renderLogicalBlocks(bodyBlocks(layout), context), fallbackDrawings(context)].filter(
-        (value) => value.markdown.length > 0
-      ),
-      '\n\n'
-    ),
+    joinVisibleMarkdown([
+      renderLogicalBlocks(bodyBlocks(layout), context),
+      fallbackDrawings(context),
+    ]),
     noteDefinitions(notes.document, context)
   );
   const artifactsByPage = indexPageReviewArtifacts(reviewArtifacts);
@@ -710,6 +804,7 @@ export function exportMarkdownLayout(
   });
   const warnings = markdownWarnings(layout, media);
   return Object.freeze({
+    ...(options.sourceMap ? { sourceMap: freezeMarkdownSourceMap(markdown) } : {}),
     media: assets ?? Object.freeze([]),
     warnings: Object.freeze(warnings),
     pages: Object.freeze(pages),

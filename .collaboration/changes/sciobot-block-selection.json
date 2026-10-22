@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "A press or text selection in widget controls inside the pages armed a document selection gesture. The selection mirror then collapsed the document range and moved focus back to the pages.",
+  "after": "Host UI marked with data-docx-host-ui keeps its own focus and selection. The private React host marks widget controls and reads the native selection through nested and continued block fragments.",
+  "reason": "The change only decides which local DOM selection the editor adopts. It writes no document content, identities, awareness fields, or transport data. Remote selections still come from native model positions.",
+  "tests": [
+    "packages/core/src/editor/__tests__/host-ui-selection.test.ts",
+    "e2e/sciobot-block-selection.spec.ts"
+  ],
+  "changeset": "host-ui-selection",
+  "migration": null
+}

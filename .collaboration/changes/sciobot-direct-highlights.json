@@ -1,0 +1,10 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Ledger changes had no paintable live ranges.",
+  "after": "directHighlights resolves recorded direct changes to whole live paragraph ranges after flushing queued typing, skipping pending and vanished nodes.",
+  "reason": "Read-only presentation helper over canonical state and the editor-local ledger. No document, shared state, payload, or journal writes.",
+  "tests": ["packages/sciobot/src/ai/acknowledge.test.ts"],
+  "changeset": null,
+  "migration": null
+}

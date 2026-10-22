@@ -1,0 +1,13 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Adjacent native automation writes used implicit history capture, which could merge a proposal record with a later independent write.",
+  "after": "An optional explicit boundary creates a separate native history unit while default automation callers retain existing capture behavior.",
+  "reason": "The surface supplies an existing native history token. Shared operations, journals, document materialization, and version fields do not change. Older peers already interpret these writes and their history results.",
+  "tests": [
+    "packages/core/src/editor/__tests__/automation-history-boundary.test.ts",
+    "packages/sciobot/src/review/property-records-collaboration.test.ts"
+  ],
+  "changeset": "automation-explicit-history-boundary",
+  "migration": null
+}

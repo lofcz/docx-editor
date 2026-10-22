@@ -18,6 +18,43 @@ const REL = 'http://schemas.openxmlformats.org/package/2006/relationships';
 const OD = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument';
 const WARM_SIZES = [320, 2_560, 12_700] as const;
 
+test('a recovered forward-join source receives the survivor section after a warm empty lookup', () => {
+  const container = document.createElement('div');
+  document.body.append(container);
+  const bytes = docxFromBody(
+    '<w:p><w:pPr><state:joined xmlns:state="urn:docx-editor.dev:review:retired-paragraph:1"/></w:pPr></w:p>' +
+      '<w:p><w:pPr><w:sectPr><w:pgSz w:w="10000" w:h="12000"/></w:sectPr></w:pPr><w:r><w:t>Closing</w:t></w:r></w:p>' +
+      para('Tail')
+  );
+  const opened = mountPaginatedSurface(container, bytes);
+  if (!opened.ok) throw new Error(opened.reason);
+  try {
+    const recorder = bodySectionIndexTestRecorder();
+    recorder.reset();
+    const root = opened.surface.session.part().root.children.find((node) => node.kind === 'body');
+    if (!root || root.kind === 'textValue') throw new Error('Missing body');
+    const source = root.children[0]!.id,
+      target = root.children[1]!.id;
+    expect(bodySectionIndexOf(opened.surface.session, target)).toBe(0);
+    const warmRebuilds = recorder.rebuilds;
+    expect(bodySectionIndexOf(opened.surface.session, source)).toBeNull();
+    opened.surface.session.applyTreeOps([
+      { op: 'insertText', paragraphId: source, offset: 0, text: 'Peer' },
+    ]);
+    expect(bodySectionIndexOf(opened.surface.session, source)).toBe(0);
+    expect(bodySectionIndexOf(opened.surface.session, target)).toBe(0);
+    expect(recorder.rebuilds).toBe(warmRebuilds + 1);
+    opened.surface.session.applyTreeOps([
+      { op: 'insertText', paragraphId: source, offset: 0, text: 'More' },
+    ]);
+    expect(bodySectionIndexOf(opened.surface.session, source)).toBe(0);
+    expect(recorder.rebuilds).toBe(warmRebuilds + 1);
+  } finally {
+    opened.surface.destroy();
+    container.remove();
+  }
+});
+
 const para = (text: string) => `<w:p><w:r><w:t>${text}</w:t></w:r></w:p>`;
 const sect = (w: string, type?: string) =>
   `<w:sectPr>${type ? `<w:type w:val="${type}"/>` : ''}<w:pgSz w:w="${w}" w:h="16838"/></w:sectPr>`;

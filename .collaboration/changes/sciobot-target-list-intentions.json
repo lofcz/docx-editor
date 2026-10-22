@@ -1,0 +1,18 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Complete-target plans omitted new paragraph list membership, and deferred list definitions could not distinguish native levels.",
+  "after": "Private sibling intents carry paragraph paths with existing numbering, deferred multilevel instances, or checklist state. Compatible retained Word instances and derived ordinals remain unchanged. Immutable native test oracles verify inserted lists and structural save/reopen fidelity. D15 remains open for complete target coverage and application execution.",
+  "reason": "Only private plan DTOs and read-only composition change. No native operation, shared state, payload schema, journal format, or live executor changes. New instance keys require consistent kind/start definitions per level. Native IDs and level overrides remain deferred to guarded execution. Test-only native application does not establish collaboration support.",
+  "tests": [
+    "packages/sciobot/src/diff/inserted-list-types.test.ts",
+    "packages/sciobot/src/diff/target-lists.test.ts",
+    "packages/sciobot/src/diff/target-structure.test.ts",
+    "packages/sciobot/src/diff/lists.test.ts",
+    "packages/sciobot/src/diff/sibling-blocks.test.ts",
+    "packages/sciobot/src/diff/plan-target.test.ts",
+    "packages/sciobot/src/diff/plan.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

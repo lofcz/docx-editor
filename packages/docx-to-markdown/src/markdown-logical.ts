@@ -28,6 +28,8 @@ export interface TranslationContext {
   readonly anchors?: AnchorProjection;
   readonly noteLabelByScope: Map<string, string>;
   readonly tableCell: boolean;
+  readonly tableSyntax?: 'gfm' | 'html' | 'auto';
+  readonly codeCharacterStyles?: ReadonlySet<string>;
   readonly hardBreakHtml?: boolean;
   readonly suppressBold?: boolean;
   readonly displayMode: SemanticLayout['displayMode'];
@@ -142,13 +144,14 @@ export function mergeRows(
         rows.push(logical);
       }
       for (const [index, cell] of row.cells.entries()) {
-        const gridColumn = cell.logicalGridColumn ?? cell.gridColumn ?? index;
+        const gridColumn =
+          cell.resolvedGridColumn ?? cell.logicalGridColumn ?? cell.gridColumn ?? index;
         const existing = logical.cells.find((candidate) => candidate.gridColumn === gridColumn);
         if (existing) existing.blocks.push(...cell.blocks);
         else {
           logical.cells.push({
             blocks: [...cell.blocks],
-            gridSpan: cell.gridSpan,
+            gridSpan: cell.resolvedGridSpan ?? cell.gridSpan,
             vMergeContinue: cell.vMergeContinue,
             gridColumn,
           });
@@ -177,13 +180,58 @@ function emittedTableWidth(
   projection: TableProjection | undefined,
   fragments: readonly TableFragmentRecord[]
 ): number {
-  let width = tableWidth(projection?.columnCount, fragments[0]?.columnEdges.length);
+  let resolvedWidth: number | undefined;
+  for (const fragment of projection?.fragments ?? fragments)
+    for (const row of fragment.rows)
+      for (const cell of row.cells)
+        if (cell.resolvedGridColumnCount !== undefined)
+          resolvedWidth = cell.resolvedGridColumnCount;
+  let width =
+    resolvedWidth ?? tableWidth(projection?.columnCount, fragments[0]?.columnEdges.length);
   for (const row of rows) {
     for (const cell of row.cells) {
       width = Math.max(width, cell.gridColumn + Math.max(cell.gridSpan, 1));
     }
   }
   return width;
+}
+
+function withTableSource(
+  value: MappedMarkdown,
+  tableId: string | undefined,
+  context: TranslationContext
+): MappedMarkdown {
+  if (!tableId || !context.sourceCapture?.allSources) return value;
+  return {
+    ...value,
+    tables: [
+      {
+        sourceScope: context.sourceScope,
+        tableId,
+        markdownStart: 0,
+        markdownEnd: value.markdown.length,
+      },
+      ...(value.tables ?? []),
+    ],
+  };
+}
+
+/** Auto syntax preserves structures that a GFM cell cannot express. */
+export function tableNeedsHtml(
+  fragments: readonly TableFragmentRecord[],
+  context: TranslationContext
+): boolean {
+  const id = fragments[0]?.tableId,
+    complete = id ? context.tablesById.get(id)?.fragments : undefined;
+  return mergeRows(complete ?? fragments, false).some((row) =>
+    row.cells.some(
+      (cell) =>
+        cell.gridSpan > 1 ||
+        cell.vMergeContinue ||
+        logicalBlocks(cell.blocks).length > 1 ||
+        cell.blocks.some((block) => block.kind === 'table')
+    )
+  );
 }
 
 /** GFM's unsupported nested-table shape uses mapped inline HTML. */
@@ -200,12 +248,46 @@ export function nestedTableMarkdown(
   if (rows.length === 0) return EMPTY_MAPPED_MARKDOWN;
   const width = emittedTableWidth(rows, projection, fragments);
   const nestedContext = { ...context, tableCell: true };
-  return nestedTableHtml(rows, width, (row, columnIndex) => {
-    const cell = row.cells.find((candidate) => candidate.gridColumn === columnIndex);
-    return !cell || cell.vMergeContinue
-      ? EMPTY_MAPPED_MARKDOWN
-      : render(logicalBlocks(cell.blocks), nestedContext, true, pageScoped);
-  });
+  const rowIndexes = new Map(rows.map((row, index) => [row, index]));
+  const rowCells = new Map(
+    rows.map((row) => [row, new Map(row.cells.map((cell) => [cell.gridColumn, cell]))])
+  );
+  const markdown = nestedTableHtml(
+    rows,
+    width,
+    (row, columnIndex) => {
+      const cell = rowCells.get(row)?.get(columnIndex);
+      return !cell || cell.vMergeContinue
+        ? EMPTY_MAPPED_MARKDOWN
+        : render(logicalBlocks(cell.blocks), nestedContext, true, pageScoped);
+    },
+    context.tableSyntax !== undefined && context.tableSyntax !== 'gfm',
+    context.tableSyntax === undefined || context.tableSyntax === 'gfm'
+      ? undefined
+      : (row, columnIndex) => {
+          const cell = rowCells.get(row)?.get(columnIndex);
+          if (!cell)
+            return {
+              columnSpan: 1,
+              rowSpan: 1,
+              skip: row.cells.some(
+                (candidate) =>
+                  candidate.gridColumn < columnIndex &&
+                  candidate.gridColumn + candidate.gridSpan > columnIndex
+              ),
+            };
+          if (cell.vMergeContinue) return { columnSpan: cell.gridSpan, rowSpan: 1, skip: true };
+          let rowSpan = 1;
+          const index = rowIndexes.get(row)!;
+          while (
+            index + rowSpan < rows.length &&
+            rowCells.get(rows[index + rowSpan]!)?.get(columnIndex)?.vMergeContinue
+          )
+            rowSpan++;
+          return { columnSpan: cell.gridSpan, rowSpan, skip: cell.vMergeContinue };
+        }
+  );
+  return withTableSource(markdown, tableId, context);
 }
 
 function cellValues(
@@ -272,7 +354,7 @@ export function tableMarkdown(
       alignments[cell.gridColumn + span] = '---';
     }
   }
-  return concatMarkdown(
+  const markdown = concatMarkdown(
     [
       line(header),
       literalMarkdown(
@@ -282,6 +364,7 @@ export function tableMarkdown(
     ],
     '\n'
   );
+  return withTableSource(markdown, tableId, context);
 }
 
 export function indexTableBlocks(

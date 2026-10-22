@@ -1,0 +1,15 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "A property proposal stores multiple block groups in one immutable-intended JSON node. Replacing that shared string to remove independently decided blocks corrupts JSON under concurrent decisions.",
+  "after": "Each application block decision uses a fresh immutable schema-2 receipt node in the existing preinitialized private review-group carrier. Proposal JSON and native-only schema-1 records stay unchanged. Pure reads combine equal concurrent dispositions and retain opposite dispositions as an explicit conflict. Either actor can undo its receipt independently.",
+  "reason": "The existing generic custom XML canonical model, native operations, journals, and transport already preserve independent nodes and history. No shared native format or published package changes. The private application format now recognizes schema 2; schema 3 and later stay opaque and refuse review writes. Earlier private group/allocation readers treat schema 2 as unsupported. Upgrade all private review participants before using decision commands; unmodified native participants preserve opaque data. Legacy proposals need no rewrite or room conversion because receipts are written only on decisions, into the carrier initialized before room creation. R15/R16 own native/application decisions and consuming the receipt state in review projections. This storage-only leaf does not claim those commands or conflict reconciliation.",
+  "tests": [
+    "packages/sciobot/src/review/payload-group-decisions.test.ts",
+    "packages/sciobot/src/review/payload-group-decisions-collaboration.test.ts",
+    "packages/sciobot/src/review/group-record-store.test.ts",
+    "packages/sciobot/src/review/group-allocation.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

@@ -1,0 +1,20 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "The private adapter accepted complete groups. Rejection required individual native or whole-proposal decisions.",
+  "after": "The private adapter rejects one complete native/property/atomic group in one fresh native review transaction. Exact site selection retains unrelated groups and restores original property presence. Independent receipts retain immutable payloads, labels, and native IDs.",
+  "reason": "Rejection shares the existing acceptance guards, complete native selected-set operations, immutable decision receipts, owned history scope, and local capacity preflight. The implementation retains both actors history and prior Word content. R36 native empty paragraph identities remain live for peer recovery; the existing pure Word exporter removes their metadata without changing canonical state. No native core, evaluated implementation, published document-model API, transport schema, shared field, or protocol version changes. Private participants already use the R48/R49/R50 scope. The current 1713-case source run and 95-case installed regression matrix pass. Application unit/browser/type/build and artifact checks pass.",
+  "tests": [
+    "packages/sciobot/src/review/reject-group.test.ts",
+    "packages/sciobot/src/review/reject-group-collaboration.test.ts",
+    "packages/sciobot/src/review/reject-group-native-collaboration.test.ts",
+    "packages/sciobot/src/review/reject-group-atomic-collaboration.test.ts",
+    "packages/sciobot/src/review/group-capacity-collaboration.test.ts",
+    "packages/sciobot/src/review/group-payload-capacity-collaboration.test.ts",
+    "packages/sciobot/src/review/accept-group.test.ts",
+    "packages/sciobot/src/review/accept-group-collaboration.test.ts",
+    "packages/sciobot/src/review/reject-group-stories-collaboration.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

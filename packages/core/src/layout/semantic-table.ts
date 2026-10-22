@@ -1,6 +1,16 @@
+import { resolvedTableGrid } from './resolved-table-grid.ts';
+import type { SemanticTableCell } from './semantic-table-cell.ts';
+export type { SemanticTableCell } from './semantic-table-cell.ts';
 import { cachedTableStructure } from './table-structure-cache.ts';
 import { tableHasHidableRevisions } from './table-revision-markup.ts';
 import { readConditionalCellBorders } from './conditional-cell-borders.ts';
+import {
+  receivedGridSpan,
+  resolvedVMerge,
+  visibleRowCells,
+  rowRevisionOmitted,
+  withReceivedWidth,
+} from './table-cell-revision-view.ts';
 import {
   revisionCellMetadata,
   wmlRevisionChild,
@@ -34,7 +44,6 @@ import {
   readGridSpan,
   readRowHeight,
   readShading,
-  readVMerge,
 } from './table-row-properties.ts';
 import { readTableFloatPosition, type TableFloatPosition } from './table-float-properties.ts';
 export type {
@@ -71,7 +80,6 @@ import {
   readCellBorders,
   readTableBorders,
   rowExceptionBorders,
-  type CellBorderBox,
   type TableBorderBox,
 } from './table-borders.ts';
 import {
@@ -95,7 +103,7 @@ import {
   type CellMarginsPt,
 } from './table-cell-margins.ts';
 import { readCellTextDirection } from './table-cell-text-direction.ts';
-import { readCellVerticalAlign, type CellVerticalAlign } from './table-cell-vertical-align.ts';
+import { readCellVerticalAlign } from './table-cell-vertical-align.ts';
 import { tableRowIsHeader } from './table-row-header-style.ts';
 import { cellIgnoresEndMark } from './table-cell-hide-mark.ts';
 import { resolveTableWidthPlacement } from './table-width-placement.ts';
@@ -189,77 +197,6 @@ export interface TableAnchorFrames {
   readonly margin: TableAnchorFrame;
   /** The whole sheet, margins included. */
   readonly page: TableAnchorFrame;
-}
-
-/**
- * One cell in the resolved table structure.
- *
- * `gridSpan` is clamped at READ time and layout never re-derives it — the value comes from a file
- * and would otherwise be a loop bound an attacker controls.
- */
-export interface SemanticTableCell {
-  readonly revisionShading?: 'inserted' | 'deleted' | 'merged' | 'split';
-  readonly revisionShadingAuthor?: string;
-  readonly id: string;
-  /** Derived content-edge geometry for a verified legacy percentage-width parent table. */
-  readonly legacyContentAlignment?: true;
-  /** Resolved simple side rules centered on a legacy absolute-width table grid. */
-  readonly centeredSideRules?: true;
-  /** Simple side rules painted centered on the grid line, without moving the content edge. */
-  readonly centeredSidePaint?: true;
-  /** Clamped to [1, MAX_TABLE_COLUMNS] at read time; layout never re-derives it. */
-  readonly gridSpan: number;
-  /** Physical grid column after width/style resolution and the bidiVisual projection. */
-  readonly gridColumn: number;
-  /** Stored grid index when bidiVisual maps this cell into a physical RTL grid. */
-  readonly logicalGridColumn?: number;
-  /** Canonical `w:gridCol` node id for this cell's start column, when the grid is authored. */
-  readonly gridColumnId?: string;
-  /** A vMerge cell that is not the restart continues the cell above: box, no content. */
-  readonly vMergeContinue: boolean;
-  /** This cell starts a vertical merge that the next row continues. */
-  readonly headsVerticalMerge?: true;
-  /** `w:hideMark` excludes the end-of-cell glyph from row sizing. */
-  readonly hideEndMark?: boolean;
-  /** `w:vAlign` — defaults to top when omitted/unrecognised. */
-  readonly vAlign: CellVerticalAlign;
-  /** `w:textDirection`; unsupported values keep horizontal layout. */
-  readonly textDirection: 'horizontal' | 'btLr';
-  /** Resolved per-side margins (tcMar over tblCellMar over the table style over Word's default). */
-  readonly margins: CellMarginsPt;
-  /** Three-state authored `tcBorders` (omitted / none / edge). */
-  readonly borders: CellBorderBox;
-  /** The row's `w:tblPrEx` table borders, which replace the table's own for this cell. */
-  readonly rowTableBorders?: TableBorderBox;
-  /** Resolved incident edges used for content clearance, preserving authored border provenance. */
-  readonly contentBorders?: CellBorderBox;
-  /** The resolved cell (including a vertical merge) ends at the authored table bottom. */
-  readonly contentBottomIsOuter?: boolean;
-  /** Clearance this AUTHORED ROW reserves above its content for its own top rule, in points. */
-  readonly topBandClearancePt?: number;
-  /** The CELL declares `w:tcBorders/w:top` as `nil`, rather than a table style doing so. */
-  readonly suppressesTopBand?: true;
-  /** Row-local clearance in points for authored minima, before vMerge combines content boxes. */
-  readonly minimumContentInsets?: { readonly top: number; readonly bottom: number };
-  /** Validated 6-hex shading fill, absent for none/auto. */
-  readonly shading?: string;
-  /**
-   * `w:tcW` — the width this cell asked for, as authored.
-   *
-   * Published for consumers that need the cell's own statement (a column-resize handle has
-   * to write back to it). Column geometry is NOT derived from this field: the resolver works
-   * from a flat claim list built in the same pass, because resolving a column means looking
-   * at every cell that covers it across every row, not at one cell at a time. Read
-   * `columnWidthsPt` for what the table actually laid out.
-   */
-  readonly preferredWidth: PreferredWidth;
-  /**
-   * What the table style says about this cell's paragraphs and runs (17.7.6.6) — a header
-   * row's bold and centring live here, not in the cell's own properties.
-   */
-  readonly styleFormatting: TableCellStyleFormatting;
-  /** Block children in reading order, with content-control wrappers flattened. */
-  readonly blocks: readonly OoxmlElement[];
 }
 
 /** One row in the resolved structure: its cells, its height rule, and any row-level revision. */
@@ -577,7 +514,8 @@ function readTableStructureUncached(
   }
   const plans: RowPlan[] = [];
   const claims: CellWidthClaim[] = [];
-  let hasOmittedRows = false;
+  let hasOmittedRows = false,
+    hasOmittedCells = false;
   let derivedColumns = 1;
   // A content control may sit between the table and its rows (`CT_SdtRow`) or between a row and
   // its cells (`CT_SdtCell`). It is a label on that row or cell, not a box around it, so it is
@@ -597,10 +535,7 @@ function readTableStructureUncached(
       authoredRevision && revisionAuthor !== undefined && authorFilter
         ? revisionNodeProjectionMode(authorFilter, authoredRevision.id, revisionAuthor, displayMode)
         : displayMode;
-    if (
-      (projectedMode === 'proposed' && revisionKind === 'del') ||
-      (projectedMode === 'original' && revisionKind === 'ins')
-    ) {
+    if (rowRevisionOmitted(properties, displayMode, authorFilter)) {
       hasOmittedRows = true;
       continue;
     }
@@ -640,16 +575,24 @@ function readTableStructureUncached(
       });
     }
     let cursor = gridBefore;
-    const rowCells = flattenContentControls(rowNode.children);
+    // A resolved view omits pending cell insertions or deletions; see `table-cell-revision-view.ts`.
+    const nativeCells = flattenContentControls(rowNode.children);
+    const visible = visibleRowCells(nativeCells, displayMode, authorFilter);
+    hasOmittedCells ||= visible.cells !== nativeCells;
+    const rowCells = visible.cells;
     for (const cellNode of rowCells) {
       if (cellNode.kind !== 'tableCell') continue;
       const cellPr = childNamed(cellNode, 'tcPr');
       const start = Math.min(cursor, LAST_GRID_COLUMN);
+      const donors = visible.receivedFrom.get(cellNode);
       const span = Math.min(
-        readGridSpan(cellPr),
+        readGridSpan(cellPr) + receivedGridSpan(donors),
         MAX_TABLE_COLUMNS - start // ≥ 1: `start` never exceeds the last column
       );
-      const width = readPreferredWidth(cellPr && childNamed(cellPr, 'tcW'));
+      const width = withReceivedWidth(
+        readPreferredWidth(cellPr && childNamed(cellPr, 'tcW')),
+        donors
+      );
       starts.push(start);
       spans.push(span);
       preferred.push(width);
@@ -683,6 +626,7 @@ function readTableStructureUncached(
   const gridCols = gridColumnElements(table);
   const columnCount = gridCols.length > 0 ? gridCols.length : derivedColumns;
   const bodyRows = plans.length;
+  const resolvedGrid = resolvedTableGrid(plans, hasOmittedRows || hasOmittedCells);
 
   const rows: SemanticTableRow[] = [];
   // Grid columns where the previous row has a cell with `w:vMerge`. A continuation only
@@ -760,7 +704,7 @@ function readTableStructureUncached(
       // merges inside it and a paragraph a revision removed leaves no blank line behind.
       const blocks = mergedFlowBlocks(cellNode.children, displayMode, authorFilter);
       const ownBorders = cellProperties ? readCellBorders(cellProperties) : EMPTY_CELL_BORDER_BOX;
-      const vMerge = readVMerge(cellProperties);
+      const vMerge = resolvedVMerge(cellProperties, displayMode, authorFilter);
       if (vMerge !== 'none') mergedHere.add(gridColumn);
       if (vMerge === 'continue' && mergedAbove.has(gridColumn)) {
         const above = cellsAbove.findIndex((c) => c.gridColumn === gridColumn);
@@ -770,6 +714,7 @@ function readTableStructureUncached(
       }
       cells.push({
         id: cellNode.id,
+        ...resolvedGrid.get(cellNode.id),
         ...revisionCellMetadata(cellProperties, displayMode, authorFilter, plan.revision),
         gridSpan,
         gridColumn,

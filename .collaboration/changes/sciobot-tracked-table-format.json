@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The private adapter planned table property changes but had no guarded tracked executor for them.",
+  "after": "trackTableFormatPlan applies D11 table property plans as native property-change records in one gated, separately undoable transaction, refusing when formatting tracking is disabled.",
+  "reason": "The executor reuses the native tracked table property commands and review decisions. It adds no shared operation, schema, or transport field.",
+  "tests": [
+    "packages/sciobot/src/review/track-table-format.test.ts",
+    "packages/sciobot/src/review/track-table-format-collaboration.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

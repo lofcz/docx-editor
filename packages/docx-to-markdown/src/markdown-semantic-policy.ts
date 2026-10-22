@@ -113,8 +113,8 @@ const MARKDOWN_SEMANTIC_POLICY_RATCHETS = Object.freeze({
     id: 'layout-only',
     kind: 'represented',
     href: 'represented',
-    anchor: 'explicitly-omitted',
-    tooltip: 'explicitly-omitted',
+    anchor: 'represented',
+    tooltip: 'represented',
   } satisfies Record<keyof SpanLinkRecord, MarkdownFieldPolicy>,
   equation: {
     sourceNodeId: 'layout-only',
@@ -213,6 +213,9 @@ const MARKDOWN_SEMANTIC_POLICY_RATCHETS = Object.freeze({
     logicalGridColumn: 'represented',
     gridColumnId: 'layout-only',
     gridSpan: 'represented',
+    resolvedGridColumn: 'represented',
+    resolvedGridSpan: 'represented',
+    resolvedGridColumnCount: 'represented',
     vMergeContinue: 'represented',
     paintInert: 'layout-only',
     textDirection: 'layout-only',
@@ -515,7 +518,7 @@ const MARKDOWN_SEMANTIC_POLICY_RATCHETS = Object.freeze({
   } satisfies Record<NonNullable<StyleSpanRecord['noteNav']>['direction'], MarkdownFieldPolicy>,
   linkKind: {
     external: 'represented',
-    internal: 'explicitly-omitted',
+    internal: 'represented',
     unresolved: 'explicitly-omitted',
   } satisfies Record<SpanLinkRecord['kind'], MarkdownFieldPolicy>,
   rootStoryKind: {

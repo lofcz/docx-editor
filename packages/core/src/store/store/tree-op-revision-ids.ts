@@ -8,6 +8,7 @@ import {
   nextStripedDecimalId,
   resolveAllocationActor,
 } from '../package/actor-scoped-ids.ts';
+import { reservedRevisionIdsOf } from './revision-id-reservations.ts';
 import { WML_NAMESPACE_URI, type OoxmlNode, type OoxmlPart } from '../package/ooxml-tree.ts';
 
 /**
@@ -23,7 +24,9 @@ import { WML_NAMESPACE_URI, type OoxmlNode, type OoxmlPart } from '../package/oo
  * No actor keeps the dense sequence byte-identical to a solo Word document.
  */
 export function nextRevisionId(part: OoxmlPart, actorId?: string): () => string {
+  const reserved = reservedRevisionIdsOf(part.name);
   let highest = -1;
+  for (const id of reserved) highest = Math.max(highest, Number(id));
   const visit = (node: OoxmlNode): void => {
     if (node.kind === 'textValue') return;
     // REVISION ids only. `@w:id` is also carried by bookmarks, comments and permissions,
@@ -45,7 +48,7 @@ export function nextRevisionId(part: OoxmlPart, actorId?: string): () => string 
   visit(part.root);
   const actor = resolveAllocationActor(actorId);
   if (actor) {
-    const used = usedRevisionIds(part);
+    const used = usedRevisionIds(part, reserved);
     return () => {
       const id = nextStripedDecimalId(used, actor, MAX_REVISION_ID);
       used.add(id);
@@ -64,7 +67,7 @@ export function nextRevisionId(part: OoxmlPart, actorId?: string): () => string 
     // else's revision, which a crafted `@w:id` could force deliberately. Wrap and take the
     // lowest id nobody is using instead.
     if (next > MAX_REVISION_ID) {
-      const used = (wrapped ??= usedRevisionIds(part));
+      const used = (wrapped ??= usedRevisionIds(part, reserved));
       for (; cursor <= MAX_REVISION_ID; cursor += 1) {
         const id = String(cursor);
         if (used.has(id)) continue;
@@ -80,8 +83,8 @@ export function nextRevisionId(part: OoxmlPart, actorId?: string): () => string 
 }
 
 /** Every revision id in use, for the wrap-around case. */
-function usedRevisionIds(part: OoxmlPart): Set<string> {
-  const used = new Set<string>();
+function usedRevisionIds(part: OoxmlPart, reserved: ReadonlySet<string>): Set<string> {
+  const used = new Set<string>(reserved);
   const visit = (node: OoxmlNode): void => {
     if (node.kind === 'textValue') return;
     if (REVISION_ID_BEARING.has(node.localName) && node.namespaceUri === WML_NAMESPACE_URI) {

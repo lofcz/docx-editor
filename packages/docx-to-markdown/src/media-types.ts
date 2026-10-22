@@ -1,4 +1,5 @@
 import type { SemanticDrawingVisit } from '@docx-editor.dev/core/layout';
+import type { MarkdownSourceMapOptions } from './markdown-source-types.ts';
 
 /** One physical occurrence of an extracted image. @public */
 export interface MarkdownImageOccurrence {
@@ -66,9 +67,20 @@ export interface MarkdownImageOptions {
 }
 
 /** Projection controls for an already-open export session. @public */
-export interface MarkdownProjectionOptions {
+export interface MarkdownProjectionOptions extends MarkdownLayoutOptions {
   /** `true` or `{}` extracts images with portable relative URLs. Default: false. */
   readonly images?: boolean | MarkdownImageOptions;
   /** Cancels export waits; cannot interrupt synchronous parsing or layout. */
   readonly signal?: AbortSignal;
+}
+
+/** Format controls shared by detached layouts and live export sessions. @public */
+export interface MarkdownLayoutOptions extends MarkdownSourceMapOptions {
+  /** GFM by default. HTML preserves structured cells. Auto selects HTML for spans or rich cells. */
+  readonly tableSyntax?: 'gfm' | 'html' | 'auto';
+  /**
+   * Character style IDs (`w:rStyle`) whose runs export as Markdown code spans. Default: none.
+   * Fonts never imply code, so ordinary monospaced text stays ordinary text.
+   */
+  readonly codeCharacterStyles?: readonly string[];
 }

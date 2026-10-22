@@ -1,3 +1,4 @@
+import { isJoinedParagraph } from '../store/package/retired-paragraph.ts';
 // Which paragraphs a tracked revision removes from the laid-out document.
 //
 // A `w:del` on the paragraph MARK (17.13.5.15, `w:pPr/w:rPr/w:del`) says the mark itself was
@@ -234,6 +235,7 @@ export function markRemovedInMode(
   displayMode: RevisionDisplayMode,
   authorFilter?: RevisionAuthorFilter
 ): boolean {
+  if (isJoinedParagraph(paragraph)) return true;
   if (displayMode === 'all-markup' && !revisionFilterSelects(authorFilter)) return false;
   for (const revision of paragraphMarkRevisionsOf(paragraph)) {
     const effectiveMode = authorFilter

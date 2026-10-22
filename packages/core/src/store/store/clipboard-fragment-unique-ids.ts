@@ -31,6 +31,7 @@ import type { OoxmlPackage } from '../package/ooxml-package.ts';
 import type { OoxmlNode, OoxmlPart } from '../package/ooxml-tree.ts';
 import { attributeValueOf } from './tree-op-nodes.ts';
 import { walkAll } from './clipboard-fragment-defaults.ts';
+import { reservedRevisionIdsOf } from './revision-id-reservations.ts';
 import { carriesRevisionId } from './tree-op-revision-ids.ts';
 
 /**
@@ -89,18 +90,24 @@ export function mintFragmentUniqueIds(
 /**
  * One paste's id sequence for a namespace: the actor's stripe, or Word's dense walk.
  *
- * The dense walk carries no ceiling on purpose. `seed, seed + 1, …` is what a solo paste has
- * always written, and a solo document's ids are the thing this change must not move.
+ * Ordinary dense walks retain their existing sequence. Revision IDs also wrap around their
+ * signed Word ceiling, since retained reservations can occupy the highest representable ID.
  */
 function idSequence(
   actor: string | undefined,
   used: ReadonlySet<string>,
   denseSeed: number,
-  max: number
+  max: number,
+  bounded = false
 ): () => string | null {
   if (actor) return stripedDecimalIdSequence(used, actor, max);
-  let next = denseSeed;
-  return () => String(next++);
+  let next = denseSeed,
+    cursor = 0;
+  return () => {
+    if (!bounded || next <= max) return String(next++);
+    while (cursor <= max && used.has(String(cursor))) cursor++;
+    return cursor <= max ? String(cursor++) : null;
+  };
 }
 
 /**
@@ -185,6 +192,10 @@ function mintRevisionIds(
   const used = new Set<string>();
   for (const part of [request.ownerPart, ...request.notesParts]) {
     const owner = part === request.ownerPart;
+    for (const id of reservedRevisionIdsOf(part.name)) {
+      used.add(id);
+      if (owner) highest = Math.max(highest, Number(id));
+    }
     walkAll([part.root], (node) => {
       if (!carriesRevisionId(node)) return;
       const raw = attributeValueOf(node, 'id');
@@ -193,7 +204,7 @@ function mintRevisionIds(
       if (owner) highest = raiseHighest(highest, raw);
     });
   }
-  const next = idSequence(actor, used, highest + 1, MAX_DECIMAL_ID);
+  const next = idSequence(actor, used, highest + 1, MAX_DECIMAL_ID, true);
   let exhausted = false;
   walkAll(request.travelling, (node) => {
     if (exhausted || !carriesRevisionId(node)) return;

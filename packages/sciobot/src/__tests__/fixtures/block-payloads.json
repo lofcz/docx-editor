@@ -1,0 +1,31 @@
+{
+  "nested": {
+    "id": "activity-1",
+    "type": "lesson_activity",
+    "version": 1,
+    "attributes": { "name": "Warmup", "duration": 10 },
+    "futureAttribute": { "retain": true },
+    "payload": {
+      "children": [
+        {
+          "id": "listening-1",
+          "type": "listening",
+          "version": 1,
+          "attributes": { "audioRef": "sha256:example", "title": "Listen" },
+          "mdast": {
+            "type": "mdxJsxFlowElement",
+            "name": "line",
+            "children": [{ "type": "text", "value": "Žák 😀" }]
+          }
+        }
+      ]
+    }
+  },
+  "future": {
+    "id": "activity-2",
+    "type": "third_party.Widget",
+    "version": 9,
+    "attributes": {},
+    "opaque": { "operation": "preserve", "children": [1, null, false] }
+  }
+}

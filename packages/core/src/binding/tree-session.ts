@@ -184,7 +184,12 @@ export function openTreeSessionFromPackage(
   const packageStore = new TreePackageStore(
     pkgLoaded,
     materializeGlossaryPlaceholders(pkgLoaded, normalized),
-    options.contentLockPolicy ? { contentLockPolicy: options.contentLockPolicy } : {}
+    {
+      ...(options.contentLockPolicy ? { contentLockPolicy: options.contentLockPolicy } : {}),
+      ...(options.reviewModel?.reservedRevisionIds
+        ? { reservedRevisionIds: options.reviewModel.reservedRevisionIds }
+        : {}),
+    }
   );
 
   let headerFooterBySection: {

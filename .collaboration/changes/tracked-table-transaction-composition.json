@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Native table structure commands refused earlier structure markers even when the same open transaction created them. Resolved views selected only the first existence marker on a row or cell.",
+  "after": "An open native transaction retains exact ownership of its generated table sites. Ordered native table operations reuse original property histories and preserve earlier marker identities. Original and Proposed apply all row/cell existence markers, including a new cell covered by a later merge.",
+  "reason": "Transaction ownership is ephemeral and scoped by stable per-part transaction callbacks. It adds no canonical field, OPC record, shared protocol, or history schema. Earlier and imported pending table histories never gain ownership from matching attribution. Native validators and appliers still execute each command, and actual native replacement primitives record the result. Original property snapshots appear once; scratch validation cannot enter the collaboration journal. Native revision allocation stays shared across structure and later text, including package callbacks. Programs establish topology before geometry; a later edit inside an already proposed virtual merge still needs a fresh region plan and refuses atomically. Existing Word column-deletion width transfer remains unchanged. A minor Changeset covers the added native behavior; no data migration is required.",
+  "tests": [
+    "packages/core/src/store/__tests__/tracked-table-composition.test.ts",
+    "packages/core/src/layout/__tests__/table-cell-revision-view.test.ts",
+    "packages/sciobot/src/review/compound-tables-collaboration.test.ts"
+  ],
+  "changeset": "tracked-table-transaction-composition",
+  "migration": null
+}

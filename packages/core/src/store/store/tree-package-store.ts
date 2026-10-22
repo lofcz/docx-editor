@@ -1,3 +1,5 @@
+import { runWithRevisionIdReservations } from './revision-id-reservations.ts';
+import type { RevisionIdReservationSource } from './revision-id-reservations.ts';
 import { registerUndoHistoryPosition } from './undo-history-position.ts';
 import { capturePackageSelections, selectionForHistory } from './package-history-selection.ts';
 // Package-aware mutation coordinator for editable story parts (body + headers/footers +
@@ -109,7 +111,8 @@ import {
   type HistoryPointer,
 } from './story-retention.ts';
 
-type NoteCascadeFn = (before: OoxmlPackage, after: OoxmlPackage) => OoxmlPackage | null;
+import type { NoteCascadeFn, TreePackageStoreOptions } from './tree-package-store-options.ts';
+export type { TreePackageStoreOptions } from './tree-package-store-options.ts';
 
 /**
  * Editable story target.
@@ -160,26 +163,13 @@ export type PackageTransactResult =
 /** Cap on simultaneously opened editable story stores (body + HF parts). Fail closed. */
 export const DEFAULT_MAX_EDITABLE_STORY_PARTS = 64;
 
-/** How a package store is constructed: limits, history depth, and review contributions. */
-export interface TreePackageStoreOptions {
-  readonly historyLimit?: number;
-  /** Opt-in relaxation of `w:lock` for run-property writes, for the body and every story store. */
-  readonly contentLockPolicy?: ContentLockPolicy;
-  /** Bound on opened story stores; defaults to {@link DEFAULT_MAX_EDITABLE_STORY_PARTS}. */
-  readonly maxEditableStoryParts?: number;
-  /**
-   * Test seam for note-reference cascade after `deleteText` / `deleteBlock`. Production uses
-   * {@link cascadeDeletedNoteReferences}.
-   */
-  readonly cascadeDeletedNoteReferences?: NoteCascadeFn;
-}
-
 /**
  * Package-level mutation authority: routes `TreeDocOp`s to the store for a story part,
  * publishes one ModelChange / undo unit per transaction, and keeps `currentPackage()`
  * coherent for save/reopen.
  */
 export class TreePackageStore {
+  private readonly reservedRevisionIds: RevisionIdReservationSource | undefined;
   private pkg: OoxmlPackage;
   private packageRev = 0;
   private readonly body: TreeDocumentStore;
@@ -244,6 +234,7 @@ export class TreePackageStore {
   }
 
   constructor(pkg: OoxmlPackage, main: OoxmlPart, options: TreePackageStoreOptions = {}) {
+    this.reservedRevisionIds = options.reservedRevisionIds;
     this.pkg = withPart(pkg, main);
     this.historyLimit = options.historyLimit ?? 200;
     this.contentLockPolicy = contentLockPolicyOf(options.contentLockPolicy);
@@ -382,11 +373,16 @@ export class TreePackageStore {
     build: (ctx: TransactionContext) => void,
     options: Omit<TransactOptions, 'story' | 'minimumImpact'> = {}
   ): PackageTransactResult {
-    return runObservedStoreTransaction(
-      this,
-      () => this.commitStoryTransaction(scope, build, options),
-      packageTransactionPublished,
-      options.historyGroup
+    // Snapshot before staging. The actor bound by the native transaction still owns allocation.
+    return runWithRevisionIdReservations(
+      this.reservedRevisionIds?.(this.currentPackage()) ?? [],
+      () =>
+        runObservedStoreTransaction(
+          this,
+          () => this.commitStoryTransaction(scope, build, options),
+          packageTransactionPublished,
+          options.historyGroup
+        )
     );
   }
 
@@ -440,6 +436,52 @@ export class TreePackageStore {
     const result = store.transact(
       (ctx) => {
         packageSelections = capturePackageSelections(ctx);
+        const applyTo = (partName: string, op: TreeDocOp): boolean => {
+          const current = ctx.currentPackage(),
+            target = current.parts.get(partName);
+          if (!target) return ctx.applyTo(partName, op);
+          if (op.op === 'setListNumbering' && Number(op.numId) > 0) turnsListOn = true;
+          if (op.op === 'setParagraphProperties') {
+            listStyleId ??= op.properties.find((property) => property.localName === 'pStyle')
+              ?.attributes?.val;
+          }
+          if (!mayDeleteNoteAtoms) {
+            if (op.op === 'deleteText' && deleteMayStrandNote(current, target, op, deleteTargets)) {
+              mayDeleteNoteAtoms = true;
+            } else if (
+              op.op === 'deleteBlock' &&
+              deleteBlockMayStrandNote(current, target, op, deleteTargets)
+            ) {
+              mayDeleteNoteAtoms = true;
+            } else if (RESOLUTION_OPS.has(op.op) || CONTENT_REMOVING_OPS.has(op.op)) {
+              // Resolving a revision removes the content it covers, and a note reference is one
+              // model unit, so a struck-through selection carries it away. Not narrowable to a
+              // paragraph range: a revision's sites are wherever the file put them. The cascade
+              // is a diff, so it is free.
+              mayDeleteNoteAtoms = true;
+            }
+          }
+          if (!mayEmptyComments) {
+            if (op.op === 'deleteText' || op.op === 'deleteBlock') {
+              // The package as the transaction found it: one walk answers every op.
+              mayEmptyComments = deleteMayEmptyCommentRange(
+                () => (anyComment ??= hasAnyComment(current)),
+                target,
+                op,
+                commentTargets
+              );
+            } else if (RESOLUTION_OPS.has(op.op) || CONTENT_REMOVING_OPS.has(op.op)) {
+              // Rejecting an insertion removes the words it inserted, which a comment can be
+              // anchored over. A row or column deletion removes whole cell PARAGRAPHS, markers
+              // and all, and names a table rather than a paragraph, so there is no cheap
+              // subtree to probe. Opens the gate outright; the reap is a diff, so it is free.
+              mayEmptyComments = true;
+            }
+          }
+          const ok = ctx.applyTo(partName, op);
+          if (ok && partName !== story.partName) packageShellTouched = true;
+          return ok;
+        };
         build({
           // The whole context is forwarded, not a hand-picked three: `applyTo` and
           // `applyPackage` are how a transaction writes the comment or numbering part in the
@@ -449,11 +491,7 @@ export class TreePackageStore {
           // sync after the commit carries the story part alone, so without shell promotion
           // the foreign write would silently evaporate. Promotion adopts the whole working
           // package and makes the undo pointer one package unit spanning every written part.
-          applyTo: (partName, op) => {
-            const appliedOk = ctx.applyTo(partName, op);
-            if (appliedOk && partName !== story.partName) packageShellTouched = true;
-            return appliedOk;
-          },
+          applyTo,
           applyPackage: (edit) =>
             ctx.applyPackage((current) => {
               const next = edit(current);
@@ -462,50 +500,7 @@ export class TreePackageStore {
               }
               return next;
             }),
-          apply: (op) => {
-            if (op.op === 'setListNumbering' && Number(op.numId) > 0) turnsListOn = true;
-            if (op.op === 'setParagraphProperties') {
-              listStyleId ??= op.properties.find((property) => property.localName === 'pStyle')
-                ?.attributes?.val;
-            }
-            if (!mayDeleteNoteAtoms) {
-              if (
-                op.op === 'deleteText' &&
-                deleteMayStrandNote(this.pkg, store.part, op, deleteTargets)
-              ) {
-                mayDeleteNoteAtoms = true;
-              } else if (
-                op.op === 'deleteBlock' &&
-                deleteBlockMayStrandNote(this.pkg, store.part, op, deleteTargets)
-              ) {
-                mayDeleteNoteAtoms = true;
-              } else if (RESOLUTION_OPS.has(op.op) || CONTENT_REMOVING_OPS.has(op.op)) {
-                // Resolving a revision removes the content it covers, and a note reference is one
-                // model unit, so a struck-through selection carries it away. Not narrowable to a
-                // paragraph range: a revision's sites are wherever the file put them. The cascade
-                // is a diff, so it is free.
-                mayDeleteNoteAtoms = true;
-              }
-            }
-            if (!mayEmptyComments) {
-              if (op.op === 'deleteText' || op.op === 'deleteBlock') {
-                // The package as the transaction found it: one walk answers every op.
-                mayEmptyComments = deleteMayEmptyCommentRange(
-                  () => (anyComment ??= hasAnyComment(this.pkg)),
-                  store.part,
-                  op,
-                  commentTargets
-                );
-              } else if (RESOLUTION_OPS.has(op.op) || CONTENT_REMOVING_OPS.has(op.op)) {
-                // Rejecting an insertion removes the words it inserted, which a comment can be
-                // anchored over. A row or column deletion removes whole cell PARAGRAPHS, markers
-                // and all, and names a table rather than a paragraph, so there is no cheap
-                // subtree to probe. Opens the gate outright; the reap is a diff, so it is free.
-                mayEmptyComments = true;
-              }
-            }
-            return ctx.apply(op);
-          },
+          apply: (op) => applyTo(story.partName, op),
           ...packageSelections.context,
         });
       },
@@ -525,6 +520,7 @@ export class TreePackageStore {
         ...(result.detail ? { detail: result.detail } : {}),
       };
     }
+    if (!result.change) return result;
 
     this.syncPackageFromStore(store);
     // The shell write the sync above cannot carry: adopt the transaction's working package,
@@ -980,17 +976,17 @@ export class TreePackageStore {
     store: TreeDocumentStore,
     checkpoint: TreeDocumentCheckpoint,
     /** Unused: the restore is unconditional now. Kept so the public signature stands. */
-    _beforeDepth?: number
+    _beforeDepth?: number,
+    historyGroup?: HistoryGroup
   ): TreeModelChange {
     this.installPackageSnapshotInternal(store.package, false);
     // Unconditional: a frame that MERGED into an open group left the depth unchanged and
     // the top entry rewritten; the package unit owns it now either way.
     store.restoreHistoryStacks(checkpoint);
-    this.pushUndoPointer({
-      kind: 'package',
-      before: beforePackage,
-      after: this.currentPackage(),
-    });
+    this.pushUndoPointer(
+      { kind: 'package', before: beforePackage, after: this.currentPackage() },
+      pointerGroup(historyGroup, beforePackage)
+    );
     this.packageRev += 1;
     const story =
       store.part.name === this.body.part.name

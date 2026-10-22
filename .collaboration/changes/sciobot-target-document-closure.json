@@ -1,0 +1,10 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The complete-target composer had separate C01 coverage across several test files and no single imported-document proof for all seven captured pairs.",
+  "after": "A test-only matrix plans all seven captured C01 pairs inside one imported document with headers, footers, notes, media, and unknown parts, and verifies exact part bytes, section fingerprints, and semantic replanning after save/reopen.",
+  "reason": "Test and test-support change only. No native operation, live executor, shared state, payload schema, or journal format changes. The private package needs no published changeset or public API extraction.",
+  "tests": ["packages/sciobot/src/diff/target-c01-matrix.test.ts"],
+  "changeset": null,
+  "migration": null
+}

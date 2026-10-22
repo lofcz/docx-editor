@@ -1,0 +1,10 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Core had no renderer-neutral contract for registered inline widget geometry.",
+  "after": "An internal, unexported core contract defines width, ascent, and descent in quantized CSS pixels, line-width clamping, and the native fallback for unregistered, unmeasured, or invalid controls.",
+  "reason": "The pure module imports nothing, is not reached by layout yet, and changes no shared operations, schemas, journals, transport formats, or pagination. B19 consumes it.",
+  "tests": ["packages/core/src/contracts/__tests__/inline-widget-metrics.test.ts"],
+  "changeset": "inline-widget-metrics-contract",
+  "migration": null
+}

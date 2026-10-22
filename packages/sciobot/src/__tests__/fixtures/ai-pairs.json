@@ -1,0 +1,984 @@
+{
+  "schemaVersion": 1,
+  "sources": {
+    "application": {
+      "revision": "da9081adad1b54d17d9f24647adfd117bdffb942",
+      "files": {
+        "src/lib/ai-review-diff.test.ts": "c319408f7dca1bd5eb07a37d330804febb14d8ce1b9ad3845919fa01b5b58c66",
+        "src/lib/ai-review-diff.ts": "5233a070f764270172fdc03ca7df564e16483aac958acfce42748ebf1fa7d701",
+        "src/lib/suggestion-views.ts": "671fb63d75f06d7264f4ba3a309f131e1a7e1d0d0fbe4fe48722028dced63c31",
+        "src/lib/lesson-plan-deserialize.ts": "6293cee4ca05d2c8a43fdf7f1cc7407aed3792623fe1571d1c959a7376107700",
+        "src/components/lesson-plan/md-rules.ts": "62cb5ac18e0ba83e0be143a723fca69226487cd460938b8a4dabc6b2603d21a3",
+        "src/components/lesson-plan/diff-strategy.ts": "29f7138d83424493ed34102ca3a974b25019cb22859cee5ce86c59bb44793f99",
+        "src/components/source/md-rules.ts": "188ecb608c5961b081781f505de80f339c9730563c96e0cd390fa213139ddc4e",
+        "src/components/source/diff-strategy.ts": "4d347374774a3d8b574faff5024022f7bccb05c845188b8f8a944344ffb61fc5",
+        "node_modules/@platejs/ai/package.json": "ff2c5652e3d211710e836b7514cea35c732197e76c172b561308b8e39ca6c8b1",
+        "node_modules/@platejs/ai/dist/react/index.js": "e6b7c673668367c98fd3b89fe783c27a42dc09e6972490662b5ac550015a5bbd",
+        "node_modules/@platejs/suggestion/dist/index.js": "bc0f11f06cc2c9f43873baaecea8e3fd3f7d6df188f271881b13f4ee65d38e0b",
+        "node_modules/@platejs/diff/dist/index.js": "208cd97e3c489ac30a38b714903f15029c7ed1bed8b541a60a62c785289eb828"
+      }
+    },
+    "plate": {
+      "revision": "d81a8eee2cca9f38a0cb04d88a0019405bf109c6",
+      "files": {
+        "packages/ai/src/react/direct-edit/applyAnimatedAIEdit.ts": "e9bc306690797aa894d447156d0f44537b5ab0089b6716409ede35168f57826b",
+        "packages/ai/src/react/direct-edit/planAIEdit.ts": "a0040c4297a55106735139ee7c75232921250de81476420d0dd214054149a53b",
+        "packages/ai/src/react/direct-edit/aiChanges.ts": "25fb86e499cb9c3d2264a48f8fa09a1a3df77ff8d7df824b4b1a6d1345db5e3b",
+        "packages/suggestion/src/lib/diffToSuggestions.ts": "c80294b62b01361ea555e132c798476eb3069312c6c146c2b94c659782ea437f"
+      }
+    }
+  },
+  "cases": [
+    {
+      "name": "formatting and lists",
+      "beforeMarkdown": "**Bold** and *italic*.\n\n1. First\n2. Second\n\n- Apple\n- Pear",
+      "afterMarkdown": "**Bold** and *updated italic*.\n\n1. First\n2. Added\n3. Second\n\n- Apple\n- Pear",
+      "original": [
+        {
+          "children": [
+            {
+              "bold": true,
+              "text": "Bold"
+            },
+            {
+              "text": " and "
+            },
+            {
+              "italic": true,
+              "text": "italic"
+            },
+            {
+              "text": "."
+            }
+          ],
+          "type": "p"
+        },
+        {
+          "children": [
+            {
+              "text": "First"
+            }
+          ],
+          "type": "p",
+          "indent": 1,
+          "listStyleType": "decimal"
+        },
+        {
+          "children": [
+            {
+              "text": "Second"
+            }
+          ],
+          "type": "p",
+          "indent": 1,
+          "listStyleType": "decimal",
+          "listStart": 2
+        },
+        {
+          "children": [
+            {
+              "text": "Apple"
+            }
+          ],
+          "type": "p",
+          "indent": 1,
+          "listStyleType": "disc"
+        },
+        {
+          "children": [
+            {
+              "text": "Pear"
+            }
+          ],
+          "type": "p",
+          "indent": 1,
+          "listStyleType": "disc"
+        }
+      ],
+      "canonicalBefore": [
+        {
+          "children": [
+            {
+              "bold": true,
+              "text": "Bold"
+            },
+            {
+              "text": " and "
+            },
+            {
+              "italic": true,
+              "text": "italic"
+            },
+            {
+              "text": "."
+            }
+          ],
+          "type": "p"
+        },
+        {
+          "children": [
+            {
+              "text": "First"
+            }
+          ],
+          "type": "p",
+          "indent": 1,
+          "listStyleType": "decimal"
+        },
+        {
+          "children": [
+            {
+              "text": "Second"
+            }
+          ],
+          "type": "p",
+          "indent": 1,
+          "listStyleType": "decimal"
+        },
+        {
+          "children": [
+            {
+              "text": "Apple"
+            }
+          ],
+          "type": "p",
+          "indent": 1,
+          "listStyleType": "disc"
+        },
+        {
+          "children": [
+            {
+              "text": "Pear"
+            }
+          ],
+          "type": "p",
+          "indent": 1,
+          "listStyleType": "disc"
+        }
+      ],
+      "expected": [
+        {
+          "children": [
+            {
+              "bold": true,
+              "text": "Bold"
+            },
+            {
+              "text": " and "
+            },
+            {
+              "italic": true,
+              "text": "updated italic"
+            },
+            {
+              "text": "."
+            }
+          ],
+          "type": "p"
+        },
+        {
+          "children": [
+            {
+              "text": "First"
+            }
+          ],
+          "type": "p",
+          "indent": 1,
+          "listStyleType": "decimal"
+        },
+        {
+          "children": [
+            {
+              "text": "Added"
+            }
+          ],
+          "type": "p",
+          "indent": 1,
+          "listStyleType": "decimal",
+          "listStart": 2
+        },
+        {
+          "children": [
+            {
+              "text": "Second"
+            }
+          ],
+          "type": "p",
+          "indent": 1,
+          "listStyleType": "decimal",
+          "listStart": 3
+        },
+        {
+          "children": [
+            {
+              "text": "Apple"
+            }
+          ],
+          "type": "p",
+          "indent": 1,
+          "listStyleType": "disc"
+        },
+        {
+          "children": [
+            {
+              "text": "Pear"
+            }
+          ],
+          "type": "p",
+          "indent": 1,
+          "listStyleType": "disc"
+        }
+      ]
+    },
+    {
+      "name": "tables and links",
+      "beforeMarkdown": "| A | B |\n| --- | --- |\n| One | Two |\n\n[Link](https://example.com)",
+      "afterMarkdown": "| A | B |\n| --- | --- |\n| One | Changed |\n| Three | Four |\n\n[Link](https://example.org)",
+      "original": [
+        {
+          "children": [
+            {
+              "text": "| A | B |\n| --- | --- |\n| One | Two |"
+            }
+          ],
+          "type": "p"
+        },
+        {
+          "children": [
+            {
+              "text": ""
+            },
+            {
+              "children": [
+                {
+                  "text": "Link"
+                }
+              ],
+              "type": "a",
+              "url": "https://example.com"
+            },
+            {
+              "text": ""
+            }
+          ],
+          "type": "p"
+        }
+      ],
+      "canonicalBefore": [
+        {
+          "children": [
+            {
+              "text": "| A | B |"
+            },
+            {
+              "text": "\n"
+            },
+            {
+              "text": "| --- | --- |"
+            },
+            {
+              "text": "\n"
+            },
+            {
+              "text": "| One | Two |"
+            }
+          ],
+          "type": "p"
+        },
+        {
+          "children": [
+            {
+              "text": ""
+            },
+            {
+              "children": [
+                {
+                  "text": "Link"
+                }
+              ],
+              "type": "a",
+              "url": "https://example.com"
+            },
+            {
+              "text": ""
+            }
+          ],
+          "type": "p"
+        }
+      ],
+      "expected": [
+        {
+          "children": [
+            {
+              "text": "| A | B |\n| --- | --- |\n| One | Changed |\n| Three | Four |"
+            }
+          ],
+          "type": "p"
+        },
+        {
+          "children": [
+            {
+              "text": ""
+            },
+            {
+              "children": [
+                {
+                  "text": "Link"
+                }
+              ],
+              "type": "a",
+              "url": "https://example.org"
+            },
+            {
+              "text": ""
+            }
+          ],
+          "type": "p"
+        }
+      ]
+    },
+    {
+      "name": "section insertion",
+      "beforeMarkdown": "Opening.\n\nClosing.",
+      "afterMarkdown": "Opening.\n\n## New section\n\nFirst addition.\n\nSecond addition.\n\nClosing.",
+      "original": [
+        {
+          "children": [
+            {
+              "text": "Opening."
+            }
+          ],
+          "type": "p"
+        },
+        {
+          "children": [
+            {
+              "text": "Closing."
+            }
+          ],
+          "type": "p"
+        }
+      ],
+      "canonicalBefore": [
+        {
+          "children": [
+            {
+              "text": "Opening."
+            }
+          ],
+          "type": "p"
+        },
+        {
+          "children": [
+            {
+              "text": "Closing."
+            }
+          ],
+          "type": "p"
+        }
+      ],
+      "expected": [
+        {
+          "children": [
+            {
+              "text": "Opening."
+            }
+          ],
+          "type": "p"
+        },
+        {
+          "children": [
+            {
+              "text": "New section"
+            }
+          ],
+          "type": "h2"
+        },
+        {
+          "children": [
+            {
+              "text": "First addition."
+            }
+          ],
+          "type": "p"
+        },
+        {
+          "children": [
+            {
+              "text": "Second addition."
+            }
+          ],
+          "type": "p"
+        },
+        {
+          "children": [
+            {
+              "text": "Closing."
+            }
+          ],
+          "type": "p"
+        }
+      ]
+    },
+    {
+      "name": "nested MDX and attributes",
+      "beforeMarkdown": "<lesson_title grade=\"7\">Lesson</lesson_title>\n\n<phase type=\"evocation\">\n<activity name=\"Warmup\" duration=\"10\">\nFirst question.\n\n<source title=\"Source\" url=\"https://example.com\" type=\"verified\" />\n\nLast question.\n</activity>\n</phase>",
+      "afterMarkdown": "<lesson_title grade=\"7\">Lesson</lesson_title>\n\n<phase type=\"evocation\">\n<activity name=\"Warmup\" duration=\"15\">\nA better question.\n\n<source title=\"Source\" url=\"https://example.com\" type=\"verified\" />\n\nLast question.\n</activity>\n</phase>",
+      "original": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "text": "Lesson"
+                }
+              ],
+              "type": "lesson_title",
+              "grade": 7
+            }
+          ],
+          "type": "p"
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [
+                    {
+                      "text": "First question."
+                    }
+                  ],
+                  "type": "p"
+                },
+                {
+                  "type": "p",
+                  "children": [
+                    {
+                      "text": ""
+                    },
+                    {
+                      "type": "source",
+                      "sourceType": "web",
+                      "url": "https://example.com",
+                      "title": "Source",
+                      "trust": "verified",
+                      "children": [
+                        {
+                          "text": ""
+                        }
+                      ]
+                    },
+                    {
+                      "text": ""
+                    }
+                  ]
+                },
+                {
+                  "children": [
+                    {
+                      "text": "Last question."
+                    }
+                  ],
+                  "type": "p"
+                }
+              ],
+              "type": "lesson_activity",
+              "name": "Warmup",
+              "duration": 10
+            }
+          ],
+          "type": "lesson_phase",
+          "phaseType": "evocation"
+        }
+      ],
+      "canonicalBefore": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "text": "Lesson"
+                }
+              ],
+              "type": "p"
+            }
+          ],
+          "type": "lesson_title",
+          "grade": 7
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [
+                    {
+                      "text": "First question."
+                    }
+                  ],
+                  "type": "p"
+                },
+                {
+                  "children": [
+                    {
+                      "text": ""
+                    },
+                    {
+                      "type": "source",
+                      "sourceType": "web",
+                      "url": "https://example.com",
+                      "title": "Source",
+                      "trust": "verified",
+                      "children": [
+                        {
+                          "text": ""
+                        }
+                      ]
+                    },
+                    {
+                      "text": ""
+                    }
+                  ],
+                  "type": "p"
+                },
+                {
+                  "children": [
+                    {
+                      "text": "Last question."
+                    }
+                  ],
+                  "type": "p"
+                }
+              ],
+              "type": "lesson_activity",
+              "name": "Warmup",
+              "duration": 10
+            }
+          ],
+          "type": "lesson_phase",
+          "phaseType": "evocation"
+        }
+      ],
+      "expected": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "text": "Lesson"
+                }
+              ],
+              "type": "lesson_title",
+              "grade": 7
+            }
+          ],
+          "type": "p"
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [
+                    {
+                      "text": "A better question."
+                    }
+                  ],
+                  "type": "p"
+                },
+                {
+                  "type": "p",
+                  "children": [
+                    {
+                      "text": ""
+                    },
+                    {
+                      "type": "source",
+                      "sourceType": "web",
+                      "url": "https://example.com",
+                      "title": "Source",
+                      "trust": "verified",
+                      "children": [
+                        {
+                          "text": ""
+                        }
+                      ]
+                    },
+                    {
+                      "text": ""
+                    }
+                  ]
+                },
+                {
+                  "children": [
+                    {
+                      "text": "Last question."
+                    }
+                  ],
+                  "type": "p"
+                }
+              ],
+              "type": "lesson_activity",
+              "name": "Warmup",
+              "duration": 15
+            }
+          ],
+          "type": "lesson_phase",
+          "phaseType": "evocation"
+        }
+      ]
+    },
+    {
+      "name": "source content",
+      "beforeMarkdown": "<lesson_title grade=\"7\">Lesson</lesson_title>\n\n<phase type=\"evocation\">\n<activity name=\"Warmup\" duration=\"10\">\nFirst question.\n\n<source title=\"Source\" url=\"https://example.com\" type=\"verified\" />\n\nLast question.\n</activity>\n</phase>",
+      "afterMarkdown": "<lesson_title grade=\"7\">Lesson</lesson_title>\n\n<phase type=\"evocation\">\n<activity name=\"Warmup\" duration=\"10\">\nFirst question.\n\n<source title=\"Source\" url=\"https://example.org\" type=\"verified\" />\n\nFinal reflection.\n</activity>\n</phase>",
+      "original": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "text": "Lesson"
+                }
+              ],
+              "type": "lesson_title",
+              "grade": 7
+            }
+          ],
+          "type": "p"
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [
+                    {
+                      "text": "First question."
+                    }
+                  ],
+                  "type": "p"
+                },
+                {
+                  "type": "p",
+                  "children": [
+                    {
+                      "text": ""
+                    },
+                    {
+                      "type": "source",
+                      "sourceType": "web",
+                      "url": "https://example.com",
+                      "title": "Source",
+                      "trust": "verified",
+                      "children": [
+                        {
+                          "text": ""
+                        }
+                      ]
+                    },
+                    {
+                      "text": ""
+                    }
+                  ]
+                },
+                {
+                  "children": [
+                    {
+                      "text": "Last question."
+                    }
+                  ],
+                  "type": "p"
+                }
+              ],
+              "type": "lesson_activity",
+              "name": "Warmup",
+              "duration": 10
+            }
+          ],
+          "type": "lesson_phase",
+          "phaseType": "evocation"
+        }
+      ],
+      "canonicalBefore": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "text": "Lesson"
+                }
+              ],
+              "type": "p"
+            }
+          ],
+          "type": "lesson_title",
+          "grade": 7
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [
+                    {
+                      "text": "First question."
+                    }
+                  ],
+                  "type": "p"
+                },
+                {
+                  "children": [
+                    {
+                      "text": ""
+                    },
+                    {
+                      "type": "source",
+                      "sourceType": "web",
+                      "url": "https://example.com",
+                      "title": "Source",
+                      "trust": "verified",
+                      "children": [
+                        {
+                          "text": ""
+                        }
+                      ]
+                    },
+                    {
+                      "text": ""
+                    }
+                  ],
+                  "type": "p"
+                },
+                {
+                  "children": [
+                    {
+                      "text": "Last question."
+                    }
+                  ],
+                  "type": "p"
+                }
+              ],
+              "type": "lesson_activity",
+              "name": "Warmup",
+              "duration": 10
+            }
+          ],
+          "type": "lesson_phase",
+          "phaseType": "evocation"
+        }
+      ],
+      "expected": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "text": "Lesson"
+                }
+              ],
+              "type": "lesson_title",
+              "grade": 7
+            }
+          ],
+          "type": "p"
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "children": [
+                    {
+                      "text": "First question."
+                    }
+                  ],
+                  "type": "p"
+                },
+                {
+                  "type": "p",
+                  "children": [
+                    {
+                      "text": ""
+                    },
+                    {
+                      "type": "source",
+                      "sourceType": "web",
+                      "url": "https://example.org",
+                      "title": "Source",
+                      "trust": "verified",
+                      "children": [
+                        {
+                          "text": ""
+                        }
+                      ]
+                    },
+                    {
+                      "text": ""
+                    }
+                  ]
+                },
+                {
+                  "children": [
+                    {
+                      "text": "Final reflection."
+                    }
+                  ],
+                  "type": "p"
+                }
+              ],
+              "type": "lesson_activity",
+              "name": "Warmup",
+              "duration": 10
+            }
+          ],
+          "type": "lesson_phase",
+          "phaseType": "evocation"
+        }
+      ]
+    },
+    {
+      "name": "deletion",
+      "beforeMarkdown": "Keep.\n\nRemove.\n\nTail.",
+      "afterMarkdown": "Keep.\n\nTail.",
+      "original": [
+        {
+          "children": [
+            {
+              "text": "Keep."
+            }
+          ],
+          "type": "p"
+        },
+        {
+          "children": [
+            {
+              "text": "Remove."
+            }
+          ],
+          "type": "p"
+        },
+        {
+          "children": [
+            {
+              "text": "Tail."
+            }
+          ],
+          "type": "p"
+        }
+      ],
+      "canonicalBefore": [
+        {
+          "children": [
+            {
+              "text": "Keep."
+            }
+          ],
+          "type": "p"
+        },
+        {
+          "children": [
+            {
+              "text": "Remove."
+            }
+          ],
+          "type": "p"
+        },
+        {
+          "children": [
+            {
+              "text": "Tail."
+            }
+          ],
+          "type": "p"
+        }
+      ],
+      "expected": [
+        {
+          "children": [
+            {
+              "text": "Keep."
+            }
+          ],
+          "type": "p"
+        },
+        {
+          "children": [
+            {
+              "text": "Tail."
+            }
+          ],
+          "type": "p"
+        }
+      ]
+    },
+    {
+      "name": "complete rewrite",
+      "beforeMarkdown": "Old document.\n\nOld end.",
+      "afterMarkdown": "# Replacement\n\nNew body.\n\nNew ending.",
+      "original": [
+        {
+          "children": [
+            {
+              "text": "Old document."
+            }
+          ],
+          "type": "p"
+        },
+        {
+          "children": [
+            {
+              "text": "Old end."
+            }
+          ],
+          "type": "p"
+        }
+      ],
+      "canonicalBefore": [
+        {
+          "children": [
+            {
+              "text": "Old document."
+            }
+          ],
+          "type": "p"
+        },
+        {
+          "children": [
+            {
+              "text": "Old end."
+            }
+          ],
+          "type": "p"
+        }
+      ],
+      "expected": [
+        {
+          "children": [
+            {
+              "text": "Replacement"
+            }
+          ],
+          "type": "h1"
+        },
+        {
+          "children": [
+            {
+              "text": "New body."
+            }
+          ],
+          "type": "p"
+        },
+        {
+          "children": [
+            {
+              "text": "New ending."
+            }
+          ],
+          "type": "p"
+        }
+      ]
+    }
+  ]
+}

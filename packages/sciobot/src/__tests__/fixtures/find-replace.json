@@ -1,0 +1,296 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "revision": "da9081adad1b54d17d9f24647adfd117bdffb942",
+    "files": {
+      "src/lib/agent-edit-find-replace.test.ts": "ffa4b7fcb08924be7a2964f7988ef2ad5bf3a58cec1f8d1f0cf77d922df6cd66",
+      "src/lib/agent-edit-find-replace.ts": "191759108e55e9dc0fcd785c0b4ce26cc707586eb2c0a454d48185257ea8c71a",
+      "supabase/functions/_shared/find-and-replace.ts": "76ec50704b63fb03279d1bf12103dcc3bc97162dda8a69b906ec6de31ad7fd59",
+      "node_modules/diff/package.json": "1c625fe9bba43722c8d8fbd8c2b70edcab5473d75f8d66a862f9800b415aa014"
+    },
+    "testNames": [
+      "matches an exact substring including leading indentation",
+      "matches when old_string has an HTML entity the document stores literally",
+      "matches straight quotes from the model against Czech curly quotes in the doc",
+      "preserves the document's curly-quote typography in new_string",
+      "does not treat $ sequences in new_string as replace patterns",
+      "rejects a no-op where old_string equals new_string",
+      "consumes the trailing newline when deleting a line's text",
+      "expected_replacements matching the actual count succeeds",
+      "expected_replacements mismatching the actual count is rejected with no change",
+      "expected_replacements=1 rejects a replace_all that would hit several",
+      "error message no longer references the system prompt",
+      "jsdiff rstrip: locates despite trailing whitespace and replaces the file span",
+      "jsdiff trim: locates despite indent and replaces the file span",
+      "jsdiff unicode: ASCII hyphen in old_string matches an en-dash in the file",
+      "on a content typo, does not apply and returns an Aider-style excerpt",
+      "jsdiff refuses an indent-equivalent block that is not unique",
+      "ports Codex seek_sequence exact / rstrip / trim / too-long cases"
+    ]
+  },
+  "cases": [
+    {
+      "sourceTest": "matches an exact substring including leading indentation",
+      "input": {
+        "content": "<activity name=\"X\" duration=\"10\">\n  4. **Položte postranní otázky a vyvolejte žáky:**\n     * Otázka 1: _Které dělení je spravedlivé a proč?_\n       * _Očekávaná odpověď:_ Pizza A.\n       * _Doplňující otázka učitele:_ „Proč?“\n</activity>",
+        "oldString": "       * _Očekávaná odpověď:_ Pizza A.",
+        "newString": "       * _Odpověď:_ Pizza A.",
+        "replaceAll": false
+      },
+      "expected": {
+        "success": true,
+        "newContent": "<activity name=\"X\" duration=\"10\">\n  4. **Položte postranní otázky a vyvolejte žáky:**\n     * Otázka 1: _Které dělení je spravedlivé a proč?_\n       * _Odpověď:_ Pizza A.\n       * _Doplňující otázka učitele:_ „Proč?“\n</activity>"
+      }
+    },
+    {
+      "sourceTest": "matches when old_string has an HTML entity the document stores literally",
+      "input": {
+        "content": "<activity name=\"X\" duration=\"10\">\n  4. **Položte postranní otázky a vyvolejte žáky:**\n     * Otázka 1: _Které dělení je spravedlivé a proč?_\n       * _Očekávaná odpověď:_ Pizza A.\n       * _Doplňující otázka učitele:_ „Proč?“\n</activity>",
+        "oldString": "     * Otázka 1: &#x5F;Které dělení je spravedlivé a proč?&#x5F;",
+        "newString": "REPLACED",
+        "replaceAll": false
+      },
+      "expected": {
+        "success": true,
+        "newContent": "<activity name=\"X\" duration=\"10\">\n  4. **Položte postranní otázky a vyvolejte žáky:**\nREPLACED\n       * _Očekávaná odpověď:_ Pizza A.\n       * _Doplňující otázka učitele:_ „Proč?“\n</activity>"
+      }
+    },
+    {
+      "sourceTest": "matches straight quotes from the model against Czech curly quotes in the doc",
+      "input": {
+        "content": "<activity name=\"X\" duration=\"10\">\n  4. **Položte postranní otázky a vyvolejte žáky:**\n     * Otázka 1: _Které dělení je spravedlivé a proč?_\n       * _Očekávaná odpověď:_ Pizza A.\n       * _Doplňující otázka učitele:_ „Proč?“\n</activity>",
+        "oldString": "       * _Doplňující otázka učitele:_ \"Proč?\"",
+        "newString": "REPLACED",
+        "replaceAll": false
+      },
+      "expected": {
+        "success": true,
+        "newContent": "<activity name=\"X\" duration=\"10\">\n  4. **Položte postranní otázky a vyvolejte žáky:**\n     * Otázka 1: _Které dělení je spravedlivé a proč?_\n       * _Očekávaná odpověď:_ Pizza A.\nREPLACED\n</activity>"
+      }
+    },
+    {
+      "sourceTest": "preserves the document's curly-quote typography in new_string",
+      "input": {
+        "content": "<activity name=\"X\" duration=\"10\">\n  4. **Položte postranní otázky a vyvolejte žáky:**\n     * Otázka 1: _Které dělení je spravedlivé a proč?_\n       * _Očekávaná odpověď:_ Pizza A.\n       * _Doplňující otázka učitele:_ „Proč?“\n</activity>",
+        "oldString": "       * _Doplňující otázka učitele:_ \"Proč?\"",
+        "newString": "       * _Doplňující otázka učitele:_ \"Jak víš?\"",
+        "replaceAll": false
+      },
+      "expected": {
+        "success": true,
+        "newContent": "<activity name=\"X\" duration=\"10\">\n  4. **Položte postranní otázky a vyvolejte žáky:**\n     * Otázka 1: _Které dělení je spravedlivé a proč?_\n       * _Očekávaná odpověď:_ Pizza A.\n       * _Doplňující otázka učitele:_ „Jak víš?“\n</activity>"
+      }
+    },
+    {
+      "sourceTest": "does not treat $ sequences in new_string as replace patterns",
+      "input": {
+        "content": "price: X",
+        "oldString": "X",
+        "newString": "$& and $$ and $1",
+        "replaceAll": false
+      },
+      "expected": {
+        "success": true,
+        "newContent": "price: $& and $$ and $1"
+      }
+    },
+    {
+      "sourceTest": "rejects a no-op where old_string equals new_string",
+      "input": {
+        "content": "<activity name=\"X\" duration=\"10\">\n  4. **Položte postranní otázky a vyvolejte žáky:**\n     * Otázka 1: _Které dělení je spravedlivé a proč?_\n       * _Očekávaná odpověď:_ Pizza A.\n       * _Doplňující otázka učitele:_ „Proč?“\n</activity>",
+        "oldString": "Pizza A.",
+        "newString": "Pizza A.",
+        "replaceAll": false
+      },
+      "expected": {
+        "success": false,
+        "error": "No changes to make: old_string and new_string are exactly the same."
+      }
+    },
+    {
+      "sourceTest": "consumes the trailing newline when deleting a line's text",
+      "input": {
+        "content": "alpha\nbeta\ngamma",
+        "oldString": "beta",
+        "newString": "",
+        "replaceAll": false
+      },
+      "expected": {
+        "success": true,
+        "newContent": "alpha\ngamma"
+      }
+    },
+    {
+      "sourceTest": "expected_replacements matching the actual count succeeds",
+      "input": {
+        "content": "a x b x c",
+        "oldString": "x",
+        "newString": "y",
+        "replaceAll": true,
+        "expectedReplacements": 2
+      },
+      "expected": {
+        "success": true,
+        "newContent": "a y b y c"
+      }
+    },
+    {
+      "sourceTest": "expected_replacements mismatching the actual count is rejected with no change",
+      "input": {
+        "content": "a x b x c x d",
+        "oldString": "x",
+        "newString": "y",
+        "replaceAll": true,
+        "expectedReplacements": 2
+      },
+      "expected": {
+        "success": false,
+        "error": "Expected 2 occurrence(s) of old_string but found 3. Re-read the document to confirm the current count, then adjust old_string (more/less context) or expected_replacements."
+      }
+    },
+    {
+      "sourceTest": "expected_replacements=1 rejects a replace_all that would hit several",
+      "input": {
+        "content": "dup and dup",
+        "oldString": "dup",
+        "newString": "x",
+        "replaceAll": true,
+        "expectedReplacements": 1
+      },
+      "expected": {
+        "success": false,
+        "error": "Expected 1 occurrence(s) of old_string but found 2. Re-read the document to confirm the current count, then adjust old_string (more/less context) or expected_replacements."
+      }
+    },
+    {
+      "sourceTest": "error message no longer references the system prompt",
+      "input": {
+        "content": "<activity name=\"X\" duration=\"10\">\n  4. **Položte postranní otázky a vyvolejte žáky:**\n     * Otázka 1: _Které dělení je spravedlivé a proč?_\n       * _Očekávaná odpověď:_ Pizza A.\n       * _Doplňující otázka učitele:_ „Proč?“\n</activity>",
+        "oldString": "definitely not present",
+        "newString": "x",
+        "replaceAll": false
+      },
+      "expected": {
+        "success": false,
+        "error": "The old_string was not found in the document. It must match the document EXACTLY, including every leading space and blank line. Copy it verbatim from the most recent read_document output. If read_document reported truncated=true, the match may be outside the returned window — re-read with offset/limit around the target region first."
+      }
+    },
+    {
+      "sourceTest": "jsdiff rstrip: locates despite trailing whitespace and replaces the file span",
+      "input": {
+        "content": "foo  \nbar\t",
+        "oldString": "foo\nbar",
+        "newString": "baz",
+        "replaceAll": false
+      },
+      "expected": {
+        "success": true,
+        "newContent": "baz"
+      }
+    },
+    {
+      "sourceTest": "jsdiff trim: locates despite indent and replaces the file span",
+      "input": {
+        "content": "function run() {\n    return 1;\n}",
+        "oldString": "function run() {\n  return 1;\n}",
+        "newString": "function run() {\n    return 2;\n}",
+        "replaceAll": false
+      },
+      "expected": {
+        "success": true,
+        "newContent": "function run() {\n    return 2;\n}"
+      }
+    },
+    {
+      "sourceTest": "jsdiff unicode: ASCII hyphen in old_string matches an en-dash in the file",
+      "input": {
+        "content": "avoid top-level dep — locally",
+        "oldString": "avoid top-level dep - locally",
+        "newString": "ok",
+        "replaceAll": false
+      },
+      "expected": {
+        "success": true,
+        "newContent": "ok"
+      }
+    },
+    {
+      "sourceTest": "on a content typo, does not apply and returns an Aider-style excerpt",
+      "input": {
+        "content": "## Každý celek můžeme rozdělit na stejné díly\n- Představ si jednu celou tabulku čokolády\n- Rozlomením vzniknou stejně velké **dílky**\n- Nerovné kousky by při dělení nebyly fér\n@visual image | Tabulka čokolády rozlámaná na stejné čtverečky\n\n## Zlomek zapisujeme pomocí dvou čísel a čáry",
+        "oldString": "## Každý celek můžeme rozdělit na stejné díly\n- Představ si jednu celou tabulku čokolády\n- Rozlomením vzniknou stejně velké **dílky**\n- Nerovné kousky by při dělení nebyly fér\n@visual image | Tabulka čokolády rozlámaná na stejné čtverečky\n\n## Zlomky zapisujeme pomocí dvou čísel a čáry",
+        "newString": "REPLACED",
+        "replaceAll": false
+      },
+      "expected": {
+        "success": false,
+        "error": "The old_string was not found in the document.\n\nDid you mean to match some of these actual lines from the document?\n\n===================================================================\n--- old_string\n+++ document\n@@ -3,5 +3,5 @@\n - Rozlomením vzniknou stejně velké **dílky**\n - Nerovné kousky by při dělení nebyly fér\n @visual image | Tabulka čokolády rozlámaná na stejné čtverečky\n \n-## Zlomky zapisujeme pomocí dvou čísel a čáry\n\\ No newline at end of file\n+## Zlomek zapisujeme pomocí dvou čísel a čáry\n\\ No newline at end of file\n\nCopy old_string exactly from the document side of the diff (or re-read that region with read_document)."
+      }
+    },
+    {
+      "sourceTest": "jsdiff refuses an indent-equivalent block that is not unique",
+      "input": {
+        "content": "    ## Nadpis\n    - bod jedna\n    - bod dva\n\n  ## Nadpis\n  - bod jedna\n  - bod dva",
+        "oldString": "## Nadpis\n- bod jedna\n- bod dva",
+        "newString": "X",
+        "replaceAll": false
+      },
+      "expected": {
+        "success": false,
+        "error": "Found 2 matches for old_string. Set replace_all to true to replace all occurrences, or provide a more unique old_string."
+      }
+    },
+    {
+      "sourceTest": "ports Codex seek_sequence exact / rstrip / trim / too-long cases",
+      "input": {
+        "content": "foo\nbar\nbaz",
+        "oldString": "bar\nbaz",
+        "newString": "X",
+        "replaceAll": false
+      },
+      "expected": {
+        "success": true,
+        "newContent": "foo\nX"
+      }
+    },
+    {
+      "sourceTest": "ports Codex seek_sequence exact / rstrip / trim / too-long cases",
+      "input": {
+        "content": "foo   \nbar\t\t",
+        "oldString": "foo\nbar",
+        "newString": "X",
+        "replaceAll": false
+      },
+      "expected": {
+        "success": true,
+        "newContent": "X"
+      }
+    },
+    {
+      "sourceTest": "ports Codex seek_sequence exact / rstrip / trim / too-long cases",
+      "input": {
+        "content": "    foo   \n   bar\t",
+        "oldString": "foo\nbar",
+        "newString": "X",
+        "replaceAll": false
+      },
+      "expected": {
+        "success": true,
+        "newContent": "X"
+      }
+    },
+    {
+      "sourceTest": "ports Codex seek_sequence exact / rstrip / trim / too-long cases",
+      "input": {
+        "content": "just one line",
+        "oldString": "too\nmany\nlines",
+        "newString": "X",
+        "replaceAll": false
+      },
+      "expected": {
+        "success": false,
+        "error": "The old_string was not found in the document. It must match the document EXACTLY, including every leading space and blank line. Copy it verbatim from the most recent read_document output. If read_document reported truncated=true, the match may be outside the returned window — re-read with offset/limit around the target region first."
+      }
+    }
+  ]
+}

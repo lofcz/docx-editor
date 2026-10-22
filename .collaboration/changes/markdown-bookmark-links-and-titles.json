@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Markdown export omitted internal bookmark links and hyperlink tooltips.",
+  "after": "Read-only Markdown projections retain sanitized bookmark destinations and escaped hyperlink titles.",
+  "reason": "The converter reads existing sanitized semantic records. It adds no document writes, operations, shared fields, or transport dependencies.",
+  "tests": [
+    "packages/docx-to-markdown/test/markdown-hyperlinks.test.ts",
+    "packages/sciobot/src/review/track-blocks.test.ts"
+  ],
+  "changeset": "markdown-bookmark-links-and-titles",
+  "migration": null
+}

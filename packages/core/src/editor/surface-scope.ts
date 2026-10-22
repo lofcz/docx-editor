@@ -38,6 +38,7 @@ import {
 } from '../layout/semantic-hit-test.ts';
 import { parseNoteScopeId } from '../store/package/note-nodes.ts';
 import { logicalLineSegments } from '../layout/line-segments.ts';
+import { hasNode } from '../store/package/ooxml-edit.ts';
 
 export const SCOPE_BODY: ViewScope = Object.freeze({ kind: 'body' as const });
 
@@ -100,18 +101,23 @@ export type StoryScopeLookup = Pick<
  * matched from the id's prefix before anything is looked up. Sixty-four such reads and no
  * further header could be opened for the rest of the session, silently.
  *
- * Read straight from the live package instead. Ids carry the canonical part name, so this is a
- * map lookup.
+ * Canonical ids name their part directly. Collaboration history can restore local ids with
+ * no part prefix, so those resolve through the live package's node indexes instead.
+ * Neither route opens a story store.
  */
 export function partOfNodeId(
   session: Pick<TreeDocxSessionView, 'currentPackage' | 'part'>,
   nodeId: string | undefined
 ): OoxmlPart | null {
-  const hash = nodeId?.indexOf('#') ?? -1;
-  if (hash === -1) return null;
-  const partName = nodeId!.slice(0, hash);
-  if (partName.length === 0) return null;
-  return session.currentPackage().parts.get(partName) ?? null;
+  if (!nodeId) return null;
+  const pkg = session.currentPackage();
+  const hash = nodeId.indexOf('#');
+  const named = hash > 0 ? pkg.parts.get(nodeId.slice(0, hash)) : undefined;
+  if (named) return named;
+  const body = session.part();
+  if (hasNode(body, nodeId)) return body;
+  for (const part of pkg.parts.values()) if (part !== body && hasNode(part, nodeId)) return part;
+  return null;
 }
 
 export function storyScopeOfNodeId(

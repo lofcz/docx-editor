@@ -1,0 +1,17 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Logical block streams and native source ownership were separate. The composed MDX projection omitted P03 table identities needed to distinguish physical cells and generated grid placeholders.",
+  "after": "An immutable source binder resolves logical AST paths through actual normalization coordinates to original native owners and sibling windows. Composed MDX retains native layout table metadata and final cell source coordinates. Composite mappings, inline control ranges, atomic source policy, generated task syntax, and unrepresented owners stay explicit.",
+  "reason": "The private reader creates no native identities, document nodes, operations, relationships, live writes, or shared state. It does not infer native geometry or authorize writes. Canonical document, payload, collaboration, and journal formats remain unchanged.",
+  "tests": [
+    "packages/sciobot/src/diff/bind-source.test.ts",
+    "packages/sciobot/src/diff/target-source.test.ts",
+    "packages/sciobot/src/projection/tables.test.ts",
+    "packages/sciobot/src/projection/mdx.test.ts",
+    "packages/sciobot/src/diff/logical-blocks.test.ts",
+    "packages/sciobot/src/projection/target-source-map.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

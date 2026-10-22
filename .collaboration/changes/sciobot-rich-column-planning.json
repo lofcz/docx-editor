@@ -1,0 +1,17 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The private column planner carried structural commands but lacked row-anchored rich new-cell content and deferred explicit widths.",
+  "after": "A pure insert-column intent carries canonical anchors, per-row new fragments, complete payload bindings, and an optional explicit width. Native previews validate destinations, merges, continuations, and fixed-grid sizing. Row and column plans share bounded fragment and payload validation.",
+  "reason": "Planning changes no live package or shared format. Allocated native IDs stay outside serialized plans. A test-only immutable oracle verifies insertion and save/reopen. A01/R09 retain actual transactions, review, and rich-column two-session verification. No publishable package code changes.",
+  "tests": [
+    "packages/sciobot/src/diff/inserted-table-columns.test.ts",
+    "packages/sciobot/src/diff/inserted-table-rows.test.ts",
+    "packages/sciobot/src/diff/table-columns.test.ts",
+    "packages/sciobot/src/diff/plan.test.ts",
+    "packages/sciobot/test/support/inserted-column-oracle.ts",
+    "packages/sciobot/test/support/inserted-fragment-oracle.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

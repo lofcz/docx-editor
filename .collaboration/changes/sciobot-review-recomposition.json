@@ -1,0 +1,24 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "The private SDK required callers to plan body text replacements and retain ownership without durable content evidence.",
+  "after": "The private SDK reads a fresh ownership-relative baseline and plans a complete target. One native stage executes supported body/cell text, run and paragraph formatting, hyperlink retargets, and paragraph sibling gaps. It retains exact ownership and semantic content proofs across decisions, undo, and reload. Changed owned content and stale targets refuse before live writes. Ordered table stages add row/column, merge/split, property, and new-cell lowering with exact structural dependencies. Explicit auto table views preserve native spans and bind projected slots to actual native owners. Public reader defaults retain GFM. Complete GFM targets resolve implicit merge geometry against a detached proposed native read before owned inverses. Unchanged semantic targets preserve the current package and redo. Complete target plans combine row/column shape changes with merges and splits. Deferred private table-region intentions resolve actual current native owners after topology allocation.",
+  "reason": "This decision covers the private SDK only. Host-owned proofs add no document record or shared field. Property proofs cover saved/current native bags; paragraph-mark proofs cover their complete native paragraph. Row and cell insertion/deletion proofs cover their complete native owner. Structural table receipts include their fresh native text and formatting dependencies. Pure table-format decisions remain separate from cell text. Each dependent edit reads the current staged package; post-text ranges exclude native deletion halves. Every native operation, attribution change, and package resource edit passes existing rollback and capacity admission. Fresh paragraph formatting receives independent native attribution and exact group receipts. Hyperlink target changes preserve earlier tooltip deltas in either field order. Remaining unselected revisions keep their current properties and complete group membership. Detached admission and live execution use the same stage program without preview node IDs or snapshot installation. Paragraph siblings include their new links and code styles. R19 remains incomplete: tracked list and rich structural execution, rich table application resources, host-supplied property/atomic fallbacks, full-target atomic planning, and actual installed/application verification remain required. Existing unsupported kinds refuse atomically. This private decision changes no wire protocol, shared schema, native format, or published API. The separate tracked-mixed-table-views decision and minor Changeset cover required native/export support. No data migration is required. Target normalization reuses the existing pure direct-plan preview and source-map table ranges. Supported native Proposed content is materialized only for reading; no foreign proposal is decided in the live document. Only retained GFM table ranges change; other target bytes remain exact. Combined shape growth, deletion, and retained/new-cell geometry use one ordered native stage. The planner retains original source bindings and rewrites only newly allocated cell seed streams. Direct native allocation precedes dependent geometry and table commands. Unchanged unique GFM tables retain native paragraph boundaries through a source-range-proven auto-syntax read; changed multi-paragraph GFM cell planning remains under D35. These intentions add a private edit-plan kind without a shared field or public core API change. No preview canonical node or allocated identity enters the live replacement program.",
+  "tests": [
+    "packages/sciobot/src/review/recompose.test.ts",
+    "packages/sciobot/src/review/recompose-collaboration.test.ts",
+    "packages/sciobot/src/review/owned-proposal-content.test.ts",
+    "packages/sciobot/src/review/replace-owned-proposals.test.ts",
+    "packages/sciobot/src/review/recompose-mixed.test.ts",
+    "packages/sciobot/src/review/recompose-mixed-collaboration.test.ts",
+    "packages/sciobot/src/review/recompose-tables.test.ts",
+    "packages/sciobot/src/review/recompose-tables-collaboration.test.ts",
+    "packages/sciobot/src/review/recompose-table-targets.test.ts",
+    "packages/sciobot/src/review/recompose-table-targets-collaboration.test.ts",
+    "packages/sciobot/src/diff/table-geometry.test.ts",
+    "packages/sciobot/src/review/recompose-compound-targets.test.ts",
+    "packages/sciobot/src/review/recompose-compound-targets-collaboration.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

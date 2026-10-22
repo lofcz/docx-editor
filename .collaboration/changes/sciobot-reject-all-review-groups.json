@@ -1,0 +1,15 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "The private adapter rejected one complete review group per native transaction.",
+  "after": "The private adapter rejects all current complete native/property/atomic groups against live canonical content in one native history frame. Intervening manual edits remain.",
+  "reason": "Bulk rejection reuses the exact selected native operations, immutable decision records, staged removal/field capacity preflight, and history-4 scope verified by R16/R17/R51. It introduces no native or private shared-format change, provider implementation change, or published document-model API. Existing private-room upgrade requirements remain those recorded by R51.",
+  "tests": [
+    "packages/sciobot/src/review/reject-all.test.ts",
+    "packages/sciobot/src/review/reject-all-collaboration.test.ts",
+    "packages/sciobot/src/review/reject-all-native-collaboration.test.ts",
+    "packages/sciobot/src/review/reject-all-capacity-collaboration.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

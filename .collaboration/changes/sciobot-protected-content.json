@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The private adapter accepted manually supplied protected Markdown spans without a canonical inventory.",
+  "after": "Pure readers collect protected native references and Markdown boundaries, then validate immutable body-text previews against those references.",
+  "reason": "The inventory and preflight have no editor or commit callback. They use existing native offsets and package fingerprints without changing shared data or operations.",
+  "tests": [
+    "packages/sciobot/src/projection/protected-content.test.ts",
+    "packages/sciobot/src/projection/resolve-patch.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

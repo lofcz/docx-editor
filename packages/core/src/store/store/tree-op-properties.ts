@@ -8,6 +8,7 @@
 // an op states the properties it names, and everything it cannot name survives untouched.
 
 import { WML_NAMESPACE_URI, type OoxmlNode } from '../package/ooxml-tree.ts';
+import { isValidXmlText } from '../package/sinks.ts';
 import {
   ACCEPTED_PARAGRAPH_PROPERTIES,
   ACCEPTED_RUN_PROPERTIES,
@@ -296,4 +297,49 @@ function inSchemaOrder(children: readonly OoxmlNode[], sequence: readonly string
     result[slot] = sorted[index]!;
   });
   return result;
+}
+
+/** Longest `w:rStyle` reference a run write accepts; matches the hyperlink style bound. */
+const MAX_CHARACTER_STYLE_LENGTH = 512;
+
+/**
+ * Whether `setRunProperties.characterStyle` is malformed: anything other than omitted, `null`,
+ * or a non-empty XML-safe style ID. The ID is written straight into `w:rStyle/@w:val`.
+ */
+export function invalidCharacterStyle(value: unknown): boolean {
+  if (value === undefined || value === null) return false;
+  return (
+    typeof value !== 'string' ||
+    value.length === 0 ||
+    value.length > MAX_CHARACTER_STYLE_LENGTH ||
+    !isValidXmlText(value)
+  );
+}
+
+/**
+ * A rewritten `w:rPr`'s children with its character style set (`string`) or removed (`null`).
+ *
+ * `w:rStyle` stays outside the accepted vocabulary, so ordinary property writes keep it
+ * (`tree-op-types.ts`). This explicit field is the one way a run write changes it. `undefined`
+ * returns the children unchanged. The reference is CT_RPr's first child.
+ */
+export function withRunCharacterStyle(
+  children: readonly OoxmlNode[],
+  styleId: string | null | undefined,
+  nextId: () => string
+): readonly OoxmlNode[] {
+  if (styleId === undefined) return children;
+  const isReference = (child: OoxmlNode): boolean =>
+    child.kind !== 'textValue' &&
+    child.namespaceUri === WML_NAMESPACE_URI &&
+    child.localName === 'rStyle';
+  const prior = children.find(isReference);
+  const kept = children.filter((child) => !isReference(child));
+  if (styleId === null) return prior ? kept : children;
+  const reference = propertyElement(
+    { localName: 'rStyle', attributes: { val: styleId } },
+    nextId(),
+    prior
+  );
+  return reference === prior ? children : [reference, ...kept];
 }

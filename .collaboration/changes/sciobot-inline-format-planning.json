@@ -1,0 +1,10 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The private adapter had no canonical inline property or hyperlink target planner.",
+  "after": "Pure planners produce property and hyperlink deltas without changing native documents or relationships.",
+  "reason": "Private semantic plans reuse existing native reads and merge helpers. Shared operations, schemas, and transport formats stay unchanged.",
+  "tests": ["packages/sciobot/src/diff/run-format.test.ts"],
+  "changeset": null,
+  "migration": null
+}

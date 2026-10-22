@@ -1,0 +1,19 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Native allocation scanned live Word revision elements only, so a later edit could reuse an address retained by review history.",
+  "after": "A pure host reservation source supplies retained Word IDs per part before each package/session transaction. Immutable previews use a synchronous reservation scope. Native creation, formatting, structural edits, attribution renumbering, and clipboard revisions skip reserved IDs while retaining actor allocation. The private review module reserves active, inactive, and removed group records; each text proposal gets a separate undo unit.",
+  "reason": "Optional host-only allocation configuration and synchronous scope affect newly allocated native XML values. Existing peers apply ordinary canonical primitive edits. No provider, operation schema, shared journal, format version, or evaluated implementation changes. Core knows no application metadata namespace. The additive infrastructure uses the retained-native-revision-ids minor changeset. Hosts without reservations retain ordinary native allocation; bounded revision paste wraps within Word decimal limits.",
+  "tests": [
+    "packages/core/src/store/__tests__/revision-id-reservations.test.ts",
+    "packages/core/src/store/__tests__/actor-scoped-ids.test.ts",
+    "packages/core/src/store/__tests__/actor-binding-inheritance.test.ts",
+    "packages/core/src/store/__tests__/clipboard-fragment-dense-ids.test.ts",
+    "packages/sciobot/src/review/group-allocation.test.ts",
+    "packages/sciobot/src/review/group-allocation-collaboration.test.ts",
+    "packages/sciobot/src/review/groups.test.ts",
+    "packages/sciobot/src/review/groups-collaboration.test.ts"
+  ],
+  "changeset": "retained-native-revision-ids",
+  "migration": null
+}

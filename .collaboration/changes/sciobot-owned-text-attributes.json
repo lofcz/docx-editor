@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "The private adapter had no application-owned boundary for Yjs attributes inherited by unseen concurrent text.",
+  "after": "An optional private collaboration entry records observed character intervals and insertion baselines, scopes native attributes before observers, and publishes restored-character lineage. The evaluation harness can enable this protocol before room bootstrap.",
+  "reason": "Published native codecs, format versions, journals, and transport implementation remain unchanged. The private application protocol is explicitly version 1 and requires every room participant to attach the boundary. It does not interoperate with legacy application rooms. Hosts must gate the application protocol separately, and adopt it through stopped-writer DOCX export and fresh-room bootstrap. Full replacement placement remains R29 work. No published package source changes in this leaf.",
+  "tests": [
+    "packages/sciobot/src/collaboration/owned-text.test.ts",
+    "packages/sciobot/src/collaboration/owned-state.test.ts",
+    "packages/sciobot/src/collaboration/owned-native.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

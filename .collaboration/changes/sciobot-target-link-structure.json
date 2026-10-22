@@ -1,0 +1,10 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Complete-target plans refused link insertion, removal, boundary changes, and text edits in linked paragraphs.",
+  "after": "The private plan vocabulary adds link and unlink edits. The composer plans them after text edits against a native preview, keeps wrappers whose exact span survives, and points insertion bias into or away from a link according to the target. The direct executor mints relationships through the gated surface mint.",
+  "reason": "Private plan format and existing native insertHyperlink, removeHyperlink, and setHyperlinkTarget operations. No native operation, shared state, payload schema, or journal format changes.",
+  "tests": ["packages/sciobot/src/diff/target-links.test.ts"],
+  "changeset": null,
+  "migration": null
+}

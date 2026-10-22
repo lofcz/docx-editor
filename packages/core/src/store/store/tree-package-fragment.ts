@@ -22,6 +22,7 @@ import {
 import type { OoxmlNode } from '../package/ooxml-tree.ts';
 import type { PackageTransactResult, StoryScope, TreePackageStore } from './tree-package-store.ts';
 import type { TreeDocOp } from './tree-op-types.ts';
+import type { HistoryGroup } from './history-group.ts';
 
 /** Decoded fragment payloads above this cap are refused before any package work. */
 export const MAX_FRAGMENT_DECODED_BYTES = 16 * 1024 * 1024;
@@ -43,6 +44,8 @@ export interface FragmentPasteInput {
    * merged document shows it. Omitted (solo) keeps Word's dense sequences.
    */
   readonly actorId?: string;
+  /** The open gesture this paste extends, so a follow-up write can share its undo step. */
+  readonly historyGroup?: HistoryGroup;
 }
 
 export type FragmentPasteResult =
@@ -194,10 +197,13 @@ export function applyFragmentPaste(
       const change = store.promoteStoryTransactionToPackageUnit(
         beforePackage,
         storyStore,
-        checkpoint
+        checkpoint,
+        undefined,
+        input.historyGroup
       );
       return { ok: true as const, change, blockCount };
     },
-    (outcome) => packageTransactionPublished(outcome)
+    (outcome) => packageTransactionPublished(outcome),
+    input.historyGroup
   );
 }

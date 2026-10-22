@@ -1,0 +1,21 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Review executors returned transient receipts but did not persist replacement pairing for application review groups.",
+  "after": "Private review grouping pairs native replacements and block-scoped payload proposals in document order. New native-only groups use immutable independent custom XML records with compact stable IDs and exact native revision membership. Pure reads retain group identities through save, reopen, history, peer edits, and path changes.",
+  "reason": "Existing native custom XML nodes carry application-owned immutable groups. R44 initializes the shared part before room creation. R45 reserves retained native IDs before allocation and attribution renumbering. Existing native Word XML, authors, dates, provider code, and shared formats stay unchanged. Resolved records remain inactive for decision undo. Imported ambiguous addresses stay separately visible and read-only. The native reservation infrastructure has its own compatibility decision and minor changeset; private grouping adds no public document method. The full private suite and all required group scenarios pass.",
+  "tests": [
+    "packages/sciobot/src/review/groups.test.ts",
+    "packages/sciobot/src/review/groups-collaboration.test.ts",
+    "packages/sciobot/src/review/track-text.test.ts",
+    "packages/sciobot/src/review/track-blocks.test.ts",
+    "packages/sciobot/src/review/track-properties.test.ts",
+    "packages/sciobot/src/review/track-atomic.test.ts",
+    "packages/sciobot/src/review/track-hyperlinks.test.ts",
+    "packages/sciobot/src/review/group-record-store.test.ts",
+    "packages/sciobot/src/review/group-record-store-collaboration.test.ts",
+    "packages/sciobot/src/review/track-table-format.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

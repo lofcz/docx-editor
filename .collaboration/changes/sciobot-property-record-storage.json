@@ -1,0 +1,15 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Private property views required ephemeral caller-supplied plans and could not recover pending metadata from saved native packages.",
+  "after": "Independent versioned property records use reserved custom XML nodes in the existing application payload store. Stable block IDs rebind to native owners at load. Removed markers retain native node identity for history. Stored causal predecessors order pending values without wall-clock inference. Dedicated readers preserve future records and refuse malformed or ambiguous input.",
+  "reason": "Records use the existing generic custom XML and native journal representation. Older native peers transport and preserve these opaque nodes without a shared format change. The private application reader owns the new record schema and explicit version handling; no published adapter exists. Empty native wrappers without attributes or content carry no payload and remain inert after undo. Live tracked fallback transactions and decisions remain R12. The private package needs no published changeset or public API extraction.",
+  "tests": [
+    "packages/sciobot/src/review/property-record-store.test.ts",
+    "packages/sciobot/src/review/property-records-collaboration.test.ts",
+    "packages/sciobot/src/blocks/payload-opc-codec.test.ts",
+    "packages/sciobot/src/review/property-projection.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

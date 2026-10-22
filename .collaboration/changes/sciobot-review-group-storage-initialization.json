@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Native documents had no independent review group store initialized before room bootstrap.",
+  "after": "Preparation creates a bounded application-owned custom XML group store before editor or room creation. Independent immutable group records retain native Word addresses; removal reserves identities for undo. Native stories, imported styles, and unrelated custom parts retain their content and bytes.",
+  "reason": "The private adapter reuses existing custom XML package operations and byte-preserving initialization. Group-only room fixtures use the same initializer as full application preparation. Two real sessions verify independent record creation and removal, peer-preserving undo/redo, owner deletion, geometry, and save/reopen. No native Word attributes, published APIs, provider implementation, shared operation formats, or version fields change. R14 still owns replacement of its earlier native-attribute persistence prototype. No published changeset applies.",
+  "tests": [
+    "packages/sciobot/src/review/group-record-store.test.ts",
+    "packages/sciobot/src/review/group-record-store-collaboration.test.ts",
+    "packages/sciobot/src/native/prepare-document.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

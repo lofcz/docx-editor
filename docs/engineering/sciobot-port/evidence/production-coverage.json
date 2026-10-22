@@ -1,0 +1,2341 @@
+{
+  "schemaVersion": 1,
+  "features": {
+    "AIKit": {
+      "behavior": "Selection-scoped AI chat, direct edits, grouped AI changes, streaming cleanup, mod+j. Park unanswered workspace calls until their original material returns. Supersede unrun calls after a newer user message. Reuse recorded mutation results instead of repeating edits across remounts, reloads, or tabs. Store-backed mutations wait for the matching registered editor to finish loading, so refetching cannot overwrite an acknowledged edit. Tool-driven tab focus records the assistant origin. Manual focus records the user origin. Mutation run keys include the conversation ID. Invalid non-worksheet variant calls reach validation without waiting for store hydration.",
+      "savedData": "AI anchors are transient. Text, block and property proposals persist. listStart alone is derived. Client call-run results and parked turn records use separate localStorage ledgers, outside document content.",
+      "routeSources": [
+        "src/components/ai-kit.tsx",
+        "src/components/use-chat.ts",
+        "src/components/ui/ai-menu.tsx",
+        "src/lib/ai-review-diff.ts",
+        "src/hooks/chat/useWorkspaceEditBridge.ts",
+        "src/lib/workspaceClientTools.ts",
+        "src/stores/workspaceStore.ts"
+      ]
+    },
+    "BlockMenuKit": {
+      "behavior": "Block selection and mod+j work. Right-click context menus stay disabled. Secondary commands remain reachable.",
+      "savedData": "Selection is transient. Duplicate and delete affect canonical block identities.",
+      "routeSources": [
+        "src/components/block-selection-kit.tsx",
+        "src/components/ui/block-selection.tsx",
+        "src/components/ui/more-toolbar-button.tsx"
+      ]
+    },
+    "BasicBlocksKit": {
+      "behavior": "Paragraph, H1-H3, quote and rule insertion, conversion, input rules and shortcuts.",
+      "savedData": "p, h1, h2, h3, blockquote, hr and native text children.",
+      "routeSources": [
+        "src/components/ui/paragraph-node.tsx",
+        "src/components/ui/heading-node.tsx",
+        "src/components/ui/blockquote-node.tsx",
+        "src/components/ui/hr-node.tsx"
+      ]
+    },
+    "CodeBlockKit": {
+      "behavior": "Code editing, language choice, syntax display and mod+alt+8.",
+      "savedData": "code_block, code_line, code_syntax, lang and whitespace.",
+      "routeSources": ["src/components/ui/code-block-node.tsx"]
+    },
+    "TableKit": {
+      "behavior": "Cell editing, row/column insertion controls, selection, resizing and native table operations.",
+      "savedData": "table, tr, td, th, widths, spans, borders and cell children.",
+      "routeSources": ["src/components/ui/table-node.tsx", "src/components/plate-types.ts"]
+    },
+    "ToggleKit": {
+      "behavior": "Collapse, expand, indent and reveal nested content.",
+      "savedData": "toggle, nesting and editable children.",
+      "routeSources": ["src/components/ui/toggle-node.tsx", "src/components/indent-kit.tsx"]
+    },
+    "TocKit": {
+      "behavior": "Build heading navigation and scroll with top offset 80.",
+      "savedData": "toc and configured depth; entries derive from headings.",
+      "routeSources": ["src/components/ui/toc-node.tsx"]
+    },
+    "MediaKit": {
+      "behavior": "Upload placeholders, image preview and resize, gallery, audio, video, files, embeds and captions.",
+      "savedData": "img, image_gallery, audio, video, file, media_embed, placeholder, URLs, dimensions, captions and asset metadata.",
+      "routeSources": [
+        "src/components/gallery-kit.ts",
+        "src/components/gallery-types.ts",
+        "src/components/ui/media-image-node.tsx",
+        "src/components/ui/media-placeholder-node.tsx",
+        "src/components/ui/media-audio-node.tsx",
+        "src/components/ui/media-video-node.tsx",
+        "src/components/ui/media-file-node.tsx",
+        "src/components/ui/media-embed-node.tsx",
+        "src/components/ui/media-toolbar.tsx",
+        "src/components/ui/media-preview-dialog.tsx",
+        "src/components/ui/media-upload-toast.tsx"
+      ]
+    },
+    "CalloutKit": {
+      "behavior": "Edit callout content and presentation.",
+      "savedData": "callout wrapper properties and native children.",
+      "routeSources": ["src/components/ui/callout-node.tsx", "src/components/callout-md-rules.ts"]
+    },
+    "StoryKit": {
+      "behavior": "Edit story metadata and native body.",
+      "savedData": "story properties and native children.",
+      "routeSources": [
+        "src/components/story/plugins.ts",
+        "src/components/story/md-rules.ts",
+        "src/components/ui/story-node.tsx"
+      ]
+    },
+    "SolutionKit": {
+      "behavior": "Reveal solutions while preserving editable answer content.",
+      "savedData": "solution properties and native children; reveal state stays transient.",
+      "routeSources": [
+        "src/components/solution/plugins.ts",
+        "src/components/solution/md-rules.ts",
+        "src/components/ui/solution-node.tsx"
+      ]
+    },
+    "ColumnKit": {
+      "behavior": "Insert column groups, resize widths and edit nested columns.",
+      "savedData": "column_group, column, widths and child blocks.",
+      "routeSources": ["src/components/ui/column-node.tsx"]
+    },
+    "LessonPlanKit": {
+      "behavior": "Title, recap, curriculum, phase, activity timing, retiming, lesson visual and listening controls.",
+      "savedData": "lesson_title, preparation_recap, recap_goals, recap_curriculum, recap_materials, recap_adaptations, recap_phase, phase, activity, lesson_visual and listening with typed properties.",
+      "routeSources": [
+        "src/components/lesson-plan/plugins.ts",
+        "src/components/lesson-plan/types.ts",
+        "src/components/lesson-plan/md-rules.ts",
+        "src/components/ui/activity-node.tsx",
+        "src/components/ui/lesson-title-node.tsx",
+        "src/components/ui/phase-node.tsx",
+        "src/components/ui/preparation-recap-node.tsx",
+        "src/components/ui/lesson-visual-node.tsx",
+        "src/components/ui/listening-node.tsx",
+        "src/components/lesson-plan/retime-document.ts",
+        "src/components/lesson-plan/replace-visual.ts"
+      ]
+    },
+    "MathKit": {
+      "behavior": "Inline and block LaTeX editing, dollar input rules and previews.",
+      "savedData": "equation, inline_equation and LaTeX source. Imported OMML stays native.",
+      "routeSources": ["src/components/ui/equation-node.tsx"]
+    },
+    "SmilesKit": {
+      "behavior": "Edit and render chemistry sources.",
+      "savedData": "smiles source and native image fallback.",
+      "routeSources": ["src/components/ui/smiles-node.tsx", "src/components/smiles/md-rules.ts"]
+    },
+    "DateKit": {
+      "behavior": "Pick a date and display it in the current locale.",
+      "savedData": "date stored by the picker; locale display is derived.",
+      "routeSources": ["src/components/ui/date-node.tsx"]
+    },
+    "LinkKit": {
+      "behavior": "Link insertion/editing, cursor overlay and mod+k.",
+      "savedData": "a, URL, title, icon, stable ID and rich text.",
+      "routeSources": [
+        "src/components/ui/link-node.tsx",
+        "src/components/ui/link-toolbar.tsx",
+        "src/components/plate-types.ts"
+      ]
+    },
+    "MentionKit": {
+      "behavior": "Mention suggestions and insertion; document mentions can be selected.",
+      "savedData": "mention key, coverImage, icon and label. mention_input is transient.",
+      "routeSources": ["src/components/ui/mention-node.tsx", "src/components/plate-types.ts"]
+    },
+    "SourceKit": {
+      "behavior": "Citation and source excerpt rendering with provenance services.",
+      "savedData": "source and source_excerpt identity, URL, author, title, type, bookId, trust and children.",
+      "routeSources": [
+        "src/components/source/plugins.ts",
+        "src/components/source/md-rules.ts",
+        "src/components/ui/source-node.tsx",
+        "src/components/ui/source-excerpt-node.tsx"
+      ]
+    },
+    "BasicMarksKit": {
+      "behavior": "Bold, italic, underline, code, strike, subscript, superscript and configured shortcuts/input rules.",
+      "savedData": "Seven independent text marks.",
+      "routeSources": ["src/components/ui/code-node.tsx", "src/components/plate-types.ts"]
+    },
+    "FontKit": {
+      "behavior": "Set font family, size, foreground and background colors.",
+      "savedData": "fontFamily, fontSize, color and backgroundColor on text.",
+      "routeSources": ["src/components/font-base-kit.tsx", "src/components/plate-types.ts"]
+    },
+    "ListKit": {
+      "behavior": "Bullets, numbering, checklists, indent/outdent and input rules.",
+      "savedData": "listStyleType, indent, checked and explicit list starts; automatic listStart is derived.",
+      "routeSources": [
+        "src/components/indent-kit.tsx",
+        "src/components/ui/block-list.tsx",
+        "src/components/plate-types.ts"
+      ]
+    },
+    "AlignKit": {
+      "behavior": "Start, left, center, right, end and justified alignment.",
+      "savedData": "align on headings, paragraphs, images and media embeds.",
+      "routeSources": ["src/components/ui/media-toolbar.tsx"]
+    },
+    "LineHeightKit": {
+      "behavior": "Choose line height 1, 1.2, 1.5, 2 or 3.",
+      "savedData": "lineHeight on headings and paragraphs.",
+      "routeSources": ["src/components/line-height-base-kit.tsx"]
+    },
+    "SuggestionKit": {
+      "behavior": "Select and review native and application proposals, including block changes.",
+      "savedData": "suggestion payloads, authors, pairing, property presence and group identity. Active/hover IDs stay transient.",
+      "routeSources": [
+        "src/components/ui/suggestion-node.tsx",
+        "src/components/suggestion-base-kit.tsx",
+        "src/lib/suggestion-views.ts",
+        "src/lib/suggestion-groups.ts"
+      ]
+    },
+    "SlashKit": {
+      "behavior": "Localized catalog filtering, keyboard navigation, capability gating and block/inline insertion.",
+      "savedData": "slash_input is transient. Inserted content uses its registered saved type.",
+      "routeSources": [
+        "src/components/ui/slash-node.tsx",
+        "src/components/ui/slash-catalog.ts",
+        "src/components/transforms.ts"
+      ]
+    },
+    "AutoformatKit": {
+      "behavior": "Configured text substitutions, smart quotes and fractions; suppress these inside code.",
+      "savedData": "Substitution results become native text. Rule state is transient.",
+      "routeSources": ["src/components/autoformat-kit.tsx"]
+    },
+    "CursorOverlayKit": {
+      "behavior": "Render AI presentation cursors and optional remote selections.",
+      "savedData": "No saved cursor overlay nodes.",
+      "routeSources": [
+        "src/components/ui/cursor-overlay.tsx",
+        "src/components/ui/cursor-overlay-utils.ts"
+      ]
+    },
+    "DndKit": {
+      "behavior": "Move blocks, auto-scroll and drop files through media placeholders.",
+      "savedData": "Block identity survives moves. New uploads use placeholder identities.",
+      "routeSources": ["src/components/ui/block-draggable.tsx", "src/components/dnd-kit.tsx"]
+    },
+    "EmojiKit": {
+      "behavior": "Search and insert emoji with keyboard navigation.",
+      "savedData": "Emoji inserts text. emoji_input is transient.",
+      "routeSources": ["src/components/ui/emoji-node.tsx"]
+    },
+    "ExitBreakKit": {
+      "behavior": "mod+enter inserts after; mod+shift+enter inserts before.",
+      "savedData": "Native paragraph insertion outside the current block.",
+      "routeSources": ["src/components/exit-break-kit.tsx"]
+    },
+    "DocxKit": {
+      "behavior": "Import DOCX and styled clipboard content through existing workspace routes.",
+      "savedData": "Original DOCX bytes and assets remain canonical.",
+      "routeSources": [
+        "src/components/workspace/WorkspacePanel.tsx",
+        "src/lib/workspaceExportSnapshot.ts"
+      ]
+    },
+    "SharedMdxKit": {
+      "behavior": "Render complete allowed component ASTs, including content, action and data-only tags.",
+      "savedData": "shared_mdx_inline, shared_mdx_block and complete mdast.",
+      "routeSources": [
+        "src/components/mdx/base-kit.tsx",
+        "src/components/mdx/rules.ts",
+        "src/components/mdx/nodes.tsx",
+        "src/components/chat/mdx-tags.ts",
+        "src/components/chat/MessageContent.tsx"
+      ]
+    },
+    "MarkdownKit": {
+      "behavior": "Read/write GFM, math, mentions, domain MDX and image gallery syntax.",
+      "savedData": "Projection of native content and preserved ASTs. Review views select pending state explicitly.",
+      "routeSources": [
+        "src/components/mdx/rules.ts",
+        "src/components/gallery-md-rules.ts",
+        "src/components/gallery-remark-plugin.ts",
+        "src/lib/lesson-plan-deserialize.ts"
+      ]
+    },
+    "BlockPlaceholderKit": {
+      "behavior": "Show the paragraph hint only at the document top level.",
+      "savedData": "Placeholder text is presentation only.",
+      "routeSources": ["src/components/block-placeholder-kit.tsx"]
+    },
+    "FloatingToolbarKit": {
+      "behavior": "Show Add to chat for selected text. Resolve working-view quote lines, preserve selection and reuse eligibility checks.",
+      "savedData": "Quote fragments persist in chat, with text, documentTitle, startLine, endLine, materialId and containsMdx.",
+      "routeSources": [
+        "src/components/ui/floating-toolbar.tsx",
+        "src/components/ui/floating-toolbar-buttons.tsx",
+        "src/lib/quote-focus.ts",
+        "src/lib/attemptAddToChat.ts",
+        "src/stores/quoteStore.ts",
+        "src/types/chat.ts"
+      ]
+    },
+    "TrailingBlockPlugin": {
+      "behavior": "Keep an editable trailing paragraph after terminal blocks.",
+      "savedData": "Trailing native paragraph, without repeated empty blocks.",
+      "routeSources": ["src/components/workspace/WorkspaceEditorKit.ts"]
+    }
+  },
+  "snapshot": {
+    "applicationRevision": "55fe5db99262d355ffc528113dc3bbc209f2902b",
+    "workspace": [
+      {
+        "name": "AIKit",
+        "definition": {
+          "path": "src/components/ai-kit.tsx",
+          "exported": "AIKit"
+        },
+        "renderers": [
+          {
+            "name": "AILeaf",
+            "definition": {
+              "path": "src/components/ui/ai-node.tsx",
+              "exported": "AILeaf"
+            }
+          }
+        ],
+        "leaves": [
+          "C01",
+          "C02",
+          "C04",
+          "P01",
+          "P02",
+          "P14",
+          "P15",
+          "P16",
+          "P17",
+          "P03",
+          "P04",
+          "P05",
+          "P18",
+          "P06",
+          "P07",
+          "P08",
+          "P09",
+          "P10",
+          "P11",
+          "P12",
+          "P13",
+          "D01",
+          "D02",
+          "D03",
+          "D04",
+          "D05",
+          "D06",
+          "D07",
+          "D08",
+          "D23",
+          "D24",
+          "D25",
+          "R31",
+          "D16",
+          "D09",
+          "D17",
+          "D10",
+          "D11",
+          "D12",
+          "D13",
+          "D14",
+          "D15",
+          "D18",
+          "D19",
+          "D20",
+          "D21",
+          "D22",
+          "D23",
+          "D24",
+          "A01",
+          "A02",
+          "A03",
+          "A04",
+          "A05",
+          "A06",
+          "A07",
+          "A08",
+          "A09",
+          "I02",
+          "I03",
+          "I04",
+          "I05",
+          "I06",
+          "U13",
+          "V02",
+          "V03",
+          "R03",
+          "R32",
+          "R33",
+          "R12",
+          "R34",
+          "P22",
+          "R37",
+          "R38",
+          "N18"
+        ],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "BlockMenuKit",
+        "definition": {
+          "path": "src/components/block-menu-kit.tsx",
+          "exported": "BlockMenuKit"
+        },
+        "renderers": [],
+        "leaves": ["U03", "B11", "B12", "B13"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "BasicBlocksKit",
+        "definition": {
+          "path": "src/components/basic-blocks-kit.tsx",
+          "exported": "BasicBlocksKit"
+        },
+        "renderers": [
+          {
+            "name": "ParagraphElement",
+            "definition": {
+              "path": "src/components/ui/paragraph-node.tsx",
+              "exported": "ParagraphElement"
+            }
+          }
+        ],
+        "leaves": ["N01", "N02", "P02", "P14", "P15", "P16", "P17", "I11", "R37", "R38"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "CodeBlockKit",
+        "definition": {
+          "path": "src/components/code-block-kit.tsx",
+          "exported": "CodeBlockKit"
+        },
+        "renderers": [
+          {
+            "name": "CodeLineElement",
+            "definition": {
+              "path": "src/components/ui/code-block-node.tsx",
+              "exported": "CodeLineElement"
+            }
+          },
+          {
+            "name": "CodeSyntaxLeaf",
+            "definition": {
+              "path": "src/components/ui/code-block-node.tsx",
+              "exported": "CodeSyntaxLeaf"
+            }
+          }
+        ],
+        "leaves": ["X16", "P04"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "TableKit",
+        "definition": {
+          "path": "src/components/table-kit.tsx",
+          "exported": "TableKit"
+        },
+        "renderers": [
+          {
+            "name": "TableElement",
+            "definition": {
+              "path": "src/components/ui/table-node.tsx",
+              "exported": "TableElement"
+            }
+          },
+          {
+            "name": "TableRowElement",
+            "definition": {
+              "path": "src/components/ui/table-node.tsx",
+              "exported": "TableRowElement"
+            }
+          },
+          {
+            "name": "TableCellElement",
+            "definition": {
+              "path": "src/components/ui/table-node.tsx",
+              "exported": "TableCellElement"
+            }
+          },
+          {
+            "name": "TableCellHeaderElement",
+            "definition": {
+              "path": "src/components/ui/table-node.tsx",
+              "exported": "TableCellHeaderElement"
+            }
+          }
+        ],
+        "leaves": [
+          "N09",
+          "N11",
+          "N12",
+          "N13",
+          "N15",
+          "N16",
+          "N17",
+          "N14",
+          "P03",
+          "D07",
+          "D08",
+          "D23",
+          "D24",
+          "D25",
+          "R31",
+          "D16",
+          "D09",
+          "D17",
+          "D10",
+          "D11",
+          "R07",
+          "R08",
+          "R09",
+          "R10",
+          "R11",
+          "R41",
+          "I23",
+          "R37"
+        ],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "ToggleKit",
+        "definition": {
+          "path": "src/components/toggle-kit.tsx",
+          "exported": "ToggleKit"
+        },
+        "renderers": [
+          {
+            "name": "ToggleElement",
+            "definition": {
+              "path": "src/components/ui/toggle-node.tsx",
+              "exported": "ToggleElement"
+            }
+          }
+        ],
+        "leaves": ["X17", "U07", "U12"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "TocKit",
+        "definition": {
+          "path": "src/components/toc-kit.tsx",
+          "exported": "TocKit"
+        },
+        "renderers": [
+          {
+            "name": "TocElement",
+            "definition": {
+              "path": "src/components/ui/toc-node.tsx",
+              "exported": "TocElement"
+            }
+          }
+        ],
+        "leaves": ["X18"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "MediaKit",
+        "definition": {
+          "path": "src/components/media-kit.tsx",
+          "exported": "MediaKit"
+        },
+        "renderers": [
+          {
+            "name": "MediaEmbedElement",
+            "definition": {
+              "path": "src/components/ui/media-embed-node.tsx",
+              "exported": "MediaEmbedElement"
+            }
+          },
+          {
+            "name": "MediaVideoElement",
+            "definition": {
+              "path": "src/components/ui/media-video-node.tsx",
+              "exported": "MediaVideoElement"
+            }
+          },
+          {
+            "name": "MediaAudioElement",
+            "definition": {
+              "path": "src/components/ui/media-audio-node.tsx",
+              "exported": "MediaAudioElement"
+            }
+          },
+          {
+            "name": "MediaFileElement",
+            "definition": {
+              "path": "src/components/ui/media-file-node.tsx",
+              "exported": "MediaFileElement"
+            }
+          }
+        ],
+        "leaves": ["X26", "X27", "X28", "X29", "X30", "X31", "X32", "X33"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "CalloutKit",
+        "definition": {
+          "path": "src/components/callout-kit.tsx",
+          "exported": "CalloutKit"
+        },
+        "renderers": [
+          {
+            "name": "CalloutElement",
+            "definition": {
+              "path": "src/components/ui/callout-node.tsx",
+              "exported": "CalloutElement"
+            }
+          }
+        ],
+        "leaves": ["X13", "X37"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "StoryKit",
+        "definition": {
+          "path": "src/components/story/story-kit.tsx",
+          "exported": "StoryKit"
+        },
+        "renderers": [
+          {
+            "name": "StoryElement",
+            "definition": {
+              "path": "src/components/ui/story-node.tsx",
+              "exported": "StoryElement"
+            }
+          }
+        ],
+        "leaves": ["X14", "X37"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "SolutionKit",
+        "definition": {
+          "path": "src/components/solution/solution-kit.tsx",
+          "exported": "SolutionKit"
+        },
+        "renderers": [
+          {
+            "name": "SolutionElement",
+            "definition": {
+              "path": "src/components/ui/solution-node.tsx",
+              "exported": "SolutionElement"
+            }
+          }
+        ],
+        "leaves": ["X15", "X37"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "ColumnKit",
+        "definition": {
+          "path": "src/components/column-kit.tsx",
+          "exported": "ColumnKit"
+        },
+        "renderers": [
+          {
+            "name": "ColumnGroupElement",
+            "definition": {
+              "path": "src/components/ui/column-node.tsx",
+              "exported": "ColumnGroupElement"
+            }
+          },
+          {
+            "name": "ColumnElement",
+            "definition": {
+              "path": "src/components/ui/column-node.tsx",
+              "exported": "ColumnElement"
+            }
+          }
+        ],
+        "leaves": ["X19", "X20"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "LessonPlanKit",
+        "definition": {
+          "path": "src/components/lesson-plan/lesson-plan-kit.tsx",
+          "exported": "LessonPlanKit"
+        },
+        "renderers": [
+          {
+            "name": "LessonTitleElement",
+            "definition": {
+              "path": "src/components/ui/lesson-title-node.tsx",
+              "exported": "LessonTitleElement"
+            }
+          },
+          {
+            "name": "PreparationRecapElement",
+            "definition": {
+              "path": "src/components/ui/preparation-recap-node.tsx",
+              "exported": "PreparationRecapElement"
+            }
+          },
+          {
+            "name": "RecapGoalsElement",
+            "definition": {
+              "path": "src/components/ui/preparation-recap-node.tsx",
+              "exported": "RecapGoalsElement"
+            }
+          },
+          {
+            "name": "RecapCurriculumElement",
+            "definition": {
+              "path": "src/components/ui/preparation-recap-node.tsx",
+              "exported": "RecapCurriculumElement"
+            }
+          },
+          {
+            "name": "RecapMaterialsElement",
+            "definition": {
+              "path": "src/components/ui/preparation-recap-node.tsx",
+              "exported": "RecapMaterialsElement"
+            }
+          },
+          {
+            "name": "RecapAdaptationsElement",
+            "definition": {
+              "path": "src/components/ui/preparation-recap-node.tsx",
+              "exported": "RecapAdaptationsElement"
+            }
+          },
+          {
+            "name": "RecapPhaseElement",
+            "definition": {
+              "path": "src/components/ui/preparation-recap-node.tsx",
+              "exported": "RecapPhaseElement"
+            }
+          },
+          {
+            "name": "PhaseElement",
+            "definition": {
+              "path": "src/components/ui/phase-node.tsx",
+              "exported": "PhaseElement"
+            }
+          },
+          {
+            "name": "ActivityElement",
+            "definition": {
+              "path": "src/components/ui/activity-node.tsx",
+              "exported": "ActivityElement"
+            }
+          },
+          {
+            "name": "LessonVisualElement",
+            "definition": {
+              "path": "src/components/ui/lesson-visual-node.tsx",
+              "exported": "LessonVisualElement"
+            }
+          },
+          {
+            "name": "ListeningElement",
+            "definition": {
+              "path": "src/components/ui/listening-node.tsx",
+              "exported": "ListeningElement"
+            }
+          }
+        ],
+        "leaves": [
+          "X01",
+          "X02",
+          "X03",
+          "X04",
+          "X05",
+          "X06",
+          "X07",
+          "X08",
+          "X09",
+          "X10",
+          "C08",
+          "D12",
+          "D13",
+          "D14",
+          "R03",
+          "R12",
+          "R13",
+          "R22",
+          "U11",
+          "I12",
+          "I25",
+          "R32",
+          "R33",
+          "R34"
+        ],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "MathKit",
+        "definition": {
+          "path": "src/components/math-kit.tsx",
+          "exported": "MathKit"
+        },
+        "renderers": [],
+        "leaves": ["X23", "X24"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "SmilesKit",
+        "definition": {
+          "path": "src/components/smiles-kit.tsx",
+          "exported": "SmilesKit"
+        },
+        "renderers": [],
+        "leaves": ["X25"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "DateKit",
+        "definition": {
+          "path": "src/components/date-kit.tsx",
+          "exported": "DateKit"
+        },
+        "renderers": [
+          {
+            "name": "DateElement",
+            "definition": {
+              "path": "src/components/ui/date-node.tsx",
+              "exported": "DateElement"
+            }
+          }
+        ],
+        "leaves": ["B18", "B19", "B20", "B21", "X21"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "LinkKit",
+        "definition": {
+          "path": "src/components/link-kit.tsx",
+          "exported": "LinkKit"
+        },
+        "renderers": [],
+        "leaves": ["N10", "D03", "R26", "R27", "R42", "R43", "P22"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "MentionKit",
+        "definition": {
+          "path": "src/components/mention-kit.tsx",
+          "exported": "MentionKit"
+        },
+        "renderers": [
+          {
+            "name": "MentionElement",
+            "definition": {
+              "path": "src/components/ui/mention-node.tsx",
+              "exported": "MentionElement"
+            }
+          },
+          {
+            "name": "MentionInputElement",
+            "definition": {
+              "path": "src/components/ui/mention-node.tsx",
+              "exported": "MentionInputElement"
+            }
+          }
+        ],
+        "leaves": ["B18", "B19", "B20", "B21", "X22"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "SourceKit",
+        "definition": {
+          "path": "src/components/source/source-kit.tsx",
+          "exported": "SourceKit"
+        },
+        "renderers": [
+          {
+            "name": "SourceElement",
+            "definition": {
+              "path": "src/components/ui/source-node.tsx",
+              "exported": "SourceElement"
+            }
+          },
+          {
+            "name": "SourceExcerptElement",
+            "definition": {
+              "path": "src/components/ui/source-excerpt-node.tsx",
+              "exported": "SourceExcerptElement"
+            }
+          }
+        ],
+        "leaves": ["X11", "X12", "C08", "D12", "D14"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "BasicMarksKit",
+        "definition": {
+          "path": "src/components/basic-marks-kit.tsx",
+          "exported": "BasicMarksKit"
+        },
+        "renderers": [],
+        "leaves": ["N03", "D03", "R38", "N18"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "FontKit",
+        "definition": {
+          "path": "src/components/font-kit.tsx",
+          "exported": "FontKit"
+        },
+        "renderers": [],
+        "leaves": ["N04", "N05"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "ListKit",
+        "definition": {
+          "path": "src/components/list-kit.tsx",
+          "exported": "ListKit"
+        },
+        "renderers": [],
+        "leaves": ["N08", "D06", "P21", "R30", "I22"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "AlignKit",
+        "definition": {
+          "path": "src/components/align-kit.tsx",
+          "exported": "AlignKit"
+        },
+        "renderers": [],
+        "leaves": ["N06", "D04"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "LineHeightKit",
+        "definition": {
+          "path": "src/components/line-height-kit.tsx",
+          "exported": "LineHeightKit"
+        },
+        "renderers": [],
+        "leaves": ["N07", "D04"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "SuggestionKit",
+        "definition": {
+          "path": "src/components/suggestion-kit.tsx",
+          "exported": "SuggestionKit"
+        },
+        "renderers": [],
+        "leaves": [
+          "R01",
+          "R02",
+          "R03",
+          "R04",
+          "R05",
+          "R06",
+          "R07",
+          "R08",
+          "R31",
+          "D16",
+          "R09",
+          "R10",
+          "R11",
+          "R12",
+          "R13",
+          "R14",
+          "R15",
+          "R16",
+          "R17",
+          "R18",
+          "R19",
+          "R20",
+          "R21",
+          "R22",
+          "R23",
+          "R24",
+          "R25",
+          "R26",
+          "R27",
+          "R28",
+          "R29",
+          "R30",
+          "U09",
+          "U10",
+          "U11",
+          "U12",
+          "I13",
+          "I24",
+          "I25",
+          "R32",
+          "R33",
+          "R34",
+          "R35",
+          "R36",
+          "P22",
+          "R37",
+          "R38",
+          "N18",
+          "R44",
+          "R45",
+          "R46",
+          "R47",
+          "R48",
+          "R49",
+          "R50",
+          "R51"
+        ],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "SlashKit",
+        "definition": {
+          "path": "src/components/slash-kit.tsx",
+          "exported": "SlashKit"
+        },
+        "renderers": [
+          {
+            "name": "SlashInputElement",
+            "definition": {
+              "path": "src/components/ui/slash-node.tsx",
+              "exported": "SlashInputElement"
+            }
+          }
+        ],
+        "leaves": ["U02"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "AutoformatKit",
+        "definition": {
+          "path": "src/components/autoformat-kit.tsx",
+          "exported": "AutoformatKit"
+        },
+        "renderers": [],
+        "leaves": ["U05"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "CursorOverlayKit",
+        "definition": {
+          "path": "src/components/cursor-overlay-kit.tsx",
+          "exported": "CursorOverlayKit"
+        },
+        "renderers": [],
+        "leaves": ["U14", "A04"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "DndKit",
+        "definition": {
+          "path": "src/components/dnd-kit.tsx",
+          "exported": "DndKit"
+        },
+        "renderers": [],
+        "leaves": ["U03", "U04", "B13"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "EmojiKit",
+        "definition": {
+          "path": "src/components/emoji-kit.tsx",
+          "exported": "EmojiKit"
+        },
+        "renderers": [
+          {
+            "name": "EmojiInputElement",
+            "definition": {
+              "path": "src/components/ui/emoji-node.tsx",
+              "exported": "EmojiInputElement"
+            }
+          }
+        ],
+        "leaves": ["U06"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "ExitBreakKit",
+        "definition": {
+          "path": "src/components/exit-break-kit.tsx",
+          "exported": "ExitBreakKit"
+        },
+        "renderers": [],
+        "leaves": ["U07"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "TrailingBlockPlugin",
+        "definition": {
+          "path": "node_modules/platejs/dist/index.js",
+          "exported": "TrailingBlockPlugin"
+        },
+        "renderers": [],
+        "leaves": ["U07"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "DocxKit",
+        "definition": {
+          "path": "src/components/docx-kit.tsx",
+          "exported": "DocxKit"
+        },
+        "renderers": [],
+        "leaves": ["I10", "I14", "B10"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "SharedMdxKit",
+        "definition": {
+          "path": "src/components/mdx/kit.tsx",
+          "exported": "SharedMdxKit"
+        },
+        "renderers": [
+          {
+            "name": "MdxElement",
+            "definition": {
+              "path": "src/components/mdx/nodes.tsx",
+              "exported": "MdxElement"
+            }
+          }
+        ],
+        "leaves": ["P05", "P18", "X09", "X34", "X35", "X36", "I12"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "MarkdownKit",
+        "definition": {
+          "path": "src/components/markdown-kit.tsx",
+          "exported": "MarkdownKit"
+        },
+        "renderers": [],
+        "leaves": [
+          "P02",
+          "P14",
+          "P15",
+          "P16",
+          "P17",
+          "P03",
+          "P04",
+          "P05",
+          "P18",
+          "P06",
+          "P11",
+          "I15",
+          "P22",
+          "N18"
+        ],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "BlockPlaceholderKit",
+        "definition": {
+          "path": "src/components/block-placeholder-kit.tsx",
+          "exported": "BlockPlaceholderKit"
+        },
+        "renderers": [],
+        "leaves": ["U08"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "FloatingToolbarKit",
+        "definition": {
+          "path": "src/components/floating-toolbar-kit.tsx",
+          "exported": "FloatingToolbarKit"
+        },
+        "renderers": [],
+        "leaves": ["U01", "P20", "U15", "U16"],
+        "verification": "Pending production verification"
+      }
+    ],
+    "static": [
+      {
+        "name": "BaseBasicBlocksKit",
+        "definition": {
+          "path": "src/components/basic-blocks-base-kit.tsx",
+          "exported": "BaseBasicBlocksKit"
+        },
+        "renderers": [
+          {
+            "name": "ParagraphElementStatic",
+            "definition": {
+              "path": "src/components/ui/paragraph-node-static.tsx",
+              "exported": "ParagraphElementStatic"
+            }
+          },
+          {
+            "name": "H1ElementStatic",
+            "definition": {
+              "path": "src/components/ui/heading-node-static.tsx",
+              "exported": "H1ElementStatic"
+            }
+          },
+          {
+            "name": "H2ElementStatic",
+            "definition": {
+              "path": "src/components/ui/heading-node-static.tsx",
+              "exported": "H2ElementStatic"
+            }
+          },
+          {
+            "name": "H3ElementStatic",
+            "definition": {
+              "path": "src/components/ui/heading-node-static.tsx",
+              "exported": "H3ElementStatic"
+            }
+          },
+          {
+            "name": "BlockquoteElementStatic",
+            "definition": {
+              "path": "src/components/ui/blockquote-node-static.tsx",
+              "exported": "BlockquoteElementStatic"
+            }
+          },
+          {
+            "name": "HrElementStatic",
+            "definition": {
+              "path": "src/components/ui/hr-node-static.tsx",
+              "exported": "HrElementStatic"
+            }
+          }
+        ],
+        "workspaceFeature": "BasicBlocksKit",
+        "savedData": "p, h1, h2, h3, blockquote, hr and native text children.",
+        "leaves": [
+          "I17",
+          "I21",
+          "N01",
+          "N02",
+          "P02",
+          "P14",
+          "P15",
+          "P16",
+          "P17",
+          "I11",
+          "R37",
+          "R38"
+        ],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "BaseCodeBlockKit",
+        "definition": {
+          "path": "src/components/code-block-base-kit.tsx",
+          "exported": "BaseCodeBlockKit"
+        },
+        "renderers": [
+          {
+            "name": "CodeLineElementStatic",
+            "definition": {
+              "path": "src/components/ui/code-block-node-static.tsx",
+              "exported": "CodeLineElementStatic"
+            }
+          },
+          {
+            "name": "CodeSyntaxLeafStatic",
+            "definition": {
+              "path": "src/components/ui/code-block-node-static.tsx",
+              "exported": "CodeSyntaxLeafStatic"
+            }
+          }
+        ],
+        "workspaceFeature": "CodeBlockKit",
+        "savedData": "code_block, code_line, code_syntax, lang and whitespace.",
+        "leaves": ["I17", "I21", "X16", "P04"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "BaseTableKit",
+        "definition": {
+          "path": "src/components/table-base-kit.tsx",
+          "exported": "BaseTableKit"
+        },
+        "renderers": [
+          {
+            "name": "TableElementStatic",
+            "definition": {
+              "path": "src/components/ui/table-node-static.tsx",
+              "exported": "TableElementStatic"
+            }
+          },
+          {
+            "name": "TableRowElementStatic",
+            "definition": {
+              "path": "src/components/ui/table-node-static.tsx",
+              "exported": "TableRowElementStatic"
+            }
+          },
+          {
+            "name": "TableCellElementStatic",
+            "definition": {
+              "path": "src/components/ui/table-node-static.tsx",
+              "exported": "TableCellElementStatic"
+            }
+          },
+          {
+            "name": "TableCellHeaderElementStatic",
+            "definition": {
+              "path": "src/components/ui/table-node-static.tsx",
+              "exported": "TableCellHeaderElementStatic"
+            }
+          }
+        ],
+        "workspaceFeature": "TableKit",
+        "savedData": "table, tr, td, th, widths, spans, borders and cell children.",
+        "leaves": [
+          "I17",
+          "I21",
+          "N09",
+          "N11",
+          "N12",
+          "N13",
+          "N15",
+          "N16",
+          "N17",
+          "N14",
+          "P03",
+          "D07",
+          "D08",
+          "D23",
+          "D24",
+          "D25",
+          "R31",
+          "D16",
+          "D09",
+          "D17",
+          "D10",
+          "D11",
+          "R07",
+          "R08",
+          "R09",
+          "R10",
+          "R11",
+          "R41",
+          "I23",
+          "R37"
+        ],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "BaseToggleKit",
+        "definition": {
+          "path": "src/components/toggle-base-kit.tsx",
+          "exported": "BaseToggleKit"
+        },
+        "renderers": [
+          {
+            "name": "ToggleElementStatic",
+            "definition": {
+              "path": "src/components/ui/toggle-node-static.tsx",
+              "exported": "ToggleElementStatic"
+            }
+          }
+        ],
+        "workspaceFeature": "ToggleKit",
+        "savedData": "toggle, nesting and editable children.",
+        "leaves": ["I17", "I21", "X17", "U07", "U12"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "BaseTocKit",
+        "definition": {
+          "path": "src/components/toc-base-kit.tsx",
+          "exported": "BaseTocKit"
+        },
+        "renderers": [
+          {
+            "name": "TocElementStatic",
+            "definition": {
+              "path": "src/components/ui/toc-node-static.tsx",
+              "exported": "TocElementStatic"
+            }
+          }
+        ],
+        "workspaceFeature": "TocKit",
+        "savedData": "toc and configured depth; entries derive from headings.",
+        "leaves": ["I17", "I21", "X18"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "BaseMediaKit",
+        "definition": {
+          "path": "src/components/media-base-kit.tsx",
+          "exported": "BaseMediaKit"
+        },
+        "renderers": [
+          {
+            "name": "ImageElementStatic",
+            "definition": {
+              "path": "src/components/ui/media-image-node-static.tsx",
+              "exported": "ImageElementStatic"
+            }
+          },
+          {
+            "name": "GalleryElementStatic",
+            "definition": {
+              "path": "src/components/ui/gallery-node-static.tsx",
+              "exported": "GalleryElementStatic"
+            }
+          },
+          {
+            "name": "MediaVideoElementStatic",
+            "definition": {
+              "path": "src/components/ui/media-video-node-static.tsx",
+              "exported": "MediaVideoElementStatic"
+            }
+          },
+          {
+            "name": "MediaAudioElementStatic",
+            "definition": {
+              "path": "src/components/ui/media-audio-node-static.tsx",
+              "exported": "MediaAudioElementStatic"
+            }
+          },
+          {
+            "name": "MediaFileElementStatic",
+            "definition": {
+              "path": "src/components/ui/media-file-node-static.tsx",
+              "exported": "MediaFileElementStatic"
+            }
+          }
+        ],
+        "workspaceFeature": "MediaKit",
+        "savedData": "img, image_gallery, audio, video, file, media_embed, placeholder, URLs, dimensions, captions and asset metadata.",
+        "leaves": ["I17", "I21", "X26", "X27", "X28", "X29", "X30", "X31", "X32", "X33"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "BaseCalloutKit",
+        "definition": {
+          "path": "src/components/callout-base-kit.tsx",
+          "exported": "BaseCalloutKit"
+        },
+        "renderers": [
+          {
+            "name": "CalloutElementStatic",
+            "definition": {
+              "path": "src/components/ui/callout-node-static.tsx",
+              "exported": "CalloutElementStatic"
+            }
+          }
+        ],
+        "workspaceFeature": "CalloutKit",
+        "savedData": "callout wrapper properties and native children.",
+        "leaves": ["I17", "I21", "X13", "X37"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "BaseStoryKit",
+        "definition": {
+          "path": "src/components/story/story-base-kit.tsx",
+          "exported": "BaseStoryKit"
+        },
+        "renderers": [
+          {
+            "name": "StoryElementStatic",
+            "definition": {
+              "path": "src/components/ui/story-node-static.tsx",
+              "exported": "StoryElementStatic"
+            }
+          }
+        ],
+        "workspaceFeature": "StoryKit",
+        "savedData": "story properties and native children.",
+        "leaves": ["I17", "I21", "X14", "X37"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "BaseSolutionKit",
+        "definition": {
+          "path": "src/components/solution/solution-base-kit.tsx",
+          "exported": "BaseSolutionKit"
+        },
+        "renderers": [
+          {
+            "name": "SolutionElementStatic",
+            "definition": {
+              "path": "src/components/ui/solution-node-static.tsx",
+              "exported": "SolutionElementStatic"
+            }
+          }
+        ],
+        "workspaceFeature": "SolutionKit",
+        "savedData": "solution properties and native children; reveal state stays transient.",
+        "leaves": ["I17", "I21", "X15", "X37"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "BaseColumnKit",
+        "definition": {
+          "path": "src/components/column-base-kit.tsx",
+          "exported": "BaseColumnKit"
+        },
+        "renderers": [
+          {
+            "name": "ColumnGroupElementStatic",
+            "definition": {
+              "path": "src/components/ui/column-node-static.tsx",
+              "exported": "ColumnGroupElementStatic"
+            }
+          },
+          {
+            "name": "ColumnElementStatic",
+            "definition": {
+              "path": "src/components/ui/column-node-static.tsx",
+              "exported": "ColumnElementStatic"
+            }
+          }
+        ],
+        "workspaceFeature": "ColumnKit",
+        "savedData": "column_group, column, widths and child blocks.",
+        "leaves": ["I17", "I21", "X19", "X20"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "BaseLessonPlanKit",
+        "definition": {
+          "path": "src/components/lesson-plan/lesson-plan-base-kit.tsx",
+          "exported": "BaseLessonPlanKit"
+        },
+        "renderers": [
+          {
+            "name": "LessonTitleElementStatic",
+            "definition": {
+              "path": "src/components/ui/lesson-title-node-static.tsx",
+              "exported": "LessonTitleElementStatic"
+            }
+          },
+          {
+            "name": "PreparationRecapElementStatic",
+            "definition": {
+              "path": "src/components/ui/preparation-recap-node-static.tsx",
+              "exported": "PreparationRecapElementStatic"
+            }
+          },
+          {
+            "name": "RecapGoalsElementStatic",
+            "definition": {
+              "path": "src/components/ui/preparation-recap-node-static.tsx",
+              "exported": "RecapGoalsElementStatic"
+            }
+          },
+          {
+            "name": "RecapCurriculumElementStatic",
+            "definition": {
+              "path": "src/components/ui/preparation-recap-node-static.tsx",
+              "exported": "RecapCurriculumElementStatic"
+            }
+          },
+          {
+            "name": "RecapMaterialsElementStatic",
+            "definition": {
+              "path": "src/components/ui/preparation-recap-node-static.tsx",
+              "exported": "RecapMaterialsElementStatic"
+            }
+          },
+          {
+            "name": "RecapAdaptationsElementStatic",
+            "definition": {
+              "path": "src/components/ui/preparation-recap-node-static.tsx",
+              "exported": "RecapAdaptationsElementStatic"
+            }
+          },
+          {
+            "name": "RecapPhaseElementStatic",
+            "definition": {
+              "path": "src/components/ui/preparation-recap-node-static.tsx",
+              "exported": "RecapPhaseElementStatic"
+            }
+          },
+          {
+            "name": "PhaseElementStatic",
+            "definition": {
+              "path": "src/components/ui/phase-node-static.tsx",
+              "exported": "PhaseElementStatic"
+            }
+          },
+          {
+            "name": "ActivityElementStatic",
+            "definition": {
+              "path": "src/components/ui/activity-node-static.tsx",
+              "exported": "ActivityElementStatic"
+            }
+          },
+          {
+            "name": "LessonVisualElementStatic",
+            "definition": {
+              "path": "src/components/ui/lesson-visual-node-static.tsx",
+              "exported": "LessonVisualElementStatic"
+            }
+          },
+          {
+            "name": "ListeningElementStatic",
+            "definition": {
+              "path": "src/components/ui/listening-node-static.tsx",
+              "exported": "ListeningElementStatic"
+            }
+          }
+        ],
+        "workspaceFeature": "LessonPlanKit",
+        "savedData": "lesson_title, preparation_recap, recap_goals, recap_curriculum, recap_materials, recap_adaptations, recap_phase, phase, activity, lesson_visual and listening with typed properties.",
+        "leaves": [
+          "I17",
+          "I21",
+          "X01",
+          "X02",
+          "X03",
+          "X04",
+          "X05",
+          "X06",
+          "X07",
+          "X08",
+          "X09",
+          "X10",
+          "C08",
+          "D12",
+          "D13",
+          "D14",
+          "R03",
+          "R12",
+          "R13",
+          "R22",
+          "U11",
+          "I12",
+          "I25",
+          "R32",
+          "R33",
+          "R34"
+        ],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "BaseMathKit",
+        "definition": {
+          "path": "src/components/math-base-kit.tsx",
+          "exported": "BaseMathKit"
+        },
+        "renderers": [
+          {
+            "name": "InlineEquationElementStatic",
+            "definition": {
+              "path": "src/components/ui/equation-node-static.tsx",
+              "exported": "InlineEquationElementStatic"
+            }
+          },
+          {
+            "name": "EquationElementStatic",
+            "definition": {
+              "path": "src/components/ui/equation-node-static.tsx",
+              "exported": "EquationElementStatic"
+            }
+          }
+        ],
+        "workspaceFeature": "MathKit",
+        "savedData": "equation, inline_equation and LaTeX source. Imported OMML stays native.",
+        "leaves": ["I17", "I21", "X23", "X24"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "BaseSmilesKit",
+        "definition": {
+          "path": "src/components/smiles-base-kit.tsx",
+          "exported": "BaseSmilesKit"
+        },
+        "renderers": [
+          {
+            "name": "SmilesElementStatic",
+            "definition": {
+              "path": "src/components/ui/smiles-node-static.tsx",
+              "exported": "SmilesElementStatic"
+            }
+          }
+        ],
+        "workspaceFeature": "SmilesKit",
+        "savedData": "smiles source and native image fallback.",
+        "leaves": ["I17", "I21", "X25"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "BaseDateKit",
+        "definition": {
+          "path": "src/components/date-base-kit.tsx",
+          "exported": "BaseDateKit"
+        },
+        "renderers": [
+          {
+            "name": "DateElementStatic",
+            "definition": {
+              "path": "src/components/ui/date-node-static.tsx",
+              "exported": "DateElementStatic"
+            }
+          }
+        ],
+        "workspaceFeature": "DateKit",
+        "savedData": "date stored by the picker; locale display is derived.",
+        "leaves": ["I17", "I21", "B18", "B19", "B20", "B21", "X21"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "BaseLinkKit",
+        "definition": {
+          "path": "src/components/link-base-kit.tsx",
+          "exported": "BaseLinkKit"
+        },
+        "renderers": [
+          {
+            "name": "LinkElementStatic",
+            "definition": {
+              "path": "src/components/ui/link-node-static.tsx",
+              "exported": "LinkElementStatic"
+            }
+          }
+        ],
+        "workspaceFeature": "LinkKit",
+        "savedData": "a, URL, title, icon, stable ID and rich text.",
+        "leaves": ["I17", "I21", "N10", "D03", "R26", "R27", "R42", "R43", "P22"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "BaseMentionKit",
+        "definition": {
+          "path": "src/components/mention-base-kit.tsx",
+          "exported": "BaseMentionKit"
+        },
+        "renderers": [
+          {
+            "name": "MentionElementStatic",
+            "definition": {
+              "path": "src/components/ui/mention-node-static.tsx",
+              "exported": "MentionElementStatic"
+            }
+          }
+        ],
+        "workspaceFeature": "MentionKit",
+        "savedData": "mention key, coverImage, icon and label. mention_input is transient.",
+        "leaves": ["I17", "I21", "B18", "B19", "B20", "B21", "X22"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "BaseSourceKit",
+        "definition": {
+          "path": "src/components/source/source-base-kit.tsx",
+          "exported": "BaseSourceKit"
+        },
+        "renderers": [
+          {
+            "name": "SourceElementStatic",
+            "definition": {
+              "path": "src/components/ui/source-node-static.tsx",
+              "exported": "SourceElementStatic"
+            }
+          },
+          {
+            "name": "SourceExcerptElementStatic",
+            "definition": {
+              "path": "src/components/ui/source-excerpt-node-static.tsx",
+              "exported": "SourceExcerptElementStatic"
+            }
+          }
+        ],
+        "workspaceFeature": "SourceKit",
+        "savedData": "source and source_excerpt identity, URL, author, title, type, bookId, trust and children.",
+        "leaves": ["I17", "I21", "X11", "X12", "C08", "D12", "D14"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "BaseBasicMarksKit",
+        "definition": {
+          "path": "src/components/basic-marks-base-kit.tsx",
+          "exported": "BaseBasicMarksKit"
+        },
+        "renderers": [
+          {
+            "name": "CodeLeafStatic",
+            "definition": {
+              "path": "src/components/ui/code-node-static.tsx",
+              "exported": "CodeLeafStatic"
+            }
+          }
+        ],
+        "workspaceFeature": "BasicMarksKit",
+        "savedData": "Seven independent text marks.",
+        "leaves": ["I17", "I21", "N03", "D03", "R38", "N18"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "BaseFontKit",
+        "definition": {
+          "path": "src/components/font-base-kit.tsx",
+          "exported": "BaseFontKit"
+        },
+        "renderers": [],
+        "workspaceFeature": "FontKit",
+        "savedData": "fontFamily, fontSize, color and backgroundColor on text.",
+        "leaves": ["I17", "I21", "N04", "N05"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "BaseListKit",
+        "definition": {
+          "path": "src/components/list-base-kit.tsx",
+          "exported": "BaseListKit"
+        },
+        "renderers": [],
+        "workspaceFeature": "ListKit",
+        "savedData": "listStyleType, indent, checked and explicit list starts; automatic listStart is derived.",
+        "leaves": ["I17", "I21", "N08", "D06", "P21", "R30", "I22"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "BaseAlignKit",
+        "definition": {
+          "path": "src/components/align-base-kit.tsx",
+          "exported": "BaseAlignKit"
+        },
+        "renderers": [],
+        "workspaceFeature": "AlignKit",
+        "savedData": "align on headings, paragraphs, images and media embeds.",
+        "leaves": ["I17", "I21", "N06", "D04"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "BaseLineHeightKit",
+        "definition": {
+          "path": "src/components/line-height-base-kit.tsx",
+          "exported": "BaseLineHeightKit"
+        },
+        "renderers": [],
+        "workspaceFeature": "LineHeightKit",
+        "savedData": "lineHeight on headings and paragraphs.",
+        "leaves": ["I17", "I21", "N07", "D04"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "BaseCommentKit",
+        "definition": {
+          "path": "src/components/comment-base-kit.tsx",
+          "exported": "BaseCommentKit"
+        },
+        "renderers": [
+          {
+            "name": "CommentLeafStatic",
+            "definition": {
+              "path": "src/components/ui/comment-node-static.tsx",
+              "exported": "CommentLeafStatic"
+            }
+          }
+        ],
+        "workspaceFeature": null,
+        "savedData": "Stored comment marks and IDs; no live comment composer requirement.",
+        "leaves": ["I17", "I21"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "BaseSuggestionKit",
+        "definition": {
+          "path": "src/components/suggestion-base-kit.tsx",
+          "exported": "BaseSuggestionKit"
+        },
+        "renderers": [
+          {
+            "name": "SuggestionLeafStatic",
+            "definition": {
+              "path": "src/components/ui/suggestion-node-static.tsx",
+              "exported": "SuggestionLeafStatic"
+            }
+          }
+        ],
+        "workspaceFeature": "SuggestionKit",
+        "savedData": "suggestion payloads, authors, pairing, property presence and group identity. Active/hover IDs stay transient.",
+        "leaves": [
+          "I17",
+          "I21",
+          "R01",
+          "R02",
+          "R03",
+          "R04",
+          "R05",
+          "R06",
+          "R07",
+          "R08",
+          "R31",
+          "D16",
+          "R09",
+          "R10",
+          "R11",
+          "R12",
+          "R13",
+          "R14",
+          "R15",
+          "R16",
+          "R17",
+          "R18",
+          "R19",
+          "R20",
+          "R21",
+          "R22",
+          "R23",
+          "R24",
+          "R25",
+          "R26",
+          "R27",
+          "R28",
+          "R29",
+          "R30",
+          "U09",
+          "U10",
+          "U11",
+          "U12",
+          "I13",
+          "I24",
+          "I25",
+          "R32",
+          "R33",
+          "R34",
+          "R35",
+          "R36",
+          "P22",
+          "R37",
+          "R38",
+          "N18",
+          "R44",
+          "R45",
+          "R46",
+          "R47",
+          "R48",
+          "R49",
+          "R50",
+          "R51"
+        ],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "BaseSharedMdxKit",
+        "definition": {
+          "path": "src/components/mdx/base-kit.tsx",
+          "exported": "BaseSharedMdxKit"
+        },
+        "renderers": [
+          {
+            "name": "StaticMdxElement",
+            "definition": {
+              "path": "src/components/mdx/nodes.tsx",
+              "exported": "StaticMdxElement"
+            }
+          }
+        ],
+        "workspaceFeature": "SharedMdxKit",
+        "savedData": "shared_mdx_inline, shared_mdx_block and complete mdast.",
+        "leaves": ["I17", "I21", "P05", "P18", "X09", "X34", "X35", "X36", "I12"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "MarkdownKit",
+        "definition": {
+          "path": "src/components/markdown-kit.tsx",
+          "exported": "MarkdownKit"
+        },
+        "renderers": [],
+        "workspaceFeature": "MarkdownKit",
+        "savedData": "Projection of native content and preserved ASTs. Review views select pending state explicitly.",
+        "leaves": [
+          "I17",
+          "I21",
+          "P02",
+          "P14",
+          "P15",
+          "P16",
+          "P17",
+          "P03",
+          "P04",
+          "P05",
+          "P18",
+          "P06",
+          "P11",
+          "I15",
+          "P22",
+          "N18"
+        ],
+        "verification": "Pending production verification"
+      }
+    ],
+    "print": [
+      {
+        "name": "BaseLessonTitlePlugin",
+        "definition": {
+          "path": "src/components/lesson-plan/plugins.ts",
+          "exported": "BaseLessonTitlePlugin"
+        },
+        "renderer": "LessonTitleElementExport",
+        "rendererDefinition": {
+          "path": "src/components/lesson-plan/lesson-plan-export-static.tsx",
+          "exported": "LessonTitleElementExport"
+        },
+        "leaves": ["I16", "I17", "X01"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "BasePreparationRecapPlugin",
+        "definition": {
+          "path": "src/components/lesson-plan/plugins.ts",
+          "exported": "BasePreparationRecapPlugin"
+        },
+        "renderer": "PreparationRecapElementExport",
+        "rendererDefinition": {
+          "path": "src/components/lesson-plan/lesson-plan-export-static.tsx",
+          "exported": "PreparationRecapElementExport"
+        },
+        "leaves": ["I16", "I17", "X02"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "BaseRecapGoalsPlugin",
+        "definition": {
+          "path": "src/components/lesson-plan/plugins.ts",
+          "exported": "BaseRecapGoalsPlugin"
+        },
+        "renderer": "RecapGoalsElementExport",
+        "rendererDefinition": {
+          "path": "src/components/lesson-plan/lesson-plan-export-static.tsx",
+          "exported": "RecapGoalsElementExport"
+        },
+        "leaves": ["I16", "I17", "X02"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "BaseRecapCurriculumPlugin",
+        "definition": {
+          "path": "src/components/lesson-plan/plugins.ts",
+          "exported": "BaseRecapCurriculumPlugin"
+        },
+        "renderer": "RecapCurriculumElementExport",
+        "rendererDefinition": {
+          "path": "src/components/lesson-plan/lesson-plan-export-static.tsx",
+          "exported": "RecapCurriculumElementExport"
+        },
+        "leaves": ["I16", "I17", "X03"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "BaseRecapMaterialsPlugin",
+        "definition": {
+          "path": "src/components/lesson-plan/plugins.ts",
+          "exported": "BaseRecapMaterialsPlugin"
+        },
+        "renderer": "RecapMaterialsElementExport",
+        "rendererDefinition": {
+          "path": "src/components/lesson-plan/lesson-plan-export-static.tsx",
+          "exported": "RecapMaterialsElementExport"
+        },
+        "leaves": ["I16", "I17", "X02"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "BaseRecapAdaptationsPlugin",
+        "definition": {
+          "path": "src/components/lesson-plan/plugins.ts",
+          "exported": "BaseRecapAdaptationsPlugin"
+        },
+        "renderer": "RecapAdaptationsElementExport",
+        "rendererDefinition": {
+          "path": "src/components/lesson-plan/lesson-plan-export-static.tsx",
+          "exported": "RecapAdaptationsElementExport"
+        },
+        "leaves": ["I16", "I17", "X02"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "BaseRecapPhasePlugin",
+        "definition": {
+          "path": "src/components/lesson-plan/plugins.ts",
+          "exported": "BaseRecapPhasePlugin"
+        },
+        "renderer": "RecapPhaseElementExport",
+        "rendererDefinition": {
+          "path": "src/components/lesson-plan/lesson-plan-export-static.tsx",
+          "exported": "RecapPhaseElementExport"
+        },
+        "leaves": ["I16", "I17", "X04"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "BasePhasePlugin",
+        "definition": {
+          "path": "src/components/lesson-plan/plugins.ts",
+          "exported": "BasePhasePlugin"
+        },
+        "renderer": "PhaseElementExport",
+        "rendererDefinition": {
+          "path": "src/components/lesson-plan/lesson-plan-export-static.tsx",
+          "exported": "PhaseElementExport"
+        },
+        "leaves": ["I16", "I17", "X04"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "BaseActivityPlugin",
+        "definition": {
+          "path": "src/components/lesson-plan/plugins.ts",
+          "exported": "BaseActivityPlugin"
+        },
+        "renderer": "ActivityElementExport",
+        "rendererDefinition": {
+          "path": "src/components/lesson-plan/lesson-plan-export-static.tsx",
+          "exported": "ActivityElementExport"
+        },
+        "leaves": ["I16", "I17", "X05"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "BaseLessonVisualPlugin",
+        "definition": {
+          "path": "src/components/lesson-plan/plugins.ts",
+          "exported": "BaseLessonVisualPlugin"
+        },
+        "renderer": "LessonVisualElementExport",
+        "rendererDefinition": {
+          "path": "src/components/lesson-plan/media-export-static.tsx",
+          "exported": "LessonVisualElementExport"
+        },
+        "leaves": ["I16", "I17", "X08"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "BaseListeningPlugin",
+        "definition": {
+          "path": "src/components/lesson-plan/plugins.ts",
+          "exported": "BaseListeningPlugin"
+        },
+        "renderer": "ListeningElementExport",
+        "rendererDefinition": {
+          "path": "src/components/lesson-plan/media-export-static.tsx",
+          "exported": "ListeningElementExport"
+        },
+        "leaves": ["I16", "I17", "X09", "X10"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "BaseImagePlugin",
+        "definition": {
+          "path": "node_modules/@platejs/media/dist/index.js",
+          "exported": "BaseImagePlugin"
+        },
+        "renderer": "ImageElementExport",
+        "rendererDefinition": {
+          "path": "src/components/lesson-plan/media-export-static.tsx",
+          "exported": "ImageElementExport"
+        },
+        "leaves": ["I16", "I17", "X26"],
+        "verification": "Pending production verification"
+      },
+      {
+        "name": "BaseGalleryPlugin",
+        "definition": {
+          "path": "src/components/lesson-plan/lesson-plan-export-kit.tsx",
+          "exported": "BaseGalleryPlugin"
+        },
+        "renderer": "GalleryElementExport",
+        "rendererDefinition": {
+          "path": "src/components/lesson-plan/media-export-static.tsx",
+          "exported": "GalleryElementExport"
+        },
+        "leaves": ["I16", "I17", "X27"],
+        "verification": "Pending production verification"
+      }
+    ],
+    "files": {
+      "node_modules/@platejs/media/dist/index.js": "917e0595981d0e3e223a86cdc6a25a5e1933eeef3207ceeeb4591c2a49fb4c03",
+      "node_modules/platejs/dist/index.js": "f5c98fbb9dd6c6bb99cbfc937dffbb4d3dfb5618924602e5f3147191f3607bcf",
+      "src/components/ai-kit.tsx": "805d79810fda93615ce71e0822a3c3efdb0d4430ed8f1876e08d38495e120a62",
+      "src/components/align-base-kit.tsx": "6c21547a2f518eafe00bb7f093c69482658f0b2d2bd1953b8479c9d0433ca60e",
+      "src/components/align-kit.tsx": "2abdd89921d4f197b76624275a5246b4996e038e5232e8543569be43418d4714",
+      "src/components/autoformat-kit.tsx": "414ac95f3054c9bab0071a284d8d779f918e335f7744603093acd405709e08a8",
+      "src/components/basic-blocks-base-kit.tsx": "fc8cbab6efe7c76b377d1efc3da2bf232e97b279d29f710eff1da5756a8e3fa9",
+      "src/components/basic-blocks-kit.tsx": "dfb1278d79d4177b00728d87e5a78287a069cc9cf5b2ec426b6d450f8c3741b3",
+      "src/components/basic-marks-base-kit.tsx": "94b9a089c05045f920af04e5b76187934cc104b335aa2ab2e4f364dc2a461e51",
+      "src/components/basic-marks-kit.tsx": "171ac49afa9907d68700dac048f2a4279aef0e0c6d08d7e5c7cc3970dcce0905",
+      "src/components/block-menu-kit.tsx": "7270ad6c385ec1e2a83875e0c68e5939d4ad3be60be316f5fd0ae52244d9cbb1",
+      "src/components/block-placeholder-kit.tsx": "d5f5d8fdbf38a2e6b701c9c649b0169d70a9e16828a8214ea12f5a0122a506d8",
+      "src/components/block-selection-kit.tsx": "2eb47e4c7c17ed670db652036a52cef0c29dd3546f07933cbc921b33f67f1104",
+      "src/components/callout-base-kit.tsx": "7e3df66701fa92cfdad15cb6b293ca4180a4a5b18c0190be6cb24b431ae45831",
+      "src/components/callout-kit.tsx": "22e5a451888859d1b818ab0f32e6196c7fda9fad2a601c9ff7d8a9cbb1f7ded1",
+      "src/components/callout-md-rules.ts": "87e8eecd33aa2a303137d760a66810c11d357d14253a59fedb6a31aeb5817051",
+      "src/components/chat/chat-input/EdixTextarea.tsx": "c2d54c3335db4370b169bd3adfc1e3a0995574ab76e3a79ddea3e59ede83c6e0",
+      "src/components/chat/mdx-tags.ts": "00b03405797d4c125734449b717eea05f2766008e3829e3359380d2c4e03467c",
+      "src/components/chat/MessageContent.tsx": "f7941936953a3d121f15df2b217c2c100500e56dd384eb0b9a7f367295447937",
+      "src/components/chat/renderer/UserMessageWithInlineMarkers.tsx": "9d5e38ce44bd8825b69c8e997b28726e479185a64bd6d6297d402688c1a72e89",
+      "src/components/code-block-base-kit.tsx": "81ae4c0d472f4451c69572290fe2f1de87caf7c332fc86c0cb9734ac55a28a60",
+      "src/components/code-block-kit.tsx": "306dcd52fc9c9192eede5f280b4bbbf2a022a1524b7270be7a98a97d23fe4579",
+      "src/components/column-base-kit.tsx": "fc03ca755bc9918a5f80670f282a3f18cca215518082309ce5c957dab915a428",
+      "src/components/column-kit.tsx": "8828e05aba83cf7a0b47507490501a11c4d016fba1baf52e4d73d9e33d037f6b",
+      "src/components/comment-base-kit.tsx": "98a09f110ee170f76607552792b6471b3c37c2529530939d7f071ad5a3b956bc",
+      "src/components/cursor-overlay-kit.tsx": "a7a5f425c424a033213dfc85ab1e113368422086642d9b4a2d09f691a113cc5b",
+      "src/components/date-base-kit.tsx": "0f0e63d40dabd638ae06791313058a88cdee8e6fc02de361c7bbaec1febdd1f9",
+      "src/components/date-kit.tsx": "5e1122a7f2a49fafbdbe9f5ded7e9a72f6289303ae68e6be908ed6c01d6cab04",
+      "src/components/dnd-kit.tsx": "b8f1875df7cfa5424f60df8e2520f472f8a7d5ff96a9c8fa801c820ef76b9f32",
+      "src/components/docx-kit.tsx": "823a1a7d8916c0c14d81daba9b45a7212d41eafcf7a47f9113b376d5c701885c",
+      "src/components/editor-base-kit.tsx": "ab4255a81d46dffad12efc5a889bf0ffa5b343b0ea864c64f43d51ee3848783c",
+      "src/components/emoji-kit.tsx": "ec8a975cde390f44ab0678ebd0e35eb070852e6e6f65cc2a678c1548a9216d12",
+      "src/components/exit-break-kit.tsx": "14ce5c564c544442e7a370bba7e36a7ac17065e8ea253d4d5231c3643b0567b6",
+      "src/components/floating-toolbar-kit.tsx": "6e70053b6d9f2972190c8cafd9c4851aee25ac335a8d9f00a3c0fbf1cfb5cf39",
+      "src/components/font-base-kit.tsx": "025529fdd6ebb77a2d6af44b3bcb4b0f82f6acc62a946a8b0d481159bfdbe00a",
+      "src/components/font-kit.tsx": "b9c7696d5212519c0bc502b561617a4cd4acab16ffa5a968b2f694dc150289a8",
+      "src/components/gallery-kit.ts": "585fde51723a5dce344d3244d616537e244cb867e0863533fe0c6bca9d7eca1f",
+      "src/components/gallery-md-rules.ts": "11800e14272e024c766a6f9442a8f4cba7c22765d785f8bc1027b3286541fc0e",
+      "src/components/gallery-remark-plugin.ts": "13b18659ef5c521c056346a12318c9123eeed0e90492ec8e6373d5611d33cbd4",
+      "src/components/gallery-types.ts": "2217e9bf31b78a06288b3d7b6890a1f67f53b03aac4ff5b0ae639a9cbfe453fe",
+      "src/components/indent-kit.tsx": "89c2520815290b369fb983fe985b3e526bcdb83b0151234588ed9e94c3c4cd47",
+      "src/components/lesson-plan/lesson-plan-base-kit.tsx": "0511fd7f568ae7758b158b8267161bce249a85782676527d943f73d016292a53",
+      "src/components/lesson-plan/lesson-plan-export-kit.tsx": "51671f590f0b63828f158bc1eb02717fc2ada109ba73f1288160da9cc7ab0c0c",
+      "src/components/lesson-plan/lesson-plan-export-static.tsx": "9e3bfbe64cd325e1077522e3744068bd7c23f15b31647fee8b123c5723643477",
+      "src/components/lesson-plan/lesson-plan-kit.tsx": "f44da14d226628c01785b5c937c50e47311c2e321981da910ce0176ca370f875",
+      "src/components/lesson-plan/md-rules.ts": "62cb5ac18e0ba83e0be143a723fca69226487cd460938b8a4dabc6b2603d21a3",
+      "src/components/lesson-plan/media-export-static.tsx": "08499fc5214ed39e4aaa2fffe1dd4f2d091c4c4b024c91bb064219fdad4447fe",
+      "src/components/lesson-plan/plugins.ts": "feaa13510fcab14fffbad548031bb81dab31bb5b34c9766027f86908c75a45b7",
+      "src/components/lesson-plan/replace-visual.ts": "614dc0b9044aa8294b6bdc66947f7659d774065d4d4d495bbe4812235dcf7fa2",
+      "src/components/lesson-plan/retime-document.ts": "910124f06a50351393cc57367d5f80f1cd0292f5b573b4b6c29d9c2fff0b065a",
+      "src/components/lesson-plan/types.ts": "60b3c20a7d65b7e984cb27ee73411ad8f4e6ca68ddf9333941e794cf5d9ea72d",
+      "src/components/line-height-base-kit.tsx": "b6df2c18f3b1fe525bb9b9e5b10c9cb4c5954413878ac33eb32b1ebc5d829f11",
+      "src/components/line-height-kit.tsx": "3f8a7701520e776fbcecadc149104c4add698b9107592c6dc14a25d8ae62882c",
+      "src/components/link-base-kit.tsx": "695ac205b8eb313c52e49773705cb3d7f39dc04f8e52eb82a64d2509d8bd635b",
+      "src/components/link-kit.tsx": "f40990f730553b1097c416a86491a2ac01abafeb472666b86cdf1205a90a02f7",
+      "src/components/list-base-kit.tsx": "e49b5981b9c973c0ad02361cac307f5dc4b37518611a31401c718b86b043181e",
+      "src/components/list-kit.tsx": "a0a7aab10f69effddbc6aabb1e0c192e6e07ca5f0204a540a4d2268bf977d05a",
+      "src/components/markdown-kit.tsx": "ce17115475c5ec3509ba483fdb81d3786ab7af92891b1b10b96367fdd7cf9c34",
+      "src/components/math-base-kit.tsx": "79c5dc2ea5032ee4e544638617eac3332d968e4103eff8a125da7df48c58bafa",
+      "src/components/math-kit.tsx": "8a95f0cdf0cd4064bab78d7b57537105a43c12d541e40860cbb402e00615206d",
+      "src/components/mdx/base-kit.tsx": "0d3f712ac538994ec043f1fde613504b031ad4e7a017c98278078c38f2aaac07",
+      "src/components/mdx/kit.tsx": "4ce16ea44b0308589a298f0982d4bebaccde496c519eb1c8c5bb0aef467c0497",
+      "src/components/mdx/nodes.tsx": "081c82b3d3b801c6968a9cf68de3df47c84a0842213a02480595af5182521eca",
+      "src/components/mdx/rules.ts": "b058e3cfad2a31ade1d2f22e45489b3794ac273b2970cc6a6d0de70ee321d433",
+      "src/components/media-base-kit.tsx": "3a2e4a96f8eb7ab355109bf2d0069e65a105693b5f4aea4ff2703c170f5a9274",
+      "src/components/media-kit.tsx": "7f755401cf0a4ee9f285d4f88a583605f0159b276ae150f6b8f3e2cd11d38e85",
+      "src/components/mention-base-kit.tsx": "69406e9ae52e38ce2e6a72ea4eab4bc91908d0d78ea737e2354a91b46bd9b697",
+      "src/components/mention-kit.tsx": "a63cd570217286970361e460b1be7171fa3aced753bed6e24064c7ae83780596",
+      "src/components/plate-types.ts": "b3f70b4fb6c1e0321d7de798dcbccc13cfa79ead540518866ea87692f14e63a4",
+      "src/components/shared-material/SharedLessonDocView.tsx": "86c56e0138bac273e693c98f3b04bba688fbb5a062af986f29a8b65f36003d21",
+      "src/components/slash-kit.tsx": "7bb09badc177818ef4329c29336ad0693686c044e7f3ff13fb5927865384e76c",
+      "src/components/smiles-base-kit.tsx": "9e9efe5c54d38fbcd4c47457a5d60afdf59f0dd7169fcc27fa207277a04a7ada",
+      "src/components/smiles-kit.tsx": "b3d3cfdfb1daa672d02a70aea1ecba3055dabccc809f5d56e8cb83dbef8846b8",
+      "src/components/smiles/md-rules.ts": "ea0c4ca7003691cef4cdda2fcd72ec299e82e55c05ba1008a77cc80b8016fd3c",
+      "src/components/solution/md-rules.ts": "465016c3ec63979c90a493e0bd4a3402489e0bceddda0445892cedf31202f461",
+      "src/components/solution/plugins.ts": "e97a43f0f584c406233b46f56f80c8f96e84ec68f5fbe6c243c44e3c10c0289d",
+      "src/components/solution/solution-base-kit.tsx": "a3f3bf1cf727e6fb1d53990e20c31676465d69443a80f2662a2ff3a2458cd64f",
+      "src/components/solution/solution-kit.tsx": "4f43346f85a0c11409f001b17f0e31e3662dd5942f41c342c253c47aa9b4205b",
+      "src/components/source/md-rules.ts": "188ecb608c5961b081781f505de80f339c9730563c96e0cd390fa213139ddc4e",
+      "src/components/source/plugins.ts": "cdb80e4bfd111433fd91e0a578bebf0a3460669570216c7eb6736e3b6b32429e",
+      "src/components/source/source-base-kit.tsx": "c1262ca6d524e1f504589ec670ab61e61732c04482f222fcdcce5d36fd9e99ef",
+      "src/components/source/source-kit.tsx": "c10de5c698e67789c1b7d419628d199b6f30c8511ac9e02218cad698927675fc",
+      "src/components/story/md-rules.ts": "b0fe353a36294d02ef44652a1b6cc8235eb5f8c68c3984ae112d27e332f8d959",
+      "src/components/story/plugins.ts": "650e4c29f677a65bf7ebcfeeec02c10ac98655bc4171b81be8ac73286872d6b7",
+      "src/components/story/story-base-kit.tsx": "7c07b0fefbe9e19d3d667d86bbe67c119bcc8489572a7ce00d4741fb593e9f74",
+      "src/components/story/story-kit.tsx": "adb5d3bc47ac94d3e6c8a46d110d358f0758c4f3c894211a830f31349e81ad83",
+      "src/components/suggestion-base-kit.tsx": "f64f131a8c77e182df33deb4b86c919cde954c8a0472af646b947ec136089434",
+      "src/components/suggestion-kit.tsx": "a4dc94a226b195a0acd8c3ff621208250e34cecc5725d562807796e7dfdbef1e",
+      "src/components/table-base-kit.tsx": "6bb98fd84029d0e6ae51637d67a2bde3c819333fe7b8d2037df73c2221211814",
+      "src/components/table-kit.tsx": "abe5f4853f722bda4b04f60a4f796d52859f3f7cbf7a045c0280eeae18b1d9eb",
+      "src/components/toc-base-kit.tsx": "cc8f839ca200dde8c1b49fa1cb9d6a0310e1e5fb2d894e6d501df16ddf7ab824",
+      "src/components/toc-kit.tsx": "5c3df4fc77cf27565e2e5864f3b3f6db399ebafee9941b7d52cc191d5c3b4d4a",
+      "src/components/toggle-base-kit.tsx": "36c4da2413ae4bbd290fb6611cad97b4a54784c48dc511cf91e2da5637ff74cb",
+      "src/components/toggle-kit.tsx": "ce4a572fe3b526ff8d1f25062bc8aa53ec25b6cbe1827b31bc533640b79dd8c6",
+      "src/components/transforms.ts": "64b0888f70de9b4683966069f89db67b660f6715ac2c69356ae97cec6e57c833",
+      "src/components/ui/activity-node-static.tsx": "9b56d22c59edfe3c8c9af051614707790f28ea24fac5eb97434e5c72c51319a4",
+      "src/components/ui/activity-node.tsx": "0e8c94e976adea50d932ea17eb560f09958106e5885843d1f345e776f004bad6",
+      "src/components/ui/ai-menu.tsx": "7eba49abb3a2b57be5b2659b02090ef0276d2806987c120c49393f22da50af71",
+      "src/components/ui/ai-node.tsx": "1de9cd1638bf9423854fa466ea01cab449130e957acc2a5cdaf029a4c803a7f0",
+      "src/components/ui/block-draggable.tsx": "296e42e1c09cd2550e4123d1f91af7a8cb2240aa1453ca1cd807273cd23d2d7e",
+      "src/components/ui/block-list.tsx": "3055d2c868b91970934e46ba67810dd1cf06741e4349f8c94e575d8ef2cc6cd7",
+      "src/components/ui/block-selection.tsx": "afb8bdf04c931f4310ef913cd2bb8c1769b3f3ffb2556420f88581bb6117953b",
+      "src/components/ui/blockquote-node-static.tsx": "b72c866385705e11253b0e1900cdea92e5c65ca4471f42ecb4a10d5a1fe2f9f5",
+      "src/components/ui/blockquote-node.tsx": "73c04a4100f35e935ca32aebd6e5360ee58975120072d9521549432541cd5d2a",
+      "src/components/ui/callout-node-static.tsx": "6f99d264edb5de62ee9d6d3e067d9e2a0be500eb4f77e30428ccc4236b7f6a4d",
+      "src/components/ui/callout-node.tsx": "2472d464272f0d51c7a90d107a514b47d3e38aff3fccba39c3cff5a29c2170d1",
+      "src/components/ui/code-block-node-static.tsx": "b7454b5119cfffe65207c274bdd21291dcb731fe8ae20e89d7517cb57a9dc6ca",
+      "src/components/ui/code-block-node.tsx": "acfb9e8b03d0f350e900f096560ff28a0fb7d152c5141b88b750b87e884c0b8b",
+      "src/components/ui/code-node-static.tsx": "403288933e03de6bfe04d4cfd43360e494ca6aff447be85912704817ade15aa9",
+      "src/components/ui/code-node.tsx": "eef275e98f9960ba65c73901cb474c2ec2fa9e7eac534bf562cae7aecd302631",
+      "src/components/ui/column-node-static.tsx": "aa9e54b2c05fcc3e9c5692b0d7d1fad4304ed2d84861ad9999358dcb3b24684e",
+      "src/components/ui/column-node.tsx": "9f501f8bae27f108018a8c7ab13fcc105a7d747f734acbc30b74dcac5c68cb5f",
+      "src/components/ui/comment-node-static.tsx": "f427fa83eb0c9bb9aa228121c0135f516f484c5c0b004bf43b2bea621fb0dd7b",
+      "src/components/ui/cursor-overlay-utils.ts": "e657dc1071fa79d7c07ea37d3f5203a9cf92e0152fd4ca1321961b6b0250addf",
+      "src/components/ui/cursor-overlay.tsx": "f5bef88d4605f3c5dfd404a327fbe1d55cb102a7050ee3ced2ef25acddab3b7b",
+      "src/components/ui/date-node-static.tsx": "07936b1b449da781cd323ea83898a97049c231ee5728fd6783b48e1aea7d87f9",
+      "src/components/ui/date-node.tsx": "5f9079d20cbe73de75dd968b82297dfc7d8ae8f65fd9bb9085542bc0052961ad",
+      "src/components/ui/emoji-node.tsx": "dc07360b3c17d1cf1ba6a02d28ce40c9e865d4842bd063dd0861211d4db65ab6",
+      "src/components/ui/equation-node-static.tsx": "5dd0b663aed279bc906f6d155b103775939578e6200715cfba20481e476af19b",
+      "src/components/ui/equation-node.tsx": "3df224e22ac1566e7322d95e34f01f2a773549734e07f2687ffe0aea033c2afb",
+      "src/components/ui/floating-toolbar-buttons.tsx": "cb5ff405f9758ab98d7f69a7c2938779741a32f7b5c51929fe310552262ccb73",
+      "src/components/ui/floating-toolbar.tsx": "c37800a07b36b95740c4201732c24c233bd2487390daa5b75511debb44e25395",
+      "src/components/ui/gallery-node-static.tsx": "2ad5a9fb504df2fe17a7a4ff79bb4e9757df0e3533172a67348e1887c40cf3e3",
+      "src/components/ui/heading-node-static.tsx": "e240f84bbf0684cb8fc3e785f589aac3553d37679aeb9f3105eaec40f5d9c323",
+      "src/components/ui/heading-node.tsx": "aa708dedf637f78974a9d93433d7334e78a9c174969422b136fd0ef6cb222d58",
+      "src/components/ui/hr-node-static.tsx": "d9cb9055d7c4035f320084b17ee650fae6d589e2f4099faa6331dbc99052145d",
+      "src/components/ui/hr-node.tsx": "45c2a1ab3fcb71dc384a2714e07facf304f2e47745dde5354db92a033e9d3a7a",
+      "src/components/ui/lesson-title-node-static.tsx": "394511fdf39afe1b91c497c0378f21f66ce993ee533e3c1902411d336a012152",
+      "src/components/ui/lesson-title-node.tsx": "8a94578826efcf6b77b5252f4b26ded11477b878c9bdd5bbda6110894c51826d",
+      "src/components/ui/lesson-visual-node-static.tsx": "6a7564f6332a335e6b0d08d2d93bee7b149f845fb326c0f9bbfd7479c2839ce5",
+      "src/components/ui/lesson-visual-node.tsx": "70d03311abc18d491968ac4310bbf05b659c8b67cab017a35f1f6219cc158231",
+      "src/components/ui/link-node-static.tsx": "5e5715bb6c5ad9bfa5cbcc712dceea60b5a71661e5a0e1389792ea3b6d0f68f1",
+      "src/components/ui/link-node.tsx": "deddcb45590fffa530b612e6c35d2325fd48b60d635129f30c8881e8dad219cc",
+      "src/components/ui/link-toolbar.tsx": "8f0b2fa3a9f15a746ee5c3bc1fb21a853054e7ca2f70e6949b326621c8db5f79",
+      "src/components/ui/listening-node-static.tsx": "e970e2ed7413f494754eb86deb4cf37fdda6a4ceb5bee926911762f5f5599099",
+      "src/components/ui/listening-node.tsx": "50cc4ea88467626906d9ed117ec1802d7ffc2d1e54a31866c23904639202f8e3",
+      "src/components/ui/media-audio-node-static.tsx": "0f8039f357d8e7e843fa446f54d7ed7e64cc061be2511b97f264e200ad940d51",
+      "src/components/ui/media-audio-node.tsx": "8d4dd15aeb4ebeb740a16384819a762751a94ad83b732a43e238715b834f3dd5",
+      "src/components/ui/media-embed-node.tsx": "619ad1afcac1bf562a84c859980cdfbf5ed43dced8ea93f3b483684e6aac1ff8",
+      "src/components/ui/media-file-node-static.tsx": "e87d34388f523fb47c70c545894ae57fcc575d748c7b3686d91fd93e6852985b",
+      "src/components/ui/media-file-node.tsx": "c47b5bf33f2e0da89605a2ce82c9dcad78fc28e9c4e3b004e63c8029ed2db461",
+      "src/components/ui/media-image-node-static.tsx": "1897ff509efec74b874d2ce3e54802f8583e54be85311083b608450c65c8f674",
+      "src/components/ui/media-image-node.tsx": "ae0a7cc3cb95d10493070287c3f325724c8b2d9c36df2eba98fea5b3cb221e1c",
+      "src/components/ui/media-placeholder-node.tsx": "e2eafd1a1d749b9039a30e2a8e1f1528ed18c683d0ac250468f8c028b084f8ca",
+      "src/components/ui/media-preview-dialog.tsx": "22c47d0e6e6502fa07450e0290ed6e5960b081eb83db941546ace300a0fa7544",
+      "src/components/ui/media-toolbar.tsx": "c2b7413c0d5802be1dc9603c25f966dada18e402e42f561ffd5852c554bcf792",
+      "src/components/ui/media-upload-toast.tsx": "a65b36150ea4ee56db8adb778ea5c71b6b9aead3358204d0a39200f6da403a85",
+      "src/components/ui/media-video-node-static.tsx": "01572fa25dad86b7b433420f307dbe54476835e0cc15922c9ed331d6dcb4f189",
+      "src/components/ui/media-video-node.tsx": "5792e2e2d343fe0afab73e34fede34569d8763a4fd658e8925e98306d384c7af",
+      "src/components/ui/mention-node-static.tsx": "f827aa401861345d487d9394a9afece247fb87fd12b95341edc3c4c9dff87705",
+      "src/components/ui/mention-node.tsx": "17459e1895868cc50142628c5522d3663ed89a0f129386ede819453e91adee2d",
+      "src/components/ui/more-toolbar-button.tsx": "00b35e8cc57170c26a8715e3bbe2c2e0e47c52750e35b1d64f4805225a8e0762",
+      "src/components/ui/paragraph-node-static.tsx": "be6956610ff84d84968ad8b42dce45f8b46ec100fdad054c88d5f0a52bb9df3e",
+      "src/components/ui/paragraph-node.tsx": "5360e952d50c3548eb30b42214431168374363ef8028aeb4d9b8b8b813280aaf",
+      "src/components/ui/phase-node-static.tsx": "1746abec255dd96926c27a1e69bb7fb228cd6a153a778d5fe80eb370b90ee46b",
+      "src/components/ui/phase-node.tsx": "4414a632976085f5ef359db3def0cb958edf9bf6a246f774bbfad186bebcbdfa",
+      "src/components/ui/preparation-recap-node-static.tsx": "893457994680b0bf4e7a710ab212cb4c4ab16acdd3411087da523b9c3fa175b1",
+      "src/components/ui/preparation-recap-node.tsx": "8b35edf422f4e37b8c6c4395fd427987e7b7f583f6c095b7dfc5a806b717d630",
+      "src/components/ui/slash-catalog.ts": "32dd4ec45f87f45d9577eac1a4e25b4d6ed65b7e277f6648589444725d053f96",
+      "src/components/ui/slash-node.tsx": "52cccdf36a87d5afcba34f19208487b4c8200c18e72d649096967fa048cc313f",
+      "src/components/ui/smiles-node-static.tsx": "afbe862f3e4bb15de9db6cae78f898f5ba071efbae5b506b076f7d1230392250",
+      "src/components/ui/smiles-node.tsx": "edcb2109fc49b48a22c59df273aa1da6513e6dee116b7e2a76476890d94dfe08",
+      "src/components/ui/solution-node-static.tsx": "f6e459043f7fa61c64fd0c483577cabdaef774a6c3a64fed978d1890aeaaef0f",
+      "src/components/ui/solution-node.tsx": "492c80e6fed752b121130d94a848d78246a82f7ffdcaa5dfe2f24a98dc630991",
+      "src/components/ui/source-excerpt-node-static.tsx": "122d9919aa5538ec3747760aba4f33521670cf9ef668906ce5317b7222f71640",
+      "src/components/ui/source-excerpt-node.tsx": "63894f27a0122e114345475bbd168c9d3791200a4329a6224a27ee1820cd9f31",
+      "src/components/ui/source-node-static.tsx": "fca79201dd7c5db10bae3fc043ffd2905681101fb56d40a47b196374ae71a1b5",
+      "src/components/ui/source-node.tsx": "819a64df9d9bd35862e4770df4eeda596c8f3bd6721101e2b6611e6162ed1e64",
+      "src/components/ui/story-node-static.tsx": "6d65492779099700d142efce378c72bcf4df83f2e42bde7a3819439e00e28b80",
+      "src/components/ui/story-node.tsx": "2a43f09976ceb8ec60866aa7a003cb7b1295382a27cb35322ec6f12b05b47042",
+      "src/components/ui/suggestion-node-static.tsx": "25635ddb3a5fc3235ea234a4cdc898a1cbf70ee506abadffeedda1f7fd6b9aae",
+      "src/components/ui/suggestion-node.tsx": "914745d9854d169ad924b8a598dd742c0ca896f43c3bd57ca82e2800d299f903",
+      "src/components/ui/table-node-static.tsx": "2adffacf9e52085900bacd3ae030fa922adc93c72b17207394106c09c7d16b2e",
+      "src/components/ui/table-node.tsx": "444c8251b3bc4a0312cac1cc91b208f0475d7582a18b554ca834a7c0966d5254",
+      "src/components/ui/toc-node-static.tsx": "7de344e1358841e3e42edd0a1698483cf21e0f9889a5c07e17928a6a783b7435",
+      "src/components/ui/toc-node.tsx": "481c28c008c47081cb67982e78325fadb744f93ab3e73a1061aba13743bc1610",
+      "src/components/ui/toggle-node-static.tsx": "c94eeefdde5ea0d7372d2d3f365f7a450b2a476fa7d9d29862c8b7eca4ee8908",
+      "src/components/ui/toggle-node.tsx": "b7885ff0fbac7df7fb95da45a631a711c9445c82ca1d8fe5b8bcc2f50c3f9175",
+      "src/components/use-chat.ts": "1ba56c33606160c68ecfef95f2b8379bf006605337e4563ee88c2ea6d7d662b6",
+      "src/components/workspace/LinkedLessonEditor.tsx": "d367ddfb7d8dee2610e67821075296468f217094a58b17facd53e6b92c50a130",
+      "src/components/workspace/WorkspaceEditorKit.ts": "5ba8b90acdf39bd700a83d5eaf4aca024f5e7efcc71569f79a116f55a6a7aa8c",
+      "src/components/workspace/WorkspaceExportModal.tsx": "6e7f3a5eba0e00e826fd64eb666623fefac93efdacee786a8e2c5406eee0ece1",
+      "src/components/workspace/WorkspacePanel.tsx": "eb873d254b8af19d1301142f0d45e462b7b45ddd9d478526dd84cb3654100acb",
+      "src/hooks/chat/useWorkspaceEditBridge.ts": "ec0a0563c6aefa8e72e20edc3d400f0742226f3f3be48d5c9f21e6a73e934fa5",
+      "src/lib/ai-review-diff.ts": "5233a070f764270172fdc03ca7df564e16483aac958acfce42748ebf1fa7d701",
+      "src/lib/attemptAddToChat.ts": "48bba3c1edd55149746e1b93c71a5618b754d31e62d6c14fbfc3632f58976e41",
+      "src/lib/documentTextExport.ts": "98c44374699e571801c10c5c276af0916ba790c2699d3a8c18da797b0cefcb9a",
+      "src/lib/lesson-plan-deserialize.ts": "6293cee4ca05d2c8a43fdf7f1cc7407aed3792623fe1571d1c959a7376107700",
+      "src/lib/quote-focus.ts": "be81cb44458580d6fa7fbb38c0bf6577ebbd65f64bafcb79410cf4bb60950e58",
+      "src/lib/suggestion-groups.ts": "36a044d291c18da1e54aa7d6ed4391de59839143808191ef38e2a758a1392912",
+      "src/lib/suggestion-views.ts": "671fb63d75f06d7264f4ba3a309f131e1a7e1d0d0fbe4fe48722028dced63c31",
+      "src/lib/workspace-lesson-serialize.tsx": "01b40f632521f73a86a3e22239a5aeef4e0cb95615a99c35a32e9babb53bf5d1",
+      "src/lib/workspaceClientTools.ts": "4b8345af57f72655e5d356c1344bf895ae84a94b8f5f00650c3e24ce5b49f3f0",
+      "src/lib/workspaceExportArchive.ts": "2a7974da5d6800a12e4bd2887063b4585fae661981f0d5d1d7fb6ca49fd82332",
+      "src/lib/workspaceExportSnapshot.ts": "5988c1d6f5179c86c24364aa1d45239ca5112e2d89465a4c8c3123d5aa370462",
+      "src/stores/quoteStore.ts": "52d35560af0897e60552db15b34705151bb2c2537b91300c113671d32482e1a8",
+      "src/stores/workspaceStore.ts": "ad2c0955ae935801a606c55c95c67381a5fad4da97cd7a0d9e758c4e942739a6",
+      "src/types/chat.ts": "a45a4a32f8f656e9b6bd782695c2b80b82845770c65f005537855f736d0f8f4d"
+    }
+  }
+}

@@ -4,6 +4,7 @@ import type { createTextboxEditing } from './surface-textbox-editing.ts';
 import { resolveSelectedDrawingRecord } from './docx-editor-images.ts';
 import { textboxDrawingOnPage } from '../layout/textbox-drawing-records.ts';
 import { isElementNode, isInputEvent, isKeyboardEvent, isPointerEvent } from './host-realm.ts';
+import { isInHostUi } from './dom-selection.ts';
 
 const NON_DESELECTING_KEYS = new Set([
   'Shift',
@@ -53,6 +54,8 @@ export function createDrawingGestures(deps: {
       deps.setIntent(drawingId ? { kind: 'pointer', drawingNodeId: drawingId } : { kind: 'none' });
     },
     onDrawingKeyGesture(event: Event): void {
+      // Keys typed into host UI belong to its form controls, never to a selected object.
+      if (isInHostUi(event.target as Node | null)) return;
       if (isKeyboardEvent(event) && NON_DESELECTING_KEYS.has(event.key)) return;
       if (isKeyboardEvent(event) && event.key === 'Escape' && deps.textbox()?.active()) {
         deps.textbox()!.exit();

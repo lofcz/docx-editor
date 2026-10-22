@@ -1,0 +1,125 @@
+{
+  "schemaVersion": 1,
+  "command": "bun packages/sciobot/test/diagnostics/yjs-format-boundaries.ts",
+  "dependency": {
+    "name": "yjs",
+    "version": "13.6.32",
+    "license": "MIT"
+  },
+  "expectedProposed": "Changed Bob",
+  "cases": [
+    {
+      "clients": [41, 73],
+      "receiver": 0,
+      "delta": [
+        {
+          "insert": "Two",
+          "attributes": {
+            "shell": "deleted",
+            "deletion": "alice",
+            "bold": true
+          }
+        },
+        {
+          "insert": "Changed",
+          "attributes": {
+            "shell": "replacement",
+            "insertion": "alice",
+            "bold": true
+          }
+        },
+        {
+          "insert": " Bob",
+          "attributes": {
+            "shell": "original"
+          }
+        }
+      ],
+      "proposed": "Changed Bob",
+      "suffixPreserved": true,
+      "converged": true
+    },
+    {
+      "clients": [41, 73],
+      "receiver": 1,
+      "delta": [
+        {
+          "insert": "Two",
+          "attributes": {
+            "shell": "deleted",
+            "deletion": "alice",
+            "bold": true
+          }
+        },
+        {
+          "insert": "Changed",
+          "attributes": {
+            "shell": "replacement",
+            "insertion": "alice",
+            "bold": true
+          }
+        },
+        {
+          "insert": " Bob",
+          "attributes": {
+            "shell": "original"
+          }
+        }
+      ],
+      "proposed": "Changed Bob",
+      "suffixPreserved": true,
+      "converged": true
+    },
+    {
+      "clients": [73, 41],
+      "receiver": 0,
+      "delta": [
+        {
+          "insert": "Two Bob",
+          "attributes": {
+            "shell": "deleted",
+            "deletion": "alice",
+            "bold": true
+          }
+        },
+        {
+          "insert": "Changed",
+          "attributes": {
+            "shell": "replacement",
+            "insertion": "alice",
+            "bold": true
+          }
+        }
+      ],
+      "proposed": "Changed",
+      "suffixPreserved": false,
+      "converged": true
+    },
+    {
+      "clients": [73, 41],
+      "receiver": 1,
+      "delta": [
+        {
+          "insert": "Two Bob",
+          "attributes": {
+            "shell": "deleted",
+            "deletion": "alice",
+            "bold": true
+          }
+        },
+        {
+          "insert": "Changed",
+          "attributes": {
+            "shell": "replacement",
+            "insertion": "alice",
+            "bold": true
+          }
+        }
+      ],
+      "proposed": "Changed",
+      "suffixPreserved": false,
+      "converged": true
+    }
+  ],
+  "finding": "Y.Text.format range markers include a concurrent boundary insertion for one client order. Both documents converge, but the unseen suffix inherits deletion and bold. This diagnostic makes no repair and does not establish R29 support."
+}

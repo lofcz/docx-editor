@@ -1,0 +1,15 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Rejecting a fully inserted terminal paragraph removed its parent identity. A peer's offline suffix then arrived under a deleted parent and remained invisible.",
+  "after": "An actor-bound review decision keeps the empty native paragraph identity with a versioned generic property marker. Story projections hide the empty identity; peer content makes the same identity visible. Word export removes the marker and empty retired siblings. Explicit owner deletion retains its existing behavior.",
+  "reason": "The metadata uses existing generic XML element descriptors and canonical child insertion primitives. No shared journal, registry, codec, or transport fields change. Older engines preserve the opaque marker but require an engine upgrade for its visibility and export behavior. The evaluated transport implementation remains unchanged.",
+  "tests": [
+    "packages/core/src/store/__tests__/retired-paragraph.test.ts",
+    "packages/core/src/binding/__tests__/retired-paragraph-binding.test.ts",
+    "packages/sciobot/src/review/terminal-paragraph-conflict.test.ts",
+    "packages/sciobot/src/review/insert-paragraphs-collaboration.test.ts"
+  ],
+  "changeset": "retired-paragraph-peer-recovery",
+  "migration": null
+}

@@ -1,0 +1,10 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The flagged native workspace could read/search but refused direct edit_document calls from the application bridge.",
+  "after": "Direct native tool calls use captured matching, syntax/schema validation, canonical planning and one gated transaction. Revision-bound baselines and actual landed echoes support subsequent calls. Per-session queues preserve received read/write order, while replaced documents remain isolated.",
+  "reason": "Application-only integration over the existing private adapter and Apache native operations. No shared schema, journal, codec, provider, native operation or public API changes. Application tests live outside the fork: app:src/hooks/chat/docxEditExecutor.test.ts, app:src/hooks/chat/docxFileRouting.test.ts and app:scripts/docx-native/harness/direct-edits.test.ts. The policy accepts only fork test paths; I03 records the exact external application commands, fixtures and two-real-session evidence.",
+  "tests": [],
+  "changeset": null,
+  "migration": null
+}

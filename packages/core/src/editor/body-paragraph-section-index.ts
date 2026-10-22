@@ -7,10 +7,11 @@
 import type { TreeDocxSessionView } from '../binding/tree-session.ts';
 import { numberingFlowBlocks } from '../layout/hidden-paragraph-mark.ts';
 import { enumerateDocumentSections } from '../layout/section-properties.ts';
-import { storyBlocks } from '../layout/story-roots.ts';
+import { storyBlocks, paragraphMergeGroupOf } from '../layout/story-roots.ts';
 import { DEPENDENCY_KEY_IDS, ORIGIN_IDS } from '../store/registry/frozen-ids.ts';
 import type { TreeModelChange } from '../store/store/tree-store.ts';
 import type { OoxmlNode, OoxmlPart } from '../store/package/ooxml-tree.ts';
+import { findNode } from '../store/package/ooxml-edit.ts';
 
 const MAX_WALK_DEPTH = 32;
 
@@ -45,7 +46,8 @@ function collectParagraphs(
 ): void {
   if (node.kind === 'textValue' || depth > MAX_WALK_DEPTH) return;
   if (node.kind === 'paragraph') {
-    if (!into.has(node.id)) into.set(node.id, sectionIndex);
+    const members = paragraphMergeGroupOf(node)?.members ?? [node];
+    for (const member of members) if (!into.has(member.id)) into.set(member.id, sectionIndex);
     return;
   }
   for (const child of node.children) collectParagraphs(child, sectionIndex, into, depth + 1);
@@ -136,7 +138,13 @@ function preservesBodySectionMap(change: TreeModelChange): boolean {
 
 function onBodySectionModelChange(entry: BodySectionCacheEntry, change: TreeModelChange): void {
   if (change.story && change.story.kind !== 'body') return;
-  if (preservesBodySectionMap(change)) return;
+  // An empty retained source can become visible through a text-local peer edit.
+  // Its previously unmapped identity now belongs to the survivor's effective section.
+  if (
+    preservesBodySectionMap(change) &&
+    (!entry.map || change.dirty.every((id) => entry.map!.has(id)))
+  )
+    return;
   entry.map = null;
 }
 
@@ -172,6 +180,8 @@ export function bodyParagraphSectionIndexForSession(
   part: OoxmlPart,
   paragraphId: string
 ): number | null {
-  if (!paragraphId.startsWith(`${part.name}#`)) return null;
+  // Collaboration can assign opaque node IDs without the source part's parse prefix.
+  if (!paragraphId.startsWith(`${part.name}#`) && findNode(part, paragraphId)?.kind !== 'paragraph')
+    return null;
   return bodySectionMapForSession(session, part).get(paragraphId) ?? null;
 }

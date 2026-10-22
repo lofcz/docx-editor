@@ -1,0 +1,16 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Concurrent record-label text edits could merge into NewNew middle. A single shared XML attribute avoided text corruption but lost an actor's earlier label after undo, redo, then peer undo.",
+  "after": "Each private label update appends an immutable version-1 labelValue child with one JSON string attribute. Document order selects one complete authored label. Independent native child identities preserve each actor's update through peer-preserving history. Created label/data text and native Word parts stay unchanged.",
+  "reason": "The existing generic XML model, attributes, node operations, history, journals, and transport already preserve these independent children. The private payload reader owns the bounded versioned label interpretation. Legacy records need no room conversion or eager initialization; their created label remains the fallback until an update exists. Older private readers ignore the labelValue children, so all private application participants must upgrade together before using these writes. No such reader is published as a native package. Native participants preserve the opaque private metadata. Future private label versions refuse interpretation and writes without removing source data. Bound property controls keep their established reconciliation requirement; no Word binding is repointed. R48 separately owns the restored native insertion wrapper exposed by stronger same-group decision undo tests.",
+  "tests": [
+    "packages/sciobot/src/blocks/payload-label.test.ts",
+    "packages/sciobot/src/blocks/payload-label-collaboration.test.ts",
+    "packages/sciobot/src/review/accept-group-collaboration.test.ts",
+    "packages/sciobot/src/blocks/payload-fields.test.ts",
+    "packages/sciobot/src/blocks/payload-opc-codec.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

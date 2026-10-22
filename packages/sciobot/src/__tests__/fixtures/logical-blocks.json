@@ -1,0 +1,642 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "revision": "9693712df1b2722328904e7fa2c5f28b51c3e3e7",
+    "files": {
+      "src/lib/ai-review-diff.test.ts": "c319408f7dca1bd5eb07a37d330804febb14d8ce1b9ad3845919fa01b5b58c66",
+      "src/lib/ai-review-diff.ts": "5233a070f764270172fdc03ca7df564e16483aac958acfce42748ebf1fa7d701",
+      "src/components/lesson-plan/md-rules.ts": "62cb5ac18e0ba83e0be143a723fca69226487cd460938b8a4dabc6b2603d21a3",
+      "src/components/source/md-rules.ts": "188ecb608c5961b081781f505de80f339c9730563c96e0cd390fa213139ddc4e",
+      "src/lib/lesson-plan-deserialize.ts": "6293cee4ca05d2c8a43fdf7f1cc7407aed3792623fe1571d1c959a7376107700",
+      "node_modules/@platejs/markdown/package.json": "9a8532f073ee54ec8a3e0e5d0d07bea7aca0dfdbe19bda0bdf822cb2edc02729",
+      "node_modules/@platejs/markdown/dist/index.js": "13895f7d3dbfa56826459d8993b1ff4c542a70f21aa7b61a0fdb17b03b7aa0d9"
+    }
+  },
+  "cases": [
+    {
+      "name": "inline title",
+      "markdown": "<lesson_title grade=\"7\">Lesson</lesson_title>",
+      "original": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "text": "Lesson"
+                }
+              ],
+              "type": "lesson_title",
+              "grade": 7
+            }
+          ],
+          "type": "p"
+        }
+      ],
+      "normalized": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "text": "Lesson"
+                }
+              ],
+              "type": "p"
+            }
+          ],
+          "type": "lesson_title",
+          "grade": 7
+        }
+      ]
+    },
+    {
+      "name": "flow title",
+      "markdown": "<lesson_title grade=\"7\">\n\nLesson\n\n</lesson_title>",
+      "original": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "text": "Lesson"
+                }
+              ],
+              "type": "p"
+            }
+          ],
+          "type": "lesson_title",
+          "grade": 7
+        }
+      ],
+      "normalized": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "text": "Lesson"
+                }
+              ],
+              "type": "p"
+            }
+          ],
+          "type": "lesson_title",
+          "grade": 7
+        }
+      ]
+    },
+    {
+      "name": "standalone source",
+      "markdown": "<source title=\"Book\" url=\"https://example.org\" type=\"verified\" />",
+      "original": [
+        {
+          "type": "p",
+          "children": [
+            {
+              "text": ""
+            },
+            {
+              "type": "source",
+              "sourceType": "web",
+              "url": "https://example.org",
+              "title": "Book",
+              "trust": "verified",
+              "children": [
+                {
+                  "text": ""
+                }
+              ]
+            },
+            {
+              "text": ""
+            }
+          ]
+        }
+      ],
+      "normalized": [
+        {
+          "type": "p",
+          "children": [
+            {
+              "text": ""
+            },
+            {
+              "type": "source",
+              "sourceType": "web",
+              "url": "https://example.org",
+              "title": "Book",
+              "trust": "verified",
+              "children": [
+                {
+                  "text": ""
+                }
+              ]
+            },
+            {
+              "text": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "source excerpt",
+      "markdown": "<source title=\"Book\" url=\"https://example.org\">\n\nQuoted words.\n\n</source>",
+      "original": [
+        {
+          "type": "source_excerpt",
+          "url": "https://example.org",
+          "title": "Book",
+          "sourceType": "web",
+          "children": [
+            {
+              "children": [
+                {
+                  "text": "Quoted words."
+                }
+              ],
+              "type": "p"
+            }
+          ]
+        }
+      ],
+      "normalized": [
+        {
+          "type": "source_excerpt",
+          "url": "https://example.org",
+          "title": "Book",
+          "sourceType": "web",
+          "children": [
+            {
+              "children": [
+                {
+                  "text": "Quoted words."
+                }
+              ],
+              "type": "p"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "empty paired source",
+      "markdown": "<source title=\"Book\" url=\"https://example.org\"></source>",
+      "original": [
+        {
+          "type": "p",
+          "children": [
+            {
+              "text": ""
+            },
+            {
+              "type": "source",
+              "sourceType": "web",
+              "url": "https://example.org",
+              "title": "Book",
+              "children": [
+                {
+                  "text": ""
+                }
+              ]
+            },
+            {
+              "text": ""
+            }
+          ]
+        }
+      ],
+      "normalized": [
+        {
+          "type": "p",
+          "children": [
+            {
+              "text": ""
+            },
+            {
+              "type": "source",
+              "sourceType": "web",
+              "url": "https://example.org",
+              "title": "Book",
+              "children": [
+                {
+                  "text": ""
+                }
+              ]
+            },
+            {
+              "text": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "recap goals lists",
+      "markdown": "<recap_goals>\n\n3. First goal\n4. Second goal\n\n</recap_goals>",
+      "original": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "text": "First goal"
+                }
+              ],
+              "type": "p"
+            },
+            {
+              "children": [
+                {
+                  "text": "Second goal"
+                }
+              ],
+              "type": "p"
+            }
+          ],
+          "type": "recap_goals"
+        }
+      ],
+      "normalized": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "text": "First goal"
+                }
+              ],
+              "type": "p"
+            },
+            {
+              "children": [
+                {
+                  "text": "Second goal"
+                }
+              ],
+              "type": "p"
+            }
+          ],
+          "type": "recap_goals"
+        }
+      ]
+    },
+    {
+      "name": "recap goals legacy prefixes",
+      "markdown": "<recap_goals>\n\n1\\. First goal\n\n2\\. Second goal\n\n</recap_goals>",
+      "original": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "text": "First goal"
+                }
+              ],
+              "type": "p"
+            },
+            {
+              "children": [
+                {
+                  "text": "Second goal"
+                }
+              ],
+              "type": "p"
+            }
+          ],
+          "type": "recap_goals"
+        }
+      ],
+      "normalized": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "text": "First goal"
+                }
+              ],
+              "type": "p"
+            },
+            {
+              "children": [
+                {
+                  "text": "Second goal"
+                }
+              ],
+              "type": "p"
+            }
+          ],
+          "type": "recap_goals"
+        }
+      ]
+    },
+    {
+      "name": "recap curriculum",
+      "markdown": "<recap_curriculum framework=\"RVP\">\n\n- One\n- Two\n\n</recap_curriculum>",
+      "original": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "text": "One"
+                }
+              ],
+              "type": "p"
+            },
+            {
+              "children": [
+                {
+                  "text": "Two"
+                }
+              ],
+              "type": "p"
+            }
+          ],
+          "type": "recap_curriculum",
+          "framework": "RVP"
+        }
+      ],
+      "normalized": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "text": "One"
+                }
+              ],
+              "type": "p"
+            },
+            {
+              "children": [
+                {
+                  "text": "Two"
+                }
+              ],
+              "type": "p"
+            }
+          ],
+          "type": "recap_curriculum",
+          "framework": "RVP"
+        }
+      ]
+    },
+    {
+      "name": "recap materials",
+      "markdown": "<recap_materials>\n\n- One\n- Two\n\n</recap_materials>",
+      "original": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "text": "One"
+                }
+              ],
+              "type": "p"
+            },
+            {
+              "children": [
+                {
+                  "text": "Two"
+                }
+              ],
+              "type": "p"
+            }
+          ],
+          "type": "recap_materials"
+        }
+      ],
+      "normalized": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "text": "One"
+                }
+              ],
+              "type": "p"
+            },
+            {
+              "children": [
+                {
+                  "text": "Two"
+                }
+              ],
+              "type": "p"
+            }
+          ],
+          "type": "recap_materials"
+        }
+      ]
+    },
+    {
+      "name": "recap adaptations",
+      "markdown": "<recap_adaptations>\n\n- One\n- Two\n\n</recap_adaptations>",
+      "original": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "text": "One"
+                }
+              ],
+              "type": "p"
+            },
+            {
+              "children": [
+                {
+                  "text": "Two"
+                }
+              ],
+              "type": "p"
+            }
+          ],
+          "type": "recap_adaptations"
+        }
+      ],
+      "normalized": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "text": "One"
+                }
+              ],
+              "type": "p"
+            },
+            {
+              "children": [
+                {
+                  "text": "Two"
+                }
+              ],
+              "type": "p"
+            }
+          ],
+          "type": "recap_adaptations"
+        }
+      ]
+    },
+    {
+      "name": "ordinary activity list",
+      "markdown": "<activity name=\"A\" duration=\"5\">\n\n3. One\n4. Two\n\n</activity>",
+      "original": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "text": "One"
+                }
+              ],
+              "type": "p",
+              "indent": 1,
+              "listStyleType": "decimal",
+              "listStart": 3,
+              "listRestartPolite": 3
+            },
+            {
+              "children": [
+                {
+                  "text": "Two"
+                }
+              ],
+              "type": "p",
+              "indent": 1,
+              "listStyleType": "decimal",
+              "listStart": 4
+            }
+          ],
+          "type": "lesson_activity",
+          "name": "A",
+          "duration": 5
+        }
+      ],
+      "normalized": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "text": "One"
+                }
+              ],
+              "type": "p",
+              "indent": 1,
+              "listStyleType": "decimal",
+              "listRestartPolite": 3
+            },
+            {
+              "children": [
+                {
+                  "text": "Two"
+                }
+              ],
+              "type": "p",
+              "indent": 1,
+              "listStyleType": "decimal"
+            }
+          ],
+          "type": "lesson_activity",
+          "name": "A",
+          "duration": 5
+        }
+      ]
+    },
+    {
+      "name": "list continuation",
+      "markdown": "3. First\n\n   Continuation.\n\n   - Child\n\n4. Second",
+      "original": [
+        {
+          "children": [
+            {
+              "text": "First"
+            }
+          ],
+          "type": "p",
+          "indent": 1,
+          "listStyleType": "decimal",
+          "listStart": 3,
+          "listRestartPolite": 3
+        },
+        {
+          "children": [
+            {
+              "text": "Continuation."
+            }
+          ],
+          "type": "p",
+          "indent": 2
+        },
+        {
+          "children": [
+            {
+              "text": "Child"
+            }
+          ],
+          "type": "p",
+          "indent": 2,
+          "listStyleType": "disc"
+        },
+        {
+          "children": [
+            {
+              "text": "Second"
+            }
+          ],
+          "type": "p",
+          "indent": 1,
+          "listStyleType": "decimal",
+          "listStart": 4
+        }
+      ],
+      "normalized": [
+        {
+          "children": [
+            {
+              "text": "First"
+            }
+          ],
+          "type": "p",
+          "indent": 1,
+          "listStyleType": "decimal",
+          "listRestartPolite": 3
+        },
+        {
+          "children": [
+            {
+              "text": "Continuation."
+            }
+          ],
+          "type": "p"
+        },
+        {
+          "children": [
+            {
+              "text": "Child"
+            }
+          ],
+          "type": "p",
+          "indent": 1,
+          "listStyleType": "disc"
+        },
+        {
+          "children": [
+            {
+              "text": "Second"
+            }
+          ],
+          "type": "p",
+          "indent": 1,
+          "listStyleType": "disc"
+        }
+      ]
+    }
+  ]
+}

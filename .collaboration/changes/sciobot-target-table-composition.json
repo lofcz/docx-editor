@@ -1,0 +1,17 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The complete-target composer refused retained table content and topology edits, and unchanged text lost parser positions during mention processing.",
+  "after": "The private composer retains native table/row/cell bindings, plans existing cell edits, and carries inserted row fragments or original row deletion commands. Unique row hints anchor alignment while repeated rows pair by position. Untransformed text retains original parser coordinates. Native test oracles verify the seventh C01 case and imported fidelity. D15 remains open for remaining table and complete-target routes.",
+  "reason": "Pure private planning and test-only immutable application change. No native operation, live executor, shared state, payload schema, or journal format changes. New row IDs remain deferred. Guarded execution and two-session mutation checks remain separate required leaves. The private package needs no published changeset or public API extraction.",
+  "tests": [
+    "packages/sciobot/src/diff/target-table.test.ts",
+    "packages/sciobot/src/diff/plan-target.test.ts",
+    "packages/sciobot/src/diff/bind-source.test.ts",
+    "packages/sciobot/src/diff/inserted-table-rows.test.ts",
+    "packages/sciobot/src/diff/inserted-table-columns.test.ts",
+    "packages/sciobot/src/projection/parse-target.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

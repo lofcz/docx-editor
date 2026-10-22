@@ -592,7 +592,7 @@ describe('record-only Markdown export', () => {
     expect(result.markdown).toBe('# Review **carefully**');
   });
 
-  test('uses sanitized external links and leaves internal, refused, and unresolved links inert', async () => {
+  test('uses sanitized external and bookmark links and leaves refused and unresolved links inert', async () => {
     const body =
       '<w:p><w:hyperlink r:id="rWeb"><w:r><w:t>safe</w:t></w:r></w:hyperlink>' +
       '<w:hyperlink r:id="rEncoded"><w:r><w:t>encoded</w:t></w:r></w:hyperlink>' +
@@ -615,7 +615,7 @@ describe('record-only Markdown export', () => {
     expect(result.markdown).toContain('[encoded](https://example.com/my%20file.pdf)');
     expect(result.markdown).toContain('[slash](https://example.com/a%5Cb)');
     expect(result.markdown).toContain('[  ](https://example.com/space)');
-    expect(result.markdown).toContain('badinside missing'.replace(' ', ''));
+    expect(result.markdown).toContain('bad[inside](#bookmark)missing');
     expect(result.markdown).not.toContain('javascript:');
     const html = micromark(result.markdown, {
       extensions: [gfm()],

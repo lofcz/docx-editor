@@ -1,0 +1,15 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Private D27 link/unlink plans refuse. Ordered text coordinates stop at the first text stage. Native retargeting refuses current tracked text, and source-run coalescing can change rejection partitions.",
+  "after": "Private first-wave and later-wave programs lower link/unlink and retarget edits through the same admitted coordinator. Every dependent range reads current native Proposed slices. Final current native sites supply compound receipts. Native retargeting composes exact current text sites; deletion-only source links remain in Original outside later linked copies. Source runs retain their original boundaries.",
+  "reason": "No shared field, native Word revision kind, custom OOXML ownership field, or record version changes. Relationships allocate in actual package stages. The same program serves detached admission and live execution; no preview IDs or canonical snapshots are installed. Exact pre-stage site IDs exclude unselected revisions from ownership. Run formatting follows link geometry, and unrelated paragraph format records remain separate. Existing native callbacks scope current-site ownership. Test-only real collaboration transport uses the EigenPal Pro License; no Pro or editor-api production source is imported or copied. R42/R19 stay incomplete. Three permanent exact A01-output assertions still fail for compound text/link programs: native tracked text retains different run partitions and empty-property containers. Assertions are not relaxed. R43 boundary ordering also stays open. No incomplete archive is installed in the application.",
+  "tests": [
+    "packages/core/src/store/__tests__/tracked-hyperlink-structure.test.ts",
+    "packages/sciobot/src/review/track-hyperlink-structure.test.ts",
+    "packages/sciobot/src/review/recompose-links.test.ts",
+    "packages/sciobot/src/review/track-hyperlink-structure-collaboration.test.ts"
+  ],
+  "changeset": "tracked-hyperlink-structure",
+  "migration": null
+}

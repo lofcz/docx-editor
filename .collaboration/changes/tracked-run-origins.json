@@ -1,0 +1,21 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Compound tracked text/link acceptance retained native run splits and lost imported run/text metadata in source surgery. Equal properties alone could not identify original run boundaries.",
+  "after": "Native authoring records bounded versioned run/text provenance and original whitespace settings inside the actual transaction. Exact selected revision scopes normalize compatible source fragments during native decisions. Source text and run slices retain original shells. Unrelated controls, opaque metadata, prior Word addresses, and foreign property snapshots stay excluded. Clipboard insertion gives copied active scopes new identities and removes orphaned known source provenance. Native insertion retains source run namespace bindings before validation.",
+  "reason": "The writer emits existing generic attributes, text changes, and child-list primitives. It changes no transport, shared-field encoding, materializer, or repair rule. Rendering and native review classification ignore these extension attributes. Native authoring consumes provenance only at exact selected sites, before publishing the resulting ordinary canonical primitives. The evaluated test transport is unchanged. Unknown versions and malformed metadata remain opaque. Source tests do not establish published-artifact or installed application coverage; those gates remain open, together with released mixed-reader verification, later proposals after older-reader decisions, and R43 placement. The installed-core ordinary-edit checks pass both new-core decisions, but a later proposal refuses after the older core decides the first proposal. That lifecycle remains unfinished; this decision is not a release certification.",
+  "tests": [
+    "packages/core/src/store/__tests__/run-origins.test.ts",
+    "packages/core/src/store/__tests__/run-origins-protection.test.ts",
+    "packages/core/src/store/__tests__/run-origins-metadata.test.ts",
+    "packages/core/src/store/__tests__/tracked-insertion-run-properties.test.ts",
+    "packages/sciobot/src/review/track-hyperlink-structure.test.ts",
+    "packages/sciobot/src/review/track-hyperlink-source-boundaries.test.ts",
+    "packages/sciobot/src/review/track-hyperlink-copy-text-history.test.ts",
+    "packages/sciobot/src/review/track-hyperlink-imported-metadata.test.ts",
+    "packages/core/src/store/__tests__/run-origins-clipboard.test.ts",
+    "packages/sciobot/src/review/track-hyperlink-clipboard.test.ts"
+  ],
+  "changeset": "tracked-run-origins",
+  "migration": null
+}

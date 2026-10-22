@@ -1,0 +1,14 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Populating a fresh tracked row created redundant inline insertions beside inherited empty formatted seed runs. Direct row creation omitted empty property holders that tracked row acceptance retained.",
+  "after": "Fresh row content belongs to its row insertion revision. Both modes create the same fresh row and cell property holders. Existing cell value changes retain inline tracking.",
+  "reason": "The existing canonical primitive journal expresses the changed tree operations. No shared fields, transport formats, codecs, or operation kinds changed. All emitted WordprocessingML shapes already exist.",
+  "tests": [
+    "packages/core/src/automation/__tests__/table-authoring.test.ts",
+    "packages/core/src/store/__tests__/table-row-ops.test.ts",
+    "packages/sciobot/src/diff/table-rows-collaboration.test.ts"
+  ],
+  "changeset": "tracked-row-content-shape",
+  "migration": null
+}

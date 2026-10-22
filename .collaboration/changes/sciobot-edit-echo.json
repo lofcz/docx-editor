@@ -1,0 +1,10 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The private adapter had no landed-projection edit echo formatter.",
+  "after": "A pure formatter validates working projection identity and revision, then emits the application's copyable excerpt from the landed projection.",
+  "reason": "Echo generation reads detached projections and a current revision token. It has no editor, shared state, or operation callback and changes no document or collaboration formats.",
+  "tests": ["packages/sciobot/src/tools/edit-echo.test.ts"],
+  "changeset": null,
+  "migration": null
+}

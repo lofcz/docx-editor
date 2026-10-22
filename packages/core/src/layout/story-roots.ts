@@ -28,8 +28,14 @@ import type {
 } from '@docx-editor.dev/core/store';
 import { MAX_CONTENT_CONTROL_NESTING } from '../store/package/content-control-walk.ts';
 import { blockStoryContainerChildren } from '../store/package/story-blocks.ts';
+import {
+  hiddenRetiredParagraphs,
+  isJoinedParagraph,
+  withoutRetiredParagraphMetadata,
+} from '../store/package/retired-paragraph.ts';
 import { WML_NAMESPACE_URI } from '../store/package/ooxml-tree.ts';
 import { paragraphOffsetIndex } from '../store/store/tree-op-segments.ts';
+import { tableParagraphMergeTarget } from '../store/store/paragraph-mark-merge.ts';
 import { piecesOfParagraph } from './field-projection.ts';
 import { createRecentRootCache } from '../store/store/recent-root-cache.ts';
 import {
@@ -125,7 +131,12 @@ function withMergedParagraphs(
   displayMode: RevisionDisplayMode,
   authorFilter?: RevisionAuthorFilter
 ): readonly ParentedBlock[] {
-  if (displayMode === 'all-markup' && !revisionFilterSelects(authorFilter)) return parented;
+  if (
+    displayMode === 'all-markup' &&
+    !revisionFilterSelects(authorFilter) &&
+    !parented.some(({ block }) => isJoinedParagraph(block))
+  )
+    return parented;
   const out: ParentedBlock[] = [];
   let pendingMembers: OoxmlElement[] = [];
   let pendingParent: string | null = null;
@@ -142,6 +153,26 @@ function withMergedParagraphs(
     // never merges out of `w:sdtContent`; matching that keeps the two answers the same.
     if (pendingMembers.length > 0 && parentKey !== pendingParent) endRun();
     if (block.kind !== 'paragraph' || isUnsupportedLayoutParagraph(block)) {
+      // A removed mark also joins into a following table's first cell, as Word export does.
+      const target =
+        block.kind === 'table' && pendingMembers.length > 0
+          ? tableParagraphMergeTarget(block)
+          : undefined;
+      if (target && memberIsAddressable(target, displayMode, authorFilter)) {
+        const merged = mergedParagraph([...pendingMembers, target], target);
+        const replace = (node: OoxmlNode): OoxmlNode => {
+          if (node.id === target.id) return merged;
+          if (node.kind === 'textValue') return node;
+          const children = node.children.map(replace);
+          return children.some((child, index) => child !== node.children[index])
+            ? ({ ...node, children } as OoxmlElement)
+            : node;
+        };
+        out.push({ ...entry, block: replace(block) as OoxmlElement });
+        pendingMembers = [];
+        pendingParent = null;
+        continue;
+      }
       // A table between two mark-removed paragraphs is a container boundary too.
       endRun();
       out.push(entry);
@@ -184,8 +215,14 @@ function withMergedParagraphs(
 }
 
 function mergedTrailingRun(members: readonly OoxmlElement[]): readonly OoxmlElement[] {
-  if (members.length < 2) return members;
-  const survivor = members[members.length - 1]!;
+  if (members.length === 0) return members;
+  const last = members[members.length - 1]!;
+  // The next owner can be explicitly deleted. The remaining last paragraph then keeps its mark.
+  const survivor =
+    last.kind === 'paragraph' && isJoinedParagraph(last)
+      ? withoutRetiredParagraphMetadata(last)
+      : last;
+  if (members.length === 1) return [survivor];
   return [mergedParagraph(members, survivor)];
 }
 
@@ -290,7 +327,9 @@ interface ParentedBlock {
 function flowBlocksWithParent(children: readonly OoxmlNode[]): readonly ParentedBlock[] {
   const blocks: ParentedBlock[] = [];
   const collect = (nodes: readonly OoxmlNode[], nest: number, parentKey: string): void => {
+    const hidden = hiddenRetiredParagraphs(nodes);
     for (const child of nodes) {
+      if (hidden.has(child.id)) continue;
       if (child.kind === 'textValue') continue;
       const opaque = unsupportedBlockParagraph(child);
       if (opaque) {

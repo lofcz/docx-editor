@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Complete-target table plans refused explicit HTML colspan/rowspan targets and content written into native merge placeholders; emptying a cell deleted its only paragraph.",
+  "after": "The composer expands explicit spans into slots, compares partitions with native merge geometry, and emits existing mergeTableCells or splitTableCell commands. A private split-cell plan intent fills new split cells after native allocation in the direct executor. Emptied cells keep one blank paragraph.",
+  "reason": "Private planning and direct-execution change built from existing native merge/split operations. No native operation, shared state, payload schema, or journal format changes.",
+  "tests": [
+    "packages/sciobot/src/diff/target-table-merges.test.ts",
+    "packages/sciobot/src/diff/target-table-merges-collaboration.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

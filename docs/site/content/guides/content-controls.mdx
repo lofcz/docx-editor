@@ -9,6 +9,8 @@ Word content controls (`w:sdt`, structured document tags) mark regions you can f
 
 The editor displays control boundaries and provides typed operations to read and edit controls. It preserves unsupported properties, including `w:dataBinding` and `w15:repeatingSection`, when you save.
 
+Controls around table rows publish boundaries for the row, its controlled cells, and nested block content. These boundaries retain document order and inherited locks. Wrapping a row keeps its native table geometry.
+
 <Callout>
   Content controls are addressed by `tag`, `title`, or `id`. They are not `{{ mustache }}` template
   variables; the two systems can coexist in one document.
@@ -340,6 +342,10 @@ See [Compose control popups](/docs/2.x/guides/customize-dialogs#compose-the-valu
 Picture picks reject files larger than 32 MiB before reading them. A failed pick keeps a file input and an error message available for retry. Canceling the session, closing the editor, or entering suggesting mode during decoding prevents the write. Successful replacement clears placeholder state and removes a temporary control in the same undo step as the image change.
 
 Replacement preserves the drawing's width, height, crop, name, and alt text. A source image with a different aspect ratio can stretch within that frame. Resize or crop the result as needed, and review the alt text when the new image depicts different content.
+
+## Paint your own controls inside pages
+
+If you paint interactive controls inside a page, such as a form beside a control, add the `data-docx-host-ui` attribute to their container. The editor leaves presses, focus, and text selection in that container to your controls. It hides the document caret while one of your controls has focus, and a selected picture ignores keys typed there. The document selection stays unchanged until you select document text again. Stop the propagation of key, input, clipboard, and composition events at the container, so the document keyboard shortcuts do not receive them.
 
 ## Next steps
 

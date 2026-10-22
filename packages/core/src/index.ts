@@ -157,9 +157,16 @@ export type { RevisionMarkupDialog, RevisionMarkupDialogHost } from './contracts
 // ─── Capability modules (what `@docx-editor.dev/pro` implements) ─────────────
 export type {
   CollectReviewItems,
+  ContentTypeIndex,
+  OoxmlExternalTarget,
+  RelationshipRecord,
+  TargetMode,
+  OoxmlPackage,
   EditorModule,
   ReviewModelInput,
   ReviewModuleContribution,
+  RevisionIdReservation,
+  RevisionIdReservationSource,
   RevisionDisplayMode,
 } from './contracts/modules.ts';
 

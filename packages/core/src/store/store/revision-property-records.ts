@@ -1,3 +1,4 @@
+import { isRetiredParagraphMarker } from '../package/retired-paragraph.ts';
 import type { OoxmlNode } from '../package/ooxml-tree.ts';
 import { WML_NAMESPACE_URI } from '../package/ooxml-tree.ts';
 
@@ -14,6 +15,7 @@ export const REVISION_PROPERTY_CONTAINERS: ReadonlyMap<string, string> = new Map
 ]);
 
 export function preservedRevisionProperty(wrapperName: string, child: OoxmlNode): boolean {
+  if (wrapperName === 'pPrChange' && isRetiredParagraphMarker(child)) return true;
   if (child.kind === 'textValue' || child.namespaceUri !== WML_NAMESPACE_URI) return false;
   const name = child.localName;
   switch (wrapperName) {

@@ -741,6 +741,13 @@ export interface TableCellFragmentRecord {
   readonly id: string;
   /** First grid column this cell occupies. */
   readonly gridColumn: number;
+  /** Logical column after omitted revision columns and unused boundaries are compacted. */
+  readonly resolvedGridColumn?: number;
+  /** Logical span in that compacted grid; physical gridSpan and geometry remain unchanged. */
+  readonly resolvedGridSpan?: number;
+  /** Total columns in the logical resolved grid, including preserved row gaps. */
+  readonly resolvedGridColumnCount?: number;
+
   /** Stored grid index for an RTL cell; gridColumn indexes physical columnEdges. */
   readonly logicalGridColumn?: number;
   /** Canonical `w:gridCol` node id for this cell's start column, when authored. */

@@ -33,6 +33,7 @@ import {
   type SemanticSelection,
 } from '../layout/semantic-interaction.ts';
 import { wordRangeAt } from './surface-selection-ops.ts';
+import { isInHostUi } from './dom-selection.ts';
 import {
   absorbAtomicControls,
   atomicRangeAt,
@@ -589,6 +590,8 @@ export function createPointerController(
     // Anything but the primary button keeps its native behaviour: a right-click must reach the
     // context menu with the existing selection intact, not move the caret out from under it.
     if (event.button !== 0) return;
+    // Host UI keeps its native press: focus, text selection, and its own controls.
+    if (isInHostUi(event.target as Node | null)) return;
     // Content-control widgets: prevent mousedown so chrome does not steal the caret, then
     // dispatch the engine-level interaction (checkbox toggle, dropdown menu, date picker).
     // (Furniture clicks continue below into the scoped header/footer / note enter paths.)

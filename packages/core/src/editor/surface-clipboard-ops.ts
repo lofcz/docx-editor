@@ -70,6 +70,8 @@ export interface SurfaceClipboardDeps {
   paragraphOrder(): readonly string[];
   /** The collaboration actor, or undefined when no session is attached. */
   actorId(): string | undefined;
+  /** The history group of the commit in flight, so a fragment package unit can join it. */
+  historyGroup?(): import('../store/store/history-group.ts').HistoryGroup | undefined;
   /**
    * The collaboration write gate the typing lane asks: the refusal code, or null when the
    * gate admits — always null with no session attached, so the non-collaborative paste
@@ -334,6 +336,7 @@ export function createSurfaceClipboardOps(deps: SurfaceClipboardDeps): SurfaceCl
           } as TreeApplyResult;
         }
         const actorId = deps.actorId();
+        const historyGroup = deps.historyGroup?.();
         const result = session.applyFragmentPaste(
           { kind: 'body' },
           {
@@ -343,6 +346,7 @@ export function createSurfaceClipboardOps(deps: SurfaceClipboardDeps): SurfaceCl
             lastMarkCovered,
             priorOps: plan.ops as unknown as TreeDocOp[],
             ...(actorId !== undefined ? { actorId } : {}),
+            ...(historyGroup !== undefined ? { historyGroup } : {}),
           }
         );
         landed = result.ok;

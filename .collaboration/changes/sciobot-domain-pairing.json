@@ -1,0 +1,14 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The private sibling planner did not apply application domain identity rules during recursive pairing.",
+  "after": "A pure domain matcher validates native child windows, retains matching wrappers, and returns structural gaps plus explicit content, property, and atomic pairing work.",
+  "reason": "The private reader constructs detached plans and paths without applying native or shared operations. The sibling policy callbacks are trusted application code and never enter model input or serialized plans.",
+  "tests": [
+    "packages/sciobot/src/diff/domain-containers.test.ts",
+    "packages/sciobot/src/diff/domain-strategies.test.ts",
+    "packages/sciobot/src/diff/sibling-blocks.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

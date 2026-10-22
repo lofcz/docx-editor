@@ -20,7 +20,10 @@ exportMarkdownFrom(
   options?: MarkdownProjectionOptions
 ): Promise<MarkdownExportResult>;
 
-exportMarkdownLayout(layout: ExportSemanticLayout): MarkdownExportResult;
+exportMarkdownLayout(
+  layout: ExportSemanticLayout,
+  options?: MarkdownLayoutOptions
+): MarkdownExportResult;
 ```
 
 Use `exportMarkdown` for a single export. To reuse or inspect a layout, use `openDocumentForExport` and `exportMarkdownFrom`. To convert a layout after disposing its session, use `exportMarkdownLayout`.
@@ -29,6 +32,8 @@ Use `exportMarkdown` for a single export. To reuse or inspect a layout, use `ope
 
 ```ts
 interface MarkdownExportResult {
+  /** Native logical-text provenance, present only with sourceMap: true. */
+  readonly sourceMap?: MarkdownSourceMap;
   /** Unique extracted assets, or [] when images are disabled. */
   readonly media: readonly MarkdownImageAsset[];
   /** Omitted content and font problems. */
@@ -152,7 +157,19 @@ Artifact IDs, occurrence indexes, page IDs, and offsets are valid only within th
 
 Tracked changes also participate in layout through `displayMode`: `all-markup` (default) keeps inserted and deleted text visible, `proposed` includes pending insertions and hides pending deletions, and `original` hides pending insertions and shows pending deletions. Revision mode applies to the whole document.
 
+### Native text source map
+
+Set `sourceMap: true` on `exportMarkdown`, `exportMarkdownFrom`, or `exportMarkdownLayout`. The result includes an immutable map for `result.markdown`, with UTF-16 coordinates. Its `sources` contain story scopes, paragraph IDs, native extents, and Markdown extents. Its `paragraphs` include empty paragraphs that emit no text. Paragraph `markdownStart` and `markdownEnd` locate complete Markdown constructs, including generated headings, list markers, quotes, and marks. Use source slice boundaries for native text positions; construct extents can include generated syntax. The `tables` array maps canonical table IDs to complete GFM or nested HTML constructs, including generated separators. Repeated physical fragments share one logical entry. Empty cells do not remove their table's construct range.
+
+For slices with `exact: true`, read the ordered `markdownBoundaries`. Interpolate only when adjacent source and Markdown distances are equal. Other gaps contain escaping or generated syntax without interior native text boundaries. Reject edit positions that split a surrogate pair. Generated drawing and note fallbacks have `exact: false`. Generated emphasis delimiters and table separators have no native text positions.
+
+The map applies only to this logical export snapshot, not page strings or later document revisions. The map provides read-only provenance. It does not implement document editing. `toMarkdownJSON` and portable bundles retain the map when requested.
+
+Built-in `Quote` and `IntenseQuote` paragraph styles emit Markdown blockquotes outside table cells. Generated quote prefixes have no native text positions. Custom inherited quote styles require application normalization.
+
 ## Images and portable delivery
+
+Hyperlinks preserve sanitized external destinations, internal bookmark references, and authored tooltips as Markdown titles. Bookmark references remain present when their target is absent. Unsafe and unresolved external relationships remain plain text. Generated link syntax does not enter mapped native label offsets.
 
 Enable `images: true` for relative image links and `result.media` bytes. Use `{ images: { resolveUrl, maxTotalBytes } }` for custom delivery. The default extracted-byte limit is 64 MiB; image extraction is opt-in. `exportMarkdownFrom(session, options)` accepts the same image options and an abort signal.
 
@@ -164,22 +181,32 @@ Set `images: { syntax: 'html' }` to emit `<img>` tags with each occurrence's dis
 
 `MarkdownExportOptions` contains layout and resource controls for the export snapshot.
 
-| Option                  | Meaning                                                                                       |
-| ----------------------- | --------------------------------------------------------------------------------------------- |
-| `displayMode`           | Tracked-change projection: `all-markup` (default), `proposed`, or `original`.                 |
-| `signal`                | Aborts resource waits and later layout work.                                                  |
-| `resourceTimeoutMs`     | Deadline applied separately to initial font provisioning and each layout resource wait.       |
-| `reuseAcrossRevisions`  | Retains state for live/caller-measured sessions; document-aware byte sessions reject `true`.  |
-| `fonts`                 | Font configuration or resolver. Earlier entries win. Requires immutable DOCX bytes.           |
-| `fallbackFonts`         | Fallback after bundled fonts. Requires DOCX bytes. Accepts `googleFonts()`.                   |
-| `fontPolicy`            | `best-effort` (default), or `strict` to require all four static faces and no origin failures. |
-| `onFontResolution`      | Receives the font-resolution report.                                                          |
-| `measurer`              | Custom text measurer. Overrides font resolution.                                              |
-| `producer`              | Stable identity for a host-owned measurer and its cache entries.                              |
-| `imageDecodePort`       | Custom image metadata decoder. Defaults to the Node.js decoder.                               |
-| `convertPreservedImage` | Converts preserved EMF, WMF, or TIFF bytes to a supported raster format.                      |
+| Option | Meaning |
+| --- | --- |
+| `displayMode` | Tracked-change projection: `all-markup` (default), `proposed`, or `original`. |
+| `sourceMap` | Include sparse native UTF-16 source boundaries for logical Markdown. Default: false. |
+| `tableSyntax` | `gfm` by default. Use `html` for structured cells or `auto` for spans and rich cells. |
+| `signal` | Aborts resource waits and later layout work. |
+| `resourceTimeoutMs` | Deadline applied separately to initial font provisioning and each layout resource wait. |
+| `reuseAcrossRevisions` | Retains state for live/caller-measured sessions; document-aware byte sessions reject `true`. |
+| `fonts` | Font configuration or resolver. Earlier entries win. Requires immutable DOCX bytes. |
+| `fallbackFonts` | Fallback after bundled fonts. Requires DOCX bytes. Accepts `googleFonts()`. |
+| `fontPolicy` | `best-effort` (default), or `strict` to require all four static faces and no origin failures. |
+| `onFontResolution` | Receives the font-resolution report. |
+| `measurer` | Custom text measurer. Overrides font resolution. |
+| `producer` | Stable identity for a host-owned measurer and its cache entries. |
+| `imageDecodePort` | Custom image metadata decoder. Defaults to the Node.js decoder. |
+| `convertPreservedImage` | Converts preserved EMF, WMF, or TIFF bytes to a supported raster format. |
 
 `fontPolicy` and `onFontResolution` require immutable DOCX bytes with the default document-aware font resolution. Both options throw `TypeError` when used with a live `HeadlessDocumentView` or combined with a custom `measurer`, including an explicit `fontPolicy: 'best-effort'`.
+
+### Table syntax
+
+Set `tableSyntax: 'html'` for multiline MDX cell content. Cell values remain Markdown inside HTML table wrappers. Use an MDX parser or another consumer that supports Markdown inside HTML cells. Source maps remain available. The option works with `exportMarkdown`, `exportMarkdownFrom`, and `exportMarkdownLayout`.
+
+Use `tableSyntax: 'auto'` to preserve merged cells and structured content while keeping simple tables in GFM. HTML cells retain `colspan` and `rowspan`; continuation cells do not repeat their content. All export entry points retain source maps in this mode. The default remains GFM.
+
+Resolved revision records retain physical grid coordinates for layout and expose logical grid coordinates for export. Deleted columns therefore do not become empty Markdown columns. Canonical cells and physical geometry stay intact.
 
 ### Tracked changes
 

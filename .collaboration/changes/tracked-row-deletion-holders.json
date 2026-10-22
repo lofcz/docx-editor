@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "A tracked row deletion created missing w:trPr/w:tcPr holders with ordinary node IDs, so rejecting it left empty holders that the imported row never had.",
+  "after": "Holders that a tracked row deletion creates use mark-family node IDs. Resolving the deletion removes a holder that held only resolved markers; source holders, including empty ones, stay.",
+  "reason": "The writer emits the same WordprocessingML and existing canonical primitives; only local allocation identity changes. Replicas and reopened files see ordinary holder IDs and keep an emptied holder, which is semantically equivalent and converges.",
+  "tests": [
+    "packages/core/src/store/__tests__/tracked-row-deletion-holders.test.ts",
+    "packages/sciobot/src/review/track-table-rows.test.ts",
+    "packages/sciobot/src/review/track-table-rows-collaboration.test.ts"
+  ],
+  "changeset": "tracked-row-deletion-holders",
+  "migration": null
+}

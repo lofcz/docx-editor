@@ -669,6 +669,18 @@ export function authorableCoverageFixtures(): JournalCoverageFixture[] {
         return result.ok ? { ok: true } : { ok: false, reason: result.reason };
       },
     },
+    story('insertParagraphs', plainDoc(), (store) => ({
+      op: 'insertParagraphs',
+      parentId: findKind(store.bodyStore().part, 'body').id,
+      beforeId: firstParagraphId(store),
+      paragraphs: [
+        findKind(
+          parseBodyPart('<w:p><w:r><w:t>New sibling</w:t></w:r></w:p>'),
+          'paragraph'
+        ) as import('../package/ooxml-tree.ts').OoxmlParagraphNode,
+      ],
+      revision: QA,
+    })),
     story('insertDrawing', drawingDoc(INLINE_DRAWING), (store) => ({
       op: 'insertDrawing',
       paragraphId: paragraphIds(store)[1]!,

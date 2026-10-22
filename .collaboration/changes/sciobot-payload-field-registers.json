@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Every block payload update rewrote the record's JSON data text. Shared text merges character by character, so concurrent writes to one block produced a third string: a garbled value, or JSON that failed to parse and invalidated the whole payload store.",
+  "after": "Updates to an existing record leave its created data text intact and record each changed attribute or top-level field as a name/value XML attribute pair on its own attr or field child element of the record node. Readers apply those registers over the created JSON. Disjoint fields merge; one register value wins per field in every session; a valueless register removes a key; duplicate registers resolve to the last in document order and the next write removes the rest.",
+  "reason": "The private application payload format gains register elements inside the existing urn:sciobot:docx:blocks:1 node. Records without registers read exactly as before, and record creation is unchanged, so existing documents and creation paths need no migration. Readers older than this change would ignore registers and read the created JSON; no such reader has shipped. Native custom XML helpers, published codecs, journals, and transport implementation remain unchanged. The record label remains shared text and can merge character by character; the next write rewrites it.",
+  "tests": [
+    "packages/sciobot/src/blocks/payload-fields.test.ts",
+    "packages/sciobot/src/blocks/payload-concurrency-collaboration.test.ts",
+    "packages/sciobot/src/blocks/payload-part.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

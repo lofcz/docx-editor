@@ -1,3 +1,4 @@
+import { preservesInsertedParagraphProperty } from './inserted-paragraph-property-presence.ts';
 import { WML_NAMESPACE_URI, type OoxmlElement, type OoxmlNode } from '../package/ooxml-tree.ts';
 import { isRangeMarkerKind } from '../package/ooxml-shared.ts';
 
@@ -24,8 +25,9 @@ export function isInertMarker(node: OoxmlNode): boolean {
 }
 
 /**
- * A `w:pPr` or `w:rPr` that a paragraph-mark stamp created and that held nothing but the
- * revision marks this resolution drops.
+ * A `w:pPr` or `w:rPr` that a paragraph-mark stamp created, or a `w:trPr`/`w:tcPr` that a
+ * tracked row deletion, column change, or table property change created, and that held nothing
+ * but the revision marks this resolution drops (or a property record it restores to empty).
  *
  * Proposing a paragraph-mark change writes those containers when the paragraph had none, with
  * ids in the `mark` family, so resolving the proposal removes them again. Rejecting a proposed
@@ -42,7 +44,9 @@ export function isInertMarker(node: OoxmlNode): boolean {
 export function heldOnlyResolvedMarks(
   node: OoxmlNode,
   dropped: ReadonlySet<string>,
-  accepted: ReadonlySet<string> = new Set()
+  accepted: ReadonlySet<string> = new Set(),
+  /** Property histories this resolution restores; a created table holder can empty that way. */
+  restored: ReadonlySet<string> = new Set()
 ): boolean {
   if (node.kind === 'textValue' || node.children.length === 0) return false;
   if (acceptedOnly(node, accepted)) return true;
@@ -53,9 +57,21 @@ export function heldOnlyResolvedMarks(
     (node.kind === 'generic' &&
       node.namespaceUri === WML_NAMESPACE_URI &&
       node.localName === 'rPr');
-  if (node.kind !== 'paragraphProperties' && !markProperties) return false;
+  // A tracked row deletion creates missing row/cell holders the same way.
+  const tableProperties =
+    node.kind === 'generic' &&
+    node.namespaceUri === WML_NAMESPACE_URI &&
+    (node.localName === 'trPr' || node.localName === 'tcPr');
+  if (node.kind !== 'paragraphProperties' && !markProperties && !tableProperties) return false;
+  // A created table holder whose restored record empties it never existed before the proposal,
+  // even when the proposal also wrote new properties into it.
+  if (tableProperties && node.children.some((child) => restored.has(child.id))) return true;
   return node.children.every((child) =>
-    markProperties ? dropped.has(child.id) : heldOnlyResolvedMarks(child, dropped)
+    markProperties
+      ? dropped.has(child.id)
+      : tableProperties
+        ? dropped.has(child.id) || restored.has(child.id)
+        : heldOnlyResolvedMarks(child, dropped)
   );
 }
 
@@ -66,7 +82,14 @@ function acceptedOnly(node: OoxmlNode, accepted: ReadonlySet<string>): boolean {
     node.kind === 'runProperties' ||
     (node.namespaceUri === WML_NAMESPACE_URI && node.localName === 'rPr')
   )
-    return node.children.every((child) => accepted.has(child.id));
+    return node.children.every(
+      (child) => accepted.has(child.id) && !preservesInsertedParagraphProperty(child, 'rPr')
+    );
   if (node.kind !== 'paragraphProperties') return false;
-  return node.children.every((child) => acceptedOnly(child, accepted));
+  return node.children.every(
+    (child) =>
+      !child.children.some(
+        (mark) => accepted.has(mark.id) && preservesInsertedParagraphProperty(mark, 'pPr')
+      ) && acceptedOnly(child, accepted)
+  );
 }

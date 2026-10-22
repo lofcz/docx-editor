@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Package hooks ran before native operations, so application receipts could not retain newly allocated revision identities atomically.",
+  "after": "Optional post-operation package hooks read actual native identities before the same transaction publishes. Failures roll back operations and package changes together.",
+  "reason": "The native transaction emits the existing canonical primitives, actor attribution, and history tokens. Shared journal and transport formats remain unchanged. Default package hooks keep their previous order.",
+  "tests": [
+    "packages/core/src/editor/__tests__/automation-post-ops.test.ts",
+    "packages/sciobot/src/review/track-properties.test.ts",
+    "packages/sciobot/src/review/track-properties-collaboration.test.ts"
+  ],
+  "changeset": "automation-post-operation-package-hooks",
+  "migration": null
+}

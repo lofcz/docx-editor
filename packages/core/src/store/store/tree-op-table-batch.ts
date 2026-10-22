@@ -1,3 +1,4 @@
+import type { EditOptions } from '../package/ooxml-edit.ts';
 // Apply table authoring as one semantic operation. Intermediate node IDs stay inside the store.
 import { paragraphTextOf } from './tree-op-apply.ts';
 import { planInsertTable, planTableMutation } from './table-authoring-plan.ts';
@@ -5,7 +6,7 @@ import type { OoxmlNode, OoxmlPart } from '../package/ooxml-tree.ts';
 import type { TreeDocOp, TreeOpRejection, TreeOpResult } from './tree-op-types.ts';
 import { TEXT_DEPS } from './tree-op-nodes.ts';
 type Op = Extract<TreeDocOp, { op: 'authorTable' }>;
-function plan(part: OoxmlPart, op: Op) {
+function plan(part: OoxmlPart, op: Op, options?: EditOptions) {
   const reads = { part, root: part.root, rawText: (id: string) => paragraphTextOf(part, id) };
   const action = op.action;
   return action.kind === 'insert'
@@ -18,7 +19,7 @@ function plan(part: OoxmlPart, op: Op) {
         action.values,
         op.revision
       )
-    : planTableMutation(reads, action.tableId, action.mutation, op.revision);
+    : planTableMutation(reads, action.tableId, action.mutation, op.revision, options);
 }
 function malformed(op: Op): boolean {
   return (
@@ -57,9 +58,9 @@ function ids(root: OoxmlNode): Set<string> {
   }
   return out;
 }
-export function applyTableAuthoring(part: OoxmlPart, op: Op): TreeOpResult {
+export function applyTableAuthoring(part: OoxmlPart, op: Op, options?: EditOptions): TreeOpResult {
   if (malformed(op)) return { ok: false, reason: 'invalidArgs' };
-  const result = plan(part, op);
+  const result = plan(part, op, options);
   if (!result.ok)
     return {
       ok: false,

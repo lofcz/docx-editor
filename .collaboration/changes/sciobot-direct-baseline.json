@@ -1,0 +1,10 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Every direct call read a fresh working projection before planning.",
+  "after": "DirectTargetBaseline reuses the projection a direct edit landed while the editor still holds that exact package and revision; any other commit forces a fresh read.",
+  "reason": "Editor-local read cache keyed by package identity and revision. No document, shared state, payload, or journal writes.",
+  "tests": ["packages/sciobot/src/ai/direct-baseline.test.ts"],
+  "changeset": null,
+  "migration": null
+}

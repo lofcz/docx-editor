@@ -1,0 +1,16 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Tracked table operations could not share ordered dependent text stages. Resolved column deletions retained phantom Markdown columns, and the private reader flattened merged cell geometry.",
+  "after": "The private stage lowers native table edits in one transaction. Native tracked merges resolve only text wrappers written by that same transaction. Derived cell records distinguish resolved logical grid coordinates from physical geometry. An opt-in auto Markdown table syntax preserves spans and structured cells while plain tables remain GFM.",
+  "reason": "No canonical field, OPC record, collaboration protocol, or history schema changes. Resolved grid metadata is read-only layout data. Existing physical coordinates and canonical nodes remain authoritative. TransactionRevisionIds proves that copied merge content belongs to the current transaction; earlier same-author revisions remain unsupported. Published additions are optional layout fields and an export option. A minor fixed-group Changeset covers those API additions; no data migration is required. The private recomposition decision separately covers table stages and ownership guards.",
+  "tests": [
+    "packages/core/src/layout/__tests__/table-cell-revision-view.test.ts",
+    "packages/core/src/store/__tests__/tracked-table-merges.test.ts",
+    "packages/docx-to-markdown/test/markdown-html-tables.test.ts",
+    "packages/sciobot/src/review/recompose-tables.test.ts",
+    "packages/sciobot/src/review/recompose-tables-collaboration.test.ts"
+  ],
+  "changeset": "tracked-mixed-table-views",
+  "migration": null
+}

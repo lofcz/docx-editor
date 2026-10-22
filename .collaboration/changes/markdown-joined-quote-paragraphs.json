@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Markdown export wrote each Quote or IntenseQuote paragraph as its own blockquote, so consecutive quote paragraphs read back as separate quotes.",
+  "after": "Consecutive paragraphs of one quote style join into one blockquote with `>` separator lines; source maps shift with the text and separator lines map to no native paragraph. Planned multi-paragraph block quotes now land through the private direct executor.",
+  "reason": "Read-only converter output change. It adds no document writes, operations, shared fields, or transport dependencies.",
+  "tests": [
+    "packages/docx-to-markdown/test/markdown-logical-source-map.test.ts",
+    "packages/sciobot/src/diff/fragment-seeds.test.ts"
+  ],
+  "changeset": "markdown-joined-quote-paragraphs",
+  "migration": null
+}

@@ -614,6 +614,8 @@ export function openDocumentForExport(
         bodyBlockLimit: undefined,
         // Export paints every field as one unit; the painted text is the same in both modes.
         fieldResults: 'atomic',
+        // Exported pages follow the document alone, never a live view's widget measurements.
+        blockReservations: undefined,
       } satisfies LayoutDocumentViewOptions & Record<keyof LayoutDocumentViewOptions, unknown>);
       if (!layoutHasPendingImages(layout)) {
         const restartedBeforePublish = restartOnRevisionDrift();

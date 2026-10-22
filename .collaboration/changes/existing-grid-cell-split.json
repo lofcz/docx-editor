@@ -1,0 +1,14 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Cell splits partitioned readable grid widths equally, which could add cuts when restoring original unequal grid slots.",
+  "after": "An optional native columnDistribution selects existing-grid partitioning. Original grid widths and IDs remain intact. The default equal-width split retains its behavior.",
+  "reason": "The argument selects local native planning. It emits existing canonical primitive mutations and existing WordprocessingML shapes. The shared journal schema, codecs, and operation kinds do not change. Two real sessions verify concurrency, undo/redo, reconnect, deletion during peer editing, remote geometry, payload retention, and save/reopen.",
+  "tests": [
+    "packages/core/src/store/__tests__/table-merge-split-ops.test.ts",
+    "packages/sciobot/src/diff/table-grid-split-collaboration.test.ts",
+    "packages/core/src/automation/__tests__/table-authoring.test.ts"
+  ],
+  "changeset": "existing-grid-cell-split",
+  "migration": null
+}

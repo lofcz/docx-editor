@@ -1,13 +1,23 @@
+import { validateTrackedHyperlinkStructure } from './tree-op-tracked-link-structure.ts';
 import { isInsertableText } from './tree-op-inline-elements.ts';
 import { validateSetLegacyDropdown } from './legacy-dropdown-fields.ts';
 import { validateBookmarkOp } from './tree-op-bookmarks.ts';
-import { validateHyperlinkRange } from './tree-op-hyperlink-range.ts';
+import {
+  MAX_HYPERLINK_ATTRIBUTE_LENGTH,
+  validateHyperlinkRange,
+  validateHyperlinkTarget,
+} from './tree-op-hyperlink-range.ts';
 import { validateSetFieldCode } from './tree-op-field-code.ts';
 import { validateFieldInsertion } from './tree-op-field-insert.ts';
 import { validateSetFieldResult } from './tree-op-field-result-write.ts';
 import { validateInsertEquation } from './tree-op-equation-insert.ts';
 import { validateTableAuthoring } from './tree-op-table-batch.ts';
 import { validateTableProperties } from './tree-op-table-authoring.ts';
+import { trackedHyperlinkRefusal } from './tree-op-tracked-hyperlink.ts';
+import {
+  isTablePropertyOp,
+  trackedTablePropertyRefusal,
+} from './tree-op-tracked-table-properties.ts';
 import { validateCommitTextFormField } from './tree-op-field-results.ts';
 import { textFormFieldForEdit } from './text-form-fields.ts';
 import { coveredTextFormDefinitionRefusal } from './text-form-field-deletion.ts';
@@ -29,6 +39,7 @@ import { isValidXmlText } from '../package/sinks.ts';
 import { isDangerousKey } from '../package/safe-record.ts';
 import { isAuthorableDataBinding } from '../package/custom-node-payloads.ts';
 import { validateDeleteBlock } from './tree-op-blocks.ts';
+import { invalidCharacterStyle } from './tree-op-properties.ts';
 import { validateSetRevisionAttribution } from './revision-author-change.ts';
 import {
   CONTENT_CONTROL_LOCKS,
@@ -79,6 +90,7 @@ import {
 import { validateMergeTableCells } from './tree-op-table-merge.ts';
 import { validateSplitTableCell } from './tree-op-table-split.ts';
 import { addressesMergedColumns, validateMergedColumnOp } from './tree-op-table-merged-columns.ts';
+import { trackedStructureRefusal } from './tree-op-tracked-table-merges.ts';
 import {
   bodyNodeOf,
   governingSectionOwnerId,
@@ -92,6 +104,7 @@ import {
 import { rangePartiallyOverlapsDrawingAtom } from '../package/drawing-projection.ts';
 import { isDrawingTreeDocOp, validateDrawingOp } from './tree-op-drawings.ts';
 import { validateInsertFragment } from './tree-op-fragment.ts';
+import { validateInsertParagraphs } from './tree-op-insert-paragraphs.ts';
 import {
   isParagraph,
   paragraphLength,
@@ -135,9 +148,6 @@ function validateProperties(
   }
   return null;
 }
-
-/** Longest `r:id`, `w:anchor` or `w:tooltip` an op may write. */
-const MAX_HYPERLINK_ATTRIBUTE_LENGTH = 512;
 
 /** Longest `w:pStyle` value an op may write — the same ceiling the styles reader applies. */
 const MAX_STYLE_ID_LENGTH = 128;
@@ -189,32 +199,6 @@ function rangeTouchesHyperlink(paragraph: OoxmlParagraphNode, start: number, end
   return segments.some(
     (segment) => linked.has(segment.runId) && segment.start < end && segment.end > start
   );
-}
-
-/**
- * The target half of an insert or a retarget: EXACTLY ONE of relationship or anchor, and
- * every value legal in XML.
- *
- * Both at once is refused rather than resolved by precedence. In a FILE that pair means "a
- * bookmark inside another document", which the read side honours; as an authored op it means
- * the caller does not know which it wants, and admitting it would write a link whose
- * behaviour depends on a resolution rule the caller never saw.
- */
-function validateHyperlinkTarget(op: {
-  readonly relationshipId?: string;
-  readonly anchor?: string;
-  readonly tooltip?: string;
-}): TreeOpRejection | null {
-  const hasRelationship = op.relationshipId !== undefined;
-  const hasAnchor = op.anchor !== undefined;
-  if (hasRelationship === hasAnchor) return 'invalid-property-value';
-  for (const value of [op.relationshipId, op.anchor, op.tooltip]) {
-    if (value === undefined) continue;
-    if (typeof value !== 'string' || value.length === 0) return 'invalid-property-value';
-    if (value.length > MAX_HYPERLINK_ATTRIBUTE_LENGTH) return 'invalid-property-value';
-    if (!isValidXmlText(value)) return 'invalid-property-value';
-  }
-  return null;
 }
 
 /**
@@ -401,6 +385,7 @@ export function validateTreeOp(
   if (op.op === 'insertFragment') {
     return validateInsertFragment(part, op);
   }
+  if (op.op === 'insertParagraphs') return validateInsertParagraphs(part, op);
 
   if (op.op === 'insertTable') {
     return validateInsertTable(part, op);
@@ -503,14 +488,27 @@ export function validateTreeOp(
     return validateDeleteBlock(part, op.blockId);
   }
   if (op.op === 'authorTable') return validateTableAuthoring(part, op);
+  if (isTablePropertyOp(op) && op.revision !== undefined) {
+    const { revision, ...plain } = op;
+    return (
+      validateTreeOp(part, plain as TreeDocOp) ??
+      trackedTablePropertyRefusal(part, { ...plain, revision } as Parameters<
+        typeof trackedTablePropertyRefusal
+      >[1])
+    );
+  }
   if (op.op === 'setTableProperties') return validateTableProperties(part, op);
   if (op.op === 'insertTableRow' || op.op === 'deleteTableRow') return validateTableRowOp(part, op);
   if (op.op === 'insertTableColumn' || op.op === 'deleteTableColumn') {
-    if (addressesMergedColumns(part, op)) return validateMergedColumnOp(part, op);
-    return validateTableColumnOp(part, op);
+    const refusal = addressesMergedColumns(part, op)
+      ? validateMergedColumnOp(part, op)
+      : validateTableColumnOp(part, op);
+    return refusal ?? trackedStructureRefusal(part, op);
   }
-  if (op.op === 'mergeTableCells') return validateMergeTableCells(part, op);
-  if (op.op === 'splitTableCell') return validateSplitTableCell(part, op);
+  if (op.op === 'mergeTableCells')
+    return validateMergeTableCells(part, op) ?? trackedStructureRefusal(part, op);
+  if (op.op === 'splitTableCell')
+    return validateSplitTableCell(part, op) ?? trackedStructureRefusal(part, op);
   if (
     op.op === 'setTableColumnWidths' ||
     op.op === 'setTableRightEdgeWidth' ||
@@ -549,6 +547,14 @@ export function validateTreeOp(
     return null;
   }
 
+  const trackedLink = validateTrackedHyperlinkStructure(part, op, options, validateTreeOp);
+  if (trackedLink !== undefined) return trackedLink;
+  if (op.op === 'setHyperlinkTarget' && op.revision !== undefined) {
+    const { revision, ...plain } = op;
+    return (
+      validateTreeOp(part, plain, options) ?? trackedHyperlinkRefusal(part, { ...plain, revision })
+    );
+  }
   if (op.op === 'setHyperlinkTarget' || op.op === 'removeHyperlink') {
     const link = findNode(part, op.linkId);
     if (!link) return 'unknown-paragraph';
@@ -834,6 +840,7 @@ export function validateTreeOp(
         const propertiesRejection = validateProperties(op.properties, RUN_PROPERTY_SET);
         if (propertiesRejection) return propertiesRejection;
       }
+      if (invalidCharacterStyle(op.characterStyle)) return 'invalid-property-value';
       if (op.revision !== undefined && invalidRevisionAttribution(op.revision)) {
         return 'invalid-property-value';
       }

@@ -1655,6 +1655,7 @@ export type FragmentMergeResult = {
 export interface FragmentPasteInput {
     readonly actorId?: string;
     readonly fragmentBytes: Uint8Array;
+    readonly historyGroup?: HistoryGroup;
     // (undocumented)
     readonly lastMarkCovered: boolean;
     // (undocumented)
@@ -2139,6 +2140,19 @@ export interface InsertEquationOp {
 }
 
 // @public
+export interface InsertFragmentOp {
+    // (undocumented)
+    readonly blocks: readonly OoxmlNode[];
+    readonly lastMarkCovered?: boolean;
+    // (undocumented)
+    readonly offset: number;
+    // (undocumented)
+    readonly op: 'insertFragment';
+    // (undocumented)
+    readonly paragraphId: string;
+}
+
+// @public
 export function insertPackageCustomNode(packageStore: TreePackageStore, write: InsertCustomNodeWrite, scope?: StoryScope, historyGroup?: HistoryGroup): CustomNodeWriteResult;
 
 // @public
@@ -2151,6 +2165,17 @@ export interface InsertPageFieldOp {
     readonly op: 'insertPageField';
     // (undocumented)
     readonly paragraphId: string;
+    readonly revision?: RevisionAttributionInput;
+}
+
+// @public
+export interface InsertParagraphsOp {
+    readonly beforeId: string | null;
+    // (undocumented)
+    readonly op: 'insertParagraphs';
+    readonly paragraphs: readonly OoxmlParagraphNode[];
+    // (undocumented)
+    readonly parentId: string;
     readonly revision?: RevisionAttributionInput;
 }
 
@@ -3615,6 +3640,12 @@ export class PrefixAllocator {
 }
 
 // @public
+export function prepareTrackedRunOrigins(part: OoxmlPart, paragraphId: string, ranges: readonly {
+    readonly end: number;
+    readonly start: number;
+}[]): TrackedRunOriginPreparation;
+
+// @public
 export type PreservedImageMime = 'image/tiff' | 'image/x-emf' | 'image/x-wmf';
 
 // @public
@@ -4081,6 +4112,13 @@ export type ReviewRevisionKind = 'insert' | 'delete'
 | 'structural';
 
 // @public
+export const REVISION_ID_RESERVATION_LIMITS: Readonly<{
+    maxIds: 250000;
+    maxParts: 10000;
+    maxStringLength: 4096;
+}>;
+
+// @public
 export interface RevisionAddress {
     // (undocumented)
     readonly author: string;
@@ -4142,6 +4180,17 @@ export type RevisionBatchSkipDetail = RevisionSiteRefusal | 'unrecorded-properti
 export type RevisionBatchSkipReason = 'unsupported-revision' | 'incomplete-group' | 'retained-structure' | 'unknown-revision';
 
 // @public
+export interface RevisionIdReservation {
+    // (undocumented)
+    readonly ids: readonly string[];
+    // (undocumented)
+    readonly partName: string;
+}
+
+// @public
+export type RevisionIdReservationSource = (pkg: OoxmlPackage) => readonly RevisionIdReservation[];
+
+// @public
 export function revisionItemsOf(part: OoxmlPart): readonly ReviewRevisionItem[];
 
 // @public
@@ -4190,6 +4239,9 @@ export const RUNTIME_PORT_IDS: {
 };
 
 // @public
+export function runWithRevisionIdReservations<T>(reservations: readonly RevisionIdReservation[], run: () => T): T;
+
+// @public
 export function sanitizeHref(raw: string): HrefProjection;
 
 // @public
@@ -4212,6 +4264,9 @@ export interface ScrubResult {
     // (undocumented)
     readonly removed: readonly ContentItem[];
 }
+
+// @public
+export function sealTrackedRunOrigins(part: OoxmlPart, paragraphId: string, scope: string, before: OoxmlPart): OoxmlPart;
 
 // @public
 export const SEARCH_MATCH_LIMIT = 2000;
@@ -4450,6 +4505,31 @@ export const TABLE_BORDER_STYLES: readonly ['single', 'dashed', 'dotted', 'doubl
 export type TableBorderStyle = (typeof TABLE_BORDER_STYLES)[number];
 
 // @public
+export type TableCellPropertyOp = {
+    readonly cellIds: readonly string[];
+    readonly op: 'setTableCellBorders';
+    readonly scope: 'none';
+    readonly tableId: string;
+    readonly target: TableBorderEdgeTarget;
+} | {
+    readonly cellIds: readonly string[];
+    readonly op: 'setTableCellBorders';
+    readonly scope: TableBorderEdgeTarget;
+    readonly spec: TableBorderSpecInput;
+    readonly tableId: string;
+} | {
+    readonly cellIds: readonly string[];
+    readonly color: TreeDocColorValue | null;
+    readonly op: 'setTableCellFill';
+    readonly tableId: string;
+} | {
+    readonly alignment: 'top' | 'center' | 'bottom';
+    readonly cellIds: readonly string[];
+    readonly op: 'setTableCellVerticalAlignment';
+    readonly tableId: string;
+};
+
+// @public
 export type TabStopWrite = ParagraphTabStop;
 
 // @public
@@ -4605,6 +4685,17 @@ export interface TocOutlineHeading {
 export function toSafeRecord(value: unknown, path?: string): unknown;
 
 // @public
+export function trackedReplacementLanding(paragraph: OoxmlParagraphNode, start: number, end: number, author: string, date: string | undefined): number;
+
+// @public
+export interface TrackedRunOriginPreparation {
+    // (undocumented)
+    readonly part: OoxmlPart;
+    // (undocumented)
+    readonly scope: string | null;
+}
+
+// @public
 export interface TransactionRevisionIds {
     mint(): string;
     wrote(key: string): void;
@@ -4618,7 +4709,7 @@ export interface TransportPort {
 }
 
 // @public
-export const TREE_DOC_OP_KINDS: readonly ["replaceStoryBlocks", "insertText", "deleteText", "setParagraphMarkRevision", "proposeParagraphMerge", "insertCommentMarker", "acceptRevision", "rejectRevision", "acceptAllRevisions", "rejectAllRevisions", "setRevisionAttribution", "insertTab", "insertHardBreak", "insertPageBreak", "insertPageField", "insertComplexField", "insertEquation", "setFieldCode", "setListLevel", "setListNumbering", "setParagraphTabStops", "setParagraphMarkProperties", "splitParagraph", "splitParagraphMany", "joinParagraphs", "setRunProperties", "setParagraphProperties", "setSectionProperties", "setSectionMark", "insertHyperlink", "setHyperlinkTarget", "removeHyperlink", "setMathEquation", "removeMathEquation", "setContentControlValue", "removeContentControl", "insertInlineContentControl", "addRepeatingSectionItem", "removeRepeatingSectionItem", "deleteBlock", "insertTable", "insertTableRow", "deleteTableRow", "insertTableColumn", "deleteTableColumn", "mergeTableCells", "splitTableCell", "setTableColumnWidths", "setTableRightEdgeWidth", "setTableRowHeight", "setTableProperties", "authorTable", "setTableCellBorders", "setTableCellFill", "setTableCellVerticalAlignment", "createHeaderFooter", "deleteHeaderFooter", "linkToPrevious", "unlinkFromPrevious", "setSectionFurnitureOptions", "setDocumentProtection", "setWatermark", "insertNote", "deleteNote", "convertNote", "convertAllNotes", "setNoteProperties", "setContentControlProperties", "insertContentControl", "insertFragment", "insertDrawing", "replaceDrawingResource", "deleteDrawing", "resizeDrawing", "cropDrawing", "positionDrawing", "setDrawingWrap", "setDrawingMetadata", "setDrawingLocks", "transformDrawing", "insertToc", "replaceTocResult", "rewriteTocPageNumbers", "refreshFieldResults", "setFieldResult", "setTextFormFieldDefault", "commitTextFormField", "setLegacyCheckbox", "setLegacyDropdown", "insertBuildingBlock", "insertBookmark", "deleteBookmark"];
+export const TREE_DOC_OP_KINDS: readonly ["replaceStoryBlocks", "insertText", "deleteText", "setParagraphMarkRevision", "proposeParagraphMerge", "insertCommentMarker", "acceptRevision", "rejectRevision", "acceptAllRevisions", "rejectAllRevisions", "setRevisionAttribution", "insertTab", "insertHardBreak", "insertPageBreak", "insertPageField", "insertComplexField", "insertEquation", "setFieldCode", "setListLevel", "setListNumbering", "setParagraphTabStops", "setParagraphMarkProperties", "splitParagraph", "splitParagraphMany", "joinParagraphs", "setRunProperties", "setParagraphProperties", "setSectionProperties", "setSectionMark", "insertHyperlink", "setHyperlinkTarget", "removeHyperlink", "setMathEquation", "removeMathEquation", "setContentControlValue", "removeContentControl", "insertInlineContentControl", "addRepeatingSectionItem", "removeRepeatingSectionItem", "deleteBlock", "insertTable", "insertTableRow", "deleteTableRow", "insertTableColumn", "deleteTableColumn", "mergeTableCells", "splitTableCell", "setTableColumnWidths", "setTableRightEdgeWidth", "setTableRowHeight", "setTableProperties", "authorTable", "setTableCellBorders", "setTableCellFill", "setTableCellVerticalAlignment", "createHeaderFooter", "deleteHeaderFooter", "linkToPrevious", "unlinkFromPrevious", "setSectionFurnitureOptions", "setDocumentProtection", "setWatermark", "insertNote", "deleteNote", "convertNote", "convertAllNotes", "setNoteProperties", "setContentControlProperties", "insertContentControl", "insertFragment", "insertParagraphs", "insertDrawing", "replaceDrawingResource", "deleteDrawing", "resizeDrawing", "cropDrawing", "positionDrawing", "setDrawingWrap", "setDrawingMetadata", "setDrawingLocks", "transformDrawing", "insertToc", "replaceTocResult", "rewriteTocPageNumbers", "refreshFieldResults", "setFieldResult", "setTextFormFieldDefault", "commitTextFormField", "setLegacyCheckbox", "setLegacyDropdown", "insertBuildingBlock", "insertBookmark", "deleteBookmark"];
 
 // @public
 export type TreeDocOp = SetFieldCodeOp | {
@@ -4732,6 +4823,7 @@ export type TreeDocOp = SetFieldCodeOp | {
     readonly op: 'joinParagraphs';
     readonly secondId: string;
 } | {
+    readonly characterStyle?: string | null;
     readonly end: number;
     readonly op: 'setRunProperties';
     readonly paragraphId: string;
@@ -4764,6 +4856,7 @@ export type TreeDocOp = SetFieldCodeOp | {
     readonly op: 'insertHyperlink';
     readonly paragraphId: string;
     readonly relationshipId?: string;
+    readonly revision?: RevisionAttributionInput;
     readonly start: number;
     readonly styleId?: string;
     readonly tooltip?: string;
@@ -4776,6 +4869,7 @@ export type TreeDocOp = SetFieldCodeOp | {
         readonly start: number;
     };
     readonly relationshipId?: string;
+    readonly revision?: RevisionAttributionInput;
     readonly tooltip?: string;
 } | {
     readonly linkId: string;
@@ -4784,6 +4878,7 @@ export type TreeDocOp = SetFieldCodeOp | {
         readonly end: number;
         readonly start: number;
     };
+    readonly revision?: RevisionAttributionInput;
 } | {
     readonly equationId: string;
     readonly linear: string;
@@ -4838,31 +4933,40 @@ export type TreeDocOp = SetFieldCodeOp | {
 } | {
     readonly gridColumnId: string;
     readonly op: 'insertTableColumn';
+    readonly revision?: RevisionAttributionInput;
     readonly tableId: string;
     readonly where: 'left' | 'right';
+    readonly widthTwips?: number;
 } | {
     readonly op: 'insertTableColumn';
     readonly referenceCellId: string;
+    readonly revision?: RevisionAttributionInput;
     readonly tableId: string;
     readonly where: 'left' | 'right';
+    readonly widthTwips?: number;
 } | {
     readonly gridColumnId: string;
     readonly op: 'deleteTableColumn';
+    readonly revision?: RevisionAttributionInput;
     readonly tableId: string;
 } | {
     readonly cellIds: readonly string[];
     readonly op: 'mergeTableCells';
+    readonly revision?: RevisionAttributionInput;
     readonly tableId: string;
 } | {
     readonly cellId: string;
+    readonly columnDistribution?: 'equal-width' | 'existing-grid';
     readonly columns: number;
     readonly op: 'splitTableCell';
+    readonly revision?: RevisionAttributionInput;
     readonly rows: number;
     readonly tableId: string;
 } | {
     readonly leftGridColumnId: string;
     readonly leftWidthTwips: number;
     readonly op: 'setTableColumnWidths';
+    readonly revision?: RevisionAttributionInput;
     readonly rightGridColumnId: string;
     readonly rightWidthTwips: number;
     readonly tableId: string;
@@ -4870,6 +4974,7 @@ export type TreeDocOp = SetFieldCodeOp | {
     readonly columnWidthTwips: number;
     readonly gridColumnId: string;
     readonly op: 'setTableRightEdgeWidth';
+    readonly revision?: RevisionAttributionInput;
     readonly tableId: string;
     readonly tableWidthTwips: number;
 } | {
@@ -4891,36 +4996,20 @@ export type TreeDocOp = SetFieldCodeOp | {
     readonly columnWidthsTwips?: readonly number[];
     readonly headerRowCount?: number;
     readonly op: 'setTableProperties';
+    readonly revision?: RevisionAttributionInput;
     readonly styleId?: string;
     readonly tableId: string;
 } | {
     readonly heightTwips: number;
     readonly op: 'setTableRowHeight';
+    readonly revision?: RevisionAttributionInput;
     readonly rowId: string;
     readonly tableId: string;
-} | {
-    readonly cellIds: readonly string[];
-    readonly op: 'setTableCellBorders';
-    readonly scope: 'none';
-    readonly tableId: string;
-    readonly target: TableBorderEdgeTarget;
-} | {
-    readonly cellIds: readonly string[];
-    readonly op: 'setTableCellBorders';
-    readonly scope: TableBorderEdgeTarget;
-    readonly spec: TableBorderSpecInput;
-    readonly tableId: string;
-} | {
-    readonly cellIds: readonly string[];
-    readonly color: TreeDocColorValue | null;
-    readonly op: 'setTableCellFill';
-    readonly tableId: string;
-} | {
-    readonly alignment: 'top' | 'center' | 'bottom';
-    readonly cellIds: readonly string[];
-    readonly op: 'setTableCellVerticalAlignment';
-    readonly tableId: string;
-} | {
+}
+/** Cell borders, fill, and vertical alignment; `revision` records old `w:tcPr` values. */
+| (TableCellPropertyOp & {
+    readonly revision?: RevisionAttributionInput;
+}) | {
     readonly evenAndOddHeaders?: boolean;
     readonly kind: 'header' | 'footer';
     readonly op: 'createHeaderFooter';
@@ -5012,13 +5101,7 @@ export type TreeDocOp = SetFieldCodeOp | {
     readonly op: 'setNoteProperties';
     readonly scope: 'document' | 'section';
     readonly sectionIndex?: number;
-} | {
-    readonly blocks: readonly OoxmlNode[];
-    readonly lastMarkCovered?: boolean;
-    readonly offset: number;
-    readonly op: 'insertFragment';
-    readonly paragraphId: string;
-} | {
+} | InsertFragmentOp | {
     readonly drawing: OoxmlDrawingNode;
     readonly offset: number;
     readonly op: 'insertDrawing';
@@ -5086,7 +5169,7 @@ export type TreeDocOp = SetFieldCodeOp | {
         readonly pageNumberText: string;
         readonly paragraphId: string;
     }[];
-} | SetTextFormFieldDefaultOp | CommitTextFormFieldOp | SetLegacyCheckboxOp | SetLegacyDropdownOp | InsertBuildingBlockOp | InsertBookmarkOp | DeleteBookmarkOp | {
+} | SetTextFormFieldDefaultOp | CommitTextFormFieldOp | SetLegacyCheckboxOp | SetLegacyDropdownOp | InsertBuildingBlockOp | InsertParagraphsOp | InsertBookmarkOp | DeleteBookmarkOp | {
     readonly op: 'refreshFieldResults';
     readonly updates: readonly {
         readonly fieldNodeId: string;
@@ -5382,7 +5465,7 @@ export class TreePackageStore {
     get packageRevision(): number;
     partFor(scope: StoryScope): OoxmlPart | null;
     promoteStoryTransactionToPackageUnit(beforePackage: OoxmlPackage, store: TreeDocumentStore, checkpoint: TreeDocumentCheckpoint,
-    _beforeDepth?: number): TreeModelChange;
+    _beforeDepth?: number, historyGroup?: HistoryGroup): TreeModelChange;
     publishRemotePackage(pkg: OoxmlPackage, attribution: RemotePackageAttribution): PackageTransactResult;
     publishStoryWrite(change: TreeModelChange | null): TreeModelChange | null;
     // (undocumented)
@@ -5410,6 +5493,7 @@ export interface TreePackageStoreOptions {
     // (undocumented)
     readonly historyLimit?: number;
     readonly maxEditableStoryParts?: number;
+    readonly reservedRevisionIds?: RevisionIdReservationSource;
 }
 
 // @public
@@ -5431,6 +5515,7 @@ export interface TreeTransactionContext {
     apply(op: TreeDocOp): boolean;
     applyPackage(edit: (pkg: OoxmlPackage) => OoxmlPackage): boolean;
     applyTo(partName: string, op: TreeDocOp): boolean;
+    currentPackage(): OoxmlPackage;
     selectionAfter(selection: SelectionMark | null): void;
     selectionBefore(selection: SelectionMark | null): void;
 }

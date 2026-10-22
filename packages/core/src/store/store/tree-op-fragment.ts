@@ -1,3 +1,5 @@
+import { isPackageEditRefusal } from './package-edit-refusal.ts';
+import { freshenCopiedRunOrigins } from './run-origin-clipboard.ts';
 // `insertFragment` — the clipboard fragment's atomic landing (rich-clipboard-fidelity 2.1).
 //
 // The op carries BLOCKS ONLY, staying JSON-safe like every TreeDocOp; the resource merge
@@ -38,10 +40,27 @@ import {
 import { rejectContentEdit } from './tree-op-validate-controls.ts';
 import { applyTreeOp } from './tree-op-apply.ts';
 import { equationsOfAtom, isOmmlDisplay } from '../package/omml-display.ts';
-import type { TreeDocOp, TreeOpEffect, TreeOpRejection, TreeOpResult } from './tree-op-types.ts';
+import type { TreeOpEffect, TreeOpRejection, TreeOpResult } from './tree-op-types.ts';
 import { recordSetNamespaceBinding } from '../package/canonical-primitive-capture.ts';
 
-export type InsertFragmentOp = Extract<TreeDocOp, { readonly op: 'insertFragment' }>;
+/**
+ * Insert clipboard-fragment blocks at a paragraph position, atomically.
+ *
+ * Blocks only — resources (styles, numbering, media, rels, note parts) merge through
+ * the package-edit path in the same transaction, and the whole commit is promoted to
+ * a package undo unit. A merged edge paragraph takes the properties of the paragraph
+ * mark that ends it: the fragment's first mark leading, the host's original mark
+ * trailing. Nodes receive fresh ids at apply.
+ * @public
+ */
+export interface InsertFragmentOp {
+  readonly op: 'insertFragment';
+  readonly paragraphId: string;
+  readonly offset: number;
+  readonly blocks: readonly OoxmlNode[];
+  /** True when the fragment's last paragraph mark travelled (its paragraph stays whole). */
+  readonly lastMarkCovered?: boolean;
+}
 
 /** Fragment budgets: a hostile payload cannot force unbounded tree work. */
 export const MAX_FRAGMENT_INSERT_BLOCKS = 50_000;
@@ -156,7 +175,10 @@ export function withRequiredNamespaceBindings(
     ...part.root,
     namespaceBindings: [
       ...part.root.namespaceBindings,
-      ...[...additions].map(([prefix, namespaceUri]) => ({ prefix, namespaceUri })),
+      ...[...additions].map(([prefix, namespaceUri]) => ({
+        prefix,
+        namespaceUri,
+      })),
     ],
   } as typeof part.root;
   // Same id, same children — only the bindings changed. Carry the index like every op
@@ -175,7 +197,10 @@ function withParentBindings(node: OoxmlNode, parent: OoxmlElement): OoxmlNode {
   const ownPrefixes = new Set(node.namespaceBindings.map((binding) => binding.prefix));
   const inherited = parent.namespaceBindings.filter((binding) => !ownPrefixes.has(binding.prefix));
   if (inherited.length === 0) return node;
-  return { ...node, namespaceBindings: [...inherited, ...node.namespaceBindings] };
+  return {
+    ...node,
+    namespaceBindings: [...inherited, ...node.namespaceBindings],
+  };
 }
 
 function inlineChildrenOf(paragraph: OoxmlElement): readonly OoxmlNode[] {
@@ -233,7 +258,14 @@ export function applyInsertFragment(
   const counter = { value: 0 };
   // The clones land beside the host paragraph (or inside it), so its scope decides the prefix.
   const hostPrefix = w14PrefixInScopeAt(hostPart, host);
-  const blocks = op.blocks.map((block, index) =>
+  let independent: readonly OoxmlNode[];
+  try {
+    independent = freshenCopiedRunOrigins(op.blocks, MAX_FRAGMENT_NODES, MAX_FRAGMENT_DEPTH);
+  } catch (error) {
+    if (isPackageEditRefusal(error)) return { ok: false, reason: error.reason };
+    throw error;
+  }
+  const blocks = independent.map((block, index) =>
     withFreshParaIds(
       cloneWithNewIds(block, nextId),
       paraIds,

@@ -1,3 +1,5 @@
+import { isInHostUi } from './dom-selection.ts';
+
 /**
  * Which surface work the performance diagnostics time: the presses a person makes and the
  * layouts an edit causes, never modifier keys alone or the layouts that loading causes.
@@ -14,6 +16,8 @@ const LOADING_LAYOUTS = ['opening', 'fonts', 'drawing-resources'] as const;
 
 /** Whether a key or pointer press counts as a press a person waits on. */
 export function timedPress(event: Event): boolean {
+  // Host UI input is the host's own work, not an editor press.
+  if (isInHostUi(event.target as Node | null)) return false;
   return !MODIFIER_KEYS.has((event as KeyboardEvent).key);
 }
 

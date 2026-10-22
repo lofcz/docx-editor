@@ -1,0 +1,10 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The tracked TreeDocOp union referenced TableCellPropertyOp without exporting that type from the store entry point.",
+  "after": "The store entry point exports the existing TableCellPropertyOp type.",
+  "reason": "Type-only export. Runtime operations, serialized documents, journals, codecs, and collaboration behavior stay unchanged.",
+  "tests": [],
+  "changeset": "export-cell-property-operation",
+  "migration": null
+}

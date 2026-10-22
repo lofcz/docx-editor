@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "revision": "da9081adad1b54d17d9f24647adfd117bdffb942",
+    "files": {
+      "src/lib/agent-edit-feedback.ts": "6e76980d3e16bc4774ab289f612b52669914cb60ba50f63da03273fb702f6365",
+      "src/lib/agent-edit-feedback.test.ts": "ec12673e859376d9d7ca1f7407abe4827dc5f3999a8fadfc1874277ed40bf1a3",
+      "src/hooks/chat/useWorkspaceEditBridge.ts": "1371f04ef6e77296b0580a59ecc083e80f00a8a3c9f6202841736cb36e9c8748"
+    }
+  },
+  "cases": [
+    {
+      "name": "one changed line with context",
+      "before": "a\nb\nc\nd\ne",
+      "after": "a\nb\nCHANGED\nd\ne",
+      "message": "Updated document excerpt around your change (plain text — you may copy old_string for a follow-up edit directly from it):\n<document_excerpt>\na\nb\nCHANGED\nd\ne\n</document_excerpt>"
+    },
+    {
+      "name": "insert at start",
+      "before": "One\nTwo",
+      "after": "New\nOne\nTwo",
+      "message": "Updated document excerpt around your change (plain text — you may copy old_string for a follow-up edit directly from it):\n<document_excerpt>\nNew\nOne\nTwo\n</document_excerpt>"
+    },
+    {
+      "name": "insert at end",
+      "before": "One\nTwo",
+      "after": "One\nTwo\nNew",
+      "message": "Updated document excerpt around your change (plain text — you may copy old_string for a follow-up edit directly from it):\n<document_excerpt>\nOne\nTwo\nNew\n</document_excerpt>"
+    },
+    {
+      "name": "delete at start",
+      "before": "Deleted\nOne\nTwo",
+      "after": "One\nTwo",
+      "message": "Updated document excerpt around your change (plain text — you may copy old_string for a follow-up edit directly from it):\n<document_excerpt>\nOne\nTwo\n</document_excerpt>"
+    },
+    {
+      "name": "delete at end",
+      "before": "One\nTwo\nDeleted",
+      "after": "One\nTwo",
+      "message": "Updated document excerpt around your change (plain text — you may copy old_string for a follow-up edit directly from it):\n<document_excerpt>\nOne\nTwo\n</document_excerpt>"
+    },
+    {
+      "name": "empty landed result",
+      "before": "Deleted",
+      "after": "",
+      "message": "Updated document excerpt around your change (plain text — you may copy old_string for a follow-up edit directly from it):\n<document_excerpt>\n\n</document_excerpt>"
+    },
+    {
+      "name": "no-op",
+      "before": "One\nTwo\nThree\nFour",
+      "after": "One\nTwo\nThree\nFour",
+      "message": "Updated document excerpt around your change (plain text — you may copy old_string for a follow-up edit directly from it):\n<document_excerpt>\nThree\nFour\n</document_excerpt>"
+    },
+    {
+      "name": "unchanged blank lines",
+      "before": "One\n\nOld\n\nTail\n",
+      "after": "One\n\nNew\n\nTail\n",
+      "message": "Updated document excerpt around your change (plain text — you may copy old_string for a follow-up edit directly from it):\n<document_excerpt>\nOne\n\nNew\n\nTail\n</document_excerpt>"
+    },
+    {
+      "name": "multiple disjoint replacements",
+      "before": "One\nTwo\nThree\nFour\nFive",
+      "after": "ONE\nTwo\nThree\nFour\nFIVE",
+      "message": "Updated document excerpt around your change (plain text — you may copy old_string for a follow-up edit directly from it):\n<document_excerpt>\nONE\nTwo\nThree\nFour\nFIVE\n</document_excerpt>"
+    },
+    {
+      "name": "truncated replacement",
+      "before": "Old",
+      "after": "New 1\nNew 2\nNew 3\nNew 4\nNew 5\nNew 6\nNew 7\nNew 8\nNew 9\nNew 10\nNew 11\nNew 12\nNew 13\nNew 14\nNew 15\nNew 16\nNew 17\nNew 18\nNew 19\nNew 20\nNew 21\nNew 22\nNew 23\nNew 24\nNew 25\nNew 26\nNew 27\nNew 28\nNew 29\nNew 30\nNew 31\nNew 32\nNew 33\nNew 34\nNew 35\nNew 36\nNew 37\nNew 38\nNew 39\nNew 40\nNew 41\nNew 42\nNew 43\nNew 44\nNew 45\nNew 46\nNew 47\nNew 48\nNew 49\nNew 50\nNew 51\nNew 52\nNew 53\nNew 54\nNew 55\nNew 56\nNew 57\nNew 58\nNew 59\nNew 60\nNew 61\nNew 62\nNew 63\nNew 64\nNew 65\nNew 66\nNew 67\nNew 68\nNew 69\nNew 70\nNew 71\nNew 72\nNew 73\nNew 74\nNew 75\nNew 76\nNew 77\nNew 78\nNew 79\nNew 80\nNew 81\nNew 82\nNew 83\nNew 84\nNew 85\nNew 86\nNew 87\nNew 88\nNew 89\nNew 90\nNew 91\nNew 92\nNew 93\nNew 94\nNew 95\nNew 96\nNew 97\nNew 98\nNew 99\nNew 100",
+      "message": "Updated document excerpt around your change (plain text — you may copy old_string for a follow-up edit directly from it):\n<document_excerpt>\nNew 1\nNew 2\nNew 3\nNew 4\nNew 5\nNew 6\nNew 7\nNew 8\nNew 9\nNew 10\nNew 11\nNew 12\nNew 13\nNew 14\nNew 15\nNew 16\nNew 17\nNew 18\nNew 19\nNew 20\nNew 21\nNew 22\nNew 23\nNew 24\nNew 25\nNew 26\nNew 27\nNew 28\nNew 29\nNew 30\nNew 31\nNew 32\nNew 33\nNew 34\nNew 35\nNew 36\nNew 37\nNew 38\nNew 39\nNew 40\n… (excerpt truncated — use read_document for the rest)\n</document_excerpt>"
+    },
+    {
+      "name": "exact forty lines",
+      "before": "Old",
+      "after": "New 1\nNew 2\nNew 3\nNew 4\nNew 5\nNew 6\nNew 7\nNew 8\nNew 9\nNew 10\nNew 11\nNew 12\nNew 13\nNew 14\nNew 15\nNew 16\nNew 17\nNew 18\nNew 19\nNew 20\nNew 21\nNew 22\nNew 23\nNew 24\nNew 25\nNew 26\nNew 27\nNew 28\nNew 29\nNew 30\nNew 31\nNew 32\nNew 33\nNew 34\nNew 35\nNew 36\nNew 37\nNew 38\nNew 39\nNew 40",
+      "message": "Updated document excerpt around your change (plain text — you may copy old_string for a follow-up edit directly from it):\n<document_excerpt>\nNew 1\nNew 2\nNew 3\nNew 4\nNew 5\nNew 6\nNew 7\nNew 8\nNew 9\nNew 10\nNew 11\nNew 12\nNew 13\nNew 14\nNew 15\nNew 16\nNew 17\nNew 18\nNew 19\nNew 20\nNew 21\nNew 22\nNew 23\nNew 24\nNew 25\nNew 26\nNew 27\nNew 28\nNew 29\nNew 30\nNew 31\nNew 32\nNew 33\nNew 34\nNew 35\nNew 36\nNew 37\nNew 38\nNew 39\nNew 40\n</document_excerpt>"
+    },
+    {
+      "name": "unicode and escaped markdown",
+      "before": "A😀B\n\nOld",
+      "after": "A😀B\n\n\\*New\\* &amp; Ž",
+      "message": "Updated document excerpt around your change (plain text — you may copy old_string for a follow-up edit directly from it):\n<document_excerpt>\nA😀B\n\n\\*New\\* &amp; Ž\n</document_excerpt>"
+    },
+    {
+      "name": "list ordinals from landed normalization",
+      "before": "1. First\n\n2. Second",
+      "after": "1. Updated\n\n2. Second",
+      "message": "Updated document excerpt around your change (plain text — you may copy old_string for a follow-up edit directly from it):\n<document_excerpt>\n1. Updated\n\n2. Second\n</document_excerpt>"
+    }
+  ]
+}

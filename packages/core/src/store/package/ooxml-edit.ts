@@ -90,8 +90,10 @@ export interface EditOptions {
    */
   readonly revisionIds?: () => string;
   /**
-   * The transaction's revision-id bookkeeping for the tracked TEXT ops, where `revisionIds`
-   * above hands the property ops one shared id for their whole group.
+   * The transaction's revision-id bookkeeping, where `revisionIds` above hands property ops
+   * one shared id for their whole group. Native structure also scopes exact generated-site
+   * ownership through these callbacks. Their identities stay stable within one frame and must
+   * never be shared across separate transactions.
    *
    * Absent means "mint your own and remember nothing", which is what a caller outside a
    * transaction gets: every applier falls back to its own walk of the part.
@@ -419,8 +421,8 @@ function withChildren(element: OoxmlElement, children: readonly OoxmlNode[]): Oo
  *
  * The old index is STOLEN — mutated in place and re-keyed to the new root. The old root's
  * entry is dropped; a later independent lookup against it rebuilds by full walk.
- * Removals are processed before additions at each level, so a node MOVED between siblings
- * in one rebuild (a join re-parenting runs) is never deleted after being re-added.
+ * Finish removals across the changed spine before additions. A move from a later parent
+ * into an earlier parent must survive cleanup of its old enclosing subtree.
  * Exactness is guaranteed for trees without duplicate ids, which is an invariant the
  * commit-boundary validation enforces before any tree is published.
  */
@@ -430,7 +432,8 @@ function stealPatchedIndex(oldRoot: OoxmlElement, newRoot: OoxmlElement): void {
   const index = partIndexes.get(oldRoot);
   if (!index) return;
   partIndexes.delete(oldRoot);
-  diffPatch(index, oldRoot, newRoot, null);
+  diffPatch(index, oldRoot, newRoot, null, 'remove');
+  diffPatch(index, oldRoot, newRoot, null, 'write');
   partIndexes.set(newRoot, index);
   mintStates.set(newRoot, index.mintState);
 }
@@ -462,8 +465,7 @@ export function carryIndexToHistoryRoot(oldRoot: OoxmlElement, restoredRoot: Oox
 }
 
 function removeIndexedSubtree(index: PartIndex, node: OoxmlNode): void {
-  // Only when the entry still names THIS object: a moved node re-indexed under its new
-  // parent must survive the removal sweep of its old position.
+  // Remove only the entry for this object. Deferred invalid trees can repeat an ID.
   if (index.nodes.get(node.id) === node) {
     index.nodes.delete(node.id);
     index.parents.delete(node.id);
@@ -484,25 +486,32 @@ function diffPatch(
   index: PartIndex,
   oldNode: OoxmlNode,
   newNode: OoxmlNode,
-  newParentId: string | null
+  newParentId: string | null,
+  phase: 'remove' | 'write'
 ): void {
   if (oldNode === newNode) {
     // Identical subtree: every entry inside it is already right. Even its own parent EDGE
     // usually is — the parent kept its id through the rebuild — so only a genuine move to a
     // differently-identified parent writes anything.
-    if (newParentId !== null && parentIdOf(index, newNode.id) !== newParentId) {
+    if (
+      phase === 'write' &&
+      newParentId !== null &&
+      parentIdOf(index, newNode.id) !== newParentId
+    ) {
       setParentId(index, newNode.id, newParentId);
     }
     return;
   }
   if (oldNode.id !== newNode.id) {
-    removeIndexedSubtree(index, oldNode);
-    if (newParentId !== null) addIndexedSubtree(index, newNode, newParentId);
+    if (phase === 'remove') removeIndexedSubtree(index, oldNode);
+    else if (newParentId !== null) addIndexedSubtree(index, newNode, newParentId);
     return;
   }
-  index.nodes.set(newNode.id, newNode);
-  if (newParentId !== null && parentIdOf(index, newNode.id) !== newParentId) {
-    setParentId(index, newNode.id, newParentId);
+  if (phase === 'write') {
+    index.nodes.set(newNode.id, newNode);
+    if (newParentId !== null && parentIdOf(index, newNode.id) !== newParentId) {
+      setParentId(index, newNode.id, newParentId);
+    }
   }
   const oldChildren = oldNode.kind === 'textValue' ? [] : oldNode.children;
   const newChildren = newNode.kind === 'textValue' ? [] : newNode.children;
@@ -537,14 +546,13 @@ function diffPatch(
     if (kept.has(id)) index.uniqueIds = false;
     kept.add(id);
   }
-  // REMOVALS FIRST: a node moved between siblings appears in both a removed child's old
-  // position and a new child's subtree, and deleting after adding would strip it.
-  for (const [id, child] of oldById) if (!kept.has(id)) removeIndexedSubtree(index, child);
+  if (phase === 'remove')
+    for (const [id, child] of oldById) if (!kept.has(id)) removeIndexedSubtree(index, child);
   for (let at = first; at < newPast; at += 1) {
     const child = newChildren[at]!;
     const previous = oldById.get(child.id);
-    if (previous) diffPatch(index, previous, child, newNode.id);
-    else addIndexedSubtree(index, child, newNode.id);
+    if (previous) diffPatch(index, previous, child, newNode.id, phase);
+    else if (phase === 'write') addIndexedSubtree(index, child, newNode.id);
   }
 }
 

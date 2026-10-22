@@ -1,0 +1,10 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Complete-target plans refused new registered containers and atomic blocks.",
+  "after": "Sibling plans carry new payload bindings with verified-unique persistent IDs and nested list bindings. The shared materializer renders each new registered block as a tagged block content control with native children or a readable atomic fallback, inserts it after allocation, and stores its payload record in the same transaction.",
+  "reason": "Private plan format plus existing package primitives (canonical-primitive-captured child insertion and custom XML payload records). No native operation, shared state schema, payload schema, or journal format changes. Two real sessions converge with concurrent peer text through undo/redo and save.",
+  "tests": ["packages/sciobot/src/diff/inserted-blocks.test.ts"],
+  "changeset": null,
+  "migration": null
+}

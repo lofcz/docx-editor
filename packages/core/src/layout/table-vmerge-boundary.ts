@@ -300,6 +300,13 @@ function continuationRecord(
   return {
     id: authored.id,
     gridColumn: placed.gridColumn,
+    ...(placed.resolvedGridColumn === undefined
+      ? {}
+      : {
+          resolvedGridColumn: placed.resolvedGridColumn,
+          resolvedGridSpan: placed.resolvedGridSpan,
+          resolvedGridColumnCount: placed.resolvedGridColumnCount,
+        }),
     ...(placed.logicalGridColumn === undefined
       ? {}
       : { logicalGridColumn: placed.logicalGridColumn }),

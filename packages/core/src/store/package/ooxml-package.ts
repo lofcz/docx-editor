@@ -19,6 +19,7 @@
 // (treated as absent) unless it decides the type of a part the document needs.
 
 import { textboxFallbackExportPackageSteps } from './textbox-fallback-export.ts';
+import { retiredParagraphExportPackage } from './retired-paragraph.ts';
 import { readOoxmlPartSteps } from './ooxml-part-steps.ts';
 import {
   readZip,
@@ -640,7 +641,9 @@ export function writeOoxmlPackage(pkg: OoxmlPackage): Uint8Array {
  * @internal
  */
 export function* writeOoxmlPackageSteps(pkg: OoxmlPackage): Generator<void, Uint8Array> {
-  const exported = yield* textboxFallbackExportPackageSteps(commentExportPackage(pkg));
+  const exported = yield* textboxFallbackExportPackageSteps(
+    retiredParagraphExportPackage(commentExportPackage(pkg))
+  );
   yield;
   const entries = new Map<string, Uint8Array>(exported.partBytes);
   for (const [name, part] of exported.parts) {

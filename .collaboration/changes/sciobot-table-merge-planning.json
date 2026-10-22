@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The private adapter did not plan native cell merges or either native split distribution.",
+  "after": "A pure planner validates canonical merge/split intents through an immutable native preview. It preserves original anchors, supports existing-grid restoration and equal-width splitting, and refuses invalid visual overlaps before returning a plan.",
+  "reason": "The planner changes no live document or shared format. Core owns geometry and content movement. N15 and N16 separately record actual native changes and collaboration verification. A01/R10 retain guarded direct/review execution.",
+  "tests": [
+    "packages/sciobot/src/diff/table-merges.test.ts",
+    "packages/sciobot/src/diff/plan.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

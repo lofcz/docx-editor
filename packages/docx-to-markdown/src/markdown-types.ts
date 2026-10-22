@@ -1,4 +1,5 @@
 import type { MarkdownImageAsset, MarkdownProjectionOptions } from './media-types.ts';
+import type { MarkdownSourceMap } from './markdown-source-types.ts';
 import type {
   ExportFontResolutionReport,
   OpenDocumentForExportOptions,
@@ -70,6 +71,8 @@ export interface MarkdownWarning {
 
 /** Full logical document plus page-scoped projections. @public */
 export interface MarkdownExportResult {
+  /** Logical document text provenance. Present only when `sourceMap: true` is requested. */
+  readonly sourceMap?: MarkdownSourceMap;
   /** Unique extracted images; empty unless images are enabled. */
   readonly media: readonly MarkdownImageAsset[];
   /** Omitted content and font problems that may affect completeness or pagination. */

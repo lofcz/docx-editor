@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Capture-phase picture gestures could take Backspace or Delete from a widget textarea painted inside the pages. The painted document caret and the transparent caret color stayed while the textarea had focus.",
+  "after": "Capture-phase picture gestures and input timing ignore host UI. The painted caret hides while host UI holds focus. The private React host keeps widget form events in one input boundary module.",
+  "reason": "The change only filters local DOM events before any operation is created. It writes no document content, identities, awareness fields, or transport data.",
+  "tests": [
+    "packages/core/src/editor/__tests__/host-ui-input.test.ts",
+    "e2e/sciobot-block-input.spec.ts"
+  ],
+  "changeset": "host-ui-input",
+  "migration": null
+}

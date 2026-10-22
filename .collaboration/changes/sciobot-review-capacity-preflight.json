@@ -1,0 +1,18 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "The private review flag setter checked capacity after the canonical command started. A two-flag command with one remaining target slot wrote its first flag and then threw, leaving partial shared state and history.",
+  "after": "Private group acceptance previews every native operation and application package edit, counts each stage's removed canonical nodes, and reserves that complete flag budget before the mutation callback runs. Target and retained intent capacity, nested reservations, and incomplete room updates refuse before writes. Repeated writes to one flag use one intent per command.",
+  "reason": "Only private application code, tests, and documentation change. The same canonical operations and pure payload hooks produce the preview and committed command. The budget includes every removal stage, including transient nodes, while unchanged parts allocate no ID sets. A retained native record has at most one removal flag; text-only and repeated removals may reserve unused headroom. Admission counts retained intent map keys, including inactive identities reserved for native redo. A participant cannot spend another participant's redo headroom. It checks the current settled replica and releases unused reservations when the callback returns or throws. It does not create a distributed quota allocator. Native group tests prove exact-budget success and early refusal without changing Word XML, canonical revisions, vectors, peer state, or existing redo. Metadata-only group decisions need zero removal capacity and still work at a full ledger. The existing owned-text and private review-flag protocols stay at version 1. The local cross-bundle capability advances to version 3 so old scopes cannot skip budget admission. Private participants must upgrade together; legacy live rooms retain the documented stopped-writer DOCX export and fresh-room bootstrap path. No provider or evaluated implementation, native core, public document API, native journal, shared native format, package manifest, or dependency lock changes.",
+  "tests": [
+    "packages/sciobot/src/collaboration/review-flag-capacity.test.ts",
+    "packages/sciobot/src/collaboration/review-flags.test.ts",
+    "packages/sciobot/src/collaboration/review-history.test.ts",
+    "packages/sciobot/src/review/group-removal-budget.test.ts",
+    "packages/sciobot/src/review/group-capacity-collaboration.test.ts",
+    "packages/sciobot/src/review/group-payload-capacity-collaboration.test.ts",
+    "packages/sciobot/src/review/native-property-history-collaboration.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

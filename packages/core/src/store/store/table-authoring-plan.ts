@@ -8,6 +8,7 @@ import type {
   OoxmlPart,
   OoxmlParagraphNode,
 } from '../package/ooxml-tree.ts';
+import type { EditOptions } from '../package/ooxml-edit.ts';
 import { safeRowInsertion } from './table-authoring-row-insertion.ts';
 import { readEditableTableTopology } from './tree-op-table-topology.ts';
 import { readTwipsMeasure } from '../units.ts';
@@ -262,7 +263,8 @@ export function planTableMutation(
   reads: AutomationStoryReads,
   tableId: string,
   mutation: AutomationTableMutation,
-  revision?: RevisionAttributionInput
+  revision?: RevisionAttributionInput,
+  editOptions?: EditOptions
 ): TableMutationPlan {
   if (!validMutation(mutation)) return { ok: false, reason: 'invalid-table-mutation' };
   const topology = readEditableTableTopology(reads.root as OoxmlElement, tableId);
@@ -322,7 +324,7 @@ export function planTableMutation(
   const effects: TreeOpEffect[] = [];
   const createdRowIds: string[] = [];
   const apply = (op: TreeDocOp): string | null => {
-    const result = applyTreeOp(part, op);
+    const result = applyTreeOp(part, op, editOptions);
     if (!result.ok) return result.reason;
     part = result.part;
     effects.push(result.effect);
@@ -333,7 +335,7 @@ export function planTableMutation(
     const r = readEditableTableTopology(part.root, tableId);
     return r.ok ? r.topology : null;
   };
-  const writeCell = (cell: OoxmlElement, text: string): string | null => {
+  const writeCell = (cell: OoxmlElement, text: string, freshRow = false): string | null => {
     const paragraphs = paragraphsOf(cell);
     if (
       paragraphs.length !== 1 ||
@@ -349,13 +351,16 @@ export function planTableMutation(
     let error: string | null = null;
     // Insert while the original first run still supplies its formatting. Deleting
     // every original character first would leave no run properties to inherit.
+    // A fresh row's insertion revision owns its complete new content. A second inline
+    // insertion would leave the inherited empty seed run beside the accepted text.
+    const inlineRevision = freshRow ? undefined : revision;
     if (text.length)
       error = apply({
         op: 'insertText',
         paragraphId: p.id,
         offset: 0,
         text,
-        ...(revision ? { revision } : {}),
+        ...(inlineRevision ? { revision: inlineRevision } : {}),
       });
     if (error) return error;
     if (old.length)
@@ -364,7 +369,7 @@ export function planTableMutation(
         paragraphId: p.id,
         start: text.length,
         end: text.length + old.length,
-        ...(revision ? { revision } : {}),
+        ...(inlineRevision ? { revision: inlineRevision } : {}),
       });
     return null;
   };
@@ -555,7 +560,9 @@ export function planTableMutation(
             const ci = !isRows && mutation.location === 'end' ? cols + c : c;
             // A row copied from merged cells has fewer cells than the grid has columns.
             const target = t.rows[ri]?.cells[ci];
-            error = target ? writeCell(target, mutation.values[r]![c]!) : 'nonrectangular-table';
+            error = target
+              ? writeCell(target, mutation.values[r]![c]!, isRows)
+              : 'nonrectangular-table';
           }
     }
   }
