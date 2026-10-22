@@ -10,8 +10,8 @@ Read the [implementation notes](docs/engineering/sciobot-port/evidence/implement
 
 ## Baseline and scope
 
-- Work in [/GitHub/docx-editor](/GitHub/docx-editor), branch `codex/react-block-proof`.
-- Preserve the existing local proof changes. This backlog and the proof have no new commit or remote publication.
+- Work in [/run/media/lofcz/ssd_external/GitHub/docx-editor](/run/media/lofcz/ssd_external/GitHub/docx-editor), branch `codex/react-block-proof`.
+- Preserve the existing proof changes. Commit each coherent batch and keep local uncommitted changes minimal.
 - Resolve application and Plate paths through the [source map](docs/engineering/sciobot-port/sources.md).
 - Follow the actual [production coverage ledger](docs/engineering/sciobot-port/coverage.md), including static and export consumers.
 - Reuse Apache core operations and application-owned adapters. The production path needs no Pro or editor-api runtime.

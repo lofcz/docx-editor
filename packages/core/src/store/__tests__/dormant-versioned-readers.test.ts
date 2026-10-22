@@ -9,7 +9,7 @@ import {
 } from '../index.ts';
 import { apply, paragraphId, ADA } from './tracked-edit-fixture.ts';
 const fp = canonicalOoxmlFingerprint;
-for (const fixture of ['dynamic', 'layered'])
+for (const fixture of ['dynamic', 'layered', 'current'])
   for (const priorAction of ['accept', 'reject'] as const) {
     const input = await Bun.file(
       new URL(`./fixtures/run-origins/${fixture}-mixed-reader-input.json`, import.meta.url)
