@@ -16,6 +16,8 @@ export type ReactBlockProviders = (
 
 export interface ReactBlockHostOptions {
   readonly providers?: ReactBlockProviders;
+  /** Inline adapter mode: one root per inline control, without block reservations. */
+  readonly inlineOnly?: boolean;
   /** Widget height in CSS pixels for `reserveHeight` roots. Defaults to the client rect. */
   readonly measure?: import('./measurement').MeasureBlockElement;
 }

@@ -172,3 +172,35 @@ export function blockMeasurementDocument(): Uint8Array {
   if (!written.ok) throw new Error(written.reason);
   return writeOoxmlPackage(written.pkg);
 }
+
+/** A source chip between native words, with a separate block reservation fixture. */
+export function inlineWidgetDocument(): Uint8Array {
+  const run = (text: string) => `<w:r><w:t xml:space="preserve">${escapeXml(text)}</w:t></w:r>`;
+  const read = readOoxmlPackage(
+    docxFixture(
+      `<w:p>${run('Before ')}${hostControl('source-1', run('Source'))}${run(' after')}</w:p>` +
+        hostControl('tall', hostParagraph('Tall fallback')) +
+        hostParagraph('Tail')
+    )
+  );
+  if (!read.ok) throw new Error(read.reason);
+  let pkg = read.package;
+  for (const [id, type] of [
+    ['source-1', 'source_chip'],
+    ['tall', 'test_tall'],
+  ] as const) {
+    const result = withPayloadRecord(
+      pkg,
+      {
+        id,
+        type,
+        version: 1,
+        attributes: { name: 'Initial' },
+      },
+      'Source'
+    );
+    if (!result.ok) throw new Error(result.reason);
+    pkg = result.pkg;
+  }
+  return writeOoxmlPackage(pkg);
+}

@@ -10,6 +10,7 @@ import {
 } from '@docx-editor.dev/core/store';
 import { buildBlockIndex, type BlockIndex, type IndexedBlock } from '../blocks/block-index';
 import { isolateWidgetInput } from './input-boundary';
+import { inlineLayoutBoxes } from './inline-layout-boxes';
 import { BlockMeasurement, lastBodyParagraphIn, type MeasuredFragment } from './measurement';
 import { NativeSlotLease, preserveNativeSelection } from './native-slots';
 import { attachNativeSlots, type NativeSlotMount } from './native-slot-plan';
@@ -93,7 +94,7 @@ export function mountReactBlockHost(
   let indexedPackage: OoxmlPackage | null = null;
   let index: BlockIndex | null = null;
   let providers = options.providers;
-  const measurement = new BlockMeasurement(surface, options.measure);
+  const measurement = options.inlineOnly ? null : new BlockMeasurement(surface, options.measure);
   const validateType = (type: string) => {
     if (!/^[A-Za-z][A-Za-z0-9_.:-]{0,127}$/.test(type))
       throw new TypeError('Invalid React block type.');
@@ -111,7 +112,7 @@ export function mountReactBlockHost(
   }
   function discard(key: string, mount: Mount): void {
     mounts.delete(key);
-    measurement.release(key);
+    measurement?.release(key);
     mount.slot.reset();
     mount.element.remove();
     mount.release();
@@ -139,13 +140,15 @@ export function mountReactBlockHost(
       if (content) pages.set(Number(page.dataset.pageIndex), content);
     }
     const valid = new Set<string>();
+    const inlineBoxes = options.inlineOnly ? inlineLayoutBoxes(next.layout) : null;
     const native: NativeSlotMount[] = [];
     const render: (() => void)[] = [];
     for (const block of index!.byId.values()) {
       if (block.partName !== next.part.name) continue;
       const registration = registry.get(block.payload.type),
         boundary = controls.get(block.controlId);
-      if (!registration || !boundary) continue;
+      if (!registration || !boundary || (options.inlineOnly && boundary.level !== 'inline'))
+        continue;
       const View = registration.view;
       const nativeContent = registration.nativeContent === true && boundary.level !== 'inline';
       const paragraphs = Object.freeze(
@@ -158,7 +161,8 @@ export function mountReactBlockHost(
             ]
           : collectParagraphs(block.controlId, next)
       );
-      boundary.fragments.forEach((fragment, ordinal) => {
+      const fragments = options.inlineOnly ? boundary.fragments.slice(0, 1) : boundary.fragments;
+      fragments.forEach((fragment, ordinal) => {
         const key = `${block.id}:${ordinal}`;
         valid.add(key);
         const page = pages.get(fragment.pageIndex);
@@ -169,12 +173,13 @@ export function mountReactBlockHost(
           element.dataset.sciobotBlockHost = key;
           element.style.position = 'absolute';
           element.style.pointerEvents = 'none';
+          if (options.inlineOnly) element.style.visibility = 'hidden';
           const root = createRoot(element);
           const release = isolateWidgetInput(element);
           mount = { element, root, slot: new NativeSlotLease(key, next.pagesLayer), release };
           mounts.set(key, mount);
         }
-        const box = fragment.box;
+        const box = inlineBoxes?.get(`${fragment.pageIndex}:${block.controlId}`) ?? fragment.box;
         Object.assign(mount.element.style, {
           display: nativeContent ? 'contents' : 'block',
           position: nativeContent ? 'static' : 'absolute',
@@ -210,7 +215,10 @@ export function mountReactBlockHost(
         // splits or rejoins across pages never remounts its widget. Only the last fragment
         // reserves: native flow grows after the block's last line.
         const measured =
-          registration.reserveHeight === true && !nativeContent && boundary.level !== 'inline';
+          measurement !== null &&
+          registration.reserveHeight === true &&
+          !nativeContent &&
+          boundary.level !== 'inline';
         const target =
           measured && ordinal === boundary.fragments.length - 1
             ? measuredFragment(block.controlId, box.height, next)
@@ -222,7 +230,7 @@ export function mountReactBlockHost(
               scope: { editor, block, fragment: geometry },
               children: measured
                 ? createElement(MeasuredRoot, {
-                    measurement,
+                    measurement: measurement!,
                     mountKey: key,
                     target,
                     children: view,
@@ -236,7 +244,7 @@ export function mountReactBlockHost(
     for (const [key, mount] of mounts) if (!valid.has(key)) discard(key, mount);
     attachNativeSlots(next, native);
     for (const callback of render) callback();
-    measurement.schedule();
+    measurement?.schedule();
     if (focused?.isConnected && focused.ownerDocument.activeElement !== focused)
       focused.focus({ preventScroll: true });
     focused = null;
@@ -289,7 +297,7 @@ export function mountReactBlockHost(
       if (frame) preserveNativeSelection(frame.pagesLayer, stop);
       else stop();
       for (const [key, mount] of mounts) discard(key, mount);
-      measurement.dispose();
+      measurement?.dispose();
       registry.clear();
       frame = null;
       index = null;

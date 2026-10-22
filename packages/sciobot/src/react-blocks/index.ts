@@ -1,5 +1,7 @@
 /** Optional React integration. Import document tools from @sciobot/docx without loading React. */
 export * from './host';
+export * from './inline-host';
+export type { MeasureInlineElement } from './inline-measurement';
 export * from './block-ui';
 export type {
   ReactBlockProviders,

@@ -352,7 +352,7 @@ Focused layout checks pass eight cases and 45 assertions. They prove exact 30-po
 
 ## B20
 
-- [ ] Mount React inline widgets in native boxes
+- [x] Mount React inline widgets in native boxes
 
 **Depends:** [B30](02-react-blocks.md#b30), [B04](02-react-blocks.md#b04), [B19](02-react-blocks.md#b19), [V01](11-verification.md#v01)
 
@@ -366,7 +366,13 @@ Focused layout checks pass eight cases and 45 assertions. They prove exact 30-po
 
 **Check:** Add a focused Chromium case with real input and native selection where applicable. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** codex solo, branch `codex/react-block-proof`. **Evidence:** B30 supplies the missing live surface measurement input before React mounting.
+**Claim:** codex solo, branch `codex/react-block-proof`. **Evidence:** Native baseline `9770e78`; implementation starts from `01081732`. `mountReactInlineHost` reuses block roots, explicit providers, input isolation, parking, and deferred disposal. One root represents each persisted inline payload. Intrinsic width and baseline measurements publish through B30 without document writes. Native layout supplies root and renderer geometry. Missing or declined measurements retain visible Word fallback. Inline hosts preserve separate block-height reservations.
+
+`bun test --timeout 30000 --preload ./scripts/test/preload-dom.ts packages/sciobot/src/react-blocks` passes 26 cases and 1062 assertions. These cover geometry, registration, cleanup, provider identity, zoom, fallback restoration, and independent block reservations. Existing measurement tests emit React act warnings; the new inline cases emit none. Log: `/tmp/solo-b20-react-blocks-final.log`.
+
+`SCIOBOT_BROWSER_STABLE=1 bunx playwright test --config e2e/sciobot-inline-host.config.ts` passes five Chromium cases. Four shared cases cover both client orders and both reconnect receivers. They verify different local widths, concurrent payload/native edits, peer-preserving history, exact remote-caret rectangles, deletion, and saved convergence. The source-chip case verifies focused local input, React state, native typing around the chip, and provider/zoom geometry. Saved DOCX reopens with equal complete semantics and measured widgets. Additional mouse assertions pass in the focused source-chip rerun. Native clicks select exact chip boundaries before and after zoom. Clicks remain 1.5 pixels outside widget controls because Chromium rounds subpixel hit points. Logs: `/tmp/solo-b20-chromium-final.log`, `/tmp/solo-b20-mouse-final.log`. Fixtures: `inlineWidgetDocument()`, `test/browser/inline-host.tsx`.
+
+Private types pass 1996 files; browser types pass 1720 files. The private build verifies 205 modules with external core and no production Pro imports. Root formatting, root lint, line caps, scoped formatting, and diff checks pass. Compatibility policy passes 133 decisions with zero format fields changed. Decision: `.collaboration/changes/sciobot-inline-react-host.json`. All 198 production source hashes and feature mappings match application revision `0ea531f1e52e84db4cb613b9bc2ca61e1d3ea0e9`. Coverage records the inline foundation; B21 retains whole-widget navigation, deletion, and clipboard behavior. The test transport uses the EigenPal Pro License.
 
 ## B21
 

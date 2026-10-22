@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Inline widgets had native measurement boxes without a production React mounting adapter.",
+  "after": "The private adapter mounts persistent React roots in native inline boxes and publishes local intrinsic measurements. Provider updates, repaint, zoom, and disposal reuse the block host lifetime.",
+  "reason": "Measurement snapshots, React state, providers, and DOM placement remain local surface state. Canonical content, shared operations, payload formats, and saved Word fallbacks do not change.",
+  "tests": [
+    "packages/sciobot/src/react-blocks/inline-host.test.tsx",
+    "e2e/sciobot-inline-host.spec.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

@@ -5,6 +5,8 @@
   },
   "include": [
     "test/browser",
+    "../../e2e/sciobot-inline-host.config.ts",
+    "../../e2e/sciobot-inline-host.spec.ts",
     "../../e2e/sciobot-block-host.config.ts",
     "../../e2e/sciobot-block-host.spec.ts",
     "../../e2e/sciobot-native-slots.spec.ts",

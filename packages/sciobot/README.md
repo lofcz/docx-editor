@@ -246,7 +246,17 @@ Wrap widget controls in `BlockUi`. Its editor-furniture marker and event boundar
 
 Pass `{ providers: (children, scope) => <AppProviders>{children}</AppProviders> }` as the third host argument. Independent roots need explicit application providers. The scope contains the owning editor, indexed block, and fragment. Call `host.setProviders(nextCallback)` when application context values change. Keep provider component types and nesting stable to retain widget state. Return provider elements from callbacks; call hooks inside their components. Each editor owns its callback and values. Provider changes create no document operations or history entries.
 
-Register native containers with `host.register(type, View, { nativeContent: true })`. Initial registries also accept `{ view: View, nativeContent: true }` descriptors. Render `props.children` once in a `display: contents` wrapper. Keep `BlockUi` beside these children. Native paragraphs, tables, rows, and cells retain their original nodes and coordinates. Inline slots remain B20.
+Register native containers with `host.register(type, View, { nativeContent: true })`. Initial registries also accept `{ view: View, nativeContent: true }` descriptors. Render `props.children` once in a `display: contents` wrapper. Keep `BlockUi` beside these children. Native paragraphs, tables, rows, and cells retain their original nodes and coordinates.
+
+### Inline React widgets
+
+Import `mountReactInlineHost` from `@sciobot/docx/react`. Supply an attached editor and a map from payload types to React views. The host replaces only inline content controls with valid registered payloads. Use `BlockUi` for widget controls. Native text around each widget keeps its canonical offsets and native selection.
+
+The host measures intrinsic width, ascent, and descent at 100% zoom. A baseline probe and `ResizeObserver` follow rendered content. Native layout reserves and clamps the atomic box. The host positions the React root from that layout and hides the painted fallback while the measured widget renders. Missing or declined measurements keep the native fallback visible. Host measurements never change saved DOCX content, collaboration state, or document history.
+
+Views use ordinary CSS pixel dimensions. The host applies document zoom. Roots retain local state and focus through native repaint, provider updates, and zoom. `setProviders`, `register`, `refresh`, and `dispose` share the block host's lifetime rules. Each surface permits one inline host. The inline host owns its surface's inline measurement snapshot. A separate block host can reserve vertical flow independently. Dispose both hosts before destroying the editor.
+
+The focused browser command is `bunx playwright test --config e2e/sciobot-inline-host.config.ts`. It checks native typing around a source chip, exact hit geometry, retained input focus, and two-session convergence. Inline arrow navigation, whole-widget deletion, and clipboard behavior remain B21.
 
 The host restores borrowed elements at comment placeholders before native paint. It moves the new paint elements into existing slots before native selection restoration. Initial React commits preserve browser selection while attaching the slot. Unregistration and disposal restore the original native parents and sibling order. These DOM moves create no document writes or history entries. Custom wrappers must stay transparent; additional reserved space needs B14-B17.
 
