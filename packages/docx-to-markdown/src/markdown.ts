@@ -414,6 +414,34 @@ function paragraphMarkdown(
     // numbered Word heading remains navigable without losing its visible ordinal.
     projected = wrapMarkdown(body, `${indent}${bullet} ${heading}`);
   } else projected = wrapMarkdown(body, heading);
+  // A border alone is ambiguous. Only the caller's explicit style identity opts into rules.
+  // Retain a zero-width native paragraph extent; the thematic-break syntax is generated.
+  const edge = fragments
+    .flatMap((fragment) => fragment.borders ?? [])
+    .find((border) => border.side === 'bottom' || border.side === 'between')?.edge;
+  if (
+    !context.tableCell &&
+    !marker &&
+    !heading &&
+    body.markdown === '' &&
+    first.styleId &&
+    context.horizontalRuleParagraphStyles?.has(first.styleId) &&
+    fragments.every(
+      (fragment) =>
+        fragment.range.start === 0 &&
+        fragment.range.end === 0 &&
+        fragment.lines.every((line) => !line.spans.length && !line.drawings?.length)
+    ) &&
+    edge?.val === 'single' &&
+    edge.widthPt > 0 &&
+    fragments.every((fragment) =>
+      (fragment.borders ?? []).every(
+        (border) => border.side === 'bottom' || border.side === 'between'
+      )
+    )
+  ) {
+    projected = literalMarkdown('---');
+  }
   const styleId = first.styleId?.trim().toLowerCase();
   if (!context.tableCell && (styleId === 'quote' || styleId === 'intensequote')) {
     projected = quoteMarkdownLines(projected);
@@ -695,10 +723,13 @@ function joinVisibleMarkdown(values: readonly MappedMarkdown[]): MappedMarkdown 
   );
 }
 
-function codeStyleSet(value: unknown): ReadonlySet<string> | undefined {
+function codeStyleSet(
+  value: unknown,
+  option = 'codeCharacterStyles'
+): ReadonlySet<string> | undefined {
   if (value === undefined) return undefined;
   if (!Array.isArray(value) || value.some((entry) => typeof entry !== 'string' || entry === ''))
-    throw new TypeError('codeCharacterStyles must be an array of style IDs');
+    throw new TypeError(`${option} must be an array of style IDs`);
   return value.length > 0 ? new Set(value as readonly string[]) : undefined;
 }
 
@@ -717,6 +748,10 @@ export function exportMarkdownLayout(
   )
     throw new TypeError('tableSyntax must be gfm, html, or auto');
   const codeCharacterStyles = codeStyleSet(options.codeCharacterStyles);
+  const horizontalRuleParagraphStyles = codeStyleSet(
+    options.horizontalRuleParagraphStyles,
+    'horizontalRuleParagraphStyles'
+  );
   // Core export sessions always publish the array. The fallback keeps detached layouts produced
   // by older/custom hosts translatable while preserving the same empty immutable contract.
   const reviewArtifacts = layout.reviewArtifacts ?? EMPTY_REVIEW_ARTIFACTS;
@@ -734,6 +769,7 @@ export function exportMarkdownLayout(
     tableCell: false,
     tableSyntax: options.tableSyntax ?? 'gfm',
     ...(codeCharacterStyles ? { codeCharacterStyles } : {}),
+    ...(horizontalRuleParagraphStyles ? { horizontalRuleParagraphStyles } : {}),
     displayMode,
     sourceScope: markdownSourceScope('body', '', null),
     sourceCapture: options.sourceMap

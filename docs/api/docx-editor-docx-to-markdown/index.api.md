@@ -571,6 +571,7 @@ export type MarkdownJSONResult = Omit<MarkdownExportResult, 'media' | 'fontResol
 // @public
 export interface MarkdownLayoutOptions extends MarkdownSourceMapOptions {
     readonly codeCharacterStyles?: readonly string[];
+    readonly horizontalRuleParagraphStyles?: readonly string[];
     readonly tableSyntax?: 'gfm' | 'html' | 'auto';
 }
 

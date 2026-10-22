@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Private adapters had no explicit thematic-break paragraph identity; the converter omitted paragraph borders.",
+  "after": "An immutable preparation helper supplies a reserved paragraph style and a native matching bottom-and-between border seed. An opt-in converter setting projects eligible empty paragraphs as thematic breaks with generated source extents.",
+  "reason": "Pure package preparation and read-only projection add no live editor command, operation, journal field, or transport format. Ordinary imported borders remain unchanged. N02 retains live command and two-session verification; D34 retains insertion planning.",
+  "tests": [
+    "packages/sciobot/src/native/horizontal-rule.test.ts",
+    "packages/docx-to-markdown/test/markdown-horizontal-rule.test.ts"
+  ],
+  "changeset": "explicit-horizontal-rule-projection",
+  "migration": null
+}

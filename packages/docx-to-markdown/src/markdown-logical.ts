@@ -30,6 +30,7 @@ export interface TranslationContext {
   readonly tableCell: boolean;
   readonly tableSyntax?: 'gfm' | 'html' | 'auto';
   readonly codeCharacterStyles?: ReadonlySet<string>;
+  readonly horizontalRuleParagraphStyles?: ReadonlySet<string>;
   readonly hardBreakHtml?: boolean;
   readonly suppressBold?: boolean;
   readonly displayMode: SemanticLayout['displayMode'];

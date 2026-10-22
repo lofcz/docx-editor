@@ -604,7 +604,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 - [ ] Plan inserted code blocks, thematic breaks, and block math
 
-**Depends:** [D28](04-edit-planner.md#d28), [X16](08-domain-content.md#x16), [X23](08-domain-content.md#x23), [N02](07-native-content.md#n02)
+**Depends:** [N23](07-native-content.md#n23), [D28](04-edit-planner.md#d28), [X16](08-domain-content.md#x16), [X23](08-domain-content.md#x23), [N02](07-native-content.md#n02)
 
 **Primary files:** `fork:packages/sciobot/src/diff/fragment-seeds.ts`; `sibling fragment-seeds.test.ts`
 

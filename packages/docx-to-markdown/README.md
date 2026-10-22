@@ -92,3 +92,5 @@ The package uses the Apache 2.0 license, including comment and tracked-change ex
 - [Include and deliver images](docs/images.md).
 - [Connect the converter to your application](docs/integrations.md).
 - [Review export options and result fields](docs/api.md).
+
+For explicitly identified horizontal rules, pass `horizontalRuleParagraphStyles: ['YourRuleStyle']` to `exportMarkdown`, `exportMarkdownFrom`, or `exportMarkdownLayout`. The default is an empty allowlist. An eligible paragraph must be empty, outside a table, unnumbered, and carry a visible single closing bottom or between border without other border edges. Text, ordinary imported borders, and boxed paragraphs retain their normal projection. The generated `---` has a paragraph source extent with zero native text length; it is not editable source text. Validate the source style identity and paragraph content before opting in; layout records cannot recover unknown OOXML children. This option does not infer rule semantics from appearance alone. See the [API contract](docs/api.md#explicit-horizontal-rule-paragraphs).

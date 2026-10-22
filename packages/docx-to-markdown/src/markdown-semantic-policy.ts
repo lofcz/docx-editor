@@ -150,7 +150,7 @@ const MARKDOWN_SEMANTIC_POLICY_RATCHETS = Object.freeze({
     alignment: 'represented',
     spacing: 'layout-only',
     indent: 'layout-only',
-    bottomBorder: 'explicitly-omitted',
+    bottomBorder: 'represented', // Only empty paragraphs with an opted-in rule style.
     borders: 'explicitly-omitted',
     shading: 'explicitly-omitted',
     shadingBox: 'layout-only',

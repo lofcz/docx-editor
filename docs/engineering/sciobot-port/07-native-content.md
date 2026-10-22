@@ -28,7 +28,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 - [ ] Connect paragraph and heading controls
 
-**Depends:** [C03](01-contracts.md#c03), [N01](07-native-content.md#n01), [V01](11-verification.md#v01)
+**Depends:** [N23](07-native-content.md#n23), [C03](01-contracts.md#c03), [N01](07-native-content.md#n01), [V01](11-verification.md#v01)
 
 **Primary files:** `fork:packages/sciobot/src/chrome/block-type.ts`; `sibling block-type browser test`
 
@@ -40,7 +40,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Include Enter and paragraph-style controls in a recovered source whose removed mark had a different heading style. Add a focused Chromium case with real input and native selection where applicable. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** astra N02, branch `codex/react-block-proof`. **Evidence:** Selected block command implementation and captured-fixture checks in progress. Full insertion, input, browser, and collaboration scope remains open.
 
 ## N03
 
@@ -401,3 +401,21 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 **Check:** Add a focused native regression and Chromium control test. Verify two-session concurrent cell edits, reconnect, peer-preserving history, table deletion, remote selection geometry, and saved convergence. Reuse the native table property writer where it supports `w:tblInd`.
 
 **Claim:** unclaimed. **Evidence:** N01 found the production `setTableMarginLeft` action. Existing N14 scope covers cell appearance and dimensions; it does not cover this table placement control.
+
+## N23
+
+- [x] Define explicit native horizontal-rule identity and projection
+
+**Depends:** None.
+
+**Primary files:** `fork:packages/sciobot/src/native/horizontal-rule.ts`; `fork:packages/docx-to-markdown/src/markdown.ts`; focused representation and projection tests
+
+**Read:** [S13](sources.md#s13), [S25](sources.md#s25)
+
+**Change:** Represent application rules as empty Word paragraphs with the reserved `SciobotHorizontalRule` style and matching `bottom` and `between` single borders. Word paints one closing line per marker, including adjacent grouped paragraphs. Add opt-in Markdown projection with exact generated syntax extents. Preserve ordinary imported borders and refuse conflicting style initialization.
+
+**Close when:** The explicit native paragraph and style survive save/reopen. Only opted-in empty paragraphs with a visible single closing bottom or between border project as `---`. Ordinary imported borders and conflicting nonempty/boxed paragraphs stay ordinary. Source maps bind generated syntax to the zero-length native paragraph.
+
+**Check:** Run immutable representation and converter tests, option validation, scoped types/lint/format, converter build/API check, changeset, and compatibility policy. N02 retains live command, browser, and collaboration verification; D34 retains thematic-break insertion planning.
+
+**Claim:** astra N23, branch `codex/react-block-proof`. **Evidence:** Immutable native helper adds the reserved paragraph style without body writes and refuses conflicting definitions or unresolved style relationships. The exact empty marker has matching 0.75-point bottom/between edges; unknown content and changed properties fail closed. Private Markdown projection validates the supplied native package before opt-in; `projectLists` forwards that package through working and committed reads. General converter callers opt in explicitly and own source identity validation. Native helper checks pass 7 cases, including save/reopen, untouched imported metadata, mixed invalid markers, generated-only syntax, and both review readers. Final converter command `bun test --preload ./scripts/test/preload-dom.ts packages/docx-to-markdown/test/markdown-horizontal-rule.test.ts` passes 6 cases and 36 assertions (`/tmp/n23-final-converter.log`). Independent native paint assertions cover one marker, adjacent grouped markers, and markers separated by a page break. A detached two-page continuation fixture proves one logical owner and closing stroke; it does not claim that an authored empty one-line paragraph naturally splits. Earlier adjacent regressions passed all 38 unchanged code-span, logical source-map, list-projection, and Markdown-projection cases. Nine converter evolution-boundary checks pass. Scoped lint and formatting pass. Converter build and API extraction/check pass. The API snapshot adds only horizontalRuleParagraphStyles. Private types pass across 1975 files; the private build verifies 196 modules with external core. Repository lint passes. Compatibility policy passes 129 decisions with zero format fields changed against the branch merge-base fc28dba928b073c2beddc5672cdc7b42ea3af0f9. Minor changeset `.changeset/explicit-horizontal-rule-projection.md`; compatibility decision `.collaboration/changes/sciobot-horizontal-rule-representation.json`; package README and API documentation describe the opt-in contract. This leaf adds no live command or planner insertion. N02 and D34 retain those behaviors and their browser/two-session checks.

@@ -83,4 +83,10 @@ export interface MarkdownLayoutOptions extends MarkdownSourceMapOptions {
    * Fonts never imply code, so ordinary monospaced text stays ordinary text.
    */
   readonly codeCharacterStyles?: readonly string[];
+  /**
+   * Explicit paragraph style IDs whose empty, unnumbered, single-closing-border paragraphs
+   * export as thematic breaks. Default: none. Ordinary imported borders remain ordinary.
+   * Callers must validate source identity/content; layout records cannot expose unknown OOXML.
+   */
+  readonly horizontalRuleParagraphStyles?: readonly string[];
 }

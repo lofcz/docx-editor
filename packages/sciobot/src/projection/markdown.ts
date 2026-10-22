@@ -1,3 +1,4 @@
+import type { OoxmlPackage } from '@docx-editor.dev/core/store';
 import type { ExportSemanticLayout } from '@docx-editor.dev/core/export';
 import {
   exportMarkdownLayout,
@@ -7,6 +8,7 @@ import {
 } from '@docx-editor.dev/docx-to-markdown';
 import type { RevisionToken } from '../contracts/document';
 import { SCIOBOT_CODE_CHARACTER_STYLES } from '../native/inline-code';
+import { horizontalRuleProjectionStyles } from '../native/horizontal-rule';
 import type { NativeTextPoint } from './text';
 
 export interface NativeMarkdownPoint extends NativeTextPoint {
@@ -32,12 +34,19 @@ export interface MarkdownProjection {
 export function projectMarkdown(
   layout: ExportSemanticLayout,
   revision: RevisionToken,
-  options: Pick<MarkdownLayoutOptions, 'tableSyntax' | 'codeCharacterStyles'> = {}
+  options: Pick<MarkdownLayoutOptions, 'tableSyntax' | 'codeCharacterStyles'> & {
+    /** The immutable package used to produce this layout and revision. */
+    readonly nativePackage?: OoxmlPackage;
+  } = {}
 ): MarkdownProjection {
   // Code spans come only from the explicit application character style, never from fonts.
+  const { nativePackage, ...converterOptions } = options;
   const result = exportMarkdownLayout(layout, {
     codeCharacterStyles: SCIOBOT_CODE_CHARACTER_STYLES,
-    ...options,
+    horizontalRuleParagraphStyles: nativePackage
+      ? horizontalRuleProjectionStyles(nativePackage)
+      : [],
+    ...converterOptions,
     sourceMap: true,
   });
   const nativeSourceMap = result.sourceMap!;

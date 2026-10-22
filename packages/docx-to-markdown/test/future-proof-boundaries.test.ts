@@ -73,9 +73,17 @@ test('one-shot APIs keep layout options out of record-only translation', () => {
   const oneShot = wrapperSource.slice(
     wrapperSource.indexOf('export async function exportMarkdown(')
   );
-  expect(oneShot).toContain(
-    'const layoutOptions = { sourceMap, tableSyntax, codeCharacterStyles };'
+  const projectionOptions = oneShot.slice(
+    oneShot.indexOf('const layoutOptions ='),
+    oneShot.indexOf('const result =')
   );
+  for (const option of [
+    'sourceMap',
+    'tableSyntax',
+    'codeCharacterStyles',
+    'horizontalRuleParagraphStyles',
+  ])
+    expect(projectionOptions).toContain(option);
   expect(oneShot).toContain('translateMarkdownLayout(layout, undefined, undefined, layoutOptions)');
   expect(oneShot).not.toContain('translateMarkdownLayout(layout, options)');
   expect(oneShot.indexOf('opened.session.dispose()')).toBeLessThan(

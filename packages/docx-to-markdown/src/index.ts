@@ -421,6 +421,7 @@ export async function exportMarkdownFrom(
     sourceMap: options.sourceMap,
     tableSyntax: options.tableSyntax,
     codeCharacterStyles: options.codeCharacterStyles,
+    horizontalRuleParagraphStyles: options.horizontalRuleParagraphStyles,
   });
   return withFontResolution(
     result,
@@ -439,6 +440,7 @@ export function exportMarkdownLayout(
     sourceMap: options.sourceMap,
     tableSyntax: options.tableSyntax,
     codeCharacterStyles: options.codeCharacterStyles,
+    horizontalRuleParagraphStyles: options.horizontalRuleParagraphStyles,
   });
 }
 
@@ -449,7 +451,14 @@ export async function exportMarkdown(
 ): Promise<MarkdownExportResult> {
   const images = imageOptions(options);
   checkExportAbort(options.signal);
-  const { images: _images, sourceMap, tableSyntax, codeCharacterStyles, ...openOptions } = options;
+  const {
+    images: _images,
+    sourceMap,
+    tableSyntax,
+    codeCharacterStyles,
+    horizontalRuleParagraphStyles,
+    ...openOptions
+  } = options;
   const opened = await openDocumentForExport(source, openOptions);
   if (!opened.ok) {
     if (opened.reason === 'aborted') {
@@ -469,7 +478,12 @@ export async function exportMarkdown(
     opened.session.dispose();
   }
   // Only the layout options reach record-only translation; open options stay with the session.
-  const layoutOptions = { sourceMap, tableSyntax, codeCharacterStyles };
+  const layoutOptions = {
+    sourceMap,
+    tableSyntax,
+    codeCharacterStyles,
+    horizontalRuleParagraphStyles,
+  };
   const result = images
     ? translateMarkdownLayout(
         layout,

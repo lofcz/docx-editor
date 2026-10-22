@@ -40,6 +40,7 @@ export function projectLists(
     const records = checklistRecords(pkg, layout);
     const trimmed = records.size ? withoutChecklistGlyphs(layout, records) : layout;
     const base = projectMarkdown(trimmed, revision, {
+      nativePackage: pkg,
       codeCharacterStyles: inlineCodeCharacterStyles(pkg),
       tableSyntax: [...records.values()].some((record) => record.inCell)
         ? 'html'

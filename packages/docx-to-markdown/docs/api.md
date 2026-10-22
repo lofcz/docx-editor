@@ -349,3 +349,11 @@ Drawing warnings are grouped by category and page, including headers, footers, a
 
 - [Image extraction and delivery](images.md).
 - [Application integrations](integrations.md).
+
+### Explicit horizontal-rule paragraphs
+
+`horizontalRuleParagraphStyles?: readonly string[]` is a projection option accepted by all three export functions. It defaults to no styles. Each entry is an exact paragraph style ID; empty IDs and non-string entries are rejected.
+
+The caller is responsible for validating that each opted-in style identifies authored horizontal rules in its source package. The converter checks the visible layout: no text or inline drawings, no heading/list/table semantics, a visible single closing bottom or between border, and no other painted border sides. It does not inspect style definitions or recover unknown OOXML children from layout records. Do not opt in an imported style based only on its name or appearance.
+
+Eligible paragraphs become `---`. With `sourceMap: true`, the generated syntax belongs to a paragraph extent with native start and end at zero, and has no editable text source slice. Ordinary borders keep their default projection when the option is absent.
