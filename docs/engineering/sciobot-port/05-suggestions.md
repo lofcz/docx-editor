@@ -588,7 +588,7 @@ R39 closes the observed-attribute protocol foundation. Its exported boundary pre
 
 ## R30
 
-- [ ] Execute tracked checklist control changes
+- [x] Execute tracked checklist control changes
 
 **Depends:** [D06](04-edit-planner.md#d06), [P21](03-agent-projection.md#p21), [R03](05-suggestions.md#r03), [R04](05-suggestions.md#r04), [V01](11-verification.md#v01)
 
@@ -602,7 +602,9 @@ R39 closes the observed-attribute protocol foundation. Its exported boundary pre
 
 **Check:** Add native regressions with explicit Original/Proposed results, review decisions, undo/redo, and save/reopen. Use two real sessions for state/text concurrency, reconnect, deletion, peer-preserving history, and remote selection geometry.
 
-**Claim:** unclaimed. **Evidence:** D06 defines complete checklist intents and verifies native checked-state writing. The native setContentControlValue operation has no revision attribution. Typed planning does not establish review support; this separate executor must prove it.
+**Claim:** codex checklist agent, branch `codex/react-block-proof`. **Evidence:** `trackChecklistPlan` uses the guarded native review coordinator. Native `w:del`/`w:ins` wrappers retain complete old/new checkbox controls; `w:pPrChange` retains paragraph properties. Deleted glyphs serialize as `w:delText`. Original control IDs survive rejection; application control IDs survive accepted state changes. Nesting preserves authored glyph formatting. Checked-only changes preserve existing numbering properties. Detached native transactions isolate direct previews from the live primitive journal. Each proposal emits one live transaction. Unchanged properties retain older revision addresses. Same-control state and nesting proposals remain independently reviewable in both orders after saving. Unrelated form controls remain unchanged. Conflicting changes to an already replaced control require explicit owned-group replacement; no older proposal is silently absorbed.
+
+Focused verification passes 70 tests and 1,145 assertions across four files. Nineteen native checklist cases cover exact decisions, emitted journals, saved deletion markup, identities, stale plans, locks, and later proposals. Thirty-two real two-session cases cover both client orders and receivers, peer insertion/deletion, history, saved convergence, reconnect, and caret geometry. Fifteen direct-list regressions and four shared-allocation regressions pass. Scoped formatting, lint, and diff checks pass. Root coordinates aggregate types, build, and compatibility checks. The real transport fixture uses the EigenPal Pro License. Compatibility decision: `.collaboration/changes/sciobot-tracked-checklists.json`. The private executor uses existing native revision markup and review storage. No shared schema, protocol version, or published package changeset changes.
 
 ## R31
 
@@ -800,7 +802,14 @@ R39 closes the observed-attribute protocol foundation. Its exported boundary pre
 
 **Check:** Keep the focused two-session regressions. Check both decisions, history, and saved convergence.
 
-**Claim:** unclaimed. **Evidence:** pending. With clients 73/41 the shared-text transport orders the boundary insertion against the inserted copy by client id, so Proposed reads `!the site`. The text is never lost and both peers converge. Placing the copy first instead makes a concurrent deletion of the link text delete the copy, because the transport aligns the original characters with the first identical run. Exact native R42 insertion/removal probes also expose this limit: 28 of 32 cases pass. Four acceptance cases at the end boundary fail for clients 73/41, across both reconnect receivers and both operations. Rejection and start-boundary cases pass. The probe compares exact paragraph text, preserving the expected end position. See `/home/lofcz/.cache/sciobot-docx-native/r42-work/exact-boundaries-verified.log`.
+**Claim:** codex R43 agent, branch `codex/react-block-proof`. **Evidence:** pending. With clients 73/41 the shared-text transport orders the boundary insertion against the inserted copy by client id, so Proposed reads `!the site`. The text is never lost and both peers converge. Placing the copy first instead makes a concurrent deletion of the link text delete the copy, because the transport aligns the original characters with the first identical run. Exact native R42 insertion/removal probes also expose this limit: 28 of 32 cases pass. Four acceptance cases at the end boundary fail for clients 73/41, across both reconnect receivers and both operations. Rejection and start-boundary cases pass. The probe compares exact paragraph text, preserving the expected end position. See `/home/lofcz/.cache/sciobot-docx-native/r42-work/exact-boundaries-verified.log`.
+
+
+**Investigation:** Baseline `3278fa04`; isolated prototype `5f8822d7`, branch `codex/r43-boundary-wip`. The worktree is `/home/lofcz/.cache/sciobot-docx-native/r43-boundary-wip`. Its exact regression covers retarget, insertion, and removal through two real sessions. Original and Proposed retain exact boundary expectations. The prototype preserves original text shells and places copies first. All end-boundary and original-deletion cases pass. Six start-boundary cases fail for clients 41/73 across both receivers. The focused native/boundary command passes 79 cases and fails six; 2131 assertions. Single-character retargeting of `x` confirms the same limitation: ten pass, two fail, 470 assertions. Proposed reads `See x! or twin` instead of `See !x or twin`. No interior character boundary exists for this singleton. Full original-character deletion still targets the struck source.
+
+The transport matches complete text-shell attributes, including `w:t` versus `w:delText`. Keeping node IDs alone does not preserve that match. Existing split-text boundary associations govern split aliases, not paragraph inline insertion order. Paragraph inline writes call `Y.Text.insert` at numeric positions. Relative positions do not order two concurrent insertions into that same gap. Existing following-text placement handles moved identities, not independently inserted replacement copies. Next: establish boundary-aware placement through an allowed production seam while preserving original and proposal identities. Do not introduce a separate identity/history ledger without a reviewed design.
+
+The isolated exporter tests pass four cases and 15 assertions. They cover synchronous/stepped output, native immutability, semantic digest, saved fingerprints, and unknown marker preservation. Core typecheck passes 1548 files; scoped formatting and lint pass. The WIP commit bypasses hooks and remains intentionally failing. Logs are in the worktree's `local/r43-evidence/`. Main contains no prototype implementation or changed acceptance oracle. R43 remains open. The test-only transport uses the EigenPal Pro License.
 
 ## R44
 

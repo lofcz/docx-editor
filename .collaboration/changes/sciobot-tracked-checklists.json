@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The private adapter planned and directly applied checklist changes without a tracked executor.",
+  "after": "Checklist proposals persist native paragraph revisions and revision-wrapped checkbox controls through the existing atomic review coordinator.",
+  "reason": "Existing native revision markup, review-group storage, and transaction capture isolation supply the behavior. No shared schema or transport field changes.",
+  "tests": [
+    "packages/sciobot/src/review/track-checklists.test.ts",
+    "packages/sciobot/src/review/track-checklists-collaboration.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

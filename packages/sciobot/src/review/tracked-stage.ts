@@ -1,4 +1,5 @@
 import { createDirectListContext } from '../ai/direct-lists';
+import { stageTrackedChecklist } from './tracked-stage-checklists';
 import {
   collectRevisionSites,
   prepareTrackedRunOrigins,
@@ -186,6 +187,13 @@ export function stageTrackedPlan(
         coordinates.set(identity, mapping);
       }
       stageTrackedLink(writer, edit, revision, mapping);
+    } else if (edit.kind === 'list') {
+      if (!trackFormatting)
+        refuseWrite(
+          'Formatting tracking is disabled for this document or editor.',
+          'unsupported-operation'
+        );
+      receipts.push(...stageTrackedChecklist(writer, plan, edit, revision));
     } else if (edit.kind === 'siblings')
       receipts.push(...stageTrackedSiblings(writer, edit, revision));
     else if (

@@ -116,13 +116,14 @@ export function applyDirectListAssignments(
     if (checkbox && target.kind !== 'checklist')
       apply({ op: 'removeContentControl', controlId: checkbox.controlId, keepContent: false });
     if (target.kind === 'checklist') {
-      if (checkbox)
-        apply({
-          op: 'setContentControlValue',
-          controlId: checkbox.controlId,
-          value: { kind: 'checkbox', checked: target.checked },
-        });
-      else {
+      if (checkbox) {
+        if (checkbox.checked !== target.checked)
+          apply({
+            op: 'setContentControlValue',
+            controlId: checkbox.controlId,
+            value: { kind: 'checkbox', checked: target.checked },
+          });
+      } else {
         const marker = seedNodes(
           part(),
           `<w:p><w:sdt xmlns:w14="${W14}"><w:sdtPr><w:tag w:val="${SCIOBOT_CHECKLIST_TAG}"/><w14:checkbox><w14:checked w14:val="${target.checked ? 1 : 0}"/></w14:checkbox></w:sdtPr><w:sdtContent><w:r><w:t>${target.checked ? '☒' : '☐'}</w:t></w:r></w:sdtContent></w:sdt></w:p>`,
@@ -144,7 +145,8 @@ export function applyDirectListAssignments(
         if (!inserted.ok) throw new ListWriteError('The native checklist marker was refused.');
         pkg = withPart(pkg, inserted.part);
       }
-      apply({ op: 'setListNumbering', paragraphId, numId: '0' });
+      if (!checkbox || before?.numbering)
+        apply({ op: 'setListNumbering', paragraphId, numId: '0' });
     } else
       apply({
         op: 'setListNumbering',
