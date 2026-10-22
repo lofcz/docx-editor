@@ -1,4 +1,11 @@
 import {
+  applyDirectListAssignments,
+  type DirectListAssignment,
+  type DirectListContext,
+} from '../ai/direct-lists';
+import type { InsertedListBinding } from './inserted-list-types';
+import { newCellListAssignments } from './new-cell-list-assignments';
+import {
   applyTreeOp,
   bodyStoryRoot,
   createNodeIdAllocator,
@@ -182,6 +189,7 @@ function setParagraphProperty(
 }
 
 export interface NewCellContent {
+  readonly lists?: readonly InsertedListBinding[];
   readonly cellId: string;
   readonly blocks: readonly TargetAstNode[];
   /** Word `w:jc` value for every new paragraph in this cell. */
@@ -191,10 +199,12 @@ export interface NewCellContent {
 export function fillNewCells(
   pkg: OoxmlPackage,
   partName: string,
-  cells: readonly NewCellContent[]
+  cells: readonly NewCellContent[],
+  listContext?: DirectListContext
 ): OoxmlPackage {
   let working = pkg;
-  for (const { cellId, blocks, alignment } of cells) {
+  const assignments: DirectListAssignment[] = [];
+  for (const { cellId, blocks, alignment, lists } of cells) {
     if (!blocks.length) continue;
     const seeds = newParagraphSeeds(blocks, { code: true });
     if (!seeds.success) refuseWrite(seeds.error, seeds.code);
@@ -217,11 +227,14 @@ export function fillNewCells(
     working = applyOp(working, partName, { op: 'deleteBlock', blockId: placeholders[0]!.id });
     working = linkNewParagraphs(working, partName, fresh, seeds.links);
     working = codeNewParagraphs(working, partName, fresh, seeds.codes);
+    assignments.push(...newCellListAssignments(fresh, lists));
     if (alignment)
       for (const id of fresh)
         working = setParagraphProperty(working, partName, id, 'jc', { val: alignment });
   }
-  return working;
+  return assignments.length
+    ? applyDirectListAssignments(working, partName, assignments, listContext)
+    : working;
 }
 
 interface TableSeed {

@@ -502,7 +502,9 @@ export function createEditPlan(
           ? [edit.after]
           : edit.kind === 'siblings'
             ? (edit.lists ?? []).map((binding) => binding.target)
-            : [];
+            : edit.kind === 'insert-row' || edit.kind === 'insert-column'
+              ? (edit.intent.lists ?? []).map((binding) => binding.target)
+              : [];
       for (const target of targets) {
         if (
           (target.kind !== 'ordered' && target.kind !== 'bullet') ||

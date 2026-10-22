@@ -26,6 +26,15 @@ export interface DirectListAssignment {
   readonly target: ListTarget;
 }
 
+/** Allocation state belongs to one plan execution, never its preview or a later plan. */
+export interface DirectListContext {
+  readonly instances: Map<string, string>;
+  readonly levels: Set<string>;
+}
+export function createDirectListContext(): DirectListContext {
+  return { instances: new Map(), levels: new Set() };
+}
+
 class ListWriteError extends Error {}
 
 function seedNodes(part: OoxmlPart, xml: string, name: string) {
@@ -47,12 +56,12 @@ function seedNodes(part: OoxmlPart, xml: string, name: string) {
 export function applyDirectListAssignments(
   input: OoxmlPackage,
   partName: string,
-  assignments: readonly DirectListAssignment[]
+  assignments: readonly DirectListAssignment[],
+  context: DirectListContext = createDirectListContext()
 ): OoxmlPackage {
   let pkg = input,
     seeds = 0;
-  const instances = new Map<string, string>(),
-    levels = new Set<string>();
+  const { instances, levels } = context;
   const part = () => pkg.parts.get(partName)!;
   const apply = (op: TreeDocOp) => {
     const result = applyTreeOp(part(), op);
@@ -116,7 +125,7 @@ export function applyDirectListAssignments(
       else {
         const marker = seedNodes(
           part(),
-          `<w:p><w:sdt><w:sdtPr><w:tag w:val="${SCIOBOT_CHECKLIST_TAG}"/><w14:checkbox><w14:checked w14:val="${target.checked ? 1 : 0}"/></w14:checkbox></w:sdtPr><w:sdtContent><w:r><w:t>${target.checked ? '☒' : '☐'}</w:t></w:r></w:sdtContent></w:sdt></w:p>`,
+          `<w:p><w:sdt xmlns:w14="${W14}"><w:sdtPr><w:tag w:val="${SCIOBOT_CHECKLIST_TAG}"/><w14:checkbox><w14:checked w14:val="${target.checked ? 1 : 0}"/></w14:checkbox></w:sdtPr><w:sdtContent><w:r><w:t>${target.checked ? '☒' : '☐'}</w:t></w:r></w:sdtContent></w:sdt></w:p>`,
           `/sciobot-direct-list-${++seeds}.xml`
         )[0];
         const control =

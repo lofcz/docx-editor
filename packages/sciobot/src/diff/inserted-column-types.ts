@@ -1,3 +1,4 @@
+import { isInsertedCellLists, type InsertedCellListBinding } from './inserted-cell-lists';
 import type { TargetAstNode } from '../projection/parse-target';
 import {
   isInsertedCellFragments,
@@ -25,6 +26,7 @@ export interface InsertedTableColumnIntent {
   readonly cells: readonly InsertedColumnCell[];
   readonly properties: InsertedColumnProperties;
   readonly payloads: readonly InsertedColumnPayloadBinding[];
+  readonly lists?: readonly InsertedCellListBinding[];
 }
 const record = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -36,7 +38,7 @@ const id = (value: unknown): value is string => typeof value === 'string' && val
 export function isInsertedColumnIntent(value: unknown): value is InsertedTableColumnIntent {
   if (
     !record(value) ||
-    !only(value, ['tableId', 'anchor', 'where', 'cells', 'properties', 'payloads']) ||
+    !only(value, ['tableId', 'anchor', 'where', 'cells', 'properties', 'payloads', 'lists']) ||
     !id(value.tableId) ||
     !record(value.anchor) ||
     !only(value.anchor, ['kind', 'id']) ||
@@ -66,5 +68,9 @@ export function isInsertedColumnIntent(value: unknown): value is InsertedTableCo
     rowIds.add(cell.rowId);
     blocks.push(cell.blocks);
   }
-  return isInsertedCellFragments(blocks, value.payloads);
+  return (
+    isInsertedCellFragments(blocks, value.payloads) &&
+    (!Object.hasOwn(value, 'lists') ||
+      isInsertedCellLists(blocks as TargetAstNode[][], value.lists))
+  );
 }

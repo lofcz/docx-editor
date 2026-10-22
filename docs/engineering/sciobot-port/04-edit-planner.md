@@ -674,7 +674,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 ## D38
 
-- [ ] Plan lists inside new table rows and columns
+- [x] Plan lists inside new table rows and columns
 
 **Depends:** [D06](04-edit-planner.md#d06), [D16](04-edit-planner.md#d16), [D17](04-edit-planner.md#d17)
 
@@ -688,7 +688,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused Bun test with explicit expected results.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** codex D38 worker, branch `codex/react-block-proof`. **Evidence:** Native baseline `5b5fa695`, local working tree. Private row/column intentions carry optional validated `[physicalCellIndex, paragraphIndex]` list destinations. Native allocation resolves these paths to paragraph IDs; existing numbering and checkbox operations own the writes. Direct, live tracked, and detached tracked executors publish content and numbering together. Row/cell insertion revisions own new list paragraphs and checkbox controls. Checklist seed controls carry their own `w14` namespace, including detached package stages. One allocation context per plan execution shares repeated new-list keys and authored starts across intents; preview and commit contexts remain separate. Codecs reject malformed, duplicate, nested, out-of-range, and conflicting destinations. The former new-row-list refusal test now proves atomic refusal for an unsupported list continuation paragraph after an earlier text edit. The final seven-file command `bun test --timeout 30000 packages/sciobot/src/diff/new-cell-list-context.test.ts packages/sciobot/src/diff/target-new-cell-lists.test.ts packages/sciobot/src/diff/inserted-cell-lists.test.ts packages/sciobot/src/diff/target-new-cell-lists-collaboration.test.ts packages/sciobot/src/ai/apply-direct.test.ts packages/sciobot/src/review/track-table-rows.test.ts packages/sciobot/src/review/track-table-columns.test.ts` passes 56 cases and 906 assertions (`/tmp/d38-final-seven.log`). The earlier 12-file affected suite passed 126 cases and 1745 assertions before the allocation-context review fix. Six focused direct/tracked/detached cases cover bullet, ordered, and checklist cells, exact path bindings, reject/undo/accept, native numbering and checked state, and save/reopen. Four allocation cases prove one shared native instance and one start=3 override across separate row/column/ordinary intents. Four real two-session cases cover both client orders, offline peer text, opposite reconnect receivers, peer-preserving undo/redo, caret geometry, save/reopen convergence, and row/column deletion during peer editing. Scoped formatting, lint, and whitespace checks pass. Aggregate private types/build remain with the root integration review. Full target AST comparison ignores only Markdown `spread` metadata, matching C01: Word paragraphs do not retain tight/loose list metadata, and native export emits loose lists. Paragraph content, list nesting, numbering identity/start, and checkbox state remain explicit assertions. Compatibility decision: `.collaboration/changes/sciobot-new-cell-list-destinations.json`. No public API, native operation schema, or published package changes. D37 still owns new property destinations; merge/split list destinations retain their explicit refusal.
 
 ## D39
 

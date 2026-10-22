@@ -1,3 +1,4 @@
+import { createDirectListContext } from '../ai/direct-lists';
 import type { DocxEditorInstance } from '@docx-editor.dev/core/editor';
 import {
   collectRevisionSites,
@@ -193,6 +194,7 @@ export function trackTableRowPlan(
   let proposals: readonly NativeRowProposal[] = [];
   /** Locate rows this transaction created, fill them, and collect native row receipts. */
   const complete = (pkg: OoxmlPackage): OoxmlPackage => {
+    const listContext = createDirectListContext();
     let working = pkg;
     const insertedRows = steps.map((step) => {
       if (step.kind === 'rowDelete') return [step.rowId];
@@ -214,7 +216,8 @@ export function trackTableRowPlan(
           part.name,
           step.tableId,
           insertedRows[index]![0]!,
-          step.seeds
+          step.seeds,
+          listContext
         );
     });
     const current = working.parts.get(part.name)!;

@@ -1,3 +1,10 @@
+import {
+  applyDirectListAssignments,
+  type DirectListAssignment,
+  type DirectListContext,
+} from '../ai/direct-lists';
+import { newCellListAssignments } from '../diff/new-cell-list-assignments';
+import type { InsertedListBinding } from '../diff/inserted-list-types';
 import { findNode, paragraphTextOf } from '@docx-editor.dev/core/store';
 import { refuseWrite } from '../diff/fragment-seeds';
 import type { TargetAstNode } from '../projection/parse-target';
@@ -10,9 +17,15 @@ import type { TrackedStageWriter } from './tracked-stage-writer';
 export function stageNewCells(
   writer: TrackedStageWriter,
   partName: string,
-  cells: readonly { cellId: string; blocks: readonly TargetAstNode[] }[]
+  cells: readonly {
+    cellId: string;
+    blocks: readonly TargetAstNode[];
+    lists?: readonly InsertedListBinding[];
+  }[],
+  listContext?: DirectListContext
 ): void {
-  for (const { cellId, blocks } of cells) {
+  const assignments: DirectListAssignment[] = [];
+  for (const { cellId, blocks, lists } of cells) {
     const seeds = newParagraphSeeds(blocks, { code: true });
     if (!seeds.success) refuseWrite(seeds.error, seeds.code);
     if (!seeds.paragraphs.length) continue;
@@ -38,5 +51,8 @@ export function stageNewCells(
     if (paragraphs.length !== seeds.paragraphs.length)
       refuseWrite('New cell paragraphs did not land one for one.', 'apply-failed');
     stageParagraphResources(writer, partName, paragraphs, seeds);
+    assignments.push(...newCellListAssignments(paragraphs, lists));
   }
+  if (assignments.length)
+    writer.edit((pkg) => applyDirectListAssignments(pkg, partName, assignments, listContext));
 }

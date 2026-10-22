@@ -1,3 +1,4 @@
+import type { InsertedCellListBinding } from './inserted-cell-lists';
 import { rowCellIds } from './fragment-seeds';
 import { applyTreeOp, withPart, type OoxmlPart } from '@docx-editor.dev/core/store';
 import type { NativeEditFailure } from '../contracts/document';
@@ -164,6 +165,7 @@ export function planTargetColumns(
       });
       if (!candidate.ok) return fail(`Combined column insertion refused: ${candidate.reason}.`);
       const cells = [];
+      const lists: InsertedCellListBinding[] = [];
       for (const rowId of rowIds) {
         const row = targetRows.get(rowId);
         if (!row) {
@@ -173,11 +175,19 @@ export function planTargetColumns(
         const fragments = insertedTargetCellFragments(
           row.children[column] as LogicalGroup,
           context.targetAst,
-          context.astOf
+          context.astOf,
+          { revision: source.index.revision, pkg: input.pkg, partName: part.name }
         );
         if (!fragments.success) return fragments;
         const old = new Set(rowCellIds(part, rowId));
         const creates = rowCellIds(candidate.part, rowId).some((id) => !old.has(id));
+        if (creates)
+          lists.push(
+            ...fragments.lists.map((binding) => ({
+              ...binding,
+              path: [cells.length, ...binding.path],
+            }))
+          );
         cells.push({ rowId, blocks: creates ? fragments.fragments : [] });
       }
       const planned = planInsertedTableColumn(
@@ -191,6 +201,7 @@ export function planTargetColumns(
           anchor: { kind: 'grid-column', id: anchor!.id },
           where,
           cells,
+          ...(lists.length ? { lists } : {}),
         }
       );
       if (!planned.success) return planned;

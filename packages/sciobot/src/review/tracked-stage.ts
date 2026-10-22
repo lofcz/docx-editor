@@ -1,3 +1,4 @@
+import { createDirectListContext } from '../ai/direct-lists';
 import {
   collectRevisionSites,
   prepareTrackedRunOrigins,
@@ -34,6 +35,7 @@ export function stageTrackedPlan(
   revision: TrackedStageAttribution,
   trackFormatting: boolean
 ): readonly ReviewGroupReceipt[] {
+  const listContext = createDirectListContext();
   const receipts: ReviewGroupReceipt[] = [];
   const formatReceipts = new Map<string, ReviewGroupReceipt[]>();
   const tableReceipts = new Map<string, ReviewGroupReceipt[]>();
@@ -196,7 +198,7 @@ export function stageTrackedPlan(
       const identity = key(edit.partName, trackedTableId(tableEdit));
       if (tableStageHasStructure(tableEdit)) structuralTables.add(identity);
       const entries = tableReceipts.get(identity) ?? [];
-      entries.push(...stageTrackedTable(writer, tableEdit, revision, trackFormatting));
+      entries.push(...stageTrackedTable(writer, tableEdit, revision, trackFormatting, listContext));
       tableReceipts.set(identity, entries);
     } else
       refuseWrite(

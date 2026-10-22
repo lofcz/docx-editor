@@ -1,0 +1,19 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "New table row and column cell lists have no explicit paragraph destinations and the complete-target planner refuses them.",
+  "after": "Private row and column intentions carry validated optional cell/paragraph list bindings. Direct and tracked allocation resolves these bindings to newly allocated native paragraphs and existing numbering/checklist operations.",
+  "reason": "The private plan codec gains optional list destinations without changing shared native operation formats. Row/cell insertion revisions own their new paragraphs, list properties, and checkbox controls. Existing canonical package-edit transactions publish numbering and content together. Checklist seeds carry their own w14 namespace for detached package stages. Each plan execution owns its allocation context, so repeated list keys across intents share one native numbering instance and one authored start override. Preview and commit use separate contexts.",
+  "tests": [
+    "packages/sciobot/src/diff/inserted-cell-lists.test.ts",
+    "packages/sciobot/src/diff/new-cell-list-context.test.ts",
+    "packages/sciobot/src/diff/target-new-cell-lists.test.ts",
+    "packages/sciobot/src/diff/target-new-cell-lists-collaboration.test.ts",
+    "packages/sciobot/src/diff/target-table.test.ts",
+    "packages/sciobot/src/diff/target-table-columns.test.ts",
+    "packages/sciobot/src/review/track-table-rows.test.ts",
+    "packages/sciobot/src/review/track-table-columns.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

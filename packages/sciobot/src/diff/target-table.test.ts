@@ -366,7 +366,7 @@ test('nested table cell changes retain the nearest native table and outer cell c
   expect(findNode(part(applied), outerTail.id)).toBe(outerTail);
 });
 
-test('new-row list destinations refuse atomically after earlier retained text has planned edits', async () => {
+test('unsupported list continuation destinations refuse atomically after earlier retained text has planned edits', async () => {
   const input = await targetDocumentInput(
       p('Earlier') +
         table([
@@ -381,7 +381,7 @@ test('new-row list destinations refuse atomically after earlier retained text ha
         [
           ['A', 'B'],
           ['One', 'Two'],
-          ['- [ ] New task', 'New value'],
+          ['- First paragraph\n\n  Continuation paragraph', 'New value'],
         ]
           .map(
             (values) =>
@@ -393,7 +393,7 @@ test('new-row list destinations refuse atomically after earlier retained text ha
         '\n</table>'
     );
   expect(result.success).toBe(false);
-  if (!result.success) expect(result.error).toContain('lists');
+  if (!result.success) expect(result.error).toContain('continuation');
   expect('plan' in result).toBe(false);
   expect(writeOoxmlPackage(input.pkg)).toEqual(bytes);
 });

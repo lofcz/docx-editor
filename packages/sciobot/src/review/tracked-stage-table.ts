@@ -1,3 +1,5 @@
+import type { DirectListContext } from '../ai/direct-lists';
+import { cellListBindings } from '../diff/inserted-cell-lists';
 import { resolveTableGeometry, geometrySplitCells } from '../diff/table-geometry';
 import {
   collectRevisionSites,
@@ -84,7 +86,8 @@ export function stageTrackedTable(
   writer: TrackedStageWriter,
   edit: TableEdit,
   revision: TrackedStageAttribution,
-  trackFormatting: boolean
+  trackFormatting: boolean,
+  listContext?: DirectListContext
 ): readonly ReviewGroupReceipt[] {
   const before = currentStagePart(writer, edit.partName),
     tableId = trackedTableId(edit);
@@ -162,7 +165,12 @@ export function stageTrackedTable(
     stageNewCells(
       writer,
       edit.partName,
-      fresh.map((cell, index) => ({ cellId: cell.id, blocks: intent.cells[index]! }))
+      fresh.map((cell, index) => ({
+        cellId: cell.id,
+        blocks: intent.cells[index]!,
+        lists: cellListBindings(intent.lists, index),
+      })),
+      listContext
     );
   } else if (edit.kind === 'insert-column') {
     const intent = edit.intent;
@@ -181,14 +189,22 @@ export function stageTrackedTable(
     const part = currentStagePart(writer, edit.partName);
     if (insertedColumnIndex(before, part, intent) === null)
       refuseWrite('Native column allocation is ambiguous.', 'apply-failed');
-    const fresh = intent.cells.flatMap((entry) => {
+    const fresh = intent.cells.flatMap((entry, index) => {
       const old = new Set(cells(before, entry.rowId).map((cell) => cell.id)),
         created = cells(part, entry.rowId).filter((cell) => !old.has(cell.id));
       if (created.length > 1 || (!created.length && entry.blocks.length))
         refuseWrite('A new column cell is ambiguous.', 'apply-failed');
-      return created.length ? [{ cellId: created[0]!.id, blocks: entry.blocks }] : [];
+      return created.length
+        ? [
+            {
+              cellId: created[0]!.id,
+              blocks: entry.blocks,
+              lists: cellListBindings(intent.lists, index),
+            },
+          ]
+        : [];
     });
-    stageNewCells(writer, edit.partName, fresh);
+    stageNewCells(writer, edit.partName, fresh, listContext);
   } else {
     const intent = edit.intent;
     if (intent.payloads.length)

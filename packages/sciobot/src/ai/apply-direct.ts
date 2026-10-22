@@ -1,3 +1,4 @@
+import { cellListBindings } from '../diff/inserted-cell-lists';
 import { resolveTableGeometry, geometrySplitCells } from '../diff/table-geometry';
 import type { DocxEditorInstance } from '@docx-editor.dev/core/editor';
 import {
@@ -41,7 +42,12 @@ import {
   inlineCodeCharacterStyles,
   withInlineCodeStyle,
 } from '../native/inline-code';
-import { applyDirectListAssignments, type DirectListAssignment } from './direct-lists';
+import {
+  applyDirectListAssignments,
+  createDirectListContext,
+  type DirectListContext,
+  type DirectListAssignment,
+} from './direct-lists';
 import {
   completeSiblingFragments,
   fillNewCells,
@@ -70,7 +76,11 @@ export type DirectPlanResult =
 
 type Edit<K extends CanonicalEdit['kind']> = Extract<CanonicalEdit, { kind: K }>;
 /** Work that needs identities allocated by earlier native operations in the same transaction. */
-type Deferred = (pkg: OoxmlPackage, original: ReadonlySet<string>) => OoxmlPackage;
+type Deferred = (
+  pkg: OoxmlPackage,
+  original: ReadonlySet<string>,
+  listContext: DirectListContext
+) => OoxmlPackage;
 /** Hyperlink targets resolve through the surface's gated relationship mint at commit time. */
 type Staged =
   | TreeDocOp
@@ -351,7 +361,7 @@ function lowerDirectPlan(pkg: OoxmlPackage, plan: CanonicalEditPlan): Lowering {
             paragraphs: seeds.paragraphs,
           });
         if (seeds.links.length || seeds.styles.size || seeds.placed.length || lists.length)
-          deferred.push((working, original) => {
+          deferred.push((working, original, listContext) => {
             const fresh = freshInGap(working.parts.get(partName)!, edit, original);
             const completed = completeSiblingFragments(working, partName, edit, seeds, fresh);
             return applyDirectListAssignments(
@@ -362,7 +372,8 @@ function lowerDirectPlan(pkg: OoxmlPackage, plan: CanonicalEditPlan): Lowering {
                 if (!paragraphId)
                   refuse('An inserted list paragraph was not allocated.', 'apply-failed');
                 return { paragraphId, before: null, target: binding.target };
-              })
+              }),
+              listContext
             );
           });
         break;
@@ -449,7 +460,7 @@ function lowerDirectPlan(pkg: OoxmlPackage, plan: CanonicalEditPlan): Lowering {
           );
         if (!tableRowIds(preview, intent.tableId).includes(intent.rowId))
           refuse('The planned table row anchor no longer exists.', 'stale-revision');
-        deferred.push((working) => {
+        deferred.push((working, _original, listContext) => {
           let part = working.parts.get(partName)!;
           const before = new Set(tableRowIds(part, intent.tableId));
           const inserted = applyTreeOp(part, {
@@ -479,7 +490,12 @@ function lowerDirectPlan(pkg: OoxmlPackage, plan: CanonicalEditPlan): Lowering {
           return fillNewCells(
             withPart(working, part),
             partName,
-            cells.map((cellId, index) => ({ cellId, blocks: intent.cells[index]! }))
+            cells.map((cellId, index) => ({
+              cellId,
+              blocks: intent.cells[index]!,
+              lists: cellListBindings(intent.lists, index),
+            })),
+            listContext
           );
         });
         break;
@@ -492,7 +508,7 @@ function lowerDirectPlan(pkg: OoxmlPackage, plan: CanonicalEditPlan): Lowering {
             'Registered blocks in new columns need the D29 fragment executor.',
             'unsupported-operation'
           );
-        deferred.push((working) => {
+        deferred.push((working, _original, listContext) => {
           const before = working.parts.get(partName)!;
           const inserted = applyTreeOp(before, insertedColumnOperation(intent));
           if (!inserted.ok)
@@ -507,14 +523,22 @@ function lowerDirectPlan(pkg: OoxmlPackage, plan: CanonicalEditPlan): Lowering {
             if (!sized.ok) refuse(`Native column width refused: ${sized.reason}.`, 'apply-failed');
             part = (sized as { part: OoxmlPart }).part;
           }
-          const cells = intent.cells.flatMap((entry) => {
+          const cells = intent.cells.flatMap((entry, index) => {
             const old = new Set(rowCellIds(before, entry.rowId)),
               created = rowCellIds(part, entry.rowId).filter((id) => !old.has(id));
             if (created.length > 1 || (!created.length && entry.blocks.length))
               refuse('The new native column cell is ambiguous.', 'apply-failed');
-            return created.length ? [{ cellId: created[0]!, blocks: entry.blocks }] : [];
+            return created.length
+              ? [
+                  {
+                    cellId: created[0]!,
+                    blocks: entry.blocks,
+                    lists: cellListBindings(intent.lists, index),
+                  },
+                ]
+              : [];
           });
-          return fillNewCells(withPart(working, part), partName, cells);
+          return fillNewCells(withPart(working, part), partName, cells, listContext);
         });
         break;
       }
@@ -605,7 +629,9 @@ function lowerDirectPlan(pkg: OoxmlPackage, plan: CanonicalEditPlan): Lowering {
     }
   }
   if (lists.length)
-    deferred.push((working) => applyDirectListAssignments(working, partName, lists));
+    deferred.push((working, _original, listContext) =>
+      applyDirectListAssignments(working, partName, lists, listContext)
+    );
   // Code runs name the application character style (N18), whether formatted in place or
   // written into new fragments; its definition lands in the same transaction.
   if (
@@ -699,7 +725,8 @@ function previewLowering(pkg: OoxmlPackage, lowering: Lowering): OoxmlPackage {
     part = (result as { part: OoxmlPart }).part;
   }
   preview = withPart(preview, part);
-  for (const step of lowering.deferred) preview = step(preview, original);
+  const listContext = createDirectListContext();
+  for (const step of lowering.deferred) preview = step(preview, original, listContext);
   return preview;
 }
 
@@ -785,8 +812,13 @@ export function applyDirectPlan(
   }
   const complete = lowering.deferred.length
     ? [
-        (working: OoxmlPackage) =>
-          lowering.deferred.reduce((next, step) => step(next, original), working),
+        (working: OoxmlPackage) => {
+          const listContext = createDirectListContext();
+          return lowering.deferred.reduce(
+            (next, step) => step(next, original, listContext),
+            working
+          );
+        },
       ]
     : undefined;
   try {

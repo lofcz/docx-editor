@@ -1,3 +1,4 @@
+import type { InsertedCellListBinding } from './inserted-cell-lists';
 import { readTableStructure } from '@docx-editor.dev/core/layout';
 import { planTargetShapeGeometry, type AllocatedTargetCell } from './target-table-shape';
 import { rowCellIds, tableRowIds } from './fragment-seeds';
@@ -216,13 +217,25 @@ export function planTargetTable(original: TargetTableContext): EditPlanResult {
       const nativeRow = structure?.rows.find((row) => row.id === fresh);
       if (!nativeRow) return fail('The inserted row has no native slot geometry.');
       const cells: (readonly TargetAstNode[])[] = [];
+      const lists: InsertedCellListBinding[] = [];
       for (const nativeCell of nativeRow.cells) {
         const cell = row.children[
           nativeCell.logicalGridColumn ?? nativeCell.gridColumn
         ] as LogicalGroup;
         if (!cell) return fail('The inserted row extends beyond its target slots.');
-        const fragments = insertedTargetCellFragments(cell, context.targetAst, context.astOf);
+        const fragments = insertedTargetCellFragments(cell, context.targetAst, context.astOf, {
+          revision,
+          pkg: input.pkg,
+          partName: part.name,
+        });
         if (!fragments.success) return fragments;
+        if (!nativeCell.vMergeContinue)
+          lists.push(
+            ...fragments.lists.map((binding) => ({
+              ...binding,
+              path: [cells.length, ...binding.path],
+            }))
+          );
         cells.push(nativeCell.vMergeContinue ? [] : fragments.fragments);
       }
       const result = planInsertedTableRow(
@@ -231,6 +244,7 @@ export function planTargetTable(original: TargetTableContext): EditPlanResult {
           rowId: anchor!,
           where,
           cells,
+          ...(lists.length ? { lists } : {}),
         }
       );
       if (!result.success) return result;

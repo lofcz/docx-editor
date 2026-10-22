@@ -1,3 +1,5 @@
+import { resolveTargetLists } from './target-lists';
+import type { InsertedListBinding } from './inserted-list-types';
 import type { NativeEditFailure } from '../contracts/document';
 import type { TargetAstNode } from '../projection/parse-target';
 import type { LogicalBlock, LogicalGroup } from './logical-block-types';
@@ -19,8 +21,15 @@ export function targetTableHeaderKey(block: LogicalGroup): string {
 export function insertedTargetCellFragments(
   cell: LogicalGroup,
   targetAst: TargetAstNode,
-  astOf: (block: LogicalBlock) => TargetAstNode
-): { readonly success: true; readonly fragments: readonly TargetAstNode[] } | NativeEditFailure {
+  astOf: (block: LogicalBlock) => TargetAstNode,
+  source?: Parameters<typeof resolveTargetLists>[0]
+):
+  | {
+      readonly success: true;
+      readonly fragments: readonly TargetAstNode[];
+      readonly lists: readonly InsertedListBinding[];
+    }
+  | NativeEditFailure {
   const fail = (error: string): NativeEditFailure => ({
     success: false,
     code: 'unsupported-operation',
@@ -28,8 +37,15 @@ export function insertedTargetCellFragments(
   });
   if (targetTableHeaderKey(cell) !== targetAstKey({ type: 'cell' }))
     return fail('Inserted cell metadata needs explicit native properties.');
-  if (cell.children.some((block) => block.list))
+  if (!source && cell.children.some((block) => block.list))
     return fail('Inserted cell lists need explicit native list destinations.');
+  const resolved = source
+    ? resolveTargetLists(source, cell.children, [])
+    : { success: true as const, targets: [] };
+  if (!resolved.success) return resolved;
+  const lists = resolved.targets.flatMap((target, index) =>
+    target.kind === 'none' ? [] : [{ path: [index], target }]
+  );
   const fragments: TargetAstNode[] = [];
   for (const block of cell.children) {
     if (block.kind === 'paragraph') {
@@ -48,5 +64,5 @@ export function insertedTargetCellFragments(
       fragments.push(original);
     }
   }
-  return { success: true, fragments };
+  return { success: true, fragments, lists };
 }

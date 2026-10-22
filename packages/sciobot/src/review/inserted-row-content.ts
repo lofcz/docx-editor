@@ -1,4 +1,12 @@
 import {
+  applyDirectListAssignments,
+  type DirectListAssignment,
+  type DirectListContext,
+} from '../ai/direct-lists';
+import { newCellListAssignments } from '../diff/new-cell-list-assignments';
+import { cellListBindings } from '../diff/inserted-cell-lists';
+import type { InsertedListBinding } from '../diff/inserted-list-types';
+import {
   applyTreeOp,
   ensureHyperlinkRelationship,
   findNode,
@@ -15,6 +23,7 @@ export interface InsertedRowSeeds {
   readonly cells: readonly {
     readonly paragraphs: readonly OoxmlParagraphNode[];
     readonly links: readonly NewParagraphLink[];
+    readonly lists?: readonly InsertedListBinding[];
   }[];
   readonly heightTwips?: number;
 }
@@ -33,10 +42,14 @@ export function insertedRowSeeds(
       error: 'Application blocks in a new row need the shared fragment materializer.',
     };
   const cells: InsertedRowSeeds['cells'][number][] = [];
-  for (const stream of intent.cells) {
+  for (const [index, stream] of intent.cells.entries()) {
     const seeds = newParagraphSeeds(stream);
     if (!seeds.success) return seeds;
-    cells.push({ paragraphs: seeds.paragraphs, links: seeds.links });
+    cells.push({
+      paragraphs: seeds.paragraphs,
+      links: seeds.links,
+      lists: cellListBindings(intent.lists, index),
+    });
   }
   return {
     success: true,
@@ -50,17 +63,22 @@ export function insertedRowSeeds(
 }
 
 export interface NewCellSeeds {
+  readonly lists?: readonly InsertedListBinding[];
   readonly paragraphs: readonly OoxmlParagraphNode[];
   readonly links: readonly NewParagraphLink[];
 }
 
 /** Seed one cell stream of paragraphs and headings; other fragments need D28/D29. */
 export function newCellSeeds(
-  stream: readonly import('../projection/parse-target').TargetAstNode[]
+  stream: readonly import('../projection/parse-target').TargetAstNode[],
+  lists?: readonly InsertedListBinding[]
 ): { success: true; seeds: NewCellSeeds } | NativeEditFailure {
   const seeds = newParagraphSeeds(stream);
   return seeds.success
-    ? { success: true, seeds: { paragraphs: seeds.paragraphs, links: seeds.links } }
+    ? {
+        success: true,
+        seeds: { paragraphs: seeds.paragraphs, links: seeds.links, ...(lists ? { lists } : {}) },
+      }
     : seeds;
 }
 
@@ -71,7 +89,8 @@ export function newCellSeeds(
 export function materializeNewCells(
   input: OoxmlPackage,
   partName: string,
-  cells: readonly { readonly cellId: string; readonly seeds: NewCellSeeds }[]
+  cells: readonly { readonly cellId: string; readonly seeds: NewCellSeeds }[],
+  listContext?: DirectListContext
 ): OoxmlPackage {
   let pkg = input,
     part = input.parts.get(partName);
@@ -82,6 +101,7 @@ export function materializeNewCells(
     part = result.part;
     return result;
   };
+  const assignments: DirectListAssignment[] = [];
   for (const { cellId, seeds } of cells) {
     const { paragraphs, links } = seeds;
     if (!paragraphs.length) continue;
@@ -103,6 +123,7 @@ export function materializeNewCells(
         : [];
     if (ids.length !== paragraphs.length)
       throw new Error('New cell paragraphs did not land one for one.');
+    assignments.push(...newCellListAssignments(ids, seeds.lists));
     for (const link of links) {
       const target: { relationshipId: string } | { anchor: string } = (() => {
         if (link.target.kind === 'bookmark') return { anchor: link.target.anchor };
@@ -121,7 +142,10 @@ export function materializeNewCells(
       });
     }
   }
-  return withPart(pkg, part);
+  const filled = withPart(pkg, part);
+  return assignments.length
+    ? applyDirectListAssignments(filled, partName, assignments, listContext)
+    : filled;
 }
 
 /** Fill the cells of one row that this transaction created, after its exact height. */
@@ -130,7 +154,8 @@ export function materializeInsertedRow(
   partName: string,
   tableId: string,
   rowId: string,
-  seeds: InsertedRowSeeds
+  seeds: InsertedRowSeeds,
+  listContext?: DirectListContext
 ): OoxmlPackage {
   let part = input.parts.get(partName);
   if (!part) throw new Error('The inserted row part is missing.');
@@ -152,6 +177,7 @@ export function materializeInsertedRow(
   return materializeNewCells(
     withPart(input, part),
     partName,
-    cells.map((cell, index) => ({ cellId: cell.id, seeds: seeds.cells[index]! }))
+    cells.map((cell, index) => ({ cellId: cell.id, seeds: seeds.cells[index]! })),
+    listContext
   );
 }

@@ -1,3 +1,5 @@
+import { createDirectListContext } from '../ai/direct-lists';
+import { cellListBindings } from '../diff/inserted-cell-lists';
 import type { DocxEditorInstance } from '@docx-editor.dev/core/editor';
 import {
   collectRevisionSites,
@@ -99,8 +101,8 @@ function columnStep(
         'unsupported-operation'
       );
     const seeds = new Map<string, NewCellSeeds>();
-    for (const entry of intent.cells) {
-      const seeded = newCellSeeds(entry.blocks);
+    for (const [index, entry] of intent.cells.entries()) {
+      const seeded = newCellSeeds(entry.blocks, cellListBindings(intent.lists, index));
       if (!seeded.success) return seeded;
       seeds.set(entry.rowId, seeded.seeds);
     }
@@ -165,6 +167,7 @@ export function trackTableColumnPlan(
   );
   let proposals: readonly NativeColumnProposal[] = [];
   const complete = (pkg: OoxmlPackage): OoxmlPackage => {
+    const listContext = createDirectListContext();
     let working = pkg;
     const cells = steps.map((step) => {
       const current = working.parts.get(part.name)!;
@@ -186,7 +189,7 @@ export function trackTableColumnPlan(
           throw new Error('The new native column cell is ambiguous.');
         return fresh.length ? [{ cellId: fresh[0]!, seeds: step.seeds!.get(entry.rowId)! }] : [];
       });
-      working = materializeNewCells(withPart(working, next), part.name, created);
+      working = materializeNewCells(withPart(working, next), part.name, created, listContext);
       return created.map((entry) => entry.cellId);
     });
     const current = working.parts.get(part.name)!;
