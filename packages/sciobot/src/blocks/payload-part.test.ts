@@ -45,6 +45,40 @@ function payloadOf(editor: DocxEditorInstance) {
   return store.status === 'ready' ? store.entries.get('activity-1')?.decoded : undefined;
 }
 
+test('rapid consecutive widget actions each retain one shared undo step', async () => {
+  const pair = await createTwoEditorFixture({ document: fixture() });
+  try {
+    const editor = pair.editors[0]!;
+    const first = updateFor(editor, activity(editor));
+    expect(writeBlockPayload(editor, first).success).toBe(true);
+    const firstTree = canonicalOoxmlFingerprint(editor.surface!.session.part());
+    const second = {
+      ...first,
+      payload: { ...first.payload, attributes: { name: 'Warmup', duration: 20 } },
+      fallbackOps: [],
+    };
+    // No delay or await: elapsed capture time must not decide the user's undo boundaries.
+    expect(writeBlockPayload(editor, second).success).toBe(true);
+    await pair.settle();
+    for (const peer of pair.editors)
+      expect(payloadOf(peer)).toEqual({ status: 'supported', value: second.payload });
+    expect(editor.exec({ type: 'undo' }).ok).toBe(true);
+    await pair.settle();
+    for (const peer of pair.editors) {
+      expect(payloadOf(peer)).toEqual({ status: 'supported', value: first.payload });
+      expect(canonicalOoxmlFingerprint(peer.surface!.session.part())).toBe(firstTree);
+    }
+    expect(editor.exec({ type: 'redo' }).ok).toBe(true);
+    await pair.settle();
+    for (const peer of pair.editors)
+      expect(payloadOf(peer)).toEqual({ status: 'supported', value: second.payload });
+    const saved = await pair.savedDigests();
+    expect(saved[0]).toEqual(saved[1]);
+  } finally {
+    pair.destroy();
+  }
+});
+
 test('metadata, readable fallback, and short tag share one undo unit and save/reopen', async () => {
   const container = document.createElement('div');
   document.body.append(container);

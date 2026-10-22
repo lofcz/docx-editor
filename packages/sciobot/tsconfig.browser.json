@@ -13,6 +13,7 @@
     "../../e2e/sciobot-block-retention.spec.ts",
     "../../e2e/sciobot-block-host.config.ts",
     "../../e2e/sciobot-block-host.spec.ts",
+    "../../e2e/sciobot-block-overflow.spec.ts",
     "../../e2e/sciobot-native-slots.spec.ts",
     "../../e2e/sciobot-block-controls.config.ts",
     "../../e2e/sciobot-block-controls.spec.ts"

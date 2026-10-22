@@ -8,9 +8,11 @@ export type MeasureBlockElement = (element: HTMLElement) => number;
 export interface MeasuredFragment {
   /** The block's last body paragraph: the reservation lands after its last line. */
   readonly paragraphId: string;
-  /** The native fragment's own height, in points. It never includes a reservation. */
+  /** The complete native fallback height, in points. It never includes a reservation. */
   readonly nativeHeight: number;
   readonly scale: number;
+  /** Bounded scroll viewport, in CSS pixels. Content beyond it does not reserve flow. */
+  readonly maxHeight?: number;
 }
 
 const defaultMeasure: MeasureBlockElement = (element) => element.getBoundingClientRect().height;
@@ -20,7 +22,7 @@ const defaultMeasure: MeasureBlockElement = (element) => element.getBoundingClie
  *
  * The reservation is a surface view input, so user history, collaboration peers, and saved
  * files never see a measurement. Native fragment heights exclude reservations, and widgets
- * measure their own intrinsic content, so a reservation cannot feed back into the next
+ * measure their own bounded content, so a reservation cannot feed back into the next
  * measurement: each change relayouts once and the following paint measures the same value.
  */
 export class BlockMeasurement {
@@ -78,7 +80,8 @@ export class BlockMeasurement {
       if (!element.isConnected || !(fragment.scale > 0)) continue;
       const height = this.measure(element);
       if (!Number.isFinite(height)) continue;
-      const extra = height / fragment.scale - fragment.nativeHeight;
+      const extra =
+        Math.min(height, fragment.maxHeight ?? Infinity) / fragment.scale - fragment.nativeHeight;
       if (extra > 0)
         reservations.set(
           fragment.paragraphId,

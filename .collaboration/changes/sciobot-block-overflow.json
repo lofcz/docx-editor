@@ -1,0 +1,15 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Measured opaque widgets could extend beyond a page and repeat their complete UI on every native fallback fragment.",
+  "after": "One persistent opaque widget occupies a bounded scroll viewport on its first native fallback fragment. Measurements reserve only excess viewport height. The complete native fallback remains in Word output. Each submitted widget payload action starts a separate undo unit using the existing native automation flag.",
+  "reason": "Viewport limits and reservations are local view inputs. Canonical content, operations, payload formats, and collaboration protocols do not change.",
+  "tests": [
+    "packages/sciobot/src/blocks/payload-part.test.ts",
+    "packages/sciobot/src/react-blocks/measurement.test.tsx",
+    "e2e/sciobot-block-overflow.spec.ts",
+    "e2e/sciobot-block-measurement.spec.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

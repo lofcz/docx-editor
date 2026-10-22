@@ -66,13 +66,20 @@ export function writeBlockPayload(
     ...write.fallbackOps,
   ];
   try {
-    const result = surface.applyAutomationOps(() => ops, { kind: 'body' }, [
-      (working) => {
-        const next = withPayloadRecord(working, write.payload, write.label);
-        if (!next.ok) throw new Error(`Payload transaction refused: ${next.reason}`);
-        return next.pkg;
-      },
-    ]);
+    // Each submitted widget action is one undo unit, including rapid consecutive actions.
+    const result = surface.applyAutomationOps(
+      () => ops,
+      { kind: 'body' },
+      [
+        (working) => {
+          const next = withPayloadRecord(working, write.payload, write.label);
+          if (!next.ok) throw new Error(`Payload transaction refused: ${next.reason}`);
+          return next.pkg;
+        },
+      ],
+      false,
+      true
+    );
     if (result.rejected || !result.committed)
       return {
         success: false,

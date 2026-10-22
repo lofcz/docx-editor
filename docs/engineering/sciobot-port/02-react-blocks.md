@@ -314,7 +314,7 @@ Existing inline clipboard regressions retain their original assertions and limit
 
 ## B17
 
-- [ ] Handle widgets taller than one page
+- [x] Handle widgets taller than one page
 
 **Depends:** [B14](02-react-blocks.md#b14), [B15](02-react-blocks.md#b15), [V01](11-verification.md#v01)
 
@@ -328,7 +328,9 @@ Existing inline clipboard regressions retain their original assertions and limit
 
 **Check:** Add a focused Chromium case with real input and native selection where applicable. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** codex solo, branch `codex/react-block-proof`. **Evidence:** Baseline `bddc9894`; completed local source. Measured opaque registrations keep one persistent root on the first native fallback fragment. Its scroll viewport fits the remaining page content at the current zoom. Only excess bounded height reserves native flow after the complete fallback. Native slots and inline widgets keep their separate adapters. Viewport furniture isolates React input from native editing. Canonical fallback paragraphs remain unchanged by scrolling and measurement.
+
+The focused Chromium fixture uses ninety listening turns across multiple native pages. Real input reaches and edits the final turn. Save/reopen checks every expected transcript paragraph. Both reconnect delivery orders cover concurrent transcript and following-text edits, history, native typing after scrolling, remote caret geometry, deletion during peer editing, and complete saved digest convergence. Three focused browser cases pass in `/tmp/b17-browser2.log`. The affected host/provider/measurement/lifetime suite passes fourteen cases and 427 assertions in `/tmp/b17-affected.log`. Six original measurement cases pass separately in `/tmp/b17-measurement.log`. Private external-core build passes with 210 modules. Browser types pass 1764 files. The first browser attempt exposed an incorrect test traversal from the document root; traversing the saved Word body fixes that test helper. No acceptance oracle or deadline changed. The completed command `SCIOBOT_BROWSER_STABLE=1 bunx playwright test --config e2e/sciobot-block-host.config.ts sciobot-block-overflow.spec.ts sciobot-block-measurement.spec.ts sciobot-block-fragments.spec.ts` passes all eight cases at their original limits: `/tmp/b17-browser-history.log`. The fixture is `packages/sciobot/test/browser/measurement.tsx`. Scrolling alone preserves the complete saved digests. The first combined regression records seven passes and a rapid-action history failure: `/tmp/b17-browser-final.log`. Two successive payload actions previously merged inside the native capture interval. `writeBlockPayload` now uses the existing separate-history flag for each submitted widget action. The no-delay two-session regression and original measurement cases pass ten cases and 216 assertions: `/tmp/b17-history.log`. The affected payload concurrency, field, and label collaboration suites pass 38 cases and 1092 assertions: `/tmp/b17-payload-affected.log`. Native fingerprints, exact payloads, peer edits, and reopened digests remain checked. Final private build, 1764-file browser typecheck, root format, scoped format, root lint, diff check, and compatibility policy pass. Logs: `/tmp/b17-build-final.log`, `/tmp/b17-types-history.log`, `/tmp/b17-root-format.log`, `/tmp/b17-lint-final.log`, `/tmp/b17-policy-final.log`. Decision: `.collaboration/changes/sciobot-block-overflow.json`; local viewport state changes no shared format fields. The production listening renderer remains its separate domain leaf.
 
 ## B18
 

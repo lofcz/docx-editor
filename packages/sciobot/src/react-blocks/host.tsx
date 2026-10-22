@@ -12,6 +12,7 @@ import { buildBlockIndex, type BlockIndex, type IndexedBlock } from '../blocks/b
 import { isolateWidgetInput } from './input-boundary';
 import { inlineLayoutBoxes } from './inline-layout-boxes';
 import { BlockMeasurement, lastBodyParagraphIn, type MeasuredFragment } from './measurement';
+import { blockViewportHeight } from './overflow';
 import { NativeSlotLease, preserveNativeSelection } from './native-slots';
 import { attachNativeSlots, type NativeSlotMount } from './native-slot-plan';
 import {
@@ -47,8 +48,10 @@ export interface ReactBlockRegistration {
   /** Borrow block, row, or cell content. Inline native slots use a separate adapter. */
   readonly nativeContent?: boolean;
   /**
-   * Reserve native flow for a widget taller than its Word fallback. The widget's intrinsic
+   * Reserve native flow for a widget taller than its Word fallback. The widget's bounded
    * height is measured; following native content moves down without a document edit.
+   * One opaque widget occupies a bounded scroll viewport on its first native fragment.
+   * The complete native fallback remains available for Word export.
    */
   readonly reserveHeight?: boolean;
 }
@@ -161,7 +164,13 @@ export function mountReactBlockHost(
             ]
           : collectParagraphs(block.controlId, next)
       );
-      const fragments = options.inlineOnly ? boundary.fragments.slice(0, 1) : boundary.fragments;
+      const measured =
+        measurement !== null &&
+        registration.reserveHeight === true &&
+        !nativeContent &&
+        boundary.level !== 'inline';
+      const fragments =
+        options.inlineOnly || measured ? boundary.fragments.slice(0, 1) : boundary.fragments;
       fragments.forEach((fragment, ordinal) => {
         const key = `${block.id}:${ordinal}`;
         valid.add(key);
@@ -211,18 +220,17 @@ export function mountReactBlockHost(
           revision: surface!.session.packageRevision(),
           children: nativeContent ? currentMount.slot.content() : null,
         });
-        // Every fragment of a measured block keeps the same wrapper type, so a block that
-        // splits or rejoins across pages never remounts its widget. Only the last fragment
-        // reserves: native flow grows after the block's last line.
-        const measured =
-          measurement !== null &&
-          registration.reserveHeight === true &&
-          !nativeContent &&
-          boundary.level !== 'inline';
-        const target =
-          measured && ordinal === boundary.fragments.length - 1
-            ? measuredFragment(block.controlId, box.height, next)
-            : null;
+        // One opaque widget keeps its identity when the Word fallback splits across pages.
+        // Reserve only excess viewport height after the complete fallback's last paragraph.
+        const maxHeight = blockViewportHeight(next, fragment.pageIndex, box.y);
+        const target = measured
+          ? measuredFragment(
+              block.controlId,
+              boundary.fragments.reduce((sum, item) => sum + item.box.height, 0),
+              next,
+              maxHeight
+            )
+          : null;
         render.push(() =>
           currentMount.root.render(
             createElement(BlockRootProviders, {
@@ -233,6 +241,7 @@ export function mountReactBlockHost(
                     measurement: measurement!,
                     mountKey: key,
                     target,
+                    maxHeight,
                     children: view,
                   })
                 : view,
@@ -313,26 +322,29 @@ export function mountReactBlockHost(
 function measuredFragment(
   controlId: string,
   nativeHeight: number,
-  frame: SurfacePaintFrame
+  frame: SurfacePaintFrame,
+  maxHeight: number
 ): MeasuredFragment | null {
   const control = findNode(frame.part, controlId);
   const paragraphId = control ? lastBodyParagraphIn(control) : null;
-  return paragraphId ? { paragraphId, nativeHeight, scale: frame.scale } : null;
+  return paragraphId ? { paragraphId, nativeHeight, scale: frame.scale, maxHeight } : null;
 }
 
 /**
- * The widget's intrinsic box. Its height follows the widget content, never the native
- * fragment box, so a reservation cannot change the next measurement.
+ * The widget's bounded box. Its height follows its content up to the page limit, never
+ * the native reservation, so a reservation cannot change the next measurement.
  */
 function MeasuredRoot({
   measurement,
   mountKey,
   target,
+  maxHeight,
   children,
 }: {
   readonly measurement: BlockMeasurement;
   readonly mountKey: string;
   readonly target: MeasuredFragment | null;
+  readonly maxHeight: number;
   readonly children: ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -341,7 +353,23 @@ function MeasuredRoot({
     else measurement.release(mountKey);
   });
   useLayoutEffect(() => () => measurement.release(mountKey), [measurement, mountKey]);
-  return createElement('div', { ref, 'data-sciobot-block-measure': '' }, children);
+  return createElement(
+    'div',
+    {
+      ref,
+      'data-sciobot-block-measure': '',
+      'data-sciobot-block-ui': '',
+      'data-docx-host-ui': '',
+      contentEditable: false,
+      style: {
+        maxHeight,
+        overflowY: 'auto',
+        overscrollBehaviorY: 'contain',
+        pointerEvents: 'auto',
+      },
+    },
+    children
+  );
 }
 
 function collectParagraphs(

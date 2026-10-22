@@ -11,6 +11,7 @@ export default defineConfig({
     'sciobot-block-fragments.spec.ts',
     'sciobot-block-clipboard.spec.ts',
     'sciobot-block-measurement.spec.ts',
+    'sciobot-block-overflow.spec.ts',
   ],
   workers: 1,
   timeout: 60_000,

@@ -2,7 +2,7 @@
 import { loadDefaultFonts } from '@docx-editor.dev/fonts';
 import type { DocxEditorInstance } from '@docx-editor.dev/core/editor';
 import { caretAt } from '@docx-editor.dev/core/layout';
-import { paragraphTextOf } from '@docx-editor.dev/core/store';
+import { paragraphTextOf, readOoxmlPackage, storyParagraphs } from '@docx-editor.dev/core/store';
 import { BlockUi, mountReactBlockHost, type ReactBlockViewProps } from '@sciobot/docx/react';
 import { buildBlockIndex } from '../../src/blocks/block-index';
 import { writeBlockPayload } from '../../src/blocks/payload-part';
@@ -13,8 +13,13 @@ import './style.css';
 
 const fonts = await loadDefaultFonts({ families: ['Calibri'] });
 if (fonts.failures.length) throw new Error('Packaged browser fonts failed.');
+const overflow = new URLSearchParams(location.search).get('overflow');
+const transcript =
+  overflow === 'long'
+    ? Array.from({ length: 90 }, (_, i) => `Speaker ${i + 1}: Listening transcript turn ${i + 1}.`)
+    : undefined;
 const pair = await createTwoEditorFixture({
-  document: blockMeasurementDocument(),
+  document: blockMeasurementDocument(transcript),
   clientIds: [73, 41],
   editor: { fonts },
 });
@@ -30,7 +35,7 @@ const writeRows = (editor: DocxEditorInstance, rows: number) => {
   }).success;
 };
 function tallView(editor: DocxEditorInstance) {
-  return function Tall({ block }: ReactBlockViewProps) {
+  return function Tall({ block, paragraphs }: ReactBlockViewProps) {
     const rows = Number(block.payload.attributes.rows ?? 0);
     return (
       <BlockUi className="tall-ui" style={{ background: '#eef', border: '1px solid #557' }}>
@@ -40,6 +45,31 @@ function tallView(editor: DocxEditorInstance) {
         {Array.from({ length: rows }, (_, index) => (
           <div key={index} className="tall-row" style={{ height: ROW }}>
             Row {index + 1}
+            {overflow && (
+              <input
+                aria-label={`Turn ${index + 1}`}
+                defaultValue={paragraphs[index]?.text ?? ''}
+                onBlur={(event) => {
+                  const paragraph = paragraphs[index];
+                  if (!paragraph || !event.currentTarget.value.startsWith(paragraph.text)) return;
+                  const text = event.currentTarget.value.slice(paragraph.text.length);
+                  if (text)
+                    writeBlockPayload(editor, {
+                      controlId: block.controlId,
+                      payload: block.payload,
+                      label: 'Listening transcript',
+                      fallbackOps: [
+                        {
+                          op: 'insertText',
+                          paragraphId: paragraph.id,
+                          offset: paragraph.text.length,
+                          text,
+                        },
+                      ],
+                    });
+                }}
+              />
+            )}
           </div>
         ))}
       </BlockUi>
@@ -172,6 +202,27 @@ const api = {
   settle: () => pair.settle(),
   statuses: () => pair.rooms.map((room) => room.session.status()),
   savedDigests: () => pair.savedDigests(),
+  async savedTexts(peer = 0) {
+    const read = readOoxmlPackage(new Uint8Array(await pair.editors[peer]!.save()));
+    if (!read.ok) throw new Error(read.reason);
+    const part = read.package.parts.get('/word/document.xml')!;
+    const body = part.root.children.find((node) => node.kind === 'body');
+    if (!body) throw new Error('Saved Word body is missing.');
+    return [...storyParagraphs(body)].map((p) => paragraphTextOf(part, p.id));
+  },
+  viewport(peer = 0) {
+    const pane = pair.containers[peer]!;
+    const root = pane.querySelector<HTMLElement>('[data-sciobot-block-measure]')!;
+    const page = root.closest('.docx-page-content')!;
+    return {
+      height: root.clientHeight,
+      scrollHeight: root.scrollHeight,
+      bottom: root.getBoundingClientRect().bottom,
+      pageBottom: page.getBoundingClientRect().bottom,
+      roots: pane.querySelectorAll('[data-sciobot-block-measure]').length,
+      nativePages: surface(peer).layout().pages.length,
+    };
+  },
 };
 declare global {
   interface Window {

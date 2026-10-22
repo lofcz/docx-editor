@@ -156,17 +156,20 @@ export function blockClipboardDocument(): Uint8Array {
 }
 
 /** A measured widget between native paragraphs; `rows` drives its rendered height. */
-export function blockMeasurementDocument(): Uint8Array {
+export function blockMeasurementDocument(transcript?: readonly string[]): Uint8Array {
   const body =
     hostParagraph('Intro') +
-    hostControl('tall', hostParagraph('Tall fallback')) +
+    hostControl(
+      'tall',
+      transcript ? transcript.map(hostParagraph).join('') : hostParagraph('Tall fallback')
+    ) +
     hostParagraph('Tail') +
     hostParagraph('After');
   const read = readOoxmlPackage(docxFixture(body));
   if (!read.ok) throw new Error(read.reason);
   const written = withPayloadRecord(
     read.package,
-    { id: 'tall', type: 'test_tall', version: 1, attributes: { rows: 0 } },
+    { id: 'tall', type: 'test_tall', version: 1, attributes: { rows: transcript?.length ?? 0 } },
     'Tall'
   );
   if (!written.ok) throw new Error(written.reason);
