@@ -1,4 +1,8 @@
-import { beginHistoryGroupFrames, type DocxEditorInstance } from '@docx-editor.dev/core/editor';
+import {
+  beginHistoryGroupFrames,
+  type DocxEditorInstance,
+  type PaginatedSurface,
+} from '@docx-editor.dev/core/editor';
 import {
   contentControlPropertiesOf,
   contentControlsIn,
@@ -20,6 +24,7 @@ import {
   type JsonValue,
 } from '../blocks/payload-schema';
 import { readBlockSelection } from './selection';
+import { isWidgetInputEvent } from './input-boundary';
 
 /** Private clipboard flavour. Native Word and HTML flavours carry the readable fallback. */
 export const SCIOBOT_BLOCKS_MIME = 'application/x-sciobot-blocks+json';
@@ -249,10 +254,59 @@ export function pasteWithBlocks(
   }
 }
 
-/** Carry registered block payloads through copy, cut, and paste in one editor. */
+interface ClipboardLifetime {
+  readonly clients: Map<symbol, BlockClipboardOptions>;
+  readonly stop: () => void;
+}
+const clipboards = new WeakMap<PaginatedSurface, ClipboardLifetime>();
+
+/** Retain one clipboard handler per surface. Independent callers release their own lease. */
 export function mountBlockClipboard(
   editor: DocxEditorInstance,
   options: BlockClipboardOptions = {}
+): BlockClipboard {
+  const surface = editor.surface;
+  if (!surface) throw new Error('Attach the editor before mounting the block clipboard.');
+  let lifetime = clipboards.get(surface);
+  if (
+    lifetime &&
+    options.createId &&
+    [...lifetime.clients.values()].some(
+      (client) => client.createId && client.createId !== options.createId
+    )
+  )
+    throw new Error('The surface clipboard already has a different block ID factory.');
+  const token = Symbol();
+  if (!lifetime) {
+    const clients = new Map([[token, options]]);
+    const shared: BlockClipboardOptions = {
+      createId: (old, used) =>
+        ([...clients.values()].find((client) => client.createId)?.createId ?? defaultId)(old, used),
+      onPaste: (result) => {
+        for (const client of [...clients.values()]) client.onPaste?.(result);
+      },
+      onError: (error) => {
+        for (const client of [...clients.values()]) client.onError?.(error);
+      },
+    };
+    const handle = attachBlockClipboard(editor, shared);
+    lifetime = { clients, stop: () => handle.dispose() };
+    clipboards.set(surface, lifetime);
+  } else lifetime.clients.set(token, options);
+  const retained = lifetime;
+  return {
+    dispose() {
+      if (!retained.clients.delete(token) || retained.clients.size) return;
+      clipboards.delete(surface);
+      retained.stop();
+    },
+  };
+}
+
+/** Carry registered block payloads through native clipboard events. */
+function attachBlockClipboard(
+  editor: DocxEditorInstance,
+  options: BlockClipboardOptions
 ): BlockClipboard {
   const surface = editor.surface;
   if (!surface) throw new Error('Attach the editor before mounting the block clipboard.');
@@ -271,13 +325,17 @@ export function mountBlockClipboard(
   };
   // Bubble phase: the native handler has already written its text and HTML flavours.
   const onCopy = (event: Event) => {
+    if (isWidgetInputEvent(event)) return;
     if (event.defaultPrevented) write(event);
   };
   // Capture phase for cut: the native handler deletes the selection after writing flavours.
-  const onCut = (event: Event) => write(event);
+  const onCut = (event: Event) => {
+    if (!isWidgetInputEvent(event)) write(event);
+  };
   // Capture phase. Native fragments can carry block tags, so their paste and the tag repair
   // run as two writes of one explicit undo step. Other pastes keep the native handler.
   const onPaste = (event: Event) => {
+    if (isWidgetInputEvent(event)) return;
     const transfer = (event as ClipboardEvent).clipboardData;
     if (!transfer) return;
     const html = transfer.getData('text/html');
