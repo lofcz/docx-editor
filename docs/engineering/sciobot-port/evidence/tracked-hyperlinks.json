@@ -1,0 +1,152 @@
+{
+  "leaf": "R42",
+  "status": "complete",
+  "recordedAt": "2026-10-22T05:54:34.437773+00:00",
+  "source": {
+    "fork": "/run/media/lofcz/ssd_external/GitHub/docx-editor",
+    "branch": "codex/react-block-proof",
+    "runtimeCommit": "93f2ad71b294c3abb07059e5a17368af6087443d",
+    "protocolCommit": "942ac0d3fa1f63114ac565eaca4633cd923c2c21",
+    "publicBuildSource": {
+      "commit": "2d2cb157b30f39d593dbd61dcff3070f3c58aac9",
+      "tree": "51bd438c2ebd6b525ae897673eda006a40709c35",
+      "verification": "All public package, declaration, stylesheet, and build-script inputs are unchanged; four exact public archives reused."
+    },
+    "verifiedSnapshotFiles": 4824
+  },
+  "requirements": {
+    "exactAcceptanceAndRejection": [
+      "packages/sciobot/src/review/track-hyperlink-structure.test.ts",
+      "packages/sciobot/src/review/track-hyperlink-imported-metadata.test.ts"
+    ],
+    "sharedRelationships": [
+      "packages/sciobot/src/review/track-hyperlinks.test.ts",
+      "scripts/docx-native/harness/scenarios/tracked-hyperlinks.ts (application worktree)"
+    ],
+    "saveReopenUndoRedo": [
+      "packages/sciobot/src/review/track-hyperlink-structure.test.ts",
+      "packages/sciobot/src/review/track-hyperlink-concurrent-origins.test.ts"
+    ],
+    "twoRealSessions": [
+      "packages/sciobot/src/review/native-link-structure-collaboration.test.ts",
+      "packages/sciobot/src/review/track-hyperlink-structure-collaboration.test.ts",
+      "packages/sciobot/src/review/track-hyperlink-copy-text-history.test.ts",
+      "packages/sciobot/src/review/track-hyperlink-concurrent-origins.test.ts"
+    ],
+    "olderReaderAndClipboard": [
+      "packages/sciobot/src/review/track-hyperlink-older-reader.test.ts",
+      "packages/core/src/store/__tests__/dormant-versioned-readers.test.ts",
+      "packages/core/src/store/__tests__/run-origins-clipboard.test.ts"
+    ]
+  },
+  "verification": {
+    "frozenInputs": 3455,
+    "native": {
+      "command": "node /home/lofcz/.cache/sciobot-docx-native/r42-final-verification/native-runner.mjs --jobs 2",
+      "searchRoots": [
+        "packages/core/src/store/__tests__",
+        "packages/core/src/editor/__tests__",
+        "packages/core/src/binding/__tests__",
+        "packages/core/src/automation/__tests__",
+        "packages/core/src/layout/__tests__",
+        "packages/docx-to-markdown/test"
+      ],
+      "passed": 9081,
+      "failed": 0,
+      "skipped": 0,
+      "todos": 0,
+      "files": 552,
+      "allFrozenHashesExact": true,
+      "log": {
+        "path": "/home/lofcz/.cache/sciobot-docx-native/r42-final-verification/native-full.log",
+        "sha256": "529ceb860ad53c16b1d5facbf7914982cb02f2d0a6c366fd979c6e25fe38e5d3"
+      }
+    },
+    "privateBroad": {
+      "command": "node /home/lofcz/.cache/sciobot-docx-native/r42-final-verification/private-runner.mjs --jobs 4",
+      "passed": 2615,
+      "failed": 1,
+      "files": 194,
+      "allFrozenHashesExact": true,
+      "failure": "Only the package guard still expected ~2.31.0 after the upstream 2.32 upgrade. The version assertion now matches upstream. Production code is unchanged after this broad run.",
+      "log": {
+        "path": "/home/lofcz/.cache/sciobot-docx-native/r42-final-verification/private-full.log",
+        "sha256": "942785ae0fe7937811aab39f561a543bf6614b62956bbf05d38355e15fdcc039"
+      }
+    },
+    "finalPrivateFocused": {
+      "command": "bun test --timeout 30000 ./packages/sciobot/src/__tests__/package-boundary.test.ts ./packages/sciobot/src/review/track-hyperlink-concurrent-origins.test.ts",
+      "passed": 19,
+      "failed": 0,
+      "assertions": 307,
+      "includes": "Corrected package guard and two added pure-link peer cases; existing sixteen concurrent cases remain unchanged.",
+      "log": {
+        "path": "/home/lofcz/.cache/sciobot-docx-native/r42-release-work/closure-focused.log",
+        "sha256": "6dcc02ccfdd3b990c200e500552051dc7be6b266b776c9bb4d46c45df2e74479"
+      }
+    },
+    "installedBrowser": {
+      "worktree": "/run/media/lofcz/ssd_external/GitHub/sciobot-next-wts/docx-native",
+      "commit": "8bc4e7d9b4eea8bc093fac7b98b5b4985da28e60",
+      "command": "DOCX_NATIVE_SNAPSHOT=<verified snapshot> DOCX_HARNESS_PORT=8100 DOCX_HARNESS_URL=http://127.0.0.1:8100 bun test --timeout 600000 scripts/docx-native/harness/tracked-hyperlinks.test.ts",
+      "driverTestsPassed": 1,
+      "linkDecisionCases": 22,
+      "failed": 0,
+      "checks": [
+        "exact A01 acceptance",
+        "exact original rejection",
+        "shared relationships",
+        "proposal and decision undo/redo",
+        "save/reopen before decision"
+      ],
+      "log": {
+        "path": "/home/lofcz/.cache/sciobot-docx-native/r42-release-work/installed-browser-final.log",
+        "sha256": "1e803b0c5738417cf0a9ae62871f31eebce28c4c0943de8dc694e59979e06264"
+      }
+    },
+    "application": {
+      "frontendTypesFiles": 6671,
+      "harnessTypesFiles": 2238,
+      "integrationUnitTests": 30,
+      "installedArchiveFilesExact": 456,
+      "onePhysicalCore": true,
+      "frozenInstallPassed": true
+    },
+    "normalCommitHooks": [
+      "staged formatting and lint",
+      "collaboration compatibility",
+      "all-workspace types",
+      "parity",
+      "license headers",
+      "API snapshots",
+      "whole-source formatting",
+      "whole-source lint"
+    ]
+  },
+  "artifacts": {
+    "@docx-editor.dev/i18n": {
+      "file": "docx-editor.dev-i18n-1f904fb0ea6d.tgz",
+      "sha256": "1f904fb0ea6ddcac6236e0cc29b7e8b365f5f9524340b75537141bb34ca71e0e"
+    },
+    "@docx-editor.dev/core": {
+      "file": "docx-editor.dev-core-dc31f897f0b0.tgz",
+      "sha256": "dc31f897f0b041c5a01dd4732499cddec7a8a21ed4ceed25ec47966887b4cb69"
+    },
+    "@docx-editor.dev/fonts": {
+      "file": "docx-editor.dev-fonts-ccac02278724.tgz",
+      "sha256": "ccac022787245b1148480a6da417088c5a2ed275824cc3b8f7cb2d85c34ac602"
+    },
+    "@docx-editor.dev/docx-to-markdown": {
+      "file": "docx-editor.dev-docx-to-markdown-7abca2fc4f8f.tgz",
+      "sha256": "7abca2fc4f8f61ca50ca7b1eca035ed7718a2c19e54b8d15e5121847ed10ebfb"
+    },
+    "@sciobot/docx": {
+      "file": "sciobot-docx-51bfaca922ce.tgz",
+      "sha256": "51bfaca922cef17ae5e7f506f5e88c6993c602894c81c0faab71220dee9f056b"
+    }
+  },
+  "limits": [
+    "The older-reader artifact is the installed development core d9dcb7e6e716, not an npm-release certification.",
+    "R19, R43, native UI controls, application suggestion routing, and whole-port cutover retain their separate leaves."
+  ]
+}

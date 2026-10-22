@@ -768,7 +768,7 @@ R39 closes the observed-attribute protocol foundation. Its exported boundary pre
 
 ## R42
 
-- [ ] Execute tracked hyperlink insertion and removal plans
+- [x] Execute tracked hyperlink insertion and removal plans
 
 **Depends:** [D27](04-edit-planner.md#d27), [R26](05-suggestions.md#r26), [R27](05-suggestions.md#r27), [V01](11-verification.md#v01)
 
@@ -782,7 +782,7 @@ R39 closes the observed-attribute protocol foundation. Its exported boundary pre
 
 **Check:** Add native regressions with save/reopen and undo/redo. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** codex, branch `codex/react-block-proof`. **Evidence:** Source commit `942ac0d3` integrates versioned per-proposal run/text provenance, shared native source identities, independent concurrent decisions, deferred completed proofs, and clipboard remapping. Exact A01 acceptance and original rejection assertions remain unchanged. Focused integrated verification passes 322 checks. The final history/clipboard run passes 41 checks, including independent accept/reject orders, undo/redo, intermediate save/reopen, and pending copies with completed peer proofs. A fresh focused run passes 88 private and 44 core checks. All commit hooks pass: workspace types, formatting, lint, compatibility, parity, licenses, and API snapshots. The installed older public core remains a development artifact, not an npm-release certification. Final full-source suites, immutable artifacts, and installed application checks remain pending. R43 remains separate. See [implementation notes](evidence/implementation-notes.md).
+**Claim:** codex, branch `codex/react-block-proof`. **Evidence:** Runtime commit `93f2ad71` completes exact A01 acceptance and original rejection, including pure disjoint links after save/reopen. Source tests retain imported metadata, shared relationships, independent decisions, history, reconnect, peer deletion, and geometry checks through real sessions. The scoped native suite passes 9081 checks across 552 files with zero failures; all 3455 frozen input hashes remain exact. The private broad run passes 2615 cases and finds one stale 2.31 peer-version assertion after the upstream 2.32 upgrade. That assertion is corrected; the package guard and complete concurrent-provenance file pass 19 checks and 307 assertions, including two added pure-link peer cases. The installed browser matrix passes all 22 link/unlink decisions with exact saved and local fingerprints. Application commit `8bc4e7d9b` installs the verified runtime: all 456 archive files match, one core resolves, frozen installation passes, frontend/harness types pass, and 30 integration tests pass. The build verifies 4824 source files and 188 private runtime modules. All normal commit hooks pass. R19 and R43 remain separate. See [verification record](evidence/tracked-hyperlinks.json).
 
 ## R43
 

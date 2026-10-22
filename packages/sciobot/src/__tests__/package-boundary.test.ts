@@ -8,7 +8,7 @@ import manifest from '../../package.json';
 test('the private adapter consumes one external native core instance', () => {
   expect(manifest.private).toBe(true);
   expect(manifest.peerDependencies).toEqual({
-    '@docx-editor.dev/core': '~2.31.0',
+    '@docx-editor.dev/core': '~2.32.0',
     react: '^18.0.0 || ^19.0.0',
     'react-dom': '^18.0.0 || ^19.0.0',
     yjs: '13.6.32',

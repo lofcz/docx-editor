@@ -188,3 +188,73 @@ for (const order of [
         golden.destroy();
       }
     }, 30000);
+
+for (const action of ['accept', 'reject'] as const)
+  test(`pure disjoint links preserve exact ${action} output with an offline peer`, async () => {
+    const prepared = prepareReviewGroupDocument(document_());
+    if (!prepared.success) throw Error(prepared.error);
+    const pair = await createTwoEditorFixture({
+      document: prepared.document,
+      documentId: context.documentId,
+      ownedAttributes: true,
+      editor: { modules: [SCIOBOT_NATIVE_REVIEW_MODULE] },
+      clientIds: [41, 73],
+    });
+    const read = readOoxmlPackage(prepared.document);
+    if (!read.ok) throw Error(read.reason);
+    const golden = propertyEditor(read.package);
+    try {
+      const [alice, bob] = pair.editors;
+      const target = '[Alpha](https://example.org/a) [end](https://example.org/b)\n\nTail';
+      if (action === 'accept') {
+        const direct = await plan(golden, target);
+        expect(
+          runWithTransactionActor('alice', () => applyDirectPlan(golden, direct, context)).success
+        ).toBe(true);
+      }
+      pair.pause();
+      const proposal = trackHyperlinkPlan(alice!, await plan(alice!, target), context);
+      if (!proposal.success) throw Error(proposal.error);
+      for (const editor of [bob!, golden]) {
+        const tail = editor.surface!.session.paragraphIds()[1]!;
+        expect(
+          editor.surface!.applyAutomationOps(
+            () => [{ op: 'insertText', paragraphId: tail, offset: 4, text: ' peer' }],
+            { kind: 'body' },
+            [],
+            false,
+            true
+          )
+        ).toMatchObject({ committed: true, rejected: false });
+      }
+      pair.reconnect(0);
+      await pair.settle();
+      const pending = fingerprint(alice!);
+      const decide = action === 'accept' ? acceptReviewGroup : rejectReviewGroup;
+      expect(
+        decide(alice!, proposal.proposals[0]!.identity, groupToken(alice!), context).success
+      ).toBe(true);
+      await pair.settle();
+      const expected = fingerprint(golden);
+      for (const editor of pair.editors) {
+        expect(fingerprint(editor)).toBe(expected);
+        const saved = readOoxmlPackage(new Uint8Array(await editor.save()));
+        if (!saved.ok) throw Error(saved.reason);
+        const reopened = propertyEditor(saved.package);
+        try {
+          expect(fingerprint(reopened)).toBe(expected);
+        } finally {
+          reopened.destroy();
+        }
+      }
+      expect(alice!.exec({ type: 'undo' }).ok).toBe(true);
+      await pair.settle();
+      for (const editor of pair.editors) expect(fingerprint(editor)).toBe(pending);
+      expect(alice!.exec({ type: 'redo' }).ok).toBe(true);
+      await pair.settle();
+      for (const editor of pair.editors) expect(fingerprint(editor)).toBe(expected);
+    } finally {
+      pair.destroy();
+      golden.destroy();
+    }
+  }, 30000);
