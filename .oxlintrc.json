@@ -325,6 +325,12 @@
       "rules": { "no-restricted-globals": "off", "docx/no-cross-realm-instanceof": "off" }
     },
 
+    {
+      "files": ["packages/core/src/layout/hf-layout.ts"],
+      "rules": {
+        "max-lines": ["error", { "max": 1001, "skipBlankLines": false, "skipComments": false }]
+      }
+    },
     // Per-file `max-lines` caps. scripts/check-max-lines-caps.mjs holds each one within 150
     // lines of the file's length, so a cap is a ratchet, not a permanent ceiling.
 

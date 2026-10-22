@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Inline widget measurement snapshots could enter pure layout but could not update a live editor surface.",
+  "after": "A host can publish or clear local metric snapshots. Native font and zoom updates retain them, while canonical save pagination excludes host measurements.",
+  "reason": "The bridge changes local view inputs only. It creates no package edit, journal, shared register, native operation, or collaboration format field.",
+  "tests": [
+    "packages/core/src/editor/__tests__/surface-inline-widget-metrics.test.ts",
+    "packages/sciobot/src/react-blocks/surface-inline-metrics-collaboration.test.ts"
+  ],
+  "changeset": "surface-inline-widget-metrics",
+  "migration": null
+}

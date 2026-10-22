@@ -354,7 +354,7 @@ Focused layout checks pass eight cases and 45 assertions. They prove exact 30-po
 
 - [ ] Mount React inline widgets in native boxes
 
-**Depends:** [B04](02-react-blocks.md#b04), [B19](02-react-blocks.md#b19), [V01](11-verification.md#v01)
+**Depends:** [B30](02-react-blocks.md#b30), [B04](02-react-blocks.md#b04), [B19](02-react-blocks.md#b19), [V01](11-verification.md#v01)
 
 **Primary files:** `fork:packages/sciobot/src/react-blocks/inline-host.tsx`; `sibling inline-host browser test`
 
@@ -366,7 +366,7 @@ Focused layout checks pass eight cases and 45 assertions. They prove exact 30-po
 
 **Check:** Add a focused Chromium case with real input and native selection where applicable. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** codex solo, branch `codex/react-block-proof`. **Evidence:** B30 supplies the missing live surface measurement input before React mounting.
 
 ## B21
 
@@ -529,3 +529,24 @@ Focused layout checks pass eight cases and 45 assertions. They prove exact 30-po
 **Check:** Add a focused native regression. Run the clipboard, paste, fragment, and history suites. Include core typecheck, build, API check, line caps, the changeset, and the compatibility decision.
 
 **Claim:** claude, branch `codex/react-block-proof`. **Evidence:** Native baseline `9770e78`, local working tree. `applyFragmentPaste` promoted its story transaction to a package unit with no group, so the B10 repair write became a second undo step. One undo exposed duplicate block tags. `FragmentPasteInput.historyGroup` now reaches `promoteStoryTransactionToPackageUnit` and `runObservedStoreTransaction`. The surface supplies `commitHistoryGroup.value`. `beginHistoryGroupFrames(editor, group)` wraps the existing automation frames and is exported as `@internal`. `packages/core/src/editor/__tests__/history-group-frames-paste.test.ts` passes three cases. The clipboard, paste, fragment, and history suites pass 488 of 491 cases across 49 files under load. The three failures were timeouts. `clipboard-paste-router.test.ts` and `clipboard-rich-surface.test.ts` then pass 24 of 24 with a 180-second timeout. Core typecheck passes 1463 files, and the core build passes. The core API check reports 15 entries and zero errors, with the unchanged 2443 warnings and 380 forgotten exports. The snapshots include the new optional members. Line caps pass; `paginated-surface.ts` holds 6299 of 6300 lines. Core minor changeset: `.changeset/history-group-fragment-paste.md`. Decision: `.collaboration/changes/sciobot-block-clipboard.json`. The existing journal history-group field carries the group, so shared formats do not change. The B10 two-session case verifies collaborative undo of a grouped paste.
+
+
+## B30
+
+- [x] Publish inline widget measurements as surface view inputs
+
+**Depends:** [B19](02-react-blocks.md#b19), [V01](11-verification.md#v01)
+
+**Primary files:** `fork:packages/core/src/editor/surface-inline-widget-metrics.ts`; `fork:packages/core/src/editor/paginated-surface.ts`; `fork:packages/core/src/editor/__tests__/surface-inline-widget-metrics.test.ts`; `fork:packages/sciobot/src/react-blocks/surface-inline-metrics-collaboration.test.ts`
+
+**Read:** [S25](sources.md#s25)
+
+**Change:** Publish immutable inline metric snapshots without replacing the editor, changing native content, or entering document history. Preserve measurements across font changes and zoom. Clear host measurements on disposal and keep canonical Word save calculations on native fallback metrics.
+
+**Close when:** A live native editor changes chip width after publication, preserves native text, selection, history, and saved content, retains the measurement after zoom and font-measurer replacement, and restores native fallback when cleared.
+
+**Check:** Add native surface regressions and the required real two-session scenario. Run affected font/zoom/layout tests, types, public build/API checks, changeset, and compatibility policy.
+
+**Claim:** codex solo, branch `codex/react-block-proof`. **Evidence:** Baseline `cdca9134`, completed local source. `setSurfaceInlineWidgetMetrics` publishes or clears an immutable local snapshot without replacing the surface or its session. Measurement wrappers preserve original method receivers, optional shaping methods, and old pass snapshots. Zoom and font replacement reapply the active host snapshot. Identical provider/revision pairs do not repaint. Body and furniture geometry refresh together; header/footer break keys include metric identity/revision. Canonical save calculations unwrap host metrics, retaining Word fallback pagination and cached PAGEREF values. Native IME composition retains its live DOM; publications coalesce and apply after composition readback. Only local measurement state changes.
+
+`bun test --timeout 30000 --preload ./scripts/test/preload-dom.ts packages/core/src/editor/__tests__/surface-inline-widget-metrics.test.ts packages/sciobot/src/react-blocks/surface-inline-metrics-collaboration.test.ts` passes nine cases and 156 assertions (`/tmp/solo-b30-ime-focused.log`). Five native cases prove width updates, selection/content/history retention, zoom, real font-measurer replacement, prototype receivers, immutable prior snapshots, native Word save pagination, header cache invalidation, and IME readback. Four real two-session cases cover both client orders and receivers, distinct local widths, exact remote caret coordinates, concurrent text, peer-preserving undo/redo, deletion during peer editing, reconnect, clearing, and saved convergence. The affected font, surface layout, furniture, reservation, save-field, caret, widget, and lane suite passes 98 cases and 1177 assertions across ten files before the isolated IME guard; the focused suite then passes with that guard. Core types pass 1549 files and private types pass 1992 files. Core build and public API checks pass; the editor snapshot adds only the publication function and its snapshot type. Root lint and line caps pass. Compatibility policy passes 132 decisions with zero format fields changed. Minor changeset `.changeset/surface-inline-widget-metrics.md`; decision `.collaboration/changes/sciobot-surface-inline-metrics.json`. Backlog validation passes 271 leaves with 165 closed; all 198 production hashes and feature mappings match after auditing application revision 7b61c6cb07510d21d14a4ec2eb753958a7870401. The shared test transport uses the EigenPal Pro License. B20 retains React mounting, browser identity, providers, and interactive geometry verification.

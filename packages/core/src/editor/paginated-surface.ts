@@ -1,4 +1,8 @@
 import {
+  SurfaceInlineWidgetMetrics,
+  registerSurfaceInlineWidgetMetrics,
+} from './surface-inline-widget-metrics.ts';
+import {
   createUnsupportedElementProjection,
   validateUnsupportedElementRules,
 } from './unsupported-element-state.ts';
@@ -419,7 +423,8 @@ export function mountPaginatedSurface(
         // Measure with the same face paint draws with.
         ...(options.fontAlias ? { fontAlias: options.fontAlias } : {}),
       });
-  let measurer = options.measurer ?? defaults!.measurer;
+  const inlineWidgets = new SurfaceInlineWidgetMetrics();
+  let measurer = inlineWidgets.measurer(options.measurer ?? defaults!.measurer);
   // Incremental layout machinery — without these every keystroke re-lays out the document.
   const layoutCache = createParagraphLayoutCache<never>();
   let layoutSession = createLayoutSession();
@@ -1021,11 +1026,12 @@ export function mountPaginatedSurface(
   const furnitureFilters = createFurnitureFilterMemo();
   const createCurrentFurnitureSource = (
     authorFilter?: RevisionAuthorFilter,
-    fieldCodes = showFieldCodes
+    fieldCodes = showFieldCodes,
+    nativeMetrics = false
   ): ReturnType<typeof createFurnitureSource> => {
     const source = createFurnitureSource({
       session: unsupportedProjection.view(session),
-      measurer,
+      measurer: nativeMetrics ? inlineWidgets.native(measurer) : measurer,
       producer,
       cache: layoutCache,
       ...{ styleCascade, numberingIndex, defaultTabStopPt, compatibilityMode },
@@ -1436,7 +1442,7 @@ export function mountPaginatedSurface(
     return yield* layoutDocumentViewSteps({
       view: unsupportedProjection.view(session),
       revision,
-      measurer,
+      measurer: context && !context.live ? inlineWidgets.native(measurer) : measurer,
       cache: layoutCache,
       session: activeLayoutSession,
       producer,
@@ -1472,7 +1478,7 @@ export function mountPaginatedSurface(
   function canonicalUnfilteredLayoutForSave(): SemanticLayout {
     return layoutDocument(session.packageRevision(), undefined, {
       layoutSession: createLayoutSession(),
-      furnitureSource: createCurrentFurnitureSource(undefined, false),
+      furnitureSource: createCurrentFurnitureSource(undefined, false, true),
     });
   }
 
@@ -4449,7 +4455,7 @@ export function mountPaginatedSurface(
             context: tryCreateBrowserCanvasContext(container.ownerDocument),
             ...(options.fontAlias ? { fontAlias: options.fontAlias } : {}),
           });
-          measurer = defaults.measurer;
+          measurer = inlineWidgets.measurer(defaults.measurer);
         }
         producer = producerIdentity();
         furnitureSource = createCurrentFurnitureSource(revisionFilter());
@@ -6289,6 +6295,15 @@ export function mountPaginatedSurface(
   surface.refreshTableInteractionLabels = () => {
     tableInteraction.refreshLabels();
   };
+  const refreshMeasurements = (reason = 'fonts') => {
+    if (destroyed) return;
+    furnitureSource = createCurrentFurnitureSource(revisionFilter());
+    materializedSet = undefined;
+    materializedExtent = undefined;
+    commentRectCache = null;
+    scheduler.invalidateAll(session.packageRevision(), reason);
+    scheduler.flush();
+  };
   registerSurfaceMeasurement(
     surface,
     () => ({
@@ -6299,19 +6314,16 @@ export function mountPaginatedSurface(
     }),
     (next) => {
       options = { ...options, ...next };
-      measurer = options.measurer ?? defaults!.measurer;
+      measurer = inlineWidgets.measurer(options.measurer ?? defaults!.measurer);
       producer = producerIdentity();
     },
-    () => {
-      if (destroyed) return;
-      furnitureSource = createCurrentFurnitureSource(revisionFilter());
-      materializedSet = undefined;
-      materializedExtent = undefined;
-      commentRectCache = null;
-      scheduler.invalidateAll(session.packageRevision(), 'fonts');
-      scheduler.flush();
-    }
+    refreshMeasurements
   );
+  registerSurfaceInlineWidgetMetrics(surface, (next) => {
+    if (destroyed || !inlineWidgets.set(next)) return;
+    measurer = inlineWidgets.measurer(options.measurer ?? defaults!.measurer);
+    refreshMeasurements('inline-widgets');
+  });
   registerRefreshComposition(surface, () => selectionSync.isComposing());
   ({ finishPaused: finishOpeningPass, stop: stopOpening } = startOpeningSlices(
     surface,

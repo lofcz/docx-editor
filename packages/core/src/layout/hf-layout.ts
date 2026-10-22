@@ -1,3 +1,4 @@
+import { inlineWidgetProducer } from './inline-widget-layout.ts';
 import {
   readPositionedHeaderFrames,
   placePositionedHeaderFrames,
@@ -296,7 +297,7 @@ export function layoutHeaderFooterStory(
   inputs?: HeaderFooterStoryInputs
 ): HeaderFooterStoryLayout {
   if (inputs?.showFieldCodes) producer += '|field-codes';
-  producer = withFieldResultsProducer(producer);
+  producer = withFieldResultsProducer(inlineWidgetProducer(producer, measurer) ?? producer);
   const revisionAuthorFilter = inputs?.revisionAuthorFilter;
   const pageFrame = readHeaderPageFrame(part);
   const positionedFrames = readPositionedHeaderFrames(part);

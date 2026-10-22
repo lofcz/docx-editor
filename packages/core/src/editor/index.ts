@@ -671,3 +671,8 @@ export type {
   InlineWidgetRequest,
 } from '../contracts/inline-widget-metrics.ts';
 export type { InlineWidgetSpanRecord } from '../layout/inline-widget-layout.ts';
+
+export {
+  setSurfaceInlineWidgetMetrics,
+  type InlineWidgetMetricsSnapshot,
+} from './surface-inline-widget-metrics.ts';

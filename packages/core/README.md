@@ -118,6 +118,8 @@ Supply a `revision` string with the callback. Advance it whenever any measured b
 
 A measured text control reserves one unbreakable span with `inlineWidget` geometry. Native source text and UTF-16 offsets remain unchanged. Caret navigation uses the control's outer edges. Paint retains readable fallback text inside the measured advance. The canonical package and saved Word fallback remain unchanged. The host owns measurement, renderer mounting, and interactive controls.
 
+For a live editor, publish the snapshot with `setSurfaceInlineWidgetMetrics(editor.surface, snapshot)` from `@docx-editor.dev/core/editor`. Publish `null` to clear the host snapshot. This view input retains native text, selection, and document history. Font and zoom updates preserve the active snapshot. During native IME composition, the latest snapshot waits for native text readback. Canonical Word save pagination uses native fallback measurements. Clear the snapshot when you dispose the host.
+
 ## Untrusted input
 
 Treat DOCX files as untrusted input. The engine validates URLs and limits XML entities, archive expansion, nesting, and element counts. It does not automatically fetch external document relationships. Serialization escapes document text.

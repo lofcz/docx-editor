@@ -2210,6 +2210,9 @@ export interface InlineWidgetMetrics {
 export type InlineWidgetMetricsProvider = (request: InlineWidgetRequest) => InlineWidgetMetrics | null;
 
 // @public
+export type InlineWidgetMetricsSnapshot = NonNullable<TextMeasurer['inlineWidgets']>;
+
+// @public
 export interface InlineWidgetRequest {
     readonly availableWidth: number;
     readonly controlId: string;
@@ -3742,6 +3745,9 @@ export interface SemanticSelection {
 
 // @internal
 export function separatorLeadingCost(separatorWidth: number, marginInlineStart: number, marginInlineEnd: number, gap: number): number;
+
+// @public
+export function setSurfaceInlineWidgetMetrics(surface: PaginatedSurface, snapshot: InlineWidgetMetricsSnapshot | null): void;
 
 // @public
 export function shiftMonth(year: number, month: number, delta: 1 | -1): {
