@@ -1,3 +1,4 @@
+import type { NewCellPropertyBinding } from './new-cell-properties';
 import type { InsertedCellListBinding } from './inserted-cell-lists';
 import {
   applyTreeOp,
@@ -37,6 +38,7 @@ export interface InsertedTableRowTarget {
   readonly properties?: InsertedRowProperties;
   readonly payloads?: readonly InsertedRowPayloadBinding[];
   readonly lists?: readonly InsertedCellListBinding[];
+  readonly cellProperties?: readonly NewCellPropertyBinding[];
 }
 const fail = (
   error: string,
@@ -78,7 +80,10 @@ export function planInsertedTableRow(
     typeof target !== 'object' ||
     Array.isArray(target) ||
     Object.keys(target).some(
-      (key) => !['rowId', 'where', 'cells', 'properties', 'payloads', 'lists'].includes(key)
+      (key) =>
+        !['rowId', 'where', 'cells', 'properties', 'payloads', 'lists', 'cellProperties'].includes(
+          key
+        )
     )
   )
     return fail('Invalid inserted row target.');

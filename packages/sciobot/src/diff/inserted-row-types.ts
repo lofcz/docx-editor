@@ -1,3 +1,4 @@
+import { isNewCellPropertyBindings, type NewCellPropertyBinding } from './new-cell-properties';
 import { isInsertedCellLists, type InsertedCellListBinding } from './inserted-cell-lists';
 import type { TargetAstNode } from '../projection/parse-target';
 import {
@@ -22,6 +23,7 @@ export interface InsertedTableRowIntent {
   readonly properties: InsertedRowProperties;
   readonly payloads: readonly InsertedRowPayloadBinding[];
   readonly lists?: readonly InsertedCellListBinding[];
+  readonly cellProperties?: readonly NewCellPropertyBinding[];
 }
 
 const record = (value: unknown): value is Record<string, unknown> =>
@@ -34,7 +36,16 @@ const id = (value: unknown): value is string => typeof value === 'string' && val
 export function isInsertedRowIntent(value: unknown): value is InsertedTableRowIntent {
   return (
     record(value) &&
-    only(value, ['tableId', 'rowId', 'where', 'cells', 'properties', 'payloads', 'lists']) &&
+    only(value, [
+      'tableId',
+      'rowId',
+      'where',
+      'cells',
+      'properties',
+      'payloads',
+      'lists',
+      'cellProperties',
+    ]) &&
     id(value.tableId) &&
     id(value.rowId) &&
     (value.where === 'above' || value.where === 'below') &&
@@ -47,6 +58,8 @@ export function isInsertedRowIntent(value: unknown): value is InsertedTableRowIn
         Number(value.properties.heightTwips) >= 20 &&
         Number(value.properties.heightTwips) <= 31680)) &&
     isInsertedCellFragments(value.cells, value.payloads) &&
+    (!Object.hasOwn(value, 'cellProperties') ||
+      isNewCellPropertyBindings(value.cells as TargetAstNode[][], value.cellProperties)) &&
     (!Object.hasOwn(value, 'lists') ||
       isInsertedCellLists(value.cells as TargetAstNode[][], value.lists))
   );

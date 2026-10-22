@@ -1,3 +1,4 @@
+import { targetNewCellProperties, type NewCellPropertyBinding } from './new-cell-properties';
 import type { TargetAstNode } from '../projection/parse-target';
 import { applyTreeOp, type OoxmlPart } from '@docx-editor.dev/core/store';
 import type { NativeEditFailure } from '../contracts/document';
@@ -171,9 +172,25 @@ export function planTargetShapeGeometry(
       const error = visit(request.region, next.children, first);
       if (error) return error;
       const cells = [];
+      const cellProperties: NewCellPropertyBinding[] = [];
       for (const region of request.parts.slice(1)) {
         const cell = targetRows[region.row]!.children[region.column] as LogicalGroup,
-          fragments = insertedTargetCellFragments(cell, context.targetAst, context.astOf);
+          fragments = insertedTargetCellFragments(
+            cell,
+            context.targetAst,
+            context.astOf,
+            undefined,
+            codec
+          );
+        const properties = targetNewCellProperties(
+          codec,
+          context.after,
+          targetRows[region.row]!,
+          cell,
+          region.column
+        );
+        if (Object.keys(properties).length)
+          cellProperties.push({ cellIndex: cells.length, properties });
         if (!fragments.success) return fragments;
         cells.push(fragments.fragments);
       }
@@ -184,6 +201,7 @@ export function planTargetShapeGeometry(
         rows: request.rows,
         columns: request.columns,
         cells,
+        ...(cellProperties.length ? { cellProperties } : {}),
       };
     }
     const resolved = resolveTableGeometry(part, intent);

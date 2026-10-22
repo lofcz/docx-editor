@@ -1,3 +1,4 @@
+import { applyNewCellProperties, type NewCellProperties } from './new-cell-properties';
 import {
   applyDirectListAssignments,
   type DirectListAssignment,
@@ -189,6 +190,7 @@ function setParagraphProperty(
 }
 
 export interface NewCellContent {
+  readonly properties?: NewCellProperties;
   readonly lists?: readonly InsertedListBinding[];
   readonly cellId: string;
   readonly blocks: readonly TargetAstNode[];
@@ -232,6 +234,8 @@ export function fillNewCells(
       for (const id of fresh)
         working = setParagraphProperty(working, partName, id, 'jc', { val: alignment });
   }
+  for (const { cellId, properties } of cells)
+    working = applyNewCellProperties(working, partName, cellId, properties);
   return assignments.length
     ? applyDirectListAssignments(working, partName, assignments, listContext)
     : working;

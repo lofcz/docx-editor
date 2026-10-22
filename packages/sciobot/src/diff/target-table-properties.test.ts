@@ -572,7 +572,7 @@ test('row deletion that promotes a hidden merged owner refuses until its content
   expect(writeOoxmlPackage(input.pkg)).toEqual(bytes);
 });
 
-test('unknown declarations, unsupported units, dynamic expressions, conflicts, and new property destinations refuse without partial writes', async () => {
+test('unknown declarations, unsupported units, dynamic expressions, conflicts, and unsupported new widths refuse without partial writes', async () => {
   const input = await targetDocumentInput(table(plain)),
     bytes = writeOoxmlPackage(input.pkg),
     fingerprint = canonicalOoxmlFingerprint(part(input));
@@ -594,7 +594,13 @@ test('unknown declarations, unsupported units, dynamic expressions, conflicts, a
     html(plain, {
       cell: (row, column) => (column === 0 ? `width="${row === 0 ? 100 : 200}px"` : ''),
     }),
-    '| A | X | B |\n| :--- | :--- | ---: |\n| One | New | Two |',
+    html(
+      [
+        ['A', 'X', 'B'],
+        ['Changed One', 'New', 'Two'],
+      ],
+      { cell: (_, column) => (column === 1 ? 'width="90px"' : '') }
+    ),
   ];
   for (const target of targets) {
     const result = planTargetDocument(input, target);

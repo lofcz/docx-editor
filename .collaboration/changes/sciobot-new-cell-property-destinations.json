@@ -1,0 +1,15 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "New row, column, and split-cell properties have no explicit native allocation destinations.",
+  "after": "Private intentions bind fill, borders, vertical alignment, and paragraph alignment by new physical cell index. Native allocation resolves these destinations before existing property operations run.",
+  "reason": "Optional private plan data reuses native table and paragraph operations. New row/cell revisions own their new properties. Shared operation formats, public APIs, and canonical authority remain unchanged.",
+  "tests": [
+    "packages/sciobot/src/diff/target-new-cell-properties.test.ts",
+    "packages/sciobot/src/diff/new-cell-properties-review.test.ts",
+    "packages/sciobot/src/diff/target-new-cell-properties-collaboration.test.ts",
+    "packages/sciobot/src/diff/target-table-properties.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

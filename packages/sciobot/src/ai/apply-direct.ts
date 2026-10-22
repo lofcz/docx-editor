@@ -1,3 +1,4 @@
+import { cellPropertiesAt } from '../diff/new-cell-properties';
 import { cellListBindings } from '../diff/inserted-cell-lists';
 import { resolveTableGeometry, geometrySplitCells } from '../diff/table-geometry';
 import type { DocxEditorInstance } from '@docx-editor.dev/core/editor';
@@ -436,6 +437,10 @@ function lowerDirectPlan(pkg: OoxmlPackage, plan: CanonicalEditPlan): Lowering {
             cells.map((cellId, index) => ({
               cellId,
               blocks: edit.intent.kind === 'split' ? edit.intent.cells[index]! : [],
+              properties:
+                edit.intent.kind === 'split'
+                  ? cellPropertiesAt(edit.intent.cellProperties, index)
+                  : undefined,
             }))
           );
         });
@@ -494,6 +499,7 @@ function lowerDirectPlan(pkg: OoxmlPackage, plan: CanonicalEditPlan): Lowering {
               cellId,
               blocks: intent.cells[index]!,
               lists: cellListBindings(intent.lists, index),
+              properties: cellPropertiesAt(intent.cellProperties, index),
             })),
             listContext
           );
@@ -534,6 +540,7 @@ function lowerDirectPlan(pkg: OoxmlPackage, plan: CanonicalEditPlan): Lowering {
                     cellId: created[0]!,
                     blocks: entry.blocks,
                     lists: cellListBindings(intent.lists, index),
+                    properties: cellPropertiesAt(intent.cellProperties, index),
                   },
                 ]
               : [];
@@ -567,7 +574,11 @@ function lowerDirectPlan(pkg: OoxmlPackage, plan: CanonicalEditPlan): Lowering {
           return fillNewCells(
             working,
             partName,
-            cells!.map((cellId, index) => ({ cellId, blocks: intent.cells[index]! }))
+            cells!.map((cellId, index) => ({
+              cellId,
+              blocks: intent.cells[index]!,
+              properties: cellPropertiesAt(intent.cellProperties, index),
+            }))
           );
         });
         break;

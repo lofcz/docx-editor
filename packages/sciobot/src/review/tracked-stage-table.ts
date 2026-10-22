@@ -1,3 +1,4 @@
+import { cellPropertiesAt } from '../diff/new-cell-properties';
 import type { DirectListContext } from '../ai/direct-lists';
 import { cellListBindings } from '../diff/inserted-cell-lists';
 import { resolveTableGeometry, geometrySplitCells } from '../diff/table-geometry';
@@ -133,7 +134,14 @@ export function stageTrackedTable(
       stageNewCells(
         writer,
         edit.partName,
-        fresh.map((cellId, index) => ({ cellId, blocks: streams[index]! }))
+        fresh.map((cellId, index) => ({
+          cellId,
+          blocks: streams[index]!,
+          properties:
+            edit.intent.kind === 'split'
+              ? cellPropertiesAt(edit.intent.cellProperties, index)
+              : undefined,
+        }))
       );
     }
   } else if (edit.kind === 'insert-row') {
@@ -169,6 +177,7 @@ export function stageTrackedTable(
         cellId: cell.id,
         blocks: intent.cells[index]!,
         lists: cellListBindings(intent.lists, index),
+        properties: cellPropertiesAt(intent.cellProperties, index),
       })),
       listContext
     );
@@ -200,6 +209,7 @@ export function stageTrackedTable(
               cellId: created[0]!.id,
               blocks: entry.blocks,
               lists: cellListBindings(intent.lists, index),
+              properties: cellPropertiesAt(intent.cellProperties, index),
             },
           ]
         : [];
@@ -234,7 +244,11 @@ export function stageTrackedTable(
     stageNewCells(
       writer,
       edit.partName,
-      fresh.map((cellId, index) => ({ cellId, blocks: intent.cells[index]! }))
+      fresh.map((cellId, index) => ({
+        cellId,
+        blocks: intent.cells[index]!,
+        properties: cellPropertiesAt(intent.cellProperties, index),
+      }))
     );
   }
   const current = currentStagePart(writer, edit.partName),

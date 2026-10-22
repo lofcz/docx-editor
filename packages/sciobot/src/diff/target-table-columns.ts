@@ -1,3 +1,5 @@
+import { targetNewCellProperties, type NewCellPropertyBinding } from './new-cell-properties';
+import type { TargetTablePropertyCodec } from './target-table-property-codec';
 import type { InsertedCellListBinding } from './inserted-cell-lists';
 import { rowCellIds } from './fragment-seeds';
 import { applyTreeOp, withPart, type OoxmlPart } from '@docx-editor.dev/core/store';
@@ -109,7 +111,8 @@ export function planTargetColumns(
   context: TargetTableContext,
   alignment: TargetSequenceAlignment,
   rows: TargetSequenceAlignment['pairs'],
-  rowIds: readonly string[]
+  rowIds: readonly string[],
+  codec: TargetTablePropertyCodec
 ):
   | {
       readonly success: true;
@@ -166,6 +169,7 @@ export function planTargetColumns(
       if (!candidate.ok) return fail(`Combined column insertion refused: ${candidate.reason}.`);
       const cells = [];
       const lists: InsertedCellListBinding[] = [];
+      const cellProperties: NewCellPropertyBinding[] = [];
       for (const rowId of rowIds) {
         const row = targetRows.get(rowId);
         if (!row) {
@@ -176,7 +180,8 @@ export function planTargetColumns(
           row.children[column] as LogicalGroup,
           context.targetAst,
           context.astOf,
-          { revision: source.index.revision, pkg: input.pkg, partName: part.name }
+          { revision: source.index.revision, pkg: input.pkg, partName: part.name },
+          codec
         );
         if (!fragments.success) return fragments;
         const old = new Set(rowCellIds(part, rowId));
@@ -188,6 +193,17 @@ export function planTargetColumns(
               path: [cells.length, ...binding.path],
             }))
           );
+        const properties = targetNewCellProperties(
+          codec,
+          after,
+          row,
+          row.children[column] as LogicalGroup,
+          column
+        );
+        if (creates && Object.keys(properties).length)
+          cellProperties.push({ cellIndex: cells.length, properties });
+        else if (!creates && Object.keys(properties).length)
+          return fail('A widened merged cell needs original property ownership.');
         cells.push({ rowId, blocks: creates ? fragments.fragments : [] });
       }
       const planned = planInsertedTableColumn(
@@ -202,6 +218,7 @@ export function planTargetColumns(
           where,
           cells,
           ...(lists.length ? { lists } : {}),
+          ...(cellProperties.length ? { cellProperties } : {}),
         }
       );
       if (!planned.success) return planned;

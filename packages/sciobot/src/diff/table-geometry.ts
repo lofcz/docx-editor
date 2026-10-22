@@ -1,3 +1,4 @@
+import { isNewCellPropertyBindings, type NewCellPropertyBinding } from './new-cell-properties';
 import { readTableStructure } from '@docx-editor.dev/core/layout';
 import { findNode, type OoxmlPart, type TreeDocOp } from '@docx-editor.dev/core/store';
 import type { NativeEditFailure } from '../contracts/document';
@@ -16,6 +17,7 @@ export type TableGeometryIntent = {
       readonly rows: number;
       readonly columns: number;
       readonly cells: readonly (readonly TargetAstNode[])[];
+      readonly cellProperties?: readonly NewCellPropertyBinding[];
     }
 );
 const slot = (row: number, column: number) => `${row}/${column}`;
@@ -53,14 +55,16 @@ export function isTableGeometryIntent(value: unknown): value is TableGeometryInt
   return (
     value.kind === 'split' &&
     Object.keys(value).every((key) =>
-      ['tableId', 'region', 'kind', 'rows', 'columns', 'cells'].includes(key)
+      ['tableId', 'region', 'kind', 'rows', 'columns', 'cells', 'cellProperties'].includes(key)
     ) &&
     integer(value.rows, 1) &&
     integer(value.columns, 1) &&
     Number(value.rows) * Number(value.columns) > 1 &&
     Array.isArray(value.cells) &&
     value.cells.length === Number(value.rows) * Number(value.columns) - 1 &&
-    isInsertedCellFragments(value.cells, [])
+    isInsertedCellFragments(value.cells, []) &&
+    (!Object.hasOwn(value, 'cellProperties') ||
+      isNewCellPropertyBindings(value.cells as TargetAstNode[][], value.cellProperties))
   );
 }
 

@@ -1,3 +1,4 @@
+import { targetNewCellProperties, type NewCellPropertyBinding } from './new-cell-properties';
 import type { InsertedCellListBinding } from './inserted-cell-lists';
 import { readTableStructure } from '@docx-editor.dev/core/layout';
 import { planTargetShapeGeometry, type AllocatedTargetCell } from './target-table-shape';
@@ -19,10 +20,7 @@ import { alignTargetColumns, planTargetColumns } from './target-table-columns';
 import { prepareTargetTableProperties } from './target-table-property-codec';
 import { planTargetTableProperties } from './target-table-properties';
 import { blankCellTarget, sameTargetCellContent } from './target-table-content';
-import {
-  insertedTargetCellFragments,
-  targetTableHeaderKey as header,
-} from './target-table-fragments';
+import { insertedTargetCellFragments } from './target-table-fragments';
 import {
   expandTargetSpans,
   sourceSlotGrid,
@@ -165,7 +163,8 @@ export function planTargetTable(original: TargetTableContext): EditPlanResult {
     context,
     alignedColumns.alignment,
     pairs,
-    rowIds as readonly string[]
+    rowIds as readonly string[],
+    codec
   );
   if (!columns.success) return columns;
   let operations: CanonicalEdit[] = [...columns.operations];
@@ -195,7 +194,7 @@ export function planTargetTable(original: TargetTableContext): EditPlanResult {
     if (where === 'below') insertedIndices.reverse();
     for (const index of insertedIndices) {
       const row = newRows[index]!;
-      if (header(row) !== targetAstKey({ type: 'row' }))
+      if (codec.key(row) !== targetAstKey({ type: 'row' }))
         return fail('Inserted row metadata needs explicit native properties.');
       const inserted = applyTreeOp(preview, {
         op: 'insertTableRow',
@@ -218,16 +217,23 @@ export function planTargetTable(original: TargetTableContext): EditPlanResult {
       if (!nativeRow) return fail('The inserted row has no native slot geometry.');
       const cells: (readonly TargetAstNode[])[] = [];
       const lists: InsertedCellListBinding[] = [];
+      const cellProperties: NewCellPropertyBinding[] = [];
       for (const nativeCell of nativeRow.cells) {
         const cell = row.children[
           nativeCell.logicalGridColumn ?? nativeCell.gridColumn
         ] as LogicalGroup;
         if (!cell) return fail('The inserted row extends beyond its target slots.');
-        const fragments = insertedTargetCellFragments(cell, context.targetAst, context.astOf, {
-          revision,
-          pkg: input.pkg,
-          partName: part.name,
-        });
+        const fragments = insertedTargetCellFragments(
+          cell,
+          context.targetAst,
+          context.astOf,
+          {
+            revision,
+            pkg: input.pkg,
+            partName: part.name,
+          },
+          codec
+        );
         if (!fragments.success) return fragments;
         if (!nativeCell.vMergeContinue)
           lists.push(
@@ -236,6 +242,15 @@ export function planTargetTable(original: TargetTableContext): EditPlanResult {
               path: [cells.length, ...binding.path],
             }))
           );
+        const properties = targetNewCellProperties(
+          codec,
+          after,
+          row,
+          cell,
+          nativeCell.logicalGridColumn ?? nativeCell.gridColumn
+        );
+        if (Object.keys(properties).length)
+          cellProperties.push({ cellIndex: cells.length, properties });
         cells.push(nativeCell.vMergeContinue ? [] : fragments.fragments);
       }
       const result = planInsertedTableRow(
@@ -245,6 +260,10 @@ export function planTargetTable(original: TargetTableContext): EditPlanResult {
           where,
           cells,
           ...(lists.length ? { lists } : {}),
+          ...(cellProperties.length ? { cellProperties } : {}),
+          ...(codec.values(row).height === undefined
+            ? {}
+            : { properties: { heightTwips: codec.values(row).height } }),
         }
       );
       if (!result.success) return result;
@@ -340,7 +359,14 @@ export function planTargetTable(original: TargetTableContext): EditPlanResult {
     codec,
     pairs,
     alignedColumns.alignment.pairs,
-    preview
+    preview,
+    new Set(
+      requests.flatMap((request) =>
+        request.kind === 'split'
+          ? request.parts.slice(1).map((part) => `${part.row}/${part.column}`)
+          : []
+      )
+    )
   );
   if (!formatting.success) return formatting;
   const geometry = planTargetGeometry(context, codec, requests, grid, preview);

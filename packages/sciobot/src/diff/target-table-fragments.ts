@@ -1,3 +1,4 @@
+import type { TargetTablePropertyCodec } from './target-table-property-codec';
 import { resolveTargetLists } from './target-lists';
 import type { InsertedListBinding } from './inserted-list-types';
 import type { NativeEditFailure } from '../contracts/document';
@@ -22,7 +23,8 @@ export function insertedTargetCellFragments(
   cell: LogicalGroup,
   targetAst: TargetAstNode,
   astOf: (block: LogicalBlock) => TargetAstNode,
-  source?: Parameters<typeof resolveTargetLists>[0]
+  source?: Parameters<typeof resolveTargetLists>[0],
+  codec?: TargetTablePropertyCodec
 ):
   | {
       readonly success: true;
@@ -35,8 +37,10 @@ export function insertedTargetCellFragments(
     code: 'unsupported-operation',
     error,
   });
-  if (targetTableHeaderKey(cell) !== targetAstKey({ type: 'cell' }))
+  if ((codec ? codec.key(cell) : targetTableHeaderKey(cell)) !== targetAstKey({ type: 'cell' }))
     return fail('Inserted cell metadata needs explicit native properties.');
+  if (codec?.values(cell).width !== undefined)
+    return fail('New cell widths need explicit native grid sizing.');
   if (!source && cell.children.some((block) => block.list))
     return fail('Inserted cell lists need explicit native list destinations.');
   const resolved = source

@@ -1,3 +1,4 @@
+import { cellPropertiesAt } from '../diff/new-cell-properties';
 import { createDirectListContext } from '../ai/direct-lists';
 import { cellListBindings } from '../diff/inserted-cell-lists';
 import type { DocxEditorInstance } from '@docx-editor.dev/core/editor';
@@ -102,7 +103,11 @@ function columnStep(
       );
     const seeds = new Map<string, NewCellSeeds>();
     for (const [index, entry] of intent.cells.entries()) {
-      const seeded = newCellSeeds(entry.blocks, cellListBindings(intent.lists, index));
+      const seeded = newCellSeeds(
+        entry.blocks,
+        cellListBindings(intent.lists, index),
+        cellPropertiesAt(intent.cellProperties, index)
+      );
       if (!seeded.success) return seeded;
       seeds.set(entry.rowId, seeded.seeds);
     }

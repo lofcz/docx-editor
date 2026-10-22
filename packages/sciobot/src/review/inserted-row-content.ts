@@ -1,4 +1,9 @@
 import {
+  applyNewCellProperties,
+  cellPropertiesAt,
+  type NewCellProperties,
+} from '../diff/new-cell-properties';
+import {
   applyDirectListAssignments,
   type DirectListAssignment,
   type DirectListContext,
@@ -24,6 +29,7 @@ export interface InsertedRowSeeds {
     readonly paragraphs: readonly OoxmlParagraphNode[];
     readonly links: readonly NewParagraphLink[];
     readonly lists?: readonly InsertedListBinding[];
+    readonly properties?: NewCellProperties;
   }[];
   readonly heightTwips?: number;
 }
@@ -49,6 +55,7 @@ export function insertedRowSeeds(
       paragraphs: seeds.paragraphs,
       links: seeds.links,
       lists: cellListBindings(intent.lists, index),
+      properties: cellPropertiesAt(intent.cellProperties, index),
     });
   }
   return {
@@ -63,6 +70,7 @@ export function insertedRowSeeds(
 }
 
 export interface NewCellSeeds {
+  readonly properties?: NewCellProperties;
   readonly lists?: readonly InsertedListBinding[];
   readonly paragraphs: readonly OoxmlParagraphNode[];
   readonly links: readonly NewParagraphLink[];
@@ -71,13 +79,19 @@ export interface NewCellSeeds {
 /** Seed one cell stream of paragraphs and headings; other fragments need D28/D29. */
 export function newCellSeeds(
   stream: readonly import('../projection/parse-target').TargetAstNode[],
-  lists?: readonly InsertedListBinding[]
+  lists?: readonly InsertedListBinding[],
+  properties?: NewCellProperties
 ): { success: true; seeds: NewCellSeeds } | NativeEditFailure {
   const seeds = newParagraphSeeds(stream);
   return seeds.success
     ? {
         success: true,
-        seeds: { paragraphs: seeds.paragraphs, links: seeds.links, ...(lists ? { lists } : {}) },
+        seeds: {
+          paragraphs: seeds.paragraphs,
+          links: seeds.links,
+          ...(lists ? { lists } : {}),
+          ...(properties ? { properties } : {}),
+        },
       }
     : seeds;
 }
@@ -142,7 +156,9 @@ export function materializeNewCells(
       });
     }
   }
-  const filled = withPart(pkg, part);
+  let filled = withPart(pkg, part);
+  for (const { cellId, seeds } of cells)
+    filled = applyNewCellProperties(filled, partName, cellId, seeds.properties);
   return assignments.length
     ? applyDirectListAssignments(filled, partName, assignments, listContext)
     : filled;

@@ -74,7 +74,10 @@ export function planInsertedTableColumn(
     typeof target !== 'object' ||
     Array.isArray(target) ||
     Object.keys(target).some(
-      (key) => !['anchor', 'where', 'cells', 'properties', 'payloads', 'lists'].includes(key)
+      (key) =>
+        !['anchor', 'where', 'cells', 'properties', 'payloads', 'lists', 'cellProperties'].includes(
+          key
+        )
     )
   )
     return fail('Invalid inserted column target.');

@@ -39,7 +39,8 @@ export function planTargetTableProperties(
   codec: TargetTablePropertyCodec,
   rows: TargetSequenceAlignment['pairs'],
   columns: TargetSequenceAlignment['pairs'],
-  initial: OoxmlPart
+  initial: OoxmlPart,
+  deferred: ReadonlySet<string> = new Set()
 ): EditPlanResult {
   const { input, source, before, after, bindings, beforePath } = context,
     tableId = context.binding.table!.tableId,
@@ -95,12 +96,6 @@ export function planTargetTableProperties(
   };
   const hasHorizontal =
     table.horizontal !== undefined || table.columns?.some((value) => value !== undefined);
-  if (
-    hasHorizontal &&
-    (rows.length !== after.children.length ||
-      columns.length !== (after.children[0] as LogicalGroup).children.length)
-  )
-    return fail('New row or column alignment needs deferred property destinations.');
   for (const row of rows) {
     const old = before.children[row.before] as LogicalGroup,
       next = after.children[row.after] as LogicalGroup,
@@ -108,13 +103,12 @@ export function planTargetTableProperties(
       rowId = bindings.get([...beforePath, row.before].join('/'))?.table?.rowId;
     if (!rowId) return fail('A row property has no original native owner.');
     if (rowValues.height !== undefined) rowHeights.set(rowId, rowValues.height);
-    if (rowValues.horizontal !== undefined && columns.length !== next.children.length)
-      return fail('New cell alignment needs deferred property destinations.');
     for (const column of columns) {
       const oldCell = old.children[column.before] as LogicalGroup,
         nextCell = next.children[column.after] as LogicalGroup,
         values = codec.values(nextCell),
         owner = bindings.get([...beforePath, row.before, column.before].join('/'))?.table;
+      if (deferred.has(`${row.after}/${column.after}`)) continue;
       if (!owner || owner.tableId !== tableId || !owner.cellId) {
         if (Object.keys(values).length || hasHorizontal || rowValues.horizontal !== undefined)
           return fail('A property targets a generated or missing cell.');

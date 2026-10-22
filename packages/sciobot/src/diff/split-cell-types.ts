@@ -1,3 +1,4 @@
+import { isNewCellPropertyBindings, type NewCellPropertyBinding } from './new-cell-properties';
 import type { TargetAstNode } from '../projection/parse-target';
 import {
   isInsertedCellFragments,
@@ -20,6 +21,7 @@ export interface SplitTableCellIntent {
   /** Row-major block streams for every resulting cell except the first. */
   readonly cells: readonly (readonly TargetAstNode[])[];
   readonly payloads: readonly InsertedCellPayloadBinding[];
+  readonly cellProperties?: readonly NewCellPropertyBinding[];
 }
 
 const record = (value: unknown): value is Record<string, unknown> =>
@@ -32,7 +34,7 @@ export function isSplitCellIntent(value: unknown): value is SplitTableCellIntent
   return (
     record(value) &&
     Object.keys(value).every((key) =>
-      ['tableId', 'cellId', 'rows', 'columns', 'cells', 'payloads'].includes(key)
+      ['tableId', 'cellId', 'rows', 'columns', 'cells', 'payloads', 'cellProperties'].includes(key)
     ) &&
     typeof value.tableId === 'string' &&
     value.tableId.length > 0 &&
@@ -43,6 +45,8 @@ export function isSplitCellIntent(value: unknown): value is SplitTableCellIntent
     Number(value.rows) * Number(value.columns) > 1 &&
     Array.isArray(value.cells) &&
     value.cells.length === Number(value.rows) * Number(value.columns) - 1 &&
-    isInsertedCellFragments(value.cells, value.payloads)
+    isInsertedCellFragments(value.cells, value.payloads) &&
+    (!Object.hasOwn(value, 'cellProperties') ||
+      isNewCellPropertyBindings(value.cells as TargetAstNode[][], value.cellProperties))
   );
 }

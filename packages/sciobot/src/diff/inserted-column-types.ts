@@ -1,3 +1,4 @@
+import { isNewCellPropertyBindings, type NewCellPropertyBinding } from './new-cell-properties';
 import { isInsertedCellLists, type InsertedCellListBinding } from './inserted-cell-lists';
 import type { TargetAstNode } from '../projection/parse-target';
 import {
@@ -27,6 +28,7 @@ export interface InsertedTableColumnIntent {
   readonly properties: InsertedColumnProperties;
   readonly payloads: readonly InsertedColumnPayloadBinding[];
   readonly lists?: readonly InsertedCellListBinding[];
+  readonly cellProperties?: readonly NewCellPropertyBinding[];
 }
 const record = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -38,7 +40,16 @@ const id = (value: unknown): value is string => typeof value === 'string' && val
 export function isInsertedColumnIntent(value: unknown): value is InsertedTableColumnIntent {
   if (
     !record(value) ||
-    !only(value, ['tableId', 'anchor', 'where', 'cells', 'properties', 'payloads', 'lists']) ||
+    !only(value, [
+      'tableId',
+      'anchor',
+      'where',
+      'cells',
+      'properties',
+      'payloads',
+      'lists',
+      'cellProperties',
+    ]) ||
     !id(value.tableId) ||
     !record(value.anchor) ||
     !only(value.anchor, ['kind', 'id']) ||
@@ -70,6 +81,8 @@ export function isInsertedColumnIntent(value: unknown): value is InsertedTableCo
   }
   return (
     isInsertedCellFragments(blocks, value.payloads) &&
+    (!Object.hasOwn(value, 'cellProperties') ||
+      isNewCellPropertyBindings(blocks as TargetAstNode[][], value.cellProperties)) &&
     (!Object.hasOwn(value, 'lists') ||
       isInsertedCellLists(blocks as TargetAstNode[][], value.lists))
   );

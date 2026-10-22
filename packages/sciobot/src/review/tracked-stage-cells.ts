@@ -1,3 +1,4 @@
+import { applyNewCellProperties, type NewCellProperties } from '../diff/new-cell-properties';
 import {
   applyDirectListAssignments,
   type DirectListAssignment,
@@ -21,6 +22,7 @@ export function stageNewCells(
     cellId: string;
     blocks: readonly TargetAstNode[];
     lists?: readonly InsertedListBinding[];
+    properties?: NewCellProperties;
   }[],
   listContext?: DirectListContext
 ): void {
@@ -53,6 +55,8 @@ export function stageNewCells(
     stageParagraphResources(writer, partName, paragraphs, seeds);
     assignments.push(...newCellListAssignments(paragraphs, lists));
   }
+  for (const { cellId, properties } of cells)
+    writer.edit((pkg) => applyNewCellProperties(pkg, partName, cellId, properties));
   if (assignments.length)
     writer.edit((pkg) => applyDirectListAssignments(pkg, partName, assignments, listContext));
 }

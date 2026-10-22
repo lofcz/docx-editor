@@ -1,3 +1,4 @@
+import { targetNewCellProperties, type NewCellPropertyBinding } from './new-cell-properties';
 import { applyTreeOp, type OoxmlPart } from '@docx-editor.dev/core/store';
 import type { NativeEditFailure } from '../contracts/document';
 import type { TargetAstNode } from '../projection/parse-target';
@@ -138,11 +139,27 @@ export function planTargetGeometry(
     const error = visit(request.region, cellAt(newRows, first!).children, first!);
     if (error) return error;
     const cells: (readonly TargetAstNode[])[] = [];
+    const cellProperties: NewCellPropertyBinding[] = [];
     for (const part of rest) {
       const cell = cellAt(newRows, part);
       if (codec.key(cell) !== codec.key(cellAt(oldRows, part)) && cell.key !== 'covered')
         return fail('New split cell properties need deferred property destinations.');
-      const fragments = insertedTargetCellFragments(cell, context.targetAst, context.astOf);
+      const fragments = insertedTargetCellFragments(
+        cell,
+        context.targetAst,
+        context.astOf,
+        undefined,
+        codec
+      );
+      const properties = targetNewCellProperties(
+        codec,
+        after,
+        newRows[part.row]!,
+        cell,
+        part.column
+      );
+      if (Object.keys(properties).length)
+        cellProperties.push({ cellIndex: cells.length, properties });
       if (!fragments.success) return fragments;
       cells.push(fragments.fragments);
     }
@@ -157,23 +174,25 @@ export function planTargetGeometry(
     if (!planned.success) return planned;
     const operation = planned.plan.operations[0];
     if (operation?.kind !== 'table') return fail('Unexpected native split intention.');
-    const refused = cells.some((blocks) => blocks.length)
-      ? push(
-          {
-            kind: 'split-cell',
-            partName: operation.partName,
-            intent: {
-              tableId,
-              cellId,
-              rows: request.rows,
-              columns: request.columns,
-              cells,
-              payloads: [],
+    const refused =
+      cellProperties.length || cells.some((blocks) => blocks.length)
+        ? push(
+            {
+              kind: 'split-cell',
+              partName: operation.partName,
+              intent: {
+                tableId,
+                cellId,
+                rows: request.rows,
+                columns: request.columns,
+                cells,
+                payloads: [],
+                ...(cellProperties.length ? { cellProperties } : {}),
+              },
             },
-          },
-          operation.operation
-        )
-      : push(operation, operation.operation);
+            operation.operation
+          )
+        : push(operation, operation.operation);
     if (refused) return refused;
   }
   return { success: true, operations };
