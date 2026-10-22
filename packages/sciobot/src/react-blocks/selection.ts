@@ -68,12 +68,47 @@ export function readBlockSelection(editor: DocxEditorInstance): BlockSelection |
     (layout.contentControls ?? []).map((boundary) => [boundary.id, boundary])
   );
   const story = surface.session.part();
-  const entries: (BlockSelectionEntry & { readonly first: number; readonly depth: number })[] = [];
+  const entries: (BlockSelectionEntry & {
+    readonly first: number;
+    readonly offset: number;
+    readonly depth: number;
+  })[] = [];
   for (const block of index.byId.values()) {
     if (block.partName !== story.name) continue;
     const boundary = boundaries.get(block.controlId),
       node = findNode(story, block.controlId);
     if (!boundary || !node) continue;
+    if (boundary.level === 'inline' && boundary.range) {
+      const range = boundary.range,
+        first = at(range.paragraphId);
+      if (first === undefined) continue;
+      const before = startIndex < first || (startIndex === first && start.offset <= range.start);
+      const after = endIndex > first || (endIndex === first && end.offset >= range.end);
+      const touches = collapsed
+        ? startIndex === first && start.offset > range.start && start.offset < range.end
+        : (startIndex < first || (startIndex === first && start.offset < range.end)) &&
+          (endIndex > first || (endIndex === first && end.offset > range.start));
+      if (!touches) continue;
+      const within =
+        startIndex === first &&
+        endIndex === first &&
+        start.offset >= range.start &&
+        end.offset <= range.end;
+      entries.push(
+        Object.freeze({
+          id: block.id,
+          type: block.payload.type,
+          controlId: block.controlId,
+          parentId: block.parentId,
+          relation: before && after ? 'contains' : within ? 'within' : 'crosses',
+          ordinals: Object.freeze(boundary.fragments.map((_, ordinal) => ordinal)),
+          first,
+          offset: range.start,
+          depth: boundary.nestingDepth,
+        })
+      );
+      continue;
+    }
     // Canonical ancestry owns membership. Painted wrappers only supply fragment pages.
     const positions = storyParagraphs(contentControlContentNodeOf(node) ?? node)
       .map((paragraph) => order.get(paragraph.id))
@@ -104,17 +139,20 @@ export function readBlockSelection(editor: DocxEditorInstance): BlockSelection |
         relation,
         ordinals: Object.freeze(ordinals),
         first,
+        offset: 0,
         depth: boundary.nestingDepth,
       })
     );
   }
-  entries.sort((a, b) => a.first - b.first || a.depth - b.depth);
+  entries.sort((a, b) => a.first - b.first || a.offset - b.offset || a.depth - b.depth);
   return Object.freeze({
     selection,
     collapsed,
     revision: surface.session.packageRevision(),
     blocks: Object.freeze(
-      entries.map(({ first: _first, depth: _depth, ...entry }) => Object.freeze(entry))
+      entries.map(({ first: _first, offset: _offset, depth: _depth, ...entry }) =>
+        Object.freeze(entry)
+      )
     ),
   });
 }

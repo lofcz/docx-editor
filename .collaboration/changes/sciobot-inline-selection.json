@@ -1,0 +1,10 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The private selection reader skipped inline payload controls because their native content contains runs instead of paragraphs.",
+  "after": "Canonical inline ranges participate in selection reads and existing block clipboard payload collection. Native paste assigns a fresh payload ID and preserves attributes through undo, redo, and save/reopen.",
+  "reason": "The change reads existing canonical ranges and reuses the existing clipboard repair transaction. It changes no shared operations, payload formats, or identity protocol. B21 remains open for native atom input behavior.",
+  "tests": ["packages/sciobot/src/react-blocks/inline-selection.test.ts"],
+  "changeset": null,
+  "migration": null
+}

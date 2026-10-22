@@ -378,7 +378,7 @@ Private types pass 1996 files; browser types pass 1720 files. The private build 
 
 - [ ] Edit inline widgets as native atoms
 
-**Depends:** [B20](02-react-blocks.md#b20), [B08](02-react-blocks.md#b08), [B10](02-react-blocks.md#b10), [V01](11-verification.md#v01)
+**Depends:** [B20](02-react-blocks.md#b20), [B31](02-react-blocks.md#b31), [B08](02-react-blocks.md#b08), [B10](02-react-blocks.md#b10), [V01](11-verification.md#v01)
 
 **Primary files:** `fork:packages/sciobot/src/react-blocks/inline-input.ts`; `sibling inline-input browser test`
 
@@ -390,7 +390,9 @@ Private types pass 1996 files; browser types pass 1720 files. The private build 
 
 **Check:** Add a focused Chromium case with real input and native selection where applicable. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** codex solo, branch `codex/react-block-proof`. **Evidence:** B20 closes in `b9993129`. The selection reader skipped inline controls because their content contains runs rather than paragraphs. The partial implementation reads canonical inline UTF-16 ranges and supplies their payloads to the existing native clipboard pipeline. `inline-selection.test.ts` verifies boundaries, forward/reverse selection, fresh pasted identity, exact attributes, one-step history, and complete save/reopen semantics. B21 remains open. A native reproduction publishes metrics for `inlineWidgetDocument()` and presses Backspace at offset 13. Actual text becomes `Before Sourc after`; expected text is `Before  after`. The control and payload remain indexed. B31 owns native atomic deletion before the private input adapter connects clipboard and input behavior. Real Chromium input and two-session completion checks remain pending.
+
+The partial clipboard batch passes 27 React-block cases and 1087 assertions across nine files. Log: `/tmp/solo-b21-selection-affected.log`. Private types pass 1997 files. The build verifies 205 private modules with external core. Root lint, scoped formatting, and compatibility policy pass. Policy checks 134 decisions with zero format fields changed. Decision: `.collaboration/changes/sciobot-inline-selection.json`. Backlog validation passes 272 leaves with 166 closed. This checkpoint does not close B21 or B31.
 
 ## B22
 
@@ -556,3 +558,21 @@ Private types pass 1996 files; browser types pass 1720 files. The private build 
 **Claim:** codex solo, branch `codex/react-block-proof`. **Evidence:** Baseline `cdca9134`, completed local source. `setSurfaceInlineWidgetMetrics` publishes or clears an immutable local snapshot without replacing the surface or its session. Measurement wrappers preserve original method receivers, optional shaping methods, and old pass snapshots. Zoom and font replacement reapply the active host snapshot. Identical provider/revision pairs do not repaint. Body and furniture geometry refresh together; header/footer break keys include metric identity/revision. Canonical save calculations unwrap host metrics, retaining Word fallback pagination and cached PAGEREF values. Native IME composition retains its live DOM; publications coalesce and apply after composition readback. Only local measurement state changes.
 
 `bun test --timeout 30000 --preload ./scripts/test/preload-dom.ts packages/core/src/editor/__tests__/surface-inline-widget-metrics.test.ts packages/sciobot/src/react-blocks/surface-inline-metrics-collaboration.test.ts` passes nine cases and 156 assertions (`/tmp/solo-b30-ime-focused.log`). Five native cases prove width updates, selection/content/history retention, zoom, real font-measurer replacement, prototype receivers, immutable prior snapshots, native Word save pagination, header cache invalidation, and IME readback. Four real two-session cases cover both client orders and receivers, distinct local widths, exact remote caret coordinates, concurrent text, peer-preserving undo/redo, deletion during peer editing, reconnect, clearing, and saved convergence. The affected font, surface layout, furniture, reservation, save-field, caret, widget, and lane suite passes 98 cases and 1177 assertions across ten files before the isolated IME guard; the focused suite then passes with that guard. Core types pass 1549 files and private types pass 1992 files. Core build and public API checks pass; the editor snapshot adds only the publication function and its snapshot type. Root lint and line caps pass. Compatibility policy passes 132 decisions with zero format fields changed. Minor changeset `.changeset/surface-inline-widget-metrics.md`; decision `.collaboration/changes/sciobot-surface-inline-metrics.json`. Backlog validation passes 271 leaves with 165 closed; all 198 production hashes and feature mappings match after auditing application revision 7b61c6cb07510d21d14a4ec2eb753958a7870401. The shared test transport uses the EigenPal Pro License. B20 retains React mounting, browser identity, providers, and interactive geometry verification.
+
+## B31
+
+- [ ] Delete measured inline widgets as native atoms
+
+**Depends:** [B19](02-react-blocks.md#b19), [B30](02-react-blocks.md#b30), [V01](11-verification.md#v01)
+
+**Primary files:** `fork:packages/core/src/editor/surface-range-edit.ts`; `fork:packages/core/src/editor/surface-locked-control-delete.ts`; `sibling native inline-widget input tests`
+
+**Read:** [S25](sources.md#s25)
+
+**Change:** Recognize measured inline control boxes in native adjacent and range deletion plans. Preserve native locks, tracking, and history. Keep measurement-driven atom behavior local to the surface.
+
+**Close when:** Backspace and Delete remove one complete measured inline control. Selected ranges remove complete controls with surrounding text. Undo and redo restore exact native content and tags. Cleared measurements restore ordinary native control behavior. Locked and tracked controls retain their native edit rules.
+
+**Check:** Add focused native tests and the required two-session history, geometry, deletion, reconnect, and save/reopen scenario.
+
+**Claim:** codex solo, branch `codex/react-block-proof`. **Evidence:** Reproduced during B21 after `b9993129`. Publish inline metrics, place the caret after `Source`, and call native `deleteBackward()`. The result is `Sourc`, because native atomic deletion recognizes locked, checkbox, and picture controls only. B19 already publishes measured widgets as projected spans for atomic caret stops. Native deletion still needs the corresponding control classification.
