@@ -1,0 +1,10 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The private AI adapter had no request-owned insertion scope outside serialized document content.",
+  "after": "An internal anchor resolves selected registered blocks and paragraph scopes against the live native document. It releases on deletion, document replacement, explicit cancellation, or surface destruction. Generated stream insertion remains unfinished.",
+  "reason": "This helper reads existing native identities and observes local surface lifetime. It creates no canonical nodes, shared operations, history entries, or protocol fields.",
+  "tests": ["packages/sciobot/src/ai/stream-anchor.test.ts"],
+  "changeset": null,
+  "migration": null
+}

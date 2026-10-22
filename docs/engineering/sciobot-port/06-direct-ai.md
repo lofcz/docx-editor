@@ -148,7 +148,11 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused native document regression. Include save/reopen and undo/redo. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** codex solo, branch `codex/react-block-proof`. **Evidence:** Implementation in progress from `69466941`. `packages/sciobot/src/ai/stream-anchor.ts` adds an internal request-owned native scope. Selected sibling order follows the document, not argument order. Registered scopes resolve through persisted block IDs; paragraphs resolve through Word paraIds. The anchor follows peer activity moves and clears after source deletion, explicit release, or native surface replacement/destruction. No placeholder enters canonical content, history, or saved Word output. Mixed-parent and duplicate selections refuse before allocating an observer. Paint observation reads the current model without flushing pending input.
+
+Command: `bun test --preload ./scripts/test/preload-dom.ts packages/sciobot/src/ai/stream-anchor.test.ts`; three cases and 46 assertions pass in `/tmp/a08-anchor-final.log`. Both reconnect receivers cover concurrent activity movement and independent peer text, undo/redo, deletion, and exact save/reopen digest convergence. The native move/removal regression command passes 38 cases and 709 assertions across three files in `/tmp/a08-native.log`. Private typecheck passes 2044 files in `/tmp/a08-types-last.log`. Root formatting, scoped formatting, root lint, diff checking, backlog validation, and compatibility policy pass. Logs: `/tmp/a08-root-format.log`, `/tmp/a08-format-check.log`, `/tmp/a08-lint.log`, `/tmp/a08-backlog.log`, `/tmp/a08-policy.log`. The first test attempt used the wrong removal option; the corrected test uses the existing native delete mode. Decision: `.collaboration/changes/sciobot-stream-anchor.json`; no shared format fields change.
+
+A08 stays unchecked. The primary `stream-insert.ts` remains to implement generated rich content, incremental stream updates, one undo unit, and finish/cancel integration. Anchors for unregistered structural blocks, including caret scopes inside plain tables, still need their identity implementation. This checkpoint proves request scope lifetime only; it does not prove generated insertion or production Generate support.
 
 ## A09
 
