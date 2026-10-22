@@ -10,6 +10,7 @@ import { normalizeLogicalBlocks, type LogicalBlock } from './logical-blocks';
 import { compileInlineTarget } from './inline-target';
 import { planTargetParagraph, targetParagraphHtmlKey } from './target-inline';
 import { planTargetTable } from './target-table';
+import { prepareTargetCellParagraphs } from './target-cell-paragraphs';
 import { planDomainProperties } from './domain-properties';
 import { domainNodeFromAst } from './domain-ast';
 import { sameContainerIdentity } from './domain-strategies';
@@ -20,6 +21,12 @@ import { resolveTargetLists } from './target-lists';
 import { planSiblingBlocks, siblingContentPairable } from './sibling-blocks';
 import { createEditPlan, type CanonicalEdit, type CanonicalEditPlan } from './plan';
 import { jsonDataKey, targetAstKey } from './target-key';
+import {
+  bindQuoteParagraphStream,
+  quoteParagraphStream,
+  quoteSiblingInsertion,
+} from './target-quotes';
+import { planParagraphFormat } from './paragraph-format';
 
 export interface TargetDocumentOptions {
   readonly definitions?: ReadonlyMap<string, Pick<BlockTagDefinition, 'tag' | 'kind'>>;
@@ -200,8 +207,12 @@ export function planTargetDocument(
   if (!parsed.success) return parsed;
   const normalized = normalizeLogicalBlocks(parsed.target, definitions);
   if (!normalized.success) return normalized;
-  const source = bound.source,
-    target = normalized.document,
+  const beforeQuotes = bindQuoteParagraphStream(bound.source),
+    afterQuotes = quoteParagraphStream(normalized.document);
+  const cells = prepareTargetCellParagraphs(input, beforeQuotes.source, afterQuotes.document);
+  if (!cells.success) return cells;
+  const source = cells.source,
+    target = cells.target,
     revision = source.index.revision,
     part = input.pkg.parts.get(source.index.partName)!,
     blockIndex = buildBlockIndex(input.pkg),
@@ -368,7 +379,16 @@ export function planTargetDocument(
         structural.push(edit);
         continue;
       }
-      const quotes = edit.inserted.flatMap((ast, insertedIndex) =>
+      const fragments = quoteSiblingInsertion(
+        edit.inserted,
+        edit.inserted.map((_, insertedIndex) => {
+          if (!afterQuotes.quoted.has(after[gap.afterStart + insertedIndex]!)) return null;
+          const path = [...afterPath, gap.afterStart + insertedIndex + offset.after];
+          return afterQuotes.origins.get(path.join('/'))!.slice(0, -1).join('/');
+        })
+      );
+      const inserted = fragments.inserted;
+      const quotes = inserted.flatMap((ast, insertedIndex) =>
         ast.type === 'blockquote' ? [insertedIndex] : []
       );
       if (quotes.length && quoteStyle === undefined)
@@ -386,20 +406,32 @@ export function planTargetDocument(
       if (!nestedBlocks.success) return nestedBlocks;
       structural.push({
         ...edit,
+        inserted,
         lists: [
           ...edit.inserted.flatMap((ast, insertedIndex) =>
-            ast.type === 'paragraph' || ast.type === 'heading'
+            (ast.type === 'paragraph' || ast.type === 'heading') &&
+            !afterQuotes.quoted.has(after[gap.afterStart + insertedIndex]!)
               ? [
                   {
-                    path: [insertedIndex],
+                    path: fragments.path([insertedIndex]),
                     target: listTargets.targets[gap.afterStart + insertedIndex]!,
                   },
                 ]
               : []
           ),
-          ...nestedBlocks.plan.lists,
+          ...nestedBlocks.plan.lists.map((binding) => ({
+            ...binding,
+            path: fragments.path(binding.path),
+          })),
         ],
-        ...(nestedBlocks.plan.blocks.length ? { blocks: nestedBlocks.plan.blocks } : {}),
+        ...(nestedBlocks.plan.blocks.length
+          ? {
+              blocks: nestedBlocks.plan.blocks.map((binding) => ({
+                ...binding,
+                path: fragments.path(binding.path),
+              })),
+            }
+          : {}),
         ...(quotes.length
           ? { styles: quotes.map((path) => ({ path: [path], styleId: quoteStyle! })) }
           : {}),
@@ -415,11 +447,13 @@ export function planTargetDocument(
       pairs.push(
         Object.freeze({
           id: ownerId,
-          beforePath: Object.freeze(oldPath),
-          afterPath: Object.freeze(newPath),
+          beforePath: Object.freeze(beforeQuotes.origins.get(oldPath.join('/')) ?? oldPath),
+          afterPath: Object.freeze(afterQuotes.origins.get(newPath.join('/')) ?? newPath),
         })
       );
-      if (deepSame(entry.block, next)) continue;
+      const wasQuote = beforeQuotes.quoted.has(entry.block),
+        isQuote = afterQuotes.quoted.has(next);
+      if (deepSame(entry.block, next) && wasQuote === isQuote) continue;
       let membership: readonly CanonicalEdit[] = [];
       if (listKey(entry.block) !== listKey(next)) {
         const list = planListMembership({ revision, pkg: input.pkg, partName: part.name }, [
@@ -443,6 +477,26 @@ export function planTargetDocument(
         });
         if (!paragraph.success) return paragraph;
         operations.push(...paragraph.plan.operations);
+        if (wasQuote !== isQuote) {
+          const style = isQuote
+            ? options.quoteStyle
+              ? options.quoteStyle()
+              : documentQuoteStyle(input.pkg)
+            : null;
+          if (isQuote && !style)
+            return fail('A block quote needs a Quote paragraph style defined by the document.');
+          // Heading transitions already choose their own target style.
+          if (isQuote || next.ast.type === 'paragraph') {
+            const format = planParagraphFormat(
+              { revision, part, paragraphId: ownerId },
+              style
+                ? { properties: [{ localName: 'pStyle', attributes: { val: style } }] }
+                : { properties: [], remove: ['pStyle'] }
+            );
+            if (!format.success) return format;
+            operations.push(...format.plan.operations);
+          }
+        }
       } else if (
         entry.block.kind === 'table' &&
         next.kind === 'table' &&

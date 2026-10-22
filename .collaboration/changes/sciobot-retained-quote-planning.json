@@ -1,0 +1,15 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Complete-target planning treated a Markdown quote as an unrepresented native container and refused retained quoted paragraph edits.",
+  "after": "Planning binds ordinary body quote children to their actual sibling paragraphs, retains logical diagnostic paths, and emits existing text, format, and sibling edits. Quote membership changes use paragraph styles. New adjacent quote paragraphs retain one existing fragment representation.",
+  "reason": "The new code only derives private edit plans from canonical paragraph ownership and existing source-map bindings. It introduces no native operation, document metadata, protocol field, transport change, or public API. The direct executor and native collaboration already apply the emitted operations. Focused real sessions verify peer-preserving history, caret geometry, reconnect, owner deletion, and saved convergence.",
+  "tests": [
+    "packages/sciobot/src/diff/target-quotes.test.ts",
+    "packages/sciobot/src/diff/plan-target.test.ts",
+    "packages/sciobot/src/diff/fragment-seeds.test.ts",
+    "packages/sciobot/src/ai/apply-direct.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

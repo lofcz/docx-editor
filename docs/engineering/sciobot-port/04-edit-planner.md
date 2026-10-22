@@ -620,7 +620,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 ## D35
 
-- [ ] Plan edits inside multi-paragraph GFM table cells
+- [x] Plan edits inside multi-paragraph GFM table cells
 
 **Depends:** [D15](04-edit-planner.md#d15), [D23](04-edit-planner.md#d23)
 
@@ -634,7 +634,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused Bun test with explicit expected results. Run the C01 matrix and table composer regressions.
 
-**Claim:** unclaimed. **Evidence:** pending. Found by D33: a merge that keeps two paragraphs produces such a cell, and editing it afterwards refuses.
+**Claim:** codex D35 worker, branch `codex/react-block-proof`. **Evidence:** Native baseline `3278fa04`, local working tree. `target-cell-paragraphs.ts` splits GFM cell streams only at source-proven generated separators between canonical paragraph contributions. It maps native bindings and sibling windows to the resulting paragraphs. Existing text, mark, and sibling planners retain surviving paragraph IDs. Text-diff mappings keep carried authored breaks inside their original paragraphs; new separators in an existing multi-paragraph cell denote new paragraphs. Full-target equality returns the unchanged bound view. Body quote paragraph objects retain identity for D39. `bun test packages/sciobot/src/diff/target-cell-paragraphs.test.ts packages/sciobot/src/diff/target-table.test.ts packages/sciobot/src/diff/target-c01-matrix.test.ts packages/sciobot/src/diff/target-table-properties.test.ts packages/sciobot/src/diff/target-table-merges.test.ts` passes 57 cases and 581 assertions. The final owner, Unicode, repeated-text, and no-op additions pass with D39: `bun test packages/sciobot/src/diff/target-cell-paragraphs.test.ts packages/sciobot/src/diff/target-quotes.test.ts`, 26 cases and 334 assertions. D35 contributes 13 focused cases. Explicit native text, operation kinds, paragraph IDs, unchanged source bytes, save/reopen output, and repeated no-op plans supply the oracles. Scoped Prettier, oxlint, and diff checks pass. Aggregate private types/build and repository checks remain with the coordinator. No-impact decision: `.collaboration/changes/sciobot-gfm-cell-paragraph-planning.json`. This private pure planner needs no new collaboration mutation scenario. Existing direct/review executors retain live mutation authority. Ambiguous or unsupported composite source mappings still refuse before writes; single-paragraph cells retain existing manual-break behavior.
 
 ## D36
 
@@ -692,11 +692,11 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 ## D39
 
-- [ ] Plan edits inside retained native quote paragraphs
+- [x] Plan edits inside retained native quote paragraphs
 
 **Depends:** [D15](04-edit-planner.md#d15), [P23](03-agent-projection.md#p23)
 
-**Primary files:** `fork:packages/sciobot/src/diff/plan-target.ts`; `fork:packages/sciobot/src/diff/bind-source.ts`; `sibling plan-target.test.ts`
+**Primary files:** `fork:packages/sciobot/src/diff/plan-target.ts`; `sibling target-quotes.ts`; `sibling target-quotes.test.ts`
 
 **Read:** [S03](sources.md#s03), [S25](sources.md#s25)
 
@@ -706,4 +706,4 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused Bun test with explicit expected results. Run the C01 matrix and composer regressions.
 
-**Claim:** unclaimed. **Evidence:** pending. Found by P23: `planTargetDocument` refuses any text change inside an existing quote with "This logical stream needs composite or unrepresented native owner planning."
+**Claim:** codex, branch `codex/react-block-proof`. **Evidence:** Source baseline `3278fa04`, local working tree. A private planning view expands ordinary body quote children into their actual sibling paragraphs and retains original logical paths, exact source contributions, and native windows. Existing source bindings grant ownership; no quote container or native range is fabricated. Text/mark edits and paragraph insertion/removal retain surviving IDs. Entering/leaving a quote emits explicit native paragraph-style deltas. Adjacent new quote paragraphs share the existing fragment representation. Five explicit local cases preserve unrelated native objects and metadata, source immutability, plan codec round trips, exact target ASTs, and save/reopen. Eight real-session cases cover both client orders and reconnect receivers, offline peer suffixes, deletion during affected-content editing, exact native identities, peer-preserving undo/redo, caret geometry, and saved convergence. Final focused command `bun test --timeout 30000 --preload ./scripts/test/preload-dom.ts packages/sciobot/src/diff/target-quotes.test.ts` passes 13 cases and 269 assertions; `/tmp/codex-d39-integration-final.log`. Composite C01/composer verification covers 111 distinct cases across eight files: 93 existing composer/source cases, five fragment-seed cases, and these 13 quote cases. The fragment-seed file's unchanged multi-paragraph quote expectation passes after preserving grouped fragment shape. Private source types pass 1958 files; build verifies 189 private modules, one external native core, and separate optional runtime entries. Scoped formatting/lint, root lint, compatibility, reference coverage, and backlog checks pass. Compatibility passes 124 decisions against `upstream/main`, zero additional format fields; `.collaboration/changes/sciobot-retained-quote-planning.json`. No published code, API, or collaboration schema changes require a changeset or API extraction. The audit retains all 198 application source hashes; its reference revision alone advances to `aec740a325e199f0a46069130d70ee65c88c524f`. Nested or non-paragraph quote syntax retains its existing explicit refusal; D39 owns the projected ordinary body-quote representation. D35 separately owns composite GFM cell paragraphs.

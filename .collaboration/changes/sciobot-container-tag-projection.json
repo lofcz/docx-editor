@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Callout, story, and solution payloads have no default private Markdown container definitions.",
+  "after": "Read projections wrap native children with application container tags, preserve ordered attributes, and map callout type spans to the variant payload property.",
+  "reason": "The change only derives Markdown and property spans from existing payloads and native children. It changes no canonical state, shared operation, collaboration field, or document geometry. Unknown attributes remain inert data.",
+  "tests": [
+    "packages/sciobot/src/projection/container-tags.test.ts",
+    "packages/sciobot/src/projection/blocks.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

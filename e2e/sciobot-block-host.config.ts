@@ -7,6 +7,8 @@ export default defineConfig({
     'sciobot-native-slots.spec.ts',
     'sciobot-block-selection.spec.ts',
     'sciobot-block-input.spec.ts',
+    'sciobot-block-ime.spec.ts',
+    'sciobot-block-fragments.spec.ts',
     'sciobot-block-clipboard.spec.ts',
     'sciobot-block-measurement.spec.ts',
   ],

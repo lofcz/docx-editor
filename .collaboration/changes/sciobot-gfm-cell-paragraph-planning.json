@@ -1,0 +1,17 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Changed multi-paragraph GFM cells refuse because one logical paragraph has several canonical paragraph owners.",
+  "after": "Source-proven generated separators yield explicit native paragraph bindings. Existing paragraph and sibling planners produce text, mark, insertion, and removal intentions while preserving authored manual breaks carried by the text diff.",
+  "reason": "This private preprocessing step reads source mappings and canonical paragraph text. It writes no document state and changes no shared operation format. Existing executors own canonical mutation and collaboration behavior. New separators in an existing multi-paragraph GFM cell denote paragraph insertion; preserved authored separators remain manual breaks.",
+  "tests": [
+    "packages/sciobot/src/diff/target-cell-paragraphs.test.ts",
+    "packages/sciobot/src/diff/target-c01-matrix.test.ts",
+    "packages/sciobot/src/diff/target-table.test.ts",
+    "packages/sciobot/src/diff/target-table-properties.test.ts",
+    "packages/sciobot/src/diff/target-table-merges.test.ts",
+    "packages/sciobot/src/diff/target-quotes.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

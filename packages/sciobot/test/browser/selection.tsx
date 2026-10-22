@@ -8,6 +8,8 @@ import {
   mountReactBlockHost,
   readBlockSelection,
   type ReactBlockViewProps,
+  type ReactBlockView,
+  type ReactBlockRegistration,
 } from '@sciobot/docx/react';
 import { buildBlockIndex } from '../../src/blocks/block-index';
 import { createTwoEditorFixture } from '../support/collaboration';
@@ -54,7 +56,7 @@ for (const [index, container] of pair.containers.entries()) {
 const hosts = pair.editors.map((editor) =>
   mountReactBlockHost(
     editor,
-    new Map([
+    new Map<string, ReactBlockView | ReactBlockRegistration>([
       ['native_container', { view: Container, nativeContent: true }],
       ['test_form', Form],
     ])

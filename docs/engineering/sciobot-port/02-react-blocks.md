@@ -152,7 +152,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 ## B09
 
-- [ ] Regress composition event routing at the block boundary
+- [x] Regress composition event routing at the block boundary
 
 **Depends:** [B08](02-react-blocks.md#b08), [V01](11-verification.md#v01)
 
@@ -166,7 +166,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused Chromium case with real input and native selection where applicable. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** astra B09, branch `codex/react-block-proof`. **Evidence:** Baseline `3278fa04`, local working tree. `e2e/sciobot-block-ime.spec.ts` passes three Chromium cases. The CDP sequence updates `か` to `かな`, then commits `仮名`. Native content becomes exactly `Inner text仮名`; one undo removes the composition and one redo restores it. A peer repaint retains the native caret at offset 12, and following keyboard input lands there. Remote selection geometry agrees across both real sessions. Both reconnect orders preserve concurrent peer text, history, and saved/reopened semantic digests. React textarea composition commits once, keeps both document revisions unchanged, and retains focus and offset 14 after repaint. The other textarea stays unchanged. Peer deletion during active widget composition removes the widget without leaking text into Word. No page errors occur. No host or production changes were needed; shared operations and formats stay unchanged. Command: `bunx playwright test --config e2e/.b09.config.ts`, using a temporary config on port 5197 with `SCIOBOT_BROWSER_STABLE=1`; 3/3 pass with unchanged 60-second test deadlines. Initial cold-server attempts timed out before assertions; a separate browser warm-up completed dependency optimization. Scoped Prettier and oxlint pass. Dedicated e2e typecheck passes 1531 files after an explicit registry Map type fixes existing harness inference; runtime behavior is unchanged. The temporary config is removed after verification; the shared block-host config includes this spec. This proves browser composition event routing only. Actual operating-system IME remains B23.
 
 ## B10
 
@@ -260,11 +260,11 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 ## B15
 
-- [ ] Retain widget state through repagination
+- [x] Retain widget state through repagination
 
 **Depends:** [B06](02-react-blocks.md#b06), [B14](02-react-blocks.md#b14), [V01](11-verification.md#v01)
 
-**Primary files:** `fork:packages/sciobot/src/react-blocks/fragments.ts`; `sibling fragments browser test`
+**Primary files:** `fork:packages/sciobot/src/react-blocks/host.tsx`; `fork:packages/sciobot/test/browser/fragments.tsx`; `fork:e2e/sciobot-block-fragments.spec.ts`
 
 **Read:** [S24](sources.md#s24)
 
@@ -274,7 +274,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused Chromium case with real input and native selection where applicable. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** astra B15, branch `codex/react-block-proof`. **Evidence:** Baseline `3278fa04`, local working tree. Existing `host.tsx` keys roots by block ID and continuation ordinal; no production change was needed. New `packages/sciobot/test/browser/fragments.tsx` combines measured React widgets with nested native containers and two real sessions. `e2e/sciobot-block-fragments.spec.ts` passes both reconnect orders. Exact expected paragraph arrays verify three native continuation pages without duplicated content. A native spacing edit moves the widget between pages while preserving its input DOM node, focus, caret offset 10, local counter, and text. Following keyboard input lands at that caret. Reconnect retains focus and combines peer text with the page move. Real document Ctrl+Z/Ctrl+Shift+Z reverse and restore pagination while preserving peer text and widget state. Document history intentionally restores the document caret; focus retention is asserted for page moves and reconnect. Remote selection geometry matches in both sessions. Peer deletion during local widget typing unmounts each root once, preserves remaining native paragraphs, and converges after save/reopen. Command: `bunx playwright test --config e2e/.b15.config.ts`; 2/2 pass in 16.9 seconds with unchanged 60-second deadlines. The temporary config uses stable port 5197 and is removed after verification. The shared block-host config registers this spec. Scoped formatting and oxlint pass. The final combined browser typecheck passes 1533 files against isolated completed-leaf checkpoint `988042a5`; `/tmp/codex-closed-browser-types2.log`. No shared operations or formats change; no new compatibility decision is needed.
 
 ## B16
 

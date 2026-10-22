@@ -140,8 +140,32 @@ function source(payload: BlockPayload): BlockAttributeBinding[] {
   return out;
 }
 
+/** Application container rules serialize remaining attributes in insertion order. */
+function containerAttributes(payload: BlockPayload): BlockAttributeBinding[] {
+  return Object.entries(payload.attributes)
+    .filter(([property]) => !['id', 'type', 'children'].includes(property))
+    .map(([property, value]) => ({ name: property, property, value }));
+}
+function callout(payload: BlockPayload): BlockAttributeBinding[] {
+  const attributes = Object.entries(payload.attributes)
+    .filter(([property]) => !['type', 'children', 'variant'].includes(property))
+    .map(([property, value]) => ({ name: property, property, value }));
+  const variant = payload.attributes.variant;
+  if (typeof variant === 'string' && variant.length > 0) {
+    attributes.push({ name: 'type', property: 'variant', value: variant });
+  }
+  return attributes;
+}
+
 /** Same tag names and property remapping as the application Markdown rules. */
-export const DOMAIN_BLOCK_TAGS: ReadonlyMap<string, BlockTagDefinition> = new Map([
+export const DOMAIN_BLOCK_TAGS: ReadonlyMap<string, BlockTagDefinition> = new Map<
+  string,
+  BlockTagDefinition
+>([
+  ['callout', { tag: 'callout', kind: 'container', attributes: callout }],
+  ...['story', 'solution'].map(
+    (tag) => [tag, { tag, kind: 'container', attributes: containerAttributes }] as const
+  ),
   [
     'lesson_title',
     {

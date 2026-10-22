@@ -656,7 +656,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 ## X37
 
-- [ ] Project application container tags for callout, story, and solution
+- [x] Project application container tags for callout, story, and solution
 
 **Depends:** [P04](03-agent-projection.md#p04)
 
@@ -670,4 +670,4 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add focused projection cases beside the P04 tests. Run private typecheck/build and a compatibility decision. Pure projection needs no session test.
 
-**Claim:** unclaimed. **Evidence:** Added by the application worker. X13–X15 renderers depend on this export; the application cannot supply definitions to the working view.
+**Claim:** codex X37 worker, branch `codex/react-block-proof`. **Evidence:** Native baseline `3278fa04`, local working tree. `bun scripts/sciobot-port/capture-container-reference.mjs` captures six application attribute outputs and three modern/legacy callout alias parses. `packages/sciobot/src/__tests__/fixtures/container-tags.json` records application revision `aec740a3` and four source hashes. `bun test packages/sciobot/src/projection/container-tags.test.ts packages/sciobot/src/projection/blocks.test.ts` passes 17 cases and 166 assertions. Working-view fixtures retain exact ordered attributes, optional icons, native paragraph IDs, UTF-16 offsets, property paths, nested/empty containers, and save/reopen payloads. Callout serializes `variant` as `type` after remaining attributes, matching the application rule. Unknown properties remain inert, including JSON, boolean, constructor, and event-shaped names. Reads preserve package bytes, revision, and history. `bun run --filter '@sciobot/docx' build` passes with 189 private modules and external native core. Scoped Prettier, oxlint, and diff checks pass. Combined private types pass 1958 files. The completed-leaf checkpoint `988042a5` builds 190 private modules with external native core; aggregate tests are recorded by the coordinator. No-impact decision: `.collaboration/changes/sciobot-container-tag-projection.json`. This pure projection change needs no collaboration mutation scenario. X13–X15 application rendering remains separate; no importer or canonical edit path changes.

@@ -1,0 +1,229 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "revision": "aec740a325e199f0a46069130d70ee65c88c524f",
+    "files": {
+      "src/components/callout-md-rules.ts": "87e8eecd33aa2a303137d760a66810c11d357d14253a59fedb6a31aeb5817051",
+      "src/components/story/md-rules.ts": "b0fe353a36294d02ef44652a1b6cc8235eb5f8c68c3984ae112d27e332f8d959",
+      "src/components/solution/md-rules.ts": "465016c3ec63979c90a493e0bd4a3402489e0bceddda0445892cedf31202f461",
+      "node_modules/@platejs/markdown/dist/index.js": "13895f7d3dbfa56826459d8993b1ff4c542a70f21aa7b61a0fdb17b03b7aa0d9"
+    }
+  },
+  "cases": [
+    {
+      "id": "tip",
+      "type": "callout",
+      "attributes": {
+        "variant": "tip",
+        "icon": "💡",
+        "extra": "unknown"
+      },
+      "serializedAttributes": [
+        {
+          "name": "icon",
+          "type": "mdxJsxAttribute",
+          "value": "💡"
+        },
+        {
+          "name": "extra",
+          "type": "mdxJsxAttribute",
+          "value": "unknown"
+        },
+        {
+          "name": "type",
+          "type": "mdxJsxAttribute",
+          "value": "tip"
+        }
+      ]
+    },
+    {
+      "id": "story",
+      "type": "story",
+      "attributes": {
+        "zeta": "first",
+        "audience": "class",
+        "count": 2,
+        "enabled": true,
+        "hidden": false,
+        "omitted": null,
+        "_custom": "kept",
+        "suggestion": "inert"
+      },
+      "serializedAttributes": [
+        {
+          "name": "zeta",
+          "type": "mdxJsxAttribute",
+          "value": "first"
+        },
+        {
+          "name": "audience",
+          "type": "mdxJsxAttribute",
+          "value": "class"
+        },
+        {
+          "name": "count",
+          "type": "mdxJsxAttribute",
+          "value": "2"
+        },
+        {
+          "name": "enabled",
+          "type": "mdxJsxAttribute",
+          "value": null
+        },
+        {
+          "name": "hidden",
+          "type": "mdxJsxAttribute",
+          "value": "false"
+        },
+        {
+          "name": "_custom",
+          "type": "mdxJsxAttribute",
+          "value": "kept"
+        },
+        {
+          "name": "suggestion",
+          "type": "mdxJsxAttribute",
+          "value": "inert"
+        }
+      ]
+    },
+    {
+      "id": "solution",
+      "type": "solution",
+      "attributes": {
+        "answer": "42",
+        "details": {
+          "nested": ["data", 2]
+        },
+        "constructor": "inert",
+        "onClick": "globalThis.X37 = true"
+      },
+      "serializedAttributes": [
+        {
+          "name": "answer",
+          "type": "mdxJsxAttribute",
+          "value": "42"
+        },
+        {
+          "name": "details",
+          "type": "mdxJsxAttribute",
+          "value": "{\"nested\":[\"data\",2]}"
+        },
+        {
+          "name": "constructor",
+          "type": "mdxJsxAttribute",
+          "value": "inert"
+        },
+        {
+          "name": "onClick",
+          "type": "mdxJsxAttribute",
+          "value": "globalThis.X37 = true"
+        }
+      ]
+    },
+    {
+      "id": "default",
+      "type": "callout",
+      "attributes": {
+        "icon": "📝"
+      },
+      "serializedAttributes": [
+        {
+          "name": "icon",
+          "type": "mdxJsxAttribute",
+          "value": "📝"
+        }
+      ]
+    },
+    {
+      "id": "empty",
+      "type": "callout",
+      "attributes": {
+        "variant": "",
+        "extra": "kept"
+      },
+      "serializedAttributes": [
+        {
+          "name": "extra",
+          "type": "mdxJsxAttribute",
+          "value": "kept"
+        }
+      ]
+    },
+    {
+      "id": "numeric",
+      "type": "callout",
+      "attributes": {
+        "variant": 42
+      },
+      "serializedAttributes": []
+    }
+  ],
+  "aliases": [
+    {
+      "attributes": [
+        {
+          "name": "type",
+          "type": "mdxJsxAttribute",
+          "value": " TIP "
+        }
+      ],
+      "node": {
+        "children": [
+          {
+            "text": ""
+          }
+        ],
+        "type": "callout",
+        "variant": "tip"
+      }
+    },
+    {
+      "attributes": [
+        {
+          "name": "variant",
+          "type": "mdxJsxAttribute",
+          "value": " WARNING "
+        },
+        {
+          "name": "icon",
+          "type": "mdxJsxAttribute",
+          "value": "⚠"
+        }
+      ],
+      "node": {
+        "children": [
+          {
+            "text": ""
+          }
+        ],
+        "type": "callout",
+        "variant": "warning",
+        "icon": "⚠"
+      }
+    },
+    {
+      "attributes": [
+        {
+          "name": "type",
+          "type": "mdxJsxAttribute",
+          "value": "note"
+        },
+        {
+          "name": "variant",
+          "type": "mdxJsxAttribute",
+          "value": "tip"
+        }
+      ],
+      "node": {
+        "children": [
+          {
+            "text": ""
+          }
+        ],
+        "type": "callout",
+        "variant": "note"
+      }
+    }
+  ]
+}
