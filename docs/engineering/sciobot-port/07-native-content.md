@@ -8,7 +8,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 ## N01
 
-- [ ] Create a native command capability fixture
+- [x] Create a native command capability fixture
 
 **Depends:** None.
 
@@ -22,7 +22,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Validate fixture schema, source coverage, and independently captured expected results.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** astra N01, branch `codex/react-block-proof`. **Evidence:** Fork baseline `3278fa04`; application revision `21b9d47b79d4e6c29d6b07d1952e6a269b72c13e`. `scripts/sciobot-port/capture-native-commands-reference.mjs` executes installed Plate transforms with the production kit configurations. It extracts the actual production block conversion and insertion functions; unrelated container dispatch entries are excluded. Render imports are inert, while editing transforms and configured input rules execute unchanged. `native-command-runner.mjs` captures 158 before/after document, selection, and mark states. Cases cover all eight required families, list styles/check state, mark toggles at ranges and carets, font sizes/colors/clearing, every configured alignment/line-height value, links, table insertion/deletion/rows/columns/merge/split/appearance, and typed input rules. One identity map spans each before/after pair, preserving replacement versus retained identity. Explicit command IDs and resolved inputs accompany the results. 57 source/package hashes, capture/runner hashes, UI consumers, input declarations, and resolved keyboard shortcuts record provenance. Mappings identify N02–N14, N22 for table margin, and native `deleteTable`; combined row/column growth names both N11 and N12. Logical alignment and internal-link records state their unresolved adapter requirements. `bun scripts/sciobot-port/capture-native-commands-reference.mjs --check` independently replays all 158 cases and matches the committed artifact. `bun test packages/sciobot/src/__tests__/native-command-fixture.test.ts` passes three schema/coverage tests with 12250 assertions. Recursive text/element and selection checks reject malformed states; required action IDs and keyboard presence are explicit. Scoped Prettier and oxlint pass. This fixture records actual Plate behavior, including rule precedence and default no-ops. It does not establish native command parity, browser shortcut delivery, or UI/network behavior. Those remain the mapped implementation leaves. No production or collaboration code changes.
 
 ## N02
 
@@ -250,9 +250,9 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Read:** [S13](sources.md#s13), [S25](sources.md#s25)
 
-**Change:** Connect width, border, background, and header options to native property commands.
+**Change:** Connect width, row height, border, background, and header options to native property commands.
 
-**Close when:** Change one cell background and one column width. Reopen preserves both without changing neighboring cell content.
+**Close when:** Change one cell background, one column width, and one row height. Reopen preserves all three without changing neighboring cell content.
 
 **Check:** Add a focused Chromium case with real input and native selection where applicable. Add the focused two-session scenario described in the shared completion rules.
 
@@ -383,3 +383,21 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 **Check:** Add exact-byte and relationship-discovery regressions. Exercise two real sessions in both client orders and reconnect directions. Verify installed bundles, package hashes, and application regressions after the immutable vendor refresh.
 
 **Claim:** codex, branch `codex/react-block-proof`. **Evidence:** Full preparation now initializes the existing group carrier before code styles. The carrier's native helper creates missing owner relationships. The code then adds styles through that valid part. Original body, media, and unrelated bytes stay exact; opaque existing relationships still refuse without replacement. The original installed smoke fixture stays unchanged and passes full preparation without a workaround. Preparation is idempotent and creates no user history. Focused preparation and code checks pass 44 cases with 936 assertions across three files; `/tmp/codex-n21-focused-final.log`. Four new real-session cases cover both client orders and reconnect directions, simultaneous code/review edits, peer-preserving undo/redo, deletion during peer input, restored peer text, remote geometry, save/reopen, and retained initialized parts. Two new local cases cover absent and opaque owner relationships. Full private suite passes 1466 cases, zero failures, 29863 assertions, 126 files; `/tmp/codex-n21-private-full.log`. Private typecheck passes 1755 files; the 140-module build retains one external core and a React-free main. Scoped format/lint, compatibility, source coverage, and backlog pass. Decision: `.collaboration/changes/sciobot-native-owner-relationship-initialization.json`; 99 decisions, with the earlier one-field format change unchanged. No published API, shared schema, provider, evaluated implementation, or database changes. The app pins immutable `refs/backup/codex-n21-runtime`, commit `f8a2d15e1a686fd504d8ae6255cab3d5dfca68a1`, tree `44ba09b1edb1bb7922015b354febf1476006bde0`. The adapter archive is `sciobot-docx-fdf6552c585c.tgz`. Published sources, shared build scripts, manifests, and dependency locks are byte-identical to R14 runtime `b69b8e8b714a7818e12ee8f636d6b75c2f8c18bb`; its four verified published archives are reused unchanged. The reuse guard rejects R13 artifacts because native build inputs differ. Core archive: `docx-editor.dev-core-0247acf90551.tgz`. Three other published archives also retain their R13 hashes. Installed-bundle smoke passes exact native preparation bytes, stable replacement groups, native accept/reject, retained-ID reservation, undo/redo, and DOCX reopening; `/tmp/codex-n21-installed-smoke.log`. App regressions pass 53 unit cases and 16 browser cases with 169 assertions. App/harness typechecks pass 6629/2195 files. Production build passes with the existing MapLibre warning. All five archive hashes, manifest/override/lock references, and single-core resolution match. App changes are restricted to the manifest, lock, and vendor artifacts. All 196 audited production source hashes remain unchanged.
+
+## N22
+
+- [ ] Connect manual table indentation
+
+**Depends:** [N09](07-native-content.md#n09), [N17](07-native-content.md#n17), [V01](11-verification.md#v01)
+
+**Primary files:** `fork:packages/sciobot/src/chrome/table-indent.ts`; `sibling table-indent browser test`
+
+**Read:** [S13](sources.md#s13), [S25](sources.md#s25)
+
+**Change:** Map the production table left-margin action to native table indentation. Convert captured CSS pixels into Word twips. Preserve imported table properties and neighboring content.
+
+**Close when:** The N01 `table.margin` fixture maps 24 pixels to 360 twips. The table moves by 18 points without changing its columns or text. Reset restores zero indentation. Undo and save/reopen preserve the expected indentation and imported metadata.
+
+**Check:** Add a focused native regression and Chromium control test. Verify two-session concurrent cell edits, reconnect, peer-preserving history, table deletion, remote selection geometry, and saved convergence. Reuse the native table property writer where it supports `w:tblInd`.
+
+**Claim:** unclaimed. **Evidence:** N01 found the production `setTableMarginLeft` action. Existing N14 scope covers cell appearance and dimensions; it does not cover this table placement control.
