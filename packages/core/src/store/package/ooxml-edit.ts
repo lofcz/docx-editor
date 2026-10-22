@@ -1,5 +1,6 @@
 import type { FieldResultsMode } from './field-result-mode.ts';
 import { bindConflictingPrefixes } from './edit-namespace-scope.ts';
+import { contentControlLevelOf } from './content-control-nodes.ts';
 // Atomic canonical-tree edit primitives (typed-ooxml-paragraph-editor task 4.5).
 //
 // The ONLY sanctioned way to mutate an `OoxmlPart`. Every primitive is pure — it returns a
@@ -21,12 +22,17 @@ import { bindConflictingPrefixes } from './edit-namespace-scope.ts';
 
 import {
   validateOoxmlPart,
+  WML_NAMESPACE_URI,
   type OoxmlElement,
   type OoxmlInvariantIssue,
   type OoxmlNode,
   type OoxmlPart,
 } from './ooxml-tree.ts';
-import { isCanonicalPrimitiveCaptureActive } from './canonical-primitive-capture.ts';
+import {
+  isCanonicalPrimitiveCaptureActive,
+  recordMoveNode,
+  recordSetNamespaceBinding,
+} from './canonical-primitive-capture.ts';
 import {
   captureInsertChildren,
   captureRemoveNode,
@@ -688,6 +694,136 @@ export function insertChildren(
   const knownIds = knownIdsIfCapturing(part, children);
   const result = finish(rebuild(part, nodeId, withChildren(target, next)), options);
   if (result.ok) captureInsertChildren(target, at, children, knownIds);
+  return result;
+}
+
+/**
+ * Move one existing element without replacing its descendants or their identities.
+ * `destinationIndex` addresses the destination's children after removing the source.
+ * Namespace declarations inherited from the old parent remain meaningful at the new parent.
+ */
+export function moveNode(
+  part: OoxmlPart,
+  nodeId: string,
+  destinationParentId: string,
+  destinationIndex: number,
+  options?: EditOptions
+): OoxmlEditResult {
+  const node = findNode(part, nodeId),
+    source = parentNodeOf(part, nodeId),
+    destination = findNode(part, destinationParentId);
+  const refuse = (): OoxmlEditResult => ({
+    ok: false,
+    issues: [{ code: 'known-node-invariant', path: nodeId, nodeId }],
+  });
+  if (
+    !node ||
+    node.kind === 'textValue' ||
+    !source ||
+    !destination ||
+    destination.kind === 'textValue'
+  )
+    return refuse();
+  const levelOf = (element: OoxmlNode): string | null => {
+    if (element.kind === 'paragraph' || element.kind === 'table') return 'block';
+    if (element.kind === 'tableRow') return 'row';
+    if (element.kind === 'tableCell') return 'cell';
+    if (element.kind === 'run' || element.kind === 'hyperlink') return 'inline';
+    if (element.kind === 'contentControl') {
+      const level = contentControlLevelOf(element);
+      return level === 'empty' ? null : level;
+    }
+    return null;
+  };
+  let targetLevel: string | null = null;
+  for (
+    let parent: OoxmlElement | null = destination;
+    parent;
+    parent = parentNodeOf(part, parent.id)
+  ) {
+    if (parent.kind === 'paragraph' || parent.kind === 'hyperlink') {
+      targetLevel = 'inline';
+      break;
+    }
+    if (parent.kind === 'run') {
+      targetLevel = 'run';
+      break;
+    }
+    if (parent.kind === 'table') {
+      targetLevel = 'row';
+      break;
+    }
+    if (parent.kind === 'tableRow') {
+      targetLevel = 'cell';
+      break;
+    }
+    if (
+      parent.kind === 'tableCell' ||
+      (parent.namespaceUri === WML_NAMESPACE_URI &&
+        ['body', 'hdr', 'ftr', 'txbxContent', 'footnote', 'endnote', 'comment'].includes(
+          parent.localName
+        ))
+    ) {
+      targetLevel = 'block';
+      break;
+    }
+    if (parent.kind === 'contentControl') {
+      targetLevel = levelOf(parent);
+      if (targetLevel !== null) break;
+    }
+  }
+  const nodeLevel = levelOf(node);
+  if (nodeLevel !== null && targetLevel !== null && nodeLevel !== targetLevel) return refuse();
+  for (let parent: OoxmlNode | null = destination; parent; parent = parentNodeOf(part, parent.id))
+    if (parent.id === nodeId) return refuse();
+  const length = destination.children.length - (source.id === destination.id ? 1 : 0);
+  if (!Number.isSafeInteger(destinationIndex) || destinationIndex < 0 || destinationIndex > length)
+    return refuse();
+  if (
+    source.id === destination.id &&
+    source.children.findIndex((child) => child.id === nodeId) === destinationIndex
+  )
+    return { ok: true, part };
+
+  const inherited = namespaceScopeAt(part, source),
+    targetScope = namespaceScopeAt(part, destination),
+    own = new Set(node.namespaceBindings.map((binding) => binding.prefix));
+  // Preserve bindings used only inside opaque QName-valued attributes too. Looking only at
+  // element and attribute names cannot detect mc:Ignorable, XPath, or extension values.
+  const bindings = [...inherited]
+    .filter(
+      ([prefix, uri]) => prefix !== 'xml' && !own.has(prefix) && targetScope.get(prefix) !== uri
+    )
+    .map(([prefix, namespaceUri]) => ({ prefix, namespaceUri }));
+  const moved = bindings.length
+    ? ({ ...node, namespaceBindings: [...node.namespaceBindings, ...bindings] } as OoxmlElement)
+    : node;
+  const spine = new Set<string>();
+  for (const start of [source, destination])
+    for (let parent: OoxmlNode | null = start; parent; parent = parentNodeOf(part, parent.id))
+      spine.add(parent.id);
+  const rewrite = (current: OoxmlNode): OoxmlNode => {
+    if (current.kind === 'textValue' || !spine.has(current.id)) return current;
+    let children = current.children
+      .filter((child) => current.id !== source.id || child.id !== nodeId)
+      .map(rewrite);
+    if (current.id === destination.id)
+      children = [
+        ...children.slice(0, destinationIndex),
+        moved,
+        ...children.slice(destinationIndex),
+      ];
+    return children.length === current.children.length &&
+      children.every((child, index) => child === current.children[index])
+      ? current
+      : ({ ...current, children } as OoxmlElement);
+  };
+  const result = finish(rebuild(part, part.root.id, rewrite(part.root)), options);
+  if (result.ok) {
+    for (const binding of bindings)
+      recordSetNamespaceBinding(nodeId, binding.prefix, binding.namespaceUri);
+    recordMoveNode(nodeId, destinationParentId, destinationIndex);
+  }
   return result;
 }
 

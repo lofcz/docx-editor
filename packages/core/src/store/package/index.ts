@@ -246,6 +246,7 @@ export {
   findNode,
   hasNode,
   insertChildren,
+  moveNode,
   parentNodeOf,
   removeNode,
   replaceChildren,

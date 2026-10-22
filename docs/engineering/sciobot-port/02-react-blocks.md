@@ -230,9 +230,9 @@ Sixteen real two-session cases cover delete and unwrap, both client orders, both
 
 ## B13
 
-- [ ] Move a registered block between containers
+- [x] Move a registered block between containers
 
-**Depends:** [B11](02-react-blocks.md#b11), [B12](02-react-blocks.md#b12), [V01](11-verification.md#v01)
+**Depends:** [B11](02-react-blocks.md#b11), [B12](02-react-blocks.md#b12), [B32](02-react-blocks.md#b32), [V01](11-verification.md#v01)
 
 **Primary files:** `fork:packages/sciobot/src/blocks/move.ts`; `sibling move.test.ts`
 
@@ -244,7 +244,11 @@ Sixteen real two-session cases cover delete and unwrap, both client orders, both
 
 **Check:** Add a focused native document regression. Include save/reopen and undo/redo. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** codex solo, branch `codex/react-block-proof`. **Evidence:** Baseline `ddb95987`, completed local source. `moveBlock` places a registered block before a native destination child or at the container end. It supports registered parent controls and the document body. The command retains the block tag, descendant IDs, payload records, nested references, and native ordering. Same-position moves return without history. Cycles, missing anchors, stale revisions, inline destinations, native locks, suggesting mode, and viewing mode refuse atomically. Existing single-control revision wrappers travel with their control. The command never disables tracking.
+
+The focused command `bun test packages/core/src/store/__tests__/move-node.test.ts packages/sciobot/src/blocks/move.test.ts` passes 17 cases and 199 assertions. Log: `/tmp/b13-focused-final.log`. Native expected ordering is explicit, and the moved subtree remains the same object. Complete metadata stays exact. One undo restores the original package; redo restores the moved package. Save/reopen retains complete semantic structure. Four real-session cases cover both client orders and reconnect receivers. Movement runs offline beside nested peer text and payload edits. The moved native subtree retains the peer edits exactly. Undo restores the entire peer-only package on both sessions. Redo, remote caret identity/geometry, and saved digests converge. Four additional shared cases converge source and destination deletion against offline movement. A shared namespace case retains opaque metadata meaning through history and Word reopen. Test transport uses the EigenPal Pro License.
+
+The affected block, native edit, namespace, journal, and isolation run covers 177 cases across 18 files. It reports 172 passes and five isolation-scan timeouts during concurrent root formatting and builds. With formatting finished, all 12 unchanged isolation cases pass at their original limits. Logs: `/tmp/b13-affected.log`, `/tmp/b13-isolation-final.log`. This is combined evidence; the initial affected process exits nonzero. Core types pass 1583 files; private types pass 2039; browser types pass 1757. Core and private builds pass. The private boundary verifies 208 modules and external core. Root formatting, root lint, scoped formatting, and diff checks pass. Public native API and compatibility evidence appears under B32. UI drag handles and movement menus remain U03/U04.
 
 ## B14
 
@@ -591,3 +595,25 @@ The focused native/shared command passes 14 cases and 120 assertions (`/tmp/solo
 The affected native input, pointer, range, measurement, isolation, and private React-block command passes 204 cases and 1629 assertions. Log: `/tmp/solo-b31-affected.log`. All six Chromium cases pass in `e2e/sciobot-inline-host.config.ts`. Real keyboard Backspace and Delete each remove one chip. One real Ctrl+Z restores its fallback and exact payload in both sessions. Existing mouse, zoom, provider, native input, concurrent history, remote geometry, deletion, and saved-convergence cases remain green. Log: `/tmp/solo-b31-chromium-final.log`. The first browser run overlapped CSS regeneration and failed to load its stylesheet. The verified rerun follows the completed core build.
 
 Core types pass 1550 files; private types pass 1999 files; browser types pass 1721 files. Core and private builds pass. The private boundary verifies 205 modules and external core. Core API checks scan 15 entries with no signature changes or errors. Root lint, line caps, scoped formatting, and diff checks pass. Compatibility policy passes 135 decisions with zero format fields changed. Patch changeset: `measured-inline-native-deletion`. Decision: `.collaboration/changes/sciobot-inline-native-deletion.json`. Test transport uses the EigenPal Pro License. B21 retains private input and clipboard integration.
+
+## B32
+
+- [x] Move native elements without replacing identity
+
+**Depends:** [V01](11-verification.md#v01)
+
+**Primary files:** `fork:packages/core/src/store/package/ooxml-edit.ts`; `fork:packages/core/src/store/__tests__/move-node.test.ts`
+
+**Read:** [S25](sources.md#s25)
+
+**Change:** Expose an atomic canonical element move over the existing shared move primitive. Preserve subtree identities and inherited namespace meaning.
+
+**Close when:** Native moves preserve descendant IDs and text, support same-parent ordering, reject cycles without writes, and journal a move rather than subtree replacement. QName-valued opaque metadata survives conflicting namespace scopes and save/reopen.
+
+**Check:** Add native regressions and real-session movement, peer text, undo/redo, reconnect, and save/reopen checks. Run native builds, public API checks, types, and compatibility policy.
+
+**Claim:** codex solo, branch `codex/react-block-proof`. **Evidence:** Baseline `ddb95987`, completed local source. The store exports `moveNode(part, nodeId, destinationParentId, destinationIndex, options)`. Its index refers to destination children after source removal. The edit rewrites only source and destination ancestor paths. Descendant objects and IDs stay intact. Native level checks reject incompatible block/inline placement. Cycles, roots, missing nodes, and invalid indices refuse before journal effects. Same-position moves retain the original part.
+
+A normal move records exactly one existing `moveNode` effect. Inherited namespace differences add existing `setNamespaceBinding` effects. The edit preserves complete source scope, including bindings used only in opaque QName-valued metadata. Four native cases prove literal expected Word structure, immutable input, identical moved objects, exact journal effects, ordering, atomic refusal, and conflicting namespace roundtrip. The shared B13 cases prove real-session text/payload preservation, peer-only undo, redo, reconnect, deletion convergence, remote caret geometry, and saved convergence. A focused shared namespace case verifies the resolved URI before and after movement, history, and save/reopen. Import can replace the original prefix with a stable alias; the required namespace meaning remains exact.
+
+`/tmp/b13-focused-final.log` records 17 passing native/private cases and 199 assertions. The affected run and unchanged isolation rerun are recorded under B13. Core and private builds pass. Core types pass 1583 files, private types pass 2039, and browser types pass 1757. Public API checks scan 15 entries without errors. The store snapshot adds only the native move signature. Logs: `/tmp/b32-core-build.log`, `/tmp/b32-core-types.log`, `/tmp/b13-types-final.log`, `/tmp/b13-browser-types.log`, `/tmp/b32-api-check.log`. Root formatting, root lint, and diff checks pass. Minor changeset: `native-identity-preserving-moves`. Decision: `.collaboration/changes/sciobot-native-block-moves.json`. Existing move and namespace journal encodings remain unchanged.

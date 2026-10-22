@@ -2530,6 +2530,9 @@ export interface ModelChangeSummary {
 }
 
 // @public
+export function moveNode(part: OoxmlPart, nodeId: string, destinationParentId: string, destinationIndex: number, options?: EditOptions): OoxmlEditResult;
+
+// @public
 export type NameRejection = 'empty' | 'control-char' | 'backslash' | 'drive-or-unc' | 'encoded-separator' | 'encoded-dot' | 'bad-encoding' | 'empty-segment' | 'dot-segment' | 'unsafe-key' | 'segment-trailing-dot' | 'traversal-escape' | 'not-absolute-uri' | 'unsafe-scheme';
 
 // @public

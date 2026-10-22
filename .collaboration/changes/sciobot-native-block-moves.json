@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The canonical edit API had no atomic element move, although shared journals already supported moveNode. The private adapter could insert and remove registered blocks without moving them.",
+  "after": "The native move edit preserves descendant IDs and inherited namespace meaning and publishes existing namespace-binding and move effects. The private command moves registered containers in one native undo unit without touching payload records.",
+  "reason": "The implementation uses existing moveNode and setNamespaceBinding journal effects. No shared fields, operation encodings, versions, or payload formats change. Existing lock and mode rules remain active in the private adapter.",
+  "tests": [
+    "packages/core/src/store/__tests__/move-node.test.ts",
+    "packages/sciobot/src/blocks/move.test.ts"
+  ],
+  "changeset": "native-identity-preserving-moves",
+  "migration": null
+}
