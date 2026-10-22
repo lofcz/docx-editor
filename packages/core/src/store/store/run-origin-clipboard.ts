@@ -7,7 +7,10 @@ import {
   readTextOrigin,
   readRevisionOrigin,
   withoutOriginMetadata,
-  RUN_ORIGIN_NS,
+  originNamespaces,
+  originNamespaceForScope,
+  readRunOrigins,
+  readRevisionOrigins,
 } from './run-origin-metadata.ts';
 import { PackageEditRefusal } from './package-edit-refusal.ts';
 
@@ -65,55 +68,140 @@ export function freshenCopiedRunOrigins(
     }
     return false;
   };
-  const scopes = new Map<string, string>();
+  const used = new Set<string>();
   for (const nodes of groups)
     for (const node of nodes) {
-      const revision = readRevisionOrigin(node);
-      const parent = parents.get(node);
-      const valid =
-        node.kind === 'revisionInsert' ||
-        node.kind === 'revisionDelete' ||
-        (node.kind !== 'textValue' &&
-          node.localName === 'rPrChange' &&
-          parent?.kind === 'runProperties' &&
-          parents.get(parent)?.kind === 'run');
-      if (revision && valid && ordinary(node) && !scopes.has(revision.scope))
-        scopes.set(revision.scope, crypto.randomUUID());
+      if (node.kind === 'textValue') continue;
+      if (node.prefix) used.add(node.prefix);
+      for (const binding of node.namespaceBindings) used.add(binding.prefix);
+      for (const attr of node.attributes) if (attr.prefix) used.add(attr.prefix);
     }
+  let suffix = 0;
+  const mintPrefix = () => {
+    let prefix = 'runOriginCopy';
+    while (used.has(prefix)) prefix = `runOriginCopy${++suffix}`;
+    used.add(prefix);
+    return prefix;
+  };
+  const key = (namespaceUri: string, scope: string) => `${namespaceUri}|${scope}`;
+  const scopes = new Map<string, { scope: string; namespaceUri: string; prefix: string }>();
+  const revisionRole = (node: OoxmlNode, original: OoxmlNode) => {
+    const parent = parents.get(original);
+    return (
+      node.kind === 'revisionInsert' ||
+      node.kind === 'revisionDelete' ||
+      (node.kind !== 'textValue' &&
+        node.localName === 'rPrChange' &&
+        parent?.kind === 'runProperties' &&
+        parents.get(parent)?.kind === 'run')
+    );
+  };
+  for (const nodes of groups)
+    for (const node of nodes) {
+      if (!revisionRole(node, node) || !ordinary(node)) continue;
+      for (const origin of readRevisionOrigins(node)) {
+        const id = key(origin.namespaceUri, origin.scope);
+        if (!scopes.has(id)) {
+          const scope = crypto.randomUUID();
+          scopes.set(id, {
+            scope,
+            namespaceUri: originNamespaceForScope(scope),
+            prefix: mintPrefix(),
+          });
+        }
+      }
+    }
+  // A completed peer proof can remain necessary for a copied pending proposal.
+  const byScope = new Map<string, Set<string>>(),
+    bySource = new Map<string, Set<string>>();
+  for (const nodes of groups)
+    for (const node of nodes) {
+      if (!ordinary(node)) continue;
+      for (const origin of readRunOrigins(node)) {
+        const id = key(origin.namespaceUri, origin.scope);
+        if (origin.identity !== 'source' || (!origin.resolved && !scopes.has(id))) continue;
+        const source = origin.token.slice(37);
+        const sources = byScope.get(id) ?? new Set<string>();
+        sources.add(source);
+        byScope.set(id, sources);
+        const owners = bySource.get(source) ?? new Set<string>();
+        owners.add(id);
+        bySource.set(source, owners);
+      }
+    }
+  const pending = [...scopes.keys()],
+    visited = new Set<string>();
+  while (pending.length) {
+    const id = pending.pop()!;
+    if (visited.has(id)) continue;
+    visited.add(id);
+    for (const source of byScope.get(id) ?? [])
+      for (const other of bySource.get(source) ?? []) {
+        if (!scopes.has(other)) {
+          const scope = crypto.randomUUID();
+          scopes.set(other, {
+            scope,
+            namespaceUri: originNamespaceForScope(scope),
+            prefix: mintPrefix(),
+          });
+        }
+        if (!visited.has(other)) pending.push(other);
+      }
+  }
   const tokens = new Map<string, string>();
   return groups.map((nodes) =>
     mapOriginNodes(nodes, (node, original) => {
-      if (node.kind === 'textValue' || !hasOriginMetadata(node)) return node;
-      if (!ordinary(original)) return node;
+      if (node.kind === 'textValue' || !hasOriginMetadata(node) || !ordinary(original)) return node;
+      let next = node;
       const parent = parents.get(original);
-      const run = readRunOrigin(node);
-      const candidate = readTextOrigin(node);
-      const text = candidate && readRunOrigin(parent)?.scope === candidate.scope ? candidate : null;
-      const revisionRole =
-        node.kind === 'revisionInsert' ||
-        node.kind === 'revisionDelete' ||
-        (node.localName === 'rPrChange' &&
-          parent?.kind === 'runProperties' &&
-          parents.get(parent)?.kind === 'run');
-      const revision = revisionRole ? readRevisionOrigin(node) : null;
-      const oldScope = run?.scope ?? text?.scope ?? revision?.scope;
-      if (!oldScope) return node;
-      const scope = scopes.get(oldScope);
-      if (!scope) return run || text ? withoutOriginMetadata(node) : node;
-      return {
-        ...node,
-        attributes: node.attributes.map((attr) => {
-          if (attr.namespaceUri !== RUN_ORIGIN_NS) return attr;
-          if (attr.localName === 'scope') return { ...attr, value: scope };
-          if (attr.localName !== 'origin' && attr.localName !== 'textOrigin') return attr;
-          let token = tokens.get(attr.value);
-          if (!token) {
-            token = `${scope}/${crypto.randomUUID()}`;
-            tokens.set(attr.value, token);
-          }
-          return { ...attr, value: token };
-        }),
-      } as OoxmlNode;
+      for (const namespaceUri of originNamespaces(original)) {
+        const run = readRunOrigin(original, namespaceUri),
+          candidate = readTextOrigin(original, namespaceUri);
+        const text =
+          candidate &&
+          readRunOrigins(parent).some(
+            (origin) => origin.namespaceUri === namespaceUri && origin.scope === candidate.scope
+          )
+            ? candidate
+            : null;
+        const revision = revisionRole(node, original)
+          ? readRevisionOrigin(original, namespaceUri)
+          : null;
+        const oldScope = run?.scope ?? text?.scope ?? revision?.scope;
+        if (!oldScope) continue;
+        const target = scopes.get(key(namespaceUri, oldScope));
+        if (!target) {
+          if (run || text) next = withoutOriginMetadata(next, namespaceUri);
+          continue;
+        }
+        next = {
+          ...next,
+          namespaceBindings: [
+            ...next.namespaceBindings,
+            { prefix: target.prefix, namespaceUri: target.namespaceUri },
+          ],
+          attributes: next.attributes.map((attr) => {
+            if (attr.namespaceUri !== namespaceUri) return attr;
+            let value = attr.value;
+            if (attr.localName === 'scope') value = target.scope;
+            if (attr.localName === 'origin' || attr.localName === 'textOrigin') {
+              const identity = run?.identity ?? text?.identity;
+              const id =
+                identity === 'source'
+                  ? `${attr.localName}|source|${attr.value.slice(37)}`
+                  : `${namespaceUri}|${attr.value}`;
+              let source = tokens.get(id);
+              if (!source) {
+                source = crypto.randomUUID();
+                tokens.set(id, source);
+              }
+              value = `${target.scope}/${source}`;
+            }
+            return { ...attr, namespaceUri: target.namespaceUri, prefix: target.prefix, value };
+          }),
+        } as typeof node;
+      }
+      return next;
     })
   );
 }

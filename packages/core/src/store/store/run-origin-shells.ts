@@ -2,7 +2,12 @@ import { parentNodeOf } from '../package/ooxml-edit.ts';
 import { namespaceBindingsAt } from '../package/wml-namespace.ts';
 import { isXmlNCName } from '../package/qname.ts';
 import type { OoxmlNode, OoxmlPart } from '../package/ooxml-tree.ts';
-import { originNodes, readRunOrigin, runProperties } from './run-origin-metadata.ts';
+import {
+  originNodes,
+  readRunOrigin,
+  runProperties,
+  originNamespaceForScope,
+} from './run-origin-metadata.ts';
 
 /** Read source shells from surviving original markup, never from proposed characters. */
 export function sourceRunShells(
@@ -14,7 +19,7 @@ export function sourceRunShells(
   const shells = new Map<string, OoxmlNode>();
   for (const node of nodes) {
     if (node.kind !== 'run') continue;
-    const origin = readRunOrigin(runProperties(node));
+    const origin = readRunOrigin(runProperties(node), originNamespaceForScope(scope));
     if (origin?.scope !== scope) continue;
     let owner = parentNodeOf(part, node.id);
     for (let depth = 0; owner && depth <= 256; depth++) {

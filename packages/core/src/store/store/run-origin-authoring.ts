@@ -1,3 +1,4 @@
+import { sourceOriginIdentity } from './run-origin-identity.ts';
 import {
   createNodeIdAllocator,
   findNode,
@@ -19,7 +20,6 @@ import { PackageEditRefusal } from './package-edit-refusal.ts';
 import { sourceRunShells, inheritSourceRunShell } from './run-origin-shells.ts';
 import {
   children,
-  hasOriginMetadata,
   encodeRetainedPrefixes,
   mapOriginNodes,
   originNodes,
@@ -28,7 +28,12 @@ import {
   runProperties,
   withOriginMetadata,
   withoutOriginMetadata,
-  RUN_ORIGIN_NS,
+  originNamespaces,
+  readRunOrigins,
+  readTextOrigins,
+  readRevisionOrigins,
+  isRunOriginNamespace,
+  originNamespaceForScope,
 } from './run-origin-metadata.ts';
 
 /** Native source-run provenance prepared within the actual package transaction. @public */
@@ -51,7 +56,8 @@ function ordinaryRun(part: OoxmlPart, id: string, paragraphId: string): boolean 
 /**
  * Retain original run boundaries for later tracked text/link composition without copying text.
  * Only runs touching the supplied original-coordinate edits receive provenance.
- * Refuses protected/opaque source interiors and existing provenance on selected runs.
+ * Refuses protected/opaque source interiors and active or opaque source provenance.
+ * Recognized inactive source provenance remains unchanged.
  * @public
  */
 export function prepareTrackedRunOrigins(
@@ -112,27 +118,63 @@ export function prepareTrackedRunOrigins(
   }
   if (!ids.size) return { part, scope: null };
   const nodes = originNodes(paragraph);
-  for (const node of nodes)
-    if (ids.has(node.id) && originNodes(node).some(hasOriginMetadata))
-      throw new PackageEditRefusal(
-        'Selected source already carries run-origin metadata.',
-        'unsupported'
-      );
+  const activeOrigins = nodes
+    .filter(
+      (node) =>
+        node.kind === 'revisionInsert' ||
+        node.kind === 'revisionDelete' ||
+        runPropertySite(part, node)
+    )
+    .flatMap(readRevisionOrigins);
+  const active = new Set(activeOrigins.map((origin) => origin.scope));
+  const activeNamespaces = new Set(activeOrigins.map((origin) => origin.namespaceUri));
+  for (const run of nodes) {
+    if (!ids.has(run.id)) continue;
+    const origins = readRunOrigins(run);
+    for (const node of originNodes(run)) {
+      const namespaces = originNamespaces(node);
+      if (!namespaces.length) continue;
+      const valid =
+        node === run
+          ? origins
+          : children(run).some((child) => child === node) &&
+              (node.kind === 'text' || node.kind === 'deletedText')
+            ? readTextOrigins(node).filter((text) =>
+                origins.some(
+                  (origin) =>
+                    origin.scope === text.scope && origin.namespaceUri === text.namespaceUri
+                )
+              )
+            : [];
+      if (valid.length !== namespaces.length || valid.some((origin) => active.has(origin.scope)))
+        throw new PackageEditRefusal(
+          'Selected source already carries active or opaque run-origin metadata.',
+          'unsupported'
+        );
+    }
+  }
   const inherited = namespaceBindingsAt(part, paragraph);
   const retained = encodeRetainedPrefixes([
     ...new Set([
-      ...[...inherited].filter(([, uri]) => uri === RUN_ORIGIN_NS).map(([prefix]) => prefix),
+      ...[...inherited]
+        .filter(([, uri]) => isRunOriginNamespace(uri) && !activeNamespaces.has(uri))
+        .map(([prefix]) => prefix),
       ...nodes.flatMap((node) =>
         node.kind === 'textValue'
           ? []
           : node.namespaceBindings
-              .filter((binding) => binding.namespaceUri === RUN_ORIGIN_NS)
+              .filter(
+                (binding) =>
+                  isRunOriginNamespace(binding.namespaceUri) &&
+                  !activeNamespaces.has(binding.namespaceUri)
+              )
               .map((binding) => binding.prefix)
       ),
     ]),
   ]);
-  const prefix = originPrefix(nodes, inherited);
+  const sourceIdentity = sourceOriginIdentity(nodes);
   const scope = crypto.randomUUID();
+  const prefix = originPrefix(nodes, inherited, `runOrigin${scope.replace(/-/g, '')}`);
   const mint = createNodeIdAllocator(part);
   const next = mapOriginNodes(nodes, (node) => {
     if (node.kind !== 'run' || !ids.has(node.id)) return node;
@@ -150,7 +192,8 @@ export function prepareTrackedRunOrigins(
     const marked = withOriginMetadata(
       properties,
       {
-        origin: `${scope}/${crypto.randomUUID()}`,
+        origin: `${scope}/${sourceIdentity(node)}`,
+        identity: 'source',
         ...(!old ? { absent: '1' } : {}),
         ...(retained ? { retained } : {}),
       },
@@ -176,7 +219,7 @@ export function prepareTrackedRunOrigins(
             );
           return withOriginMetadata(
             child,
-            { textOrigin: `${scope}/${crypto.randomUUID()}`, space },
+            { textOrigin: `${scope}/${sourceIdentity(child)}`, space, identity: 'source' },
             prefix
           );
         }),
@@ -230,7 +273,7 @@ export function sealTrackedRunOrigins(
     throw new PackageEditRefusal('The run-origin paragraph is missing.', 'unknown-paragraph');
   const nodes = originNodes(paragraph);
   const sourceOrigin = nodes
-    .map((node) => readRunOrigin(runProperties(node)))
+    .map((node) => readRunOrigin(runProperties(node), originNamespaceForScope(scope)))
     .find((origin) => origin?.scope === scope);
   if (!sourceOrigin) return part;
   const retained = encodeRetainedPrefixes(sourceOrigin.retainedPrefixes);
@@ -263,7 +306,11 @@ export function sealTrackedRunOrigins(
       continue;
     for (const child of originNodes(node).slice(1)) snapshots.add(child.id);
   }
-  const prefix = originPrefix(nodes, namespaceBindingsAt(part, paragraph));
+  const prefix = originPrefix(
+    nodes,
+    namespaceBindingsAt(part, paragraph),
+    `runOrigin${scope.replace(/-/g, '')}`
+  );
   const shells = sourceRunShells(part, nodes, paragraphId, scope);
   const insertedRuns = new Set<string>();
   for (const node of nodes) {
@@ -272,15 +319,16 @@ export function sealTrackedRunOrigins(
   }
   const next = mapOriginNodes(nodes, (node) => {
     if (node.kind === 'textValue') return node;
-    const snapshotOrigin = snapshots.has(node.id) && readRunOrigin(node);
-    if (snapshotOrigin && snapshotOrigin.scope === scope) return withoutOriginMetadata(node);
+    const snapshotOrigin = snapshots.has(node.id) && readRunOrigin(node, sourceOrigin.namespaceUri);
+    if (snapshotOrigin && snapshotOrigin.scope === scope)
+      return withoutOriginMetadata(node, sourceOrigin.namespaceUri);
     if (node.kind === 'run') {
       const properties = runProperties(node);
-      const origin = readRunOrigin(properties);
+      const origin = readRunOrigin(properties, sourceOrigin.namespaceUri);
       if (!properties || !origin || origin.scope !== scope) return node;
-      if (hasOriginMetadata(node))
+      if (node.attributes.some((attr) => attr.namespaceUri === sourceOrigin.namespaceUri))
         throw new PackageEditRefusal('A native run already carries provenance.', 'unsupported');
-      const clean = withoutOriginMetadata(properties);
+      const clean = withoutOriginMetadata(properties, origin.namespaceUri);
       const inherited = insertedRuns.has(node.id)
         ? inheritSourceRunShell(node, shells.get(origin.token))
         : node;
@@ -297,6 +345,7 @@ export function sealTrackedRunOrigins(
         } as OoxmlElement,
         {
           origin: origin.token,
+          ...(origin.identity ? { identity: origin.identity } : {}),
           ...(origin.absent ? { absent: '1' } : {}),
           ...(retained ? { retained } : {}),
         },
@@ -304,7 +353,7 @@ export function sealTrackedRunOrigins(
       );
     }
     if (!fresh.has(node.id)) return node;
-    if (hasOriginMetadata(node))
+    if (node.attributes.some((attr) => attr.namespaceUri === sourceOrigin.namespaceUri))
       throw new PackageEditRefusal('A native revision already carries provenance.', 'unsupported');
     return withOriginMetadata(node, { scope, ...(retained ? { retained } : {}) }, prefix);
   });

@@ -1,3 +1,4 @@
+import { settleDeferredRunOrigins } from './run-origin-deferred.ts';
 import {
   INSERTED_PARAGRAPH_PROPERTY_NS,
   preservesInsertedParagraphProperty,
@@ -17,24 +18,24 @@ import {
   children,
   mapOriginNodes,
   originNodes,
-  readRevisionOriginScope,
   readRevisionOrigin,
-  readRunOrigin,
-  readTextOrigin,
   withoutOriginMetadata,
-  RUN_ORIGIN_NS,
+  isRunOriginNamespace,
+  readRunOrigins,
+  readTextOrigins,
 } from './run-origin-metadata.ts';
 
 interface OriginResolution {
+  readonly sourceHints: ReadonlyMap<
+    string,
+    readonly { readonly scope: string; readonly source: string }[]
+  >;
+  readonly refusal?: TreeOpRejection;
   readonly paragraphPropertyPrefixes: ReadonlySet<string>;
   readonly paragraphs: ReadonlyMap<string, ReadonlySet<string>>;
   readonly prefixes: ReadonlySet<string>;
   readonly retained: ReadonlySet<string>;
 }
-const revision = (node: OoxmlNode) =>
-  node.kind !== 'textValue' &&
-  (node.kind.startsWith('revision') || /PrChange$/.test(node.localName));
-
 /** Capture before the native rebuild transfers the warm node index to the resulting root. */
 export function captureRunOriginResolution(
   part: OoxmlPart,
@@ -66,25 +67,62 @@ export function captureRunOriginResolution(
         paragraphs.set(owner.id, scopes);
         for (const prefix of origin.retainedPrefixes) retained.add(prefix);
         for (const attr of site.attributes)
-          if (attr.namespaceUri === RUN_ORIGIN_NS && attr.prefix) prefixes.add(attr.prefix);
+          if (isRunOriginNamespace(attr.namespaceUri) && attr.prefix) prefixes.add(attr.prefix);
         break;
       }
       if (owner.kind !== 'hyperlink') break;
       owner = parentNodeOf(part, owner.id);
     }
   }
-  return { paragraphs, prefixes, retained, paragraphPropertyPrefixes };
+  const sourceHints = new Map<string, { scope: string; source: string }[]>();
+  try {
+    for (const [id, selected] of paragraphs) {
+      const paragraph = findNode(part, id);
+      if (paragraph)
+        sourceHints.set(
+          id,
+          originNodes(paragraph)
+            .flatMap(readRunOrigins)
+            .filter((origin) => origin.identity === 'source' && selected.has(origin.scope))
+            .map((origin) => ({ scope: origin.scope, source: origin.token.slice(37) }))
+        );
+    }
+  } catch (error) {
+    if (!isPackageEditRefusal(error)) throw error;
+    return {
+      paragraphs,
+      prefixes,
+      retained,
+      paragraphPropertyPrefixes,
+      sourceHints,
+      refusal: error.reason,
+    };
+  }
+  return { paragraphs, prefixes, retained, paragraphPropertyPrefixes, sourceHints };
 }
 
-function normalizedParagraph(root: OoxmlNode, selected: ReadonlySet<string>): OoxmlNode {
-  const nodes = originNodes(root);
-  const scopes = new Set(selected);
-  for (const node of nodes) {
-    if (!revision(node)) continue;
-    const scope = readRevisionOriginScope(node);
-    if (scope) scopes.delete(scope);
-  }
+function normalizedParagraph(
+  root: OoxmlNode,
+  selected: ReadonlySet<string>,
+  prefixes: Set<string>,
+  retained: Set<string>,
+  hints: readonly { readonly scope: string; readonly source: string }[]
+): OoxmlNode {
+  const settled = settleDeferredRunOrigins(root, selected, hints);
+  root = settled.root;
+  const nodes = originNodes(root),
+    scopes = settled.scopes;
   if (!scopes.size) return root;
+  for (const node of nodes) {
+    if (node.kind === 'textValue') continue;
+    for (const origin of [...readRunOrigins(node), ...readTextOrigins(node)]) {
+      if (!scopes.has(origin.scope)) continue;
+      if ('retainedPrefixes' in origin)
+        for (const prefix of origin.retainedPrefixes) retained.add(prefix);
+      for (const attr of node.attributes)
+        if (attr.namespaceUri === origin.namespaceUri && attr.prefix) prefixes.add(attr.prefix);
+    }
+  }
   // Only ordinary runs reached through the paragraph and hyperlinks participate.
   // Controls, drawings, foreign revisions, and property snapshots remain opaque.
   const accessible = new Set<string>([root.id]);
@@ -100,8 +138,13 @@ function normalizedParagraph(root: OoxmlNode, selected: ReadonlySet<string>): Oo
       if (
         node.kind === 'run' &&
         (child.kind === 'text' || child.kind === 'deletedText') &&
-        readRunOrigin(node)?.scope === readTextOrigin(child)?.scope &&
-        scopes.has(readRunOrigin(node)?.scope ?? '')
+        readRunOrigins(node).some(
+          (run) =>
+            scopes.has(run.scope) &&
+            readTextOrigins(child).some(
+              (text) => text.scope === run.scope && text.namespaceUri === run.namespaceUri
+            )
+        )
       )
         accessible.add(child.id);
     }
@@ -109,7 +152,7 @@ function normalizedParagraph(root: OoxmlNode, selected: ReadonlySet<string>): Oo
   let changed = false;
   const lexical = mapOriginNodes(nodes, (node) => {
     if (!accessible.has(node.id) || node.kind === 'textValue') return node;
-    const textOrigin = readTextOrigin(node);
+    const textOrigin = readTextOrigins(node).find((origin) => scopes.has(origin.scope));
     if (!textOrigin || !scopes.has(textOrigin.scope)) return node;
     const attributes = node.attributes.filter(
       (attr) =>
@@ -147,8 +190,8 @@ function normalizedParagraph(root: OoxmlNode, selected: ReadonlySet<string>): Oo
   const joinedNodes = originNodes(joined);
   const cleaned = mapOriginNodes(joinedNodes, (node) => {
     if (node.kind === 'textValue' || !accessible.has(node.id)) return node;
-    const origin = readRunOrigin(node);
-    const textOrigin = readTextOrigin(node);
+    const origin = readRunOrigins(node).find((origin) => scopes.has(origin.scope));
+    const textOrigin = readTextOrigins(node).find((origin) => scopes.has(origin.scope));
     const selected =
       (origin && scopes.has(origin.scope)) || (textOrigin && scopes.has(textOrigin.scope));
     const nested = node.children.filter(
@@ -168,7 +211,11 @@ function normalizedParagraph(root: OoxmlNode, selected: ReadonlySet<string>): Oo
         : ({ ...node, children: nested } as typeof node);
     if (selected) {
       changed = true;
-      return withoutOriginMetadata(current);
+      let clean = current;
+      for (const selectedOrigin of [...readRunOrigins(current), ...readTextOrigins(current)])
+        if (scopes.has(selectedOrigin.scope))
+          clean = withoutOriginMetadata(clean, selectedOrigin.namespaceUri);
+      return clean;
     }
     if (nested.length !== node.children.length) changed = true;
     return current;
@@ -184,6 +231,7 @@ export function normalizeResolvedRunOrigins(
 ):
   | { readonly ok: true; readonly part: OoxmlPart }
   | { readonly ok: false; readonly reason: TreeOpRejection } {
+  if (resolution.refusal) return { ok: false, reason: resolution.refusal };
   try {
     return {
       ok: true,
@@ -206,10 +254,18 @@ function normalizeOrigins(
   options?: EditOptions
 ): OoxmlPart {
   let current = part;
+  const prefixes = new Set(resolution.prefixes),
+    retained = new Set(resolution.retained);
   for (const [paragraphId, scopes] of resolution.paragraphs) {
     const paragraph = findNode(current, paragraphId);
     if (paragraph?.kind !== 'paragraph') continue;
-    const normalized = normalizedParagraph(paragraph, scopes);
+    const normalized = normalizedParagraph(
+      paragraph,
+      scopes,
+      prefixes,
+      retained,
+      resolution.sourceHints.get(paragraphId) ?? []
+    );
     if (normalized === paragraph) continue;
     const made = replaceChildren(current, paragraphId, children(normalized), options);
     if (!made.ok) throw new PackageEditRefusal('Run-origin resolution failed.', 'tree-invariant');
@@ -217,7 +273,7 @@ function normalizeOrigins(
   }
   return pruneRunOriginNamespaces(
     current,
-    new Set([...resolution.prefixes].filter((prefix) => !resolution.retained.has(prefix))),
+    new Set([...prefixes].filter((prefix) => !retained.has(prefix))),
     options
   );
 }

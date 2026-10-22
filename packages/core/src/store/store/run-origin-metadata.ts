@@ -1,3 +1,4 @@
+import { isMcPrefixListAttribute } from '../package/ooxml-serialize-namespaces.ts';
 import { MAX_XML_DEPTH } from '../package/xml-reader.ts';
 import { isXmlNCName } from '../package/qname.ts';
 import type { OoxmlElement, OoxmlNode } from '../package/ooxml-tree.ts';
@@ -10,14 +11,25 @@ export const children = (node: OoxmlNode): readonly OoxmlNode[] =>
   node.kind === 'textValue' ? [] : node.children;
 export const runProperties = (node: OoxmlNode) =>
   children(node).find((child) => child.kind === 'runProperties');
-export const hasOriginMetadata = (node: OoxmlNode) =>
-  node.kind !== 'textValue' && node.attributes.some((attr) => attr.namespaceUri === RUN_ORIGIN_NS);
+export const originNamespaceForScope = (scope: string) => `${RUN_ORIGIN_NS}/${scope}`;
+export const isRunOriginNamespace = (uri: string) =>
+  uri === RUN_ORIGIN_NS ||
+  (uri.startsWith(`${RUN_ORIGIN_NS}/`) && UUID.test(uri.slice(RUN_ORIGIN_NS.length + 1)));
+export const originNamespaces = (node: OoxmlNode | undefined): readonly string[] =>
+  !node || node.kind === 'textValue'
+    ? []
+    : [...new Set(node.attributes.map((attr) => attr.namespaceUri).filter(isRunOriginNamespace))];
+export const hasOriginMetadata = (node: OoxmlNode) => originNamespaces(node).length !== 0;
 
-function fields(node: OoxmlNode, allowed: readonly string[]): Map<string, string> | null {
+function fields(
+  node: OoxmlNode,
+  allowed: readonly string[],
+  namespaceUri = RUN_ORIGIN_NS
+): Map<string, string> | null {
   const result = new Map<string, string>();
   if (node.kind === 'textValue') return null;
   for (const attr of node.attributes) {
-    if (attr.namespaceUri !== RUN_ORIGIN_NS) continue;
+    if (attr.namespaceUri !== namespaceUri) continue;
     if (!allowed.includes(attr.localName) || result.has(attr.localName)) return null;
     result.set(attr.localName, attr.value);
   }
@@ -25,7 +37,10 @@ function fields(node: OoxmlNode, allowed: readonly string[]): Map<string, string
 }
 
 export interface RunOrigin {
+  readonly namespaceUri: string;
   readonly token: string;
+  readonly identity: 'source' | null;
+  readonly resolved: boolean;
   readonly scope: string;
   readonly absent: boolean;
   readonly retainedPrefixes: readonly string[];
@@ -63,19 +78,39 @@ export function encodeRetainedPrefixes(prefixes: readonly string[]): string | un
 }
 
 /** Unknown versions, extra fields, and malformed tokens remain opaque. */
-export function readRunOrigin(node: OoxmlNode | undefined): RunOrigin | null {
+export function readRunOrigins(node: OoxmlNode | undefined): readonly RunOrigin[] {
+  return originNamespaces(node)
+    .map((uri) => readRunOrigin(node, uri))
+    .filter((origin): origin is RunOrigin => origin !== null);
+}
+export function readRunOrigin(
+  node: OoxmlNode | undefined,
+  namespaceUri?: string
+): RunOrigin | null {
+  if (namespaceUri === undefined) return readRunOrigins(node).at(-1) ?? null;
   if (!node || (node.kind !== 'runProperties' && node.kind !== 'run') || !hasOriginMetadata(node))
     return null;
-  const data = fields(node, ['origin', 'absent', 'retained']);
+  const data = fields(node, ['origin', 'absent', 'retained', 'identity', 'resolved'], namespaceUri);
   const token = data?.get('origin');
   if (!token || token.length !== 73) return null;
   const [scope, run] = token.split('/');
   if (!scope || !run || !UUID.test(scope) || !UUID.test(run)) return null;
+  if (namespaceUri !== RUN_ORIGIN_NS && namespaceUri !== originNamespaceForScope(scope))
+    return null;
   if (data!.has('absent') && data!.get('absent') !== '1') return null;
+  if (data!.has('identity') && data!.get('identity') !== 'source') return null;
+  if (
+    data!.has('resolved') &&
+    (data!.get('resolved') !== '1' || data!.get('identity') !== 'source')
+  )
+    return null;
   const retained = retainedPrefixes(data!.get('retained'));
   return retained
     ? {
+        namespaceUri,
         token,
+        identity: data!.get('identity') === 'source' ? 'source' : null,
+        resolved: data!.get('resolved') === '1',
         scope,
         absent: data!.get('absent') === '1',
         retainedPrefixes: retained,
@@ -83,31 +118,70 @@ export function readRunOrigin(node: OoxmlNode | undefined): RunOrigin | null {
     : null;
 }
 
-export function readRevisionOrigin(
-  node: OoxmlNode
-): { scope: string; retainedPrefixes: readonly string[] } | null {
+export interface RevisionOrigin {
+  readonly namespaceUri: string;
+  readonly scope: string;
+  readonly retainedPrefixes: readonly string[];
+}
+export function readRevisionOrigins(node: OoxmlNode): readonly RevisionOrigin[] {
+  return originNamespaces(node)
+    .map((uri) => readRevisionOrigin(node, uri))
+    .filter((origin): origin is RevisionOrigin => origin !== null);
+}
+export function readRevisionOrigin(node: OoxmlNode, namespaceUri?: string): RevisionOrigin | null {
+  if (namespaceUri === undefined) return readRevisionOrigins(node).at(-1) ?? null;
   if (!hasOriginMetadata(node)) return null;
-  const data = fields(node, ['scope', 'retained']);
+  const data = fields(node, ['scope', 'retained'], namespaceUri);
   const scope = data?.get('scope');
   const retained = data && retainedPrefixes(data.get('retained'));
-  return scope && UUID.test(scope) && retained ? { scope, retainedPrefixes: retained } : null;
+  return scope &&
+    UUID.test(scope) &&
+    retained &&
+    (namespaceUri === RUN_ORIGIN_NS || namespaceUri === originNamespaceForScope(scope))
+    ? { namespaceUri, scope, retainedPrefixes: retained }
+    : null;
 }
 
 export const readRevisionOriginScope = (node: OoxmlNode) => readRevisionOrigin(node)?.scope ?? null;
 
-export function readTextOrigin(node: OoxmlNode): { scope: string; space: string } | null {
+export interface TextOrigin {
+  readonly token: string;
+  readonly identity: 'source' | null;
+  readonly resolved: boolean;
+  readonly namespaceUri: string;
+  readonly scope: string;
+  readonly space: string;
+}
+export function readTextOrigins(node: OoxmlNode): readonly TextOrigin[] {
+  return originNamespaces(node)
+    .map((uri) => readTextOrigin(node, uri))
+    .filter((origin): origin is TextOrigin => origin !== null);
+}
+export function readTextOrigin(node: OoxmlNode, namespaceUri?: string): TextOrigin | null {
+  if (namespaceUri === undefined) return readTextOrigins(node).at(-1) ?? null;
   if (node.kind !== 'text' && node.kind !== 'deletedText') return null;
-  const data = fields(node, ['textOrigin', 'space']);
+  const data = fields(node, ['textOrigin', 'space', 'identity', 'resolved'], namespaceUri);
   const token = data?.get('textOrigin');
   if (!token || token.length !== 73) return null;
   const [scope, text] = token.split('/');
   const space = data?.get('space');
+  if (data?.has('resolved') && (data.get('resolved') !== '1' || data.get('identity') !== 'source'))
+    return null;
+  if (data?.has('identity') && data.get('identity') !== 'source') return null;
   return scope &&
     text &&
     UUID.test(scope) &&
     UUID.test(text) &&
+    (namespaceUri === RUN_ORIGIN_NS || namespaceUri === originNamespaceForScope(scope)) &&
     (space === 'absent' || space === 'default' || space === 'preserve')
-    ? { scope, space }
+    ? {
+        namespaceUri,
+        scope,
+        space,
+        token,
+        identity: data!.get('identity') === 'source' ? 'source' : null,
+        resolved: data!.get('resolved') === '1',
+      }
     : null;
 }
 
@@ -148,7 +222,11 @@ export function mapOriginNodes(
 }
 
 /** Never shadow a prefix used anywhere in the annotated subtree. */
-export function originPrefix(nodes: readonly OoxmlNode[], inherited: ReadonlyMap<string, string>) {
+export function originPrefix(
+  nodes: readonly OoxmlNode[],
+  inherited: ReadonlyMap<string, string>,
+  stem = 'runOrigin'
+) {
   const used = new Set(inherited.keys());
   for (const node of nodes) {
     if (node.kind === 'textValue') continue;
@@ -156,8 +234,8 @@ export function originPrefix(nodes: readonly OoxmlNode[], inherited: ReadonlyMap
     for (const attr of node.attributes) if (attr.prefix) used.add(attr.prefix);
     for (const binding of node.namespaceBindings) used.add(binding.prefix);
   }
-  let prefix = 'runOrigin';
-  for (let suffix = 1; used.has(prefix); suffix++) prefix = `runOrigin${suffix}`;
+  let prefix = stem;
+  for (let suffix = 1; used.has(prefix); suffix++) prefix = `${stem}${suffix}`;
   return prefix;
 }
 
@@ -166,14 +244,17 @@ export function withOriginMetadata(
   values: Readonly<Record<string, string>>,
   prefix: string
 ): OoxmlElement {
+  const scope = values.scope ?? (values.origin ?? values.textOrigin ?? '').split('/')[0]!;
+  if (!UUID.test(scope)) throw new PackageEditRefusal('Invalid provenance scope.', 'invalidArgs');
+  const namespaceUri = originNamespaceForScope(scope);
   return {
     ...node,
-    namespaceBindings: [...node.namespaceBindings, { prefix, namespaceUri: RUN_ORIGIN_NS }],
+    namespaceBindings: [...node.namespaceBindings, { prefix, namespaceUri }],
     attributes: [
       ...node.attributes,
       ...Object.entries(values).map(([localName, value]) => ({
         kind: 'genericExtension' as const,
-        namespaceUri: RUN_ORIGIN_NS,
+        namespaceUri,
         prefix,
         localName,
         value,
@@ -182,27 +263,38 @@ export function withOriginMetadata(
   } as OoxmlElement;
 }
 
-export function withoutOriginMetadata(node: OoxmlElement): OoxmlElement {
+export function withoutOriginMetadata(
+  node: OoxmlElement,
+  namespaceUri = RUN_ORIGIN_NS
+): OoxmlElement {
   const retained = new Set(
-    readRunOrigin(node)?.retainedPrefixes ?? readRevisionOrigin(node)?.retainedPrefixes ?? []
+    readRunOrigin(node, namespaceUri)?.retainedPrefixes ??
+      readRevisionOrigin(node, namespaceUri)?.retainedPrefixes ??
+      []
   );
-  const used = new Set(
-    originNodes(node)
-      .slice(1)
-      .flatMap((child) =>
-        child.kind === 'textValue'
-          ? []
-          : child.attributes
-              .filter((attr) => attr.namespaceUri === RUN_ORIGIN_NS)
-              .map((attr) => attr.prefix)
-      )
-  );
+  const candidates = node.namespaceBindings
+    .filter((binding) => binding.namespaceUri === namespaceUri && !retained.has(binding.prefix))
+    .map((binding) => binding.prefix);
+  const used = new Set<string>();
+  for (const child of originNodes(node)) {
+    if (child.kind === 'textValue') continue;
+    if (child.prefix) used.add(child.prefix);
+    for (const attr of child.attributes) {
+      if (child === node && attr.namespaceUri === namespaceUri) continue;
+      if (attr.prefix) used.add(attr.prefix);
+      const prefixes = isMcPrefixListAttribute(attr, child) ? attr.value.split(/\s+/) : [];
+      for (const prefix of candidates)
+        if (!used.has(prefix) && (attr.value.includes(`${prefix}:`) || prefixes.includes(prefix)))
+          used.add(prefix);
+    }
+  }
   return {
     ...node,
-    attributes: node.attributes.filter((attr) => attr.namespaceUri !== RUN_ORIGIN_NS),
+    attributes: node.attributes.filter((attr) => attr.namespaceUri !== namespaceUri),
     namespaceBindings: node.namespaceBindings.filter(
       (binding) =>
-        binding.namespaceUri !== RUN_ORIGIN_NS ||
+        binding.namespaceUri !== namespaceUri ||
+        binding.prefix === '' ||
         retained.has(binding.prefix) ||
         used.has(binding.prefix)
     ),

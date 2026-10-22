@@ -12,7 +12,15 @@ import {
 } from '../index.ts';
 import { replaceNode, createNodeIdAllocator, insertChildren } from '../package/ooxml-edit.ts';
 import { cloneWithNewIds } from '../store/tree-op-nodes.ts';
-import { RUN_ORIGIN_NS, readRunOrigin } from '../store/run-origin-metadata.ts';
+import {
+  RUN_ORIGIN_NS,
+  readRunOrigin,
+  originNamespaceForScope,
+  isRunOriginNamespace,
+  originNodes,
+  hasOriginMetadata,
+  readRevisionOrigin,
+} from '../store/run-origin-metadata.ts';
 import { ADA, apply, paragraphId, part } from './tracked-edit-fixture.ts';
 
 const run = (text: string, properties = '<w:rPr/>') => `<w:r>${properties}<w:t>${text}</w:t></w:r>`;
@@ -78,19 +86,24 @@ for (const action of ['accept', 'reject'] as const)
     for (const site of collectRevisionSites(current)) {
       const node = {
         ...site.node,
-        attributes: site.node.attributes.filter((attr) => attr.namespaceUri !== RUN_ORIGIN_NS),
+        attributes: site.node.attributes.filter((attr) => !isRunOriginNamespace(attr.namespaceUri)),
       } as OoxmlNode;
       const changed = replaceNode(current, site.node.id, node);
       if (!changed.ok) throw Error('External revision metadata removal failed.');
       current = changed.part;
     }
     current = apply(current, { op: 'acceptAllRevisions' });
+    expect(originNodes(findNode(current, second)!).some(hasOriginMetadata)).toBe(true);
     const unselected = fingerprint(findNode(current, second)!);
     const pending = proposed(current, first);
+    const selectedNamespace = readRevisionOrigin(
+      collectRevisionSites(pending)[0]!.node
+    )!.namespaceUri;
     const decided = apply(pending, {
       op: action === 'accept' ? 'acceptAllRevisions' : 'rejectAllRevisions',
     });
     expect(fingerprint(findNode(decided, second)!)).toBe(unselected);
+    expect(serializeOoxmlPart(decided)).not.toContain(selectedNamespace);
     expect(fingerprint(findNode(decided, first)!)).toBe(
       fingerprint(findNode(part(`<w:p>${run(action === 'accept' ? 'AXB' : 'AB')}</w:p>`), first)!)
     );
@@ -154,7 +167,10 @@ test('copied prior revision addresses never acquire a new run-origin scope', () 
   expect(
     newSites.every((site) =>
       site.node.attributes.some(
-        (attr) => attr.namespaceUri === RUN_ORIGIN_NS && attr.localName === 'scope'
+        (attr) =>
+          attr.namespaceUri === originNamespaceForScope(marked.scope!) &&
+          attr.localName === 'scope' &&
+          attr.value === marked.scope
       )
     )
   ).toBe(true);

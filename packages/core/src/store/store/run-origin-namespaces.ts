@@ -2,20 +2,22 @@ import { replaceNode, type EditOptions } from '../package/ooxml-edit.ts';
 import type { OoxmlNode, OoxmlPart } from '../package/ooxml-tree.ts';
 import { MAX_XML_DEPTH, XML_DEFAULT_MAX_ELEMENTS } from '../package/xml-reader.ts';
 import { PackageEditRefusal } from './package-edit-refusal.ts';
-import { children, RUN_ORIGIN_NS } from './run-origin-metadata.ts';
+import { children, isRunOriginNamespace } from './run-origin-metadata.ts';
 
 /** Remove only witnessed provenance aliases that serialization hoisted onto the root. */
 export function pruneRunOriginNamespaces(
   part: OoxmlPart,
   witnessed: ReadonlySet<string>,
   options?: EditOptions,
-  namespaceUri = RUN_ORIGIN_NS
+  namespaceUri?: string
 ): OoxmlPart {
   const unused = new Set(
     part.root.namespaceBindings
       .filter(
         (binding) =>
-          binding.namespaceUri === namespaceUri &&
+          (namespaceUri
+            ? binding.namespaceUri === namespaceUri
+            : isRunOriginNamespace(binding.namespaceUri)) &&
           witnessed.has(binding.prefix) &&
           binding.prefix.length <= 128
       )
@@ -62,7 +64,10 @@ export function pruneRunOriginNamespaces(
     {
       ...part.root,
       namespaceBindings: part.root.namespaceBindings.filter(
-        (binding) => binding.namespaceUri !== namespaceUri || !unused.has(binding.prefix)
+        (binding) =>
+          !(namespaceUri
+            ? binding.namespaceUri === namespaceUri
+            : isRunOriginNamespace(binding.namespaceUri)) || !unused.has(binding.prefix)
       ),
     },
     options

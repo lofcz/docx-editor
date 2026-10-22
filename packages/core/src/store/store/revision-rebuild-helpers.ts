@@ -1,3 +1,7 @@
+import { isMcPrefixListAttribute } from '../package/ooxml-serialize-namespaces.ts';
+import { MAX_XML_DEPTH, XML_DEFAULT_MAX_ELEMENTS } from '../package/xml-reader.ts';
+import { PackageEditRefusal, isPackageEditRefusal } from './package-edit-refusal.ts';
+import type { TreeOpRejection } from './tree-op-types.ts';
 // Node-level helpers for rebuilding a part after a tracked-change decision.
 
 import { parentNodeOf } from '../package/ooxml-edit.ts';
@@ -75,4 +79,69 @@ export function rebuildReach(part: OoxmlPart, targets: Iterable<string>): Set<st
     }
   }
   return reach;
+}
+
+/** Keep aliases the surviving content needs when its revision wrapper disappears. */
+export function withRevisionParentBindings(node: OoxmlNode, parent: OoxmlElement): OoxmlNode {
+  if (node.kind === 'textValue' || !parent.namespaceBindings.length) return node;
+  const own = new Set(node.namespaceBindings.map((binding) => binding.prefix));
+  const inherited = parent.namespaceBindings.filter((binding) => !own.has(binding.prefix));
+  if (!inherited.length) return node;
+  const needed = new Set(
+    inherited.filter((binding) => binding.prefix === '').map((binding) => binding.prefix)
+  );
+  const pending: { node: OoxmlNode; candidates: ReadonlySet<string>; depth: number }[] = [
+    { node, candidates: new Set(inherited.map((binding) => binding.prefix)), depth: 0 },
+  ];
+  let visited = 0;
+  while (pending.length && needed.size < inherited.length) {
+    const frame = pending.pop()!;
+    if (++visited > XML_DEFAULT_MAX_ELEMENTS * 2 + 1 || frame.depth > MAX_XML_DEPTH + 1)
+      throw new PackageEditRefusal(
+        'Revision namespace traversal exceeds its limit.',
+        'resource-limit'
+      );
+    const current = frame.node;
+    if (current.kind === 'textValue') continue;
+    const candidates = current.namespaceBindings.length
+      ? new Set(
+          [...frame.candidates].filter(
+            (prefix) => !current.namespaceBindings.some((binding) => binding.prefix === prefix)
+          )
+        )
+      : frame.candidates;
+    if (!candidates.size) continue;
+    if (current.prefix && candidates.has(current.prefix)) needed.add(current.prefix);
+    for (const attr of current.attributes) {
+      if (attr.prefix && candidates.has(attr.prefix)) needed.add(attr.prefix);
+      const prefixes = isMcPrefixListAttribute(attr, current) ? attr.value.split(/\s+/) : [];
+      for (const prefix of candidates)
+        if (!needed.has(prefix) && (attr.value.includes(`${prefix}:`) || prefixes.includes(prefix)))
+          needed.add(prefix);
+    }
+    for (const child of current.children)
+      pending.push({ node: child, candidates, depth: frame.depth + 1 });
+  }
+  if (!needed.size) return node;
+  return {
+    ...node,
+    namespaceBindings: [
+      ...inherited.filter((binding) => needed.has(binding.prefix)),
+      ...node.namespaceBindings,
+    ],
+  } as OoxmlNode;
+}
+
+/** Native revision decisions report bounded rebuild refusals through their result contract. */
+export function tryRevisionRebuild(
+  run: () => readonly OoxmlNode[]
+):
+  | { readonly ok: true; readonly nodes: readonly OoxmlNode[] }
+  | { readonly ok: false; readonly reason: TreeOpRejection } {
+  try {
+    return { ok: true, nodes: run() };
+  } catch (error) {
+    if (isPackageEditRefusal(error)) return { ok: false, reason: error.reason };
+    throw error;
+  }
 }

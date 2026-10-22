@@ -64,6 +64,8 @@ import {
   rebuildReach,
   resolutionOf,
   withDeletedTextRestored,
+  withRevisionParentBindings,
+  tryRevisionRebuild,
   type Resolution,
 } from './revision-rebuild-helpers.ts';
 import { holdsMoveNode } from './revision-container-presence.ts';
@@ -78,8 +80,6 @@ import { recordedProperties } from './tree-op-tracked-properties.ts';
 import { scopedRevisionRoot } from './tree-op-revision-scope.ts';
 import type { RevisionAddress } from './tree-op-types.ts';
 import type { TreeOpEffect, TreeOpRejection } from './tree-op-validate.ts';
-
-/** What resolving does to one wrapper. */
 
 /** The shared property-history vocabulary prevents read/write classification drift. */
 const PROPERTY_CHANGE_NAMES: ReadonlySet<string> = new Set(REVISION_PROPERTY_CONTAINERS.keys());
@@ -595,7 +595,8 @@ function rebuildChildren(children: readonly OoxmlNode[], plan: RebuildPlan): Oox
       // revision that survives is preserved verbatim rather than resolved on its author's
       // behalf — and one that does not survive is still resolved.
       for (const kept of rebuildChildren(child.children, plan)) {
-        out.push(action === 'restore' ? withDeletedTextRestored(kept) : kept);
+        const preserving = withRevisionParentBindings(kept, child);
+        out.push(action === 'restore' ? withDeletedTextRestored(preserving) : preserving);
       }
       continue;
     }
@@ -967,7 +968,9 @@ export function resolveRevisions(
       ...tables,
     ]),
   };
-  const rebuilt = rebuild(part.root, plan);
+  const attempt = tryRevisionRebuild(() => rebuild(part.root, plan));
+  if (!attempt.ok) return attempt;
+  const rebuilt = attempt.nodes;
   const root = rebuilt[0];
   if (rebuilt.length !== 1 || root === undefined || root.kind === 'textValue') {
     return { ok: false, reason: 'tree-invariant' };
