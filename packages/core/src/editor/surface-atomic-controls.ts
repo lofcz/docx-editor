@@ -6,6 +6,7 @@
 // the layout publishes on each inline control record — positions come from the model, never
 // back from geometry. Only a block-level prompt, which covers whole paragraphs, still reads its
 // paragraphs from the boxes its fragments touch.
+// A measured host widget also absorbs selection endpoints: its rendered box has no interior stops.
 
 import {
   documentOrder,
@@ -21,6 +22,7 @@ import type {
   SemanticLayout,
 } from '../layout/semantic-records.ts';
 import { MAX_TABLE_NESTING } from '../layout/semantic-table.ts';
+import { isMeasuredInlineControl } from './surface-inline-widget-atoms.ts';
 
 export interface PositionRange {
   readonly from: SemanticPosition;
@@ -217,7 +219,7 @@ export function leaveAtomicControl(
 
 /**
  * Expand a selection so every atomic control it touches is selected as a unit: every
- * `w:showingPlcHdr` prompt, and with `atomic` (`lockedControlNavigation: 'atomic'`) every inline
+ * `w:showingPlcHdr` prompt and measured host widget, and with `atomic` every inline
  * control whose content is locked. A collapsed caret on a control's edge is absorbed only when
  * {@link edgeCountsAsInside}.
  *
@@ -240,7 +242,7 @@ export function absorbAtomicControls(
     changed = false;
     for (const control of controls) {
       const locked = options.atomic === true && isLockedAtomicControl(control);
-      if (!control.placeholder && !locked) continue;
+      if (!control.placeholder && !locked && !isMeasuredInlineControl(layout, control.id)) continue;
       const range = controlSelectionRange(layout, control);
       if (!range) continue;
       const collapsed = comparePositions(layout, from, to) === 0;

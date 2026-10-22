@@ -20,6 +20,7 @@ import type {
   SemanticSelection,
 } from '@docx-editor.dev/core/layout';
 import type { TreeDocOp } from '@docx-editor.dev/core/store';
+import { isMeasuredInlineControl } from './surface-inline-widget-atoms.ts';
 
 /** An inline control beside the caret, as the store reports it. */
 export interface InlineControlBesideCaret {
@@ -59,18 +60,23 @@ export interface AtomicControlDeletionInput {
   readonly tracked?: boolean;
 }
 
-function contentLockedInline(control: ContentControlBoundaryRecord): boolean {
+function atomicInlineControl(
+  layout: SemanticLayout,
+  control: ContentControlBoundaryRecord
+): boolean {
   return (
     control.level === 'inline' &&
     control.range !== undefined &&
     control.range.start < control.range.end &&
-    (control.effectiveLock === 'contentLocked' || control.effectiveLock === 'sdtContentLocked')
+    (control.effectiveLock === 'contentLocked' ||
+      control.effectiveLock === 'sdtContentLocked' ||
+      isMeasuredInlineControl(layout, control.id))
   );
 }
 
 /**
  * The ops that remove `[from, to)` in one paragraph when it covers at least one whole
- * content-locked control: each outermost covered control goes as a node, and the text between
+ * content-locked or measured control: each outermost covered control goes as a node, and text between
  * them goes as text. Ops run from the end of the range back, so no op shifts the offsets of
  * the ops after it. Null when the range covers no such control.
  */
@@ -81,7 +87,7 @@ export function coveredLockedControlOps(
 ): TreeDocOp[] | null {
   const covered = (layout.contentControls ?? []).filter(
     (control) =>
-      contentLockedInline(control) &&
+      atomicInlineControl(layout, control) &&
       control.range!.paragraphId === from.paragraphId &&
       control.range!.start >= from.offset &&
       control.range!.end <= to.offset

@@ -57,6 +57,7 @@ import {
   type RangeDeletionPlan,
 } from './surface-selection-ops.ts';
 import type { SurfaceEditingMode } from './paginated-surface-contract.ts';
+import { isMeasuredInlineControl } from './surface-inline-widget-atoms.ts';
 import {
   atomicControlDeletion as planAtomicControlDeletion,
   type AtomicControlDeletion,
@@ -180,15 +181,19 @@ export function createSurfaceRangeEditOps(deps: SurfaceRangeEditDeps): SurfaceRa
         ? inlineControlEndingAt(paragraph, position.offset)
         : inlineControlStartingAt(paragraph, position.offset);
     if (!span) return null;
-    // Only an ATOM goes as one unit: a content-locked chip (custom nodes), a checkbox glyph, a
-    // picture. A text, date or list control is typed into, so the key at its edge takes one
+    // Only an ATOM goes as one unit: a measured host widget, a content-locked chip, a checkbox,
+    // or a picture. Other text, date or list controls are typed into, so an edge takes one
     // character, as in Word, and a control emptied that way shows its prompt again instead of
     // vanishing with its wrapper.
     const control = findContentControl(part, span.controlId);
     const summary = control ? contentControlPropertiesOf(control) : null;
     if (!summary) return null;
     const contentLocked = summary.lock === 'contentLocked' || summary.lock === 'sdtContentLocked';
-    const atom = contentLocked || summary.type === 'checkbox' || summary.type === 'picture';
+    const atom =
+      contentLocked ||
+      summary.type === 'checkbox' ||
+      summary.type === 'picture' ||
+      isMeasuredInlineControl(deps.layout(), span.controlId);
     if (!atom || !control) return null;
     // A control already proposed for deletion is struck text the key steps over, not a unit
     // to select again: selecting it would leave the caret where it was, press after press.

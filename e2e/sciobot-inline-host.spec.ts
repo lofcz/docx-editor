@@ -100,6 +100,44 @@ test('source chip retains identity, focused input, native selection, and exact g
   expect(errors).toEqual([]);
 });
 
+test('native Backspace and Delete remove one complete chip and one undo restores its payload', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto('/inline-host.html');
+  await expect(page.locator('[data-sciobot-inline-measure]')).toHaveCount(2);
+  await stable(page);
+  expect(await api(page, (h) => h.rename('Retained payload'))).toBe(true);
+  for (const [key, offset] of [
+    ['Backspace', 13],
+    ['Delete', 7],
+  ] as const) {
+    await page.evaluate((offset) => window.inlineHost.select(offset), offset);
+    await page.keyboard.press(key);
+    await stable(page);
+    expect(await api(page, (h) => [h.text(), h.text(1)])).toEqual([
+      'Before  after',
+      'Before  after',
+    ]);
+    await expect(page.locator('[data-sciobot-inline-measure]')).toHaveCount(0);
+    await page.keyboard.press('Control+z');
+    await stable(page);
+    expect(await api(page, (h) => [h.text(), h.text(1)])).toEqual([
+      'Before Source after',
+      'Before Source after',
+    ]);
+    for (const peer of [0, 1])
+      await expect(page.locator(`[data-pane="${peer}"] [data-payload-name]`)).toHaveText(
+        'Retained payload'
+      );
+    await geometry(page);
+  }
+  const saved = await api(page, (h) => h.savedDigests());
+  expect(saved[0]).toEqual(saved[1]);
+  expect(errors).toEqual([]);
+});
+
 for (const reverse of [false, true])
   for (const receiver of [0, 1] as const)
     test(`local boxes survive shared payload, native edits, history, reconnect, and deletion ${reverse}/${receiver}`, async ({

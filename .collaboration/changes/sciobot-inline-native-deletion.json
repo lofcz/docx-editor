@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Native Backspace and Delete removed one fallback character from unlocked host-measured controls.",
+  "after": "Native input removes measured inline controls as whole units and expands native selection over their complete range. Locks and native tracked SDT revision behavior remain authoritative.",
+  "reason": "Local layout decides which existing native removeContentControl or deleteText operation input emits. Shared operations, canonical lock properties, saved formats, and journal fields do not change. Peers apply existing operations independently of local widget widths.",
+  "tests": [
+    "packages/core/src/editor/__tests__/inline-widget-deletion.test.ts",
+    "packages/sciobot/src/react-blocks/inline-atom-deletion-collaboration.test.ts"
+  ],
+  "changeset": "measured-inline-native-deletion",
+  "migration": null
+}

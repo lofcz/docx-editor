@@ -561,7 +561,7 @@ The partial clipboard batch passes 27 React-block cases and 1087 assertions acro
 
 ## B31
 
-- [ ] Delete measured inline widgets as native atoms
+- [x] Delete measured inline widgets as native atoms
 
 **Depends:** [B19](02-react-blocks.md#b19), [B30](02-react-blocks.md#b30), [V01](11-verification.md#v01)
 
@@ -575,4 +575,10 @@ The partial clipboard batch passes 27 React-block cases and 1087 assertions acro
 
 **Check:** Add focused native tests and the required two-session history, geometry, deletion, reconnect, and save/reopen scenario.
 
-**Claim:** codex solo, branch `codex/react-block-proof`. **Evidence:** Reproduced during B21 after `b9993129`. Publish inline metrics, place the caret after `Source`, and call native `deleteBackward()`. The result is `Sourc`, because native atomic deletion recognizes locked, checkbox, and picture controls only. B19 already publishes measured widgets as projected spans for atomic caret stops. Native deletion still needs the corresponding control classification.
+**Claim:** codex solo, branch `codex/react-block-proof`. **Evidence:** Native baseline `9770e78`; implementation follows `640cbbf3`. The reproduction changed `Source` to `Sourc` after one native Backspace. Native input now classifies admitted measured controls as atoms. Adjacent deletion removes an unlocked control as one node. Selected deletion removes complete controls plus surrounding text. Native pointer/keyboard selection expansion includes measured controls without changing their canonical lock or type. Clearing measurements restores ordinary native character deletion.
+
+The focused native/shared command passes 14 cases and 120 assertions (`/tmp/solo-b31-focused-final.log`). Native cases verify Backspace, Delete, exact history, Word roundtrip, selected ranges, selection expansion, cleared metrics, and three lock modes. Suggestion mode retains native unlocked SDT wrappers and tracks the complete fallback inside them. Native locks still determine selection-before-removal and removal refusal. Four real shared scenarios cover both client orders and reconnect receivers. Deletion preserves concurrent peer payload updates and surrounding text. Undo restores the control with the peer's latest payload. Local widths retain exact independent remote-caret coordinates. Redo and save/reopen converge.
+
+The affected native input, pointer, range, measurement, isolation, and private React-block command passes 204 cases and 1629 assertions. Log: `/tmp/solo-b31-affected.log`. All six Chromium cases pass in `e2e/sciobot-inline-host.config.ts`. Real keyboard Backspace and Delete each remove one chip. One real Ctrl+Z restores its fallback and exact payload in both sessions. Existing mouse, zoom, provider, native input, concurrent history, remote geometry, deletion, and saved-convergence cases remain green. Log: `/tmp/solo-b31-chromium-final.log`. The first browser run overlapped CSS regeneration and failed to load its stylesheet. The verified rerun follows the completed core build.
+
+Core types pass 1550 files; private types pass 1999 files; browser types pass 1721 files. Core and private builds pass. The private boundary verifies 205 modules and external core. Core API checks scan 15 entries with no signature changes or errors. Root lint, line caps, scoped formatting, and diff checks pass. Compatibility policy passes 135 decisions with zero format fields changed. Patch changeset: `measured-inline-native-deletion`. Decision: `.collaboration/changes/sciobot-inline-native-deletion.json`. Test transport uses the EigenPal Pro License. B21 retains private input and clipboard integration.

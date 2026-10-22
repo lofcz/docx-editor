@@ -120,6 +120,8 @@ A measured text control reserves one unbreakable span with `inlineWidget` geomet
 
 For a live editor, publish the snapshot with `setSurfaceInlineWidgetMetrics(editor.surface, snapshot)` from `@docx-editor.dev/core/editor`. Publish `null` to clear the host snapshot. This view input retains native text, selection, and document history. Font and zoom updates preserve the active snapshot. During native IME composition, the latest snapshot waits for native text readback. Canonical Word save pagination uses native fallback measurements. Clear the snapshot when you dispose the host.
 
+Measured inline controls form atomic native input units. Backspace and Delete remove an unlocked measured control in one step. Native selection expansion includes each touched widget completely. Native locks still apply. Content-locked controls require selection before removal; removal-locked controls refuse removal. Suggestion mode tracks the complete fallback with ordinary native SDT revision behavior. Clearing measurements restores ordinary native control editing. Host measurements never change the saved control's lock or type.
+
 ## Untrusted input
 
 Treat DOCX files as untrusted input. The engine validates URLs and limits XML entities, archive expansion, nesting, and element counts. It does not automatically fetch external document relationships. Serialization escapes document text.
