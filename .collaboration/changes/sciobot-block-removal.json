@@ -1,0 +1,10 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The private adapter exposed registered container insertion without an explicit owned-payload delete or unwrap command.",
+  "after": "removeBlock removes the native wrapper and only its selected payload records in one gated undo unit. Unwrap preserves native descendants and their payloads. Deleting the last body block inserts an editable native paragraph. Native history restores concurrent peer text, payload attributes, and labels.",
+  "reason": "The command uses existing removeContentControl, insertParagraphs, custom XML removal, and native package transaction primitives. Native insertion supplies canonical identities. No shared fields, journal operations, payload encodings, or versions change.",
+  "tests": ["packages/sciobot/src/blocks/remove.test.ts"],
+  "changeset": null,
+  "migration": null
+}

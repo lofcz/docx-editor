@@ -206,7 +206,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 ## B12
 
-- [ ] Delete or unwrap a registered block
+- [x] Delete or unwrap a registered block
 
 **Depends:** [B11](02-react-blocks.md#b11), [V01](11-verification.md#v01)
 
@@ -220,7 +220,13 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused native document regression. Include save/reopen and undo/redo. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** codex solo, branch `codex/react-block-proof`. **Evidence:** Baseline `8326ab22`, completed local source. The private `removeBlock` command explicitly selects delete or unwrap. One gated native undo unit removes the wrapper and only its owned payload records. Deletion includes registered descendants; unwrap retains native children and descendant metadata. Native locks and mode gates remain authoritative. Shared control IDs, stale revisions, missing targets, suggesting mode, and viewing mode refuse without package changes. Suggestion removal stays with the review executors.
+
+The focused native regression compares complete Word structure with literal expected XML while retaining original paragraph identities. Unwrap preserves the selected descendant and its exact position. Deletion leaves a resolvable native caret. Removing the only body block now creates an editable native paragraph through the existing insertion operation. The empty-body case survives one-step undo/redo and exact save/reopen. Foreign custom XML, unrelated payloads, and existing orphan metadata remain exact. A duplicate descendant ID outside the target refuses before writes.
+
+Sixteen real two-session cases cover delete and unwrap, both client orders, both reconnect receivers, and ordinary or single-block documents. Removal runs offline beside peer typing, payload edits, and label edits in a nested note. Deletion wins while active. Undo restores the native descendants with the peer's latest text, attributes, label, and control identity. Unwrap retains that content throughout. Native remote selections resolve after restoration. Redo and complete saved semantic digests converge. The focused command passes 22 cases and 491 assertions before the final caret checks. Log: `/tmp/b12-peer-focused.log`. The transport remains test-only under the EigenPal Pro License.
+
+`bun test packages/sciobot/src/blocks packages/sciobot/src/react-blocks` passes 133 cases and 3177 assertions across 22 files. Log: `/tmp/b12-affected.log`. Private types pass 2037 files; browser types pass 1757. The private build verifies 207 modules with external core and no production Pro imports. Root formatting, root lint, scoped formatting, and diff checks pass. Compatibility checks accept the new decision with zero changed format fields. Decision: `.collaboration/changes/sciobot-block-removal.json`. No published package or public API changes. The production audit and backlog validator verify closure. Container movement remains B13; block menu wiring remains U03.
 
 ## B13
 

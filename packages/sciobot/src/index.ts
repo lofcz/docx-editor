@@ -95,6 +95,7 @@ export * from './blocks/payload-opc-codec';
 export * from './blocks/payload-part';
 export * from './blocks/block-index';
 export * from './blocks/insert';
+export * from './blocks/remove';
 export * from './native/inline-code';
 export * from './native/prepare-document';
 export * from './native/prepare-review-groups';
