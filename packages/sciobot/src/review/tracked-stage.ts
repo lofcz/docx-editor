@@ -1,4 +1,9 @@
-import { collectRevisionSites, sealTrackedRunOrigins, withPart } from '@docx-editor.dev/core/store';
+import {
+  collectRevisionSites,
+  prepareTrackedRunOrigins,
+  sealTrackedRunOrigins,
+  withPart,
+} from '@docx-editor.dev/core/store';
 import { refuseWrite } from '../diff/fragment-seeds';
 import type { CanonicalEdit, CanonicalEditPlan } from '../diff/plan';
 import type { ReviewGroupReceipt } from './groups';
@@ -62,6 +67,39 @@ export function stageTrackedPlan(
       );
     else continue;
     linkParagraphs.add(key(edit.partName, paragraphId));
+  }
+  // Pure link plans can split a source run even when no text stage runs.
+  // Prepare every link range together before any replacement or formatting changes it.
+  const textParagraphs = new Set(
+    plan.operations.flatMap((edit) =>
+      edit.kind === 'text' ? [key(edit.partName, edit.paragraphId)] : []
+    )
+  );
+  const pureLinks = new Map<string, Extract<CanonicalEdit, { kind: 'link' }>[]>();
+  for (const edit of plan.operations) {
+    if (edit.kind !== 'link') continue;
+    const identity = key(edit.partName, edit.paragraphId);
+    if (textParagraphs.has(identity)) continue;
+    const ranges = pureLinks.get(identity) ?? [];
+    ranges.push(edit);
+    pureLinks.set(identity, ranges);
+  }
+  for (const [identity, edits] of pureLinks) {
+    const first = edits[0]!;
+    let scope: string | null = null;
+    writer.edit((pkg) => {
+      const prepared = prepareTrackedRunOrigins(
+        pkg.parts.get(first.partName)!,
+        first.paragraphId,
+        edits
+      );
+      scope = prepared.scope;
+      return withPart(pkg, prepared.part);
+    });
+    coordinates.set(identity, {
+      ...stagedParagraphCoordinates(writer, first.partName, first.paragraphId, unselectedSites),
+      ...(scope ? { runOriginScope: scope } : {}),
+    });
   }
   const format = (edit: Extract<CanonicalEdit, { kind: 'format' }>) => {
     if (edit.target.kind === 'hyperlink') {

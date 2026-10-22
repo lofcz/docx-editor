@@ -53,6 +53,7 @@ for (const fixture of cases)
         try {
           expect(ast((await projection(saved)).text)).toBe(ast(target));
           expect(saved.exec({ type: 'resolveAllReviewChanges', action }).ok).toBe(true);
+          expect(fingerprint(saved)).toBe(action === 'accept' ? expected : before);
           expect(ast((await projection(saved)).text)).toBe(
             action === 'accept' ? ast(target) : original
           );
@@ -63,7 +64,7 @@ for (const fixture of cases)
         expect(ast((await projection(editor)).text)).toBe(
           action === 'accept' ? ast(target) : original
         );
-        if (action === 'accept') expect(fingerprint(editor)).toBe(expected);
+        expect(fingerprint(editor)).toBe(action === 'accept' ? expected : before);
         expect(editor.getReviewItems()).toHaveLength(0);
         expect(editor.exec({ type: 'undo' }).ok).toBe(true);
         expect(fingerprint(editor)).toBe(pending);
