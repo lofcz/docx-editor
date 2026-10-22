@@ -497,6 +497,7 @@ function lineEndWhitespaceStart(
   let trailing = end;
   while (
     trailing > start &&
+    !spans[trailing - 1]!.inlineWidget &&
     Array.from(spans[trailing - 1]!.text).every((character) =>
       ['WS', 'B', 'S'].includes(bidiAlgorithm.getBidiCharTypeName(character))
     )
@@ -697,6 +698,7 @@ export function splitBidiTrailingWhitespace(
   if (!spans.some((span) => span.style.shaping)) return spans;
   for (let index = spans.length - 1; index >= 0; index--) {
     const span = spans[index]!;
+    if (span.inlineWidget) return spans;
     let from = span.text.length;
     while (
       from > 0 &&

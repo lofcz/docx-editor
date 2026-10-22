@@ -664,3 +664,10 @@ export {
   type GoToBookmarkGroup,
   type BookmarkSortOrder,
 } from './bookmark-dialog-model.ts';
+
+export type {
+  InlineWidgetMetrics,
+  InlineWidgetMetricsProvider,
+  InlineWidgetRequest,
+} from '../contracts/inline-widget-metrics.ts';
+export type { InlineWidgetSpanRecord } from '../layout/inline-widget-layout.ts';

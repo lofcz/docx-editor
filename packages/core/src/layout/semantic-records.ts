@@ -1,3 +1,4 @@
+import type { InlineWidgetSpanRecord } from './inline-widget-layout.ts';
 import type { UnsupportedContentRecord } from './unsupported-content.ts';
 // Revision-tagged semantic layout records over the canonical tree (task 7.1).
 //
@@ -173,6 +174,8 @@ export interface SpanLinkRecord {
 
 /** A run of text on one line sharing identical resolved formatting. */
 export interface StyleSpanRecord {
+  /** Reserved atomic control box; source text and offsets remain canonical. */
+  readonly inlineWidget?: InlineWidgetSpanRecord;
   /**
    * Horizontal ink displacement in points from box.x, before drawing the glyphs.
    * CJK opening punctuation removes its left side bearing; its advance and caret

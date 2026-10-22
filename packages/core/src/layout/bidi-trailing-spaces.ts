@@ -40,6 +40,7 @@ function trailingSpacesStart(spans: readonly StyleSpanRecord[]): number {
   let start = spans.length;
   while (
     start > 0 &&
+    !spans[start - 1]!.inlineWidget &&
     (isCollapsibleLineEndWhitespace(spans[start - 1]!.text) ||
       ((spans[start - 1]!.text === '\n' || spans[start - 1]!.text === PAGE_BREAK_CHAR) &&
         spans[start - 1]!.box.width === 0))

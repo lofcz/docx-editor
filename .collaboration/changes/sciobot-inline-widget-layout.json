@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Inline content controls used only native fallback text measurements.",
+  "after": "An optional renderer-neutral text measurer snapshot reserves atomic inline boxes and supplies their geometry to paint and hit testing.",
+  "reason": "Measurements remain local layout inputs. Existing canonical text, native operations, package parts, primitive journals, and collaboration format fields stay unchanged.",
+  "tests": [
+    "packages/core/src/layout/__tests__/inline-widget-layout.test.ts",
+    "packages/sciobot/src/react-blocks/inline-widget-layout-collaboration.test.ts"
+  ],
+  "changeset": "inline-widget-layout-boxes",
+  "migration": null
+}

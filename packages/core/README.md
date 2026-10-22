@@ -108,6 +108,16 @@ Let the engine manage fonts, resources, and layout. Build your output from the r
 
 Untouched content, unsupported OOXML, and package payloads survive editing and save. The canonical tree preserves document structure while embedded fonts, macros, media, and other payloads pass through untouched. Two oracles gate this in CI: a canonical fingerprint over the tree, and a save-and-reopen semantic digest.
 
+## Inline control measurements
+
+Set `TextMeasurer.inlineWidgets` when your host measures inline content controls. Its `measure` callback receives the canonical control ID, tag, fallback text, and available width. Return `{ width, ascent, descent }` in CSS pixels at 100% zoom, or `null` to retain native Word measurements. Invalid measurements also retain native layout. Layout converts admitted boxes to points and clamps their width to the available line.
+
+Only complete visible text controls can reserve a widget box. Other control content retains its native layout.
+
+Supply a `revision` string with the callback. Advance it whenever any measured box changes, then request layout again. Keep the callback and revision snapshot stable during each layout pass. Provider identity and revision both participate in paragraph and incremental cache keys.
+
+A measured text control reserves one unbreakable span with `inlineWidget` geometry. Native source text and UTF-16 offsets remain unchanged. Caret navigation uses the control's outer edges. Paint retains readable fallback text inside the measured advance. The canonical package and saved Word fallback remain unchanged. The host owns measurement, renderer mounting, and interactive controls.
+
 ## Untrusted input
 
 Treat DOCX files as untrusted input. The engine validates URLs and limits XML entities, archive expansion, nesting, and element counts. It does not automatically fetch external document relationships. Serialization escapes document text.

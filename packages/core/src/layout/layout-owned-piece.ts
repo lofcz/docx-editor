@@ -28,7 +28,7 @@ export function isLayoutOwnedPiece(piece: FieldAwarePiece): boolean {
  * numbers, form controls, navigable note marks, and note separators.
  */
 export function canChopPiece(piece: FieldAwarePiece): boolean {
-  if (piece.measureText !== undefined) return false;
+  if (piece.measureText !== undefined || piece.inlineWidget) return false;
   if (!isLayoutOwnedPiece(piece)) return true;
   const atom = piece.fieldAtom;
   return (

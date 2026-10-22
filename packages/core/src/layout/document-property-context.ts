@@ -1,3 +1,4 @@
+import { inlineWidgetProducer } from './inline-widget-layout.ts';
 // Document-property fields change measured text without changing their paragraph nodes.
 import { withFieldResultsProducer } from './field-results-producer.ts';
 import type { DocumentProperties } from '@docx-editor.dev/core/store';
@@ -50,12 +51,13 @@ export function documentProjectionProducer(
     | 'documentProperties'
     | 'projectionEpoch'
     | 'projectionTokenForParagraph'
-  >,
+  > & { readonly measurer?: SemanticLayoutOptions['measurer'] },
   controlToken: string,
   tocToken: string
 ): string {
   const shown = options.showFieldCodes ? `${options.producer ?? ''}|field-codes` : options.producer;
   const base = shown === undefined ? shown : withFieldResultsProducer(shown);
+  const measured = options.measurer ? inlineWidgetProducer(base, options.measurer) : base;
   // Coordinated hosts already invalidate only paragraphs whose projected values changed.
   // A partial projection contract must retain the document-wide fallback.
   const properties =
@@ -63,7 +65,7 @@ export function documentProjectionProducer(
       ? undefined
       : options.documentProperties;
   return producerWithControlContext(
-    producerWithControlContext(producerWithDocumentProperties(base, properties), controlToken),
+    producerWithControlContext(producerWithDocumentProperties(measured, properties), controlToken),
     tocToken
   );
 }

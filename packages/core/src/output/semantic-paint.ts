@@ -923,6 +923,12 @@ function paintSpan(
   mountRunText(document, textHost, paintedSpanText(span), span.style, ctx.scale);
   paintLegacyCheckbox(element, span, ctx.scale);
   paintLegacyDropdown(element, span);
+  if (span.inlineWidget) {
+    if (!ctx.unbound) element.dataset.docxInlineWidget = span.inlineWidget.controlId;
+    element.style.width = `${span.inlineWidget.width * ctx.scale}px`;
+    element.style.overflow = 'hidden';
+    element.style.verticalAlign = 'top';
+  }
   if (span.projected) {
     element.dataset.docxField = '';
     element.setAttribute('contenteditable', 'false');
@@ -1242,7 +1248,8 @@ function paintLine(
     // margin gap broke the selection band into one block per word on justified lines.
     const next = line.spans[spanIndex + 1];
     const gapAfter = bidi ? 0 : interSpanGapBefore(line, spanIndex + 1, rankOf);
-    previousSpanAbsorbedGap = gapAfter > 0 && next !== undefined && absorbsFollowingGap(span, next);
+    previousSpanAbsorbedGap =
+      !span.inlineWidget && gapAfter > 0 && next !== undefined && absorbsFollowingGap(span, next);
     if (previousSpanAbsorbedGap) painted.style.wordSpacing = `${gapAfter * scale}px`;
     pendingGap = gapAfter;
     const link = span.link;

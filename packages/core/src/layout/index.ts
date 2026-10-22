@@ -763,3 +763,10 @@ export type { DrawingImageEffects } from '../store/package/drawing-image-effects
 export { tabLeaderPattern } from './tab-leader-pattern.ts';
 export { noteSeparatorRuleBox } from './note-separator-rule.ts';
 export type { StrikeoutStrokePt } from './sfnt-strikeout-metrics.ts';
+
+export type { InlineWidgetSpanRecord } from './inline-widget-layout.ts';
+export type {
+  InlineWidgetMetrics,
+  InlineWidgetRequest,
+  InlineWidgetMetricsProvider,
+} from '../contracts/inline-widget-metrics.ts';

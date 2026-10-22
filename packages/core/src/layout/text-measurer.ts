@@ -1,5 +1,6 @@
 // The injected text measurer and the outline answer it can give. Kept beside the record
 // vocabulary in `semantic-records.ts`, which re-exports both.
+import type { InlineWidgetMetricsProvider } from '../contracts/inline-widget-metrics.ts';
 import type { ResolvedRunStyle } from './run-style.ts';
 
 /**
@@ -27,6 +28,11 @@ export interface TextOutline {
  * Layout never reads the DOM, so this is the only way width and height enter it.
  */
 export interface TextMeasurer {
+  /** Renderer-neutral inline boxes. Advance revision whenever any measured box changes. */
+  readonly inlineWidgets?: {
+    readonly measure: InlineWidgetMetricsProvider;
+    readonly revision: string;
+  };
   /** Advance width of `text` in the resolved style. */
   measure(text: string, style: ResolvedRunStyle): number;
   /**

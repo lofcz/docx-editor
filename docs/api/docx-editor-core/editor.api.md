@@ -2200,6 +2200,33 @@ export function initialSplitCellCounts(limits: SplitCellLimits | null, can: (com
 };
 
 // @public
+export interface InlineWidgetMetrics {
+    readonly ascent: number;
+    readonly descent: number;
+    readonly width: number;
+}
+
+// @public
+export type InlineWidgetMetricsProvider = (request: InlineWidgetRequest) => InlineWidgetMetrics | null;
+
+// @public
+export interface InlineWidgetRequest {
+    readonly availableWidth: number;
+    readonly controlId: string;
+    readonly fallbackText: string;
+    readonly tag: string | undefined;
+}
+
+// @public
+export interface InlineWidgetSpanRecord {
+    readonly ascent: number;
+    readonly clamped: boolean;
+    readonly controlId: string;
+    readonly descent: number;
+    readonly width: number;
+}
+
+// @public
 export interface InvalidTextFormFieldChromeHandlers {
     // (undocumented)
     readonly onRequest?: (session: InvalidTextFormFieldSession) => void;
@@ -4106,6 +4133,10 @@ export interface TextMeasurer {
         left: number;
         right: number;
     } | undefined;
+    readonly inlineWidgets?: {
+        readonly measure: InlineWidgetMetricsProvider;
+        readonly revision: string;
+    };
     lineMetrics(style: ResolvedRunStyle, text?: string): {
         baseline: number;
         height: number;

@@ -206,7 +206,7 @@ function alignLogicalSpans(
     span: StyleSpanRecord,
     visible = withoutTrailingSpaces(span.text)
   ): number =>
-    visible === span.text
+    span.inlineWidget || visible === span.text
       ? 0
       : span.box.width -
         measureDisplayText(visible, styleForFontSlot(span.style, span.fontSlot), measurer);
@@ -214,7 +214,11 @@ function alignLogicalSpans(
   // line, and spaces in spans of their own, are not content: they hang. Before a break only
   // U+0020 hangs; a tab or a no-break space there is content.
   let contentLast = trailingEnd - 1;
-  while (contentLast > 0 && withoutTrailingSpaces(spans[contentLast]!.text) === '') {
+  while (
+    contentLast > 0 &&
+    !spans[contentLast]!.inlineWidget &&
+    withoutTrailingSpaces(spans[contentLast]!.text) === ''
+  ) {
     contentLast -= 1;
   }
   const contentEnd = spans[contentLast] ?? last;
@@ -319,7 +323,8 @@ function alignLogicalSpans(
     )
       slotEnd -= 1;
     for (let index = 1; index < slotEnd; index += 1) {
-      if (endsWithExpandableSpace(spans[index - 1]!.text)) gapBefore.push(index);
+      if (!spans[index - 1]!.inlineWidget && endsWithExpandableSpace(spans[index - 1]!.text))
+        gapBefore.push(index);
     }
     if (gapBefore.length === 0) return spans;
     const step = slack / gapBefore.length;

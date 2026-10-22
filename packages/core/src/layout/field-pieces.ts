@@ -1,3 +1,4 @@
+import type { InlineWidgetSpanRecord } from './inline-widget-layout.ts';
 import type { UnsupportedContentRecord } from './unsupported-content.ts';
 // The unit layout measures: one run of text with everything paint will need to draw it.
 //
@@ -143,6 +144,8 @@ export interface FieldAtomMarker {
  * stays canonical-aligned for layout consumers.
  */
 export interface FieldAwarePiece {
+  /** Reserved atomic control box; source text and offsets remain canonical. */
+  readonly inlineWidget?: InlineWidgetSpanRecord;
   /** Layout-only displacement of punctuation ink within its compressed advance. */
   readonly glyphOffsetPt?: number;
   readonly text: string;

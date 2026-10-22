@@ -52,7 +52,8 @@ function capacity(span: StyleSpanRecord, measurer: TextMeasurer): number {
       !/^[\p{Script=Latin}\p{N}\p{P}\p{Sc}\p{Sm} \u2007\u202f\u200b]*$/u.test(span.text)) ||
     span.lineEndWhitespace ||
     !SPACED_SPAN.test(span.text) ||
-    span.equation
+    span.equation ||
+    span.inlineWidget
   )
     return 0;
   const style = styleForFontSlot(span.style, span.fontSlot);
@@ -98,7 +99,7 @@ export function fitsWithSpaceShrink(
   const ownSpace = SPACED_WORD.test(candidate);
   if (
     !(ownSpace || (wordEnds && BARE_WORD.test(candidate))) ||
-    spans.some((s) => s.wrapAdvanceBefore || s.equation)
+    spans.some((s) => s.wrapAdvanceBefore || s.equation || s.inlineWidget)
   )
     return false;
   const first = firstShrinkSlot(spans);

@@ -64,6 +64,14 @@ export function anchorLineStartsByModelOffset(input: {
     probeLineIndex += 1;
   };
   for (const [pieceIndex, piece] of pieces.entries()) {
+    if (piece.inlineWidget) {
+      const width = piece.inlineWidget.width;
+      if (probeWidth > 0 && probeWidth + width > probeLineAvail()) closeProbeLine(piece.start);
+      probeWidth += width;
+      probeLastEmitted = '';
+      probeWordStartWidth = -1;
+      continue;
+    }
     if (piece.unsupported) {
       const width = piece.unsupported.width;
       if (probeWidth > 0 && probeWidth + width > probeLineAvail()) closeProbeLine(piece.start);

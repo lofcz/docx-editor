@@ -45,7 +45,8 @@ const BLANKET_DISABLES = new Map([
   // Upstream 2.32.0 adds 33 lines; retained fork hooks and their import add 11.
   ['packages/core/src/editor/paginated-surface.ts', 6344],
   ['packages/core/src/store/store/tree-op-apply.ts', 3495],
-  ['packages/core/src/output/semantic-paint.ts', 2490],
+  // Inline widget advance styling and the atomic justification guard add seven composition lines.
+  ['packages/core/src/output/semantic-paint.ts', 2497],
   ['packages/core/src/layout/note-pagination.ts', 2954],
   ['packages/core/src/store/package/note-lifecycle.ts', 1320],
 ]);

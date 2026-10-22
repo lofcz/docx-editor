@@ -37,6 +37,7 @@ export interface Piece {
   readonly inlineDrawing?: import('./drawing-layout.ts').InlineDrawingLayoutInput;
   /** Bounded OMML equation occupying one UTF-16 model unit. */
   readonly equation?: FieldAwarePiece['equation'];
+  readonly inlineWidget?: FieldAwarePiece['inlineWidget'];
   readonly unsupported?: FieldAwarePiece['unsupported'];
   /**
    * The `w:rFonts` slot this piece's text resolves its face through, from
@@ -68,7 +69,7 @@ export function placeableContentSuffixes(
     const piece = pieces[pieceIndex]!;
     const suffix = new Uint8Array(piece.text.length + 1);
     suffix[piece.text.length] = follows ? 1 : 0;
-    if (piece.inlineDrawing) {
+    if (piece.inlineDrawing || piece.inlineWidget) {
       suffix.fill(1);
     } else {
       for (let cursor = piece.text.length - 1; cursor >= 0; cursor -= 1) {
@@ -126,6 +127,11 @@ export function measureFollowingTabSegment(
   for (let index = pieceIndex; index < pieces.length; index += 1) {
     const piece = pieces[index]!;
     const style = styleForFontSlot(piece.style, piece.fontSlot);
+    if (piece.inlineWidget) {
+      width += piece.inlineWidget.width;
+      if (!sawDecimal) decimalOffset = width;
+      continue;
+    }
     if (piece.unsupported) {
       width += piece.unsupported.width;
       if (!sawDecimal) decimalOffset = width;

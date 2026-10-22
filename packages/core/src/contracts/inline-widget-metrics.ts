@@ -5,7 +5,7 @@
 // DOM, a framework, or layout itself, so React (or any other host) measures outside layout and
 // layout reads only this contract.
 //
-// Units are CSS pixels at 100% zoom, the unit layout positions in. Values are quantized to the
+// Units are CSS pixels at 100% zoom; semantic layout converts them to points. Values use the
 // layout's fixed-point scale (1/1000 px, half-to-even), so the same measurement yields the
 // same box in every session that measures it, regardless of float noise in the host.
 

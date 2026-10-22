@@ -1,3 +1,10 @@
+import { appendEquationSpan } from './inline-atom-flow.ts';
+import {
+  inlineWidgetPieces,
+  inlineWidgetSourceBoundaries,
+  restoreInlineWidgets,
+  appendInlineWidget,
+} from './inline-widget-layout.ts';
 import { appendUnsupportedContent } from './unsupported-content-flow.ts';
 import { paragraphContinuationPieces } from './paragraph-continuation-pieces.ts';
 import { paragraphOwnAnchorStarts } from './paragraph-own-anchors.ts';
@@ -219,11 +226,15 @@ export function breakParagraph(
         : undefined
     );
   const paragraphRtl = flow?.paragraphRtl ?? paragraphIsRtl(paragraphProperties());
-  const allPieces = bidiPieces(
-    rawPieces,
-    paragraphRtl,
-    bidiSourceBoundaries(paragraph),
-    pageBreaksIgnored
+  const widgets = inlineWidgetPieces(paragraph, rawPieces, available, measurer);
+  const allPieces = restoreInlineWidgets(
+    widgets,
+    bidiPieces(
+      rawPieces,
+      paragraphRtl,
+      inlineWidgetSourceBoundaries(widgets, bidiSourceBoundaries(paragraph)),
+      pageBreaksIgnored
+    )
   );
   const startOffset = Math.max(0, flow?.startOffset ?? 0);
   const carriesSlot = flow?.firstLineAfterLeadingBreaks === true;
@@ -826,7 +837,12 @@ export function breakParagraph(
     // as a floor, while a larger text multiple can still win.
     const hasUnscaledInlineExtent =
       line.drawings.length > 0 ||
-      line.spans.some((span) => span.equation !== undefined || span.unsupported !== undefined);
+      line.spans.some(
+        (span) =>
+          span.equation !== undefined ||
+          span.unsupported !== undefined ||
+          span.inlineWidget !== undefined
+      );
     const scalesTextBandOnly = lineSpacing.rule === 'auto' && hasUnscaledInlineExtent;
     const holdsUnscaledPicture =
       scalesTextBandOnly &&
@@ -1003,6 +1019,18 @@ export function breakParagraph(
       if (unsupported.display === 'block') closeLine();
       continue;
     }
+    if (piece.inlineWidget) {
+      const widget = piece.inlineWidget;
+      if (holdsContent() && line.width + widget.width > lineAvailable()) closeLine();
+      const metrics = { height: widget.ascent + widget.descent, baseline: widget.ascent };
+      exclusionProbe.setMetrics(metrics, widget.width);
+      applyInlineObjectSkipIfNeeded(widget.width, metrics.height);
+      if (!ensurePlacementWidth(widget.width)) continue;
+      appendInlineWidget(line, piece, paragraphId, lineOrigin() + line.width);
+      wordStartSpan = -1;
+      lastEmitted = '';
+      continue;
+    }
     if (piece.equation) {
       const equation = equationLayoutOf(piece)!;
       const atomWidth = equation.geometry.box.width;
@@ -1016,30 +1044,7 @@ export function breakParagraph(
       );
       applyInlineObjectSkipIfNeeded(atomWidth, equation.geometry.box.height);
       if (!ensurePlacementWidth(atomWidth)) continue;
-      const priorDescent = Math.max(0, line.height - line.baseline);
-      const equationDescent = Math.max(
-        0,
-        equation.geometry.box.height - equation.geometry.baseline
-      );
-      line.baseline = Math.max(line.baseline, equation.geometry.baseline);
-      line.height = line.baseline + Math.max(priorDescent, equationDescent);
-      line.spans.push({
-        range: { paragraphId, start: piece.start, end: piece.end },
-        text: '\uFFFC',
-        props: piece.props,
-        style: piece.style,
-        box: {
-          x: lineOrigin() + line.width,
-          y: 0,
-          width: atomWidth,
-          height: equation.geometry.box.height,
-        },
-        projected: true,
-        equation,
-        ...paragraphSpanMetadata(piece),
-      });
-      line.width += atomWidth;
-      line.end = piece.end;
+      appendEquationSpan(line, piece, paragraphId, equation, lineOrigin() + line.width);
       wordStartSpan = -1;
       lastEmitted = '';
       continue;
