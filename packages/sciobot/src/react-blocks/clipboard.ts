@@ -25,6 +25,7 @@ import {
 } from '../blocks/payload-schema';
 import { readBlockSelection } from './selection';
 import { isWidgetInputEvent } from './input-boundary';
+import { retainSurfaceResources } from './retention';
 
 /** Private clipboard flavour. Native Word and HTML flavours carry the readable fallback. */
 export const SCIOBOT_BLOCKS_MIME = 'application/x-sciobot-blocks+json';
@@ -370,10 +371,17 @@ function attachBlockClipboard(
   };
   listen();
   const stopHost = editor.on('selectionChange', bind);
+  const stopSurface = retainSurfaceResources(surface, () => {
+    clipboards.get(surface)?.clients.clear();
+    clipboards.delete(surface);
+    dispose();
+  });
+  function dispose(): void {
+    stopSurface();
+    stopHost();
+    unbind();
+  }
   return {
-    dispose() {
-      stopHost();
-      unbind();
-    },
+    dispose,
   };
 }

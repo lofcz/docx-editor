@@ -44,7 +44,7 @@ const SLACK_EXEMPT = new Map([
 const BLANKET_DISABLES = new Map([
   // Upstream 2.32.0 adds 33 lines; retained fork hooks and their import add 11.
   // Inline metric snapshots, font/zoom retention, and canonical save isolation add 12 composition lines.
-  ['packages/core/src/editor/paginated-surface.ts', 6361],
+  ['packages/core/src/editor/paginated-surface.ts', 6362],
   ['packages/core/src/store/store/tree-op-apply.ts', 3495],
   // Inline widget advance styling and the atomic justification guard add seven composition lines.
   ['packages/core/src/output/semantic-paint.ts', 2497],

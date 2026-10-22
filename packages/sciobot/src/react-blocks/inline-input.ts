@@ -133,7 +133,7 @@ export function mountInlineInput(
   }
   // Document capture precedes an existing surface clipboard lease, regardless of mounting order.
   bind();
-  const stopPaint = surface.observePaint({ afterPaint: bind });
+  const stopPaint = surface.observePaint({ afterPaint: bind, destroyed: dispose });
   const stopHost = editor.on('selectionChange', bind);
   let clipboard: ReturnType<typeof mountBlockClipboard>;
   try {
@@ -145,16 +145,15 @@ export function mountInlineInput(
     throw error;
   }
   let disposed = false;
-  return {
-    dispose() {
-      if (disposed) return;
-      disposed = true;
-      stopPaint();
-      stopHost();
-      unbind();
-      clipboard.dispose();
-      indexedPackage = null;
-      valid.clear();
-    },
-  };
+  function dispose(): void {
+    if (disposed) return;
+    disposed = true;
+    stopPaint();
+    stopHost();
+    unbind();
+    clipboard.dispose();
+    indexedPackage = null;
+    valid.clear();
+  }
+  return { dispose };
 }

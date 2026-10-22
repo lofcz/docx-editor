@@ -288,11 +288,11 @@ The affected block, native edit, namespace, journal, and isolation run covers 17
 
 ## B16
 
-- [ ] Release parked roots after page and editor disposal
+- [x] Release parked roots after page and editor disposal
 
-**Depends:** [B15](02-react-blocks.md#b15), [V01](11-verification.md#v01)
+**Depends:** [B15](02-react-blocks.md#b15), [B33](02-react-blocks.md#b33), [V01](11-verification.md#v01)
 
-**Primary files:** `fork:packages/sciobot/src/react-blocks/retention.ts`; `sibling retention browser test`
+**Primary files:** `fork:packages/sciobot/src/react-blocks/retention.ts`; `fork:e2e/sciobot-block-retention.spec.ts`
 
 **Read:** [S24](sources.md#s24)
 
@@ -302,7 +302,15 @@ The affected block, native edit, namespace, journal, and isolation run covers 17
 
 **Check:** Add a focused Chromium case with real input and native selection where applicable. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** codex solo, branch `codex/react-block-proof`. **Evidence:** Baseline `c7629552`, completed local source. Native paint continues to park offscreen roots while retaining their local React state. B33 now ends every host lifetime when its surface is destroyed or replaced. Block and inline hosts release roots, slots, providers, measurements, and subscriptions. Inline input releases document listeners and its clipboard lease. Shared clipboard ownership clears client callbacks and removes container listeners. Explicit disposal remains idempotent. Hosts use the native lifecycle callback without timers or DOM polling.
+
+The focused Chromium command `SCIOBOT_BROWSER_STABLE=1 bunx playwright test --config e2e/sciobot-block-retention.config.ts` passes three cases. Twenty real scroll cycles retain the exact input DOM node, local value, and counter. Twenty document switches recreate two real sessions without manually disposing their hosts. Root counts, active ResizeObservers, observed elements, and widget-listener roots return to zero between documents and to the same baseline after remounting. Final editor destruction returns every count to zero. Instrumentation counts actual React effect lifetimes, ResizeObserver observations, and widget event subscriptions. Log: `/tmp/b16-browser-final.log`.
+
+Both reconnect receivers run the shared scenario. A parked widget resumes after offline peer typing with its local form state. Deletion races another peer edit. The deleted widget releases its roots and listeners. Undo creates fresh widget state and restores the latest peer text; redo releases it again. A second undo and saved complete semantic digests converge. Native remote selection geometry remains resolvable. The first browser attempt retained the widget's page because its native caret pinned that page. The final fixture moves the caret to the other end before scrolling, which exercises actual virtualization. Its timeout and retention assertions remain explicit. The transport remains test-only under the EigenPal Pro License.
+
+The affected native/window/React suite passes 74 cases and 1376 assertions across 15 files. A later focused command verifies both twenty-cycle block and inline replacement scenarios, passing two cases and 103 assertions. Logs: `/tmp/b16-affected.log`, `/tmp/b16-inline-retention.log`. Native types pass 1583 files; private types pass 2041; browser types pass 1762. Core and private builds pass; the private boundary verifies 209 modules and external core. Root formatting, root lint, line caps, scoped formatting, and public API checks pass. B33 records the public lifecycle hook. Decision: `.collaboration/changes/sciobot-react-retention.json`; no shared format fields change. Minor changeset: `surface-paint-observer-lifetime`.
+
+Existing inline clipboard regressions retain their original assertions and limits. Two cases pass in `/tmp/b16-inline-input-regression.log`; that run later records a context timeout and is explicitly stopped. A standalone attempt then fails server startup before any test runs. A warm-server run passes the two remaining client-order cases but times out during first navigation of the other case. Its trace records 61.5 seconds in page loading. That exact case passes unchanged in isolation: `/tmp/b16-inline-warm.log`. The combined evidence covers all five cases without claiming the earlier processes passed. The inline-host command covers its six existing provider, geometry, typing, deletion, shared history, and reopen cases in `/tmp/b16-host-recheck.log`.
 
 ## B17
 
@@ -617,3 +625,25 @@ Core types pass 1550 files; private types pass 1999 files; browser types pass 17
 A normal move records exactly one existing `moveNode` effect. Inherited namespace differences add existing `setNamespaceBinding` effects. The edit preserves complete source scope, including bindings used only in opaque QName-valued metadata. Four native cases prove literal expected Word structure, immutable input, identical moved objects, exact journal effects, ordering, atomic refusal, and conflicting namespace roundtrip. The shared B13 cases prove real-session text/payload preservation, peer-only undo, redo, reconnect, deletion convergence, remote caret geometry, and saved convergence. A focused shared namespace case verifies the resolved URI before and after movement, history, and save/reopen. Import can replace the original prefix with a stable alias; the required namespace meaning remains exact.
 
 `/tmp/b13-focused-final.log` records 17 passing native/private cases and 199 assertions. The affected run and unchanged isolation rerun are recorded under B13. Core and private builds pass. Core types pass 1583 files, private types pass 2039, and browser types pass 1757. Public API checks scan 15 entries without errors. The store snapshot adds only the native move signature. Logs: `/tmp/b32-core-build.log`, `/tmp/b32-core-types.log`, `/tmp/b13-types-final.log`, `/tmp/b13-browser-types.log`, `/tmp/b32-api-check.log`. Root formatting, root lint, and diff checks pass. Minor changeset: `native-identity-preserving-moves`. Decision: `.collaboration/changes/sciobot-native-block-moves.json`. Existing move and namespace journal encodings remain unchanged.
+
+## B33
+
+- [x] Notify paint hosts when a native surface ends
+
+**Depends:** [V01](11-verification.md#v01)
+
+**Primary files:** `fork:packages/core/src/editor/surface-paint-observer.ts`; `fork:packages/core/src/editor/__tests__/surface-paint-observer.test.ts`
+
+**Read:** [S25](sources.md#s25)
+
+**Change:** Restore borrowed native nodes and notify paint observers on surface destruction or document replacement. Make observer removal idempotent.
+
+**Close when:** Replacement and repeated destruction notify each active host once. Removed observers receive no destruction callback. One failing host cleanup does not prevent other resources from releasing.
+
+**Check:** Add native lifecycle regressions and B16 real-session/browser lifetime checks. Run affected types, native build/API checks, formatting, lint, and compatibility policy.
+
+**Claim:** codex solo, branch `codex/react-block-proof`. **Evidence:** Baseline `c7629552`, completed local source. `SurfacePaintObserver.destroyed` notifies local hosts when their native surface ends. Destruction restores borrowed paint before releasing roots, measurements, and listeners. The dispatcher clears subscriptions before invoking callbacks. Each restoration and destruction callback has an independent error boundary, so one failed cleanup cannot prevent the others. Explicit observer removal restores borrowed content once and receives no later destruction event.
+
+Native lifecycle regressions verify document replacement, repeated editor destruction, idempotent removal, and two throwing cleanup callbacks beside a healthy host. The combined native/retention command passes five cases and 77 assertions. Log: `/tmp/b16-focused2.log`. The affected React host and native window-move command passes 74 cases and 1376 assertions across 15 files. Log: `/tmp/b16-affected.log`. A later focused retention command adds twenty inline replacement cycles and passes both lifecycle cases with 103 assertions. Log: `/tmp/b16-inline-retention.log`. B16 records real-session virtualization, deletion, history, resource counts, and Word convergence.
+
+Core and private builds pass. Private output verifies 209 modules with one external core. Core types pass 1583 files; private types pass 2041; browser types pass 1762. The public API checker scans 15 entries without errors and adds only the optional destruction callback. Root lint and line caps pass. Native surface composition grows by one line; cleanup dispatch stays in the observer module. Logs: `/tmp/b33-types.log`, `/tmp/b33-core-build.log`, `/tmp/b16-build-final.log`, `/tmp/b33-api-check.log`, `/tmp/b16-lint.log`. Minor changeset: `surface-paint-observer-lifetime`. Decision: `.collaboration/changes/sciobot-react-retention.json`. Shared operations, schemas, and payload encodings remain unchanged.

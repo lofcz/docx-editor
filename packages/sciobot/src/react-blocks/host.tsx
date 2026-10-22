@@ -258,6 +258,7 @@ export function mountReactBlockHost(
       park();
     },
     afterPaint: paint,
+    destroyed: dispose,
   });
   function refresh(): void {
     if (disposed || !frame) return;
@@ -269,6 +270,20 @@ export function mountReactBlockHost(
       park();
       paint(frame!);
     });
+  }
+  function dispose(): void {
+    if (disposed) return;
+    disposed = true;
+    if (frame) preserveNativeSelection(frame.pagesLayer, stop);
+    else stop();
+    for (const [key, mount] of mounts) discard(key, mount);
+    measurement?.dispose();
+    registry.clear();
+    frame = null;
+    index = null;
+    indexedPackage = null;
+    focused = null;
+    providers = undefined;
   }
   return {
     setProviders(next) {
@@ -291,20 +306,7 @@ export function mountReactBlockHost(
       };
     },
     refresh,
-    dispose() {
-      if (disposed) return;
-      disposed = true;
-      if (frame) preserveNativeSelection(frame.pagesLayer, stop);
-      else stop();
-      for (const [key, mount] of mounts) discard(key, mount);
-      measurement?.dispose();
-      registry.clear();
-      frame = null;
-      index = null;
-      indexedPackage = null;
-      focused = null;
-      providers = undefined;
-    },
+    dispose,
   };
 }
 

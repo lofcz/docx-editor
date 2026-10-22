@@ -3962,6 +3962,7 @@ export interface SurfacePaintObserver {
     afterPaint(frame: SurfacePaintFrame): void;
     // (undocumented)
     beforePaint?(): void;
+    destroyed?(): void;
 }
 
 // @public

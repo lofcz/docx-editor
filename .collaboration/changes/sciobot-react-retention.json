@@ -1,0 +1,14 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Paint hosts parked roots during virtualization but had no notification when the native surface ended. Forgotten host disposal retained React roots, measurements, and input listeners.",
+  "after": "A local surface destruction callback restores borrowed paint and releases React roots, measurements, and input listeners. Explicit observer removal is idempotent and failed cleanup does not prevent other hosts from releasing.",
+  "reason": "The callback and resource ownership affect local view lifetimes only. Canonical content, shared operations, payload encodings, and protocol versions do not change.",
+  "tests": [
+    "packages/core/src/editor/__tests__/surface-paint-observer.test.ts",
+    "packages/sciobot/src/react-blocks/retention.test.tsx",
+    "e2e/sciobot-block-retention.spec.ts"
+  ],
+  "changeset": "surface-paint-observer-lifetime",
+  "migration": null
+}

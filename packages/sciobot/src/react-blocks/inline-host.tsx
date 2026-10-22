@@ -45,8 +45,17 @@ export function mountReactInlineHost(
   const stop = surface.observePaint({
     beforePaint: () => measurement.beforePaint(),
     afterPaint: (frame) => measurement.place(frame),
+    destroyed: dispose,
   });
   let disposed = false;
+  function dispose(): void {
+    if (disposed) return;
+    disposed = true;
+    stop();
+    host.dispose();
+    measurement.dispose();
+    owners.delete(surface!);
+  }
   return {
     register(type, view) {
       const release = host.register(type, wrap(view));
@@ -64,14 +73,7 @@ export function mountReactInlineHost(
       host.refresh();
       measurement.place();
     },
-    dispose() {
-      if (disposed) return;
-      disposed = true;
-      stop();
-      host.dispose();
-      measurement.dispose();
-      owners.delete(surface);
-    },
+    dispose,
   };
 }
 

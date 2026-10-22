@@ -18,4 +18,24 @@ export interface SurfacePaintFrame {
 export interface SurfacePaintObserver {
   beforePaint?(): void;
   afterPaint(frame: SurfacePaintFrame): void;
+  /** Release host resources when this surface is destroyed or its document is replaced. */
+  destroyed?(): void;
+}
+
+/** Release every observer even when one host's cleanup fails. */
+export function destroyPaintObservers(observers: Set<SurfacePaintObserver>): void {
+  const current = [...observers];
+  observers.clear();
+  for (const observer of current) {
+    try {
+      observer.beforePaint?.();
+    } catch (error) {
+      console.error('Surface observer restoration failed.', error);
+    }
+    try {
+      observer.destroyed?.();
+    } catch (error) {
+      console.error('Surface observer cleanup failed.', error);
+    }
+  }
 }

@@ -345,7 +345,7 @@ import type { OoxmlPart } from '../store/package/ooxml-tree.ts';
 import { contentLockedOrBound, removalLocked, treeLockRefusal } from './content-control-locks.ts';
 import { overlaySheet, sizeOverlaySheets } from './surface-overlay-sheet.ts';
 import type { SurfaceOverlayFrame, SurfaceOverlayPainter } from './surface-overlay-sheet.ts';
-import type { SurfacePaintObserver } from './surface-paint-observer.ts';
+import { destroyPaintObservers, type SurfacePaintObserver } from './surface-paint-observer.ts';
 
 export type {
   ContentControlOps,
@@ -5437,8 +5437,8 @@ export function mountPaginatedSurface(
       paintObservers.add(observer);
       render(false);
       return () => {
+        if (!paintObservers.delete(observer)) return;
         observer.beforePaint?.();
-        paintObservers.delete(observer);
       };
     },
     remotePresenceColor,
@@ -5822,6 +5822,7 @@ export function mountPaginatedSurface(
       try {
         flushToPaint();
       } finally {
+        destroyPaintObservers(paintObservers);
         pagesLayer.removeEventListener('pointerdown', onDrawingPointerGesture, { capture: true });
         pagesLayer.removeEventListener('keydown', onDrawingKeyGesture, { capture: true });
         pagesLayer.removeEventListener('keydown', onInputTiming, { capture: true });
