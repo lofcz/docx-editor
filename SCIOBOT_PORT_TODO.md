@@ -2,7 +2,7 @@
 
 Port the production workspace editor to the DOCX fork. Keep AI editing, suggestions, and React blocks as required capabilities.
 
-This backlog contains 272 leaves across 11 workstreams. Each leaf has its own status and evidence.
+This backlog contains 275 leaves across 11 workstreams. Each leaf has its own status and evidence.
 
 The React block proof supplies a tested starting point. It does not establish full application parity.
 
@@ -45,7 +45,7 @@ C03 opens C08, B01, and B04. C07 also needs C02. Each feature still needs its li
 | [Agent document projection and targeting](docs/engineering/sciobot-port/03-agent-projection.md) | 23 | Keep the existing Markdown tool protocol. Map targeted changes back to canonical OOXML without rebuilding the document. |
 | [Small canonical edit plans](docs/engineering/sciobot-port/04-edit-planner.md) | 39 | Produce pure plans first. Direct and suggestion executors consume the same plans. |
 | [Suggestion state and review operations](docs/engineering/sciobot-port/05-suggestions.md) | 53 | Native revisions and application property proposals must form one review model. Required cases cannot close through refusal alone. |
-| [Direct AI edits and streaming lifecycle](docs/engineering/sciobot-port/06-direct-ai.md) | 9 | Direct edits commit before animation. Presentation never owns document state. |
+| [Direct AI edits and streaming lifecycle](docs/engineering/sciobot-port/06-direct-ai.md) | 10 | Direct edits commit before animation. Presentation never owns document state. |
 | [Native Word editing controls](docs/engineering/sciobot-port/07-native-content.md) | 23 | Reuse existing native commands. Close a leaf with verified production controls when the engine already provides the behavior. |
 | [Application content and custom renderers](docs/engineering/sciobot-port/08-domain-content.md) | 37 | Reuse application services and content UI. Remove Plate-specific wrappers from each renderer separately. |
 | [Editor interactions and review presentation](docs/engineering/sciobot-port/09-editor-ui.md) | 16 | Connect existing application controls to native selection, commands, and private review state. |

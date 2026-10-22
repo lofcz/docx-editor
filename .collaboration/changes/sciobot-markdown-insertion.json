@@ -1,0 +1,15 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Generated insertion accepted completed canonical fragments, while raw deltas and ordinary native structural scopes lacked adapters.",
+  "after": "Raw Markdown deltas retain unfinished syntax locally, append completed rich blocks through the existing native planner, and flush received content on finish or stop. Native table and unregistered-control scopes retain their live canonical identity. Rich shared-list undo remains open under A10.",
+  "reason": "The adapter reuses existing operations, numbering infrastructure policy, payload bindings, and history frames. No shared format fields or production provider dependency changes. The preserved red tests expose malformed numbering shells in the evaluated collaboration transport.",
+  "tests": [
+    "packages/sciobot/src/ai/markdown-stream.test.ts",
+    "packages/sciobot/src/ai/stream-structural-scope.test.ts",
+    "packages/sciobot/src/ai/stream-insert.test.ts",
+    "packages/sciobot/src/diff/inserted-blocks.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

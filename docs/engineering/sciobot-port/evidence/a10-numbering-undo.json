@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "baseRevision": "e2b38fbf",
+  "scope": "A08 raw-stream working tree",
+  "receiver": 0,
+  "savedNumberingXml": "<w:numbering xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:abstractNum/><w:num/></w:numbering>",
+  "numberingContentTypeOverride": null,
+  "modeledNumberingPart": false,
+  "modeledParts": [
+    "/_rels/.rels",
+    "/customXml/_rels/item1.xml.rels",
+    "/customXml/_rels/item2.xml.rels",
+    "/customXml/item1.xml",
+    "/customXml/item2.xml",
+    "/customXml/itemProps1.xml",
+    "/customXml/itemProps2.xml",
+    "/word/_rels/document.xml.rels",
+    "/word/document.xml"
+  ],
+  "expectedNumberingInfrastructure": "A typed numbering part with an empty w:numbering root, its content-type override, and its numbering relationship.",
+  "reproductionCommand": "bun test --preload ./scripts/test/preload-dom.ts packages/sciobot/src/ai/markdown-stream.test.ts -t 'rich=true, receiver 0'"
+}

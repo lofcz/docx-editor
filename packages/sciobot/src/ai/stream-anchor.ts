@@ -88,13 +88,8 @@ export function createStreamAnchor(
     (block) => block.partName === part.name && block.controlId === chosen!.id
   )?.id;
   const paragraphIdentity = chosen.kind === 'paragraph' ? paraIdOf(chosen) : null;
-  // Table and unknown-control rematerialization need their own persistent identity contract.
-  if (!registeredId && chosen.kind !== 'paragraph')
-    return {
-      success: false,
-      code: 'unsupported-operation',
-      error: 'This native block needs a persistent generation scope identity.',
-    };
+  // Other structural roots retain their canonical node identity for this live part. A
+  // replacement/load ends the anchor; do not guess identity from descendant text or position.
   const originalId = chosen.id;
   let active = true;
   let stop = () => {};
@@ -114,6 +109,10 @@ export function createStreamAnchor(
         return fail('The generation anchor has ended.');
       }
       const current = surface.session.part();
+      if (current.name !== part.name) {
+        release();
+        return fail('The generation story changed.');
+      }
       const block = registeredId
         ? buildBlockIndex(surface.session.currentPackage()).byId.get(registeredId)
         : undefined;
