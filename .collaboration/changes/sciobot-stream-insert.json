@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The private AI adapter could hold a request anchor but could not append canonical generated fragments through one explicit history group.",
+  "after": "Completed rich fragments append through the existing direct planner at the live anchor. Native frames share one undo gesture, preserve peer edits, and report native history splits. Finish and cancel release the anchor while retaining committed output.",
+  "reason": "The adapter uses existing sibling operations, rich-content bindings, history tokens, and payload formats. No shared schema or protocol field changes. Raw token parsing and generic structural scope identities remain unfinished under A08.",
+  "tests": [
+    "packages/sciobot/src/ai/stream-insert.test.ts",
+    "packages/sciobot/src/ai/stream-anchor.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

@@ -76,6 +76,7 @@ export * from './review/track-checklists';
 export * from './review/track-blocks';
 export * from './review/track-table-cells';
 export * from './ai/apply-direct';
+export * from './ai/stream-insert';
 export * from './ai/change-ledger';
 export * from './ai/direct-baseline';
 export * from './ai/playback';
