@@ -1,0 +1,17 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The private adapter had captured block commands without connected native controls.",
+  "after": "Private controls use existing paragraph allocation, text, list, property, and transaction operations, with immutable shared style preparation.",
+  "reason": "No shared operation schema, journal field, payload format, or published API changes. Horizontal rules retain the existing text owner as their follower to preserve offline peer edits.",
+  "tests": [
+    "packages/sciobot/src/chrome/block-type.test.ts",
+    "packages/sciobot/src/chrome/block-input.test.ts",
+    "packages/sciobot/src/chrome/block-type-collaboration.test.ts",
+    "packages/sciobot/src/chrome/block-recovered.test.ts",
+    "packages/sciobot/src/chrome/block-styles.test.ts",
+    "e2e/sciobot-block-controls.spec.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

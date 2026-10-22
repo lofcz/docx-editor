@@ -98,5 +98,10 @@ export * from './blocks/insert';
 export * from './native/inline-code';
 export * from './native/prepare-document';
 export * from './native/prepare-review-groups';
+export * from './chrome/block-type';
+export * from './chrome/block-styles';
+export { insertBlock as insertTextBlock, type InsertBlockType } from './chrome/insert-block';
+export * from './chrome/block-input';
+export * from './chrome/block-toolbar';
 
 export * from './review/group-allocation';

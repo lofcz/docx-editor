@@ -1,10 +1,14 @@
 {
   "extends": "./tsconfig.json",
-  "compilerOptions": { "types": ["bun", "vite/client"] },
+  "compilerOptions": {
+    "types": ["bun", "vite/client"]
+  },
   "include": [
     "test/browser",
     "../../e2e/sciobot-block-host.config.ts",
     "../../e2e/sciobot-block-host.spec.ts",
-    "../../e2e/sciobot-native-slots.spec.ts"
+    "../../e2e/sciobot-native-slots.spec.ts",
+    "../../e2e/sciobot-block-controls.config.ts",
+    "../../e2e/sciobot-block-controls.spec.ts"
   ]
 }
