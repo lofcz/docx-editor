@@ -71,6 +71,7 @@ test('tracked payload paste preserves concurrent native peer input through recon
     b.setSelection({ anchor: point, head: point });
     b.insertPlainText('Bob ');
     b.flushPendingInput();
+    const peerOnly = semanticDigest(b.session.currentPackage().parts.values());
     pair.reconnect(0);
     await pair.settle();
     for (const surface of [a, b]) {
@@ -87,6 +88,7 @@ test('tracked payload paste preserves concurrent native peer input through recon
       expect(buildBlockIndex(surface.session.currentPackage()).byId.has('tracked-copy')).toBe(
         false
       );
+      expect(semanticDigest(surface.session.currentPackage().parts.values())).toEqual(peerOnly);
     }
     expect(alice!.exec({ type: 'redo' }).ok).toBe(true);
     await pair.settle();

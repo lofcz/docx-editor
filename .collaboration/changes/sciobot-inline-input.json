@@ -1,0 +1,15 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Inline input and native clipboard integrations had independent lifetimes. Moving the host left listeners on the previous container or document. The test transport re-adopted empty custom XML recovery records after undo.",
+  "after": "Inline input normalizes native atom ranges before clipboard and replacement events. Clipboard leases retain one handler and follow editor attachment. Custom XML adoption leaves completely empty, unlisted recovery records in the registry, without placing them in the document.",
+  "reason": "Input listeners and clipboard leases are local host state. The transport projection retains every shared record, all authored listed nodes, and unlisted payloads with attributes or child content. No shared fields, operations, versions, or payload encodings change.",
+  "tests": [
+    "packages/sciobot/src/react-blocks/inline-input.test.ts",
+    "packages/sciobot/src/react-blocks/upstream-tracked-paste.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-custom-nodes-concurrent.test.ts",
+    "e2e/sciobot-inline-input.spec.ts"
+  ],
+  "changeset": "empty-custom-xml-undo-shells",
+  "migration": null
+}

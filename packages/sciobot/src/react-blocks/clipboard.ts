@@ -310,7 +310,7 @@ function attachBlockClipboard(
 ): BlockClipboard {
   const surface = editor.surface;
   if (!surface) throw new Error('Attach the editor before mounting the block clipboard.');
-  const host = surface.hostElement();
+  let host = surface.hostElement();
   const fail = (error: unknown) =>
     options.onError?.(error instanceof Error ? error : new Error(String(error)));
   const write = (event: Event) => {
@@ -351,14 +351,29 @@ function attachBlockClipboard(
       fail(error);
     }
   };
-  host.addEventListener('copy', onCopy);
-  host.addEventListener('cut', onCut, true);
-  host.addEventListener('paste', onPaste, true);
+  const listen = () => {
+    host.addEventListener('copy', onCopy);
+    host.addEventListener('cut', onCut, true);
+    host.addEventListener('paste', onPaste, true);
+  };
+  const unbind = () => {
+    host.removeEventListener('copy', onCopy);
+    host.removeEventListener('cut', onCut, true);
+    host.removeEventListener('paste', onPaste, true);
+  };
+  const bind = () => {
+    const next = surface.hostElement();
+    if (next === host) return;
+    unbind();
+    host = next;
+    listen();
+  };
+  listen();
+  const stopHost = editor.on('selectionChange', bind);
   return {
     dispose() {
-      host.removeEventListener('copy', onCopy);
-      host.removeEventListener('cut', onCut, true);
-      host.removeEventListener('paste', onPaste, true);
+      stopHost();
+      unbind();
     },
   };
 }

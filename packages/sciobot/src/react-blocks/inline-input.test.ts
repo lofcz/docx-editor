@@ -54,6 +54,32 @@ function clipboard(type: string, target: HTMLElement, data = transfer()) {
   return { event, data };
 }
 
+test('inline normalization follows the editor into another host document', () => {
+  const m = mounted(),
+    input = mountInlineInput(m.editor),
+    frame = document.createElement('iframe');
+  document.body.append(frame);
+  try {
+    const doc = frame.contentDocument!;
+    const slot = doc.createElement('div');
+    doc.body.append(slot);
+    m.editor.attach(slot);
+    m.surface.flushPendingInput();
+    expect(m.surface.hostElement().ownerDocument).toBe(doc);
+    m.select(8, 11);
+    const copy = clipboard('copy', m.pages).data;
+    expect(copy.getData('text/plain')).toBe('Source');
+    expect(JSON.parse(copy.getData(SCIOBOT_BLOCKS_MIME)).blocks[0].id).toBe('source-1');
+    input.dispose();
+    m.select(8, 11);
+    expect(clipboard('copy', m.pages).data.getData('text/plain')).toBe('our');
+  } finally {
+    input.dispose();
+    m.destroy();
+    frame.remove();
+  }
+});
+
 test('partial copy expands to one atom; shared clipboard leases paste once and dispose independently', () => {
   const m = mounted();
   let sequence = 0,
@@ -172,6 +198,33 @@ test('partial native replacement and deletion cannot split a measured payload co
     expect(buildBlockIndex(m.surface.session.currentPackage()).byId.has('source-1')).toBe(false);
     expect(m.editor.exec({ type: 'undo' }).ok).toBe(true);
     expect(m.fingerprint()).toBe(before);
+  } finally {
+    input.dispose();
+    m.destroy();
+  }
+});
+
+test('rapid native typing before a chip preserves the buffered word and the complete payload', () => {
+  const m = mounted(),
+    input = mountInlineInput(m.editor);
+  try {
+    m.select(7);
+    for (const data of 'left ')
+      m.pages.dispatchEvent(
+        new InputEvent('beforeinput', {
+          inputType: 'insertText',
+          data,
+          bubbles: true,
+          cancelable: true,
+        })
+      );
+    m.surface.flushPendingInput();
+    expect(m.text()).toBe('Before left Source after');
+    expect(
+      buildBlockIndex(m.surface.session.currentPackage()).byId.get('source-1')!.payload.attributes
+    ).toEqual({ name: 'Initial' });
+    expect(m.editor.exec({ type: 'undo' }).ok).toBe(true);
+    expect(m.text()).toBe('Before Source after');
   } finally {
     input.dispose();
     m.destroy();

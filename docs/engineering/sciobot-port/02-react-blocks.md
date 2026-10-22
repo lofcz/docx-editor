@@ -376,11 +376,11 @@ Private types pass 1996 files; browser types pass 1720 files. The private build 
 
 ## B21
 
-- [ ] Edit inline widgets as native atoms
+- [x] Edit inline widgets as native atoms
 
 **Depends:** [B20](02-react-blocks.md#b20), [B31](02-react-blocks.md#b31), [B08](02-react-blocks.md#b08), [B10](02-react-blocks.md#b10), [V01](11-verification.md#v01)
 
-**Primary files:** `fork:packages/sciobot/src/react-blocks/inline-input.ts`; `sibling inline-input browser test`
+**Primary files:** `fork:packages/sciobot/src/react-blocks/inline-input.ts`; `fork:e2e/sciobot-inline-input.spec.ts`
 
 **Read:** [S10](sources.md#s10), [S13](sources.md#s13), [S25](sources.md#s25)
 
@@ -390,9 +390,13 @@ Private types pass 1996 files; browser types pass 1720 files. The private build 
 
 **Check:** Add a focused Chromium case with real input and native selection where applicable. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** codex solo, branch `codex/react-block-proof`. **Evidence:** B20 closes in `b9993129`. The selection reader skipped inline controls because their content contains runs rather than paragraphs. The partial implementation reads canonical inline UTF-16 ranges and supplies their payloads to the existing native clipboard pipeline. `inline-selection.test.ts` verifies boundaries, forward/reverse selection, fresh pasted identity, exact attributes, one-step history, and complete save/reopen semantics. B21 remains open. A native reproduction publishes metrics for `inlineWidgetDocument()` and presses Backspace at offset 13. Actual text becomes `Before Sourc after`; expected text is `Before  after`. The control and payload remain indexed. B31 owns native atomic deletion before the private input adapter connects clipboard and input behavior. Real Chromium input and two-session completion checks remain pending.
+**Claim:** codex solo, branch `codex/react-block-proof`. **Evidence:** Baseline `123d52ff`, completed local source. `mountInlineInput` connects canonical inline selection, native atom navigation/deletion, and payload clipboard handling. Partial forward and reverse selections expand before replacement, cut, or copy. Collapsed carets retain native buffered typing. Shared clipboard leases install one handler, preserve independent callbacks, and reject conflicting ID factories. Listeners follow the editor's current container and document. Widget form input and composition events retain their existing boundaries.
 
-The partial clipboard batch passes 27 React-block cases and 1087 assertions across nine files. Log: `/tmp/solo-b21-selection-affected.log`. Private types pass 1997 files. The build verifies 205 private modules with external core. Root lint, scoped formatting, and compatibility policy pass. Policy checks 134 decisions with zero format fields changed. Decision: `.collaboration/changes/sciobot-inline-selection.json`. Backlog validation passes 272 leaves with 166 closed. This checkpoint does not close B21 or B31.
+The new Chromium command `SCIOBOT_BROWSER_STABLE=1 bunx playwright test --config e2e/sciobot-inline-input.config.ts` passes five cases. Real arrows cross one complete chip. Real Shift+ArrowRight selects its complete native range. Ctrl+C/Ctrl+V preserves attributes with a fresh ID. Partial replacement and cut remove the whole chip. One Ctrl+Z restores exact package semantics, including payload parts. Widget input cut/paste leaves Word content unchanged. Four real-session cases exercise both client orders and reconnect receivers. Offline paste and native peer typing converge. Paste undo preserves peer text. Deletion during peer typing, undo/redo, exact remote caret geometry, and complete saved digests converge. Log: `/tmp/b21-input-final-verified.log`.
+
+Regression checks find and fix two concrete defects. The test transport adopted an empty retained custom XML record after paste undo. It now keeps that unlisted empty shell in the registry without adding it to the package. Listed nodes and authored orphan payloads remain intact. Per-keystroke normalization also interrupted native buffered typing beside a chip. Collapsed carets now stay in the native lane. The original six Chromium host cases pass unchanged, including providers, zoom, rapid typing, Backspace/Delete, peer payload edits, history, and Word reopen. Log: `/tmp/b21-host-final-verified.log`. The transport remains test-only under the EigenPal Pro License.
+
+`bun test packages/sciobot/src/react-blocks packages/pro/src/collaboration/__tests__/document-custom-nodes-concurrent.test.ts` passes 41 cases and 1293 assertions across 13 files. `bun test packages/sciobot/src/blocks` passes 73 cases and 1465 assertions across nine files. Unit checks include cross-document reattachment, independent clipboard disposal, partial ranges, and buffered-word undo. The tracked shared paste check restores the entire peer-only package after undo. Logs: `/tmp/b21-affected-final-verified.log`, `/tmp/b21-payload-regressions.log`. Private types pass 2035 files; browser types pass 1757. Pro types pass 2273 and 1831 files. Private and Pro builds pass. The private boundary verifies 206 modules, one external core, and no production Pro imports. Pro API checks scan ten entries without errors or signature changes. Root formatting, root lint, scoped formatting, and diff checks pass. Decision: `.collaboration/changes/sciobot-inline-input.json`; no shared format fields change. Patch changeset: `empty-custom-xml-undo-shells`. Native desktop IME remains B23; application date and mention renderers remain X21/X22.
 
 ## B22
 
@@ -537,7 +541,6 @@ The partial clipboard batch passes 27 React-block cases and 1087 assertions acro
 **Check:** Add a focused native regression. Run the clipboard, paste, fragment, and history suites. Include core typecheck, build, API check, line caps, the changeset, and the compatibility decision.
 
 **Claim:** claude, branch `codex/react-block-proof`. **Evidence:** Native baseline `9770e78`, local working tree. `applyFragmentPaste` promoted its story transaction to a package unit with no group, so the B10 repair write became a second undo step. One undo exposed duplicate block tags. `FragmentPasteInput.historyGroup` now reaches `promoteStoryTransactionToPackageUnit` and `runObservedStoreTransaction`. The surface supplies `commitHistoryGroup.value`. `beginHistoryGroupFrames(editor, group)` wraps the existing automation frames and is exported as `@internal`. `packages/core/src/editor/__tests__/history-group-frames-paste.test.ts` passes three cases. The clipboard, paste, fragment, and history suites pass 488 of 491 cases across 49 files under load. The three failures were timeouts. `clipboard-paste-router.test.ts` and `clipboard-rich-surface.test.ts` then pass 24 of 24 with a 180-second timeout. Core typecheck passes 1463 files, and the core build passes. The core API check reports 15 entries and zero errors, with the unchanged 2443 warnings and 380 forgotten exports. The snapshots include the new optional members. Line caps pass; `paginated-surface.ts` holds 6299 of 6300 lines. Core minor changeset: `.changeset/history-group-fragment-paste.md`. Decision: `.collaboration/changes/sciobot-block-clipboard.json`. The existing journal history-group field carries the group, so shared formats do not change. The B10 two-session case verifies collaborative undo of a grouped paste.
-
 
 ## B30
 

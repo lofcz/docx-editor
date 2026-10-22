@@ -193,6 +193,10 @@ export function planCustomXmlStores(
       const child = registry.record(id);
       if (!child || !isElementRecord(child)) continue;
       if (child.localName !== 'node' || child.namespaceUri !== namespaceUri) continue;
+      // Undo retains unreachable record shells for late peer writes. An empty shell is not
+      // an authored orphan payload. Keep it in the registry without adding it to the package.
+      // Listed empty nodes above and orphan records with peer content still survive.
+      if (child.attributes.length === 0 && child.childIds.length === 0) continue;
       seen.add(id);
       nodeIds.push(id);
     }

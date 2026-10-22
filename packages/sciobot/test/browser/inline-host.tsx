@@ -4,7 +4,13 @@ import { loadDefaultFonts } from '@docx-editor.dev/fonts';
 import { createDocxEditor } from '@docx-editor.dev/core/editor';
 import { caretAt, hitTestSemantic, linesOf } from '@docx-editor.dev/core/layout';
 import { paragraphTextOf, readOoxmlPackage, semanticDigest } from '@docx-editor.dev/core/store';
-import { BlockUi, mountReactInlineHost, type ReactBlockViewProps } from '@sciobot/docx/react';
+import {
+  BlockUi,
+  mountBlockClipboard,
+  mountInlineInput,
+  mountReactInlineHost,
+  type ReactBlockViewProps,
+} from '@sciobot/docx/react';
 import { buildBlockIndex } from '../../src/blocks/block-index';
 import { writeBlockPayload } from '../../src/blocks/payload-part';
 import { createTwoEditorFixture } from '../support/collaboration';
@@ -63,6 +69,17 @@ const hosts = pair.editors.map((editor, peer) =>
     ),
   })
 );
+// An independently mounted block clipboard must share the inline input's native handler.
+const clipboards = pair.editors.map((editor) => mountBlockClipboard(editor));
+const inputs = pair.editors.map((editor) => mountInlineInput(editor));
+const transfers: Record<string, string>[] = [];
+for (const type of ['copy', 'cut'] as const)
+  document.addEventListener(type, (event) => {
+    const data: Record<string, string> = {};
+    for (const format of event.clipboardData?.types ?? [])
+      data[format] = event.clipboardData!.getData(format);
+    transfers.push(data);
+  });
 const surface = (peer = 0) => pair.editors[peer]!.surface!;
 const id = (peer = 0) => surface(peer).session.paragraphIds()[0]!;
 const spanOf = (peer = 0) =>
@@ -73,6 +90,21 @@ let reopened: ReturnType<typeof createDocxEditor> | undefined;
 let reopenedHost: ReturnType<typeof mountReactInlineHost> | undefined;
 const api = {
   events,
+  transfers,
+  blocks: (peer = 0) =>
+    [...buildBlockIndex(surface(peer).session.currentPackage()).byId.values()].map((block) => ({
+      id: block.id,
+      attributes: block.payload.attributes,
+    })),
+  digest: (peer = 0) => semanticDigest(surface(peer).session.currentPackage().parts.values()),
+  async range(anchor: number, head: number, peer = 0) {
+    const paragraphId = id(peer);
+    surface(peer).setSelection({
+      anchor: { paragraphId, offset: anchor },
+      head: { paragraphId, offset: head },
+    });
+    await pair.settle();
+  },
   text: (peer = 0) => paragraphTextOf(surface(peer).session.part(), id(peer)),
   revision: (peer = 0) => surface(peer).session.packageRevision(),
   selection: (peer = 0) => surface(peer).state().selection,
@@ -227,6 +259,8 @@ window.inlineHost = api;
 window.addEventListener(
   'pagehide',
   () => {
+    inputs.forEach((input) => input.dispose());
+    clipboards.forEach((clipboard) => clipboard.dispose());
     hosts.forEach((host) => host.dispose());
     reopenedHost?.dispose();
     reopened?.destroy();
