@@ -77,7 +77,7 @@ for (const clients of [
           expect(result.rejected).toBe(false);
           peerLength += text.length;
         };
-        const check = async (present = true, suffix = ' Peer') => {
+        const check = async (present = true, suffix = ' Peer', tail = '') => {
           const bytes = pair.documents.map((doc) => Y.encodeStateAsUpdate(doc));
           for (const editor of pair.editors) {
             const pkg = editor.surface!.session.currentPackage();
@@ -91,14 +91,16 @@ for (const clients of [
             );
             expect(index.byId.get('retained-3')?.payload.type).toBe(present ? 'source' : undefined);
             expect(paragraphTextOf(editor.surface!.session.part(), neighbor)).toBe(
-              'Neigh' + suffix + 'bor' + (present ? ' A x^2 Ada Paper Z' : '')
+              'Neigh' + suffix + 'bor' + (present ? ' A x^2 Ada Paper Z' : '') + tail
             );
             const revision = readEditorRevision(editor, context.documentId, context.epoch)!;
             const projected = await readWorkingView(editor.surface!.session, revision);
             if (!projected.success) throw Error(projected.error);
             expect(editor.surface!.session.currentPackage()).toBe(pkg);
             expect(key(projected.view.projection.text)).toBe(
-              key((present ? target : original).replace('Neighbor', 'Neigh' + suffix + 'bor'))
+              key(
+                (present ? target : original).replace('Neighbor', 'Neigh' + suffix + 'bor') + tail
+              )
             );
           }
           pair.documents.forEach((doc, index) =>
@@ -119,13 +121,27 @@ for (const clients of [
         await check();
         pair.pause();
         expect(alice!.exec({ type: 'undo' }).ok).toBe(true);
-        type(' More');
+        const peerTail = bob!.surface!.applyAutomationOps(
+          () => [
+            {
+              op: 'insertText',
+              paragraphId: neighbor,
+              offset: paragraphTextOf(bob!.surface!.session.part(), neighbor)!.length,
+              text: ' More',
+            },
+          ],
+          { kind: 'body' },
+          [],
+          false,
+          true
+        );
+        expect(peerTail.rejected).toBe(false);
         pair.reconnect(receiver);
         await pair.settle();
-        await check(false, ' Peer More');
+        await check(false, ' Peer', ' More');
         expect(alice!.exec({ type: 'redo' }).ok).toBe(true);
         await pair.settle();
-        await check(true, ' Peer More');
+        await check(true, ' Peer', ' More');
         expect(bob!.exec({ type: 'undo' }).ok).toBe(true);
         await pair.settle();
         await check();
@@ -135,7 +151,7 @@ for (const clients of [
         expect(bob!.exec({ type: 'redo' }).ok).toBe(true);
         expect(bob!.exec({ type: 'redo' }).ok).toBe(true);
         await pair.settle();
-        await check(true, ' Peer More');
+        await check(true, ' Peer', ' More');
         const offset = paragraphTextOf(bob!.surface!.session.part(), neighbor)!.length;
         bob!.surface!.setSelection({
           anchor: { paragraphId: neighbor, offset },
@@ -173,7 +189,7 @@ for (const clients of [
               );
               if (!projected.success) throw Error(projected.error);
               expect(key(projected.view.projection.text)).toBe(
-                key(target.replace('Neighbor', 'Neigh Peer Morebor'))
+                key(target.replace('Neighbor', 'Neigh Peerbor') + ' More')
               );
             }
             const [a, b] = await reopened.savedDigests();
