@@ -10,6 +10,7 @@ import {
 } from './inline-target';
 import { insertedPayload } from './inserted-blocks';
 import { insertedPayloadProblem } from './inserted-payloads';
+import { jsonDataKey } from './target-key';
 
 /** Resolve new paragraph paths only after the structural executor allocates their native IDs. */
 export type InlineInsertionLocation =
@@ -71,6 +72,38 @@ function freeze<T>(value: T): T {
   }
   return value;
 }
+/** Recognized AST fields only: extension metadata must never disappear into native fallback. */
+function fields(node: TargetAstNode, names: readonly string[]): boolean {
+  return Object.keys(node).every(
+    (key) =>
+      key === 'position' ||
+      names.includes(key) ||
+      (key === 'data' &&
+        node.data !== null &&
+        typeof node.data === 'object' &&
+        !Array.isArray(node.data) &&
+        !Object.keys(node.data).length)
+  );
+}
+function mathFields(node: TargetAstNode): boolean {
+  if (!fields(node, ['type', 'value', 'data'])) return false;
+  if (
+    node.data === undefined ||
+    (node.data !== null &&
+      typeof node.data === 'object' &&
+      !Array.isArray(node.data) &&
+      !Object.keys(node.data).length)
+  )
+    return true;
+  return (
+    jsonDataKey(node.data) ===
+    jsonDataKey({
+      hName: 'code',
+      hProperties: { className: ['language-math', 'math-inline'] },
+      hChildren: [{ type: 'text', value: node.value! }],
+    })
+  );
+}
 /**
  * Plan atoms in a paragraph insertion fragment. New and retained paragraphs share the same
  * coordinate contract. This does not diff existing atom ownership or publish native edits.
@@ -117,6 +150,11 @@ export function planInsertedAtoms(
           : null,
       };
       if (ast.type === 'image') {
+        if (!fields(ast, ['type', 'url', 'alt', 'title']))
+          return fail(
+            'Image extension metadata needs explicit native reconciliation.',
+            'unsupported-operation'
+          );
         if (
           !xmlText(ast.url) ||
           !ast.url ||
@@ -143,6 +181,11 @@ export function planInsertedAtoms(
       const id = allocate();
       let payload: BlockPayload, fallback: string, atom: 'math' | 'mention' | 'source';
       if (ast.type === 'inlineMath') {
+        if (!mathFields(ast))
+          return fail(
+            'Math extension metadata needs explicit native reconciliation.',
+            'unsupported-operation'
+          );
         if (!xmlText(ast.value)) return fail('Inline math needs a literal LaTeX source.');
         const math = createMathPayload(id, 'inline', ast.value);
         payload = math;
@@ -150,11 +193,34 @@ export function planInsertedAtoms(
         atom = 'math';
       } else if (ast.type === 'mention') {
         if (
+          !fields(ast, ['type', 'username', 'displayText', 'children']) ||
+          !Array.isArray(ast.children) ||
+          ast.children.length !== 1 ||
+          ast.children.some(
+            (child) =>
+              !child ||
+              typeof child !== 'object' ||
+              Array.isArray(child) ||
+              child.type !== 'text' ||
+              !fields(child as TargetAstNode, ['type', 'value']) ||
+              !xmlText(child.value)
+          )
+        )
+          return fail(
+            'Mention extension metadata needs explicit native reconciliation.',
+            'unsupported-operation'
+          );
+        if (
           !xmlText(ast.username) ||
           !ast.username ||
           (ast.displayText !== undefined && !xmlText(ast.displayText))
         )
           return fail('A mention needs a stored identifier and literal display text.');
+        if (
+          ast.displayText !== undefined &&
+          (ast.children[0] as TargetAstNode).value !== ast.displayText
+        )
+          return fail('The mention display label and text child disagree.');
         const children = ast.children as TargetAstNode[] | undefined;
         const value =
           typeof ast.displayText === 'string'
@@ -170,6 +236,15 @@ export function planInsertedAtoms(
         fallback = value;
         atom = 'mention';
       } else {
+        if (
+          !fields(ast, ['type', 'name', 'attributes', 'children']) ||
+          !Array.isArray(ast.children) ||
+          ast.children.length
+        )
+          return fail(
+            'Only a complete empty source atom can enter an inline control.',
+            'unsupported-operation'
+          );
         const created = insertedPayload(ast, id);
         if (!created || created.type !== 'source')
           return fail(

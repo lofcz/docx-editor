@@ -209,3 +209,23 @@ test('unsafe coordinates and invalid source characters refuse instead of truncat
     ).toBe(false);
   }
 });
+
+test('unknown semantic atom fields and nested source children never disappear into fallback', () => {
+  for (const atom of [
+    { type: 'image', url: 'asset:one', width: 123 },
+    { type: 'inlineMath', value: 'x', data: { private: 'retain' } },
+    { type: 'mention', username: 'ada', children: [{ type: 'text', value: 'Ada', private: true }] },
+    {
+      type: 'mdxJsxTextElement',
+      name: 'source',
+      attributes: [],
+      children: [{ type: 'mdxJsxTextElement', name: 'widget', attributes: [], children: [] }],
+    },
+  ]) {
+    const result = planInsertedAtoms(
+      { pkg: packageOf(), location: { kind: 'new-paragraph', path: [0] }, offset: 0 },
+      { type: 'paragraph', children: [atom] }
+    );
+    expect(result).toMatchObject({ success: false, code: 'unsupported-operation' });
+  }
+});
