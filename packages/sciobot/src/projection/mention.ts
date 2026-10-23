@@ -17,13 +17,13 @@ export function serializeMention(payload: BlockPayload): SerializedBlockTag {
   return {
     tag: 'mention',
     text,
-    // Escapes/entities make raw value slices unreliable. Whole atom property ownership stays exact.
+    // Field ranges distinguish label syntax from identifier syntax. Escapes have no direct value slice.
     properties: ['key', 'value'].map((property) => ({
       name: property,
       property,
       path: [property],
-      start: 0,
-      end: text.length,
+      start: property === 'key' ? label.length + 2 : 0,
+      end: property === 'key' ? text.length : label.length + 2,
       valueStart: null,
       valueEnd: null,
     })),

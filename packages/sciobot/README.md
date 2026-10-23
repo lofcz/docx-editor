@@ -306,6 +306,6 @@ The payload preserves exact display text and optional private attributes, includ
 Native fallback text replaces display line boundaries with spaces; an empty display uses the key as fallback.
 Markdown uses the existing `[label](mention:identifier)` syntax with escaped labels and encoded identifiers.
 Labels can contain literal Markdown, line boundaries, empty text, and at-signs without creating nested mentions.
-Source properties retain whole-atom ownership; escaped values have no direct substring write range.
+Source property spans distinguish label syntax from identifier syntax; escaped values have no direct substring write range.
 Mentions use locked inline controls and one native history unit. Prepare shared documents before room bootstrap.
 X22 still owns browser suggestions and mention controls. D30 still owns AI insertion execution.

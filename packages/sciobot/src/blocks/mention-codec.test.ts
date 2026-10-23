@@ -102,3 +102,31 @@ test('unknown versions stay opaque; invalid sources and executable attributes re
   ).toThrow();
   expect(called).toBe(false);
 });
+
+test('label and identifier syntax have distinct property ownership without false value slices', () => {
+  const value = serializeMention(createMentionPayload('m', 'user', 'Ada'));
+  expect(value).toEqual({
+    tag: 'mention',
+    text: '[Ada](mention:user)',
+    properties: [
+      {
+        name: 'key',
+        property: 'key',
+        path: ['key'],
+        start: 5,
+        end: 19,
+        valueStart: null,
+        valueEnd: null,
+      },
+      {
+        name: 'value',
+        property: 'value',
+        path: ['value'],
+        start: 0,
+        end: 5,
+        valueStart: null,
+        valueEnd: null,
+      },
+    ],
+  });
+});
