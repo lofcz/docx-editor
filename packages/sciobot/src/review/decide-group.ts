@@ -1,3 +1,5 @@
+import { preparePresenceDecision } from './prepare-presence-decision';
+import { decodeBlockPresenceRecord } from './block-presence-schema';
 import type { DocxEditorInstance } from '@docx-editor.dev/core/editor';
 import {
   applyTreeOp,
@@ -145,9 +147,35 @@ function commitGroupDecision(
         for (const member of group.properties) {
           const entry =
             proposals.status === 'ready' ? proposals.records.get(member.proposalId) : undefined;
-          if (!entry || entry.decoded.status !== 'supported') {
+          if (!entry) {
             result = fail('The current application proposal is missing.', 'invalid-document');
             return { committed: false, reason: result.error };
+          }
+          if (entry.decoded.status !== 'supported') {
+            if (decodeBlockPresenceRecord(entry.raw).status !== 'supported') {
+              result = fail('Unsupported application proposal version.', 'unsupported-operation');
+              return { committed: false, reason: result.error };
+            }
+            const presence = preparePresenceDecision(
+              pkg,
+              member.proposalId,
+              member.blockId,
+              input.decision
+            );
+            if (!presence.success) {
+              result = presence;
+              return { committed: false, reason: result.error };
+            }
+            if (group.native.length) {
+              result = fail('Presence ownership cannot absorb native revisions.');
+              return { committed: false, reason: result.error };
+            }
+            partOps.set(presence.partName, [
+              ...(partOps.get(presence.partName) ?? []),
+              ...presence.ops,
+            ]);
+            edits.push(presence.apply);
+            continue;
           }
           const prepared = preparePayloadProposalDecision(
             pkg,

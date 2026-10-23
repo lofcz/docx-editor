@@ -4,13 +4,15 @@ import { DEFAULT_PAYLOAD_LIMITS } from '../blocks/payload-schema';
 import { copyBoundedJson } from '../data/json';
 import { readReviewGroups, type NativeReviewGroup } from './groups';
 import type { PendingPropertyProposal } from './property-projection';
-import { readStoredPropertyProposals } from './stored-property-proposals';
+import { readApplicationProposals } from './application-proposals';
+import type { BlockPresenceRecord } from './block-presence-schema';
 
 /** A read projection of the loaded DOCX. It stores no chat or document session state. */
 export interface RestoredReviewState {
   readonly revision: RevisionToken;
   readonly groups: readonly NativeReviewGroup[];
   readonly pendingProperties: readonly PendingPropertyProposal[];
+  readonly pendingPresence: readonly BlockPresenceRecord[];
   /** Pending read-only groups remain visible until their ownership is reconciled. */
   readonly hasPendingReview: boolean;
   /** Intrinsic group eligibility. Native permissions and history gates still apply on decisions. */
@@ -49,14 +51,15 @@ export function restoreReviewState(
     epoch: token.epoch,
     revision: token.revision,
   });
-  const properties = readStoredPropertyProposals(pkg, current);
+  const properties = readApplicationProposals(pkg, current);
   if (!properties.success) return properties;
   return Object.freeze({
     success: true,
     state: Object.freeze({
       revision: current,
       groups: groups.groups,
-      pendingProperties: properties.pending,
+      pendingProperties: properties.properties,
+      pendingPresence: properties.presence,
       hasPendingReview: groups.groups.length > 0,
       reviewableGroupIds: Object.freeze(
         groups.groups.filter((group) => !group.readOnly).map((group) => group.id)

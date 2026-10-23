@@ -4,7 +4,11 @@ import {
   type ExportSemanticLayout,
   type OpenDocumentForExportOptions,
 } from '@docx-editor.dev/core/export';
-import type { HeadlessDocumentView } from '@docx-editor.dev/core/store';
+import {
+  TreePackageStore,
+  headlessViewOfStore,
+  type HeadlessDocumentView,
+} from '@docx-editor.dev/core/store';
 import {
   sameRevision,
   type DocumentView,
@@ -13,7 +17,7 @@ import {
 } from '../contracts/document';
 import { projectMdx, type MdxProjection } from '../projection/mdx';
 import { projectPendingProperties, type PendingPropertyProposal } from './property-projection';
-import { readStoredPropertyProposals } from './stored-property-proposals';
+import { readApplicationProposals, projectApplicationPresence } from './application-proposals';
 
 export type ReviewViewOptions = Pick<
   OpenDocumentForExportOptions,
@@ -65,18 +69,33 @@ export async function readNativeReviewView(
   const before = actualRevision(source, expected);
   if (!sameRevision(expected, before)) return stale(expected, before);
   const pkg = source.currentPackage(),
-    stored = readStoredPropertyProposals(pkg, expected);
+    stored = readApplicationProposals(pkg, expected);
   if (!stored.success) return stored;
   const properties = projectPendingProperties(
     pkg,
     expected,
-    [...stored.pending, ...(options.pendingProperties ?? [])],
+    [...stored.properties, ...(options.pendingProperties ?? [])],
     kind
   );
   if (!properties.success) return properties;
+  const presence = projectApplicationPresence(properties.pkg, stored.presence, kind);
+  if (!presence.success) return presence;
+  const projectedSource =
+    presence.pkg === properties.pkg
+      ? source
+      : headlessViewOfStore(
+          new TreePackageStore(presence.pkg, presence.pkg.parts.get(presence.pkg.mainDocumentPart)!)
+        );
+  const layoutSource =
+    projectedSource === source
+      ? source
+      : {
+          ...projectedSource,
+          packageRevision: () => expected.revision,
+        };
   const displayMode = kind === 'committed' ? 'original' : 'proposed';
   const { pendingProperties: _pendingProperties, tableSyntax, ...nativeOptions } = options;
-  const opened = openDocumentForExport(source, {
+  const opened = openDocumentForExport(layoutSource, {
     ...nativeOptions,
     displayMode,
     reuseAcrossRevisions: false,
@@ -91,7 +110,7 @@ export async function readNativeReviewView(
     const layout = await opened.session.layout();
     const after = actualRevision(source, expected);
     if (!sameRevision(expected, after)) return stale(expected, after);
-    const projected = projectMdx(properties.pkg, layout, expected, undefined, { tableSyntax });
+    const projected = projectMdx(presence.pkg, layout, expected, undefined, { tableSyntax });
     if (!projected.success) return projected;
     return {
       success: true,

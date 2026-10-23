@@ -1,3 +1,5 @@
+import { decodeBlockPresenceRecord } from './block-presence-schema';
+import { bindBlockPresenceRecord } from './block-presence-plan';
 import {
   collectRevisionSites,
   isStoryPart,
@@ -232,10 +234,76 @@ function derive(
   if (store.status === 'invalid') throw new Error(store.reason);
   const decisions = readPayloadGroupDecisions(pkg);
   if (decisions.status === 'invalid') throw new Error(decisions.reason);
+  const presenceOwners = new Map<string, number>(),
+    propertyOwners = new Set<string>();
   if (store.status === 'ready')
     for (const entry of store.records.values()) {
-      if (entry.decoded.status !== 'supported')
-        throw new Error('Unsupported application proposal version in review groups.');
+      const record = entry.decoded.status === 'supported' ? entry.decoded.value : null;
+      const presence = record ? null : decodeBlockPresenceRecord(entry.raw);
+      if (record) {
+        for (const block of record.blocks)
+          if (
+            !decisions.decisions.has(payloadGroupDecisionKey(entry.id, block.blockId)) ||
+            decisions.decisions.get(payloadGroupDecisionKey(entry.id, block.blockId))?.status ===
+              'conflict'
+          )
+            propertyOwners.add(block.blockId);
+      } else if (presence?.status === 'supported') {
+        for (const block of presence.value.blocks)
+          if (
+            !decisions.decisions.has(payloadGroupDecisionKey(entry.id, block.blockId)) ||
+            decisions.decisions.get(payloadGroupDecisionKey(entry.id, block.blockId))?.status ===
+              'conflict'
+          )
+            for (const member of block.members)
+              presenceOwners.set(
+                member.payload.id,
+                (presenceOwners.get(member.payload.id) ?? 0) + 1
+              );
+      }
+    }
+  if (store.status === 'ready')
+    for (const entry of store.records.values()) {
+      if (entry.decoded.status !== 'supported') {
+        const presence = decodeBlockPresenceRecord(entry.raw);
+        if (presence.status !== 'supported')
+          throw new Error('Unsupported application proposal version in review groups.');
+        for (const block of presence.value.blocks) {
+          const disposition = decisions.decisions.get(
+            payloadGroupDecisionKey(entry.id, block.blockId)
+          );
+          if (disposition && disposition.status !== 'conflict') continue;
+          const bucket = newBucket(payloadGroupId(entry.id, block.blockId));
+          bucket.properties.push({ proposalId: entry.id, blockId: block.blockId });
+          const native = index.byId.get(block.blockId),
+            path = native && paths.get(keyOf(native.partName, native.controlId));
+          bucket.readOnly =
+            !!disposition ||
+            block.members.some(
+              (member) =>
+                propertyOwners.has(member.payload.id) ||
+                (presenceOwners.get(member.payload.id) ?? 0) > 1
+            ) ||
+            !bindBlockPresenceRecord(pkg, { ...presence.value, blocks: [block] }).success;
+          if (!native || !path) {
+            bucket.readOnly = true;
+            continue;
+          }
+          const fallback = atomicFallbackParagraph(
+            pkg.parts.get(native.partName)!,
+            native.controlId
+          );
+          bucket.anchor = {
+            partName: native.partName,
+            nodeId: native.controlId,
+            path,
+            paragraphId: fallback?.id ?? null,
+            offset: 0,
+          };
+          marked.set(bucket.id!, bucket);
+        }
+        continue;
+      }
       const record = entry.decoded.value;
       for (const block of record.blocks) {
         const disposition = decisions.decisions.get(
@@ -246,7 +314,7 @@ function derive(
           native = index.byId.get(block.blockId),
           path = native && paths.get(keyOf(native.partName, native.controlId));
         bucket.properties.push({ proposalId: record.id, blockId: block.blockId });
-        if (disposition) bucket.readOnly = true;
+        if (disposition || presenceOwners.has(block.blockId)) bucket.readOnly = true;
         marked.set(bucket.id!, bucket);
         if (!native || !path || native.payload.type !== block.type) {
           bucket.readOnly = true;

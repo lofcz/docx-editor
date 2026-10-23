@@ -1,0 +1,16 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Presence primitives were dormant. Application review views and decisions rejected version-two records.",
+  "after": "Private combined reads admit validated property and presence records, retain causal bridges, and derive absent-side layout without live writes. Stable groups resolve exact presence roots through guarded native history. Removed payload records retire by identity while retaining empty shared-history shells.",
+  "reason": "The writer remains internal and production authoring stays disabled. The change reuses existing custom XML records, per-block decision receipts, canonical operations, and shared history protocols. No shared format fields or published package source change. Mixed capability admission remains required before enabling authoring.",
+  "tests": [
+    "packages/sciobot/src/review/application-proposals.test.ts",
+    "packages/sciobot/src/review/block-presence-lifecycle.test.ts",
+    "packages/sciobot/src/review/block-presence-shared-decisions.test.ts",
+    "packages/sciobot/src/review/groups.test.ts",
+    "packages/sciobot/src/review/payload-group-decisions-collaboration.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

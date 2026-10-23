@@ -3,7 +3,7 @@ import { buildBlockIndex } from '../blocks/block-index';
 import type { NativeEditFailure, RevisionToken } from '../contracts/document';
 import { createEditPlan, type CanonicalEdit } from '../diff/plan';
 import { createPendingPropertyProposal, type PendingPropertyProposal } from './property-projection';
-import { readPropertyReviewStore } from './property-record-store';
+import { type StoredPropertyRecord, readPropertyReviewStore } from './property-record-store';
 import { ATOMIC_PAYLOAD_CHANGE, ATOMIC_REVIEW_EXECUTOR } from './property-record-schema';
 import { readPayloadGroupDecisions, payloadGroupDecisionKey } from './payload-group-decisions';
 
@@ -18,12 +18,20 @@ export function readStoredPropertyProposals(
   if (store.status === 'absent') return { success: true, pending: Object.freeze([]) };
   if (store.status === 'invalid')
     return { success: false, code: 'invalid-document', error: store.reason };
+  return bindStoredPropertyProposals(pkg, revision, store.records);
+}
+/** Bind an admitted version-one subset. Combined readers retain the complete causal ancestry. */
+export function bindStoredPropertyProposals(
+  pkg: OoxmlPackage,
+  revision: RevisionToken,
+  records: ReadonlyMap<string, StoredPropertyRecord>
+): ReturnType<typeof readStoredPropertyProposals> {
   const decisions = readPayloadGroupDecisions(pkg);
   if (decisions.status === 'invalid')
     return { success: false, code: 'invalid-document', error: decisions.reason };
   const index = buildBlockIndex(pkg),
     pending: PendingPropertyProposal[] = [],
-    remaining = new Map(store.records),
+    remaining = new Map(records),
     ancestors = new Map<string, Set<string>>(),
     lastProperty = new Map<string, string>();
   // Node order and wall clocks cannot establish proposal causality after concurrent materialization.
