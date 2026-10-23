@@ -3,7 +3,7 @@ Copyright (c) 2026 EigenPal, Inc. All rights reserved.
 Licensed under the EigenPal Pro Evaluation License 1.0 — see packages/pro/LICENSE.md.
 Production use requires a commercial agreement: licensing@eigenpal.com
 */
-import type { LogicalId } from './identity.ts';
+import { asLogicalId, type LogicalId } from './identity.ts';
 import type { DocumentRegistry } from './registry.ts';
 import type { SharedEffect } from './shared-effect.ts';
 /** A canonical splice addresses the visible prefix, not retained hidden birth scaffolds. */
@@ -22,7 +22,8 @@ export function applyBirthChildSplice(
   // Delete only the observed visible entries. Hidden births can still receive late peer edits.
   const children = array.toArray();
   for (let at = children.length - 1; at >= 0; at--)
-    if (remove.has(children[at]!)) registry.spliceChildren(effect.parentLogicalId, at, 1, []);
+    if (remove.has(asLogicalId(children[at]!)))
+      registry.spliceChildren(effect.parentLogicalId, at, 1, []);
   if (!effect.childLogicalIds.length) return;
   const remaining = array.toArray();
   const right = splice.right === null ? -1 : remaining.indexOf(splice.right);

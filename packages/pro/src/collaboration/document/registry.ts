@@ -242,13 +242,7 @@ export class DocumentRegistry {
     ];
   }
 
-  /**
-   * The `deleteFilter` an undo manager over {@link trackedTypes} has to be built with.
-   *
-   * Undo reverses `nodes.set(id, record)` by deleting the record, and a deleted record takes a
-   * peer's concurrently typed characters with it, unreachably. See
-   * {@link nodeRecordDeleteFilter}. Omitting this is silent data loss, not a missing nicety.
-   */
+  /** Retain node records, shared containers and table ancestry needed by peer edits. */
   undoDeleteFilter(): (item: Y.Item) => boolean {
     const filter = this.numberingDependencies.deleteFilter();
     return (item) => !this.birthDependencies.retains(item) && filter(item);

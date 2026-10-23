@@ -80,6 +80,51 @@ export class BirthUndoDependencies {
         }
       }
     }
+    // Paragraph splitting and run formatting already own their relocation history.
+    // This hook retains newly allocated table structures and their descendants only.
+    const anchors = new Set(
+      [...this.born].filter((id) => {
+        const record = this.registry.record(id);
+        return (
+          record &&
+          isElementRecord(record) &&
+          ['table', 'tableRow', 'tableCell'].includes(record.kind)
+        );
+      })
+    );
+    const tables = new Set<LogicalId>();
+    for (const id of anchors) {
+      const record = this.registry.record(id);
+      if (!record || !isElementRecord(record)) continue;
+      const row = this.registry.parentOf(id);
+      if (record.kind !== 'tableCell' || !row || anchors.has(row)) continue;
+      const table = this.registry.parentOf(row);
+      if (table) tables.add(table);
+    }
+    const belongs = (id: LogicalId) => {
+      const seen = new Set<LogicalId>();
+      let grid = false;
+      for (
+        let at: LogicalId | null = id;
+        at && seen.size < this.registry.limits.maxTreeDepth;
+        at = this.registry.parentOf(at)
+      ) {
+        if (anchors.has(at)) return true;
+        if (seen.has(at)) return false;
+        seen.add(at);
+        const record = this.registry.record(at);
+        if (
+          record &&
+          isElementRecord(record) &&
+          record.namespaceUri === W &&
+          record.localName === 'tblGrid'
+        )
+          grid = true;
+        if (grid && tables.has(at)) return true;
+      }
+      return false;
+    };
+    for (const id of this.born) if (!belongs(id)) this.born.delete(id);
     // This mutation belongs to the undo transaction. Redo reverses these markers too.
     for (const id of this.born) this.registry.schema.nodes.get(id)?.set(NODE_UNDONE_FIELD, true);
     // Split mixed array chunks, so retaining a born child never retains an unrelated move.
