@@ -119,14 +119,13 @@ export async function normalizeRecompositionTarget(
   if (!read.success) return read;
   const changed = fresh();
   if (changed) return changed;
-  let planningMarkdown = target.markdown;
-  if (read.projection.cells.some((cell) => cell.paragraphIds.length > 1)) {
-    const gfm = await readTargetPackage(visual.pkg, revision, view, 'gfm');
-    if (!gfm.success) return gfm;
-    const changedDuringSyntax = fresh();
-    if (changedDuringSyntax) return changedDuringSyntax;
-    planningMarkdown = preserveUnchangedTableSyntax(target, gfm.projection, read.projection);
-  }
+  // An unchanged merged table needs native syntax even with one visible paragraph per cell.
+  // Compare complete table syntax before planning, regardless of visible paragraph counts.
+  const gfm = await readTargetPackage(visual.pkg, revision, view, 'gfm');
+  if (!gfm.success) return gfm;
+  const changedDuringSyntax = fresh();
+  if (changedDuringSyntax) return changedDuringSyntax;
+  const planningMarkdown = preserveUnchangedTableSyntax(target, gfm.projection, read.projection);
   const plan = planTargetDocument(
     { pkg: visual.pkg, revision, projection: read.projection },
     planningMarkdown,
