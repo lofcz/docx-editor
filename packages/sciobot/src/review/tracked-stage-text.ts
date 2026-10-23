@@ -1,5 +1,7 @@
 import {
   collectRevisionSites,
+  findNode,
+  paragraphOffsetIndex,
   paragraphTextOf,
   prepareTrackedRunOrigins,
   withPart,
@@ -37,6 +39,23 @@ export function stageTrackedText(
     revision.date
   );
   if (!prepared.success) refuseWrite(prepared.error, prepared.code);
+  const paragraph = findNode(before, first.paragraphId);
+  if (paragraph?.kind !== 'paragraph')
+    refuseWrite('The native text paragraph disappeared.', 'invalid-document');
+  const offsets = paragraphOffsetIndex(paragraph);
+  for (const site of collectRevisionSites(before)) {
+    if (site.node.kind !== 'revisionInsert' && site.node.kind !== 'revisionDelete') continue;
+    const span = offsets.spanOf(site.node);
+    if (
+      span &&
+      edits.some((edit) =>
+        edit.start === edit.end
+          ? span.start < edit.start && edit.start < span.end
+          : span.start < edit.end && edit.start < span.end
+      )
+    )
+      refuseWrite('Replacement would change an unselected revision.', 'ambiguous-target');
+  }
   let runOriginScope: string | undefined;
   writer.edit((pkg) => {
     const marked = prepareTrackedRunOrigins(pkg.parts.get(before.name)!, first.paragraphId, edits);
