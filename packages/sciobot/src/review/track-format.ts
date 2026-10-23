@@ -1,5 +1,5 @@
 import type { DocxEditorInstance } from '@docx-editor.dev/core/editor';
-import type { CanonicalEditPlan } from '../diff/plan';
+import { serializeEditPlan, type CanonicalEditPlan } from '../diff/plan';
 import { fail } from './tracked-structure';
 import type { TrackTextContext } from './tracked-inline';
 import { replaceOwnedProposals } from './replace-owned-proposals';
@@ -10,7 +10,13 @@ export function trackFormatPlan(
   plan: CanonicalEditPlan,
   context: TrackTextContext
 ) {
-  if (plan.operations.some((edit) => edit.kind !== 'format' && edit.kind !== 'list'))
+  let copied: CanonicalEditPlan;
+  try {
+    copied = JSON.parse(serializeEditPlan(plan)) as CanonicalEditPlan;
+  } catch (cause) {
+    return fail(cause instanceof Error ? cause.message : String(cause), 'invalid-input');
+  }
+  if (copied.operations.some((edit) => edit.kind !== 'format' && edit.kind !== 'list'))
     return fail('This executor accepts formatting and list plans only.', 'unsupported-operation');
-  return replaceOwnedProposals(editor, [], plan, context);
+  return replaceOwnedProposals(editor, [], copied, context);
 }

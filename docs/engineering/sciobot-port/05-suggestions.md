@@ -160,6 +160,8 @@ The complete-package oracle adds four passing cases and 28 assertions in `/tmp/r
 
 Five malformed-input cases expose a wrapper exception before the coordinator validates the plan: `/tmp/r06-validation-repro.log`. Keep these regressions. Fix the wrapper in a separate checkout while the 231-file run retains its exact source. The frozen runtime is `e228477a`; `/tmp/r06-frozen-source.json` records 4124 inputs. R06 remains open.
 
+The final guard checkout is `/tmp/sciobot-docx-r06-final`, branch `codex/r06-format-final`. The wrapper validates and copies the bounded canonical plan before dispatch. Five malformed inputs now return `invalid-input` without package, revision, or history writes. All five complete affected files pass 69 cases and 1232 assertions in `/tmp/r06-final-focused.log`. Private types pass 2062 files in `/tmp/r06-guard-types.log`. The private build verifies 217 modules with core external in `/tmp/r06-guard-build.log`. Root lint passes with inherited warnings in `/tmp/r06-guard-root-lint.log`; scoped formatting passes in `/tmp/r06-guard-format.log`. The broad frozen run remains on the original isolated runtime. Its result and exact source check must finish before closure; the final wrapper and two added test files have the separate five-file verification above.
+
 ## R07
 
 - [x] Execute tracked table cell edits

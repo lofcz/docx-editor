@@ -2,13 +2,14 @@
   "impact": "compatible",
   "fields": [],
   "before": "The private formatting executor was absent and ordinary list proposals entered a checklist-only stage.",
-  "after": "The private executor uses existing native run and paragraph property revisions, numbering allocation, and checklist snapshots in one owned review transaction.",
+  "after": "The private executor uses existing native run and paragraph property revisions, numbering allocation, and checklist snapshots in one owned review transaction. Malformed plans return typed failure results before document or history writes.",
   "reason": "The application adapter emits existing canonical operations and native revision records. Numbering identities, property snapshots, review group records, undo ownership, and provider schema retain their existing representation and meaning. No published engine or provider source changes in this tranche.",
   "tests": [
     "packages/sciobot/src/review/track-format.test.ts",
     "packages/sciobot/src/review/track-format-collaboration.test.ts",
     "packages/sciobot/src/review/track-format-marks-collaboration.test.ts",
-    "packages/sciobot/src/review/track-format-package.test.ts"
+    "packages/sciobot/src/review/track-format-package.test.ts",
+    "packages/sciobot/src/review/track-format-validation.test.ts"
   ],
   "changeset": null,
   "migration": null
