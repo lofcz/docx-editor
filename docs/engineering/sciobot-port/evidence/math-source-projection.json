@@ -1,0 +1,235 @@
+{
+  "schemaVersion": 1,
+  "leaf": "D30",
+  "status": "in-progress",
+  "runtimeSource": "7ffd2836",
+  "sourceHashes": {
+    "packages/sciobot/src/projection/math.ts": "8c464fca3f7718c3b3e00aef32274b1be04a862709a2963746058cc6632f9d32",
+    "packages/sciobot/src/projection/native-math.ts": "918a8a1bda9997557e2b966421475f0a096320288b258723f3544ab238c852bf",
+    "packages/sciobot/src/projection/math.test.ts": "72d32c44ab2edb47144cb4adf720848c8e58d2683cfea52749a3d30563119a4e",
+    "packages/sciobot/src/projection/block-tags.ts": "d6330ffbb128477cbfdcdfce53cf5323302a9be9de4af738b4beacad44c7e5fb",
+    "packages/sciobot/src/projection/parse-target.ts": "a15a51194da59bb29efc4aa382a04d5be688e125412c0c4cb6202766c840745d",
+    "packages/sciobot/src/diff/domain-ast.ts": "feb2f7b6f467fc0fb99ec801df390b5317bff5b9b9381917170d3f5363c1022c",
+    "packages/sciobot/src/diff/logical-blocks.ts": "3999e9069f5d1eed07f5f8c140b04fa3e15b0ac73eb1e5c3f173663912b9a21b",
+    "packages/sciobot/src/diff/inserted-atoms.ts": "6649c8e444ff19ccac32ceffe5d97df5ccc3f91827c9b8f26ed9bfcefd044311",
+    "packages/sciobot/src/diff/inserted-blocks.ts": "1064fa093a89b5d21ec7f6918e85586e4e67ce56b22ff97f0e45c3a0bcd43f22",
+    "packages/sciobot/src/diff/inserted-cell-fragments.ts": "ead95b77a46bd4de723c5aa8781838c787494dede09ba23cdd6d6d7f7b831024",
+    "packages/sciobot/src/diff/inserted-fragment-policy.ts": "e4cee2b8169a9aa9af69abd2dbc90f9aa60d52c260d78c3d06a4cd2741e4eeb5",
+    "packages/sciobot/src/diff/fragment-seeds.ts": "8ce432028e1ccd1759abda53dd0777e393b4231c24a3d0a83a542fd7cc7ce2e0",
+    "packages/sciobot/src/blocks/math-projection.test.ts": "8fd5f8290dfb5fffef4c911cddada19233e4813786955b196510486525ed66ec",
+    "packages/sciobot/src/blocks/math-projection-collaboration.test.ts": "1f6cb13647d8600e58cb049fe4ffbd73ab7fe3c46d26a9c6e2c4c6636bfba009"
+  },
+  "implemented": [
+    "Application inline/display equations project standard math fences only when their source and kind survive the application normalization pipeline exactly.",
+    "Reserved scio-inline-equation/scio-equation data tags preserve other sources. Exact literal forms normalize to the same math AST as ordinary fences, including empty and multiline inline sources.",
+    "Inline pipe sources remain exact in GFM cells; escaped source properties have no unsafe substring write range.",
+    "Numeric-looking original sources remain strings. Unknown attributes, duplicate fields, children, expressions, fence metadata and unknown AST extensions do not silently become equation payloads.",
+    "New display equations carry validated source payloads through D01 sibling bindings. The direct native materializer inserts readable multiline Word fallback, payload records, native identities and independent history together.",
+    "Native math bypasses opaque React admission. Ordinary equation/inline_equation React tags retain their opaque AST and payload through source reads, unchanged native planning and DOCX reopening.",
+    "No-op planning preserves existing application equations and exact imported inline/display OMML. Four real shared scenarios preserve peer text, both histories, geometry and DOCX/room convergence."
+  ],
+  "sourceTests": {
+    "revision": "7ffd2836",
+    "pass": 1014,
+    "fail": 0,
+    "assertions": 23720,
+    "files": [
+      "packages/sciobot/src/ai/apply-direct.test.ts",
+      "packages/sciobot/src/ai/change-ledger.test.ts",
+      "packages/sciobot/src/ai/direct-baseline.test.ts",
+      "packages/sciobot/src/ai/playback.test.ts",
+      "packages/sciobot/src/blocks/block-index.test.ts",
+      "packages/sciobot/src/blocks/insert.test.ts",
+      "packages/sciobot/src/blocks/math-codec.test.ts",
+      "packages/sciobot/src/blocks/math-collaboration.test.ts",
+      "packages/sciobot/src/blocks/math-insert.test.ts",
+      "packages/sciobot/src/blocks/math-projection-collaboration.test.ts",
+      "packages/sciobot/src/blocks/math-projection.test.ts",
+      "packages/sciobot/src/blocks/mention-codec.test.ts",
+      "packages/sciobot/src/blocks/mention-collaboration.test.ts",
+      "packages/sciobot/src/blocks/mention-insert.test.ts",
+      "packages/sciobot/src/blocks/move.test.ts",
+      "packages/sciobot/src/blocks/payload-concurrency-collaboration.test.ts",
+      "packages/sciobot/src/blocks/payload-fields.test.ts",
+      "packages/sciobot/src/blocks/payload-label-collaboration.test.ts",
+      "packages/sciobot/src/blocks/payload-label.test.ts",
+      "packages/sciobot/src/blocks/payload-opc-codec.test.ts",
+      "packages/sciobot/src/blocks/payload-part.test.ts",
+      "packages/sciobot/src/blocks/payload-schema.test.ts",
+      "packages/sciobot/src/blocks/remove.test.ts",
+      "packages/sciobot/src/diff/atomic-blocks.test.ts",
+      "packages/sciobot/src/diff/bind-source.test.ts",
+      "packages/sciobot/src/diff/domain-containers.test.ts",
+      "packages/sciobot/src/diff/domain-properties.test.ts",
+      "packages/sciobot/src/diff/domain-strategies.test.ts",
+      "packages/sciobot/src/diff/fragment-seeds.test.ts",
+      "packages/sciobot/src/diff/inline-target.test.ts",
+      "packages/sciobot/src/diff/inserted-atoms.test.ts",
+      "packages/sciobot/src/diff/inserted-blocks.test.ts",
+      "packages/sciobot/src/diff/inserted-cell-lists.test.ts",
+      "packages/sciobot/src/diff/inserted-list-types.test.ts",
+      "packages/sciobot/src/diff/inserted-table-columns.test.ts",
+      "packages/sciobot/src/diff/inserted-table-rows.test.ts",
+      "packages/sciobot/src/diff/insertion-marks.test.ts",
+      "packages/sciobot/src/diff/lists.test.ts",
+      "packages/sciobot/src/diff/logical-blocks.test.ts",
+      "packages/sciobot/src/diff/new-cell-list-context.test.ts",
+      "packages/sciobot/src/diff/new-cell-properties-review.test.ts",
+      "packages/sciobot/src/diff/paragraph-format.test.ts",
+      "packages/sciobot/src/diff/paragraph-text-collaboration.test.ts",
+      "packages/sciobot/src/diff/paragraph-text.test.ts",
+      "packages/sciobot/src/diff/plan-target.test.ts",
+      "packages/sciobot/src/diff/plan.test.ts",
+      "packages/sciobot/src/diff/run-format.test.ts",
+      "packages/sciobot/src/diff/sibling-blocks.test.ts",
+      "packages/sciobot/src/diff/table-cells.test.ts",
+      "packages/sciobot/src/diff/table-columns.test.ts",
+      "packages/sciobot/src/diff/table-format-collaboration.test.ts",
+      "packages/sciobot/src/diff/table-format.test.ts",
+      "packages/sciobot/src/diff/table-geometry.test.ts",
+      "packages/sciobot/src/diff/table-grid-split-collaboration.test.ts",
+      "packages/sciobot/src/diff/table-merge-index-collaboration.test.ts",
+      "packages/sciobot/src/diff/table-merges.test.ts",
+      "packages/sciobot/src/diff/table-rows-collaboration.test.ts",
+      "packages/sciobot/src/diff/table-rows.test.ts",
+      "packages/sciobot/src/diff/target-atomic.test.ts",
+      "packages/sciobot/src/diff/target-barriers.test.ts",
+      "packages/sciobot/src/diff/target-c01-matrix.test.ts",
+      "packages/sciobot/src/diff/target-cell-paragraphs.test.ts",
+      "packages/sciobot/src/diff/target-inline-code.test.ts",
+      "packages/sciobot/src/diff/target-links.test.ts",
+      "packages/sciobot/src/diff/target-lists.test.ts",
+      "packages/sciobot/src/diff/target-new-cell-lists-collaboration.test.ts",
+      "packages/sciobot/src/diff/target-new-cell-lists.test.ts",
+      "packages/sciobot/src/diff/target-new-cell-properties-collaboration.test.ts",
+      "packages/sciobot/src/diff/target-new-cell-properties.test.ts",
+      "packages/sciobot/src/diff/target-quotes.test.ts",
+      "packages/sciobot/src/diff/target-source.test.ts",
+      "packages/sciobot/src/diff/target-structure.test.ts",
+      "packages/sciobot/src/diff/target-table-columns.test.ts",
+      "packages/sciobot/src/diff/target-table-merges-collaboration.test.ts",
+      "packages/sciobot/src/diff/target-table-merges.test.ts",
+      "packages/sciobot/src/diff/target-table-properties.test.ts",
+      "packages/sciobot/src/diff/target-table.test.ts",
+      "packages/sciobot/src/projection/blocks.test.ts",
+      "packages/sciobot/src/projection/container-tags.test.ts",
+      "packages/sciobot/src/projection/lists.test.ts",
+      "packages/sciobot/src/projection/markdown.test.ts",
+      "packages/sciobot/src/projection/math.test.ts",
+      "packages/sciobot/src/projection/mdx.test.ts",
+      "packages/sciobot/src/projection/parse-target.test.ts",
+      "packages/sciobot/src/projection/protected-content.test.ts",
+      "packages/sciobot/src/projection/quote-selection.test.ts",
+      "packages/sciobot/src/projection/resolve-patch.test.ts",
+      "packages/sciobot/src/projection/revision-cache.test.ts",
+      "packages/sciobot/src/projection/tables.test.ts",
+      "packages/sciobot/src/projection/target-source-map.test.ts",
+      "packages/sciobot/src/projection/text.test.ts",
+      "packages/sciobot/src/review/committed-view.test.ts",
+      "packages/sciobot/src/review/property-projection.test.ts",
+      "packages/sciobot/src/review/recompose-application-fragments-collaboration.test.ts",
+      "packages/sciobot/src/review/recompose-application-fragments.test.ts",
+      "packages/sciobot/src/review/recompose-atomic-targets-collaboration.test.ts",
+      "packages/sciobot/src/review/recompose-atomic-targets.test.ts",
+      "packages/sciobot/src/review/recompose-collaboration.test.ts",
+      "packages/sciobot/src/review/recompose-inserted-tables-collaboration.test.ts",
+      "packages/sciobot/src/review/recompose-inserted-tables.test.ts",
+      "packages/sciobot/src/review/recompose.test.ts",
+      "packages/sciobot/src/review/working-view.test.ts"
+    ],
+    "log": "/tmp/d30-math-projection-final-affected.log",
+    "command": "bun test --preload ./scripts/test/preload-dom.ts <files listed here>",
+    "scope": "102 files: all private diff, block and projection cases, C01 direct matrix, playback/baselines, source binding and affected composers. Original reference fixtures and exact native oracles remain unchanged."
+  },
+  "compiledTests": {
+    "revision": "7ffd2836",
+    "pass": 11,
+    "fail": 0,
+    "assertions": 576,
+    "files": 2,
+    "harness": "/tmp/d30-math-projection-built",
+    "log": "/tmp/d30-math-projection-built.log",
+    "command": "bun test --tsconfig-override ./tsconfig.json --preload /tmp/sciobot-resolved-table-targets/scripts/test/preload-dom.ts ./math-projection.test.ts ./math-projection-collaboration.test.ts",
+    "scope": "Actual private main/collaboration entries and one compiled core. The targetAstKey expected-data comparator imports its pure source helper. All document planning, serialization, payload handling and projection use compiled entries. Test transport alone uses the EigenPal Pro License."
+  },
+  "sharedScenario": {
+    "orders": "Clients 41/73 and 73/41, delivery receiver 0 and 1.",
+    "behavior": "AI display math insertion concurrent with peer text; deletion during another peer edit; both actor histories; selection geometry; exact Word fingerprints; saved semantic convergence; exact original sources; DOCX and complete room reopening.",
+    "readPurity": "Projection reads retain exact package identity and both Yjs snapshots.",
+    "source": "1 CRLF then fraction with Unicode, an unescaped pipe, and a trailing newline."
+  },
+  "regressionsFixed": [
+    {
+      "issue": "The React payload callback received native math ASTs.",
+      "evidence": "/tmp/d30-math-projection-admission-before.log reproduced one unexpected admission. Final native case asserts zero admissions and complete landing/history."
+    },
+    {
+      "issue": "HTML break normalization changed equation source during tool reads.",
+      "evidence": "/tmp/d30-math-projection-break-before.log reproduced <br> changing to <br />. The serializer now checks the actual normalization pipeline and selects lossless data syntax."
+    },
+    {
+      "issue": "Bare equation JSX names could be reinterpreted as native math.",
+      "evidence": "/tmp/d30-math-projection-react-before.log reproduced the changed AST. Only reserved scio-prefixed tags now normalize. Pure and actual native opaque React regressions pass."
+    }
+  ],
+  "checks": {
+    "typecheck": {
+      "command": "bun run --filter '@sciobot/docx' typecheck",
+      "result": "2134 files; no errors",
+      "log": "/tmp/d30-math-projection-types.log"
+    },
+    "build": {
+      "command": "bun run --filter '@sciobot/docx' build",
+      "result": "240 private modules; native core external; no excluded runtime",
+      "log": "/tmp/d30-math-projection-build.log"
+    },
+    "format": {
+      "command": "bun run format; final changed files pass scoped prettier --check",
+      "result": "pass",
+      "logs": [
+        "/tmp/d30-math-projection-format.log",
+        "/tmp/d30-math-projection-final-format.log"
+      ]
+    },
+    "lint": {
+      "command": "bun run lint",
+      "result": "pass with existing repository warnings",
+      "log": "/tmp/d30-math-projection-lint.log"
+    },
+    "policy": {
+      "command": "bun run collaboration:check --base d4e6bfdd",
+      "result": "1 compatible decision; 0 format fields changed",
+      "log": "/tmp/d30-math-projection-policy.log"
+    },
+    "backlog": {
+      "command": "bun docs/engineering/sciobot-port/check.mjs",
+      "result": "276 leaves; 179 closed; 97 remaining; 199 production source hashes unchanged",
+      "log": "/tmp/d30-math-projection-backlog.log"
+    },
+    "unchangedInputs": {
+      "command": "git diff d4e6bfdd -- packages/core packages/pro packages/i18n scripts package.json bun.lock packages/sciobot/src/__tests__/fixtures",
+      "result": "empty"
+    }
+  },
+  "remaining": [
+    "Integrate all four deferred inline atom kinds with the canonical D01 plan codec and A01/R05 execution.",
+    "Materialize atoms in newly allocated paragraphs, including nested application blocks and table cells.",
+    "Align existing native atom ownership and surrounding text when editing retained paragraphs; never reconstruct imported paragraphs.",
+    "Resolve image references in the executor and retain source/media identity through save/reopen. Reuse existing media and embed only new resources.",
+    "Complete the D30 target Markdown, C01/composer and real two-session gates for all four inline atom kinds."
+  ],
+  "nextImplementationSeams": [
+    "packages/sciobot/src/diff/plan.ts",
+    "packages/sciobot/src/review/new-paragraphs.ts",
+    "packages/sciobot/src/diff/fragment-seeds.ts",
+    "packages/sciobot/src/diff/target-inline.ts",
+    "packages/sciobot/src/ai/apply-direct.ts"
+  ],
+  "limits": [
+    "D30 remains unchecked; this checkpoint does not establish complete inline atom execution.",
+    "X24 still owns equation controls and rendering. App export/integration consumers still require their own cutover checks.",
+    "The reserved data forms are private native-adapter syntax. Ordinary fences remain preferred when exact.",
+    "No application, core, Pro, shared schema, dependency or public automation API changes occur.",
+    "No TODO closes at this checkpoint."
+  ]
+}
