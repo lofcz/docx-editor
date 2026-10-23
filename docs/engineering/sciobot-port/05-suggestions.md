@@ -426,6 +426,9 @@ The atomic target primary integration is `ebff1210`. Its five changed source/tes
 
 The born-table Original recovery checkpoint makes Original retain the independent peer suffix at the same boundary as native rejection. The full native layout check passes 158 cases. Four real-session cases verify both client orders, both reconnect receivers, exact native decisions, unchanged source fingerprints, Original-to-rejection caret geometry, author/decision history, and DOCX/shared-room reopening. Core/private types, both builds, root format/lint, compatibility, and all 199 source hashes pass. The remaining rich application fragments, package ledgers, peer deletion evidence, and installed application verification still prevent R19 closure. See the Original recovery section in [implementation notes](evidence/implementation-notes.md).
 
+
+**Admission and first-list history checkpoint:** Runtime `937bdf32` refuses overlapping replacements that change an unselected presence group's editability. Independent outside proposals remain supported. `prepareNativeDocument` initializes empty numbering infrastructure before sharing, so first-list undo/redo retains its namespace. A missing initialization refuses before writes. The complete frozen affected command passes 765 cases across 58 files. Nine actual compiled shared cases pass against one compiled core. Exact native Word, full state-update refusal, actor/reviewer history, geometry, and DOCX/room checks remain enabled. Types, build, formatting, lint, compatibility, and production reference hashes pass. R19 stays unchecked for its remaining insertion, reconciliation, resource, and application requirements. Exact commands, source hashes, fixtures, results, and limits are in [admission evidence](evidence/presence-admission-and-numbering.json).
+
 ## R20
 
 - [ ] Keep imported and foreign revisions separate
