@@ -1,0 +1,152 @@
+{
+  "leaf": "R19",
+  "status": "partial WIP checkpoint; shared native fidelity remains failing; not integrated into verified primary",
+  "runtimeRevision": "a6f6a3bcadd44436989f755b1d93d9a10e3a8fce",
+  "verifiedPrimaryRevision": "60d9917a",
+  "sourceHashes": {
+    ".collaboration/changes/sciobot-presence-owned-inverses.json": "1bdba3c368733db8f44e27cbc372f7f5c50178e2ce6739cb7fb8c85a28a8640a",
+    "packages/sciobot/src/review/owned-presence-property.test.ts": "33df1fd90f7145b84e13818bd91f70e212234850fd8639a53f7a209d185aca43",
+    "packages/sciobot/src/review/owned-presence-replacement.test.ts": "030774dfa48dd47426ccaf63d6320c63f208cc60b22cb891fc0141a541d78f52",
+    "packages/sciobot/src/review/owned-presence-shared.test.ts": "3b70f94f2db92e9a43430e1ee5274ad53489a8c46fae51bc51224e6c974a73bc",
+    "packages/sciobot/src/review/owned-proposal-content.ts": "7b40929f1503e27e1e27db9c6374ae2ea690bd30c8a51e7b54e5e76184e0e5ec",
+    "packages/sciobot/src/review/owned-proposal-plan.test.ts": "e9d50006a572f62813d02a763da1e4ea659d60a342a9b8540be8cb13029dd1b4",
+    "packages/sciobot/src/review/owned-proposal-plan.ts": "20ef0cba22238bc4eea448b7d7cb969a56b6ee3cb888de2497900e71ebdd5b1e",
+    "packages/sciobot/src/review/owned-proposal-stage.ts": "cfbab0f09412eaeb5d4bfd17a65d6adb6102daeb436b8c6c8f6d25a8356884bb",
+    "packages/sciobot/src/review/prepare-payload-decision.ts": "64a387866df8b9b70c6980f37f9c64ec5154f5e7dc280a527eb4d60ed4086fce",
+    "packages/sciobot/src/review/prepare-payload-stage.ts": "6ef5950b0a48958ee9cd16a4a9c33b4dbbcf91b9be90b0346a65a96cba4b8f74",
+    "packages/sciobot/src/review/recompose-target.ts": "7d3cbbef7e027bbef1f796c76b2f4af74b10c38bec05ce2f3b786058bf4a8c03",
+    "packages/sciobot/src/review/tracked-stage-text.ts": "4c37c733e723857350da76b5e09f6be4f8a4decf16f31dbbce73bab5b764ca88",
+    "packages/sciobot/src/review/tracked-stage.ts": "651535c59b7bab3b8655fe9c87554c7ff9096002da96cceca1e80e3046bb20de",
+    "packages/sciobot/test/support/presence-ownership.ts": "6455cbeda881a6f45472b3c5dd1d0ca132460b5a3c377c6a849b706004772d39"
+  },
+  "implemented": [
+    "Exact owned presence native inverses and identity-based payload retirement share the replacement transaction and immutable per-block rejection receipts.",
+    "Presence content proofs bind the selected root, complete nested payload membership, and native control content without canonical snapshots.",
+    "Validated unrelated presence records coexist with property staging, property decisions, and working target preparation.",
+    "All replacement text stages use existing source-run provenance for exact local native rejection.",
+    "Foreign pending text overlap refuses before provenance authoring, retaining the original ambiguous-target error and assertions."
+  ],
+  "verification": {
+    "initialAffected": {
+      "sourceRevision": "78418f8d",
+      "passed": 586,
+      "failed": 9,
+      "cases": 595,
+      "files": 38,
+      "assertions": 20703
+    },
+    "baselineComparisons": {
+      "sourceRevision": "60d9917a",
+      "tableTargets": {
+        "passed": 12,
+        "failed": 4,
+        "cases": 16
+      },
+      "compoundTargets": {
+        "passed": 20,
+        "failed": 4,
+        "cases": 24
+      },
+      "sameFailureNames": [
+        "complete target row after owned merge; accept, both histories, reconnect 47,79/0",
+        "complete target row after owned merge; accept, both histories, reconnect 47,79/1",
+        "complete target row after owned merge; accept, both histories, reconnect 79,47/0",
+        "complete target row after owned merge; accept, both histories, reconnect 79,47/1",
+        "default GFM retain after owned merge retains both histories, accept, geometry, and reopening; 41,73/0",
+        "default GFM retain after owned merge retains both histories, accept, geometry, and reopening; 41,73/1",
+        "default GFM retain after owned merge retains both histories, accept, geometry, and reopening; 73,41/0",
+        "default GFM retain after owned merge retains both histories, accept, geometry, and reopening; 73,41/1"
+      ]
+    },
+    "correctedRegression": {
+      "passed": 54,
+      "failed": 0,
+      "files": 4,
+      "assertions": 382,
+      "scope": "Complete owned-content, owned-inverse, replacement, and recomposition files. Includes the unchanged refusal assertion that failed in the earlier affected run."
+    },
+    "finalNewCases": {
+      "passed": 6,
+      "failed": 8,
+      "files": 3,
+      "assertions": 360,
+      "sharedFailures": [
+        "owned presence recomposition 41,73/false/accept retains offline edits, histories, geometry, exact decisions, and room reopening",
+        "owned presence recomposition 41,73/false/reject retains offline edits, histories, geometry, exact decisions, and room reopening",
+        "owned presence recomposition 41,73/true/accept retains offline edits, histories, geometry, exact decisions, and room reopening",
+        "owned presence recomposition 41,73/true/reject retains offline edits, histories, geometry, exact decisions, and room reopening",
+        "owned presence recomposition 73,41/false/accept retains offline edits, histories, geometry, exact decisions, and room reopening",
+        "owned presence recomposition 73,41/false/reject retains offline edits, histories, geometry, exact decisions, and room reopening",
+        "owned presence recomposition 73,41/true/accept retains offline edits, histories, geometry, exact decisions, and room reopening",
+        "owned presence recomposition 73,41/true/reject retains offline edits, histories, geometry, exact decisions, and room reopening"
+      ]
+    },
+    "privateTypedFiles": 2102,
+    "privateRuntimeModules": 228,
+    "coreExternal": true,
+    "rootFormat": true,
+    "rootLint": true,
+    "compatibilityDecisions": 157,
+    "changedSharedFormatFields": 0,
+    "verifiedProductionSourceHashes": 199
+  },
+  "logs": {
+    "initialAffected": {
+      "path": "/tmp/r19-owned-presence-affected.log",
+      "sha256": "bab51ba18a4622f798c51af09bd5fdc5738fca4f54f5bf407e9aa3d5b8c3f9b5"
+    },
+    "affectedFileList": {
+      "path": "/tmp/r19-owned-presence-affected-files.json",
+      "sha256": "332e4b975cc4e658b64f9273d3fb9ab93c30a470fbfd06ac884fc3e921a6a2b0"
+    },
+    "correctedRegression": {
+      "path": "/tmp/r19-owned-presence-guard-regression.log",
+      "sha256": "5879caf40dbabd0ac223a37c5fef3915a5196e0507625846d7f7da324f205b0a"
+    },
+    "finalNewCases": {
+      "path": "/tmp/r19-owned-presence-final-new-cases.log",
+      "sha256": "3881072443d7db4ba6754a2b31cfe6fd0ff67d28845150edfe64472af612fc76"
+    },
+    "baselineTableTargets": {
+      "path": "/tmp/r19-owned-presence-baseline-table-targets.log",
+      "sha256": "dc6698417451c32d4350f21323bd5f8224940e220e5ba74b9d213a11078f3836"
+    },
+    "baselineCompoundTargets": {
+      "path": "/tmp/r19-owned-presence-baseline-compound.log",
+      "sha256": "0ec25779c87c97b0aff424b5cef67ed037cfaf159b106f7d9cb41fa855bbad55"
+    },
+    "privateTypes": {
+      "path": "/tmp/r19-owned-presence-guard-types.log",
+      "sha256": "c743fcfca0787563b95f1947c65aee9a4966a5ed5312f48bdac0a6c86a49d126"
+    },
+    "privateBuild": {
+      "path": "/tmp/r19-owned-presence-private-build-final.log",
+      "sha256": "ea09dfb4686afeefd5fffeaffc792cac21488d1460f744148155dcf6ccd8c205"
+    },
+    "rootFormat": {
+      "path": "/tmp/r19-owned-presence-guard-format.log",
+      "sha256": "533e32949b97b25ee521fc8b1cfa3fb985c31d2c6e92f971c03bfaaee596ea50"
+    },
+    "rootLint": {
+      "path": "/tmp/r19-owned-presence-guard-lint.log",
+      "sha256": "7409058484e071b248d95584fd52857c9396251747b0786e8954dd7ccd088f66"
+    },
+    "compatibility": {
+      "path": "/tmp/r19-owned-presence-policy.log",
+      "sha256": "a8af2cf40060d1d22e902e446e77ed2799e3382f632916a260c86adab717d32f"
+    },
+    "productionReferenceAudit": {
+      "path": "/tmp/r19-owned-presence-source-audit.log",
+      "sha256": "67377bf014e19a0e192c6ed8c1295eac76c7e5980f110eeaa615f941af8f59b8"
+    }
+  },
+  "limitations": [
+    "The eight new real-session cases retain both actors\u2019 pre-decision history and peer text, but fail the exact Word comparison after acceptance/rejection. They cannot establish later decision history, saved convergence, or room reopening because execution stops at that assertion.",
+    "The expected Word body retains one original native run with peer text. The actual Word body retains an extra independent peer run. Expected native structure and original deadlines remain unchanged.",
+    "The eight table/compound failures also reproduce on the prior verified primary source. They remain open R19 work; prior narrow checkpoint evidence does not prove those scenarios.",
+    "An experimental core source annotation change did not fix the shared mismatch. Its patch remains at /tmp/r19-source-origin-experiment.patch. The committed core and Pro sources remain unchanged.",
+    "Production presence authoring stays disabled. Full resource ledgers, unseen peer recovery inside removed controls, AI fragment authoring, capability admission, external reconciliation, and installed application validation remain incomplete."
+  ],
+  "nextAction": "Repair provenance or native resolution of unseen peer source text while retaining exact original and A01 native oracles. Then rerun the complete affected files before primary integration.",
+  "closedTodos": 0
+}
