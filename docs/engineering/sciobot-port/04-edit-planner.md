@@ -548,6 +548,8 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Isolated follow-up:** Branch `codex/d30-linked-atoms` follows the unmerged native history repair. [Table history evidence](evidence/born-cell-history-repair.md) records peer-owned cell placement, geometry and moves. Runtime `38f89183` adds [linked inline control execution](evidence/linked-inline-controls.md); `6f2cacea` verifies imported link identities, peer text, both histories and cold reopening. All 1063 affected cases pass across 103 files, including C01 and review composition. Types cover 2172 files; the private build verifies 256 modules with core external. Root format, lint and compatibility policy pass. All 199 pinned production source hashes match, but the stock inventory audit rejects the changed application revision. These checkpoints remain isolated. Linked drawings, code-marked atoms, changed retained link ownership, further nested cell fragments, tracked births and installed application verification remain open. The checkbox stays unchecked.
 
+**Code follow-up:** Native repair `472ff8e5` and the private adapter support code-styled controls through local and shared histories. Broad and focused checks cover 1,930 distinct passing source cases; 24 compiled code fixtures also pass. A stronger middle-fragment peer case still fails its exact native anchor oracle. See [code-control evidence](evidence/code-inline-controls.md). This is implementation progress, not D30 closure.
+
 ## D31
 
 - [x] Plan inline code marks through the native representation

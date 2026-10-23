@@ -1,7 +1,7 @@
 // Known failing investigation fixture. Run explicitly with bun test on this path.
 // The compatibility transport uses the EigenPal Pro License only in this test fixture.
 import { expect, test } from 'bun:test';
-import * as Y from '../../../../../packages/pro/node_modules/yjs';
+import * as Y from '../../../../../packages/pro/node_modules/yjs/dist/yjs.mjs';
 import {
   applyTreeOp,
   canonicalOoxmlFingerprint,

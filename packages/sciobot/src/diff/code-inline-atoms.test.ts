@@ -40,6 +40,7 @@ for (const [kind, target] of [
   ['table', `Keep.\n\n| H |\n| - |\n| ${sentence} |`],
   ['registered', `Keep.\n\n<phase type="evocation">\n${sentence}\n</phase>`],
   ['retained', `Keep. ${sentence} End.`],
+  ['mention', 'Keep. A <code>**$x$** and [Ada](mention:user-7)</code> Z End.'],
   ['imported', `Keep. ${sentence.replace('<code>', '<code>lead ')} End.`],
   [
     'linked',
@@ -71,9 +72,14 @@ for (const [kind, target] of [
       const index = buildBlockIndex(pkg);
       expect(index.diagnostics).toEqual([]);
       const atoms = [...index.byId.values()].filter((block) =>
-        ['inline_equation', 'source'].includes(block.payload.type)
+        ['inline_equation', 'mention', 'source'].includes(block.payload.type)
       );
       expect(atoms).toHaveLength(2);
+      if (kind === 'mention')
+        expect(atoms.find((atom) => atom.payload.type === 'mention')?.payload.attributes).toEqual({
+          key: 'user-7',
+          value: 'Ada',
+        });
       for (const atom of atoms) {
         const control = contentControlsIn(part.root).find(
           ({ node }) => node.id === atom.controlId

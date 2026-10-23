@@ -30,94 +30,95 @@ for (const clientIds of [
 ] as const)
   for (const receiver of [0, 1] as const)
     for (const prefix of [false, true])
-      test(`code-marked atom birth preserves peer text and imported native link through both histories: ${clientIds}/${receiver}/prefix=${prefix}`, async () => {
-        const prepared = prepareNativeDocument(document());
-        if (!prepared.success) throw Error(prepared.error);
-        const fixture = { document: prepared.document, clientIds };
-        const pair = await createTwoEditorFixture(fixture);
-        try {
-          const [alice, bob] = pair.editors;
-          const initial = alice!.surface!.session.part();
-          const initialWord = word(initial);
-          const paragraphId = alice!.surface!.session.paragraphIds()[0]!;
-          const initialOffset = paragraphTextOf(initial, paragraphId)!.indexOf('and') + 1;
-          const expected = applyTreeOp(initial, {
-            op: 'insertText',
-            paragraphId,
-            offset: initialOffset,
-            text: ' peer ',
-          });
-          if (!expected.ok) throw Error(expected.reason);
-          const revision = readEditorRevision(alice!, context.documentId, context.epoch)!;
-          const source = await readWorkingView(alice!.surface!.session, revision);
-          if (!source.success) throw Error(source.error);
-          const target = `Keep. [<code>${prefix ? 'lead ' : ''}**$x$** and <source title="Paper" url="https://source.test" /></code>](https://outer.test "Read") End.`;
-          let next = 0;
-          const planned = planTargetDocument(
-            {
-              revision,
-              pkg: alice!.surface!.session.currentPackage(),
-              projection: source.view.projection,
-            },
-            target,
-            { allocateBlockId: () => `code-peer-${++next}` }
-          );
-          if (!planned.success) throw Error(planned.error);
-          const applied = applyDirectPlan(alice!, planned.plan, context);
-          if (!applied.success) throw Error(applied.error);
-          await pair.settle();
-          pair.pause();
-          const offset =
-            paragraphTextOf(bob!.surface!.session.part(), paragraphId)!.indexOf('and') + 1;
-          expect(
-            bob!.surface!.applyAutomationOps(
-              () => [{ op: 'insertText', paragraphId, offset, text: ' peer ' }],
-              { kind: 'body' },
-              [],
-              false,
-              true
-            ).rejected
-          ).toBe(false);
-          const authoredPeerWord = word(bob!.surface!.session.part());
-          expect(alice!.exec({ type: 'undo' }).ok).toBe(true);
-          pair.reconnect(receiver);
-          await pair.settle();
-          for (const editor of pair.editors) {
-            expect(word(editor.surface!.session.part())).toBe(word(expected.part));
-            expect(buildBlockIndex(editor.surface!.session.currentPackage()).byId.size).toBe(0);
-          }
-          for (const room of [false, true]) {
-            const reopened = await createTwoEditorFixture({
-              ...fixture,
-              clientIds: undefined,
-              document: new Uint8Array(await alice!.save()),
-              ...(room ? { roomSnapshot: Y.encodeStateAsUpdate(pair.documents[0]!) } : {}),
+      for (const atom of ['source', 'mention'] as const)
+        test(`code-marked atom birth preserves peer text and imported native link through both histories: ${clientIds}/${receiver}/prefix=${prefix}/atom=${atom}`, async () => {
+          const prepared = prepareNativeDocument(document());
+          if (!prepared.success) throw Error(prepared.error);
+          const fixture = { document: prepared.document, clientIds };
+          const pair = await createTwoEditorFixture(fixture);
+          try {
+            const [alice, bob] = pair.editors;
+            const initial = alice!.surface!.session.part();
+            const initialWord = word(initial);
+            const paragraphId = alice!.surface!.session.paragraphIds()[0]!;
+            const initialOffset = paragraphTextOf(initial, paragraphId)!.indexOf('and') + 1;
+            const expected = applyTreeOp(initial, {
+              op: 'insertText',
+              paragraphId,
+              offset: initialOffset,
+              text: ' peer ',
             });
-            try {
-              await reopened.settle();
-              for (const editor of reopened.editors)
-                expect(word(editor.surface!.session.part())).toBe(word(expected.part));
-            } finally {
-              reopened.destroy();
+            if (!expected.ok) throw Error(expected.reason);
+            const revision = readEditorRevision(alice!, context.documentId, context.epoch)!;
+            const source = await readWorkingView(alice!.surface!.session, revision);
+            if (!source.success) throw Error(source.error);
+            const target = `Keep. [<code>${prefix ? 'lead ' : ''}**$x$** and ${atom === 'source' ? '<source title="Paper" url="https://source.test" />' : '[Ada](mention:user-7)'}</code>](https://outer.test "Read") End.`;
+            let next = 0;
+            const planned = planTargetDocument(
+              {
+                revision,
+                pkg: alice!.surface!.session.currentPackage(),
+                projection: source.view.projection,
+              },
+              target,
+              { allocateBlockId: () => `code-peer-${++next}` }
+            );
+            if (!planned.success) throw Error(planned.error);
+            const applied = applyDirectPlan(alice!, planned.plan, context);
+            if (!applied.success) throw Error(applied.error);
+            await pair.settle();
+            pair.pause();
+            const offset =
+              paragraphTextOf(bob!.surface!.session.part(), paragraphId)!.indexOf('and') + 1;
+            expect(
+              bob!.surface!.applyAutomationOps(
+                () => [{ op: 'insertText', paragraphId, offset, text: ' peer ' }],
+                { kind: 'body' },
+                [],
+                false,
+                true
+              ).rejected
+            ).toBe(false);
+            const authoredPeerWord = word(bob!.surface!.session.part());
+            expect(alice!.exec({ type: 'undo' }).ok).toBe(true);
+            pair.reconnect(receiver);
+            await pair.settle();
+            for (const editor of pair.editors) {
+              expect(word(editor.surface!.session.part())).toBe(word(expected.part));
+              expect(buildBlockIndex(editor.surface!.session.currentPackage()).byId.size).toBe(0);
             }
+            for (const room of [false, true]) {
+              const reopened = await createTwoEditorFixture({
+                ...fixture,
+                clientIds: undefined,
+                document: new Uint8Array(await alice!.save()),
+                ...(room ? { roomSnapshot: Y.encodeStateAsUpdate(pair.documents[0]!) } : {}),
+              });
+              try {
+                await reopened.settle();
+                for (const editor of reopened.editors)
+                  expect(word(editor.surface!.session.part())).toBe(word(expected.part));
+              } finally {
+                reopened.destroy();
+              }
+            }
+            expect(bob!.exec({ type: 'undo' }).ok).toBe(true);
+            await pair.settle();
+            for (const editor of pair.editors)
+              expect(word(editor.surface!.session.part())).toBe(initialWord);
+            expect(bob!.exec({ type: 'redo' }).ok).toBe(true);
+            await pair.settle();
+            for (const editor of pair.editors)
+              expect(word(editor.surface!.session.part())).toBe(word(expected.part));
+            expect(alice!.exec({ type: 'redo' }).ok).toBe(true);
+            await pair.settle();
+            for (const editor of pair.editors) {
+              expect(word(editor.surface!.session.part())).toBe(authoredPeerWord);
+              expect(buildBlockIndex(editor.surface!.session.currentPackage()).byId.size).toBe(2);
+            }
+            const digests = await pair.savedDigests();
+            expect(digests[0]).toEqual(digests[1]);
+          } finally {
+            pair.destroy();
           }
-          expect(bob!.exec({ type: 'undo' }).ok).toBe(true);
-          await pair.settle();
-          for (const editor of pair.editors)
-            expect(word(editor.surface!.session.part())).toBe(initialWord);
-          expect(bob!.exec({ type: 'redo' }).ok).toBe(true);
-          await pair.settle();
-          for (const editor of pair.editors)
-            expect(word(editor.surface!.session.part())).toBe(word(expected.part));
-          expect(alice!.exec({ type: 'redo' }).ok).toBe(true);
-          await pair.settle();
-          for (const editor of pair.editors) {
-            expect(word(editor.surface!.session.part())).toBe(authoredPeerWord);
-            expect(buildBlockIndex(editor.surface!.session.currentPackage()).byId.size).toBe(2);
-          }
-          const digests = await pair.savedDigests();
-          expect(digests[0]).toEqual(digests[1]);
-        } finally {
-          pair.destroy();
-        }
-      }, 60_000);
+        }, 60_000);

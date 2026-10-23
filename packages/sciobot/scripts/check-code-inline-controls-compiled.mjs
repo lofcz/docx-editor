@@ -1,0 +1,70 @@
+// Run the original acceptance fixtures against the built private SDK and one built core.
+// Support fixtures and the EigenPal Pro License evaluation transport remain test-only source.
+import { existsSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
+
+const packageRoot = fileURLToPath(new URL('../', import.meta.url));
+const repoRoot = resolve(packageRoot, '../..');
+const packages = join(repoRoot, 'packages');
+const paths = {
+  '@docx-editor.dev/core': [join(packages, 'core/dist/index.js')],
+  '@docx-editor.dev/core/*': [join(packages, 'core/dist/*.js')],
+  '@docx-editor.dev/docx-to-markdown': [join(packages, 'docx-to-markdown/dist/index.js')],
+  '@docx-editor.dev/docx-to-markdown/*': [join(packages, 'docx-to-markdown/dist/*.js')],
+  '@docx-editor.dev/fonts': [join(packages, 'fonts/dist/index.js')],
+  '@sciobot/docx': [join(packageRoot, 'dist/index.js')],
+};
+for (const [name, [entry]] of Object.entries(paths)) {
+  if (!name.endsWith('/*') && !existsSync(entry)) {
+    throw Error(
+      `Build core, fonts, docx-to-markdown, and sciobot before running: missing ${entry}`
+    );
+  }
+}
+const directory = mkdtempSync(join(tmpdir(), 'sciobot-code-controls-compiled-'));
+try {
+  writeFileSync(
+    join(directory, 'tsconfig.json'),
+    JSON.stringify({
+      extends: join(repoRoot, 'tsconfig.json'),
+      compilerOptions: { paths },
+    })
+  );
+  writeFileSync(
+    join(directory, 'bunfig.toml'),
+    `[test]\npreload = [${JSON.stringify(join(repoRoot, 'scripts/test/preload-dom.ts'))}]\n`
+  );
+  symlinkSync(join(packageRoot, 'node_modules'), join(directory, 'node_modules'), 'dir');
+  const fixtures = ['code-inline-atoms.test.ts', 'code-inline-atoms-collaboration.test.ts'];
+  for (const filename of fixtures) {
+    let source = readFileSync(join(packageRoot, 'src/diff', filename), 'utf8');
+    source = source.replace(
+      /from '(?:\.\.\/(?:review|projection|blocks|ai|native)\/[^']+|\.\/(?:plan-target|plan))'/g,
+      "from '@sciobot/docx'"
+    );
+    source = source.replaceAll(
+      "from '../../test/support/",
+      `from '${join(packageRoot, 'test/support')}/`
+    );
+    // Runtime product imports must use the compiled package. Keep every test body unchanged.
+    if (/from ['"]\.{1,2}\//.test(source)) throw Error(`Unmapped product import in ${filename}`);
+    writeFileSync(join(directory, filename), source);
+  }
+  const result = spawnSync(
+    'bun',
+    [
+      'test',
+      '--tsconfig-override',
+      join(directory, 'tsconfig.json'),
+      ...fixtures.map((filename) => join(directory, filename)),
+    ],
+    { cwd: directory, stdio: 'inherit' }
+  );
+  if (result.error) throw result.error;
+  process.exitCode = result.status ?? 1;
+} finally {
+  rmSync(directory, { recursive: true, force: true });
+}
