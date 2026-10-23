@@ -77,11 +77,15 @@ for (const target of [
       expect(
         [...buildBlockIndex(loaded.package).byId].map(([id, block]) => [id, block.payload])
       ).toEqual([...index.byId].map(([id, block]) => [id, block.payload]));
+      expect(
+        canonicalOoxmlFingerprint(loaded.package.parts.get(loaded.package.mainDocumentPart)!)
+      ).toBe(after);
       const reopened = createDocxEditor({
         container: document.createElement('div'),
         document: bytes,
       });
       try {
+        expect(canonicalOoxmlFingerprint(reopened.surface!.session.part())).toBe(after);
         expect((await plan(reopened, target)).operations).toEqual([]);
       } finally {
         reopened.destroy();

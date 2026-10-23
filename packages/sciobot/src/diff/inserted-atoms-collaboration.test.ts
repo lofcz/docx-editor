@@ -13,6 +13,7 @@ import { targetAstKey } from '../diff/target-key';
 import { planTargetDocument } from '../diff/plan-target';
 import { decodeEditPlan, serializeEditPlan } from '../diff/plan';
 import { applyDirectPlan } from '../ai/apply-direct';
+import { removeBlock } from '../blocks/remove';
 import { buildBlockIndex } from '../blocks/block-index';
 const context = { documentId: 'math', epoch: 'shared' };
 const key = (markdown: string) => {
@@ -139,6 +140,78 @@ for (const clients of [
           .surface!.session.paragraphIds()
           .find((id) => paragraphTextOf(bob!.surface!.session.part(), id) === 'A x^2 Ada Paper Z')!;
         expect(atomParagraph).toBeDefined();
+
+        for (const [removedId, withoutAtom] of [
+          ['shared-inline-1', 'A  Ada Paper Z'],
+          ['shared-inline-2', 'A x^2  Paper Z'],
+          ['shared-inline-3', 'A x^2 Ada  Z'],
+        ] as const) {
+          const beforeRemoval = canonicalOoxmlFingerprint(alice!.surface!.session.part());
+          const ownedPayloads = [
+            ...buildBlockIndex(alice!.surface!.session.currentPackage()).byId,
+          ].map(([id, block]) => [id, block.payload]);
+          pair.pause();
+          const removing = buildBlockIndex(alice!.surface!.session.currentPackage()).byId.get(
+            removedId
+          )!;
+          const removed = removeBlock(alice!, { controlId: removing.controlId, mode: 'delete' });
+          if (!removed.success) throw Error(removed.error);
+          expect(
+            bob!.surface!.applyAutomationOps(
+              () => [
+                {
+                  op: 'insertText',
+                  paragraphId: atomParagraph,
+                  offset: 'A x^2 Ada Paper Z'.length,
+                  text: '!',
+                },
+              ],
+              { kind: 'body' },
+              [],
+              false,
+              true
+            ).rejected
+          ).toBe(false);
+          pair.reconnect(receiver);
+          await pair.settle();
+          const checkRemoval = async (present: boolean) => {
+            for (const editor of pair.editors) {
+              const pkg = editor.surface!.session.currentPackage();
+              const index = buildBlockIndex(pkg);
+              expect(index.diagnostics).toEqual([]);
+              expect(index.byId.has(removedId)).toBe(present);
+              for (const id of ['shared-inline-1', 'shared-inline-2', 'shared-inline-3'])
+                expect(index.byId.has(id)).toBe(present || id !== removedId);
+              expect(paragraphTextOf(editor.surface!.session.part(), atomParagraph)).toBe(
+                present ? 'A x^2 Ada Paper Z!' : withoutAtom + '!'
+              );
+            }
+            expect(canonicalOoxmlFingerprint(alice!.surface!.session.part())).toBe(
+              canonicalOoxmlFingerprint(bob!.surface!.session.part())
+            );
+            const [a, b] = await pair.savedDigests();
+            expect(a).toEqual(b);
+          };
+          await checkRemoval(false);
+          expect(alice!.exec({ type: 'undo' }).ok).toBe(true);
+          await pair.settle();
+          await checkRemoval(true);
+          expect(alice!.exec({ type: 'redo' }).ok).toBe(true);
+          await pair.settle();
+          await checkRemoval(false);
+          expect(alice!.exec({ type: 'undo' }).ok).toBe(true);
+          await pair.settle();
+          await checkRemoval(true);
+          expect(bob!.exec({ type: 'undo' }).ok).toBe(true);
+          await pair.settle();
+          expect(canonicalOoxmlFingerprint(alice!.surface!.session.part())).toBe(beforeRemoval);
+          expect(
+            [...buildBlockIndex(alice!.surface!.session.currentPackage()).byId].map(
+              ([id, block]) => [id, block.payload]
+            )
+          ).toEqual(ownedPayloads);
+          await check(true, ' Peer More');
+        }
         const offset = paragraphTextOf(bob!.surface!.session.part(), atomParagraph)!.length;
         bob!.surface!.setSelection({
           anchor: { paragraphId: atomParagraph, offset },

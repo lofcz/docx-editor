@@ -1,3 +1,7 @@
+import { parentNodeOf } from '@docx-editor.dev/core/store';
+import { decodeMathPayload } from './math-codec';
+import { decodeMentionPayload } from './mention-codec';
+import { encodeBlockPayload } from './payload-schema';
 import type { DocxEditorInstance } from '@docx-editor.dev/core/editor';
 import {
   applyTreeOp,
@@ -6,6 +10,7 @@ import {
   contentControlsIn,
   findNode,
   isStoryPart,
+  replaceNode,
   storyParagraphs,
   withoutCustomXmlNode,
   withPart,
@@ -78,8 +83,29 @@ export function removeBlock(editor: DocxEditorInstance, request: BlockRemoval): 
   const removedPayloadIds = [...ids].filter((id) => store.entries.has(id));
   const cleanup = (working: OoxmlPackage) => {
     let next = working;
-    for (const id of removedPayloadIds)
-      next = withoutCustomXmlNode(next, store.part.partName, `scio_${id}`);
+    for (const id of removedPayloadIds) {
+      if (!ownedInline || editor.snapshot().collaborationStatus === 'inactive') {
+        next = withoutCustomXmlNode(next, store.part.partName, `scio_${id}`);
+        continue;
+      }
+      // Adopted custom XML order can differ from storage order. Retire by identity,
+      // keeping the same empty history shell that presence decisions already use.
+      const part = next.parts.get(store.part.partName)!;
+      const node = part.root.children.find(
+        (child) =>
+          child.kind !== 'textValue' &&
+          child.attributes.some(
+            (attribute) =>
+              attribute.namespaceUri === '' &&
+              attribute.localName === 'id' &&
+              attribute.value === `scio_${id}`
+          )
+      );
+      if (!node || node.kind === 'textValue') throw Error('The removed payload record is missing.');
+      const retired = replaceNode(part, node.id, { ...node, attributes: [], children: [] });
+      if (!retired.ok) throw Error('The removed payload record could not retire.');
+      next = withPart(next, retired.part);
+    }
     const remaining = readPayloadStore(next);
     if (remaining.status !== 'ready' || removedPayloadIds.some((id) => remaining.entries.has(id)))
       throw new Error('The removed block payloads remain in the native store.');
@@ -90,9 +116,36 @@ export function removeBlock(editor: DocxEditorInstance, request: BlockRemoval): 
     controlId: control.id,
     keepContent: request.mode === 'unwrap',
   };
-  let prepared = applyTreeOp(part, op);
+  const ops: TreeDocOp[] = [];
+  let preview = part;
+  // The host owns these immutable inline atoms. Ordinary text editing retains their lock.
+  // Delete only registered native atom controls; explicit user locks on other blocks still refuse.
+  const encoded = encodeBlockPayload(block.payload);
+  const math = decodeMathPayload(encoded);
+  const mention = decodeMentionPayload(encoded);
+  const ownedInline =
+    parentNodeOf(part, control.id)?.kind === 'paragraph' &&
+    ((math.status === 'supported' && math.payload.type === 'inline_equation') ||
+      mention.status === 'supported' ||
+      block.payload.type === 'source');
+  if (
+    request.mode === 'delete' &&
+    ownedInline &&
+    contentControlPropertiesOf(control).lock === 'sdtContentLocked'
+  ) {
+    const unlock: TreeDocOp = {
+      op: 'setContentControlProperties',
+      controlId: control.id,
+      lock: 'unlocked',
+    };
+    const result = applyTreeOp(preview, unlock);
+    if (!result.ok) return fail('apply-failed', `Native atom unlock refused: ${result.reason}`);
+    preview = result.part;
+    ops.push(unlock);
+  }
+  let prepared = applyTreeOp(preview, op);
   if (!prepared.ok) return fail('apply-failed', `Native block removal refused: ${prepared.reason}`);
-  const ops: TreeDocOp[] = [op];
+  ops.push(op);
   const body = bodyStoryRoot(prepared.part);
   const needsParagraph = body !== null && storyParagraphs(body).length === 0;
   if (needsParagraph) {

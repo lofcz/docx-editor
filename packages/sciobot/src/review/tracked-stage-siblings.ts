@@ -105,7 +105,7 @@ export function stageTrackedSiblings(
   }
   if (edit.atoms?.length)
     refuseWrite(
-      'Tracked inline atom births require explicit review ownership.',
+      'Inserted inline atoms need native asset and payload reconciliation.',
       'unsupported-operation'
     );
   const seeded = siblingFragmentSeeds(

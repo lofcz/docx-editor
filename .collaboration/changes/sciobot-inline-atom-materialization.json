@@ -2,11 +2,12 @@
   "impact": "compatible",
   "fields": [],
   "before": "Complete-target paragraph materialization refused native inline math, mention, and source payloads.",
-  "after": "Private sibling plans carry AST-validated atom bindings. New body, heading, container, and cell paragraphs insert native controls and payload records in one transaction. Planning retains unresolved image references without fetching resources.",
-  "reason": "Existing content controls, payload schema, canonical operations, and shared format remain unchanged. Shared births require payload storage before bootstrap. Linked and code-marked atoms, unresolved drawings, and tracked inline ownership remain explicit unsupported operations.",
+  "after": "Private sibling plans carry AST-validated atom bindings. New body, heading, container, and paragraphs in newly inserted tables insert native controls and payload records in one transaction. Planning retains unresolved image references without fetching resources.",
+  "reason": "Existing content controls, payload schema, canonical operations, and shared format remain unchanged. Shared births require payload storage before bootstrap. Linked and code-marked atoms, unresolved drawings, and tracked inline ownership remain explicit unsupported operations. Host deletion of registered locked inline atoms unlocks and removes them atomically. Shared inline payload retirement reuses existing identity-addressed empty history shells, preserving sibling records despite adopted metadata ordering. Existing generic block removal behavior remains covered by its original tests.",
   "tests": [
     "packages/sciobot/src/diff/inserted-atoms-materialization.test.ts",
-    "packages/sciobot/src/diff/inserted-atoms-collaboration.test.ts"
+    "packages/sciobot/src/diff/inserted-atoms-collaboration.test.ts",
+    "packages/sciobot/src/blocks/remove.test.ts"
   ],
   "changeset": null,
   "migration": null
