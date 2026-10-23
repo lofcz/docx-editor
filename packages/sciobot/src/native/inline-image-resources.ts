@@ -62,6 +62,12 @@ export async function prepareInlineImageResources(
     if (!decoded.success) return decoded;
     const plan = decoded.plan,
       resources = new Map<string, ResolvedInlineImage>();
+    if (planInlineDrawings(plan).some((atom) => atom.hyperlink || atom.marks.length))
+      return {
+        success: false,
+        code: 'unsupported-operation',
+        error: 'Marked and linked images need explicit native ownership.',
+      };
     let total = 0;
     for (const atom of planInlineDrawings(plan)) {
       if (signal?.aborted) throw Error('Image resource preparation was aborted.');
@@ -93,7 +99,11 @@ export async function prepareInlineImageResources(
         throw Error('The image decoder dimensions disagree with its native header.');
       const widthPoints = requestedWidth ?? (header.pixelWidth * 72) / (header.dpiX ?? 96);
       const heightPoints = requestedHeight ?? (header.pixelHeight * 72) / (header.dpiY ?? 96);
-      if (![widthPoints, heightPoints].every((v) => Number.isFinite(v) && v > 0 && v <= 158400))
+      if (
+        ![widthPoints, heightPoints].every(
+          (v) => Number.isFinite(v) && Math.round(v * 12700) > 0 && v <= 158400
+        )
+      )
         throw Error('The image dimensions exceed the native drawing bounds.');
       const hash = await crypto.subtle.digest('SHA-256', new Uint8Array(bytes));
       if (signal?.aborted) throw Error('Image resource preparation was aborted.');

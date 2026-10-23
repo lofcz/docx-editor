@@ -6,7 +6,8 @@
   "reason": "The private adapter reuses canonical operations, binary-part journals, existing payload records and native shared history. No core, Pro, dependency or shared format changes occur. Imported unregistered drawings keep their existing omitted/protected projection contract. Marked/linked image ownership and tracked image births remain explicit unsupported paths.",
   "tests": [
     "packages/sciobot/src/diff/inline-images-materialization.test.ts",
-    "packages/sciobot/src/projection/inline-image.test.ts"
+    "packages/sciobot/src/projection/inline-image.test.ts",
+    "packages/sciobot/src/diff/inline-images-collaboration.test.ts"
   ],
   "changeset": null,
   "migration": null

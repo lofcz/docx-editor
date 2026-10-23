@@ -138,7 +138,7 @@ export function createInlineImageRuntime(
             end: span.start + 1,
             type: 'richText',
             tag: blockTag(id),
-            alias: atom.resource.alt || 'Image',
+            alias: 'Image',
             lock: 'sdtContentLocked',
           });
           const payload = createInlineImagePayload(id, {
@@ -152,7 +152,7 @@ export function createInlineImageRuntime(
             widthPoints: resource.widthPoints,
             heightPoints: resource.heightPoints,
           });
-          const stored = withPayloadRecord(next, payload, atom.resource.alt || 'Image');
+          const stored = withPayloadRecord(next, payload, 'Image');
           if (!stored.ok) throw Error(`Image provenance storage refused: ${stored.reason}.`);
           next = stored.pkg;
         }

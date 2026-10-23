@@ -48,8 +48,9 @@ for (const target of [
   'Keep.\n\n| H |\n| - |\n| A ![Cat](asset:cat "Photo") Z |',
   'Keep. A $x$ ![Cat](asset:cat "Photo") [Ada](mention:user) Z',
   'Keep.\n\nA ![Cat](asset:cat "Photo") ![Dog](asset:dog) Z',
+  'Keep. A ![' + 'Long alt '.repeat(600) + '](asset:cat) Z',
 ])
-  test(`new inline drawings retain source references, media, native history and DOCX: ${target}`, async () => {
+  test(`new inline drawings retain source references, media, native history and DOCX: ${target.slice(0, 130)}`, async () => {
     const editor = createDocxEditor({
       container: document.createElement('div'),
       imageDecodePort: decode,
@@ -75,7 +76,11 @@ for (const target of [
       expect(resolved).toEqual(
         target.includes('asset:dog') ? ['asset:cat', 'asset:dog'] : ['asset:cat']
       );
+      let publications = 0;
+      const stop = editor.surface!.session.subscribe(() => publications++);
       const applied = applyDirectPlan(editor, planned, { ...context, images: prepared.images });
+      stop();
+      expect(publications).toBe(1);
       if (!applied.success) throw Error(applied.error);
       expect(editor.surface!.session.paragraphIds()).toContain(originalId);
       const pkg = editor.surface!.session.currentPackage();
@@ -326,6 +331,99 @@ test('a source revision change during image resolution refuses stale execution w
     expect(media(before)).toEqual([]);
     expect(editor.exec({ type: 'undo' }).ok).toBe(true);
     expect(editor.surface!.session.canUndo()).toBe(false);
+  } finally {
+    editor.destroy();
+  }
+});
+
+for (const kind of ['heading', 'table'] as const)
+  test(`inline image insertion retains existing ${kind} paragraphs and their native structure`, async () => {
+    const source =
+      kind === 'heading'
+        ? docxFixture(
+            '<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>Keep.</w:t></w:r></w:p>',
+            {
+              styles:
+                '<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="Heading 1"/><w:pPr><w:outlineLvl w:val="0"/></w:pPr></w:style></w:styles>',
+            }
+          )
+        : docxFixture(
+            '<w:p><w:r><w:t>Outside</w:t></w:r></w:p><w:tbl><w:tblPr/><w:tblGrid><w:gridCol w:w="2500"/></w:tblGrid><w:tr><w:tc><w:tcPr/><w:p><w:r><w:t>H</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:tcPr/><w:p><w:r><w:t>Keep.</w:t></w:r></w:p></w:tc></w:tr></w:tbl>'
+          );
+    const editor = createDocxEditor({
+      container: document.createElement('div'),
+      document: source,
+      imageDecodePort: decode,
+    });
+    try {
+      const ids = editor.surface!.session.paragraphIds();
+      const before = canonicalOoxmlFingerprint(editor.surface!.session.part());
+      const revision = readEditorRevision(editor, context.documentId, context.epoch)!;
+      const view = await readWorkingView(editor.surface!.session, revision);
+      if (!view.success) throw Error(view.error);
+      const target = view.view.projection.text.replace('Keep', 'Keep ![Cell](asset:cell "Photo")');
+      const planned = await plan(editor, target);
+      expect(planned.operations.some((edit) => edit.kind === 'inline-atoms')).toBe(true);
+      expect(
+        planned.operations.some((edit) => edit.kind === 'siblings' || edit.kind === 'table')
+      ).toBe(false);
+      const prepared = await prepareInlineImageResources(
+        planned,
+        async () => ({ bytes: png, mime: 'image/png', widthPoints: 12, heightPoints: 8 }),
+        decode
+      );
+      if (!prepared.success) throw Error(prepared.error);
+      const result = applyDirectPlan(editor, planned, { ...context, images: prepared.images });
+      if (!result.success) throw Error(result.error);
+      expect(editor.surface!.session.paragraphIds()).toEqual(ids);
+      expect((await plan(editor, target)).operations).toEqual([]);
+      const pkg = editor.surface!.session.currentPackage();
+      expect(buildBlockIndex(pkg).diagnostics).toEqual([]);
+      expect(media(pkg)).toHaveLength(1);
+      const after = canonicalOoxmlFingerprint(editor.surface!.session.part());
+      expect(editor.exec({ type: 'undo' }).ok).toBe(true);
+      expect(canonicalOoxmlFingerprint(editor.surface!.session.part())).toBe(before);
+      expect(media(editor.surface!.session.currentPackage())).toEqual([]);
+      expect(editor.exec({ type: 'redo' }).ok).toBe(true);
+      expect(canonicalOoxmlFingerprint(editor.surface!.session.part())).toBe(after);
+      const loaded = readOoxmlPackage(new Uint8Array(await editor.save()));
+      if (!loaded.ok) throw Error(loaded.reason);
+      expect(
+        canonicalOoxmlFingerprint(loaded.package.parts.get(loaded.package.mainDocumentPart)!)
+      ).toBe(after);
+      expect(media(loaded.package)).toEqual(media(pkg));
+    } finally {
+      editor.destroy();
+    }
+  });
+
+test('unsupported marked and linked image ownership refuses before resolving resources', async () => {
+  const editor = createDocxEditor({
+    container: document.createElement('div'),
+    imageDecodePort: decode,
+    document: docxFixture('<w:p><w:r><w:t>Keep.</w:t></w:r></w:p>'),
+  });
+  try {
+    const before = editor.surface!.session.currentPackage();
+    for (const target of [
+      'Keep. **![Cat](asset:cat)** Z',
+      'Keep. [![Cat](asset:cat)](https://example.test) Z',
+    ]) {
+      const planned = await plan(editor, target);
+      let resolved = false;
+      const result = await prepareInlineImageResources(
+        planned,
+        async () => {
+          resolved = true;
+          return { bytes: png, mime: 'image/png' };
+        },
+        decode
+      );
+      expect(result).toMatchObject({ success: false, code: 'unsupported-operation' });
+      expect(resolved).toBe(false);
+      expect(editor.surface!.session.currentPackage()).toBe(before);
+      expect(editor.surface!.session.canUndo()).toBe(false);
+    }
   } finally {
     editor.destroy();
   }
