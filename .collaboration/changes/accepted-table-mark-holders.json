@@ -1,0 +1,15 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Accepted native table insertions retained empty row property holders that differed from direct table insertion. Private complete-target replacement refused new native tables and quote paragraphs.",
+  "after": "Acceptance removes property holders containing only accepted insertion marks and preserves opaque attributes and children. Private replacement stages native table rows, rich cell content, quote styles, and surrounding lists under existing native ownership.",
+  "reason": "The change uses existing native revision marks, canonical removal operations, and private review records. It adds no shared fields or operation types. Existing readers retain their established format.",
+  "tests": [
+    "packages/core/src/store/__tests__/accepted-table-mark-holders.test.ts",
+    "packages/core/src/store/__tests__/revision-marker-content.test.ts",
+    "packages/sciobot/src/review/recompose-inserted-tables.test.ts",
+    "packages/sciobot/src/review/recompose-inserted-tables-collaboration.test.ts"
+  ],
+  "changeset": "accepted-table-mark-holders",
+  "migration": null
+}

@@ -3,6 +3,7 @@ import { captureRunOriginResolution } from './run-origin-resolution.ts';
 import { finishRevisionDecision } from './revision-decision-finish.ts';
 import {
   hasRevisionMarkerContent,
+  noteAcceptedTableMark,
   heldOnlyResolvedMarks,
   isInertMarker,
 } from './revision-marker-content.ts';
@@ -863,6 +864,7 @@ export function resolveRevisions(
     if (site.node.kind === 'moveFromRangeStart' || site.node.kind === 'moveToRangeStart') continue;
     if (tableRevisionTarget(part, site)) {
       dropMarks.add(site.node.id);
+      noteAcceptedTableMark(action, site, acceptedMarks);
       if (site.node.localName === 'cellMerge' && site.parent) {
         const value = revisionAttribute(site.node, action === 'accept' ? 'vMerge' : 'vMergeOrig');
         mergeCells.set(tableRevisionTarget(part, site)!.id, {

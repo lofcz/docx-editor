@@ -75,7 +75,7 @@ export function heldOnlyResolvedMarks(
   );
 }
 
-/** A `w:pPr`, or its `w:rPr`, that held nothing but marks accepted for good. */
+/** Property holders whose accepted insertion marks made their owning content permanent. */
 function acceptedOnly(node: OoxmlNode, accepted: ReadonlySet<string>): boolean {
   if (node.kind === 'textValue' || node.children.length === 0 || accepted.size === 0) return false;
   if (
@@ -85,6 +85,18 @@ function acceptedOnly(node: OoxmlNode, accepted: ReadonlySet<string>): boolean {
     return node.children.every(
       (child) => accepted.has(child.id) && !preservesInsertedParagraphProperty(child, 'rPr')
     );
+  if (
+    node.namespaceUri === WML_NAMESPACE_URI &&
+    ['trPr', 'tcPr'].includes(node.localName) &&
+    node.attributes.length === 0
+  )
+    return node.children.every(
+      (child) =>
+        child.kind !== 'textValue' &&
+        child.namespaceUri === WML_NAMESPACE_URI &&
+        ['ins', 'cellIns'].includes(child.localName) &&
+        accepted.has(child.id)
+    );
   if (node.kind !== 'paragraphProperties') return false;
   return node.children.every(
     (child) =>
@@ -92,4 +104,18 @@ function acceptedOnly(node: OoxmlNode, accepted: ReadonlySet<string>): boolean {
         (mark) => accepted.has(mark.id) && preservesInsertedParagraphProperty(mark, 'pPr')
       ) && acceptedOnly(child, accepted)
   );
+}
+
+/** Accepted new rows/cells have no earlier property holder to retain. */
+export function noteAcceptedTableMark(
+  action: 'accept' | 'reject',
+  site: { readonly node: OoxmlElement; readonly parent: OoxmlElement | null },
+  accepted: Set<string>
+): void {
+  if (
+    action === 'accept' &&
+    ((site.node.localName === 'ins' && site.parent?.localName === 'trPr') ||
+      site.node.localName === 'cellIns')
+  )
+    accepted.add(site.node.id);
 }

@@ -381,7 +381,7 @@ export function siblingFragmentSeeds(
 }
 
 /** Text width of the governing body section, for equal new grid columns. */
-function contentWidth(part: OoxmlPart): number {
+export function contentWidth(part: OoxmlPart): number {
   const root = bodyStoryRoot(part);
   const section =
     root && root.kind !== 'textValue'
