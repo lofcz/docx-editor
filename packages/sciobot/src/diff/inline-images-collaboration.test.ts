@@ -6,6 +6,8 @@ import {
   canonicalOoxmlFingerprint,
   findNode,
   paragraphTextOf,
+  resolveImageRelationship,
+  type OoxmlNode,
   type OoxmlPackage,
   type ImageDecodePort,
 } from '@docx-editor.dev/core/store';
@@ -27,6 +29,35 @@ const png = Uint8Array.from(
   ),
   (c) => c.charCodeAt(0)
 );
+// A valid ancillary PNG chunk gives the peer an independently identifiable byte stream.
+const chunkData = new TextEncoder().encode('Comment\0Peer');
+const chunk = new Uint8Array(12 + chunkData.length);
+new DataView(chunk.buffer).setUint32(0, chunkData.length);
+chunk.set([116, 69, 88, 116], 4);
+chunk.set(chunkData, 8);
+let crc = 0xffffffff;
+for (const byte of chunk.subarray(4, -4)) {
+  crc ^= byte;
+  for (let bit = 0; bit < 8; bit++) crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+}
+new DataView(chunk.buffer).setUint32(chunk.length - 4, (crc ^ 0xffffffff) >>> 0);
+const peerPng = new Uint8Array(png.length + chunk.length);
+peerPng.set(png.subarray(0, 33));
+peerPng.set(chunk, 33);
+peerPng.set(png.subarray(33), 33 + chunk.length);
+function pictureRelationship(node: OoxmlNode): string[] {
+  if (node.kind === 'textValue') return [];
+  const id =
+    node.localName === 'blip'
+      ? node.attributes.find(
+          (attribute) =>
+            attribute.localName === 'embed' &&
+            attribute.namespaceUri ===
+              'http://schemas.openxmlformats.org/officeDocument/2006/relationships'
+        )?.value
+      : undefined;
+  return [...(id ? [id] : []), ...node.children.flatMap(pictureRelationship)];
+}
 const decode: ImageDecodePort = {
   async decode() {
     return { pixelWidth: 1, pixelHeight: 1, dpiX: 96, dpiY: 96 };
@@ -86,7 +117,12 @@ for (const clients of [
             planned.plan,
             async (reference) => {
               resolved.push(reference);
-              return { bytes: png, mime: 'image/png', widthPoints: 12, heightPoints: 8 };
+              return {
+                bytes: reference === 'asset:dog' ? peerPng : png,
+                mime: 'image/png',
+                widthPoints: 12,
+                heightPoints: 8,
+              };
             },
             decode
           );
@@ -111,7 +147,25 @@ for (const clients of [
             expect(byReference.has('asset:cat')).toBe(a);
             expect(byReference.has('asset:dog')).toBe(b);
             expect(media(pkg)).toHaveLength(Number(a) + Number(b));
-            for (const [, bytes] of media(pkg)) expect(bytes).toEqual(png);
+            for (const block of byReference.values()) {
+              const ids = pictureRelationship(
+                findNode(editor.surface!.session.part(), block.controlId)!
+              );
+              expect(ids).toHaveLength(1);
+              const resource = resolveImageRelationship(
+                pkg.relationships.get(pkg.mainDocumentPart),
+                pkg.mainDocumentPart,
+                ids[0]!
+              );
+              expect(resource.mode).toBe('internal');
+              if (resource.mode !== 'internal')
+                throw Error('The image has no native media relationship.');
+              expect(resource.partName).toBe(block.payload.attributes.mediaPartName);
+              expect(
+                pkg.partBytes.get(resource.partName) ??
+                  pkg.partBytes.get(resource.partName.replace(/^\//, ''))
+              ).toEqual(block.payload.attributes.reference === 'asset:dog' ? peerPng : png);
+            }
             expect(paragraphTextOf(editor.surface!.session.part(), neighbor)).toBe(
               'Neigh' + prefix + 'bor' + (a ? ' A \uFFFC Z' : '') + tail
             );
