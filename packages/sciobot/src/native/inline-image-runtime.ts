@@ -1,3 +1,4 @@
+import { bindInlineImageRelationship } from './inline-image-relationship';
 import { inlinePicture } from './inline-picture';
 import {
   applyTreeOp,
@@ -112,7 +113,12 @@ export function createInlineImageRuntime(
           const resource = resources.get(atom.resource.reference)!;
           const embedded = withEmbeddedImage(next, partName, resource);
           if (!embedded.ok) throw Error(`Image resource embedding refused: ${embedded.reason}.`);
-          next = embedded.pkg;
+          next = bindInlineImageRelationship(
+            embedded.pkg,
+            partName,
+            embedded.relationshipId,
+            embedded.partName
+          );
           apply({ op: 'removeContentControl', controlId: control.id, keepContent: true });
           const drawing = inlinePicture({
             docPrId: embedded.docPrId,

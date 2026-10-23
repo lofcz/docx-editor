@@ -1,9 +1,11 @@
+import { unzipSync, zipSync, strFromU8, strToU8 } from 'fflate';
 import { expect, test } from 'bun:test';
 import { createDocxEditor, type DocxEditorInstance } from '@docx-editor.dev/core/editor';
 import {
   canonicalOoxmlFingerprint,
   findNode,
   readOoxmlPackage,
+  resolveImageRelationship,
   type OoxmlPackage,
   type ImageDecodePort,
 } from '@docx-editor.dev/core/store';
@@ -424,6 +426,57 @@ test('unsupported marked and linked image ownership refuses before resolving res
       expect(editor.surface!.session.currentPackage()).toBe(before);
       expect(editor.surface!.session.canUndo()).toBe(false);
     }
+  } finally {
+    editor.destroy();
+  }
+});
+
+test('images in nonstandard main parts resolve their actual native media through DOCX reopening', async () => {
+  const entries = unzipSync(docxFixture('<w:p><w:r><w:t>Keep.</w:t></w:r></w:p>'));
+  entries['custom/main.xml'] = entries['word/document.xml']!;
+  entries['custom/_rels/main.xml.rels'] = entries['word/_rels/document.xml.rels']!;
+  delete entries['word/document.xml'];
+  delete entries['word/_rels/document.xml.rels'];
+  entries['_rels/.rels'] = strToU8(
+    strFromU8(entries['_rels/.rels']!).replace('word/document.xml', 'custom/main.xml')
+  );
+  entries['[Content_Types].xml'] = strToU8(
+    strFromU8(entries['[Content_Types].xml']!).replace('/word/document.xml', '/custom/main.xml')
+  );
+  const editor = createDocxEditor({
+    container: document.createElement('div'),
+    document: zipSync(entries),
+    imageDecodePort: decode,
+  });
+  try {
+    const target = 'Keep. A ![Cat](asset:cat) Z';
+    const planned = await plan(editor, target);
+    const prepared = await prepareInlineImageResources(
+      planned,
+      async () => ({ bytes: png, mime: 'image/png', widthPoints: 12, heightPoints: 8 }),
+      decode
+    );
+    if (!prepared.success) throw Error(prepared.error);
+    const result = applyDirectPlan(editor, planned, { ...context, images: prepared.images });
+    if (!result.success) throw Error(result.error);
+    const saved = readOoxmlPackage(new Uint8Array(await editor.save()));
+    if (!saved.ok) throw Error(saved.reason);
+    for (const pkg of [editor.surface!.session.currentPackage(), saved.package]) {
+      expect(pkg.mainDocumentPart).toBe('/custom/main.xml');
+      const image = [...buildBlockIndex(pkg).byId.values()].find(
+        (block) => block.payload.type === 'inline_image'
+      )!;
+      const record = (pkg.relationships.get(pkg.mainDocumentPart) ?? []).find((entry) =>
+        entry.type.endsWith('/image')
+      )!;
+      expect(record).toBeDefined();
+      const resource = resolveImageRelationship([record], pkg.mainDocumentPart, record.id);
+      expect(resource.mode).toBe('internal');
+      if (resource.mode !== 'internal') throw Error('The image has no native media relationship.');
+      expect(resource.partName).toBe(image.payload.attributes.mediaPartName);
+      expect(pkg.partBytes.get(resource.partName)).toEqual(png);
+    }
+    expect((await plan(editor, target)).operations).toEqual([]);
   } finally {
     editor.destroy();
   }
