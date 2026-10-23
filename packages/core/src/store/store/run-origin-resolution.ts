@@ -100,7 +100,7 @@ export function captureRunOriginResolution(
   return { paragraphs, prefixes, retained, paragraphPropertyPrefixes, sourceHints };
 }
 
-function normalizedParagraph(
+export function normalizedRunOriginParagraph(
   root: OoxmlNode,
   selected: ReadonlySet<string>,
   prefixes: Set<string>,
@@ -267,7 +267,7 @@ function normalizeOrigins(
   for (const [paragraphId, scopes] of resolution.paragraphs) {
     const paragraph = findNode(current, paragraphId);
     if (paragraph?.kind !== 'paragraph') continue;
-    const normalized = normalizedParagraph(
+    const normalized = normalizedRunOriginParagraph(
       paragraph,
       scopes,
       prefixes,

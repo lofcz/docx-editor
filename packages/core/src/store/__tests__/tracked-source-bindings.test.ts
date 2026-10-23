@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { isPackageEditRefusal } from '../store/package-edit-refusal.ts';
 import {
   canonicalOoxmlFingerprint,
   prepareTrackedRunOrigins,
@@ -90,7 +91,13 @@ for (const malformed of [
     } as OoxmlElement;
     expect(() => readTrackedSourceBindings(invalid)).toThrow();
     expect(materializeTrackedSourceBindings(invalid)).toBe(invalid);
-    expect(() => materializeTrackedSourceBindings(invalid, new Set([scope]))).toThrow();
+    try {
+      materializeTrackedSourceBindings(invalid, new Set([scope]));
+      throw Error('Selected malformed bindings must refuse');
+    } catch (error) {
+      expect(isPackageEditRefusal(error)).toBe(true);
+      if (isPackageEditRefusal(error)) expect(error.reason).toBe('unsupported');
+    }
     expect(p.attributes.some((attr) => attr.namespaceUri === TRACKED_SOURCE_BINDINGS_NS)).toBe(
       false
     );

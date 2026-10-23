@@ -119,6 +119,32 @@ for (const clients of [
         }
         if (concurrent) pair.reconnect(clients[0] === 41 ? 1 : 0);
         await pair.settle();
+        // Export a cold tree inside the observed transaction. Cached exports cannot mask writes.
+        const roomBytes = pair.documents.map((doc) => Y.encodeStateAsUpdate(doc));
+        let exported: Uint8Array | undefined;
+        const serialized = alice!.surface!.applyAutomationOps(
+          () => [],
+          { kind: 'body' },
+          [
+            (working) => {
+              exported = writeOoxmlPackage(structuredClone(working));
+              return working;
+            },
+          ],
+          true,
+          true,
+          'after'
+        );
+        expect(serialized.rejected).toBe(false);
+        await pair.settle();
+        pair.documents.forEach((doc, index) =>
+          expect(Y.encodeStateAsUpdate(doc)).toEqual(roomBytes[index]!)
+        );
+        const exportedRead = readOoxmlPackage(exported!);
+        if (!exportedRead.ok) throw Error(exportedRead.reason);
+        expect(
+          canonicalOoxmlFingerprint(exportedRead.package.parts.get(baseline.mainDocumentPart)!)
+        ).toBe(expected);
         for (const editor of pair.editors) {
           expect(word(editor.surface!.session.currentPackage())).toBe(expected);
           const rows = readReviewGroups(editor.surface!.session.currentPackage());

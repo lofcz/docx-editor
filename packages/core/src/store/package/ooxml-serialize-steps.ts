@@ -1,3 +1,4 @@
+import { projectCompletedRunOrigins } from '../store/completed-run-origin-export.ts';
 // Canonical serialization in steps, so a long part can be written without one long task.
 //
 // The serializer itself is a recursive, synchronous walk. Instead of making it resumable,
@@ -66,6 +67,7 @@ function* visitBlocks(
  * @internal
  */
 export function* serializeOoxmlPartSteps(part: OoxmlPart): Generator<void, Uint8Array> {
+  part = projectCompletedRunOrigins(part);
   // Pass 1: the namespace summaries the prefix map is built from. The non-empty-prefix walk
   // starts from the same two reserved bindings `controlledPrefixMap` starts from.
   const namespaceUris = new Set<string>();

@@ -277,4 +277,4 @@ Tracked replacement retains source run boundaries when concurrent text arrives f
 
 Use matching current engines for shared documents with source bindings. Mixed shared sessions with older engines are not certified for this behavior. DOCX export retains the existing versioned run-origin metadata without load-local identity bindings.
 
-Independent concurrent decisions can retain completed source proofs. Exact Word structure for that case remains under development.
+When independent decisions finish concurrently, XML export settles completed source proofs after all related native revisions close. Export preserves proofs required by active revisions elsewhere in the part. This projection does not change shared state or document history.

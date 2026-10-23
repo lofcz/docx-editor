@@ -1,3 +1,4 @@
+import { projectCompletedRunOrigins } from '../store/completed-run-origin-export.ts';
 import { materializeTrackedSourceBindings } from './tracked-source-bindings.ts';
 // Canonical OOXML serialization and the semantic equality oracle.
 //
@@ -426,6 +427,7 @@ export function serializeOoxmlPart(part: OoxmlPart): string {
  * @internal
  */
 export function serializeOoxmlPartChunks(part: OoxmlPart): MarkupChunk[] {
+  part = projectCompletedRunOrigins(part);
   const prefixes = controlledPrefixMap(part.root);
   const { rootBindings, declarations } = rootSerializationScope(prefixes);
   const out: MarkupChunk[] = [];

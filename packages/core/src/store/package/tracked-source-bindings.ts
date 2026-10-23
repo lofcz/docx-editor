@@ -1,3 +1,4 @@
+import { PackageEditRefusal } from '../store/package-edit-refusal.ts';
 import { isXmlNCName } from './qname.ts';
 import type { OoxmlElement, OoxmlNode } from './ooxml-tree.ts';
 
@@ -31,7 +32,7 @@ const token = (value: unknown, scope: string): value is string =>
   value.startsWith(scope + '/') &&
   UUID.test(value.slice(scope.length + 1));
 function invalid(): never {
-  throw new Error('Invalid tracked source bindings.');
+  throw new PackageEditRefusal('Invalid tracked source bindings.', 'unsupported');
 }
 export function readTrackedSourceBindings(node: OoxmlNode): readonly TrackedSourceBinding[] {
   if (node.kind !== 'paragraph') return [];
