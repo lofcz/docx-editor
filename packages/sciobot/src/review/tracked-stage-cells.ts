@@ -12,7 +12,7 @@ import type { TargetAstNode } from '../projection/parse-target';
 import { newParagraphSeeds } from './new-paragraphs';
 import { stageParagraphResources } from './tracked-stage-paragraphs';
 import { currentStagePart } from './tracked-stage-text';
-import type { TrackedStageWriter } from './tracked-stage-writer';
+import type { TrackedStageAttribution, TrackedStageWriter } from './tracked-stage-writer';
 
 /** Fill actual newly allocated cells. The native row/cell insertion owns their complete content. */
 export function stageNewCells(
@@ -24,7 +24,8 @@ export function stageNewCells(
     lists?: readonly InsertedListBinding[];
     properties?: NewCellProperties;
   }[],
-  listContext?: DirectListContext
+  listContext?: DirectListContext,
+  revision?: TrackedStageAttribution
 ): void {
   const assignments: DirectListAssignment[] = [];
   for (const { cellId, blocks, lists } of cells) {
@@ -43,6 +44,7 @@ export function stageNewCells(
       parentId: cellId,
       beforeId: placeholders[0]!.id,
       paragraphs: seeds.paragraphs,
+      ...(revision ? { revision } : {}),
     });
     writer.apply(partName, { op: 'deleteBlock', blockId: placeholders[0]!.id });
     const landed = findNode(currentStagePart(writer, partName), cellId);

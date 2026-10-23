@@ -61,6 +61,6 @@ export function stageSiblingTables(
           : undefined,
       }));
     });
-    stageNewCells(writer, edit.partName, cells, listContext);
+    stageNewCells(writer, edit.partName, cells, listContext, revision);
   }
 }

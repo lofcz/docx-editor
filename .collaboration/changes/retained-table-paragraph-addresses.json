@@ -1,0 +1,15 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Removing inserted tables discarded their paragraph addresses and offline peer edits. Complete-target table cells used only structural ownership, which also removed peer text during rejection.",
+  "after": "Table decisions retain empty paragraph addresses at surviving story boundaries. Cell text can carry existing native insertion marks independently of structural ownership. Rejection recovers unowned text outside the removed table. The final canonical root lowers moved identities and content changes in one journal.",
+  "reason": "The implementation reuses retired paragraph markers, native revision marks, canonical move and child replacement operations, and existing text journals. It adds no shared fields, descriptors, or operation types.",
+  "tests": [
+    "packages/core/src/store/__tests__/removed-table-paragraph-recovery.test.ts",
+    "packages/core/src/store/__tests__/retired-paragraph.test.ts",
+    "packages/sciobot/src/review/recompose-born-table-peer.test.ts",
+    "packages/sciobot/src/review/recompose-inserted-tables-collaboration.test.ts"
+  ],
+  "changeset": "retained-table-paragraph-addresses",
+  "migration": null
+}

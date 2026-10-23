@@ -1,3 +1,6 @@
+import { runWithoutJournalCapture } from '../package/canonical-primitive-capture.ts';
+import { retainRemovedTableParagraphs } from './revision-table-recovery.ts';
+import type { RebuildPlan } from './revision-rebuild-plan.ts';
 import { revisionSiteRefusal, type RevisionSiteRefusal } from './revision-site-refusal.ts';
 import { captureRunOriginResolution } from './run-origin-resolution.ts';
 import { finishRevisionDecision } from './revision-decision-finish.ts';
@@ -493,36 +496,6 @@ export function revisionStructuralReach(
   return reach;
 }
 
-interface RebuildPlan {
-  /** Wrapper node id → what to do with it. */
-  readonly actions: ReadonlyMap<string, Resolution>;
-  readonly relocate: ReadonlyMap<string, readonly OoxmlNode[]>;
-  /** Nodes to drop outright: resolved paragraph marks and spent move-range markers. */
-  readonly dropMarks: ReadonlySet<string>;
-  /** Inserted marks accepted for good: a container left holding nothing goes with them. */
-  readonly acceptedMarks: ReadonlySet<string>;
-  /** Property-change wrappers, node id → restore the recorded properties into the parent. */
-  readonly restoreProperties: ReadonlySet<string>;
-  /**
-   * Paragraphs whose mark is resolved away, so they merge with the paragraph that follows.
-   *
-   * Accepting `w:pPr/w:rPr/w:del` means the paragraph mark is gone, and a paragraph without
-   * its mark is not a paragraph — it runs into the next one. Removing only the `w:del`
-   * element would report the deletion applied while leaving two paragraphs, which is the same
-   * class of error as removing a `w:trPr/w:del` and leaving the row.
-   */
-  readonly mergeForward: ReadonlySet<string>;
-  /** Accepting: a cell's emptied last paragraph joins the one before (rejecting keeps it). */
-  readonly accepting: boolean;
-  /** Removed cells, rows, and tables, including containers emptied by this decision. */
-  readonly removeStructures: ReadonlySet<string>;
-  readonly mergeCells: ReadonlyMap<string, OoxmlElement>;
-  readonly mint: () => string;
-  readonly tables: ReadonlySet<string>;
-  /** The nodes on a path to a target; every other subtree is kept as it is. */
-  readonly reach: ReadonlySet<string>;
-}
-
 /**
  * Rebuild one child list, applying every action that targets a child of THIS node.
  *
@@ -972,8 +945,14 @@ export function resolveRevisions(
   if (rebuilt.length !== 1 || root === undefined || root.kind === 'textValue') {
     return { ok: false, reason: 'tree-invariant' };
   }
-  const replaced = replaceChildren(part, part.root.id, root.children, options);
   const decided = new Set(matched.map((site) => site.node.id));
+  const recovered = runWithoutJournalCapture(() =>
+    retainRemovedTableParagraphs(part, decided, { ...part, root }, options, (paragraph) =>
+      rebuild(paragraph, plan).find((node) => node.kind === 'paragraph')
+    )
+  );
+  if (!recovered) return { ok: false, reason: 'tree-invariant' };
+  const replaced = replaceChildren(part, part.root.id, recovered.root.children, options);
   const aligned =
     replaced.ok && keepAlignmentRows(part, sites, decided, action, replaced.part, options);
   const settled = aligned && trimDecidedExceptions(part, matched, aligned, options);
