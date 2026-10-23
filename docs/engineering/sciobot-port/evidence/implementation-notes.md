@@ -2304,3 +2304,12 @@ Final verification passes all 1063 diff, AI and review composition cases across 
 Native code styles now cover new and retained inline controls without turning their projection into literal backtick content. Eight local cases and sixteen shared cases pass exact native ownership, histories, and reopening. Runtime `472ff8e5` retains the trailing text address across native splits. Continuous style deltas avoid unnecessary whitespace splits. The broad and focused runs cover 1,930 distinct passing source cases; 24 compiled code fixtures also pass. Types, builds, API extraction, root formatting, lint, and compatibility checks pass. See [code-control evidence](code-inline-controls.md).
 
 The stronger middle-fragment case remains failing in all eight permutations. Its peer text moves before its original anchor after creation undo. The independent native oracle stays unchanged. Preserve exact source provenance for every native split fragment next; the trailing fragment alone does not establish it. D30 remains open.
+
+
+## D30 exact native text provenance
+
+Runtime `207fd2c4` composes source windows and fresh characters through tracked slicing and coalescing. It translates nested local source addresses and separates paragraph-split identities. Runtime `ffadfbef` rejects malformed recipes atomically. Runtime `35fe2455` retains boundary spaces and empty imported text behavior.
+
+The original middle-fragment oracle now passes all 32 cases. All 56 compiled code fixtures pass at `ffadfbef`. Wider native checks pass 1,054 cases; private and transport timing failures pass separately at their unchanged limits. An additional 26-file suggestion check finds one inherited paragraph-mark acceptance failure. The unchanged case fails at `15b9dcfe` as well. Investigate `document-tracked-equation-insert.test.ts`, case “a tracked split beside another author's deleted mark accepts the same on both peers”, next. Preserve its expected `yworldNext` join.
+
+The historical peer-born-cell probe now passes both row and column cases. It no longer represents an active failure on this branch. The stronger native table history and geometry fixtures remain the default coverage. See [native provenance evidence](native-text-slice-provenance.md) for exact verification scopes. D30 remains open; no TODO closes.

@@ -1,4 +1,4 @@
-// Known failing investigation fixture. Run explicitly with bun test on this path.
+// Historical regression: native table history repair preserves peer text. Run explicitly on this path.
 import { expect, test } from 'bun:test';
 import { createTwoEditorFixture } from '../../../../../packages/sciobot/test/support/collaboration';
 import { docxFixture } from '../../../../../packages/sciobot/test/support/document';
