@@ -1579,6 +1579,14 @@ export type ImageWrapTarget = 'inline' | 'square' | 'squareLeft' | 'squareRight'
 // @public
 export function initializeHarfBuzz(): Promise<void>;
 
+// @public
+export interface InlineDrawingFormatting {
+    // (undocumented)
+    readonly props: readonly OoxmlProperty[];
+    // (undocumented)
+    readonly style: ResolvedRunStyle;
+}
+
 // @public (undocumented)
 export interface InlineDrawingRecord {
     // (undocumented)
@@ -1602,6 +1610,7 @@ export interface InlineDrawingRecord {
     readonly drawingNodeId: string;
     // (undocumented)
     readonly effects: DrawingImageEffects;
+    readonly formatting?: InlineDrawingFormatting;
     // (undocumented)
     readonly geometry: DrawingGeometry;
     readonly groupPicture?: DrawingGroupPictureRecord;
