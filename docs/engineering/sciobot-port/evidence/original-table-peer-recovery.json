@@ -1,0 +1,125 @@
+{
+  "leaf": "R19",
+  "status": "partial checkpoint; leaf remains open",
+  "runtimeRevision": "375649f1628fcb80246df0c3ba174e39ffa9c8c9",
+  "sourceHashes": {
+    "docs/site/content/pro/tracked-changes.mdx": "2fbfb235182888da5a27b2abfb33de4b769be08dfff851b9e65a8441838d9e8e",
+    "docs/site/data/word-features.ts": "5ec95158e1f2abe81ef9c5f89f63b883dff0bf5668814cb84dc20571d9b227a8",
+    "packages/core/src/layout/__tests__/table-recovery-paragraphs.test.ts": "043893fafd5bd1897835d0de5a01a61fda878fa4783e78d7fed13b53dff7790c",
+    "packages/core/src/layout/story-roots.ts": "c4ec15c639350a1e0e778345bab118d80145f3d2cbc2109e6e55a5ccc4fe334b",
+    "packages/core/src/layout/table-recovery-paragraphs.ts": "496a56cab08089bc3afdaa6ca3eeaec41a0d17c6b645fdf318a59e5dae1df702",
+    "packages/sciobot/src/review/recompose-born-table-peer.test.ts": "c2d0f27f2c76aa03ad0f5005a4aa5da445f3777c72c57ed305b055cd80387c6a"
+  },
+  "verification": {
+    "distinctCases": 204,
+    "nativeLayout": {
+      "files": 9,
+      "passed": 158,
+      "assertions": 370
+    },
+    "nativeAndSharedParity": {
+      "files": 2,
+      "passed": 17,
+      "assertions": 355,
+      "overlapWithNativeLayout": 13,
+      "newSharedCases": 4
+    },
+    "privateRegressions": {
+      "files": 6,
+      "initialPassed": 38,
+      "initialFailed": 4,
+      "failureKind": "unchanged 5000 ms list/checklist deadlines",
+      "unchangedCompleteFileRetryPassed": 4,
+      "retryAssertions": 132,
+      "distinctVerifiedCases": 42,
+      "originalProcessWasGreen": false
+    },
+    "coreTypedFiles": 1586,
+    "privateTypedFiles": 2085,
+    "coreBuild": true,
+    "privateBuild": true,
+    "privateRuntimeModules": 222,
+    "coreExternal": true,
+    "rootFormat": true,
+    "rootLint": true,
+    "compatibilityDecisions": 154,
+    "changedSharedFormatFields": 0,
+    "verifiedProductionSourceHashes": 199
+  },
+  "logs": {
+    "nativeLayout": {
+      "path": "/tmp/r19-original-layout-regressions.log",
+      "sha256": "fee49903174eae5be0e1e44349dcd29c0d3946fa6c6d6c03d42b584d1effe667"
+    },
+    "nativeAndSharedParity": {
+      "path": "/tmp/r19-original-parity-and-geometry.log",
+      "sha256": "6ed25bbc77e084b8776e1a24520cdebc8241da5f27aa66a6db30b4278ad95791"
+    },
+    "initialPrivateRegressions": {
+      "path": "/tmp/r19-original-private-regressions.log",
+      "sha256": "33d0a6ea4528d1475eb70f04839f5174db2f6acc986a5f82292f5ffd68916665"
+    },
+    "unchangedListDeadlineRetry": {
+      "path": "/tmp/r19-original-list-deadline-retry.log",
+      "sha256": "97a60952a30060d813e31331a9d810569e8fef1f2adc20435c8ef5fb3b2e0b03"
+    },
+    "coreTypes": {
+      "path": "/tmp/r19-original-core-types.log",
+      "sha256": "9f43cd4d93f947359e866c4154ecb0184b2e9e8c11057a1e7adb0d0f59905181"
+    },
+    "privateTypes": {
+      "path": "/tmp/r19-original-private-types-final.log",
+      "sha256": "e06ad028d1274bca20d249baa2c53c3f5a934d46d01194520fb7df14b5812b11"
+    },
+    "coreBuild": {
+      "path": "/tmp/r19-original-core-build.log",
+      "sha256": "466c4b18736b63dafac33f55320e165ea56bb1a5f4d2d906352eab8079ea6b28"
+    },
+    "privateBuild": {
+      "path": "/tmp/r19-original-private-build.log",
+      "sha256": "a89408fa87c8eaa1133f21f736b24ccc9ed4dce33c04174fc7f35810819d4271"
+    },
+    "format": {
+      "path": "/tmp/r19-original-root-format.log",
+      "sha256": "dc1f22151e297fc22326bf0d933ae359459f88375cb1bf61925f34d1733c20e0"
+    },
+    "lint": {
+      "path": "/tmp/r19-original-root-lint.log",
+      "sha256": "306802dcd94a238c43411beccd03c467aa21cff469fb39037326b6bc4e38f0ff"
+    },
+    "compatibility": {
+      "path": "/tmp/r19-original-policy.log",
+      "sha256": "f01af5889f919178180bf5bd6541f3b0b481ce3776f8bb7e39fd328f1e1cf922"
+    },
+    "sourceAudit": {
+      "path": "/tmp/r19-original-source-audit.log",
+      "sha256": "67377bf014e19a0e192c6ed8c1295eac76c7e5980f110eeaa615f941af8f59b8"
+    }
+  },
+  "proven": [
+    "Born-table Original shows independently owned peer text at the native rejection recovery boundary.",
+    "Source wrappers and UTF-16 offsets remain unchanged; viewing and switching Original preserve source fingerprints.",
+    "Original and Proposed recovery agree with native rejection and acceptance for independent row text.",
+    "Author filters and per-node filtered All Markup retain their respective views.",
+    "Body, header, footer, note, textbox, and control story boundaries use the same recovery flow.",
+    "Both client orders and reconnect receivers retain exact native decision bodies, author/decision history, remote selection and carets, and matching Original-to-rejection caret geometry.",
+    "DOCX and shared-room reopening retain both views; reopened-room rejection matches the independent complete body oracle.",
+    "Ordinary row ownership and rows retained for nested tables add no duplicate recovery."
+  ],
+  "limits": [
+    "The six-file private command had four timing failures. The complete unchanged failing file passed afterward with the original deadlines. Verification is composite.",
+    "The Original parity change covers omitted rows with independent paragraph/text ownership. Cell-only structural recovery and retained nested-row projection still need their own complete-target evidence.",
+    "No broad full private suite or installed application run is claimed for this scoped checkpoint."
+  ],
+  "remaining": [
+    "Required rich application fragments and block presence ownership.",
+    "Complete package ledgers and peer deletion evidence.",
+    "Installed application verification and remaining R19 criteria."
+  ],
+  "todosClosed": 0,
+  "backlog": {
+    "total": 275,
+    "closed": 177,
+    "remaining": 98
+  }
+}
