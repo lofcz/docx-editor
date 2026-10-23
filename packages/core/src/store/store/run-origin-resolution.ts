@@ -1,4 +1,8 @@
-import { materializeTrackedSourceBindings } from '../package/tracked-source-bindings.ts';
+import {
+  materializeTrackedSourceBindings,
+  readTrackedSourceBindings,
+  withTrackedSourceBindings,
+} from '../package/tracked-source-bindings.ts';
 import { settleDeferredRunOrigins } from './run-origin-deferred.ts';
 import {
   INSERTED_PARAGRAPH_PROPERTY_NS,
@@ -103,7 +107,7 @@ function normalizedParagraph(
   retained: Set<string>,
   hints: readonly { readonly scope: string; readonly source: string }[]
 ): OoxmlNode {
-  root = materializeTrackedSourceBindings(root, selected);
+  root = materializeTrackedSourceBindings(root, selected, false);
   const settled = settleDeferredRunOrigins(root, selected, hints);
   root = settled.root;
   const nodes = originNodes(root),
@@ -216,7 +220,15 @@ function normalizedParagraph(
     if (nested.length !== node.children.length) changed = true;
     return current;
   });
-  return changed ? cleaned : root;
+  const resolved = changed ? cleaned : root;
+  if (resolved.kind !== 'paragraph') return resolved;
+  const remaining = readTrackedSourceBindings(resolved);
+  return remaining.some((source) => scopes.has(source.scope))
+    ? withTrackedSourceBindings(
+        resolved,
+        remaining.filter((source) => !scopes.has(source.scope))
+      )
+    : resolved;
 }
 
 /** Settle only scopes witnessed at the exact selected native revision sites. */

@@ -37,46 +37,55 @@ export function readTrackedSourceBindings(node: OoxmlNode): readonly TrackedSour
   if (node.kind !== 'paragraph') return [];
   const attrs = node.attributes.filter((attr) => attr.namespaceUri === TRACKED_SOURCE_BINDINGS_NS);
   if (!attrs.length) return [];
-  let encoded: string;
-  if (attrs.length === 1 && attrs[0]!.localName === 'bindings') encoded = attrs[0]!.value;
-  else {
-    if (
-      attrs.length > 1024 ||
-      attrs.some((attribute) => !/^bindings(?:0|[1-9][0-9]*)$/.test(attribute.localName))
-    )
-      invalid();
-    const chunks = new Map(
-      attrs.map((attribute) => [
-        Number(attribute.localName.slice('bindings'.length)),
-        attribute.value,
-      ])
-    );
-    if (chunks.size !== attrs.length) invalid();
+  if (attrs.length > 1024) invalid();
+  const groups = new Map<string, Map<number, string>>();
+  let bytes = 0;
+  for (const attribute of attrs) {
+    const match = /^s([0-9a-f]{32})_(0|[1-9][0-9]*)$/.exec(attribute.localName);
+    if (!match || attribute.value.length > CHUNK_LENGTH) invalid();
+    bytes += new TextEncoder().encode(attribute.value).byteLength;
+    if (bytes > MAX_BYTES) invalid();
+    const chunks = groups.get(match[1]!) ?? new Map<number, string>();
+    const index = Number(match[2]);
+    if (chunks.has(index)) invalid();
+    chunks.set(index, attribute.value);
+    groups.set(match[1]!, chunks);
+  }
+  const combined: unknown[] = [];
+  for (const [scope, chunks] of groups) {
     const ordered: string[] = [];
-    let length = 0;
     for (let index = 0; index < chunks.size; index++) {
       const chunk = chunks.get(index);
-      if (chunk === undefined || (length += chunk.length) > MAX_BYTES) invalid();
+      if (chunk === undefined) invalid();
       ordered.push(chunk);
     }
-    encoded = ordered.join('');
+    let raw: unknown;
+    try {
+      raw = JSON.parse(ordered.join(''));
+    } catch {
+      invalid();
+    }
+    if (
+      !object(raw) ||
+      !keys(raw, ['schemaVersion', 'sources']) ||
+      raw.schemaVersion !== 1 ||
+      !Array.isArray(raw.sources) ||
+      raw.sources.length === 0 ||
+      raw.sources.length > 100_000
+    )
+      invalid();
+    for (const source of raw.sources) {
+      if (
+        !object(source) ||
+        typeof source.scope !== 'string' ||
+        source.scope.replaceAll('-', '') !== scope
+      )
+        invalid();
+      combined.push(source);
+    }
   }
-  if (encoded.length > MAX_BYTES || new TextEncoder().encode(encoded).byteLength > MAX_BYTES)
-    invalid();
-  let raw: unknown;
-  try {
-    raw = JSON.parse(encoded);
-  } catch {
-    invalid();
-  }
-  if (
-    !object(raw) ||
-    !keys(raw, ['schemaVersion', 'sources']) ||
-    raw.schemaVersion !== 1 ||
-    !Array.isArray(raw.sources) ||
-    raw.sources.length > 100_000
-  )
-    invalid();
+  if (combined.length > 100_000) invalid();
+  const raw = { sources: combined };
   const seen = new Set<string>();
   let count = 0;
   for (const source of raw.sources) {
@@ -126,8 +135,20 @@ export function withTrackedSourceBindings(
   preferredPrefix = 'sourceBindings'
 ): OoxmlElement {
   if (node.kind !== 'paragraph') invalid();
-  const raw = JSON.stringify({ schemaVersion: 1, sources });
-  if (new TextEncoder().encode(raw).byteLength > MAX_BYTES) invalid();
+  const grouped = new Map<string, TrackedSourceBinding[]>();
+  for (const source of sources) {
+    const values = grouped.get(source.scope) ?? [];
+    values.push(source);
+    grouped.set(source.scope, values);
+  }
+  const prior = new Map<string, TrackedSourceBinding[]>();
+  for (const source of readTrackedSourceBindings(node)) {
+    const values = prior.get(source.scope) ?? [];
+    values.push(source);
+    prior.set(source.scope, values);
+  }
+  const fields: OoxmlElement['attributes'][number][] = [];
+  let bytes = 0;
   const existing = node.attributes.find((attr) => attr.namespaceUri === TRACKED_SOURCE_BINDINGS_NS);
   const bindings = node.namespaceBindings;
   let prefix = existing?.prefix ?? preferredPrefix;
@@ -139,14 +160,35 @@ export function withTrackedSourceBindings(
     suffix++
   )
     prefix = preferredPrefix + suffix;
-  const chunks: string[] = [];
-  for (let start = 0; start < raw.length; ) {
-    let end = Math.min(start + CHUNK_LENGTH, raw.length);
-    const code = raw.charCodeAt(end - 1);
-    if (end < raw.length && code >= 0xd800 && code <= 0xdbff) end--;
-    chunks.push(raw.slice(start, end));
-    start = end;
+  for (const [scope, records] of grouped) {
+    const raw = JSON.stringify({ schemaVersion: 1, sources: records });
+    if ((bytes += new TextEncoder().encode(raw).byteLength) > MAX_BYTES) invalid();
+    const fieldPrefix = 's' + scope.replaceAll('-', '') + '_';
+    if (JSON.stringify(prior.get(scope)) === JSON.stringify(records)) {
+      for (const attribute of node.attributes)
+        if (
+          attribute.namespaceUri === TRACKED_SOURCE_BINDINGS_NS &&
+          attribute.localName.startsWith(fieldPrefix)
+        )
+          fields.push(attribute);
+      continue;
+    }
+    let index = 0;
+    for (let start = 0; start < raw.length; ) {
+      let end = Math.min(start + CHUNK_LENGTH, raw.length);
+      const code = raw.charCodeAt(end - 1);
+      if (end < raw.length && code >= 0xd800 && code <= 0xdbff) end--;
+      fields.push({
+        kind: 'genericExtension',
+        namespaceUri: TRACKED_SOURCE_BINDINGS_NS,
+        localName: fieldPrefix + index++,
+        prefix,
+        value: raw.slice(start, end),
+      });
+      start = end;
+    }
   }
+  if (fields.length > 1024) invalid();
   const next = {
     ...node,
     namespaceBindings:
@@ -159,15 +201,7 @@ export function withTrackedSourceBindings(
         : bindings,
     attributes: [
       ...node.attributes.filter((attr) => attr.namespaceUri !== TRACKED_SOURCE_BINDINGS_NS),
-      ...(sources.length
-        ? chunks.map((value, index) => ({
-            kind: 'genericExtension' as const,
-            namespaceUri: TRACKED_SOURCE_BINDINGS_NS,
-            localName: chunks.length === 1 ? 'bindings' : 'bindings' + index,
-            prefix,
-            value,
-          }))
-        : []),
+      ...fields,
     ],
   } as OoxmlElement;
   if (sources.length) readTrackedSourceBindings(next);
@@ -227,7 +261,11 @@ function stamp(
   } as OoxmlElement;
 }
 /** Pure transfer. Foreign revisions, controls, and arbitrary run boundaries stay opaque. */
-function paragraphBindings(node: OoxmlElement, scopes?: ReadonlySet<string>): OoxmlElement {
+function paragraphBindings(
+  node: OoxmlElement,
+  scopes?: ReadonlySet<string>,
+  consume = true
+): OoxmlElement {
   let sources: readonly TrackedSourceBinding[];
   try {
     sources = readTrackedSourceBindings(node);
@@ -236,7 +274,12 @@ function paragraphBindings(node: OoxmlElement, scopes?: ReadonlySet<string>): Oo
     return node;
   }
   const selected = sources.filter((source) => !scopes || scopes.has(source.scope));
-  if (!selected.length) return node;
+  if (!selected.length)
+    return !scopes &&
+      consume &&
+      node.namespaceBindings.some((binding) => binding.namespaceUri === TRACKED_SOURCE_BINDINGS_NS)
+      ? withTrackedSourceBindings(node, [])
+      : node;
   // Reserve declared prefixes and opaque QName-like attribute values throughout the
   // paragraph. Adding a local proof alias must not rebind an existing lexical value.
   const used = new Set<string>(),
@@ -263,8 +306,11 @@ function paragraphBindings(node: OoxmlElement, scopes?: ReadonlySet<string>): Oo
     }
   }
   const byRun = new Map<string, TrackedSourceBinding[]>();
-  for (const source of selected)
-    byRun.set(source.runId, [...(byRun.get(source.runId) ?? []), source]);
+  for (const source of selected) {
+    const owners = byRun.get(source.runId) ?? [];
+    owners.push(source);
+    byRun.set(source.runId, owners);
+  }
   const visit = (current: OoxmlNode): OoxmlNode => {
     if (current.kind === 'paragraph' || current.kind === 'hyperlink') {
       const children = current.children.map(visit);
@@ -308,6 +354,7 @@ function paragraphBindings(node: OoxmlElement, scopes?: ReadonlySet<string>): Oo
     }
     return next;
   };
+  if (!consume) return visit(node) as OoxmlElement;
   return withTrackedSourceBindings(
     visit(node) as OoxmlElement,
     sources.filter((source) => scopes && !scopes.has(source.scope))
@@ -317,23 +364,24 @@ const exported = new WeakMap<OoxmlNode, OoxmlNode>();
 /** Convert load-local bindings to self-contained proofs before native IDs change on XML reopening. */
 export function materializeTrackedSourceBindings(
   root: OoxmlNode,
-  scopes?: ReadonlySet<string>
+  scopes?: ReadonlySet<string>,
+  consume = true
 ): OoxmlNode {
   let count = 0;
   const visit = (node: OoxmlNode, depth: number): OoxmlNode => {
     if (++count > 1_000_000 || depth > 256) invalid();
-    if (!scopes) {
+    if (!scopes && consume) {
       const cached = exported.get(node);
       if (cached) return cached;
     }
     let next = node;
-    if (node.kind === 'paragraph') next = paragraphBindings(node, scopes);
+    if (node.kind === 'paragraph') next = paragraphBindings(node, scopes, consume);
     else if (node.kind !== 'textValue') {
       const children = node.children.map((child) => visit(child, depth + 1));
       if (!children.every((child, index) => child === node.children[index]))
         next = { ...node, children } as OoxmlElement;
     }
-    if (!scopes) exported.set(node, next);
+    if (!scopes && consume) exported.set(node, next);
     return next;
   };
   return visit(root, 0);

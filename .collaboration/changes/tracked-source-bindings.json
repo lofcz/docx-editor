@@ -2,14 +2,15 @@
   "impact": "compatible",
   "fields": [],
   "before": "Run-origin proofs cover observed characters. An offline insertion retains an unannotated original run template, so review decisions can leave extra native run boundaries.",
-  "after": "Bounded paragraph source bindings carry exact current-load run and text identities outside character formatting. Decisions transfer only selected source proofs before native coalescing. Pure XML serialization transfers proofs and consumes load-local bindings before IDs change. Clipboard copies materialize proofs before rekeying scopes.",
-  "reason": "Existing generic XML attributes and canonical operations carry the bindings. No transport, shared schema, repair version, or materializer implementation changes. Current engines must handle bindings before writing affected shared state; mixed older shared engines are not certified. Current XML export removes load-local bindings and retains existing versioned run-origin metadata for document reopening. Presence authoring and application installation remain separate gates.",
+  "after": "Bounded paragraph source bindings carry exact current-load run and text identities outside character formatting. Decisions transfer only selected source proofs before native coalescing. Pure XML serialization transfers proofs and consumes load-local bindings before IDs change. Clipboard copies materialize proofs before rekeying scopes. Proposal scopes use independent bounded chunk fields. Partial decisions retain bindings until related native scopes settle.",
+  "reason": "Existing generic XML attributes and canonical operations carry the bindings. No transport, shared schema, repair version, or materializer implementation changes. Current engines must handle bindings before writing affected shared state; mixed older shared engines are not certified. Current XML export removes load-local bindings and retains existing versioned run-origin metadata for document reopening. Presence authoring and application installation remain separate gates. Concurrent independent decisions still have failing native proof-settlement regressions; this checkpoint does not certify that case.",
   "tests": [
     "packages/core/src/store/__tests__/tracked-source-bindings.test.ts",
     "packages/core/src/store/__tests__/run-origins.test.ts",
     "packages/core/src/store/__tests__/run-origins-clipboard.test.ts",
     "packages/core/src/store/__tests__/run-origins-versioned-metadata.test.ts",
-    "packages/sciobot/src/review/owned-presence-shared.test.ts"
+    "packages/sciobot/src/review/owned-presence-shared.test.ts",
+    "packages/sciobot/src/review/source-bindings-concurrent.test.ts"
   ],
   "changeset": "tracked-source-bindings",
   "migration": null
