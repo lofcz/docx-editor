@@ -1078,8 +1078,7 @@ export function breakParagraph(
       recordTopAndBottomAnchorLineTop(piece.start);
       const measure = measureInlineDrawing(piece.inlineDrawing.projection);
       const atomWidth = measure.totalWidth;
-      // A picture that does not fit before a float resumes past it (probed at the line's own
-      // metrics: the picture's would move its text), and the text before it stays put.
+      // Probe float clearance with line metrics to keep preceding text fixed.
       let jumps = false;
       if (holdsContent() && line.width + atomWidth > lineAvailable()) {
         const settledWidth = line.width;
@@ -1104,6 +1103,7 @@ export function breakParagraph(
       line.drawings.push(
         buildInlineDrawingRecord({
           input: piece.inlineDrawing,
+          formatting: piece,
           paragraphId,
           start: piece.start,
           slotX,
@@ -1117,7 +1117,7 @@ export function breakParagraph(
           layoutTextboxStory: flow?.layoutTextboxStory,
         })
       );
-      // A picture a resolved view kept has no span to carry its site; the line takes it.
+      // The line carries sites for resolved pictures without spans.
       if (piece.changeSites) {
         line.changeSites = [...(line.changeSites ?? []), ...piece.changeSites];
       }

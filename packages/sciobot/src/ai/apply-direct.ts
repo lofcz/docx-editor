@@ -6,7 +6,7 @@ import { lowerRetainedAtoms } from './direct-inline-atoms';
 import { cellPropertiesAt } from '../diff/new-cell-properties';
 import { cellListBindings } from '../diff/inserted-cell-lists';
 import { resolveTableGeometry, geometrySplitCells } from '../diff/table-geometry';
-import type { DocxEditorInstance } from '@docx-editor.dev/core/editor';
+import type { ContentLockPolicy, DocxEditorInstance } from '@docx-editor.dev/core/editor';
 import {
   applyTreeOp,
   validateTreeOp,
@@ -69,6 +69,8 @@ import {
 
 /** Mount identity for the editor that owns the plan's revision token. */
 export interface DirectPlanContext {
+  /** Must also be enabled on the editor. Live native admission remains authoritative. */
+  readonly contentLockPolicy?: ContentLockPolicy;
   readonly images?: PreparedInlineImages;
   readonly documentId: string;
   readonly epoch: string;
@@ -110,7 +112,6 @@ const failure = (error: unknown): NativeEditFailure =>
         code: 'apply-failed',
         error: error instanceof Error ? error.message : String(error),
       };
-const LINK_SCRATCH = { author: 'direct', date: '2000-01-01T00:00:00Z' };
 const SIBLING_PARENTS = new Set(['body', 'tc', 'sdtContent']);
 const wml = wmlElement;
 const hasSection = (node: OoxmlNode): boolean =>
@@ -202,7 +203,8 @@ function stagedCodeStyles(staged: readonly Staged[]): string[] {
 function lowerDirectPlan(
   pkg: OoxmlPackage,
   plan: CanonicalEditPlan,
-  preparedImages?: PreparedInlineImages
+  preparedImages?: PreparedInlineImages,
+  contentLockPolicy?: ContentLockPolicy
 ): Lowering {
   const prepared = createInlineImageRuntime(plan, preparedImages);
   if (!prepared.success) refuse(prepared.error, prepared.code);
@@ -215,7 +217,7 @@ function lowerDirectPlan(
   let preview = pkg.parts.get(partName)!;
   let deferredTopology = false;
   const apply = (op: TreeDocOp) => {
-    const result = applyTreeOp(preview, op);
+    const result = applyTreeOp(preview, op, { contentLockPolicy });
     if (!result.ok) refuse(`Native operation ${op.op} refused: ${result.reason}.`, 'apply-failed');
     preview = (result as { part: OoxmlPart }).part;
     staged.push(op);
@@ -238,7 +240,7 @@ function lowerDirectPlan(
       case 'format': {
         const target = edit.target;
         if (target.kind === 'run') {
-          const lowered = trackedRunFormatOps(preview, [edit], LINK_SCRATCH);
+          const lowered = trackedRunFormatOps(preview, [edit], undefined, contentLockPolicy);
           if (!lowered.success) refuse(lowered.error, lowered.code);
           for (const op of (lowered as { ops: readonly TreeDocOp[] }).ops) {
             const { revision: _revision, ...direct } = op as Extract<
@@ -352,7 +354,7 @@ function lowerDirectPlan(
             ...(next.anchor !== undefined ? { anchor: next.anchor } : {}),
             ...(next.tooltip !== undefined ? { tooltip: next.tooltip } : {}),
           };
-          const result = applyTreeOp(preview, op);
+          const result = applyTreeOp(preview, op, { contentLockPolicy });
           if (!result.ok)
             refuse(`Native hyperlink retarget refused: ${result.reason}.`, 'apply-failed');
           preview = (result as { part: OoxmlPart }).part;
@@ -457,7 +459,7 @@ function lowerDirectPlan(
           scratch = made.relationshipId;
         }
         const op = wrapOp(edit, scratch);
-        const result = applyTreeOp(preview, op);
+        const result = applyTreeOp(preview, op, { contentLockPolicy });
         if (!result.ok) refuse(`Native link insertion refused: ${result.reason}.`, 'apply-failed');
         preview = result.part;
         staged.push({ linkEdit: edit });
@@ -805,7 +807,11 @@ function stagedOps(
 }
 
 /** Evaluate native operations and allocated resources in a detached package only. */
-function previewLowering(pkg: OoxmlPackage, lowering: Lowering): OoxmlPackage {
+function previewLowering(
+  pkg: OoxmlPackage,
+  lowering: Lowering,
+  contentLockPolicy?: ContentLockPolicy
+): OoxmlPackage {
   const original = nodeIds(pkg.parts.get(pkg.mainDocumentPart)!);
   let preview = pkg;
   const ops = stagedOps(lowering.staged, (url) => {
@@ -817,7 +823,7 @@ function previewLowering(pkg: OoxmlPackage, lowering: Lowering): OoxmlPackage {
   if (!ops) refuse('The native engine refuses this hyperlink target.', 'unsupported-operation');
   let part = preview.parts.get(pkg.mainDocumentPart)!;
   for (const op of ops!) {
-    const result = applyTreeOp(part, op);
+    const result = applyTreeOp(part, op, { contentLockPolicy });
     if (!result.ok) refuse(`Native operation ${op.op} refused: ${result.reason}.`, 'apply-failed');
     part = (result as { part: OoxmlPart }).part;
   }
@@ -831,10 +837,18 @@ function previewLowering(pkg: OoxmlPackage, lowering: Lowering): OoxmlPackage {
 export function previewDirectPlan(
   pkg: OoxmlPackage,
   plan: CanonicalEditPlan,
-  images?: PreparedInlineImages
+  images?: PreparedInlineImages,
+  contentLockPolicy?: ContentLockPolicy
 ): { readonly success: true; readonly pkg: OoxmlPackage } | NativeEditFailure {
   try {
-    return { success: true, pkg: previewLowering(pkg, lowerDirectPlan(pkg, plan, images)) };
+    return {
+      success: true,
+      pkg: previewLowering(
+        pkg,
+        lowerDirectPlan(pkg, plan, images, contentLockPolicy),
+        contentLockPolicy
+      ),
+    };
   } catch (error) {
     return failure(error);
   }
@@ -913,8 +927,8 @@ export function applyDirectPlan(
     };
   let lowering: Lowering;
   try {
-    lowering = lowerDirectPlan(pkg, plan, context.images);
-    previewLowering(pkg, lowering);
+    lowering = lowerDirectPlan(pkg, plan, context.images, context.contentLockPolicy);
+    previewLowering(pkg, lowering, context.contentLockPolicy);
   } catch (error) {
     return failure(error);
   }

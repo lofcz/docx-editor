@@ -2,10 +2,12 @@ import {
   revisionsAreDeletion,
   type SemanticLayout,
   type StyleSpanRecord,
+  type InlineDrawingRecord,
 } from '@docx-editor.dev/core/layout';
 import {
   concatMarkdown,
   literalMarkdown,
+  wrapMarkdown,
   type MappedMarkdown,
   type MarkdownSourceSlice,
 } from './markdown-source-map.ts';
@@ -718,4 +720,32 @@ export class MarkdownInlineWriter {
   finish(): string {
     return this.finishMapped().markdown;
   }
+}
+
+/** Keep structural image syntax inside native run marks, outside its replaceable source range. */
+export function styledDrawingMarkdown(
+  drawing: InlineDrawingRecord,
+  value: MappedMarkdown,
+  context: MarkdownInlineContext
+): MappedMarkdown {
+  if (!drawing.formatting || !value.markdown) return value;
+  const { style, props } = drawing.formatting;
+  const tags = [
+    ...(style.italic ? ['em'] : []),
+    ...(style.bold && !context.suppressBold ? ['strong'] : []),
+    ...(style.strike || style.doubleStrike ? ['del'] : []),
+    ...(props.some(
+      (p) => p.localName === 'rStyle' && context.codeCharacterStyles?.has(p.attributes?.val ?? '')
+    )
+      ? ['code']
+      : []),
+  ];
+  return wrapMarkdown(
+    value,
+    tags.map((tag) => `<${tag}>`).join(''),
+    [...tags]
+      .reverse()
+      .map((tag) => `</${tag}>`)
+      .join('')
+  );
 }

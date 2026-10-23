@@ -31,6 +31,7 @@ import type { ExportSemanticLayout } from '@docx-editor.dev/core/export';
 import {
   markdownSourceCaptureKey,
   MarkdownInlineWriter,
+  styledDrawingMarkdown,
   type MarkdownTextToken,
 } from './markdown-inline.ts';
 import {
@@ -267,7 +268,12 @@ function writeSpanAtoms(
     const atom = atoms[index]!;
     if (atom.kind === 'drawing') {
       const drawing = drawingContentMarkdown(atom.drawing, context);
-      writer.writeMappedBoundary(mappedDrawingMarkdown(atom.drawing, context, drawing));
+      const mapped = mappedDrawingMarkdown(atom.drawing, context, drawing);
+      writer.writeMappedBoundary(
+        atom.drawing.kind === 'inlineDrawing'
+          ? styledDrawingMarkdown(atom.drawing, mapped, context)
+          : mapped
+      );
       if (drawing.length === 0 && omittedDrawingNeedsBoundary(atoms, index)) {
         writer.writeBoundary(' ');
       }

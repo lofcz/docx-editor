@@ -1,3 +1,4 @@
+import type { ContentLockPolicy } from '@docx-editor.dev/core/editor';
 import { segmentGraphemes } from '@docx-editor.dev/core/layout';
 import {
   AUTHORABLE_RUN_PROPERTIES,
@@ -46,7 +47,8 @@ function sameAttributes(a: Readonly<Record<string, string>> | undefined, b: Plan
 export function trackedRunFormatOps(
   part: OoxmlPart,
   edits: readonly FormatEdit[],
-  revision: { author: string; date: string }
+  revision: { author: string; date: string } | undefined,
+  contentLockPolicy?: ContentLockPolicy
 ): { success: true; ops: readonly TreeDocOp[] } | NativeEditFailure {
   const ops: TreeDocOp[] = [],
     ranges = new Map<string, { start: number; end: number }[]>();
@@ -146,9 +148,9 @@ export function trackedRunFormatOps(
         end: range.end,
         properties: [...bag.values()],
         ...(characterStyle !== undefined ? { characterStyle } : {}),
-        revision,
+        ...(revision ? { revision } : {}),
       };
-      const rejection = validateTreeOp(part, op);
+      const rejection = validateTreeOp(part, op, { contentLockPolicy });
       if (rejection) return fail(String(rejection), 'apply-failed');
       ops.push(op);
     }

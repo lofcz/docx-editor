@@ -1,0 +1,13 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Inline drawing layout records omitted owning run formatting. Markdown projection dropped drawing emphasis and code styles. Retained registered atoms refused mark changes.",
+  "after": "Derived inline drawing records carry optional resolved run formatting. Markdown projection preserves those marks outside the replaceable image source range. The private planner maps unchanged atoms to exact native formatting ranges and direct previews respect explicit host formatting policy.",
+  "reason": "The new fields exist only in derived layout records. Stored OOXML, native operations, collaboration directories, and messages keep their existing representation. Direct edits use existing untracked run formatting operations. Content locks still require the host's existing explicit formatting policy; tracked formatting keeps existing lock refusal.",
+  "tests": [
+    "packages/sciobot/src/diff/retained-atom-marks.test.ts",
+    "packages/sciobot/src/diff/retained-atom-marks-collaboration.test.ts"
+  ],
+  "changeset": "project-inline-drawing-run-formatting",
+  "migration": null
+}

@@ -230,6 +230,7 @@ const MARKDOWN_SEMANTIC_POLICY_RATCHETS = Object.freeze({
     revisionShadingAuthor: 'explicitly-omitted',
   } satisfies Record<keyof TableCellFragmentRecord, MarkdownFieldPolicy>,
   inlineDrawing: {
+    formatting: 'represented',
     kind: 'represented',
     drawingNodeId: 'represented',
     paragraphId: 'represented',
@@ -264,6 +265,7 @@ const MARKDOWN_SEMANTIC_POLICY_RATCHETS = Object.freeze({
     groupTextboxStories: 'explicitly-omitted',
   } satisfies Record<keyof InlineDrawingRecord, MarkdownFieldPolicy>,
   anchoredDrawing: {
+    formatting: 'explicitly-omitted',
     kind: 'represented',
     drawingNodeId: 'represented',
     paragraphId: 'represented',

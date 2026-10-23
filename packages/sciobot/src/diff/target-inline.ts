@@ -1,3 +1,4 @@
+import { planRetainedAtomMarks } from './retained-atom-marks';
 import { retainedAtomGaps } from './retained-atom-gaps';
 import { withoutInlineAtoms } from './retained-atoms';
 import { planInsertedAtoms } from './inserted-atoms';
@@ -232,6 +233,20 @@ export function planTargetParagraph(context: TargetParagraphSource): EditPlanRes
         atoms: atoms.plan.operations,
       },
     ]);
+  }
+  if (a.plainText === null && b.plainText === null) {
+    const marks = planRetainedAtomMarks(
+      context,
+      part,
+      paragraphId,
+      a,
+      b,
+      context.nativeRange?.start ?? owner.checklist?.native.end ?? 0
+    );
+    if (marks) {
+      if (!marks.success) return marks;
+      return createEditPlan(revision, [...operations, ...marks.plan.operations]);
+    }
   }
   if (a.plainText === null && !context.nativeRange) {
     const gaps = retainedAtomGaps(

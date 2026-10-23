@@ -4,7 +4,7 @@ import type { BoundLogicalSource, BoundSourceBlock } from './bound-source-types'
 import type { CompiledInlineTarget, InlineTargetToken } from './inline-target';
 import { targetAstKey } from './target-key';
 
-function atomKey(ast: TargetAstNode): string {
+export function retainedAtomKey(ast: TargetAstNode): string {
   if (ast.name === 'source' && Array.isArray(ast.attributes)) {
     const attributes = ast.attributes as { type?: unknown; name?: unknown; value?: unknown }[];
     if (
@@ -68,7 +68,7 @@ export function retainedAtomGaps(
   base: number
 ): readonly RetainedAtomGap[] | null {
   if (before.hyperlinks.length || after.hyperlinks.length) return null;
-  const tokenKey = (atom: Atom) => JSON.stringify([atomKey(atom.ast), atom.marks]);
+  const tokenKey = (atom: Atom) => JSON.stringify([retainedAtomKey(atom.ast), atom.marks]);
   const oldAtoms = before.tokens.flatMap((token, index) =>
     token.kind === 'atom' ? [{ atom: token, index }] : []
   );

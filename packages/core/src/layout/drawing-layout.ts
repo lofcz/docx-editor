@@ -1,3 +1,4 @@
+import * as drawingFormat from './inline-drawing-formatting.ts';
 import { inlinePictureExtent } from './inline-picture-extent.ts';
 import { revisionMarkupHidesDrawing } from './revision-markup-projection.ts';
 // Drawing extents convert from EMUs to points here; intrinsic image dimensions do not resize layout.
@@ -295,6 +296,8 @@ export interface DrawingGroupPictureRecord {
 
 export interface InlineDrawingRecord {
   readonly kind: 'inlineDrawing';
+  /** Owning run formatting, including inherited styles, for semantic exporters. */
+  readonly formatting?: drawingFormat.InlineDrawingFormatting;
   readonly drawingNodeId: string;
   readonly paragraphId: string;
   readonly ownerPartName: string;
@@ -1312,6 +1315,7 @@ export function publishAnchoredDrawingsForParagraph(
 }
 
 export function buildInlineDrawingRecord(options: {
+  readonly formatting?: InlineDrawingRecord['formatting'];
   readonly input: InlineDrawingLayoutInput;
   readonly paragraphId: string;
   readonly start: number;
@@ -1364,6 +1368,7 @@ export function buildInlineDrawingRecord(options: {
   const hitBounds = hitBoundsOf(paintBounds);
   const record: InlineDrawingRecord = Object.freeze({
     kind: 'inlineDrawing',
+    ...drawingFormat.inlineDrawingFormatting(options.formatting),
     drawingNodeId: options.input.drawingNodeId,
     paragraphId: options.paragraphId,
     ownerPartName: options.input.ownerPartName,
