@@ -39,6 +39,9 @@ export const NODE_TEXT_FIELD = 't';
 export const NODE_CHILDREN_FIELD = 'children';
 export const NODE_DELETED_FIELD = 'deleted';
 export const NODE_REPLACED_BY_FIELD = 'replacedBy';
+/** Shared containers must exist before replicas can independently append geometry evidence. */
+export const NODE_TABLE_BIRTH_GEOMETRY = 'tableBirthGeometry';
+export const NODE_TABLE_BIRTH_GEOMETRY_WRITES = 'tableBirthGeometryWrites';
 /**
  * Set on a comment or note an undo took out of its part (`history-undone.ts`): no repair
  * gives it an edge back, and the redo that lists it again clears the mark.
@@ -416,6 +419,12 @@ export function makeElementRecord(
   const children = new Y.Array<string>();
   if (record.childIds && record.childIds.length > 0) children.push([...record.childIds]);
   rec.set(NODE_CHILDREN_FIELD, children);
+  if (record.kind === 'table') rec.set(NODE_TABLE_BIRTH_GEOMETRY, new Y.Map<unknown>());
+  if (
+    record.namespaceUri === 'http://schemas.openxmlformats.org/wordprocessingml/2006/main' &&
+    record.localName === 'gridSpan'
+  )
+    rec.set(NODE_TABLE_BIRTH_GEOMETRY_WRITES, new Y.Map<boolean>());
   return rec;
 }
 

@@ -12,6 +12,7 @@
     "packages/sciobot/src/diff/inserted-cell-atoms-collaboration.test.ts",
     "packages/sciobot/src/diff/merged-born-cell-geometry-collaboration.test.ts",
     "packages/sciobot/src/diff/hidden-birth-move-collaboration.test.ts",
+    "packages/sciobot/src/diff/concurrent-born-column-geometry.test.ts",
     "packages/pro/src/collaboration/__tests__/document-format.test.ts"
   ],
   "changeset": "retain-born-table-peer-content",

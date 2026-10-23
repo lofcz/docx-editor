@@ -6,12 +6,20 @@ Production use requires a commercial agreement: licensing@eigenpal.com
 import * as Y from 'yjs';
 import type { DocumentRegistry } from './registry.ts';
 import { asLogicalId, type LogicalId } from './identity.ts';
-import { isElementRecord, type ElementRecord } from './schema.ts';
+import {
+  isElementRecord,
+  attributeMapKey,
+  namespaceIdOf,
+  unpackAttributeValue,
+  NODE_TABLE_BIRTH_GEOMETRY,
+  NODE_TABLE_BIRTH_GEOMETRY_WRITES,
+  type ElementRecord,
+} from './schema.ts';
 import type { SharedEffect } from './shared-effect.ts';
+import { orderBirthGeometryFrames } from './birth-coverage-frontier.ts';
 
 /** Immutable native topology evidence, never paragraph text or a canonical document snapshot. */
-export const NODE_TABLE_BIRTH_GEOMETRY = 'tableBirthGeometry';
-export const NODE_TABLE_BIRTH_GEOMETRY_WRITES = 'tableBirthGeometryWrites';
+export { NODE_TABLE_BIRTH_GEOMETRY, NODE_TABLE_BIRTH_GEOMETRY_WRITES } from './schema.ts';
 const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 export interface BirthCellCoverage {
   readonly id: LogicalId;
@@ -33,9 +41,21 @@ function element(registry: DocumentRegistry, id: LogicalId): ElementRecord | nul
   const record = registry.record(id);
   return record && isElementRecord(record) ? record : null;
 }
-function integer(record: ElementRecord | null, fallback: number): number {
+function integer(
+  registry: DocumentRegistry,
+  record: ElementRecord | null,
+  fallback: number,
+  projected: boolean
+): number {
+  const raw =
+    record && !projected
+      ? registry.schema.attributes.get(attributeMapKey(record.logicalId, namespaceIdOf(W), 'val'))
+      : undefined;
   const value = Number(
-    record?.attributes.find((a) => a.namespaceUri === W && a.localName === 'val')?.value ?? fallback
+    typeof raw === 'string'
+      ? unpackAttributeValue(raw).value
+      : (record?.attributes.find((a) => a.namespaceUri === W && a.localName === 'val')?.value ??
+          fallback)
   );
   return Number.isSafeInteger(value) && value >= 0 ? value : fallback;
 }
@@ -68,12 +88,12 @@ export function tableCoverage(
   for (const rowId of read(table)?.childIds ?? []) {
     if (read(rowId)?.kind !== 'tableRow') continue;
     const trPr = child(rowId, 'trPr');
-    let at = integer(trPr ? child(trPr.logicalId, 'gridBefore') : null, 0);
+    let at = integer(registry, trPr ? child(trPr.logicalId, 'gridBefore') : null, 0, !!view);
     for (const id of read(rowId)?.childIds ?? []) {
       if (read(id)?.kind !== 'tableCell') continue;
       const tcPr = child(id, 'tcPr');
       const span = tcPr ? child(tcPr.logicalId, 'gridSpan') : null;
-      const width = Math.max(1, integer(span, 1));
+      const width = Math.max(1, integer(registry, span, 1, !!view));
       cells.push({
         id,
         row: rowId,
@@ -261,40 +281,5 @@ export function birthTableGeometries(
     const frame = readBirthTableGeometry(registry, carrier, value);
     if (frame?.table === table) frames.push([carrier, frame]);
   }
-  // Y.Map insertion order can differ between replicas. Order causal predecessors first,
-  // and traverse independent frames using stable keys. Never depend on receipt order.
-  frames.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
-  const owners = new Map<LogicalId, LogicalId>();
-  for (const [carrier, frame] of frames)
-    for (const born of frame.born) if (!owners.has(born)) owners.set(born, carrier);
-  const dependencies = new Map<LogicalId, number>();
-  const followers = new Map<LogicalId, LogicalId[]>();
-  const byId = new Map(frames);
-  const ready: LogicalId[] = [];
-  for (const [carrier, frame] of frames) {
-    const prior = new Set<LogicalId>();
-    for (const cell of frame.before.cells) {
-      const owner = owners.get(cell.id);
-      if (owner && owner !== carrier) prior.add(owner);
-    }
-    dependencies.set(carrier, prior.size);
-    if (!prior.size) ready.push(carrier);
-    for (const id of prior) {
-      const next = followers.get(id) ?? [];
-      next.push(carrier);
-      followers.set(id, next);
-    }
-  }
-  const ordered: (readonly [LogicalId, BirthTableGeometry])[] = [];
-  for (let at = 0; at < ready.length; at++) {
-    const carrier = ready[at]!;
-    ordered.push([carrier, byId.get(carrier)!]);
-    for (const next of followers.get(carrier) ?? []) {
-      const remaining = dependencies.get(next)! - 1;
-      dependencies.set(next, remaining);
-      if (!remaining) ready.push(next);
-    }
-  }
-  // Cyclic peer-written evidence cannot describe a native history and never enters the queue.
-  return ordered;
+  return orderBirthGeometryFrames(frames);
 }
