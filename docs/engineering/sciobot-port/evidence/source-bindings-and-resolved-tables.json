@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "leaf": "R19",
+  "status": "in-progress",
+  "source": "65961ff7",
+  "coreSource": "447dbc9b",
+  "sourceHashes": {
+    "packages/core/src/store/__tests__/completed-run-origin-export.test.ts": "74f298ce70d4a4babf8fb71d3a952a0f17af8f03ad50bb42ce90a0ff41060ffe",
+    "packages/core/src/store/__tests__/tracked-source-bindings.test.ts": "e0c25d89016f153188c9a1d5b2283329516ba1941344f93dd2e563d4e6efcbbd",
+    "packages/core/src/store/package/ooxml-serialize-namespaces.ts": "6a38548955bc2823bcabb2510dd893eab672f7605cd208b04d6fe11d4b49500b",
+    "packages/core/src/store/package/ooxml-serialize-steps.ts": "f637f75b2674d55871d1eb8fe6fcd2085927fe679838a370ac41eb13280edf31",
+    "packages/core/src/store/package/ooxml-serialize.ts": "e2812affe0888676ea7cc676f5a3ef01ffa7f8ec30cf23dc25529c42edf0285a",
+    "packages/core/src/store/package/tracked-source-bindings.ts": "ce756fa77e95e272af339a0f32e76d97662434f43c4b0068df1b145dcef7cc5a",
+    "packages/core/src/store/store/completed-run-origin-export.ts": "b00c59ea92deba6a68d0182587188968dc56b07aa3af28148e4b330c60b6d3bf",
+    "packages/core/src/store/store/run-origin-authoring.ts": "bd07776fd837f3541f61013adaa889b237410f4cee9e4f053884035ced3d81fb",
+    "packages/core/src/store/store/run-origin-clipboard.ts": "34906850cdff03c09e4332b62980510f47b44dfafa9b581f110e8463b86837b5",
+    "packages/core/src/store/store/run-origin-resolution.ts": "d027fe4391238d21502a1d19601659daf7e0053699721c08078e16e4a940742d",
+    "packages/sciobot/src/review/owned-presence-property.test.ts": "33df1fd90f7145b84e13818bd91f70e212234850fd8639a53f7a209d185aca43",
+    "packages/sciobot/src/review/owned-presence-replacement.test.ts": "030774dfa48dd47426ccaf63d6320c63f208cc60b22cb891fc0141a541d78f52",
+    "packages/sciobot/src/review/owned-presence-shared.test.ts": "ac16563ca52b26749a296885460a2249b4d92089edeb942aab1adb76eaff3cbe",
+    "packages/sciobot/src/review/owned-proposal-content.ts": "7b40929f1503e27e1e27db9c6374ae2ea690bd30c8a51e7b54e5e76184e0e5ec",
+    "packages/sciobot/src/review/owned-proposal-plan.test.ts": "e9d50006a572f62813d02a763da1e4ea659d60a342a9b8540be8cb13029dd1b4",
+    "packages/sciobot/src/review/owned-proposal-plan.ts": "20ef0cba22238bc4eea448b7d7cb969a56b6ee3cb888de2497900e71ebdd5b1e",
+    "packages/sciobot/src/review/owned-proposal-stage.ts": "cfbab0f09412eaeb5d4bfd17a65d6adb6102daeb436b8c6c8f6d25a8356884bb",
+    "packages/sciobot/src/review/prepare-payload-decision.ts": "64a387866df8b9b70c6980f37f9c64ec5154f5e7dc280a527eb4d60ed4086fce",
+    "packages/sciobot/src/review/prepare-payload-stage.ts": "6ef5950b0a48958ee9cd16a4a9c33b4dbbcf91b9be90b0346a65a96cba4b8f74",
+    "packages/sciobot/src/review/recompose-target.ts": "af8ac5f1550e59dec1a1ddd0de503c3324d2210175fafee54d103e9e3723d9ac",
+    "packages/sciobot/src/review/source-bindings-concurrent.test.ts": "ffb9a194791ea615da79bc80c36984e1065eed65ec5f72042302fbd611b33ea2",
+    "packages/sciobot/src/review/tracked-stage-text.ts": "4c37c733e723857350da76b5e09f6be4f8a4decf16f31dbbce73bab5b764ca88",
+    "packages/sciobot/src/review/tracked-stage.ts": "651535c59b7bab3b8655fe9c87554c7ff9096002da96cceca1e80e3046bb20de",
+    "packages/sciobot/test/support/presence-ownership.ts": "6455cbeda881a6f45472b3c5dd1d0ca132460b5a3c377c6a849b706004772d39"
+  },
+  "native": {
+    "pass": 207,
+    "fail": 0,
+    "assertions": 6885,
+    "cases": 207,
+    "files": 27,
+    "log": "/tmp/r19-completed-native.log"
+  },
+  "privateBeforeTableRepair": {
+    "pass": 602,
+    "fail": 8,
+    "assertions": 21333,
+    "cases": 610,
+    "files": 41,
+    "log": "/tmp/r19-completed-private.log"
+  },
+  "tableRepairShared": {
+    "pass": 40,
+    "fail": 0,
+    "assertions": 4304,
+    "cases": 40,
+    "files": 2,
+    "log": "/tmp/r19-resolved-table-fix.log"
+  },
+  "tableRepairLocal": {
+    "pass": 43,
+    "fail": 0,
+    "assertions": 869,
+    "cases": 43,
+    "files": 2,
+    "log": "/tmp/r19-resolved-table-local.log"
+  },
+  "coverage": "Composite evidence covers 610 distinct private cases across 41 files. At 447dbc9b, 602 pass and eight previously verified baseline table cases fail. At 65961ff7, all 83 cases in the four affected table files pass, including all eight failures. This is not a single green 610-case run at 65961ff7.",
+  "checks": {
+    "format": [
+      "/tmp/r19-completed-format.log",
+      "/tmp/r19-resolved-table-format.log"
+    ],
+    "lint": [
+      "/tmp/r19-completed-lint.log",
+      "/tmp/r19-resolved-table-lint.log"
+    ],
+    "types": [
+      "/tmp/r19-completed-core-types.log",
+      "/tmp/r19-completed-private-types.log",
+      "/tmp/r19-resolved-table-types.log"
+    ],
+    "build": [
+      "/tmp/r19-completed-core-build.log",
+      "/tmp/r19-completed-private-build.log",
+      "/tmp/r19-resolved-table-build.log"
+    ],
+    "api": "/tmp/r19-completed-api.log",
+    "lanes": "/tmp/r19-completed-lanes.log",
+    "compatibility": "/tmp/r19-completed-policy.log",
+    "productionSources": "/tmp/r19-completed-source-audit.log",
+    "builtEntries": [
+      "/tmp/r19-completed-built-esm.log",
+      "/tmp/r19-completed-built-cjs.log"
+    ]
+  },
+  "remaining": [
+    "Legal AI authoring of inserted application fragments",
+    "Complete package and media resource ledgers",
+    "Unseen participant edits inside removed controls and delivery after final source-scope closure",
+    "Capability admission for mixed engines",
+    "External reconciliation and review presentation",
+    "Installed application runtime verification"
+  ],
+  "todoLeavesClosed": 0
+}
