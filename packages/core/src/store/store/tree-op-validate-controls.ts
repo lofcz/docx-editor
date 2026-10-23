@@ -149,7 +149,7 @@ export function rangeTouchesContentRestriction(
   paragraph: OoxmlParagraphNode,
   start: number,
   end: number,
-  { bias, restyle = false, struckWhole }: ContentEditCheck = {}
+  { bias, restyle = false, struckWhole, preservedWhole }: ContentEditCheck = {}
 ): TreeOpRejection | null {
   // The landing resolver moved this insert out of where the run rule below would put it, so
   // validate the place it actually lands.
@@ -192,8 +192,10 @@ export function rangeTouchesContentRestriction(
     // A run inside a control struck WHOLE is not edited: the control is. The lock check on its
     // reach asks that control the removal question and its enclosing controls the edit one.
     if (
-      struckWhole?.size &&
-      contentControlAncestorsOf(part, runId).some((c) => struckWhole.has(c.id))
+      (struckWhole?.size || preservedWhole?.size) &&
+      contentControlAncestorsOf(part, runId).some(
+        (c) => struckWhole?.has(c.id) || preservedWhole?.has(c.id)
+      )
     ) {
       continue;
     }
@@ -201,7 +203,7 @@ export function rangeTouchesContentRestriction(
     if (!restyle && effectiveContentLockAt(part, runId).content) return 'locked';
   }
   const control = contentControlAtCaret(part, paragraph, start, end, bias);
-  if (control && !struckWhole?.has(control.id)) {
+  if (control && !struckWhole?.has(control.id) && !preservedWhole?.has(control.id)) {
     if (
       isBoundContentControl(control) ||
       contentControlAncestorsOf(part, control.id).some(isBoundContentControl)
@@ -229,6 +231,8 @@ export function holds(node: OoxmlNode, id: string): boolean {
 export interface ContentEditCheck {
   readonly bias?: 'left' | 'right' | undefined;
   readonly restyle?: boolean;
+  /** Complete controls an unstyled link wrapper keeps byte-for-byte unchanged. */
+  readonly preservedWhole?: ReadonlySet<string>;
   /** Controls a tracked deletion strikes whole; see {@link controlsStruckWhole}. */
   readonly struckWhole?: ReadonlySet<string>;
 }

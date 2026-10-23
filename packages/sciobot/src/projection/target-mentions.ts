@@ -1,3 +1,5 @@
+import { literalMention } from './mention-literal';
+import type { TargetAstNode } from './parse-target';
 // Adapted from the MIT-licensed Plate remarkMention plugin. See THIRD_PARTY_NOTICES.md.
 import type { Link, Node, Text } from 'mdast';
 import type { Parent } from 'unist';
@@ -33,6 +35,20 @@ declare module 'mdast' {
 export const remarkTargetMentions: Plugin = () => (tree: Node) => {
   // Link labels are authored display data. Preserve the captured raw @mention transform elsewhere.
   const linkMentions = new WeakSet<object>();
+  visit(tree, (node: Node, index: number | undefined, parent: Parent | undefined) => {
+    if (!parent || typeof index !== 'number') return;
+    const literal = literalMention(node as unknown as TargetAstNode);
+    if (!literal) return;
+    const mention: MentionNode = {
+      type: 'mention',
+      username: literal.key,
+      displayText: literal.value,
+      children: [{ type: 'text', value: literal.value }],
+      ...(node.position ? { position: node.position } : {}),
+    };
+    linkMentions.add(mention);
+    parent.children[index] = mention;
+  });
   // First, convert link nodes with mention: protocol to mention nodes
   visit(tree, 'link', (node: Link, index: number, parent: Parent | undefined) => {
     if (!parent || typeof index !== 'number') return;

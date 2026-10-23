@@ -1,11 +1,17 @@
+import { parentNodeOf, type OoxmlPart } from '@docx-editor.dev/core/store';
+import { serializeLinkedMention } from './mention-literal';
 import { decodeMentionPayload } from '../blocks/mention-codec';
 import { encodeBlockPayload, type BlockPayload } from '../blocks/payload-schema';
 import type { SerializedBlockTag } from './block-tags';
 
 /** Existing link-style mention syntax; escape label syntax without evaluating any content. */
-export function serializeMention(payload: BlockPayload): SerializedBlockTag {
+export function serializeMention(
+  payload: BlockPayload,
+  insideHyperlink = false
+): SerializedBlockTag {
   const read = decodeMentionPayload(encodeBlockPayload(payload));
   if (read.status !== 'supported') throw new TypeError('invalid-mention-payload');
+  if (insideHyperlink) return serializeLinkedMention(read.key, read.value);
   const label = read.value.replace(/[\\`*_{}\[\]()<>&!~|$]|[\r\n\t]/g, (char) =>
     char === '\r' ? '&#13;' : char === '\n' ? '&#10;' : char === '\t' ? '&#9;' : '\\' + char
   );
@@ -28,4 +34,15 @@ export function serializeMention(payload: BlockPayload): SerializedBlockTag {
       valueEnd: null,
     })),
   };
+}
+
+/** Revision and extension wrappers do not hide an enclosing hyperlink from mention syntax. */
+export function mentionInsideHyperlink(part: OoxmlPart, controlId: string): boolean {
+  let parent = parentNodeOf(part, controlId);
+  for (let depth = 0; parent && depth < 64; depth++) {
+    if (parent.kind === 'hyperlink') return true;
+    if (parent.kind === 'paragraph') return false;
+    parent = parentNodeOf(part, parent.id);
+  }
+  return false;
 }

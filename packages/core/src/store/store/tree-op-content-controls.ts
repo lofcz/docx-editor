@@ -1,3 +1,4 @@
+import { preservesCoveredControl } from './hyperlink-control-envelope.ts';
 import { wmlElement, textRun } from './content-control-element-builders.ts';
 export { wmlElement, textRun } from './content-control-element-builders.ts';
 import { formatContentControlDate, parseIsoDate } from './content-control-dates.ts';
@@ -262,6 +263,8 @@ export interface TreeOpTarget {
   readonly writes?: boolean;
   /** The node's children are restructured, so a control inside it is affected. */
   readonly structural?: boolean;
+  /** The operation wraps complete controls without editing their content or properties. */
+  readonly preservesCovered?: boolean;
   /** The node and everything under it goes away, so removal locks apply. */
   readonly removes?: boolean;
   /**
@@ -381,7 +384,16 @@ const TREE_OP_REACH: {
       ? beside(op.paragraphId, op.offset)
       : writingAt(op.paragraphId, op.offset),
   setRunProperties: (op) => over(op.paragraphId, op.start, op.end),
-  insertHyperlink: (op) => over(op.paragraphId, op.start, op.end),
+  insertHyperlink: (op) => ({
+    kind: 'nodes',
+    targets: [
+      {
+        nodeId: op.paragraphId,
+        range: { start: op.start, end: op.end },
+        preservesCovered: op.styleId === undefined && op.revision === undefined,
+      },
+    ],
+  }),
   // An insertion AUTHORS a control beside the runs, and never writes into one. `writes` is
   // what marks an edit as "filling in a field", which is the one thing forms protection lets
   // through — and this is the opposite of filling: under `w:edit="forms"` a new control in the
@@ -421,7 +433,12 @@ const TREE_OP_REACH: {
   // A link is a node in a paragraph, so its OWNER is resolved the same way any node's is: the
   // controls the walk passes through on its way down to the link.
   setHyperlinkTarget: (op) => whole(op.linkId),
-  removeHyperlink: (op) => ({ kind: 'nodes', targets: [{ nodeId: op.linkId, structural: true }] }),
+  removeHyperlink: (op) => ({
+    kind: 'nodes',
+    targets: [
+      { nodeId: op.linkId, structural: op.range !== undefined || op.revision !== undefined },
+    ],
+  }),
   setMathEquation: (op) => whole(op.equationId),
   removeMathEquation: (op) => ({
     kind: 'nodes',
@@ -823,6 +840,7 @@ export function resolveReach(part: OoxmlPart, reach: TreeOpReach): ResolvedReach
     for (const entry of inside) {
       const span = spanOf(entry.node);
       const locks = [...inherited, ...locksOf([...entry.ancestors, entry.node])];
+      if (target.preservesCovered && preservesCoveredControl(span, target.range)) continue;
       // A tracked deletion that strikes the control WHOLE proposes removing the field, which is
       // not filling it in, so forms protection must not let it through as an edit inside one.
       const struckWhole =

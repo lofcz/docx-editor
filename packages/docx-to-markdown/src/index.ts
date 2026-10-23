@@ -1,5 +1,5 @@
 export type { OoxmlProperty } from '@docx-editor.dev/core/store';
-export type { InlineDrawingFormatting } from '@docx-editor.dev/core/layout';
+export type { InlineDrawingFormatting, SpanLinkRecord } from '@docx-editor.dev/core/layout';
 import {
   checkExportAbort,
   extractMedia,

@@ -1,3 +1,4 @@
+import { hyperlinkContentRefusal } from './hyperlink-content-refusal.ts';
 import { validateTrackedHyperlinkStructure } from './tree-op-tracked-link-structure.ts';
 import { isInsertableText } from './tree-op-inline-elements.ts';
 import { validateSetLegacyDropdown } from './legacy-dropdown-fields.ts';
@@ -902,7 +903,7 @@ export function validateTreeOp(
         }
       }
       {
-        const restriction = rejectContentEdit(part, paragraph, op.start, op.end);
+        const restriction = hyperlinkContentRefusal(part, paragraph, op);
         if (restriction) return restriction;
       }
       return validateHyperlinkTarget(op);

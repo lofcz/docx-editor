@@ -1,3 +1,4 @@
+import { serializeMention, mentionInsideHyperlink } from './mention';
 import { forEachSemanticStory, forEachStoryParagraphFragment } from '@docx-editor.dev/core/layout';
 import { managedInlineImageAssets } from './inline-image-assets';
 import type { ExportSemanticLayout } from '@docx-editor.dev/core/export';
@@ -299,7 +300,13 @@ export function projectBlocks(
     function tag(anchor: Anchor, atomic: boolean): SerializedBlockTag {
       if (anchor.definition.serialize) {
         if (!atomic) throw new Error('Only atomic blocks can serialize complete stored syntax.');
-        const serialized = anchor.definition.serialize(anchor.block.payload);
+        const serialized =
+          anchor.definition.serialize === serializeMention
+            ? serializeMention(
+                anchor.block.payload,
+                mentionInsideHyperlink(part!, anchor.block.controlId)
+              )
+            : anchor.definition.serialize(anchor.block.payload);
         if (typeof serialized.text !== 'string' || !serialized.text.length)
           throw new Error('Serialized block syntax is empty.');
         for (const property of serialized.properties) {

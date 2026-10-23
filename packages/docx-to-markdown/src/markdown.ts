@@ -211,12 +211,7 @@ function textTokensMarkdown(
   return writer.finishMapped();
 }
 
-function linkedSpansMarkdown(
-  tokens: readonly MarkdownTextToken[],
-  href: string,
-  context: TranslationContext,
-  tooltip?: string
-): MappedMarkdown {
+function markdownLinkSuffix(href: string, tooltip?: string): string {
   // Entity references preserve authored title characters without creating Markdown syntax.
   const entities: Record<string, string> = {
     '&': '&amp;',
@@ -229,7 +224,16 @@ function linkedSpansMarkdown(
   };
   const title =
     tooltip === undefined ? '' : ` "${tooltip.replace(/[&<>"\\\r\n]/g, (c) => entities[c]!)}"`;
-  const suffix = `](${destination(href)}${title})`;
+  return `](${destination(href)}${title})`;
+}
+
+function linkedSpansMarkdown(
+  tokens: readonly MarkdownTextToken[],
+  href: string,
+  context: TranslationContext,
+  tooltip?: string
+): MappedMarkdown {
+  const suffix = markdownLinkSuffix(href, tooltip);
   const { leading, content, trailing } = trimTokenWhitespace(tokens);
   const before = textTokensMarkdown(leading, context);
   const label = textTokensMarkdown(content, context);
@@ -259,13 +263,53 @@ function sameMarkdownLink(left: StyleSpanRecord['link'], right: StyleSpanRecord[
   );
 }
 
+function atomLink(atom: MarkdownAtom): StyleSpanRecord['link'] {
+  return atom.kind === 'span' ? atom.span.link : atom.drawing.formatting?.link;
+}
+
 function writeSpanAtoms(
   atoms: readonly MarkdownAtom[],
   context: TranslationContext,
-  writer: MarkdownInlineWriter
+  writer: MarkdownInlineWriter,
+  insideLink = false
 ): void {
   for (let index = 0; index < atoms.length; index += 1) {
     const atom = atoms[index]!;
+    const link = atomLink(atom);
+    if (
+      !insideLink &&
+      !(atom.kind === 'span' && atom.span.noteNav) &&
+      (link?.kind === 'external' || link?.kind === 'internal') &&
+      link.href
+    ) {
+      const linked: MarkdownAtom[] = [atom];
+      while (atoms[index + 1]) {
+        const next = atoms[index + 1]!;
+        if ((next.kind === 'span' && next.span.noteNav) || !sameMarkdownLink(link, atomLink(next)))
+          break;
+        linked.push(next);
+        index += 1;
+      }
+      if (linked.every((item) => item.kind === 'span')) {
+        writer.writeMappedBoundary(
+          linkedSpansMarkdown(
+            linked.map((item) => atomToken(item as Extract<MarkdownAtom, { kind: 'span' }>)),
+            link.href,
+            context,
+            link.tooltip
+          )
+        );
+      } else {
+        const label = new MarkdownInlineWriter(context);
+        writeSpanAtoms(linked, context, label, true);
+        const value = label.finishMapped();
+        if (value.markdown.length)
+          writer.writeMappedBoundary(
+            wrapMarkdown(value, '[', markdownLinkSuffix(link.href, link.tooltip))
+          );
+      }
+      continue;
+    }
     if (atom.kind === 'drawing') {
       const drawing = drawingContentMarkdown(atom.drawing, context);
       const mapped = mappedDrawingMarkdown(atom.drawing, context, drawing);
@@ -298,28 +342,6 @@ function writeSpanAtoms(
           ],
         });
       } else writer.writeBoundary(navigation);
-      continue;
-    }
-    if (
-      (atom.span.link?.kind === 'external' || atom.span.link?.kind === 'internal') &&
-      atom.span.link.href
-    ) {
-      const linked: MarkdownTextToken[] = [atomToken(atom)];
-      while (atoms[index + 1]?.kind === 'span') {
-        const next = atoms[index + 1];
-        if (
-          next.kind !== 'span' ||
-          next.span.noteNav ||
-          !sameMarkdownLink(atom.span.link, next.span.link)
-        ) {
-          break;
-        }
-        linked.push(atomToken(next));
-        index += 1;
-      }
-      writer.writeMappedBoundary(
-        linkedSpansMarkdown(linked, atom.span.link.href, context, atom.span.link.tooltip)
-      );
       continue;
     }
     writer.writeText(atomToken(atom));
