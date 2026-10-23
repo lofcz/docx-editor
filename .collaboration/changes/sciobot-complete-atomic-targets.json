@@ -1,0 +1,17 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "The complete target compiler refused changed retained atomic blocks and unknown opaque MDX component targets.",
+  "after": "The private compiler emits existing D14 whole-payload intentions for registered atomic attributes and opaque MDX syntax. It preserves unprojected payload and AST data, follows unique child syntax identities, and verifies the resulting projected syntax before staging.",
+  "reason": "Only the private pure planner and tests change. It reuses established payload intentions, property/atomic proposal records, and native fallback revision staging. No shared fields, version descriptors, or published package source change.",
+  "tests": [
+    "packages/sciobot/src/diff/target-atomic.test.ts",
+    "packages/sciobot/src/review/recompose-atomic-targets.test.ts",
+    "packages/sciobot/src/review/recompose-atomic-targets-collaboration.test.ts",
+    "packages/sciobot/src/diff/plan-target.test.ts",
+    "packages/sciobot/src/diff/target-c01-matrix.test.ts",
+    "packages/sciobot/src/diff/atomic-blocks.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

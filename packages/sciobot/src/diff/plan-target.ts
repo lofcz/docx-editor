@@ -1,3 +1,4 @@
+import { atomicTargetsPairable, planTargetAtomic } from './target-atomic';
 import {
   logicalBlockAst as astOf,
   documentQuoteStyle,
@@ -245,7 +246,8 @@ export function planTargetDocument(
           if (native) {
             const a = domainNodeFromAst(old),
               b = domainNodeFromAst(next);
-            if (entry.binding!.atomicControlId) return !!a && !!b && a.type === b.type;
+            if (entry.binding!.atomicControlId)
+              return atomicTargetsPairable(native.payload, old, next);
             return !!a && !!b && sameContainerIdentity({ ...a, type: native.payload.type }, b);
           }
           if (entry.block.kind !== afterBlock.kind) return false;
@@ -384,7 +386,17 @@ export function planTargetDocument(
         if (!list.success) return list;
         membership = list.plan.operations;
       }
-      if (
+      if (binding.atomicControlId && byControl.has(ownerId)) {
+        const block = byControl.get(ownerId)!;
+        const atomic = planTargetAtomic(
+          { pkg: input.pkg, revision, blockId: block.id },
+          block.payload,
+          entry.ast,
+          astOf(next)
+        );
+        if (!atomic.success) return atomic;
+        operations.push(...atomic.plan.operations);
+      } else if (
         entry.block.kind === 'paragraph' &&
         next.kind === 'paragraph' &&
         findNode(part, ownerId)?.kind === 'paragraph'
