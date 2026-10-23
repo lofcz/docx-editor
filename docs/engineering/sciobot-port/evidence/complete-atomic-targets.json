@@ -1,0 +1,55 @@
+{
+  "leaf": "R19",
+  "status": "partial checkpoint; leaf remains open",
+  "runtimeRevision": "ebff1210f1819e5ca3ebbe0928ea98726332e91b",
+  "sourceComparison": {
+    "files": 5,
+    "differences": 0
+  },
+  "tests": {
+    "command": "bun test packages/sciobot/src/diff/target-atomic.test.ts packages/sciobot/src/review/recompose-atomic-targets.test.ts packages/sciobot/src/review/recompose-atomic-targets-collaboration.test.ts packages/sciobot/src/diff/plan-target.test.ts packages/sciobot/src/diff/target-c01-matrix.test.ts packages/sciobot/src/diff/atomic-blocks.test.ts --timeout 30000",
+    "files": 6,
+    "passed": 52,
+    "failed": 0,
+    "assertions": 612,
+    "log": "/tmp/r19-atomic-primary-tests.log"
+  },
+  "typecheck": {
+    "command": "bun run --filter '@sciobot/docx' typecheck",
+    "files": 2077,
+    "log": "/tmp/r19-atomic-primary-types.log"
+  },
+  "build": {
+    "command": "bun run --filter '@sciobot/docx' build",
+    "privateModules": 221,
+    "coreExternal": true,
+    "log": "/tmp/r19-atomic-primary-build.log"
+  },
+  "format": {
+    "command": "bun run format --cache",
+    "exitCode": 0,
+    "log": "/tmp/r19-target-atomic-root-format.log"
+  },
+  "lint": {
+    "command": "bun run lint",
+    "exitCode": 0,
+    "log": "/tmp/r19-atomic-primary-lint.log"
+  },
+  "compatibility": {
+    "decision": ".collaboration/changes/sciobot-complete-atomic-targets.json",
+    "newFormatFields": 0,
+    "log": "/tmp/r19-atomic-primary-policy.log"
+  },
+  "remaining": [
+    "Rich inserted application fragments",
+    "Broader peer deletion during affected edits",
+    "Complete package acceptance oracles",
+    "Installed-runtime verification",
+    "Any required domain media reconciliation"
+  ],
+  "limits": [
+    "Ambiguous stored-to-projected child maps refuse before writes.",
+    "Opaque storage fields remain native data; no domain media service is invoked by the generic compiler.",
+    "These tests verify target planning and review transactions. They do not establish production React renderer or application integration parity."
+  ]
+}

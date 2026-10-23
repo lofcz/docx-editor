@@ -421,6 +421,9 @@ The primary integration is `b8c26928`. All 26 changed private source/test files 
 
 Six pure planning cases use independently authored complete payloads, including hidden/null attributes, unknown component names, nested private data, reordering, removal, and root renaming. Two local coordinator cases execute visual/custom MDX targets across two waves, manual native edits, both decisions, exact canonical history, and Word reopening. Four real-session cases cover both client orders and reconnect receivers, offline peer text, untouched canonical payload baselines, both actor histories, decisions, remote caret geometry, saved convergence, and room reopening. The six-file affected command passes **52 cases and 612 assertions** in `/tmp/r19-target-atomic-affected.log`. Private types pass 2077 files; build verifies 221 modules with core external. Root lint and compatibility pass; `.collaboration/changes/sciobot-complete-atomic-targets.json` changes no shared format fields or published source. Root formatting passes in `/tmp/r19-target-atomic-root-format.log`. R19 remains open for rich inserted application fragments, broader affected-peer deletion, complete package acceptance oracles, installed-runtime verification, and any required domain media reconciliation.
 
+
+The atomic target primary integration is `ebff1210`. Its five changed source/test files match the isolated checkout. The complete six-file command passes 52 cases and 612 assertions again with the native paragraph fix included. Primary types pass 2077 files; build verifies 221 private modules. Root lint, compatibility, backlog validation, and all 199 production source hashes pass. See [atomic target checkpoint](evidence/complete-atomic-targets.json). R19 remains open.
+
 ## R20
 
 - [ ] Keep imported and foreign revisions separate
