@@ -3,6 +3,7 @@ Copyright (c) 2026 EigenPal, Inc. All rights reserved.
 Licensed under the EigenPal Pro Evaluation License 1.0 — see packages/pro/LICENSE.md.
 Production use requires a commercial agreement: licensing@eigenpal.com
 */
+import { BirthProjection } from './materialize-births.ts';
 import {
   relsPartNameFor,
   CUSTOM_XML_PROPS_TYPE,
@@ -156,6 +157,7 @@ export class PackageMaterializer {
    * actually broken rather than growing with the document.
    */
   private looseCandidates = new Set<LogicalId>();
+  private readonly birthProjection: BirthProjection;
   private pkg: OoxmlPackage | null = null;
   private customXmlRels: readonly EncodedRelationship[] = [];
   private customXmlOverrides = new Map<string, string>();
@@ -166,6 +168,7 @@ export class PackageMaterializer {
     readonly registry: DocumentRegistry,
     readonly blobs: BlobBytesStore
   ) {
+    this.birthProjection = new BirthProjection(registry);
     this.packageCache = new PackageProjectionCache(registry);
     this.contests = new ListingContests(registry);
     this.stop = registry.observeDirty((paths) => {
@@ -246,6 +249,7 @@ export class PackageMaterializer {
       }
     }
     for (const id of this.splitProjection.update(this.registry)) rawDirty.add(id);
+    for (const parent of this.birthProjection.prepare(rawDirty)) rawDirty.add(parent);
     const dirty = expandAncestors(this.registry, rawDirty);
     // Every ancestor of a changed node has to rebuild. The registry's parent index says
     // where a node lives NOW; a node a peer moved or detached is still shown
@@ -509,6 +513,7 @@ export class PackageMaterializer {
       for (const copy of copies) this.shownUnder.set(copy, winner);
     }
     for (const childId of order.shown) {
+      if (!this.birthProjection.shown(logicalId, childId)) continue;
       if (childId === logicalId) {
         this.push('self-child', childId);
         continue;

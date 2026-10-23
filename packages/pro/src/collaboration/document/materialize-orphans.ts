@@ -3,6 +3,7 @@ Copyright (c) 2026 EigenPal, Inc. All rights reserved.
 Licensed under the EigenPal Pro Evaluation License 1.0 — see packages/pro/LICENSE.md.
 Production use requires a commercial agreement: licensing@eigenpal.com
 */
+import { undoneBirth } from './materialize-births.ts';
 /**
  * Report nodes that no part can reach.
  *
@@ -75,7 +76,7 @@ export function reportOrphans(
 ): void {
   if (!incremental) {
     for (const id of candidates) {
-      if (registry.isTombstoned(id) || placed.has(id)) continue;
+      if (registry.isTombstoned(id) || undoneBirth(registry, id) || placed.has(id)) continue;
       pushOrphan(registry, push, id);
       loose.add(id);
     }
@@ -120,7 +121,7 @@ function reportOrphansUnder(
       }
       continue;
     }
-    if (partRoots.has(id)) continue;
+    if (partRoots.has(id) || undoneBirth(registry, id)) continue;
     // Beneath a tombstone the listings index cannot answer reachability: the dead parent
     // still names the child, and `stillListed` counts that deliberately, because the
     // registry re-homes an adopted child onto the survivor. Placement is the authority

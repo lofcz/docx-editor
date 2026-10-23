@@ -272,6 +272,14 @@ If your servers run a release from 2.28.0 to 2.31.0, the procedure changes in th
 - If your app keeps room updates in browser storage, change the storage key again, so that the new build does not load updates of the earlier room.
 - Edits that never reached the room before the migration do not transfer. Ask users with offline edits to reconnect before you stop the servers.
 
+### Upgrade rooms to format 1.5.3.1
+
+Format `docx-collaboration:1.5.3.1` changes creation undo and structural repair. Undo retains the ancestry needed by edits from other participants. Undone containers show only when surviving peer content needs them. Table columns retain their grid positions and empty companion cells while another participant still uses the column. Original text and inline controls remain owned by their author.
+
+These rules use retained node records, child listings, and the existing boolean undo marker. They change how replicas interpret those records. Clients and workers on format `docx-collaboration:1.5.2.1` must not join these rooms.
+
+Stop writes and drain pending updates before the upgrade. Export each room with its original deployment. Use the verified export-and-reseed procedure under [Upgrade saved rooms](#upgrade-saved-rooms), keep the original state as a backup, and require every client to join the new generation. Do not rewrite version metadata or replay old updates into the migrated generation. The export preserves visible document content; it cannot recover peer content already hidden by an older creation undo. Reconcile such content from the original room before export.
+
 ### Migrate rooms on a server
 
 `@docx-editor.dev/pro/collaboration` provides two functions for the new build. They take and return bytes, so they work with any storage:

@@ -3,6 +3,7 @@ Copyright (c) 2026 EigenPal, Inc. All rights reserved.
 Licensed under the EigenPal Pro Evaluation License 1.0 — see packages/pro/LICENSE.md.
 Production use requires a commercial agreement: licensing@eigenpal.com
 */
+import { applyBirthChildSplice, type BirthChildSplice } from './birth-journal-splice.ts';
 import { projectedTextTarget } from './projected-text-target.ts';
 import { routeInlineEffects, type InlinePlan } from './paragraph-text-writer.ts';
 import { recordRelocatedMarkers } from './relocated-markers.ts';
@@ -280,7 +281,8 @@ function mergeTextReplacements(effects: readonly SharedEffect[]): SharedEffect[]
 function applyEffect(
   registry: DocumentRegistry,
   effect: SharedEffect,
-  initialText: ReadonlySet<string>
+  initialText: ReadonlySet<string>,
+  birthSplice?: BirthChildSplice
 ): void {
   switch (effect.kind) {
     case 'putNode':
@@ -340,6 +342,10 @@ function applyEffect(
       registry.setNamespaceBinding(effect.logicalId, effect.prefix, effect.uri);
       return;
     case 'spliceChildren': {
+      if (birthSplice) {
+        applyBirthChildSplice(registry, effect, birthSplice);
+        return;
+      }
       const listed = registry.record(effect.parentLogicalId);
       const length = listed && 'childIds' in listed ? listed.childIds.length : effect.start;
       registry.spliceChildren(
@@ -448,6 +454,7 @@ interface JournalPlan {
    * one run can be de-duplicated deterministically instead of duplicating the text (#581).
    */
   readonly replacementsByEffect: ReadonlyMap<SharedEffect, readonly LogicalId[]>;
+  readonly birthSplices: ReadonlyMap<SharedEffect, BirthChildSplice>;
 }
 
 /**
@@ -474,9 +481,20 @@ function planJournal(
   const mintedText = new Set<string>();
   const mintedNodes = new Set<string>();
   const replacementsByEffect = new Map<SharedEffect, LogicalId[]>();
+  const birthSplices = new Map<SharedEffect, BirthChildSplice>();
   for (const effect of effects) {
     const refusal = validateEffect(registry, effect, projection);
     if (refusal) return refusal;
+    if (effect.kind === 'spliceChildren' && projection.hasHiddenChildren(effect.parentLogicalId)) {
+      const parent = projection.node(effect.parentLogicalId)!;
+      const start = Math.min(effect.start, parent.children.length),
+        end = start + effect.deleteCount;
+      birthSplices.set(effect, {
+        removed: parent.children.slice(start, end),
+        left: parent.children[start - 1] ?? null,
+        right: parent.children[end] ?? null,
+      });
+    }
     if (effect.kind === 'spliceChildren') {
       const parent = effect.deleteCount > 0 ? projection.node(effect.parentLogicalId) : null;
       if (parent && !parent.isText) {
@@ -507,7 +525,15 @@ function planJournal(
     }
     projectEffect(projection, effect);
   }
-  return { removed, reinserted, unlistedAtEnd, mintedText, mintedNodes, replacementsByEffect };
+  return {
+    removed,
+    reinserted,
+    unlistedAtEnd,
+    mintedText,
+    mintedNodes,
+    replacementsByEffect,
+    birthSplices,
+  };
 }
 
 function mintedNodeCount(effects: readonly SharedEffect[]): number {
@@ -605,7 +631,7 @@ export function applyPrimitiveJournal(
     const unaliased: { removedId: LogicalId; runs: LogicalId[] }[] = [];
     const insertedRuns: LogicalId[] = [];
     for (const effect of mergeTextReplacements(effects)) {
-      applyEffect(registry, effect, planned.mintedText);
+      applyEffect(registry, effect, planned.mintedText, planned.birthSplices.get(effect));
       if (effect.kind === 'spliceChildren') {
         // Only a split that moves the tail into a paragraph this journal created (Enter) can
         // carry a run's text across parents; formatting splits stay within one parent.

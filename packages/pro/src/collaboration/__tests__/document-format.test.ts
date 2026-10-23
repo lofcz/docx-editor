@@ -202,3 +202,19 @@ test('a wrong metadata container refuses with a stable code without changing the
     doc.destroy();
   }
 });
+
+test('release 2.32 repair semantics refuse admission without changing saved room state', () => {
+  const doc = savedRoom();
+  try {
+    doc.getMap(PACKAGE_META_KEY).set('repairVersion', 2);
+    const before = Y.encodeStateAsUpdate(doc);
+    expect(readCollaborationFormatVersion(doc)).toBe('docx-collaboration:1.5.2.1');
+    expect(() => assertCollaborationFormatCompatibility('docx-collaboration:1.5.2.1')).toThrow(
+      'collaboration-format-mismatch'
+    );
+    expect(() => readCollaborationDocument(doc)).toThrow('schema-version-mismatch');
+    expect(Y.encodeStateAsUpdate(doc)).toEqual(before);
+  } finally {
+    doc.destroy();
+  }
+});

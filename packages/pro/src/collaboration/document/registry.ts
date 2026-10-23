@@ -3,6 +3,7 @@ Copyright (c) 2026 EigenPal, Inc. All rights reserved.
 Licensed under the EigenPal Pro Evaluation License 1.0 — see packages/pro/LICENSE.md.
 Production use requires a commercial agreement: licensing@eigenpal.com
 */
+import { BirthUndoDependencies } from './birth-undo-dependencies.ts';
 import { subscribeTextReads } from './registry-text-reads.ts';
 import { TEXT_DELETIONS_KEY } from './paragraph-text-deletions.ts';
 import { keepFormattingMarkers } from './yjs-items.ts';
@@ -130,6 +131,7 @@ export class DocumentRegistry {
 
   private readonly stopObserving: () => void;
   private readonly numberingDependencies: NumberingUndoDependencies;
+  private readonly birthDependencies: BirthUndoDependencies;
 
   constructor(
     readonly doc: Y.Doc,
@@ -193,6 +195,7 @@ export class DocumentRegistry {
       },
     });
     this.numberingDependencies = new NumberingUndoDependencies(this, () => this.bulkLoad === 0);
+    this.birthDependencies = new BirthUndoDependencies(this);
   }
 
   /**
@@ -205,6 +208,7 @@ export class DocumentRegistry {
    */
   destroy(): void {
     this.numberingDependencies.destroy();
+    this.birthDependencies.destroy();
     this.stopObserving();
     this.stopMarks();
     this.stopKeepingMarkers();
@@ -246,7 +250,8 @@ export class DocumentRegistry {
    * {@link nodeRecordDeleteFilter}. Omitting this is silent data loss, not a missing nicety.
    */
   undoDeleteFilter(): (item: Y.Item) => boolean {
-    return this.numberingDependencies.deleteFilter();
+    const filter = this.numberingDependencies.deleteFilter();
+    return (item) => !this.birthDependencies.retains(item) && filter(item);
   }
 
   encodeSnapshot(): Uint8Array {

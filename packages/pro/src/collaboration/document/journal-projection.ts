@@ -16,6 +16,7 @@ Production use requires a commercial agreement: licensing@eigenpal.com
  * It holds no Yjs types and writes nothing. A refusal still leaves shared state untouched.
  */
 
+import { BirthProjection } from './materialize-births.ts';
 import type { LogicalId } from './identity.ts';
 import type { SharedEffect, SharedNodeDescriptor } from './shared-effect.ts';
 import type { NodeShape } from './registry-node-reads.ts';
@@ -29,7 +30,14 @@ export class JournalProjection {
   private readonly touched = new Map<LogicalId, ProjectedNode>();
   private readonly created = new Set<LogicalId>();
 
-  constructor(private readonly registry: DocumentRegistry) {}
+  private readonly births: BirthProjection;
+  private readonly hiddenChildren = new Set<LogicalId>();
+  constructor(private readonly registry: DocumentRegistry) {
+    this.births = new BirthProjection(registry);
+  }
+  hasHiddenChildren(id: LogicalId): boolean {
+    return this.hiddenChildren.has(id);
+  }
 
   has(id: LogicalId): boolean {
     return this.created.has(id) || this.touched.has(id) || this.registry.hasNode(id);
@@ -47,6 +55,11 @@ export class JournalProjection {
     if (projected) return projected;
     const shape = this.registry.nodeShape(id);
     if (!shape) return null;
+    const shown = shape.children.filter((child) => this.births.shown(id, child));
+    if (shown.length !== shape.children.length) {
+      this.hiddenChildren.add(id);
+      shape.children = shown;
+    }
     this.touched.set(id, shape);
     return shape;
   }
