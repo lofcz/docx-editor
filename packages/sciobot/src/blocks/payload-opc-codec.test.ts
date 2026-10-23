@@ -169,6 +169,7 @@ test('pre-bootstrap payload storage is empty, stable, and preserves populated an
   const stored = write(initialized.pkg);
   expect(withInitializedPayloadStore(stored.pkg)).toEqual({ ok: true, pkg: stored.pkg });
   const root = stored.pkg.parts.get(stored.part.partName)!;
+  if (root.root.kind !== 'generic') throw Error('Expected generic custom XML root');
   const malformed = withPart(stored.pkg, { ...root, root: { ...root.root, localName: 'wrong' } });
   expect(withInitializedPayloadStore(malformed)).toEqual({
     ok: false,

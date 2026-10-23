@@ -61,9 +61,9 @@ test('native equations persist exact sources and readable fallbacks; adjacent ed
           const part = pkg.parts.get(found.partName)!;
           const node = findNode(part, found.controlId)!;
           if (payload === block)
-            expect(paragraphs(node).map((p) => paragraphTextOf(part, p.id))).toEqual(
-              mathWordFallback(block).paragraphs
-            );
+            expect(paragraphs(node).map((p) => paragraphTextOf(part, p.id))).toEqual([
+              ...mathWordFallback(block).paragraphs,
+            ]);
         }
         const part = pkg.parts.get(pkg.mainDocumentPart)!;
         const paragraph = paragraphs(part.root)[0]!;

@@ -50,9 +50,7 @@ for (const clients of [
               expect(importedMath(pkg)).toEqual(originalMath);
               const part = pkg.parts.get(pkg.mainDocumentPart)!;
               // Reopen can assign fresh native IDs; paragraph order is stable.
-              const body =
-                part.root.kind !== 'textValue' &&
-                part.root.children.find((n) => n.kind !== 'textValue' && n.localName === 'body');
+              const body = part.root.children.find((n) => n.kind === 'body');
               if (!body) throw Error('Missing body');
               const paragraph = body.children.find((n) => n.kind === 'paragraph')!;
               expect(paragraphTextOf(part, paragraph.id)).toBe(
@@ -127,6 +125,7 @@ for (const clients of [
         for (const shared of [false, true]) {
           const reopened = await createTwoEditorFixture({
             ...fixture,
+            clientIds: undefined,
             document: new Uint8Array(await alice!.save()),
             ...(shared ? { roomSnapshot: Y.encodeStateAsUpdate(pair.documents[0]!) } : {}),
           });
