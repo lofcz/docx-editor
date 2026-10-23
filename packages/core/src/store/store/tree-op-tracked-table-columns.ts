@@ -1,3 +1,7 @@
+import {
+  withInsertedTablePropertyPresence,
+  withAbsentTablePropertyPresence,
+} from './inserted-paragraph-property-presence.ts';
 // Tracked table COLUMN insertion and deletion, in Word's cell and table-property revision markup.
 //
 // A column has no element of its own, so Word records its insertion as `w:cellIns` on every new
@@ -159,7 +163,11 @@ export function withCellMarker(
 ): OoxmlElement {
   const existing = wmlChildNamed(cell, 'tcPr');
   const holder = existing ?? freshWmlElement('tcPr', stamp.holderId, stamp.wml, []);
-  const patched = patchTcPrChild(holder, marker);
+  const annotated =
+    existing && marker.namespaceUri === WML_NAMESPACE_URI && marker.localName === 'cellIns'
+      ? withInsertedTablePropertyPresence(marker, 'tcPr')
+      : marker;
+  const patched = patchTcPrChild(holder, annotated);
   if (!patched.ok) throw new Error('cell marker refused');
   const children = existing
     ? cell.children.map((child) => (child === existing ? patched.container : child))
@@ -187,7 +195,12 @@ function withRowMarker(row: OoxmlElement, stamp: Stamp): OoxmlElement {
   const holder = existing ?? freshWmlElement('trPr', stamp.holderId, stamp.wml, []);
   const patched = patchTrPrChild(
     holder,
-    freshWmlElement('ins', stamp.nextId, stamp.wml, attributes(stamp))
+    existing
+      ? withInsertedTablePropertyPresence(
+          freshWmlElement('ins', stamp.nextId, stamp.wml, attributes(stamp)),
+          'trPr'
+        )
+      : freshWmlElement('ins', stamp.nextId, stamp.wml, attributes(stamp))
   );
   if (!patched.ok) throw new Error('row marker refused');
   const children = existing
@@ -240,9 +253,11 @@ export function insertionMarkup(
           freshWmlElement('cellIns', stamp.nextId, stamp.wml, attributes(stamp)),
           stamp
         );
+      const previous = wmlChildNamed(old, 'tcPr');
+      const record = history(stamp, 'tcPr', previous?.children ?? []);
       return withCellMarker(
         cell,
-        history(stamp, 'tcPr', wmlChildNamed(old, 'tcPr')?.children ?? []),
+        previous ? record : withAbsentTablePropertyPresence(record, 'tcPr'),
         stamp
       );
     });

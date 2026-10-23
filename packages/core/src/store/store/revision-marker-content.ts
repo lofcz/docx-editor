@@ -1,4 +1,8 @@
-import { preservesInsertedParagraphProperty } from './inserted-paragraph-property-presence.ts';
+import {
+  preservesInsertedParagraphProperty,
+  preservesInsertedPropertyPresence,
+  omitsInsertedTableProperty,
+} from './inserted-paragraph-property-presence.ts';
 import { WML_NAMESPACE_URI, type OoxmlElement, type OoxmlNode } from '../package/ooxml-tree.ts';
 import { isRangeMarkerKind } from '../package/ooxml-shared.ts';
 
@@ -49,7 +53,39 @@ export function heldOnlyResolvedMarks(
   restored: ReadonlySet<string> = new Set()
 ): boolean {
   if (node.kind === 'textValue' || node.children.length === 0) return false;
+  // The explicit source record also survives an earlier mark-family allocation.
+  if (
+    node.namespaceUri === WML_NAMESPACE_URI &&
+    (node.localName === 'trPr' || node.localName === 'tcPr')
+  ) {
+    const kind = node.localName;
+    if (
+      node.children.some(
+        (child) => accepted.has(child.id) && preservesInsertedPropertyPresence(child, kind)
+      )
+    )
+      return false;
+  }
   if (acceptedOnly(node, accepted)) return true;
+  if (
+    node.namespaceUri === WML_NAMESPACE_URI &&
+    (node.localName === 'trPr' || node.localName === 'tcPr') &&
+    node.attributes.length === 0
+  ) {
+    const kind = node.localName;
+    if (
+      node.children.some(
+        (child) =>
+          child.kind !== 'textValue' &&
+          child.namespaceUri === WML_NAMESPACE_URI &&
+          child.localName === `${kind}Change` &&
+          (dropped.has(child.id) || restored.has(child.id)) &&
+          omitsInsertedTableProperty(child, kind)
+      )
+    )
+      return true;
+  }
+
   // Only a container a mark stamp created; a source container stays, empty or not.
   if (!node.id.slice(node.id.lastIndexOf('#') + 1).startsWith('mark:')) return false;
   const markProperties =
@@ -95,7 +131,8 @@ function acceptedOnly(node: OoxmlNode, accepted: ReadonlySet<string>): boolean {
         child.kind !== 'textValue' &&
         child.namespaceUri === WML_NAMESPACE_URI &&
         ['ins', 'cellIns'].includes(child.localName) &&
-        accepted.has(child.id)
+        accepted.has(child.id) &&
+        !preservesInsertedPropertyPresence(child, node.localName as 'trPr' | 'tcPr')
     );
   if (node.kind !== 'paragraphProperties') return false;
   return node.children.every(

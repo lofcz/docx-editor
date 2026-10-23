@@ -1,0 +1,17 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Accepting native row insertion dropped empty property holders that the equivalent direct command retained. A reopened column proposal could also retain generated empty holders on source cells that originally had none.",
+  "after": "Native insertion marks retain explicit source-container presence through the existing property-presence annotation. Property histories also retain explicit source absence. Resolution preserves the direct native tree and the exact rejected source after reopening.",
+  "reason": "The writer extends values of an existing optional OOXML annotation on revision markers. Earlier readers preserve these generic attributes and understand the corrected accepted WML containers. Legacy proposals and unrecognized hints retain their existing interpretation. Earlier writers keep their original cleanup bug when resolving new proposals. No shared directory, message or character representation changes.",
+  "tests": [
+    "packages/core/src/automation/__tests__/table-authoring.test.ts",
+    "packages/core/src/store/__tests__/inserted-table-property-presence.test.ts",
+    "packages/core/src/store/__tests__/tracked-table-columns.test.ts",
+    "packages/core/src/store/__tests__/tracked-table-composition.test.ts",
+    "packages/core/src/store/__tests__/tracked-table-properties.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-table-revisions.test.ts"
+  ],
+  "changeset": "preserve-inserted-table-property-holders",
+  "migration": null
+}

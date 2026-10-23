@@ -6,7 +6,7 @@ import {
 import { settleDeferredRunOrigins } from './run-origin-deferred.ts';
 import {
   INSERTED_PARAGRAPH_PROPERTY_NS,
-  preservesInsertedParagraphProperty,
+  hasInsertedPropertyPresence,
 } from './inserted-paragraph-property-presence.ts';
 import { findNode, parentNodeOf, replaceNode, type EditOptions } from '../package/ooxml-edit.ts';
 import type { OoxmlNode, OoxmlPart } from '../package/ooxml-tree.ts';
@@ -45,7 +45,7 @@ export function captureRunOriginResolution(
   const retained = new Set<string>();
   const paragraphPropertyPrefixes = new Set<string>();
   for (const site of sites) {
-    if (preservesInsertedParagraphProperty(site, 'pPr') && site.kind !== 'textValue')
+    if (site.kind !== 'textValue' && hasInsertedPropertyPresence(site))
       for (const attr of site.attributes)
         if (attr.namespaceUri === INSERTED_PARAGRAPH_PROPERTY_NS && attr.prefix)
           paragraphPropertyPrefixes.add(attr.prefix);

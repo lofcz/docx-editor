@@ -1,3 +1,4 @@
+import { withInsertedTablePropertyPresence } from './inserted-paragraph-property-presence.ts';
 // Row insertion and deletion for canonical tables (table-editing task 3).
 //
 // Validates complete targets before mutation, copies only safe row/cell property skeletons,
@@ -299,13 +300,15 @@ export function withTrackedRowMarker(
   /** Missing holders created for a deletion use mark ids, so rejection removes them again. */
   holderId: () => string = nextId
 ): OoxmlTableRowNode {
-  const rowMarker = freshWmlElement(
+  let rowMarker = freshWmlElement(
     markerKind,
     nextId,
     wml,
     trackedRevisionAttributes(revisionId, revision, wml)
   );
   const existingTrPr = wmlChildNamed(row, 'trPr');
+  if (markerKind === 'ins' && existingTrPr)
+    rowMarker = withInsertedTablePropertyPresence(rowMarker, 'trPr');
   const trPr = existingTrPr ?? freshWmlElement('trPr', holderId, wml, []);
   const patchedTrPr = patchTrPrChild(trPr, rowMarker);
   if (!patchedTrPr.ok) return row;
@@ -315,13 +318,15 @@ export function withTrackedRowMarker(
     if (child.kind !== 'tableCell') {
       return child === existingTrPr ? patchedTrPr.container : child;
     }
-    const marker = freshWmlElement(
+    let marker = freshWmlElement(
       cellMarkerKind,
       nextId,
       wml,
       trackedRevisionAttributes(revisionId, revision, wml)
     );
     const existingTcPr = wmlChildNamed(child, 'tcPr');
+    if (markerKind === 'ins' && existingTcPr)
+      marker = withInsertedTablePropertyPresence(marker, 'tcPr');
     const tcPr = existingTcPr ?? freshWmlElement('tcPr', holderId, wml, []);
     const patchedTcPr = patchTcPrChild(tcPr, marker);
     if (!patchedTcPr.ok) return child;

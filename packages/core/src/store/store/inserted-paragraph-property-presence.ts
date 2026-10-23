@@ -11,6 +11,21 @@ export function withInsertedParagraphPropertyPresence(
   runProperties: OoxmlNode | undefined
 ): OoxmlElement {
   if (!properties) return mark;
+  return withPropertyPresence(mark, runProperties ? 'pPr rPr' : 'pPr');
+}
+
+/** A structural insertion keeps the holders its direct native command already created. */
+export function withInsertedTablePropertyPresence(
+  mark: OoxmlElement,
+  kind: 'trPr' | 'tcPr'
+): OoxmlElement {
+  return withPropertyPresence(mark, kind);
+}
+
+function withPropertyPresence(
+  mark: OoxmlElement,
+  properties: 'pPr' | 'pPr rPr' | 'trPr' | 'tcPr' | 'absent trPr' | 'absent tcPr'
+): OoxmlElement {
   const prefix = `paragraphOrigin${secureRandomUuid().replace(/-/g, '')}`;
   return {
     ...mark,
@@ -25,7 +40,7 @@ export function withInsertedParagraphPropertyPresence(
         namespaceUri: INSERTED_PARAGRAPH_PROPERTY_NS,
         prefix,
         localName: 'properties',
-        value: runProperties ? 'pPr rPr' : 'pPr',
+        value: properties,
       },
     ],
   } as OoxmlElement;
@@ -33,13 +48,40 @@ export function withInsertedParagraphPropertyPresence(
 
 /** A copied source container survives the inserted mark's acceptance after save/reopen. */
 export function preservesInsertedParagraphProperty(node: OoxmlNode, kind: 'pPr' | 'rPr'): boolean {
-  if (node.kind === 'textValue') return false;
+  return preservesInsertedPropertyPresence(node, kind);
+}
+
+export function preservesInsertedPropertyPresence(
+  node: OoxmlNode,
+  kind: 'pPr' | 'rPr' | 'trPr' | 'tcPr'
+): boolean {
+  const value = propertyPresence(node);
+  return value !== null && !value.startsWith('absent ') && value.split(' ').includes(kind);
+}
+
+export function withAbsentTablePropertyPresence(
+  mark: OoxmlElement,
+  kind: 'trPr' | 'tcPr'
+): OoxmlElement {
+  return withPropertyPresence(mark, `absent ${kind}`);
+}
+
+export function omitsInsertedTableProperty(node: OoxmlNode, kind: 'trPr' | 'tcPr'): boolean {
+  return propertyPresence(node) === `absent ${kind}`;
+}
+
+export function hasInsertedPropertyPresence(node: OoxmlNode): boolean {
+  return propertyPresence(node) !== null;
+}
+
+function propertyPresence(node: OoxmlNode): string | null {
+  if (node.kind === 'textValue') return null;
   const fields = node.attributes.filter(
     (attr) => attr.namespaceUri === INSERTED_PARAGRAPH_PROPERTY_NS
   );
-  return (
-    fields.length === 1 &&
+  return fields.length === 1 &&
     fields[0]!.localName === 'properties' &&
-    (fields[0]!.value === 'pPr rPr' || (kind === 'pPr' && fields[0]!.value === 'pPr'))
-  );
+    ['pPr', 'pPr rPr', 'trPr', 'tcPr', 'absent trPr', 'absent tcPr'].includes(fields[0]!.value)
+    ? fields[0]!.value
+    : null;
 }
