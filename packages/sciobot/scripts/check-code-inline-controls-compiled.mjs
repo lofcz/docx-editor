@@ -38,11 +38,16 @@ try {
     `[test]\npreload = [${JSON.stringify(join(repoRoot, 'scripts/test/preload-dom.ts'))}]\n`
   );
   symlinkSync(join(packageRoot, 'node_modules'), join(directory, 'node_modules'), 'dir');
-  const fixtures = [
-    'code-inline-atoms.test.ts',
-    'code-inline-atoms-collaboration.test.ts',
-    'code-atom-middle-peer-undo.test.ts',
-  ];
+  const selected = process.argv.slice(2);
+  if (selected.some((name) => !/^[a-z0-9-]+\.test\.ts$/.test(name)))
+    throw Error('Pass fixture basenames from src/diff.');
+  const fixtures = selected.length
+    ? selected
+    : [
+        'code-inline-atoms.test.ts',
+        'code-inline-atoms-collaboration.test.ts',
+        'code-atom-middle-peer-undo.test.ts',
+      ];
   for (const filename of fixtures) {
     let source = readFileSync(join(packageRoot, 'src/diff', filename), 'utf8');
     source = source.replace(

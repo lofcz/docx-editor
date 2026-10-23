@@ -1,3 +1,4 @@
+export type { InlineDrawingFormatting } from './inline-drawing-formatting.ts';
 /**
  * `@docx-editor.dev/core/layout` — DOM-free pagination, shaping, and hit testing.
  *
