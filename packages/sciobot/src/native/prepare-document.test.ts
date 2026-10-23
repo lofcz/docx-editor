@@ -79,7 +79,22 @@ test('preparation retains imported style definitions and their nonstandard part 
     afterRelationships = relationshipsOf(pkg(prepared.document), '/word/document.xml');
   for (const relationship of beforeRelationships)
     expect(afterRelationships).toContainEqual(relationship);
-  expect(afterRelationships.length).toBe(beforeRelationships.length + 1);
+  expect(
+    afterRelationships
+      .filter(
+        (relationship) => !beforeRelationships.some((before) => before.id === relationship.id)
+      )
+      .map((relationship) => ({ type: relationship.type, target: relationship.rawTarget }))
+  ).toEqual([
+    {
+      type: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/customXml',
+      target: '../customXml/item1.xml',
+    },
+    {
+      type: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering',
+      target: 'numbering.xml',
+    },
+  ]);
   expect(readReviewGroupStore(pkg(prepared.document)).status).toBe('ready');
   expect(canonicalOoxmlFingerprint(stylesPartOf(pkg(prepared.document))!.root.children[0]!)).toBe(
     canonicalOoxmlFingerprint(imported)

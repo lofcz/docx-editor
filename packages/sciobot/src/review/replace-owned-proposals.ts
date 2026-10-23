@@ -1,3 +1,4 @@
+import { nativeNumberingInfrastructureReady } from '../native/numbering-infrastructure';
 import { stageTrackedPresence } from './tracked-stage-presence';
 import { stageTrackedPayloads, type TrackedPayloadOptions } from './tracked-stage-payloads';
 import type { DocxEditorInstance } from '@docx-editor.dev/core/editor';
@@ -103,7 +104,7 @@ function preserveRemainingGroups(before: OoxmlPackage, after: OoxmlPackage): voi
     ]);
   for (const group of original) {
     const next = current.get(group.id);
-    if (!next || members(group) !== members(next))
+    if (!next || group.readOnly !== next.readOnly || members(group) !== members(next))
       throw new ReplacementRefusal(
         fail('Replacement would change an unselected review group.', 'ambiguous-target')
       );
@@ -190,6 +191,25 @@ function commit(
         return { committed: false, reason: result.error };
       }
       const before = surface.session.currentPackage();
+      if (
+        editor.snapshot().collaborationStatus !== 'inactive' &&
+        !nativeNumberingInfrastructureReady(before) &&
+        plan.operations.some(
+          (edit) =>
+            edit.kind === 'siblings' &&
+            !!edit.blocks?.length &&
+            edit.lists?.some(
+              (binding) => binding.target.kind === 'ordered' || binding.target.kind === 'bullet'
+            )
+        )
+      )
+        throw new ReplacementRefusal(
+          fail(
+            'Prepare native numbering infrastructure before sharing application list fragments.',
+            'unsupported-operation'
+          )
+        );
+
       // The planner uses native operations on detached parts. Run it before the observed
       // transaction begins, so its inverse previews cannot enter the live operation journal.
       const removal = requireSuccess(

@@ -1,0 +1,17 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Replacement preserved unselected group identities and members but could turn an actionable presence group read-only. First shared application list insertion could own the numbering root namespace, causing undo to put collaboration into an error state.",
+  "after": "Replacement preserves each unselected group's read-only state. Native document preparation initializes empty numbering infrastructure before room bootstrap. Imported numbering stays untouched. Shared application list fragments require valid existing infrastructure before publication.",
+  "reason": "Existing canonical package parts, relationships, declarations, review records, and history scopes carry the changes. No transport, shared schema, or Pro implementation changes. The supported host calls prepareNativeDocument before opening or sharing imported bytes. The new admission check refuses incomplete host initialization; prepared sessions retain complete insertion and history behavior.",
+  "tests": [
+    "packages/sciobot/src/review/unselected-presence-admission.test.ts",
+    "packages/sciobot/src/review/unselected-presence-admission-collaboration.test.ts",
+    "packages/sciobot/src/review/recompose-application-fragments-collaboration.test.ts",
+    "packages/sciobot/src/native/numbering-infrastructure.test.ts",
+    "packages/sciobot/src/native/prepare-document.test.ts",
+    "packages/sciobot/src/native/prepare-document-collaboration.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

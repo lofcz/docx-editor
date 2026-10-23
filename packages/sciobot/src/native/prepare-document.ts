@@ -1,3 +1,4 @@
+import { withNativeNumberingInfrastructure } from './numbering-infrastructure';
 import { readOoxmlPackage } from '@docx-editor.dev/core/store';
 import type { NativeEditFailure } from '../contracts/document';
 import { withInitializedReviewGroupStore } from '../review/group-record-store';
@@ -19,7 +20,7 @@ export type PreparedNativeDocument =
   | NativeEditFailure;
 
 /**
- * Initialize application-owned code styles and review storage before opening or sharing DOCX bytes.
+ * Initialize application-owned code styles, numbering infrastructure, and review storage before opening or sharing DOCX bytes.
  *
  * Call this once before a collaboration room bootstraps, not after editors join. Otherwise two
  * offline first writers can each create the styles part, and undoing one part's creation leaves
@@ -60,8 +61,14 @@ export function prepareNativeDocument(document: Uint8Array): PreparedNativeDocum
       code: 'invalid-document',
       error: 'Cannot initialize the native code style.',
     };
-  const prepared = styled,
+  const prepared = withNativeNumberingInfrastructure(styled),
     codeStyleReady = state !== 'conflict';
+  if (!prepared)
+    return {
+      success: false,
+      code: 'invalid-document',
+      error: 'Cannot initialize native numbering infrastructure.',
+    };
   try {
     return {
       success: true,

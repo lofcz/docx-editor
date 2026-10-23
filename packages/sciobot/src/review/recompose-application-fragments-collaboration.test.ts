@@ -16,6 +16,7 @@ import { createTwoEditorFixture } from '../../test/support/collaboration';
 import { docxFixture } from '../../test/support/document';
 import { propertyContext, propertyToken } from '../../test/support/property-execution';
 import {
+  preparedApplicationDocument,
   applicationFragmentTarget as target,
   applicationFragmentOptions as options,
 } from '../../test/support/application-fragments';
@@ -68,7 +69,9 @@ for (const clients of [
     for (const decision of ['accept', 'reject'] as const)
       test(`AI application fragments preserve peer text, ownership, both histories, ${decision}, exact Word output, and room reopening; ${clients}/${receiver}`, async () => {
         const fixture = {
-          document: docxFixture('<w:p><w:r><w:t>Outside</w:t></w:r></w:p>'),
+          document: preparedApplicationDocument(
+            docxFixture('<w:p><w:r><w:t>Outside</w:t></w:r></w:p>')
+          ),
           documentId: propertyContext.documentId,
           ownedAttributes: true,
           editor: { modules: [SCIOBOT_NATIVE_REVIEW_MODULE] },

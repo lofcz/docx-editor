@@ -1,3 +1,4 @@
+import { prepareNativeDocument } from '../../src/native/prepare-document';
 import { MDX_BLOCK } from '../../src/projection/mdx';
 import type { TargetDocumentOptions } from '../../src/diff/plan-target';
 import type { JsonObject } from '../../src/data/json';
@@ -23,3 +24,9 @@ export const applicationFragmentOptions = (prefix: string): TargetDocumentOption
         : null,
   };
 };
+
+export function preparedApplicationDocument(document: Uint8Array): Uint8Array {
+  const prepared = prepareNativeDocument(document);
+  if (!prepared.success) throw Error(prepared.error);
+  return prepared.document;
+}
