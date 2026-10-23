@@ -218,7 +218,7 @@ export const DOMAIN_BLOCK_TAGS: ReadonlyMap<string, BlockTagDefinition> = new Ma
   [
     'inline_equation',
     {
-      tag: 'inline_equation',
+      tag: 'scio-inline-equation',
       kind: 'atomic',
       attributes: (payload) => ordered(payload, ['texExpression']),
       serialize: serializeMath,
@@ -228,7 +228,7 @@ export const DOMAIN_BLOCK_TAGS: ReadonlyMap<string, BlockTagDefinition> = new Ma
   [
     'equation',
     {
-      tag: 'equation',
+      tag: 'scio-equation',
       kind: 'atomic',
       attributes: (payload) => ordered(payload, ['texExpression']),
       serialize: serializeMath,

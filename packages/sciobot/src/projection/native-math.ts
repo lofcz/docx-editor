@@ -95,9 +95,9 @@ export const remarkNativeMath: Plugin = () => (tree) => {
       if (!parent || typeof index !== 'number') return;
       const node = raw as unknown as TargetAstNode;
       const kind =
-        node.name === 'inline_equation'
+        node.name === 'scio-inline-equation'
           ? 'inline'
-          : node.name === 'equation' && node.type === 'mdxJsxFlowElement'
+          : node.name === 'scio-equation' && node.type === 'mdxJsxFlowElement'
             ? 'block'
             : null;
       if (

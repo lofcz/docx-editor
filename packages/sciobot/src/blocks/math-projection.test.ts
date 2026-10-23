@@ -1,3 +1,5 @@
+import { MDX_BLOCK } from '../projection/mdx';
+import { insertBlock } from './insert';
 import { expect, test } from 'bun:test';
 import { createDocxEditor, type DocxEditorInstance } from '@docx-editor.dev/core/editor';
 import {
@@ -98,7 +100,7 @@ test('registered lossless display syntax materializes original source and readab
   });
   try {
     const initial = canonicalOoxmlFingerprint(editor.surface!.session.part());
-    const target = 'Keep.\n\n<equation texExpression="1&#13;&#10;2" />';
+    const target = 'Keep.\n\n<scio-equation texExpression="1&#13;&#10;2" />';
     let admissions = 0;
     const planned = planTargetDocument(await source(editor), target, {
       allocateBlockId: () => 'new-equation',
@@ -144,3 +146,45 @@ test('registered lossless display syntax materializes original source and readab
     editor.destroy();
   }
 });
+
+for (const tag of ['equation', 'inline_equation'])
+  test(`opaque React ${tag} blocks retain their complete AST, payload and unchanged native planning`, async () => {
+    const editor = createDocxEditor({
+      container: document.createElement('div'),
+      document: docxFixture('<w:p><w:r><w:t>Keep.</w:t></w:r></w:p>'),
+    });
+    try {
+      const payload = {
+        id: 'opaque',
+        type: MDX_BLOCK,
+        version: 1 as const,
+        attributes: { private: { keep: true } },
+        mdast: {
+          type: 'mdxJsxFlowElement',
+          name: tag,
+          attributes: [{ type: 'mdxJsxAttribute', name: 'texExpression', value: 'x' }],
+          children: [],
+        },
+      };
+      const inserted = insertBlock(editor, {
+        parentControlId: null,
+        beforeId: null,
+        payload,
+        label: 'React equation',
+        paragraphs: ['React fallback'],
+      });
+      if (!inserted.success) throw Error(inserted.error);
+      const input = await source(editor);
+      const parsed = parseTargetMarkdown(input.projection.text);
+      if (!parsed.success) throw Error(parsed.error);
+      expect(parsed.target.normalizedAst.children[1]).toMatchObject(payload.mdast);
+      const noop = planTargetDocument(input, input.projection.text);
+      if (!noop.success) throw Error(noop.error);
+      expect(noop.plan.operations).toEqual([]);
+      const loaded = readOoxmlPackage(new Uint8Array(await editor.save()));
+      if (!loaded.ok) throw Error(loaded.reason);
+      expect(buildBlockIndex(loaded.package).byId.get(payload.id)?.payload).toEqual(payload);
+    } finally {
+      editor.destroy();
+    }
+  });

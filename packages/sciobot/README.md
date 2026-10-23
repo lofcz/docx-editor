@@ -312,9 +312,9 @@ X22 still owns browser suggestions and mention controls. D30 still owns AI inser
 
 
 Math projection uses standard inline/display math fences only when parsing retains the exact source and kind.
-Other sources use inert `<inline_equation texExpression="..." />` or `<equation texExpression="..." />` data syntax.
+Other sources use inert `<scio-inline-equation texExpression="..." />` or `<scio-equation texExpression="..." />` data syntax.
 This preserves empty inline equations, otherwise normalized line boundaries, and GFM-sensitive pipe characters.
-The private target parser converts these exact one-attribute forms to the same math AST as ordinary fences.
+The private target parser converts these exact one-attribute forms to the same math AST as ordinary fences. Ordinary `equation` and `inline_equation` JSX names remain opaque React data; this adapter reserves only the `scio-` math tags.
 Unknown attributes, nested children, and expression-valued source attributes stay opaque and cannot silently become math payloads.
 Numeric-looking LaTeX stays a string. Escaped source properties have no direct substring write range.
 The sibling materializer can insert display equations with exact metadata and readable multiline Word fallback.

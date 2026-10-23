@@ -469,7 +469,7 @@ export function normalizeLogicalBlocks(
       if (definition?.kind === 'atomic') {
         if (
           (ast.name === 'source' && definition.type === 'source') ||
-          (ast.name === 'inline_equation' && definition.type === 'inline_equation')
+          (ast.name === 'scio-inline-equation' && definition.type === 'inline_equation')
         )
           return [
             paragraph(

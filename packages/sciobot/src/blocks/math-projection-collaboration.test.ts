@@ -38,7 +38,7 @@ for (const clients of [
         if (!view.success) throw Error(view.error);
         const original = view.view.projection.text;
         const target =
-          original + '\n\n<equation texExpression="1&#13;&#10;\\frac{𝛼}{β} &#124; x&#10;" />';
+          original + '\n\n<scio-equation texExpression="1&#13;&#10;\\frac{𝛼}{β} &#124; x&#10;" />';
         const omml = importedMath(alice!.surface!.session.currentPackage());
         const neighbor = alice!.surface!.session.paragraphIds().at(-1)!;
         const planned = planTargetDocument(

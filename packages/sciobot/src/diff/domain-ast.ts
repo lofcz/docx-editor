@@ -14,8 +14,8 @@ const tags: Readonly<Record<string, string>> = {
   recap_phase: 'recap_phase',
   lesson_visual: 'lesson_visual',
   listening: 'listening',
-  inline_equation: 'inline_equation',
-  equation: 'equation',
+  'scio-inline-equation': 'inline_equation',
+  'scio-equation': 'equation',
 };
 function hasText(node: TargetAstNode): boolean {
   return (

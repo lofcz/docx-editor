@@ -16,7 +16,7 @@ function unescapedPipe(text: string): boolean {
   }
   return false;
 }
-/** Existing registered payload names also supply lossless data syntax when math fences cannot. */
+/** Application-reserved tags supply lossless data syntax when math fences cannot. */
 function fallback(type: typeof INLINE_MATH | typeof BLOCK_MATH, source: string): string {
   const escaped = source.replace(
     /[&"<>\r\n\t|]/g,
@@ -32,7 +32,8 @@ function fallback(type: typeof INLINE_MATH | typeof BLOCK_MATH, source: string):
         '|': '&#124;',
       })[char]!
   );
-  return `<${type} texExpression="${escaped}" />`;
+  const tag = type === INLINE_MATH ? 'scio-inline-equation' : 'scio-equation';
+  return `<${tag} texExpression="${escaped}" />`;
 }
 /** Emit standard math only when it parses back to the exact original source and kind. */
 export function serializeMath(payload: BlockPayload): SerializedBlockTag {
@@ -62,7 +63,7 @@ export function serializeMath(payload: BlockPayload): SerializedBlockTag {
       ? candidate
       : fallback(read.payload.type, read.source);
   return {
-    tag: read.payload.type,
+    tag: read.kind === 'inline' ? 'scio-inline-equation' : 'scio-equation',
     text,
     properties: [
       {

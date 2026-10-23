@@ -44,7 +44,7 @@ export function payloadMatches(node: TargetAstNode, payload: BlockPayload): bool
       return matchesNativeMathAst(node, math.kind, math.source);
     if (
       !mdx(node) ||
-      node.name !== payload.type ||
+      node.name !== (math.kind === 'inline' ? 'scio-inline-equation' : 'scio-equation') ||
       !Array.isArray(node.children) ||
       node.children.length ||
       !Array.isArray(node.attributes) ||

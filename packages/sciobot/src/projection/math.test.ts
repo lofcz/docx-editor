@@ -78,13 +78,13 @@ test('every equation source and kind roundtrip exactly, including empty, multili
 
 test('fallback syntax stays inert, preserves numeric-looking strings, and retains inline logical ownership', () => {
   expect(serializeMath(createMathPayload('i', 'inline', '')).text).toBe(
-    '<inline_equation texExpression="" />'
+    '<scio-inline-equation texExpression="" />'
   );
   for (const source of ['1', 'true', 'null', '[]', '"quoted"']) {
     const payload = insertedPayload(
       {
         type: 'mdxJsxTextElement',
-        name: 'inline_equation',
+        name: 'scio-inline-equation',
         attributes: [{ type: 'mdxJsxAttribute', name: 'texExpression', value: source }],
         children: [],
       },
@@ -101,7 +101,7 @@ test('fallback syntax stays inert, preserves numeric-looking strings, and retain
   expect(logical.document.blocks[0]!.kind).toBe('paragraph');
   expect(
     insertedPayload(
-      { type: 'mdxJsxFlowElement', name: 'equation', attributes: [], children: [] },
+      { type: 'mdxJsxFlowElement', name: 'scio-equation', attributes: [], children: [] },
       'bad'
     )
   ).toBeNull();
@@ -126,10 +126,10 @@ test('inline source pipes remain exact inside GFM cells without adding columns',
 
 test('unknown equation metadata, duplicate attributes, and expressions stay explicit and never disappear into payloads', () => {
   for (const text of [
-    '<equation texExpression="x" private="keep" />',
-    '<equation texExpression="x" texExpression="y" />',
-    '<equation texExpression={inert()} />',
-    '<equation texExpression="x"><widget /></equation>',
+    '<scio-equation texExpression="x" private="keep" />',
+    '<scio-equation texExpression="x" texExpression="y" />',
+    '<scio-equation texExpression={inert()} />',
+    '<scio-equation texExpression="x"><widget /></scio-equation>',
   ]) {
     const parsed = parseTargetMarkdown(text);
     if (!parsed.success) throw Error(parsed.error);
@@ -143,4 +143,16 @@ test('unknown equation metadata, duplicate attributes, and expressions stay expl
     { type: 'inlineMath', value: 'x', data: { private: true } },
   ] as TargetAstNode[])
     expect(insertedPayload(node, 'fresh')).toBeNull();
+});
+
+test('ordinary React equation tags remain opaque JSX instead of becoming native math', () => {
+  for (const tag of ['equation', 'inline_equation']) {
+    const parsed = parseTargetMarkdown(`<${tag} texExpression="x" />`);
+    if (!parsed.success) throw Error(parsed.error);
+    expect(parsed.target.normalizedAst.children[0]).toMatchObject({
+      type: 'mdxJsxFlowElement',
+      name: tag,
+      attributes: [{ name: 'texExpression', value: 'x' }],
+    });
+  }
 });
