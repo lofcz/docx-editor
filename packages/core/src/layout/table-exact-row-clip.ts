@@ -6,7 +6,7 @@
 // there. It does not split and does not run past the margin.
 
 import type { SemanticTableRow } from './semantic-table.ts';
-import { TablePaginationError } from './semantic-table-layout.ts';
+import { TablePaginationError } from './table-pagination-error.ts';
 
 /** The row and band to place for an exact row no band holds, or null for any other row. */
 export function clippedExactRow(
