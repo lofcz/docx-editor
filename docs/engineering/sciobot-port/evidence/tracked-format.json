@@ -1,0 +1,66 @@
+{
+  "leaf": "R06",
+  "runtimeRevision": "40af510674a3aac64da4580b34bea42e6755d5e8",
+  "focused": {
+    "command": "bun test packages/sciobot/src/review/track-format.test.ts packages/sciobot/src/review/track-format-collaboration.test.ts packages/sciobot/src/review/track-format-marks-collaboration.test.ts packages/sciobot/src/review/track-format-package.test.ts packages/sciobot/src/review/track-format-validation.test.ts packages/sciobot/src/ai/list-seed-identities.test.ts --timeout 30000",
+    "cases": 71,
+    "assertions": 1240,
+    "log": "/tmp/r06-final-seeds-focused.log"
+  },
+  "broad": {
+    "revision": "e228477a",
+    "command": "node scripts/test/.r06-private-runner.mjs --jobs 2",
+    "files": 231,
+    "passed": 2931,
+    "failed": 14,
+    "skipped": 0,
+    "sourceFiles": 4124,
+    "sourceChanges": 0,
+    "log": "/tmp/r06-full-private.log",
+    "manifestSha256": "5f46cc517e3037a6cca4f11fd32a4b4bdb032040865622e167d56f4be3490e80"
+  },
+  "failedFileReruns": {
+    "commands": [
+      "bun test packages/sciobot/src/review/reject-all-capacity-collaboration.test.ts --timeout 30000",
+      "bun test packages/sciobot/src/review/recompose-compound-targets.test.ts --timeout 30000",
+      "bun test packages/sciobot/src/review/reject-all-native-collaboration.test.ts --timeout 30000",
+      "bun test packages/sciobot/src/review/owned-proposal-plan.test.ts --timeout 30000",
+      "bun test packages/sciobot/src/review/track-table-merges.test.ts --timeout 30000"
+    ],
+    "files": 5,
+    "passed": 88,
+    "failed": 0,
+    "assertions": 1963,
+    "logs": [
+      "/tmp/r06-primary-reconcile-reject-all-capacity-collaboration.log",
+      "/tmp/r06-primary-reconcile-recompose-compound-targets.log",
+      "/tmp/r06-primary-reconcile-reject-all-native-collaboration.log",
+      "/tmp/r06-primary-reconcile-owned-proposal-plan.log",
+      "/tmp/r06-primary-reconcile-track-table-merges.log"
+    ],
+    "sourceFiles": 4131,
+    "sourceChanges": 0,
+    "manifestSha256": "acee843d955a8d3950111a4cbad78a2bf2cb3cc8ee1eeaff2a0f2a4c98a97038"
+  },
+  "packageBoundary": {
+    "command": "bun test packages/sciobot/src/__tests__/package-boundary.test.ts --timeout 30000",
+    "passed": 1,
+    "assertions": 8,
+    "log": "/tmp/r06-primary-boundary.log"
+  },
+  "sourceAudit": {
+    "command": "bun scripts/sciobot-port/check-production-coverage.mjs",
+    "verifiedHashes": 199,
+    "log": "/tmp/r06-closure-source-audit.log"
+  },
+  "limits": [
+    "The broad run reports failures. Complete affected-file reruns resolve each reported failure without changed expectations or deadlines.",
+    "Private adapter behavior is verified here. Application installation, controls, later-wave orchestration, and cutover remain separate leaves."
+  ],
+  "privateBuild": {
+    "command": "bun run --filter '@sciobot/docx' build",
+    "modules": 218,
+    "coreExternal": true,
+    "log": "/tmp/r06-closure-primary-build.log"
+  }
+}
