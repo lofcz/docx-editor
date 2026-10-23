@@ -1,9 +1,14 @@
 import type { InlineImageRuntime } from '../native/inline-image-runtime';
+import { retainedAtomLinks } from './direct-atom-links';
 import {
   applyTreeOp,
+  AUTHORABLE_RUN_PROPERTIES,
+  authoredProperties,
   contentControlsIn,
   contentControlPropertiesOf,
   paragraphTextOf,
+  propertyContainer,
+  runsCovering,
   withPart,
   type OoxmlPackage,
   type OoxmlPart,
@@ -48,6 +53,7 @@ export function lowerRetainedAtoms(
   );
   if (problem) refuseWrite(problem.error, problem.code);
   const ops: TreeDocOp[] = [];
+  const links = retainedAtomLinks(pkg, part, edit);
   let preview = part;
   const apply = (op: TreeDocOp) => {
     const result = applyTreeOp(preview, op);
@@ -56,6 +62,7 @@ export function lowerRetainedAtoms(
     preview = (result as { part: OoxmlPart }).part;
     ops.push(op);
   };
+  for (const op of links.unlink) apply(op);
   for (const atom of edit.atoms) {
     if (atom.kind === 'drawing') {
       apply(images!.reservation(atom, edit.paragraphId));
@@ -69,22 +76,36 @@ export function lowerRetainedAtoms(
       tag: blockTag(atom.payload.id),
       alias: atom.label,
     });
-    if (atom.marks.length && atom.fallback.length)
+    if (atom.fallback.length) {
+      const run = runsCovering(
+        preview,
+        edit.paragraphId,
+        atom.offset,
+        atom.offset + atom.fallback.length
+      )[0];
+      const inherited = authoredProperties(
+        propertyContainer(run, 'runProperties', 'rPr'),
+        AUTHORABLE_RUN_PROPERTIES
+      ).filter((property) => !['b', 'i', 'strike'].includes(property.localName));
       apply({
         op: 'setRunProperties',
         paragraphId: edit.paragraphId,
         start: atom.offset,
         end: atom.offset + atom.fallback.length,
-        properties: atom.marks.map((mark) => ({
-          localName: mark === 'bold' ? 'b' : mark === 'italic' ? 'i' : 'strike',
-          attributes: {},
-        })),
+        properties: [
+          ...inherited,
+          ...atom.marks.map((mark) => ({
+            localName: mark === 'bold' ? 'b' : mark === 'italic' ? 'i' : 'strike',
+            attributes: {},
+          })),
+        ],
       });
+    }
   }
   return {
     ops,
     complete(working) {
-      let next = working;
+      let next = links.complete(working);
       for (const atom of controls) {
         const stored = withPayloadRecord(next, atom.payload, atom.label);
         if (!stored.ok)

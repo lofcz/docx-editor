@@ -5,7 +5,7 @@ import {
   documentQuoteStyle,
   insertedBlockProblem,
 } from './inserted-fragment-policy';
-import { findNode } from '@docx-editor.dev/core/store';
+import { findNode, paragraphTextOf } from '@docx-editor.dev/core/store';
 import { buildBlockIndex } from '../blocks/block-index';
 import type { NativeEditFailure } from '../contracts/document';
 import type { JsonObject } from '../data/json';
@@ -172,12 +172,44 @@ export function planTargetDocument(
     const ids = mapped.map((entry) => entry.binding!.structuralOwnerId!);
     const windows = forced
       ? [forced]
-      : source.windows.filter(
-          (window) =>
-            window.parentId === parentId &&
-            window.ids.length === ids.length &&
-            window.ids.every((id, index) => id === ids[index])
-        );
+      : source.windows
+          .flatMap((window) => {
+            if (
+              window.parentId !== parentId ||
+              window.ids.length < ids.length ||
+              !window.ids.slice(0, ids.length).every((id, index) => id === ids[index])
+            )
+              return [];
+            if (window.ids.length === ids.length) return [window];
+            // Native table insertion keeps a terminal paragraph Word requires. It can be
+            // absent from Markdown. Keep it as the boundary, never as an editable sibling.
+            const trailing = window.ids.slice(ids.length);
+            if (
+              !trailing.every((id) => {
+                const node = findNode(part, id);
+                return (
+                  node?.kind === 'paragraph' &&
+                  paragraphTextOf(part, id) === '' &&
+                  !window.members.find((member) => member.ownerId === id)?.logicalPaths.length
+                );
+              })
+            )
+              return [];
+            return [
+              {
+                ...window,
+                ids,
+                afterId: trailing[0]!,
+                members: window.members.slice(0, ids.length),
+              },
+            ];
+          })
+          .filter(
+            (window) =>
+              window.parentId === parentId &&
+              window.ids.length === ids.length &&
+              window.ids.every((id, index) => id === ids[index])
+          );
     if (windows.length !== 1) {
       // Native barriers (opaque blocks, unprojected nodes) split one logical stream into several
       // physical sibling windows. Plan each window separately and leave every barrier in place.

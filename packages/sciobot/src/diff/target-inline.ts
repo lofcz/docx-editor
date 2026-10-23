@@ -191,8 +191,37 @@ export function planTargetParagraph(context: TargetParagraphSource): EditPlanRes
       return fail('The retained atom skeleton still has unresolved source.');
     const native = paragraphTextOf(part, paragraphId);
     if (native === null) return fail('The retained paragraph no longer exists.');
+    const ownedLinks = new Set(
+      atoms.plan.operations.flatMap((atom) =>
+        atom.hyperlink ? [atom.hyperlink.path.join('/')] : []
+      )
+    );
+    const spans = new Map<string, { start: number; end: number }>();
+    let offset = base;
+    for (const token of b.tokens) {
+      if (token.kind !== 'text') continue;
+      const key = token.hyperlink?.join('/');
+      if (key !== undefined && ownedLinks.has(key)) {
+        const previous = spans.get(key);
+        spans.set(key, { start: previous?.start ?? offset, end: offset + token.value.length });
+      }
+      offset += token.value.length;
+    }
+    const atomLinks = b.hyperlinks.filter((link) => ownedLinks.has(link.path.join('/')));
     return createEditPlan(revision, [
-      ...text.plan.operations,
+      ...text.plan.operations.filter(
+        (operation) =>
+          operation.kind !== 'link' ||
+          !atomLinks.some((link) => {
+            const span = spans.get(link.path.join('/'));
+            return (
+              span?.start === operation.start &&
+              span.end === operation.end &&
+              jsonDataKey(link.target) === jsonDataKey(operation.target) &&
+              link.title === operation.title
+            );
+          })
+      ),
       {
         kind: 'inline-atoms',
         partName: part.name,
@@ -230,12 +259,28 @@ export function planTargetParagraph(context: TargetParagraphSource): EditPlanRes
     }
   }
   if (a.plainText === null || b.plainText === null) {
-    if (a.tokens.length !== b.tokens.length || a.hyperlinks.length || b.hyperlinks.length)
+    const sameLinks =
+      a.hyperlinks.length === b.hyperlinks.length &&
+      a.hyperlinks.every((link, index) => {
+        const next = b.hyperlinks[index]!;
+        return jsonDataKey(link.target) === jsonDataKey(next.target) && link.title === next.title;
+      });
+    if (a.tokens.length !== b.tokens.length || !sameLinks)
       return fail('Changed opaque inline structure needs native atom reconciliation.');
     const blocks = buildBlockIndex(input.pkg);
     for (let i = 0; i < a.tokens.length; i++) {
       const old = a.tokens[i]!,
         next = b.tokens[i]!;
+      const owner =
+        old.hyperlink === null
+          ? -1
+          : a.hyperlinks.findIndex((link) => link.path.join('/') === old.hyperlink!.join('/'));
+      const nextOwner =
+        next.hyperlink === null
+          ? -1
+          : b.hyperlinks.findIndex((link) => link.path.join('/') === next.hyperlink!.join('/'));
+      if (owner !== nextOwner)
+        return fail('Opaque atom link ownership changes need native reconciliation.');
       if (old.kind !== next.kind || markKey(old.marks) !== markKey(next.marks))
         return fail('Opaque inline mark changes need native atom reconciliation.');
       if (old.kind === 'text' && next.kind === 'text') {

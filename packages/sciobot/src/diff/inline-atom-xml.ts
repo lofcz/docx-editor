@@ -9,8 +9,7 @@ export function inlineAtomXml(
   images?: InlineImageRuntime
 ): { readonly xml: string; readonly length: number } | null {
   if (op.kind === 'drawing') return images?.render(op) ?? null;
-  if (op.kind !== 'inline-control' || op.hyperlink !== null || op.marks.includes('code'))
-    return null;
+  if (op.kind !== 'inline-control' || op.marks.includes('code')) return null;
   const properties = op.marks
     .filter((mark) => mark !== 'code')
     .map((mark) => (mark === 'bold' ? '<w:b/>' : mark === 'italic' ? '<w:i/>' : '<w:strike/>'))
