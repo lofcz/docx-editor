@@ -309,3 +309,13 @@ Labels can contain literal Markdown, line boundaries, empty text, and at-signs w
 Source property spans distinguish label syntax from identifier syntax; escaped values have no direct substring write range.
 Mentions use locked inline controls and one native history unit. Prepare shared documents before room bootstrap.
 X22 still owns browser suggestions and mention controls. D30 still owns AI insertion execution.
+
+
+Math projection uses standard inline/display math fences only when parsing retains the exact source and kind.
+Other sources use inert `<inline_equation texExpression="..." />` or `<equation texExpression="..." />` data syntax.
+This preserves empty inline equations, otherwise normalized line boundaries, and GFM-sensitive pipe characters.
+The private target parser converts these exact one-attribute forms to the same math AST as ordinary fences.
+Unknown attributes, nested children, and expression-valued source attributes stay opaque and cannot silently become math payloads.
+Numeric-looking LaTeX stays a string. Escaped source properties have no direct substring write range.
+The sibling materializer can insert display equations with exact metadata and readable multiline Word fallback.
+D30 still owns canonical inline atom execution, retained paragraph reconciliation, and executor-side image resource handling.

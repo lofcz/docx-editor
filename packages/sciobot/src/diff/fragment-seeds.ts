@@ -1,3 +1,5 @@
+import { BLOCK_MATH, INLINE_MATH, decodeMathPayload, mathWordFallback } from '../blocks/math-codec';
+import { encodeBlockPayload } from '../blocks/payload-schema';
 import { MDX_BLOCK } from '../projection/mdx';
 import { applyNewCellProperties, type NewCellProperties } from './new-cell-properties';
 import {
@@ -361,7 +363,10 @@ export function siblingFragmentSeeds(
       const table = tableRows(node);
       if (!table) return fail('A new table needs complete rectangular GFM rows and alignments.');
       placed.push({ before: flat.length, seed: { kind: 'table', ...table } });
-    } else if (node.type === 'mdxJsxFlowElement' && bound.has(String(index))) {
+    } else if (
+      (node.type === 'mdxJsxFlowElement' || node.type === 'math') &&
+      bound.has(String(index))
+    ) {
       separateTable();
       placed.push({ before: flat.length, seed: { kind: 'block', path: [index], ast: node } });
     } else return fail(`Inserted ${node.type} blocks need their own native representation.`);
@@ -545,7 +550,7 @@ function blockXml(node: TargetAstNode, path: readonly number[], context: RenderC
     return `<w:tbl><w:tblPr><w:tblW w:w="0" w:type="auto"/></w:tblPr><w:tblGrid>${'<w:gridCol w:w="' + width + '"/>'.repeat(0)}${Array.from({ length: columns }, () => `<w:gridCol w:w="${width}"/>`).join('')}</w:tblGrid>${rows}</w:tbl>`;
   }
   const binding = context.bindings.get(path.join('/'));
-  if (node.type !== 'mdxJsxFlowElement' || !binding)
+  if ((node.type !== 'mdxJsxFlowElement' && node.type !== 'math') || !binding)
     refuseWrite(
       `New ${node.type} blocks need their own native representation.`,
       'unsupported-operation'
@@ -555,6 +560,18 @@ function blockXml(node: TargetAstNode, path: readonly number[], context: RenderC
     binding.payload.type === MDX_BLOCK ||
     DOMAIN_BLOCK_TAGS.get(binding.payload.type)?.kind === 'atomic'
   ) {
+    if (binding.payload.type === BLOCK_MATH || binding.payload.type === INLINE_MATH) {
+      const math = decodeMathPayload(encodeBlockPayload(binding.payload));
+      if (math.status !== 'supported') refuseWrite('A new equation needs a valid original source.');
+      const lines = mathWordFallback(math.payload).paragraphs;
+      const content = lines
+        .map((line) => {
+          seedParagraph(context);
+          return `<w:p>${runXml(line, [])}</w:p>`;
+        })
+        .join('');
+      return `<w:sdt>${properties}<w:sdtContent>${content}</w:sdtContent></w:sdt>`;
+    }
     const attributes = binding.payload.attributes,
       fallback = ['alt', 'title', 'prompt', 'name', 'url']
         .map((name) => attributes[name])

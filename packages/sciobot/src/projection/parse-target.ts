@@ -1,3 +1,4 @@
+import { remarkNativeMath } from './native-math';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import remarkMdx from 'remark-mdx';
@@ -76,6 +77,7 @@ const processor = unified()
   .use(remarkMath)
   .use(remarkGfm)
   .use(remarkMdx)
+  .use(remarkNativeMath)
   .use(remarkTargetMentions)
   .use(remarkImageGalleries);
 

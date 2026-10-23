@@ -1,6 +1,11 @@
 import { createMentionPayload, mentionWordFallback } from '../blocks/mention-codec';
 import type { OoxmlPackage } from '@docx-editor.dev/core/store';
-import { createMathPayload, mathWordFallback } from '../blocks/math-codec';
+import {
+  INLINE_MATH,
+  createMathPayload,
+  decodeMathPayload,
+  mathWordFallback,
+} from '../blocks/math-codec';
 import { encodeBlockPayload, type BlockPayload } from '../blocks/payload-schema';
 import type { NativeEditFailure } from '../contracts/document';
 import type { TargetAstNode } from '../projection/parse-target';
@@ -243,24 +248,33 @@ export function planInsertedAtoms(
           ast.children.length
         )
           return fail(
-            'Only a complete empty source atom can enter an inline control.',
+            'Only complete empty registered atom syntax can enter an inline control.',
             'unsupported-operation'
           );
         const created = insertedPayload(ast, id);
-        if (!created || created.type !== 'source')
-          return fail(
-            `Inserted ${ast.type} atoms need their own native representation.`,
-            'unsupported-operation'
-          );
-        payload = created;
-        const attrs = payload.attributes;
-        fallback =
-          ([attrs.title, attrs.author, attrs.url].find(
-            (value) => typeof value === 'string' && value.length > 0
-          ) as string | undefined) ?? 'Source';
-        if (!xmlText(fallback) || /[\r\n]/.test(fallback))
-          return fail('An inline source needs a readable single-line label.');
-        atom = 'source';
+        if (created?.type === INLINE_MATH) {
+          const math = decodeMathPayload(encodeBlockPayload(created));
+          if (math.status !== 'supported')
+            return fail('An inline equation needs a valid original source.');
+          payload = math.payload;
+          fallback = mathWordFallback(math.payload).inlineText;
+          atom = 'math';
+        } else {
+          if (!created || created.type !== 'source')
+            return fail(
+              `Inserted ${ast.type} atoms need their own native representation.`,
+              'unsupported-operation'
+            );
+          payload = created;
+          const attrs = payload.attributes;
+          fallback =
+            ([attrs.title, attrs.author, attrs.url].find(
+              (value) => typeof value === 'string' && value.length > 0
+            ) as string | undefined) ?? 'Source';
+          if (!xmlText(fallback) || /[\r\n]/.test(fallback))
+            return fail('An inline source needs a readable single-line label.');
+          atom = 'source';
+        }
       }
       // Validate before the allocation escapes. Source metadata is detached from caller objects.
       payload = JSON.parse(encodeBlockPayload(payload)) as BlockPayload;

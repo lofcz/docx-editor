@@ -14,6 +14,8 @@ const tags: Readonly<Record<string, string>> = {
   recap_phase: 'recap_phase',
   lesson_visual: 'lesson_visual',
   listening: 'listening',
+  inline_equation: 'inline_equation',
+  equation: 'equation',
 };
 function hasText(node: TargetAstNode): boolean {
   return (
@@ -57,7 +59,10 @@ export function domainNodeFromAst(ast: TargetAstNode): (DomainNode & JsonObject)
     )
       continue;
     if (value === null) value = true;
-    else if (typeof value === 'string') {
+    else if (
+      typeof value === 'string' &&
+      !(name === 'texExpression' && (type === 'inline_equation' || type === 'equation'))
+    ) {
       try {
         value = JSON.parse(value) as JsonValue;
       } catch {

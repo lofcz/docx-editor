@@ -1,3 +1,5 @@
+import { BLOCK_MATH, INLINE_MATH, decodeMathPayload } from '../blocks/math-codec';
+import { matchesNativeMathAst } from '../projection/native-math';
 import { encodeBlockPayload, type BlockPayload } from '../blocks/payload-schema';
 import { DOMAIN_BLOCK_TAGS } from '../projection/block-tags';
 import { MDX_BLOCK, MDX_INLINE, serializeOpaqueMdx } from '../projection/mdx';
@@ -35,6 +37,34 @@ const mdx = (node: TargetAstNode) =>
 const opaque = (payload: BlockPayload) => payload.type === MDX_BLOCK || payload.type === MDX_INLINE;
 
 export function payloadMatches(node: TargetAstNode, payload: BlockPayload): boolean {
+  if (payload.type === BLOCK_MATH || payload.type === INLINE_MATH) {
+    const math = decodeMathPayload(encodeBlockPayload(payload));
+    if (math.status !== 'supported') return false;
+    if (node.type === 'math' || node.type === 'inlineMath')
+      return matchesNativeMathAst(node, math.kind, math.source);
+    if (
+      !mdx(node) ||
+      node.name !== payload.type ||
+      !Array.isArray(node.children) ||
+      node.children.length ||
+      !Array.isArray(node.attributes) ||
+      node.attributes.length !== 1
+    )
+      return false;
+    const attr = node.attributes[0];
+    return (
+      Object.keys(node).every((key) =>
+        ['type', 'name', 'attributes', 'children', 'position'].includes(key)
+      ) &&
+      !!attr &&
+      typeof attr === 'object' &&
+      !Array.isArray(attr) &&
+      attr.type === 'mdxJsxAttribute' &&
+      attr.name === 'texExpression' &&
+      attr.value === math.source &&
+      Object.keys(attr).every((key) => ['type', 'name', 'value', 'position'].includes(key))
+    );
+  }
   if (opaque(payload)) {
     serializeOpaqueMdx(payload);
     return targetAstKey(payload.mdast) === targetAstKey(node);

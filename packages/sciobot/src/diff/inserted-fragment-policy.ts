@@ -65,6 +65,7 @@ export function insertedBlockProblem(
     }
     return null;
   }
+  if (block.kind === 'block' && ast.type === 'math') return null;
   if (block.kind === 'atomic' && ast.type === 'mdxJsxFlowElement') return null;
   if (block.kind === 'container' && ast.type === 'mdxJsxFlowElement') {
     // Registered containers: planInsertedBlocks validates payloads; children follow the same rules.

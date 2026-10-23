@@ -1,3 +1,4 @@
+import { serializeMath } from './math';
 import { serializeMention } from './mention';
 import type { BlockPayload, JsonValue } from '../blocks/payload-schema';
 
@@ -214,6 +215,25 @@ export const DOMAIN_BLOCK_TAGS: ReadonlyMap<string, BlockTagDefinition> = new Ma
   ],
   ['lesson_visual', { tag: 'lesson_visual', kind: 'atomic', attributes: visual }],
   ['source', { tag: 'source', kind: 'atomic', attributes: source }],
+  [
+    'inline_equation',
+    {
+      tag: 'inline_equation',
+      kind: 'atomic',
+      attributes: (payload) => ordered(payload, ['texExpression']),
+      serialize: serializeMath,
+      serializedCellSyntax: 'gfm',
+    },
+  ],
+  [
+    'equation',
+    {
+      tag: 'equation',
+      kind: 'atomic',
+      attributes: (payload) => ordered(payload, ['texExpression']),
+      serialize: serializeMath,
+    },
+  ],
   [
     'mention',
     {

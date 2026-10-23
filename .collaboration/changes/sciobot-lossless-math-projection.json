@@ -1,0 +1,16 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Application math payloads had no registered source projection. Native paragraph materializers refused new display math and could not retain exact equation sources through tool syntax.",
+  "after": "Standard math syntax is emitted only when its source and kind roundtrip exactly. Registered inert equation syntax preserves other sources and GFM-sensitive inline pipes. Target parsing normalizes this syntax to the same math AST. New display equations carry validated payload bindings and readable native fallback paragraphs in one transaction.",
+  "reason": "The adapter reuses the existing version-one equation payloads, native content controls, OPC records, sibling plans, and canonical operations. No core, Pro, shared schema, transport, or dependency changes occur. The new syntax is a private data-only Markdown representation; unknown extension metadata refuses instead of disappearing.",
+  "tests": [
+    "packages/sciobot/src/projection/math.test.ts",
+    "packages/sciobot/src/blocks/math-projection.test.ts",
+    "packages/sciobot/src/blocks/math-projection-collaboration.test.ts",
+    "packages/sciobot/src/blocks/math-collaboration.test.ts",
+    "packages/sciobot/src/diff/inserted-blocks.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

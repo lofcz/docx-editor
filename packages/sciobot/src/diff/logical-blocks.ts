@@ -467,7 +467,10 @@ export function normalizeLogicalBlocks(
         ];
       }
       if (definition?.kind === 'atomic') {
-        if (ast.name === 'source' && definition.type === 'source')
+        if (
+          (ast.name === 'source' && definition.type === 'source') ||
+          (ast.name === 'inline_equation' && definition.type === 'inline_equation')
+        )
           return [
             paragraph(
               { type: 'paragraph', children: [{ ...ast, type: 'mdxJsxTextElement' }] },

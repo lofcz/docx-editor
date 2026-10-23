@@ -1,3 +1,10 @@
+import { matchesNativeMathAst } from '../projection/native-math';
+import {
+  BLOCK_MATH,
+  INLINE_MATH,
+  createMathPayload,
+  decodeMathPayload,
+} from '../blocks/math-codec';
 import { MDX_BLOCK } from '../projection/mdx';
 import type { OoxmlPackage } from '@docx-editor.dev/core/store';
 import { encodeBlockPayload, isBlockId, type BlockPayload } from '../blocks/payload-schema';
@@ -40,11 +47,25 @@ export const defaultBlockId = (): string => crypto.randomUUID();
 
 /** The application payload a new registered element describes. Unknown tags have none. */
 export function insertedPayload(ast: TargetAstNode, id: string): BlockPayload | null {
+  if (ast.type === 'math' || ast.type === 'inlineMath') {
+    const kind = ast.type === 'math' ? 'block' : 'inline';
+    if (typeof ast.value !== 'string' || !matchesNativeMathAst(ast, kind, ast.value)) return null;
+    try {
+      return createMathPayload(id, kind, ast.value);
+    } catch {
+      return null;
+    }
+  }
   const node = domainNodeFromAst(ast);
   const type = node?.type;
   if (!node || typeof type !== 'string' || !DOMAIN_BLOCK_TAGS.has(type)) return null;
   const { type: _type, ...attributes } = node;
   const payload: BlockPayload = { version: 1, id, type, attributes: attributes as JsonObject };
+  if (
+    (type === INLINE_MATH || type === BLOCK_MATH) &&
+    decodeMathPayload(encodeBlockPayload(payload)).status !== 'supported'
+  )
+    return null;
   return payloadMatches(ast, payload) ? payload : null;
 }
 
@@ -77,14 +98,15 @@ export function planInsertedBlocks(
     path: readonly number[]
   ): NativeEditFailure | null => {
     if (block.kind === 'paragraph' || block.kind === 'row' || block.kind === 'cell') return null;
-    if (block.kind === 'block')
+    const math = block.kind === 'block' && ast.type === 'math';
+    if (block.kind === 'block' && !math)
       return fail('New opaque blocks need their own native representation.');
     if (block.kind === 'table') {
       const listed = (item: LogicalBlock): boolean =>
         item.kind === 'paragraph' ? !!item.list : 'children' in item && item.children.some(listed);
       return listed(block) ? fail('Lists inside new tables need nested table list paths.') : null;
     }
-    if (!mdx(ast)) {
+    if (!mdx(ast) && !math) {
       if (block.kind === 'container' && ast.type === 'blockquote' && path.length === 1) return null;
       return fail(`New ${ast.type} blocks need their own native representation.`);
     }
@@ -97,7 +119,7 @@ export function planInsertedBlocks(
     if (
       !payload ||
       payload.id !== id ||
-      (!opaque && (!definition || definition.kind !== block.kind)) ||
+      (!opaque && (!definition || definition.kind !== (math ? 'atomic' : block.kind))) ||
       !payloadMatches(ast, payload)
     )
       return fail('New application blocks need a registered payload type.');
@@ -105,7 +127,7 @@ export function planInsertedBlocks(
     if (typeof label !== 'string' || label.length > 256)
       return fail('A new application block needs a bounded readable label.');
     blocks.push({ path: [...path], payload, label });
-    if (block.kind === 'atomic') return null;
+    if (block.kind === 'atomic' || math) return null;
     const group = block as LogicalGroup;
     const children = (ast.children ?? []) as TargetAstNode[];
     if (children.length !== group.children.length)
@@ -171,7 +193,8 @@ export function isInsertedBlockBindings(
         if (!node) return false;
         siblings = Array.isArray(node.children) ? (node.children as TargetAstNode[]) : [];
       }
-      if (!node || !mdx(node) || !payloadMatches(node, binding.payload)) return false;
+      if (!node || (!mdx(node) && node.type !== 'math') || !payloadMatches(node, binding.payload))
+        return false;
     }
     // A complete atomic AST owns its descendants. Extra child bindings would create orphan payloads.
     const byPath = new Map(
