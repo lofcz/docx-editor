@@ -82,7 +82,7 @@ export function linkAwareBias(
       return {
         ...edit,
         bias: atStart === inside ? ('right' as const) : ('left' as const),
-        ...(owner ? { insideHyperlink: owner.id } : {}),
+        ...(owner && owner.end === edit.start ? { insideHyperlink: owner.id } : {}),
       };
     });
   const inspect = (operations: readonly CanonicalEdit[]) => {

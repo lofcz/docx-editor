@@ -45,14 +45,14 @@ for (const [label, outside, added, offset, target] of [
     );
     if (!planned.success) throw Error(planned.error);
     const edits = linkAwareBias(part, p.id, 0, planned.plan.operations, compiled.target);
-    expect(
-      prepareTrackedInlinePlan(
-        part,
-        { ...planned.plan, operations: edits },
-        { author: 'Alice' },
-        '2026-10-24T09:00:00.000Z'
-      )
-    ).toMatchObject({ success: false, code: 'unsupported-operation' });
+    const tracked = prepareTrackedInlinePlan(
+      part,
+      { ...planned.plan, operations: edits },
+      { author: 'Alice' },
+      '2026-10-24T09:00:00.000Z'
+    );
+    if (offset === 6) expect(tracked.success).toBe(true);
+    else expect(tracked).toMatchObject({ success: false, code: 'unsupported-operation' });
     expect(edits).toHaveLength(1);
     expect(edits[0]).toMatchObject({
       kind: 'text',
@@ -60,8 +60,11 @@ for (const [label, outside, added, offset, target] of [
       end: offset,
       before: '',
       after: added,
-      insideHyperlink: link.id,
+      ...(offset === 6 ? {} : { insideHyperlink: link.id }),
     });
+    expect(edits[0]?.kind === 'text' ? edits[0].insideHyperlink : null).toBe(
+      offset === 6 ? undefined : link.id
+    );
     const preview = previewTextEdits(part, edits);
     if (!preview.success) throw Error(preview.error);
     const expected = applyTreeOp(part, {
@@ -116,7 +119,7 @@ for (const side of ['left', 'right'] as const)
       start: 7,
       end: 7,
       after: 'X',
-      insideHyperlink: owner.id,
+      ...(side === 'left' ? { insideHyperlink: owner.id } : {}),
     });
     const preview = previewTextEdits(part, edits);
     if (!preview.success) throw Error(preview.error);
