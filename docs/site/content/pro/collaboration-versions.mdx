@@ -274,7 +274,7 @@ If your servers run a release from 2.28.0 to 2.31.0, the procedure changes in th
 
 ### Upgrade rooms to format 1.5.3.1
 
-Format `docx-collaboration:1.5.3.1` changes creation undo and structural repair. Undo retains the ancestry needed by edits from other participants. Undone containers show only when surviving peer content needs them. Table columns retain their grid positions and empty companion cells while another participant still uses the column. Original text and inline controls remain owned by their author.
+Format `docx-collaboration:1.5.3.1` changes table creation undo and structural repair. Undo retains the table ancestry needed by edits from other participants. Undone table containers show only when surviving peer content needs them. Table columns retain their grid positions and empty companion cells while another participant still uses the column. Original text and inline controls remain owned by their author.
 
 These rules use retained node records, child listings, and the existing boolean undo marker. They change how replicas interpret those records. Clients and workers on format `docx-collaboration:1.5.2.1` must not join these rooms.
 

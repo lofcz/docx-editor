@@ -42,7 +42,7 @@ export const NODE_REPLACED_BY_FIELD = 'replacedBy';
 /**
  * Set on a comment or note an undo took out of its part (`history-undone.ts`): no repair
  * gives it an edge back, and the redo that lists it again clears the mark.
- * Main-document births retain their ancestry and receive this marker in the undo
+ * Main-document table births retain their ancestry and receive this marker in the undo
  * transaction. Their projection keeps only scaffolds needed by surviving foreign content;
  * redo reverses the marker with the rest of that history frame.
  */
