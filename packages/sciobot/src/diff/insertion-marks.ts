@@ -6,12 +6,22 @@ import {
 import type { NativeEditFailure, RevisionToken } from '../contracts/document';
 import type { InlineTargetMark } from './inline-target';
 import { directParagraphTextOps } from './paragraph-text';
-import type { CanonicalEdit } from './plan';
+import type { CanonicalEdit, PlannedPropertyChange } from './plan';
 import { planRunFormat } from './run-format';
 import { inlineCodeRunChanges } from '../native/inline-code';
 import { jsonDataKey } from './target-key';
 
 export type MarkRun = { value: string; marks: readonly InlineTargetMark[] };
+const changesKey = (changes: readonly PlannedPropertyChange[]): string =>
+  jsonDataKey(
+    changes.map(({ name, before, after }) => [
+      name,
+      before.present,
+      before.present ? before.value : null,
+      after.present,
+      after.present ? after.value : null,
+    ])
+  );
 const MARK_PROPERTIES: Readonly<Record<string, string>> = {
   bold: 'b',
   italic: 'i',
@@ -171,7 +181,7 @@ export function planMarkDeltas(
         previous.partName === edit.partName &&
         previous.target.paragraphId === edit.target.paragraphId &&
         previous.target.end === edit.target.start &&
-        jsonDataKey(previous.changes) === jsonDataKey(edit.changes)
+        changesKey(previous.changes) === changesKey(edit.changes)
       )
         operations[operations.length - 1] = {
           ...previous,
