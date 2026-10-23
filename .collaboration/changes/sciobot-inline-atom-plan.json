@@ -1,0 +1,14 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Inserted paragraph fragments had no shared deferred atom description for images, math, mentions, and sources.",
+  "after": "A private pure planner describes atom placement, payloads, and unresolved resource references for new and retained paragraph insertion fragments. Existing canonical plan codecs and executors remain unchanged.",
+  "reason": "No native or shared mutation path consumes the helper yet. It returns bounded detached data and validates payload availability outside publication. No canonical operation, shared format, transport, or Pro implementation changes.",
+  "tests": [
+    "packages/sciobot/src/diff/inserted-atoms.test.ts",
+    "packages/sciobot/src/diff/inline-target.test.ts",
+    "packages/sciobot/src/diff/inserted-blocks.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}
