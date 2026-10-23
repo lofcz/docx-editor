@@ -152,14 +152,20 @@ export async function seedReplica(
   };
 }
 
-export function joinReplica(source: Replica, clientID = 2, replicaId?: string): Replica {
+export function joinReplica(
+  source: Pick<Replica, 'doc' | 'blobs'>,
+  clientID = 2,
+  replicaId?: string,
+  roomBlobs?: (doc: Y.Doc) => BlobBytesStore
+): Replica {
   const doc = new Y.Doc();
   doc.clientID = clientID;
   const registry = new DocumentRegistry(doc);
   registry.beginBulkLoad();
   Y.applyUpdate(doc, Y.encodeStateAsUpdate(source.doc), 'join');
   registry.endBulkLoad();
-  const materializer = new PackageMaterializer(registry, source.blobs);
+  const blobs = roomBlobs?.(doc) ?? source.blobs;
+  const materializer = new PackageMaterializer(registry, blobs);
   const rebuilt = materializer.rebuild();
   if (!rebuilt.ok) throw new Error(rebuilt.code);
   return {
@@ -167,7 +173,7 @@ export function joinReplica(source: Replica, clientID = 2, replicaId?: string): 
     registry,
     materializer,
     mint: new LogicalIdAllocator(replicaId),
-    blobs: source.blobs,
+    blobs,
   };
 }
 

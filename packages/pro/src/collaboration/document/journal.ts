@@ -3,7 +3,12 @@ Copyright (c) 2026 EigenPal, Inc. All rights reserved.
 Licensed under the EigenPal Pro Evaluation License 1.0 — see packages/pro/LICENSE.md.
 Production use requires a commercial agreement: licensing@eigenpal.com
 */
-import { applyBirthChildSplice, type BirthChildSplice } from './birth-journal-splice.ts';
+import {
+  applyBirthChildSplice,
+  applyChildMove,
+  type BirthChildSplice,
+  type ChildMovePlan,
+} from './birth-journal-splice.ts';
 import { prepareBirthTableGeometry, prepareBirthGeometryWrites } from './birth-table-geometry.ts';
 import { BirthProjection } from './materialize-births.ts';
 import { projectedTextTarget } from './projected-text-target.ts';
@@ -192,6 +197,14 @@ export function validateEffect(
       if (missing) return missing;
       const dest = requireKnown(projection, effect.destinationParentLogicalId);
       if (dest) return dest;
+      const parent = projection.node(effect.destinationParentLogicalId);
+      if (!parent || parent.isText)
+        return { ok: false, code: 'invalid-bound', detail: effect.destinationParentLogicalId };
+      if (
+        parent.children.length + (parent.children.includes(effect.logicalId) ? 0 : 1) >
+        registry.limits.maxChildren
+      )
+        return { ok: false, code: 'too-many-children' };
       if (!Number.isSafeInteger(effect.destinationIndex) || effect.destinationIndex < 0) {
         return { ok: false, code: 'invalid-bound' };
       }
@@ -284,7 +297,8 @@ function applyEffect(
   registry: DocumentRegistry,
   effect: SharedEffect,
   initialText: ReadonlySet<string>,
-  birthSplice?: BirthChildSplice
+  birthSplice?: BirthChildSplice,
+  move?: ChildMovePlan
 ): void {
   switch (effect.kind) {
     case 'putNode':
@@ -359,6 +373,10 @@ function applyEffect(
       return;
     }
     case 'moveNode':
+      if (move) {
+        applyChildMove(registry, effect, move);
+        return;
+      }
       registry.moveNode(
         effect.logicalId,
         effect.destinationParentLogicalId,
@@ -457,6 +475,7 @@ interface JournalPlan {
    */
   readonly replacementsByEffect: ReadonlyMap<SharedEffect, readonly LogicalId[]>;
   readonly birthSplices: ReadonlyMap<SharedEffect, BirthChildSplice>;
+  readonly moves: ReadonlyMap<SharedEffect, ChildMovePlan>;
 }
 
 /**
@@ -484,9 +503,21 @@ function planJournal(
   const mintedNodes = new Set<string>();
   const replacementsByEffect = new Map<SharedEffect, LogicalId[]>();
   const birthSplices = new Map<SharedEffect, BirthChildSplice>();
+  const moves = new Map<SharedEffect, ChildMovePlan>();
   for (const effect of effects) {
     const refusal = validateEffect(registry, effect, projection);
     if (refusal) return refusal;
+    if (effect.kind === 'moveNode') {
+      const parent = projection.node(effect.destinationParentLogicalId)!;
+      const children = parent.children.filter((id) => id !== effect.logicalId);
+      const at = Math.min(effect.destinationIndex, children.length);
+      moves.set(effect, {
+        source: projection.parentOf(effect.logicalId),
+        gap: projection.hasHiddenChildren(effect.destinationParentLogicalId)
+          ? { left: children[at - 1] ?? null, right: children[at] ?? null }
+          : null,
+      });
+    }
     if (effect.kind === 'spliceChildren' && projection.hasHiddenChildren(effect.parentLogicalId)) {
       const parent = projection.node(effect.parentLogicalId)!;
       const start = Math.min(effect.start, parent.children.length),
@@ -535,6 +566,7 @@ function planJournal(
     mintedNodes,
     replacementsByEffect,
     birthSplices,
+    moves,
   };
 }
 
@@ -639,7 +671,13 @@ export function applyPrimitiveJournal(
     const unaliased: { removedId: LogicalId; runs: LogicalId[] }[] = [];
     const insertedRuns: LogicalId[] = [];
     for (const effect of mergeTextReplacements(effects)) {
-      applyEffect(registry, effect, planned.mintedText, planned.birthSplices.get(effect));
+      applyEffect(
+        registry,
+        effect,
+        planned.mintedText,
+        planned.birthSplices.get(effect),
+        planned.moves.get(effect)
+      );
       if (effect.kind === 'spliceChildren') {
         // Only a split that moves the tail into a paragraph this journal created (Enter) can
         // carry a run's text across parents; formatting splits stay within one parent.

@@ -108,7 +108,7 @@ export class JournalProjection {
   }
 
   /** Projected parents win, because an earlier effect in this journal may have reparented. */
-  private parentOf(id: LogicalId): LogicalId | null {
+  parentOf(id: LogicalId): LogicalId | null {
     for (const [parentId, node] of this.touched) {
       if (node.children.includes(id)) return parentId;
     }

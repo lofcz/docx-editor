@@ -5,12 +5,13 @@
     "repairVersion"
   ],
   "before": "Creation undo retained shared node records but removed every ancestry edge, making peer edits inside new table rows and columns unreachable from the native document.",
-  "after": "Creation undo retains table birth ancestry, marks the retained records in the undo transaction, and projects only containers needed by surviving foreign content. Redo reverses the markers. Column visibility invalidates companion row and grid parents so live, incremental, cold and saved views agree. Paragraph-only splitting, formatting and table resizing retain their existing history behavior.",
+  "after": "Creation undo retains table birth ancestry, marks the retained records in the undo transaction, and projects only containers needed by surviving foreign content. Redo reverses the markers. Column visibility invalidates companion row and grid parents so live, incremental, cold and saved views agree. Later native moves use observed visible destinations and the source each journal prefix sees, retaining hidden ancestry for late peer updates. Paragraph-only splitting, formatting and table resizing retain their existing history behavior.",
   "reason": "This changes deterministic interpretation of existing child arrays and the existing boolean undo marker, increasing repairVersion from 2 to 3. A table-owned tableBirthGeometry map retains immutable cell-to-column coverage frames before and after native births, even when the first born cell's row is deleted. Frames use causal order and stable key ordering instead of map receipt order. A tableBirthGeometryWrites map records later native span ownership. These shared fields increase sharedSchemaVersion from 5 to 6. Journal op kinds remain unchanged. This implementation belongs to the EigenPal Pro License transport used by the private adapter's evaluation fixtures; no production private adapter imports are added.",
   "tests": [
     "packages/sciobot/src/diff/born-cell-history-collaboration.test.ts",
     "packages/sciobot/src/diff/inserted-cell-atoms-collaboration.test.ts",
     "packages/sciobot/src/diff/merged-born-cell-geometry-collaboration.test.ts",
+    "packages/sciobot/src/diff/hidden-birth-move-collaboration.test.ts",
     "packages/pro/src/collaboration/__tests__/document-format.test.ts"
   ],
   "changeset": "retain-born-table-peer-content",
