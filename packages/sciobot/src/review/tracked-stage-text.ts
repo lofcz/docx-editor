@@ -21,8 +21,7 @@ export function stageTrackedText(
   writer: TrackedStageWriter,
   plan: CanonicalEditPlan,
   edits: readonly Extract<CanonicalEdit, { kind: 'text' }>[],
-  revision: TrackedStageAttribution,
-  preserveRunOrigins = false
+  revision: TrackedStageAttribution
 ): StagedTextCoordinates {
   const first = edits[0];
   if (!first) refuseWrite('A text stage needs one paragraph.');
@@ -39,16 +38,11 @@ export function stageTrackedText(
   );
   if (!prepared.success) refuseWrite(prepared.error, prepared.code);
   let runOriginScope: string | undefined;
-  if (preserveRunOrigins)
-    writer.edit((pkg) => {
-      const marked = prepareTrackedRunOrigins(
-        pkg.parts.get(before.name)!,
-        first.paragraphId,
-        edits
-      );
-      runOriginScope = marked.scope ?? undefined;
-      return withPart(pkg, marked.part);
-    });
+  writer.edit((pkg) => {
+    const marked = prepareTrackedRunOrigins(pkg.parts.get(before.name)!, first.paragraphId, edits);
+    runOriginScope = marked.scope ?? undefined;
+    return withPart(pkg, marked.part);
+  });
   const oldSites = new Set(collectRevisionSites(before).map((site) => site.node.id));
   for (const op of prepared.ops) writer.apply(before.name, op);
   writer.edit(

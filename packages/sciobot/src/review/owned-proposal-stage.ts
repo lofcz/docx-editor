@@ -1,3 +1,6 @@
+import { decodeBlockPresenceRecord } from './block-presence-schema';
+import { readPropertyReviewStore } from './property-record-store';
+import { preparePresenceDecision } from './prepare-presence-decision';
 import type { TreeTransactionContext } from '@docx-editor.dev/core/store';
 import type { OwnedProposalRemovalPlan } from './owned-proposal-plan';
 import {
@@ -13,8 +16,23 @@ export function stageOwnedProposalRemoval(
   allowInitialization: boolean,
   step: (run: () => boolean) => void
 ): void {
+  // Capture ownership before native inverses remove the controls. The returned completions
+  // retire metadata only after those exact native operations have succeeded.
+  const pkg = ctx.currentPackage(),
+    records = readPropertyReviewStore(pkg);
+  const presence = removal.propertyDecisions.flatMap((member) => {
+    const entry = records.status === 'ready' ? records.records.get(member.proposalId) : undefined;
+    if (!entry) throw new Error('An owned application inverse record is missing.');
+    if (entry.decoded.status === 'supported') return [];
+    if (decodeBlockPresenceRecord(entry.raw).status !== 'supported')
+      throw new Error('An owned application inverse record is unsupported.');
+    const prepared = preparePresenceDecision(pkg, member.proposalId, member.blockId, 'reject');
+    if (!prepared.success) throw new Error(prepared.error);
+    return [prepared];
+  });
   for (const part of removal.partOps)
     for (const op of part.ops) step(() => ctx.applyTo(part.partName, op));
+  for (const prepared of presence) step(() => ctx.applyPackage(prepared.apply));
   if (!removal.propertyDecisions.length && !removal.retainNativeGroups.length) return;
   if (allowInitialization)
     step(() =>

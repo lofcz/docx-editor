@@ -17,6 +17,8 @@ import type { OwnedProposalGroup } from './owned-proposal-plan';
 import { atomicFallbackParagraph, propertyAddressKey } from './property-fallback';
 import { ATOMIC_REVIEW_EXECUTOR } from './property-record-schema';
 import { readPropertyReviewStore } from './property-record-store';
+import { decodeBlockPresenceRecord } from './block-presence-schema';
+import { bindBlockPresenceRecord } from './block-presence-plan';
 import { currentRevisionGuardContent } from './revision-property-content';
 
 export interface OwnedProposalContentProof {
@@ -146,8 +148,26 @@ export function captureOwnedProposalContentProofs(
         const record =
           records?.status === 'ready' ? records.records.get(member.proposalId) : undefined;
         const block = blocks?.byId.get(member.blockId);
-        if (!record || record.decoded.status !== 'supported' || !block)
+        if (!record || !block)
           return fail('An owned property record or block is missing.', 'invalid-document');
+        if (record.decoded.status !== 'supported') {
+          const decoded = decodeBlockPresenceRecord(record.raw);
+          if (decoded.status !== 'supported')
+            return fail('An owned presence record is unsupported.', 'unsupported-operation');
+          const saved = decoded.value.blocks.find((root) => root.blockId === member.blockId);
+          if (!saved) return fail('An owned presence root is missing.', 'invalid-document');
+          const bound = bindBlockPresenceRecord(pkg, { ...decoded.value, blocks: [saved] });
+          if (!bound.success) return bound;
+          const part = pkg.parts.get(block.partName),
+            node = part && findNode(part, block.controlId);
+          if (!node) return fail('An owned presence control is missing.', 'invalid-document');
+          const bounded = copyBoundedJson(bound.record, EDIT_PLAN_LIMITS);
+          if (!bounded.ok) return fail(bounded.reason);
+          properties.push(
+            JSON.stringify([propertyKey(member), jsonDataKey(bounded.value), semantic(node)])
+          );
+          continue;
+        }
         const saved = record.decoded.value.blocks.find((entry) => entry.blockId === member.blockId);
         const part = pkg.parts.get(block.partName);
         if (!saved || !part) return fail('An owned property block is missing.', 'invalid-document');

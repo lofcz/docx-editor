@@ -12,7 +12,8 @@ import { jsonDataKey } from '../diff/target-key';
 import { type NativeEditFailure, type RevisionToken } from '../contracts/document';
 import { readPropertyReviewStore } from './property-record-store';
 import { ATOMIC_PAYLOAD_CHANGE, ATOMIC_REVIEW_EXECUTOR } from './property-record-schema';
-import { readStoredPropertyProposals } from './stored-property-proposals';
+import { readApplicationProposals } from './application-proposals';
+import { decodeBlockPresenceRecord } from './block-presence-schema';
 import { projectPendingProperties } from './property-projection';
 import {
   nativePropertyAddress,
@@ -96,9 +97,9 @@ export function preparePayloadProposalDecision(
       'unsupported-operation'
     );
   if (atomic) {
-    const pending = readStoredPropertyProposals(pkg, current);
+    const pending = readApplicationProposals(pkg, current);
     if (!pending.success) return pending;
-    const checked = projectPendingProperties(pkg, current, pending.pending, 'working');
+    const checked = projectPendingProperties(pkg, current, pending.properties, 'working');
     if (!checked.success) return checked;
   }
   const labelValues = new Map<
@@ -179,8 +180,28 @@ export function preparePayloadProposalDecision(
   }
   for (const other of store.records.values()) {
     if (other.id === record.id) continue;
-    if (other.decoded.status === 'unsupported-version')
-      return fail('Another property proposal has an unsupported version.', 'unsupported-operation');
+    if (other.decoded.status === 'unsupported-version') {
+      const presence = decodeBlockPresenceRecord(other.raw);
+      if (presence.status !== 'supported')
+        return fail(
+          'Another application proposal has an unsupported version.',
+          'unsupported-operation'
+        );
+      if (
+        presence.value.blocks.some(
+          (root) =>
+            (!dispositions.decisions.has(payloadGroupDecisionKey(other.id, root.blockId)) ||
+              dispositions.decisions.get(payloadGroupDecisionKey(other.id, root.blockId))
+                ?.status === 'conflict') &&
+            root.members.some((member) => labelValues.has(member.payload.id))
+        )
+      )
+        return fail(
+          'Pending presence ownership needs group reconciliation.',
+          'unsupported-operation'
+        );
+      continue;
+    }
     if (
       other.decoded.value.blocks.some(
         (block) =>

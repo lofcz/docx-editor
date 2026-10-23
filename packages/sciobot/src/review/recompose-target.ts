@@ -20,7 +20,7 @@ import {
 } from '../projection/parse-target';
 import type { ReviewViewOptions } from './document-view';
 import { projectPendingProperties } from './property-projection';
-import { readStoredPropertyProposals } from './stored-property-proposals';
+import { readApplicationProposals, projectApplicationPresence } from './application-proposals';
 
 const fail = (error: string): NativeEditFailure => ({
   success: false,
@@ -30,18 +30,20 @@ const fail = (error: string): NativeEditFailure => ({
 
 /** Materialize supported proposed content in a detached read; no live proposal is decided. */
 function workingReadPackage(pkg: OoxmlPackage, revision: RevisionToken) {
-  const stored = readStoredPropertyProposals(pkg, revision);
+  const stored = readApplicationProposals(pkg, revision);
   if (!stored.success) return stored;
-  const projected = projectPendingProperties(pkg, revision, stored.pending, 'working');
+  const projected = projectPendingProperties(pkg, revision, stored.properties, 'working');
   if (!projected.success) return projected;
-  const part = projected.pkg.parts.get(pkg.mainDocumentPart)!;
+  const presence = projectApplicationPresence(projected.pkg, stored.presence, 'working');
+  if (!presence.success) return presence;
+  const part = presence.pkg.parts.get(pkg.mainDocumentPart)!;
   const siteNodeIds = collectRevisionSites(part)
     .filter((site) => !site.refused)
     .map((site) => site.node.id);
-  if (!siteNodeIds.length) return projected;
+  if (!siteNodeIds.length) return presence;
   const accepted = applyTreeOp(part, { op: 'acceptAllRevisions', siteNodeIds });
   return accepted.ok
-    ? { success: true as const, pkg: withPart(projected.pkg, accepted.part) }
+    ? { success: true as const, pkg: withPart(presence.pkg, accepted.part) }
     : fail(`Unable to read proposed table geometry: ${accepted.reason}.`);
 }
 async function readTargetPackage(

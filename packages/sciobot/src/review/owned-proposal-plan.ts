@@ -1,6 +1,7 @@
 import {
   applyTreeOp,
   collectRevisionSites,
+  canonicalOoxmlFingerprint,
   type OoxmlPackage,
   type RevisionAddress,
   type TreeDocOp,
@@ -17,6 +18,8 @@ import {
 } from './groups';
 import { ATOMIC_REVIEW_EXECUTOR } from './property-record-schema';
 import { readPropertyReviewStore } from './property-record-store';
+import { decodeBlockPresenceRecord } from './block-presence-schema';
+import { preparePresenceDecision } from './prepare-presence-decision';
 import { preparePayloadProposalDecision } from './prepare-payload-decision';
 import { propertyAddressKey } from './property-fallback';
 import { ownedProposalSelectionProblem } from './owned-proposal-input';
@@ -32,7 +35,10 @@ export interface OwnedProposalGroup {
   readonly properties: readonly ReviewGroupPropertyMember[];
 }
 
-export type OwnedProposalInverse = Extract<TreeDocOp, { op: 'rejectAllRevisions' }>;
+export type OwnedProposalInverse = Extract<
+  TreeDocOp,
+  { op: 'rejectAllRevisions' | 'removeContentControl' }
+>;
 
 /** A revision-bound inverse plan. It contains addresses and intents, never canonical snapshots. */
 export interface OwnedProposalRemovalPlan {
@@ -131,6 +137,7 @@ export function planOwnedProposalRemoval(
     if (selected.some((group) => !matchesOwnership(group, owned.get(group.id)!)))
       return fail('Owned receipts do not match the complete current group.', 'ambiguous-target');
 
+    const presenceByPart = new Map<string, OwnedProposalInverse[]>();
     const sitesByPart = new Map<string, Set<string>>(),
       propertyDecisions: OwnedProposalRemovalPlan['propertyDecisions'][number][] = [],
       retainNativeGroups: OwnedProposalRemovalPlan['retainNativeGroups'][number][] = [];
@@ -140,11 +147,27 @@ export function planOwnedProposalRemoval(
       for (const member of group.properties) {
         const entry =
           proposals.status === 'ready' ? proposals.records.get(member.proposalId) : undefined;
-        if (!entry || entry.decoded.status !== 'supported')
-          return fail(
-            'An owned application proposal is missing or unsupported.',
-            'invalid-document'
+        if (!entry) return fail('An owned application proposal is missing.', 'invalid-document');
+        if (entry.decoded.status !== 'supported') {
+          if (decodeBlockPresenceRecord(entry.raw).status !== 'supported')
+            return fail('An owned application proposal is unsupported.', 'unsupported-operation');
+          const prepared = preparePresenceDecision(
+            source.pkg,
+            member.proposalId,
+            member.blockId,
+            'reject'
           );
+          if (!prepared.success) return prepared;
+          const ops = presenceByPart.get(prepared.partName) ?? [];
+          for (const op of prepared.ops) {
+            if (op.op !== 'removeContentControl')
+              return fail('An owned presence inverse has an unsupported native operation.');
+            ops.push(op);
+          }
+          if (ops.length) presenceByPart.set(prepared.partName, ops);
+          propertyDecisions.push({ ...member, decision: 'reject' });
+          continue;
+        }
         const prepared = preparePayloadProposalDecision(
           source.pkg,
           token,
@@ -228,6 +251,42 @@ export function planOwnedProposalRemoval(
       if ([...after.keys()].some((nodeId) => !beforeIds.has(nodeId)))
         return fail('Owned removal would introduce an unrelated revision.', 'ambiguous-target');
       partOps.push({ partName: name, ops: [op] });
+    }
+    for (const [partName, ops] of presenceByPart) {
+      let part = source.pkg.parts.get(partName);
+      if (!part) return fail('An owned presence part is missing.', 'invalid-document');
+      const existing = partOps.find((row) => row.partName === partName);
+      for (const op of existing?.ops ?? []) {
+        const applied = applyTreeOp(part, op);
+        if (!applied.ok) return fail('An owned native inverse refused.', 'unsupported-operation');
+        part = applied.part;
+      }
+      for (const op of ops) {
+        const before = collectRevisionSites(part);
+        const applied = applyTreeOp(part, op);
+        if (!applied.ok) return fail('An owned presence inverse refused.', 'unsupported-operation');
+        const after = new Map(
+          collectRevisionSites(applied.part).map((site) => [site.node.id, site.node])
+        );
+        if (
+          before.length !== after.size ||
+          before.some((site) => {
+            const retained = after.get(site.node.id);
+            return (
+              !retained ||
+              canonicalOoxmlFingerprint(retained) !== canonicalOoxmlFingerprint(site.node)
+            );
+          })
+        )
+          return fail(
+            'Owned presence removal would change an unselected revision.',
+            'ambiguous-target'
+          );
+        part = applied.part;
+      }
+      if (existing)
+        partOps[partOps.indexOf(existing)] = { partName, ops: [...existing.ops, ...ops] };
+      else partOps.push({ partName, ops });
     }
     const plan: OwnedProposalRemovalPlan = {
       schemaVersion: 1,

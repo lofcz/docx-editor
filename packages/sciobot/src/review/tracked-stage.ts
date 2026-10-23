@@ -160,10 +160,7 @@ export function stageTrackedPlan(
       const paragraph = key(edit.partName, edit.paragraphId);
       if (coordinates.has(paragraph))
         refuseWrite('A paragraph needs one ordered text stage.', 'ambiguous-target');
-      coordinates.set(
-        paragraph,
-        stageTrackedText(writer, plan, entries, revision, linkParagraphs.has(paragraph))
-      );
+      coordinates.set(paragraph, stageTrackedText(writer, plan, entries, revision));
       continue;
     }
     if (edit.kind === 'format') {

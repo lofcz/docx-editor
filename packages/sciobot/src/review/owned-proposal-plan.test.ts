@@ -82,6 +82,11 @@ const grant = (group: NativeReviewGroup): OwnedProposalGroup => ({
   })),
   properties: group.properties.map((member) => ({ ...member })),
 });
+function rejectSites(planned: OwnedProposalRemovalPlan) {
+  const op = planned.partOps[0]!.ops[0]!;
+  if (op.op !== 'rejectAllRevisions') throw new Error('Expected a native revision inverse');
+  return op.siteNodeIds;
+}
 function plan(editor: DocxEditorInstance, selection = groups(editor).map(grant)) {
   const result = planOwnedProposalRemoval(
     { pkg: source(editor), revision: groupToken(editor) },
@@ -196,9 +201,7 @@ test('explicit selection, not identical attribution, owns native groups; output 
       pending[2]!.id,
     ]);
     expect(readGroups(inverse(pkg, planned))).toEqual([pending[1]!]);
-    expect(planned.partOps[0]!.ops[0]!.siteNodeIds).not.toContain(
-      pending[1]!.native[0]!.siteNodeIds[0]!
-    );
+    expect(rejectSites(planned)).not.toContain(pending[1]!.native[0]!.siteNodeIds[0]!);
   } finally {
     editor.destroy();
   }
@@ -506,7 +509,7 @@ test('ownership data is bounded, detached, immutable, and never invokes accessor
     selection[0]!.native.length = 0;
     expect(planned.selection[0]!.native).toHaveLength(own.native.length);
     expect(Object.isFrozen(planned)).toBe(true);
-    expect(Object.isFrozen(planned.partOps[0]!.ops[0]!.siteNodeIds)).toBe(true);
+    expect(Object.isFrozen(rejectSites(planned))).toBe(true);
     expect(Object.isFrozen(planned.selection[0]!.native[0]!.addresses[0])).toBe(true);
     let invoked = false;
     const accessor = Object.defineProperty({}, 'groupId', {
@@ -643,7 +646,7 @@ test('owned paragraph inverse preserves a foreign pending paragraph property rev
       afterPart = after.parts.get(after.mainDocumentPart)!,
       remaining = readGroups(after);
     expect(planned.propertyDecisions).toEqual([]);
-    expect(planned.partOps[0]!.ops[0]!.siteNodeIds).not.toContain(peer.node.id);
+    expect(rejectSites(planned)).not.toContain(peer.node.id);
     expect(remaining.map((group) => group.id)).toEqual(foreign.map((group) => group.id));
     expect(remaining[0]!.native).toEqual(foreign[0]!.native);
     expect(remaining[0]!.anchor!.paragraphId).toBe(target.id);

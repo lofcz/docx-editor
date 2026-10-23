@@ -1,0 +1,16 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "The private owned inverse planner and content proofs rejected presence proposals. Property staging and decisions rejected unrelated version-two application records.",
+  "after": "Owned presence roots bind exact native inverses and payload retirement to existing per-block rejection receipts. Content proofs include complete selected membership and native control content. Mixed property consumers admit validated presence records. Text replacement retains existing run-origin proofs for exact local rejection.",
+  "reason": "These private consumers reuse existing native operations, custom XML records, decision receipts, and provenance fields. No shared format fields or published source change. Production presence authoring remains disabled. Exact shared Word run-boundary regressions remain open and prevent integration into the verified primary branch.",
+  "tests": [
+    "packages/sciobot/src/review/owned-presence-replacement.test.ts",
+    "packages/sciobot/src/review/owned-presence-property.test.ts",
+    "packages/sciobot/src/review/owned-presence-shared.test.ts",
+    "packages/sciobot/src/review/owned-proposal-plan.test.ts",
+    "packages/sciobot/src/review/owned-proposal-content.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

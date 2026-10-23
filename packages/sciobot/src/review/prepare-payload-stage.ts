@@ -17,7 +17,7 @@ import { jsonDataKey } from '../diff/target-key';
 import { createPendingPropertyProposal } from './property-projection';
 import { planDomainProperties } from '../diff/domain-properties';
 import { planAtomicBlock } from '../diff/atomic-blocks';
-import { readStoredPropertyProposals } from './stored-property-proposals';
+import { readApplicationProposals } from './application-proposals';
 import { readPropertyReviewStore, withPropertyReviewRecord } from './property-record-store';
 import {
   encodePropertyReviewRecord,
@@ -95,7 +95,7 @@ export function prepareApplicationPayloadStage(
     index = buildBlockIndex(pkg),
     payloads = readPayloadStore(pkg),
     records = readPropertyReviewStore(pkg),
-    existing = readStoredPropertyProposals(pkg, current);
+    existing = readApplicationProposals(pkg, current);
   if (!existing.success) return existing;
   if (payloads.status !== 'ready' || records.status !== 'ready')
     return fail('Property suggestions need a valid native application store.', 'invalid-document');
@@ -132,11 +132,17 @@ export function prepareApplicationPayloadStage(
   }
   // Follow-up ownership of one generated label needs coordinated multi-wave decisions (R14/R19).
   if (
-    existing.pending.some((proposal) =>
+    existing.properties.some((proposal) =>
       proposal.plan.operations.some((edit) => edit.kind === 'payload' && blocks.has(edit.blockId))
     )
   )
     return fail('This block already has a pending property proposal.', 'unsupported-operation');
+  if (
+    existing.presence.some((record) =>
+      record.blocks.some((root) => root.members.some((member) => blocks.has(member.payload.id)))
+    )
+  )
+    return fail('This block belongs to a pending presence proposal.', 'unsupported-operation');
   // Views also support materialized proposals. New writes require exact old-value presence.
   for (const block of blocks.values())
     for (const change of block.changes) {
@@ -263,7 +269,10 @@ export function prepareApplicationPayloadStage(
     id: attribution.proposalId,
     author: attribution.author,
     date,
-    predecessors: existing.pending.map((proposal) => proposal.id),
+    predecessors: [
+      ...existing.properties.map((proposal) => proposal.id),
+      ...existing.presence.map((record) => record.id),
+    ],
     blocks: [...blocks.values()],
     nativeRevisions: [],
     extension: {
