@@ -62,10 +62,18 @@ export async function prepareInlineImageResources(
     const plan = decoded.plan,
       resources = new Map<string, ResolvedInlineImage>();
     let total = 0;
-    for (const atom of planInlineDrawings(plan)) {
+    const references = [
+      ...planInlineDrawings(plan).map((atom) => atom.resource.reference),
+      ...plan.operations.flatMap((edit) =>
+        edit.kind === 'inline-image' && edit.before.attributes.reference !== edit.resource.reference
+          ? [edit.resource.reference]
+          : []
+      ),
+    ];
+    for (const reference of references) {
       if (signal?.aborted) throw Error('Image resource preparation was aborted.');
-      if (resources.has(atom.resource.reference)) continue;
-      const source = await resolve(atom.resource.reference, signal);
+      if (resources.has(reference)) continue;
+      const source = await resolve(reference, signal);
       if (
         !(source.bytes instanceof Uint8Array) ||
         source.bytes.byteLength > 64 * 1024 * 1024 - total
@@ -100,7 +108,7 @@ export async function prepareInlineImageResources(
         throw Error('The image dimensions exceed the native drawing bounds.');
       const hash = await crypto.subtle.digest('SHA-256', new Uint8Array(bytes));
       if (signal?.aborted) throw Error('Image resource preparation was aborted.');
-      resources.set(atom.resource.reference, {
+      resources.set(reference, {
         bytes,
         mime,
         widthPoints,

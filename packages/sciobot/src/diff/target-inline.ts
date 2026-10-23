@@ -1,3 +1,4 @@
+import { planImageReplacements } from './image-replacements';
 import { mixedInlineAtoms } from './mixed-inline-atoms';
 import { linkAwareBias } from './link-aware-text';
 import { planRetainedAtomMarks } from './retained-atom-marks';
@@ -194,6 +195,26 @@ export function planTargetParagraph(context: TargetParagraphSource): EditPlanRes
     ]);
   }
   if (a.plainText === null && b.plainText === null) {
+    const images = planImageReplacements(context, part, paragraphId, a, b);
+    if (images) {
+      if ('success' in images) return images;
+      const rest = planTargetParagraph({ ...context, before: { ...before, ast: images.ast } });
+      return rest.success
+        ? createEditPlan(revision, [...images.edits, ...rest.plan.operations])
+        : rest;
+    }
+    const marks = planRetainedAtomMarks(
+      context,
+      part,
+      paragraphId,
+      a,
+      b,
+      context.nativeRange?.start ?? owner.checklist?.native.end ?? 0
+    );
+    if (marks) {
+      if (!marks.success) return marks;
+      return createEditPlan(revision, [...operations, ...marks.plan.operations]);
+    }
     const mixed = mixedInlineAtoms(
       context,
       part,
@@ -210,18 +231,6 @@ export function planTargetParagraph(context: TargetParagraphSource): EditPlanRes
         anchoredText: mixed.text,
         textAnchors: mixed.anchors,
       });
-    const marks = planRetainedAtomMarks(
-      context,
-      part,
-      paragraphId,
-      a,
-      b,
-      context.nativeRange?.start ?? owner.checklist?.native.end ?? 0
-    );
-    if (marks) {
-      if (!marks.success) return marks;
-      return createEditPlan(revision, [...operations, ...marks.plan.operations]);
-    }
   }
   if (a.plainText === null && !context.nativeRange) {
     const gaps = retainedAtomGaps(

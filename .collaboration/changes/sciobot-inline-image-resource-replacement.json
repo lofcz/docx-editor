@@ -1,0 +1,13 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Changed managed inline image references and metadata had no explicit private plan or revision-bound resource replacement path.",
+  "after": "Private inline-image intentions retain control and drawing identities while replacing resource/provenance fields, preserving native geometry and untouched metadata. Metadata-only edits require no asset fetch. Core exports its existing orphan-image cleanup for gated package transactions.",
+  "reason": "This batch uses existing native primitives and the existing payload field-register format. The private plan adds an image edit kind; it adds no shared field. Concurrent resource-deletion undo is separately blocked by a reproduced shared binary/relationship presence defect. Evaluation transport remains test-only under the EigenPal Pro License.",
+  "tests": [
+    "packages/sciobot/src/diff/inline-image-replacement.test.ts",
+    "packages/sciobot/src/diff/inline-image-replacement-collaboration.test.ts"
+  ],
+  "changeset": "reconcile-owned-inline-image-resources",
+  "migration": null
+}

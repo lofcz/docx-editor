@@ -192,6 +192,7 @@ export {
   withBinaryPart,
   withEmbeddedImage,
   withoutUnreferencedImagePart,
+  cleanupOrphanImageMedia,
   type DrawingPropertyIdResult,
 } from '../package/drawing-package-edit.ts';
 export {

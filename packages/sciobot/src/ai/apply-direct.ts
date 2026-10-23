@@ -1,3 +1,4 @@
+import { completeImageReplacement } from './direct-image-replacement';
 import { cellAtomBindings, insertedAtomsOfEdit } from '../diff/inserted-cell-atoms';
 import { completeInlineAtomPayloads } from '../native/inline-atom-payloads';
 import { createInlineImageRuntime, type InlineImageRuntime } from '../native/inline-image-runtime';
@@ -367,6 +368,9 @@ function lowerDirectPlan(
         }
         break;
       }
+      case 'inline-image':
+        deferred.push((working) => completeImageReplacement(working, edit, plan, preparedImages));
+        break;
       case 'inline-atoms': {
         const lowered = lowerRetainedAtoms(pkg, preview, edit, images, stagedCodeStyles(staged));
         for (const op of lowered.ops) apply(op);

@@ -1,3 +1,4 @@
+import { isInlineImageEdit, type InlineImageEdit } from './inline-image-edit';
 import { insertedAtomsOfEdit } from './inserted-cell-atoms';
 import { isRetainedAtomBindings } from './retained-atoms';
 import { isInsertedAtomBindings } from './inserted-atom-bindings';
@@ -86,6 +87,7 @@ interface LocatedEdit {
 /** Semantic edits contain addresses and new fragments, never a reconstructed canonical document. */
 export type CanonicalEdit = LocatedEdit &
   (
+    | InlineImageEdit
     | {
         readonly kind: 'text';
         readonly paragraphId: string;
@@ -323,6 +325,19 @@ function editProblem(edit: unknown): string | null {
         ])
         ? null
         : 'invalid-text-edit';
+    case 'inline-image':
+      return isInlineImageEdit(edit) &&
+        keysOnly(edit, [
+          ...base,
+          'paragraphId',
+          'controlId',
+          'blockId',
+          'drawingNodeId',
+          'before',
+          'resource',
+        ])
+        ? null
+        : 'invalid-inline-image-edit';
     case 'inline-atoms':
       return id(edit.paragraphId) &&
         integer(edit.offset) &&
@@ -486,6 +501,7 @@ function withoutNoop(edit: CanonicalEdit): CanonicalEdit | null {
     }
     case 'siblings':
       return edit.removedIds.length || edit.inserted.length ? edit : null;
+    case 'inline-image':
     case 'inline-atoms':
     case 'table':
     case 'insert-row':

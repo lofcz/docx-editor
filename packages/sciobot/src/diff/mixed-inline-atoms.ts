@@ -24,7 +24,7 @@ export function mixedInlineAtoms(
   if (context.nativeRange) return null;
   const oldAtoms = before.tokens.filter((token) => token.kind === 'atom');
   const nextAtoms = after.tokens.filter((token) => token.kind === 'atom');
-  if (!oldAtoms.length || nextAtoms.length <= oldAtoms.length) return null;
+  if (!oldAtoms.length || nextAtoms.length < oldAtoms.length) return null;
   const text = paragraphTextOf(part, paragraphId);
   if (text === null) return null;
   const keys = nextAtoms.map((token) => retainedAtomKey(token.ast));
