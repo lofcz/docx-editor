@@ -9,9 +9,12 @@ import {
   type OoxmlPart,
   type RevisionAddress,
 } from '@docx-editor.dev/core/store';
+import { applyDirectListAssignments, type DirectListContext } from '../ai/direct-lists';
+import { newCellListAssignments } from '../diff/new-cell-list-assignments';
 import { nodeIds, refuseWrite } from '../diff/fragment-seeds';
 import type { CanonicalEdit } from '../diff/plan';
 import type { NativeSiblingProposal } from './track-blocks';
+import { withBornChecklistOwnership } from './tracked-born-checklists';
 import { newParagraphSeeds } from './new-paragraphs';
 import { stageParagraphResources } from './tracked-stage-paragraphs';
 import {
@@ -59,12 +62,13 @@ function gap(part: OoxmlPart, edit: Siblings): readonly string[] | null {
 export function stageTrackedSiblings(
   writer: TrackedStageWriter,
   edit: Siblings,
-  revision: TrackedStageAttribution
+  revision: TrackedStageAttribution,
+  listContext: DirectListContext
 ): readonly NativeSiblingProposal[] {
   const before = currentStagePart(writer, edit.partName);
-  if (edit.lists?.some((binding) => binding.target.kind !== 'none') || edit.blocks?.length)
+  if (edit.blocks?.length)
     refuseWrite(
-      'Tracked list and application fragments need their own staged executor.',
+      'Tracked application fragments need their own staged executor.',
       'unsupported-operation'
     );
   const ids = gap(before, edit);
@@ -140,6 +144,13 @@ export function stageTrackedSiblings(
   if (inserted.length !== seeds.paragraphs.length)
     refuseWrite('Native sibling allocation did not match the planned gap.', 'apply-failed');
   stageParagraphResources(writer, before.name, inserted, seeds);
+  const lists = newCellListAssignments(inserted, edit.lists);
+  if (lists.length)
+    // The paragraph insertion owns the whole new list item. Its properties need no
+    // separate formatting proposal; rejection removes the complete born paragraph.
+    writer.edit((pkg) => applyDirectListAssignments(pkg, before.name, lists, listContext));
+  if (lists.some((assignment) => assignment.target.kind === 'checklist'))
+    writer.edit((pkg) => withBornChecklistOwnership(pkg, before.name, inserted));
   for (const binding of edit.styles ?? []) {
     if (binding.path.length !== 1 || !inserted[binding.path[0]!])
       refuseWrite('A native sibling style has no allocated paragraph.', 'ambiguous-target');

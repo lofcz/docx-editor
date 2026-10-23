@@ -1,0 +1,13 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Tracked sibling insertion refused list bindings. New checkbox controls also lacked the inserted text ownership required for Original view and stable collaboration receipts.",
+  "after": "Born list paragraphs use existing native numbering. Checkbox controls join their paragraph insertion before receipt capture, including the provider normal form for adjacent insertions.",
+  "reason": "Private staging uses existing native numbering, paragraph insertions, revision wrappers, and public canonical primitives. Shared fields, provider code, and public package source remain unchanged.",
+  "tests": [
+    "packages/sciobot/src/review/recompose-inserted-lists.test.ts",
+    "packages/sciobot/src/review/recompose-inserted-lists-collaboration.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

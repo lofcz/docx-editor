@@ -195,7 +195,7 @@ export function stageTrackedPlan(
         );
       receipts.push(...stageTrackedList(writer, plan, edit, revision, listContext));
     } else if (edit.kind === 'siblings')
-      receipts.push(...stageTrackedSiblings(writer, edit, revision));
+      receipts.push(...stageTrackedSiblings(writer, edit, revision, listContext));
     else if (
       ['table', 'insert-row', 'insert-column', 'split-cell', 'table-geometry'].includes(edit.kind)
     ) {
