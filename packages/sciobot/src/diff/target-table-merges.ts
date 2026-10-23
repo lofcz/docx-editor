@@ -1,3 +1,4 @@
+import { planInsertedCellAtoms } from './inserted-cell-atoms';
 import { targetNewCellProperties, type NewCellPropertyBinding } from './new-cell-properties';
 import { applyTreeOp, type OoxmlPart } from '@docx-editor.dev/core/store';
 import type { NativeEditFailure } from '../contracts/document';
@@ -163,6 +164,8 @@ export function planTargetGeometry(
       if (!fragments.success) return fragments;
       cells.push(fragments.fragments);
     }
+    const atomPlan = planInsertedCellAtoms(input.pkg, cells, [], context.allocateBlockId);
+    if (!atomPlan.success) return atomPlan;
     const split = {
       kind: 'split' as const,
       cellId,
@@ -187,6 +190,7 @@ export function planTargetGeometry(
                 columns: request.columns,
                 cells,
                 payloads: [],
+                ...(atomPlan.atoms.length ? { atoms: atomPlan.atoms } : {}),
                 ...(cellProperties.length ? { cellProperties } : {}),
               },
             },

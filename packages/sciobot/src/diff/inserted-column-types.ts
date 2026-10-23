@@ -1,3 +1,5 @@
+import { isInsertedCellAtoms } from './inserted-cell-atoms';
+import type { InsertedInlineAtom } from './inserted-atoms';
 import { isNewCellPropertyBindings, type NewCellPropertyBinding } from './new-cell-properties';
 import { isInsertedCellLists, type InsertedCellListBinding } from './inserted-cell-lists';
 import type { TargetAstNode } from '../projection/parse-target';
@@ -27,6 +29,7 @@ export interface InsertedTableColumnIntent {
   readonly cells: readonly InsertedColumnCell[];
   readonly properties: InsertedColumnProperties;
   readonly payloads: readonly InsertedColumnPayloadBinding[];
+  readonly atoms?: readonly InsertedInlineAtom[];
   readonly lists?: readonly InsertedCellListBinding[];
   readonly cellProperties?: readonly NewCellPropertyBinding[];
 }
@@ -47,6 +50,7 @@ export function isInsertedColumnIntent(value: unknown): value is InsertedTableCo
       'cells',
       'properties',
       'payloads',
+      'atoms',
       'lists',
       'cellProperties',
     ]) ||
@@ -80,7 +84,12 @@ export function isInsertedColumnIntent(value: unknown): value is InsertedTableCo
     blocks.push(cell.blocks);
   }
   return (
-    isInsertedCellFragments(blocks, value.payloads) &&
+    isInsertedCellFragments(blocks, value.payloads, true) &&
+    isInsertedCellAtoms(
+      blocks as TargetAstNode[][],
+      value.payloads as InsertedCellPayloadBinding[],
+      value.atoms
+    ) &&
     (!Object.hasOwn(value, 'cellProperties') ||
       isNewCellPropertyBindings(blocks as TargetAstNode[][], value.cellProperties)) &&
     (!Object.hasOwn(value, 'lists') ||

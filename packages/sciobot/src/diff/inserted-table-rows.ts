@@ -1,3 +1,5 @@
+import { planInsertedCellAtoms } from './inserted-cell-atoms';
+import { isInsertedCellFragments } from './inserted-cell-fragments';
 import type { NewCellPropertyBinding } from './new-cell-properties';
 import type { InsertedCellListBinding } from './inserted-cell-lists';
 import {
@@ -30,6 +32,7 @@ export interface InsertedTableRowSource {
   readonly pkg: OoxmlPackage;
   readonly partName: string;
   readonly tableId: string;
+  readonly allocateBlockId?: () => string;
 }
 export interface InsertedTableRowTarget {
   readonly rowId: string;
@@ -37,6 +40,7 @@ export interface InsertedTableRowTarget {
   readonly cells: readonly (readonly TargetAstNode[])[];
   readonly properties?: InsertedRowProperties;
   readonly payloads?: readonly InsertedRowPayloadBinding[];
+  readonly atoms?: readonly import('./inserted-atoms').InsertedInlineAtom[];
   readonly lists?: readonly InsertedCellListBinding[];
   readonly cellProperties?: readonly NewCellPropertyBinding[];
 }
@@ -81,9 +85,16 @@ export function planInsertedTableRow(
     Array.isArray(target) ||
     Object.keys(target).some(
       (key) =>
-        !['rowId', 'where', 'cells', 'properties', 'payloads', 'lists', 'cellProperties'].includes(
-          key
-        )
+        ![
+          'rowId',
+          'where',
+          'cells',
+          'properties',
+          'payloads',
+          'atoms',
+          'lists',
+          'cellProperties',
+        ].includes(key)
     )
   )
     return fail('Invalid inserted row target.');
@@ -93,6 +104,19 @@ export function planInsertedTableRow(
     properties: target.properties === undefined ? {} : target.properties,
     payloads: target.payloads === undefined ? [] : target.payloads,
   };
+  const streams = intent.cells;
+  if (!isInsertedCellFragments(streams, intent.payloads, true))
+    return fail('Invalid inserted cell fragments or payloads.');
+  if (target.atoms === undefined) {
+    const plannedAtoms = planInsertedCellAtoms(
+      source.pkg,
+      streams,
+      intent.payloads,
+      source.allocateBlockId
+    );
+    if (!plannedAtoms.success) return plannedAtoms;
+    if (plannedAtoms.atoms.length) Object.assign(intent, { atoms: plannedAtoms.atoms });
+  }
   if (!isInsertedRowIntent(intent))
     return fail('Invalid inserted row fragments, properties, or payload bindings.');
   const part = source.pkg.parts.get(source.partName);

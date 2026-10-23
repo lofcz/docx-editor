@@ -1,3 +1,5 @@
+import { isInsertedCellAtoms } from './inserted-cell-atoms';
+import type { InsertedInlineAtom } from './inserted-atoms';
 import { isNewCellPropertyBindings, type NewCellPropertyBinding } from './new-cell-properties';
 import { readTableStructure } from '@docx-editor.dev/core/layout';
 import { findNode, type OoxmlPart, type TreeDocOp } from '@docx-editor.dev/core/store';
@@ -17,6 +19,7 @@ export type TableGeometryIntent = {
       readonly rows: number;
       readonly columns: number;
       readonly cells: readonly (readonly TargetAstNode[])[];
+      readonly atoms?: readonly InsertedInlineAtom[];
       readonly cellProperties?: readonly NewCellPropertyBinding[];
     }
 );
@@ -55,14 +58,17 @@ export function isTableGeometryIntent(value: unknown): value is TableGeometryInt
   return (
     value.kind === 'split' &&
     Object.keys(value).every((key) =>
-      ['tableId', 'region', 'kind', 'rows', 'columns', 'cells', 'cellProperties'].includes(key)
+      ['tableId', 'region', 'kind', 'rows', 'columns', 'cells', 'atoms', 'cellProperties'].includes(
+        key
+      )
     ) &&
     integer(value.rows, 1) &&
     integer(value.columns, 1) &&
     Number(value.rows) * Number(value.columns) > 1 &&
     Array.isArray(value.cells) &&
     value.cells.length === Number(value.rows) * Number(value.columns) - 1 &&
-    isInsertedCellFragments(value.cells, []) &&
+    isInsertedCellFragments(value.cells, [], true) &&
+    isInsertedCellAtoms(value.cells as TargetAstNode[][], [], value.atoms) &&
     (!Object.hasOwn(value, 'cellProperties') ||
       isNewCellPropertyBindings(value.cells as TargetAstNode[][], value.cellProperties))
   );

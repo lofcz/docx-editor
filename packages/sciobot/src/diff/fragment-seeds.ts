@@ -1,3 +1,4 @@
+import { completeInlineAtomPayloads } from '../native/inline-atom-payloads';
 import type { InlineImageRuntime } from '../native/inline-image-runtime';
 import { inlineAtomXml, inlineAtomKey, inlineAtomsByPath } from './inline-atom-xml';
 import type { InsertedInlineAtom } from './inserted-atoms';
@@ -15,8 +16,6 @@ import { newCellListAssignments } from './new-cell-list-assignments';
 import {
   applyTreeOp,
   bodyStoryRoot,
-  contentControlsIn,
-  contentControlPropertiesOf,
   createNodeIdAllocator,
   mintParaId,
   mintedParagraphIdentityAttributes,
@@ -816,26 +815,6 @@ export function completeSiblingFragments(
       refuseWrite(`New block payload storage refused: ${stored.reason}.`, 'apply-failed');
     pkg = stored.pkg;
   }
-  for (const op of edit.atoms ?? []) {
-    if (op.kind !== 'inline-control') {
-      if (!images)
-        refuseWrite('Image resources require an executor resolver.', 'unsupported-operation');
-      continue;
-    }
-    const stored = withPayloadRecord(pkg, op.payload, op.label);
-    if (!stored.ok)
-      refuseWrite(`Inline payload storage refused: ${stored.reason}.`, 'apply-failed');
-    pkg = stored.pkg;
-    const part = pkg.parts.get(partName)!;
-    const control = contentControlsIn(part.root).find(
-      ({ node }) => contentControlPropertiesOf(node).tag === blockTag(op.payload.id)
-    )?.node;
-    if (!control) refuseWrite('The inserted inline control was not allocated.', 'apply-failed');
-    pkg = applyOp(pkg, partName, {
-      op: 'setContentControlProperties',
-      controlId: control.id,
-      lock: 'sdtContentLocked',
-    });
-  }
+  pkg = completeInlineAtomPayloads(pkg, partName, edit.atoms ?? []);
   return { pkg, paragraphs };
 }

@@ -30,6 +30,7 @@ import {
 import { planTargetGeometry } from './target-table-merges';
 
 export interface TargetTableContext {
+  readonly allocateBlockId?: () => string;
   readonly input: TargetSourceInput;
   readonly source: BoundLogicalSource;
   readonly before: LogicalGroup;
@@ -254,7 +255,13 @@ export function planTargetTable(original: TargetTableContext): EditPlanResult {
         cells.push(nativeCell.vMergeContinue ? [] : fragments.fragments);
       }
       const result = planInsertedTableRow(
-        { revision, pkg: withPart(input.pkg, preview), partName: part.name, tableId },
+        {
+          revision,
+          pkg: withPart(input.pkg, preview),
+          partName: part.name,
+          tableId,
+          allocateBlockId: context.allocateBlockId,
+        },
         {
           rowId: anchor!,
           where,

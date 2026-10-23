@@ -1,3 +1,4 @@
+import { insertedAtomsOfEdit } from '../diff/inserted-cell-atoms';
 import { createDirectListContext } from '../ai/direct-lists';
 import { stageTrackedList } from './tracked-stage-lists';
 import {
@@ -36,7 +37,7 @@ export function stageTrackedPlan(
   revision: TrackedStageAttribution,
   trackFormatting: boolean
 ): readonly ReviewGroupReceipt[] {
-  if (plan.operations.some((edit) => edit.kind === 'inline-atoms'))
+  if (plan.operations.some((edit) => insertedAtomsOfEdit(edit).length > 0))
     refuseWrite(
       'Inserted inline atoms need native asset and payload reconciliation.',
       'unsupported-operation'

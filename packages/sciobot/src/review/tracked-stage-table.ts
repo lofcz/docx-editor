@@ -1,3 +1,4 @@
+import { insertedAtomsOfEdit } from '../diff/inserted-cell-atoms';
 import { cellPropertiesAt } from '../diff/new-cell-properties';
 import type { DirectListContext } from '../ai/direct-lists';
 import { cellListBindings } from '../diff/inserted-cell-lists';
@@ -90,6 +91,11 @@ export function stageTrackedTable(
   trackFormatting: boolean,
   listContext?: DirectListContext
 ): readonly ReviewGroupReceipt[] {
+  if (insertedAtomsOfEdit(edit).length)
+    refuseWrite(
+      'Tracked cell atoms need explicit birth and resource ownership.',
+      'unsupported-operation'
+    );
   const before = currentStagePart(writer, edit.partName),
     tableId = trackedTableId(edit);
   if (findNode(before, tableId)?.kind !== 'table')

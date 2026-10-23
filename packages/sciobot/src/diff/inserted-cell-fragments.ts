@@ -102,7 +102,11 @@ export function payloadMatches(node: TargetAstNode, payload: BlockPayload): bool
 }
 
 /** Call only after the bounded plain-JSON gate. Atomic payloads own their complete AST. */
-export function isInsertedCellFragments(cells: unknown, payloads: unknown): boolean {
+export function isInsertedCellFragments(
+  cells: unknown,
+  payloads: unknown,
+  inlineAtoms = false
+): boolean {
   if (
     !Array.isArray(cells) ||
     !cells.every(
@@ -139,6 +143,8 @@ export function isInsertedCellFragments(cells: unknown, payloads: unknown): bool
     let matched = 0;
     const visit = (node: TargetAstNode, path: number[]): boolean => {
       const binding = bindings.get(path.join('/'));
+      if (inlineAtoms && !binding && (node.type === 'paragraph' || node.type === 'heading'))
+        return true;
       if (mdx(node)) {
         if (!binding || !payloadMatches(node, binding.payload)) return false;
         matched++;

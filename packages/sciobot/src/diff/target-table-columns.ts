@@ -212,6 +212,7 @@ export function planTargetColumns(
           pkg: withPart(input.pkg, part),
           partName: part.name,
           tableId,
+          allocateBlockId: context.allocateBlockId,
         },
         {
           anchor: { kind: 'grid-column', id: anchor!.id },

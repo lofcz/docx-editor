@@ -1,0 +1,13 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "New cells in retained tables carried target fragments without the explicit inline atom bindings required for native materialization.",
+  "after": "Private row, column, split and deferred geometry plans carry validated new-cell atom bindings. Native operations allocate their cells and paragraphs before source payloads and locked controls finalize. Pictures use the existing revision-bound resource preparation and media transaction.",
+  "reason": "This changes the private D01 plan codec and native adapter execution, not the core or shared wire format. Existing native journals, payload records and binary-part ownership remain authoritative. Cell atom locks finalize after all topology operations. Shared unprepared payload stores and tracked atom births refuse before publication. Effective native cell list markers select HTML Markdown tables, preserving paragraph/list boundaries without changing plain or merged GFM tables.",
+  "tests": [
+    "packages/sciobot/src/diff/inserted-cell-atoms.test.ts",
+    "packages/sciobot/src/diff/inserted-cell-atoms-collaboration.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

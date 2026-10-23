@@ -454,6 +454,7 @@ export function planTargetDocument(
         !binding.atomicControlId
       ) {
         const table = planTargetTable({
+          allocateBlockId: options.allocateBlockId,
           input,
           source,
           binding,

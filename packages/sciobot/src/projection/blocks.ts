@@ -1,3 +1,4 @@
+import { forEachSemanticStory, forEachStoryParagraphFragment } from '@docx-editor.dev/core/layout';
 import { managedInlineImageAssets } from './inline-image-assets';
 import type { ExportSemanticLayout } from '@docx-editor.dev/core/export';
 import type { MarkdownLayoutOptions, MarkdownSourceSlice } from '@docx-editor.dev/docx-to-markdown';
@@ -116,6 +117,7 @@ export function projectBlocks(
 ): { readonly success: true; readonly projection: BlockProjection } | NativeEditFailure {
   const index = buildBlockIndex(pkg);
   const anchors = new Map<string, Anchor>();
+  const cellParagraphs = new Set<string>();
   for (const block of index.byId.values()) {
     const definition = definitions.get(block.payload.type);
     if (definition && block.partName === pkg.mainDocumentPart)
@@ -159,6 +161,7 @@ export function projectBlocks(
     )
       labelOwner = active.at(-1);
     if (node.kind === 'paragraph') {
+      if (inCell) cellParagraphs.add(node.id);
       paragraph = node;
       for (const owner of active) owner.paragraphIds.add(node.id);
       if (labelOwner && active.at(-1) === labelOwner) labelOwner.labelIds.add(node.id);
@@ -187,8 +190,24 @@ export function projectBlocks(
         code: 'unsupported-operation',
         error: 'Opaque cell content needs HTML table syntax.',
       };
+    // GFM cell breaks cannot express list structure. Use effective native markers,
+    // including inherited numbering, while preserving existing plain/merged table syntax.
+    let cellLists = false;
+    if (cellParagraphs.size)
+      forEachSemanticStory(layout, (story) => {
+        if (story.story !== 'body') return;
+        forEachStoryParagraphFragment(story.host, (paragraph) => {
+          if (paragraph.marker && cellParagraphs.has(paragraph.paragraphId)) cellLists = true;
+        });
+      });
+    if (cellLists && options.tableSyntax === 'gfm')
+      return {
+        success: false,
+        code: 'unsupported-operation',
+        error: 'Cell lists need HTML table syntax.',
+      };
     const listed = projectLists(pkg, layout, revision, {
-      tableSyntax: richCells ? 'html' : (options.tableSyntax ?? 'gfm'),
+      tableSyntax: richCells || cellLists ? 'html' : (options.tableSyntax ?? 'gfm'),
       imageAssets: managedInlineImageAssets(
         pkg,
         layout,

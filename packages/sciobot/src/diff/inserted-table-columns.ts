@@ -1,3 +1,5 @@
+import { planInsertedCellAtoms } from './inserted-cell-atoms';
+import { isInsertedCellFragments } from './inserted-cell-fragments';
 import {
   applyTreeOp,
   findNode,
@@ -30,6 +32,7 @@ export interface InsertedTableColumnSource {
   readonly pkg: OoxmlPackage;
   readonly partName: string;
   readonly tableId: string;
+  readonly allocateBlockId?: () => string;
 }
 export type InsertedTableColumnTarget = Omit<
   InsertedTableColumnIntent,
@@ -75,9 +78,16 @@ export function planInsertedTableColumn(
     Array.isArray(target) ||
     Object.keys(target).some(
       (key) =>
-        !['anchor', 'where', 'cells', 'properties', 'payloads', 'lists', 'cellProperties'].includes(
-          key
-        )
+        ![
+          'anchor',
+          'where',
+          'cells',
+          'properties',
+          'payloads',
+          'atoms',
+          'lists',
+          'cellProperties',
+        ].includes(key)
     )
   )
     return fail('Invalid inserted column target.');
@@ -87,6 +97,24 @@ export function planInsertedTableColumn(
     properties: target.properties === undefined ? {} : target.properties,
     payloads: target.payloads === undefined ? [] : target.payloads,
   };
+  if (
+    !Array.isArray(intent.cells) ||
+    intent.cells.some((cell) => !cell || typeof cell !== 'object')
+  )
+    return fail('Invalid inserted column cells.');
+  const streams = intent.cells.map((cell) => cell.blocks);
+  if (!isInsertedCellFragments(streams, intent.payloads, true))
+    return fail('Invalid inserted cell fragments or payloads.');
+  if (target.atoms === undefined) {
+    const plannedAtoms = planInsertedCellAtoms(
+      source.pkg,
+      streams,
+      intent.payloads,
+      source.allocateBlockId
+    );
+    if (!plannedAtoms.success) return plannedAtoms;
+    if (plannedAtoms.atoms.length) Object.assign(intent, { atoms: plannedAtoms.atoms });
+  }
   if (!isInsertedColumnIntent(intent))
     return fail('Invalid inserted column fragments, properties, or payload bindings.');
   const part = source.pkg.parts.get(source.partName);

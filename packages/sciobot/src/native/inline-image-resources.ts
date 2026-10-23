@@ -1,3 +1,4 @@
+import { insertedAtomsOfEdit } from '../diff/inserted-cell-atoms';
 import {
   validateRasterHeader,
   sniffImageMime,
@@ -36,9 +37,7 @@ export function planInlineDrawings(
   plan: CanonicalEditPlan
 ): readonly Extract<InsertedInlineAtom, { kind: 'drawing' }>[] {
   return plan.operations
-    .flatMap((edit) =>
-      edit.kind === 'inline-atoms' || edit.kind === 'siblings' ? (edit.atoms ?? []) : []
-    )
+    .flatMap(insertedAtomsOfEdit)
     .filter(
       (atom): atom is Extract<InsertedInlineAtom, { kind: 'drawing' }> => atom.kind === 'drawing'
     );

@@ -1,3 +1,5 @@
+import { cellAtomBindings, insertedAtomsOfEdit } from '../diff/inserted-cell-atoms';
+import { completeInlineAtomPayloads } from '../native/inline-atom-payloads';
 import { createInlineImageRuntime, type InlineImageRuntime } from '../native/inline-image-runtime';
 import type { PreparedInlineImages } from '../native/inline-image-resources';
 import { lowerRetainedAtoms } from './direct-inline-atoms';
@@ -490,11 +492,14 @@ function lowerDirectPlan(
             cells.map((cellId, index) => ({
               cellId,
               blocks: edit.intent.kind === 'split' ? edit.intent.cells[index]! : [],
+              atoms: edit.intent.kind === 'split' ? cellAtomBindings(edit.intent.atoms, index) : [],
               properties:
                 edit.intent.kind === 'split'
                   ? cellPropertiesAt(edit.intent.cellProperties, index)
                   : undefined,
-            }))
+            })),
+            undefined,
+            images
           );
         });
         break;
@@ -551,10 +556,12 @@ function lowerDirectPlan(
             cells.map((cellId, index) => ({
               cellId,
               blocks: intent.cells[index]!,
+              atoms: cellAtomBindings(intent.atoms, index),
               lists: cellListBindings(intent.lists, index),
               properties: cellPropertiesAt(intent.cellProperties, index),
             })),
-            listContext
+            listContext,
+            images
           );
         });
         break;
@@ -592,13 +599,14 @@ function lowerDirectPlan(
                   {
                     cellId: created[0]!,
                     blocks: entry.blocks,
+                    atoms: cellAtomBindings(intent.atoms, index),
                     lists: cellListBindings(intent.lists, index),
                     properties: cellPropertiesAt(intent.cellProperties, index),
                   },
                 ]
               : [];
           });
-          return fillNewCells(withPart(working, part), partName, cells, listContext);
+          return fillNewCells(withPart(working, part), partName, cells, listContext, images);
         });
         break;
       }
@@ -630,8 +638,11 @@ function lowerDirectPlan(
             cells!.map((cellId, index) => ({
               cellId,
               blocks: intent.cells[index]!,
+              atoms: cellAtomBindings(intent.atoms, index),
               properties: cellPropertiesAt(intent.cellProperties, index),
-            }))
+            })),
+            undefined,
+            images
           );
         });
         break;
@@ -727,6 +738,16 @@ function lowerDirectPlan(
         refuse('The document cannot gain the inline code style.', 'unsupported-operation');
       return styled!;
     });
+  const cellAtoms = plan.operations.flatMap((edit) =>
+    edit.kind === 'insert-row' ||
+    edit.kind === 'insert-column' ||
+    edit.kind === 'split-cell' ||
+    edit.kind === 'table-geometry'
+      ? insertedAtomsOfEdit(edit)
+      : []
+  );
+  if (cellAtoms.length)
+    deferred.push((working) => completeInlineAtomPayloads(working, partName, cellAtoms));
   return { staged, deferred, images };
 }
 
@@ -870,9 +891,7 @@ export function applyDirectPlan(
     original = nodeIds(session.part());
   if (
     editor.snapshot().collaborationStatus !== 'inactive' &&
-    plan.operations.some(
-      (edit) => edit.kind === 'inline-atoms' || (edit.kind === 'siblings' && edit.atoms?.length)
-    ) &&
+    plan.operations.some((edit) => insertedAtomsOfEdit(edit).length > 0) &&
     readPayloadStore(pkg).status !== 'ready'
   )
     return {

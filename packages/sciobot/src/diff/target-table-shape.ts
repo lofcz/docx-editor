@@ -1,3 +1,4 @@
+import { planInsertedCellAtoms } from './inserted-cell-atoms';
 import { targetNewCellProperties, type NewCellPropertyBinding } from './new-cell-properties';
 import type { TargetAstNode } from '../projection/parse-target';
 import { applyTreeOp, type OoxmlPart } from '@docx-editor.dev/core/store';
@@ -194,6 +195,8 @@ export function planTargetShapeGeometry(
         if (!fragments.success) return fragments;
         cells.push(fragments.fragments);
       }
+      const atomPlan = planInsertedCellAtoms(context.input.pkg, cells, [], context.allocateBlockId);
+      if (!atomPlan.success) return atomPlan;
       intent = {
         tableId,
         kind: 'split',
@@ -201,6 +204,7 @@ export function planTargetShapeGeometry(
         rows: request.rows,
         columns: request.columns,
         cells,
+        ...(atomPlan.atoms.length ? { atoms: atomPlan.atoms } : {}),
         ...(cellProperties.length ? { cellProperties } : {}),
       };
     }
@@ -246,12 +250,20 @@ export function planTargetShapeGeometry(
       if (!fragments.success) return fragments;
       streams.push(fragments.fragments);
     }
+    const atomPlan = planInsertedCellAtoms(
+      context.input.pkg,
+      streams,
+      edit.intent.payloads,
+      context.allocateBlockId
+    );
+    if (!atomPlan.success) return atomPlan;
     if (edit.kind === 'insert-row')
       revised.push({
         ...edit,
         intent: {
           ...edit.intent,
           cells: streams,
+          atoms: atomPlan.atoms,
         },
       });
     else
@@ -259,6 +271,7 @@ export function planTargetShapeGeometry(
         ...edit,
         intent: {
           ...edit.intent,
+          atoms: atomPlan.atoms,
           cells: edit.intent.cells.map((cell, index) => ({
             ...cell,
             blocks: streams[index]!,

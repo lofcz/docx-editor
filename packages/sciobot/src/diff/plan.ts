@@ -1,3 +1,4 @@
+import { insertedAtomsOfEdit } from './inserted-cell-atoms';
 import { isRetainedAtomBindings } from './retained-atoms';
 import { isInsertedAtomBindings } from './inserted-atom-bindings';
 import type { InsertedInlineAtom } from './inserted-atoms';
@@ -542,12 +543,7 @@ export function createEditPlan(
               edit.kind === 'split-cell'
             ? edit.intent.payloads
             : [];
-      const atoms =
-        edit.kind === 'inline-atoms'
-          ? edit.atoms
-          : edit.kind === 'siblings'
-            ? (edit.atoms ?? [])
-            : [];
+      const atoms = insertedAtomsOfEdit(edit);
       for (const id of [
         ...blocks.map((binding) => binding.payload.id),
         ...atoms.flatMap((atom) => (atom.kind === 'inline-control' ? [atom.payload.id] : [])),

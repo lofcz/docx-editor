@@ -1,3 +1,5 @@
+import { isInsertedCellAtoms } from './inserted-cell-atoms';
+import type { InsertedInlineAtom } from './inserted-atoms';
 import { isNewCellPropertyBindings, type NewCellPropertyBinding } from './new-cell-properties';
 import { isInsertedCellLists, type InsertedCellListBinding } from './inserted-cell-lists';
 import type { TargetAstNode } from '../projection/parse-target';
@@ -22,6 +24,7 @@ export interface InsertedTableRowIntent {
   readonly cells: readonly (readonly TargetAstNode[])[];
   readonly properties: InsertedRowProperties;
   readonly payloads: readonly InsertedRowPayloadBinding[];
+  readonly atoms?: readonly InsertedInlineAtom[];
   readonly lists?: readonly InsertedCellListBinding[];
   readonly cellProperties?: readonly NewCellPropertyBinding[];
 }
@@ -43,6 +46,7 @@ export function isInsertedRowIntent(value: unknown): value is InsertedTableRowIn
       'cells',
       'properties',
       'payloads',
+      'atoms',
       'lists',
       'cellProperties',
     ]) &&
@@ -57,7 +61,12 @@ export function isInsertedRowIntent(value: unknown): value is InsertedTableRowIn
       (Number.isSafeInteger(value.properties.heightTwips) &&
         Number(value.properties.heightTwips) >= 20 &&
         Number(value.properties.heightTwips) <= 31680)) &&
-    isInsertedCellFragments(value.cells, value.payloads) &&
+    isInsertedCellFragments(value.cells, value.payloads, true) &&
+    isInsertedCellAtoms(
+      value.cells as TargetAstNode[][],
+      value.payloads as InsertedCellPayloadBinding[],
+      value.atoms
+    ) &&
     (!Object.hasOwn(value, 'cellProperties') ||
       isNewCellPropertyBindings(value.cells as TargetAstNode[][], value.cellProperties)) &&
     (!Object.hasOwn(value, 'lists') ||
