@@ -31,18 +31,30 @@ export interface RetainedAtomGap {
   readonly end: number;
 }
 function sliceAst(ast: TargetAstNode, tokens: readonly InlineTargetToken[]): TargetAstNode {
-  const paths = new Set(tokens.map((token) => token.path.join('/')));
-  const visit = (node: TargetAstNode, path: number[]): TargetAstNode | null => {
-    if (paths.has(path.join('/'))) return node;
-    if (!Array.isArray(node.children)) return null;
-    const children = (node.children as TargetAstNode[]).flatMap((child, index) => {
-      const next = visit(child, [...path, index]);
-      return next ? [next] : [];
-    });
-    return children.length || !path.length ? { ...node, children } : null;
+  interface Paths {
+    leaf: boolean;
+    children: Map<number, Paths>;
+  }
+  const paths: Paths = { leaf: false, children: new Map() };
+  for (const token of tokens) {
+    let cursor = paths;
+    for (const index of token.path) {
+      let next = cursor.children.get(index);
+      if (!next) {
+        next = { leaf: false, children: new Map() };
+        cursor.children.set(index, next);
+      }
+      cursor = next;
+    }
+    cursor.leaf = true;
+  }
+  const visit = (node: TargetAstNode, selected: Paths): TargetAstNode => {
+    if (selected.leaf) return node;
+    const original = (node.children ?? []) as TargetAstNode[];
+    const children = [...selected.children].map(([index, child]) => visit(original[index]!, child));
+    return { ...node, children };
   };
-  const root = visit(ast, [])!;
-  const { depth: _depth, ...rest } = root;
+  const { depth: _depth, ...rest } = visit(ast, paths);
   return { ...rest, type: 'paragraph' };
 }
 /** Existing controls remain native anchors. Only the text gaps between them are editable here. */
