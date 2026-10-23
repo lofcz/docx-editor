@@ -34,7 +34,9 @@ Private types cover 2,203 files. The build verifies 261 private modules with cor
 
 Logs: `/tmp/d30-owned-text-native-broad.log`, `/tmp/d30-leading-owner-source.log`, `/tmp/d30-leading-owner-codec.log`, `/tmp/d30-owned-text-private-broad.log`, `/tmp/d30-owned-text-compiled-final.log`, `/tmp/d30-owned-text-reader.log`.
 
-## Open integration gates
+## Integration gate follow-up
+
+Runtime `827f0820` / `9c8a08c8` resolves the 64 historical composer failures below. The final 333-case gate passes with every original fixture unchanged. See [shared history repairs](composer-shared-history-repairs.md). The linked retained/new atom planning probes remain open.
 
 The complete C01/composer run at `d11c08c7` has 269 passing cases and 64 failures across 333 cases. Each failure also occurs at the earlier port checkpoint `88c58801`. All failure names, files and displayed diffs match. This comparison establishes their origin; it does not establish a passing integration gate. The [failure inventory](composer-inherited-failures-2026-10-24.json) retains all 64 names and baseline logs. No expectation changes or baseline recapture occurred. Follow-up leading-link checks pass the existing link recomposition cases.
 

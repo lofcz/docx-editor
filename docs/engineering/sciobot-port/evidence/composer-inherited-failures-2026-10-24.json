@@ -272,5 +272,6 @@
       "file": "packages/sciobot/src/review/recompose-born-table-peer.test.ts",
       "name": "peer suffix inside a born table survives replacement, decisions, history, carets, and Word reopen; 73,41/1"
     }
-  ]
+  ],
+  "resolutionEvidence": "composer-shared-history-repairs.json"
 }
