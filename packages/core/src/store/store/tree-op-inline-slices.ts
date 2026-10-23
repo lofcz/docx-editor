@@ -46,8 +46,8 @@ export function inlineTextSlice(
 export function inlineTextMerged(mint: () => string, left: OoxmlNode, right: OoxmlNode): OoxmlNode {
   if (left.kind === 'textValue' || right.kind === 'textValue')
     throw new Error('Expected text elements.');
-  const a = left.children[0];
-  const b = right.children[0];
+  const a = left.children[0] ?? { id: left.id, kind: 'textValue', value: '' };
+  const b = right.children[0] ?? { id: right.id, kind: 'textValue', value: '' };
   if (a?.kind !== 'textValue' || b?.kind !== 'textValue') throw new Error('Expected text leaves.');
   const created = textElement(
     mint,

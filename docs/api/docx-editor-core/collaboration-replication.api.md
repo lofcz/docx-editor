@@ -128,6 +128,14 @@ export interface CanonicalTextNodeDescriptor {
     readonly kind: 'textValue';
     // (undocumented)
     readonly logicalId: string;
+    readonly sourceText?: readonly ({
+        readonly beforeEffect: number;
+        readonly logicalId: string;
+        readonly utf16Length: number;
+        readonly utf16Start: number;
+    } | {
+        readonly utf16Length: number;
+    })[];
 }
 
 // @public

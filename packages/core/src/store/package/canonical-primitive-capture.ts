@@ -182,6 +182,7 @@ export function recordNativeFreshText(target: TextLeaf): void {
 }
 
 function sourcePieces(source: TextLeaf, start: number, length: number): TextPieces {
+  if (length === 0) return [];
   const frame = topFrame()!;
   const existing = frame.textSlices?.get(source);
   if (!existing)

@@ -267,3 +267,23 @@ for (const [field, value, code] of [
     expect(Y.encodeStateAsUpdate(replica.doc)).toEqual(before);
     expect(packageText(packageOf(replica))).toBe('Date: March 2 2026');
   });
+
+for (const value of [null, {}, [], [null], [3], [{ utf16Length: -1 }]])
+  test(`malformed source recipe ${JSON.stringify(value)} refuses before shared writes`, async () => {
+    const baseline = openStore(ONE_RUN).currentPackage();
+    const journal = structuredClone(captureFormatJournal(ONE_RUN, 6, 18, 'b').journal);
+    const effect = journal.effects.find(
+      (entry) =>
+        entry.kind === 'putNode' &&
+        entry.descriptor.kind === 'textValue' &&
+        entry.descriptor.sourceText
+    );
+    if (effect?.kind !== 'putNode') throw Error('Missing source descriptor');
+    Reflect.set(effect.descriptor, 'sourceText', value);
+    const replica = await seedReplica(baseline);
+    opened.push({ destroy: () => destroyReplica(replica) });
+    const before = Y.encodeStateAsUpdate(replica.doc);
+    expect(() => applyJournal(replica, journal)).toThrow('invalid-bound');
+    expect(Y.encodeStateAsUpdate(replica.doc)).toEqual(before);
+    expect(packageText(packageOf(replica))).toBe('Date: March 2 2026');
+  });

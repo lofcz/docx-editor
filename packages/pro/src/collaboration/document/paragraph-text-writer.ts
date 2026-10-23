@@ -326,9 +326,11 @@ function referencedIds(effect: SharedEffect): LogicalId[] {
     case 'putNode':
       return [
         effect.descriptor.logicalId,
-        ...(effect.descriptor.kind === 'textValue' && effect.descriptor.sourceText
+        ...(effect.descriptor.kind === 'textValue' && Array.isArray(effect.descriptor.sourceText)
           ? effect.descriptor.sourceText.flatMap((piece) =>
-              'logicalId' in piece ? [piece.logicalId as LogicalId] : []
+              piece && typeof piece === 'object' && typeof piece.logicalId === 'string'
+                ? [piece.logicalId as LogicalId]
+                : []
             )
           : []),
       ];

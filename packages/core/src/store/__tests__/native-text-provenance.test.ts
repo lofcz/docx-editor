@@ -1,3 +1,5 @@
+import { inlineTextMerged } from '../store/tree-op-inline-slices.ts';
+import { readOoxmlPart, type OoxmlNode } from '../package/ooxml-tree.ts';
 import { expect, test } from 'bun:test';
 import {
   nativeTextSliceOf,
@@ -66,6 +68,48 @@ test('a retained native tail lends its exact pre-edit window to later clones', (
       expect(nativeTextSliceOf(middle)).toEqual([
         { logicalId: 'original', utf16Start: 5, utf16Length: 6, beforeEffect: 0 },
       ]);
+    },
+    () => true
+  );
+  stop();
+});
+
+test('coalescing an empty imported text element creates no nonexistent source window', () => {
+  const part = readOoxmlPart(
+    '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t/><w:t>Word</w:t></w:r></w:p></w:body></w:document>',
+    {
+      name: '/word/document.xml',
+      contentType:
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml',
+    }
+  );
+  if (!part.ok) throw Error('Invalid fixture');
+  const leaves: OoxmlNode[] = [];
+  const walk = (node: OoxmlNode) => {
+    if (node.kind === 'text') leaves.push(node);
+    if (node.kind !== 'textValue') node.children.forEach(walk);
+  };
+  walk(part.part.root);
+  const store = {};
+  const stop = observeCanonicalPrimitiveJournal(store, () => {});
+  let next = 0;
+  runObservedStoreTransaction(
+    store,
+    () => {
+      for (const [left, right] of [
+        [leaves[0]!, leaves[1]!],
+        [leaves[1]!, leaves[0]!],
+      ]) {
+        const merged = inlineTextMerged(() => `new-${next++}`, left!, right!);
+        if (merged.kind === 'textValue' || merged.children[0]?.kind !== 'textValue')
+          throw Error('Missing text');
+        expect(merged.children[0].value).toBe('Word');
+        const original = leaves[1]!;
+        if (original.kind === 'textValue') throw Error('Missing element');
+        expect(nativeTextSliceOf(merged.children[0])).toEqual([
+          { logicalId: original.children[0]!.id, utf16Start: 0, utf16Length: 4, beforeEffect: 0 },
+        ]);
+      }
     },
     () => true
   );
