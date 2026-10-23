@@ -27,11 +27,19 @@ export interface CjkTypographySettings {
 export interface CjkParagraphTypography {
   readonly settings?: CjkTypographySettings;
   readonly kinsoku: boolean;
-  /** Authored `w:overflowPunct` switch, including language-enabled Latin punctuation. */
+  /** Authored `w:overflowPunct` switch. */
   readonly overflowPunctuation: boolean;
-  /** Full-width punctuation hangs only on justified paragraphs. */
-  readonly overflowFullwidthPunctuation?: boolean;
+  /**
+   * Line-end punctuation may hang past the margin: the authored switch is on, the paragraph is
+   * justified, and the document defaults name an East Asian face (`sourceEastAsianFont`).
+   * Absent (no paragraph properties resolved) means the authored switch decides.
+   */
+  readonly hangingPunctuation?: boolean;
   readonly characterWrap: boolean;
+  /** Automatic spacing at number/East Asian boundaries; absent means enabled. */
+  readonly autoSpaceDN?: boolean;
+  /** Automatic spacing at Latin/East Asian boundaries; absent means enabled. */
+  readonly autoSpaceDE?: boolean;
 }
 
 export const DEFAULT_CJK_TYPOGRAPHY: CjkParagraphTypography = Object.freeze({
@@ -101,20 +109,27 @@ export function resolveCjkTypography(
 ): CjkParagraphTypography {
   let { kinsoku, overflowPunctuation, characterWrap } = DEFAULT_CJK_TYPOGRAPHY;
   let justified = false;
+  let autoSpaceDN = true;
+  let autoSpaceDE = true;
   for (const prop of props) {
+    if (prop.localName === 'autoSpaceDN') autoSpaceDN = on(prop.attributes?.val);
+    if (prop.localName === 'autoSpaceDE') autoSpaceDE = on(prop.attributes?.val);
     if (prop.localName === 'kinsoku') kinsoku = on(prop.attributes?.val);
     if (prop.localName === 'overflowPunct') overflowPunctuation = on(prop.attributes?.val);
     if (prop.localName === 'wordWrap') characterWrap = !on(prop.attributes?.val);
     if (prop.localName === 'jc') justified = JUSTIFIED.has(prop.attributes?.val ?? '');
   }
-  // Full-width punctuation requires justification. Latin punctuation selected by
-  // an East Asian run language keeps the authored overflow switch in every alignment.
+  // Punctuation hangs only in justified paragraphs, full-width and Latin alike. Left, centered,
+  // and right-aligned lines keep line-end punctuation inside the margin. A document whose
+  // defaults name no East Asian face hangs no punctuation at all.
   return {
     settings,
     kinsoku,
     overflowPunctuation,
-    overflowFullwidthPunctuation: overflowPunctuation && justified,
+    hangingPunctuation: overflowPunctuation && justified && settings?.sourceEastAsianFont === true,
     characterWrap,
+    autoSpaceDN,
+    autoSpaceDE,
   };
 }
 
