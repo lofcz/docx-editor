@@ -2,18 +2,22 @@ import type { InlineImageRuntime } from '../native/inline-image-runtime';
 import { escapeXml } from '@docx-editor.dev/core/store';
 import { blockTag } from '../blocks/payload-opc-codec';
 import type { InsertedInlineAtom } from './inserted-atoms';
+import { SCIOBOT_CODE_STYLE_ID } from '../native/inline-code';
 
 /** New control fallback only. Character styles are applied after native paragraph allocation. */
 export function inlineAtomXml(
   op: InsertedInlineAtom,
-  images?: InlineImageRuntime
+  images?: InlineImageRuntime,
+  codeStyle = false
 ): { readonly xml: string; readonly length: number } | null {
   if (op.kind === 'drawing') return images?.render(op) ?? null;
-  if (op.kind !== 'inline-control' || op.marks.includes('code')) return null;
-  const properties = op.marks
-    .filter((mark) => mark !== 'code')
-    .map((mark) => (mark === 'bold' ? '<w:b/>' : mark === 'italic' ? '<w:i/>' : '<w:strike/>'))
-    .join('');
+  if (op.kind !== 'inline-control') return null;
+  const properties =
+    (codeStyle && op.marks.includes('code') ? `<w:rStyle w:val="${SCIOBOT_CODE_STYLE_ID}"/>` : '') +
+    op.marks
+      .filter((mark) => mark !== 'code')
+      .map((mark) => (mark === 'bold' ? '<w:b/>' : mark === 'italic' ? '<w:i/>' : '<w:strike/>'))
+      .join('');
   const run = (text: string) =>
     `<w:r>${properties ? `<w:rPr>${properties}</w:rPr>` : ''}${text}</w:r>`;
   const content = op.fallback

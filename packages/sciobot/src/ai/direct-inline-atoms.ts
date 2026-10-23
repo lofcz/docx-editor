@@ -1,6 +1,11 @@
 import type { InlineImageRuntime } from '../native/inline-image-runtime';
 import { retainedAtomLinks } from './direct-atom-links';
 import {
+  inlineCodeRunChanges,
+  inlineCodeCharacterStyles,
+  hyperlinkCharacterStyle,
+} from '../native/inline-code';
+import {
   applyTreeOp,
   AUTHORABLE_RUN_PROPERTIES,
   authoredProperties,
@@ -54,6 +59,7 @@ export function lowerRetainedAtoms(
   if (problem) refuseWrite(problem.error, problem.code);
   const ops: TreeDocOp[] = [];
   const links = retainedAtomLinks(pkg, part, edit);
+  const codeStyles = new Set(inlineCodeCharacterStyles(pkg));
   let preview = part;
   const apply = (op: TreeDocOp) => {
     const result = applyTreeOp(preview, op);
@@ -94,12 +100,37 @@ export function lowerRetainedAtoms(
         end: atom.offset + atom.fallback.length,
         properties: [
           ...inherited,
-          ...atom.marks.map((mark) => ({
-            localName: mark === 'bold' ? 'b' : mark === 'italic' ? 'i' : 'strike',
-            attributes: {},
-          })),
+          ...atom.marks
+            .filter((mark) => mark !== 'code')
+            .map((mark) => ({
+              localName: mark === 'bold' ? 'b' : mark === 'italic' ? 'i' : 'strike',
+              attributes: {},
+            })),
         ],
       });
+      const code = inlineCodeRunChanges(
+        preview,
+        {
+          paragraphId: edit.paragraphId,
+          start: atom.offset,
+          end: atom.offset + atom.fallback.length,
+          code: atom.marks.includes('code'),
+        },
+        { codeStyles: [...codeStyles], hyperlinkStyle: hyperlinkCharacterStyle(pkg) }
+      );
+      if (!code.success) refuseWrite(code.error, code.code);
+      for (const change of code.changes) {
+        if (change.after !== null && atom.marks.includes('code')) codeStyles.add(change.after);
+        apply({
+          op: 'setRunProperties',
+          paragraphId: edit.paragraphId,
+          start: change.start,
+          end: change.end,
+          properties: change.properties,
+          characterStyle: change.after,
+          ...(change.targetRunIds ? { targetRunIds: change.targetRunIds } : {}),
+        });
+      }
     }
   }
   return {

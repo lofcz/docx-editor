@@ -759,6 +759,14 @@ export function exportMarkdownLayout(
   const indexes = buildTranslationIndexes(layout);
   const notes = buildNoteStoryIndexes(layout);
   const media = assets === undefined ? undefined : createMediaRendering(assets, imageSyntax);
+  const inlineControlRanges = new Map<string, { start: number; end: number }[]>();
+  if (codeCharacterStyles)
+    for (const control of layout.contentControls ?? []) {
+      if (control.level !== 'inline' || !control.range) continue;
+      const ranges = inlineControlRanges.get(control.range.paragraphId) ?? [];
+      ranges.push({ start: control.range.start, end: control.range.end });
+      inlineControlRanges.set(control.range.paragraphId, ranges);
+    }
   const context: TranslationContext = {
     media,
     anchors: anchorProjection(
@@ -769,6 +777,7 @@ export function exportMarkdownLayout(
     tableCell: false,
     tableSyntax: options.tableSyntax ?? 'gfm',
     ...(codeCharacterStyles ? { codeCharacterStyles } : {}),
+    ...(inlineControlRanges.size ? { inlineControlRanges } : {}),
     ...(horizontalRuleParagraphStyles ? { horizontalRuleParagraphStyles } : {}),
     displayMode,
     sourceScope: markdownSourceScope('body', '', null),

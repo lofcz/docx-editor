@@ -12,7 +12,7 @@ import {
 
 // `code` is always innermost and literal: its content is never escaped and it opens with a
 // content-dependent backtick fence rather than a fixed delimiter.
-type MarkdownInlineStyle = 'strike' | 'italic' | 'bold' | 'code';
+type MarkdownInlineStyle = 'strike' | 'italic' | 'bold' | 'code' | 'codeHtml';
 
 export interface MarkdownTextToken {
   readonly span: StyleSpanRecord;
@@ -45,6 +45,10 @@ interface MarkdownInlineContext {
   readonly sourceCapture?: MarkdownSourceCapture;
   /** Character style IDs whose runs project as code spans. */
   readonly codeCharacterStyles?: ReadonlySet<string>;
+  readonly inlineControlRanges?: ReadonlyMap<
+    string,
+    readonly { readonly start: number; readonly end: number }[]
+  >;
 }
 
 export interface MarkdownSourceCapture {
@@ -386,6 +390,8 @@ function markdownStyleDelimiter(style: MarkdownInlineStyle): string {
       return '**';
     case 'code':
       throw new TypeError('Code span delimiters depend on their content');
+    case 'codeHtml':
+      throw new TypeError('Structured code uses an HTML inline island');
     default:
       return assertNever(style);
   }
@@ -401,6 +407,8 @@ function markdownStyleTag(style: MarkdownInlineStyle): string {
       return 'strong';
     case 'code':
       throw new TypeError('Code spans keep backtick syntax inside HTML islands');
+    case 'codeHtml':
+      return 'code';
     default:
       return assertNever(style);
   }
@@ -457,6 +465,7 @@ function inlineIslandNeedsHtml(
   for (let index = start; index < end; index += 1) {
     const chunk = chunks[index]!;
     if (chunk.kind !== 'text') continue;
+    if (chunk.styles.includes('codeHtml')) return true;
     const previous = chunks[index - 1];
     const next = chunks[index + 1];
     const styles = delimitedStyles(chunk.styles);
@@ -582,7 +591,17 @@ export class MarkdownInlineWriter {
       (token.span.projected !== true &&
         token.span.equation === undefined &&
         token.sourceText.length === token.span.range.end - token.span.range.start);
-    const styles = markdownInlineStyles(token.span, this.#context);
+    const nativeStyles = markdownInlineStyles(token.span, this.#context);
+    // A content-control projection can replace only its native source span. Backticks
+    // would turn that structural replacement into literal text. HTML keeps its ownership.
+    const structured =
+      nativeStyles.includes('code') &&
+      this.#context.inlineControlRanges
+        ?.get(token.paragraphId)
+        ?.some((range) => token.span.range.start < range.end && token.span.range.end > range.start);
+    const styles = structured
+      ? nativeStyles.map((style) => (style === 'code' ? ('codeHtml' as const) : style))
+      : nativeStyles;
     if (styles[styles.length - 1] === 'code') {
       // Code keeps its own whitespace. A manual break cannot sit inside a code span, so it
       // closes the span and keeps only the surrounding emphasis.

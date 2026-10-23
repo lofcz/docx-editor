@@ -522,7 +522,7 @@ function paragraphXml(
     }
     if (token.kind === 'atom') {
       const op = context.atoms.get(inlineAtomKey(path, token.path)),
-        rendered = op && inlineAtomXml(op, context.images);
+        rendered = op && inlineAtomXml(op, context.images, true);
       if (!rendered)
         refuseWrite(
           'Inserted atoms need their supported native payload or resource representation.',

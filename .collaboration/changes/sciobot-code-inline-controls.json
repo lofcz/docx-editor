@@ -1,0 +1,10 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Private atom rendering refused code-marked controls. Backtick export made structural control replacements literal code text.",
+  "after": "Native inline controls carry the existing application code character style and its definition. Imported base styles remain reversible. The Markdown exporter uses structural HTML code boundaries for code-styled inline controls while preserving ordinary backtick code spans and native source ranges.",
+  "reason": "Existing native run formatting, content-control, style, package and primitive journal operations carry the change. No shared state schema, payload schema or journal operation kind changes. The EigenPal Pro License transport stays limited to evaluation fixtures.",
+  "tests": ["packages/sciobot/src/diff/code-inline-atoms.test.ts", "packages/docx-to-markdown/test/markdown-code-spans.test.ts"],
+  "changeset": "preserve-structured-inline-code",
+  "migration": null
+}

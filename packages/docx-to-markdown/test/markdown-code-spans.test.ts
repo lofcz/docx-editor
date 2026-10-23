@@ -182,3 +182,31 @@ test('malformed code style options refuse', async () => {
     ).rejects.toThrow(TypeError);
   }
 });
+
+test('code-styled inline controls keep structural HTML boundaries and exact literal source text', async () => {
+  const value = 'x*y`$ & <';
+  const encoded = 'x*y`$ &amp; &lt;';
+  const control =
+    '<w:sdt><w:sdtPr><w:tag w:val="custom:literal"/></w:sdtPr><w:sdtContent>' +
+    code(encoded) +
+    '</w:sdtContent></w:sdt>';
+  const result = await project(
+    paragraph(text('Before '), code('plain'), text(' '), control, text(' after'))
+  );
+  expect(result.markdown).toContain('`plain`');
+  expect(result.markdown).toContain('<code>');
+  expect(result.markdown).toContain('</code>');
+  expect(html(result.markdown)).toBe(
+    '<p>Before <code>plain</code> <code>x*y`$ &amp; &lt;</code> after</p>'
+  );
+  const start = 'Before plain '.length;
+  const source = result.sourceMap!.sources.find(
+    (slice) => slice.sourceStart === start && slice.sourceEnd === start + value.length
+  )!;
+  expect(source).toBeDefined();
+  expect(source.exact).toBe(true);
+  expect(result.markdown.slice(source.markdownStart, source.markdownEnd)).not.toContain('<code>');
+  expect(result.markdown.slice(source.markdownStart, source.markdownEnd)).not.toContain('</code>');
+  const defaultResult = await project(paragraph(control), null);
+  expect(defaultResult.markdown).not.toContain('<code>');
+});
