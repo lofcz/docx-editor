@@ -16,6 +16,7 @@ import { buildBlockIndex } from './block-index';
 import { createMentionPayload, mentionWordFallback } from './mention-codec';
 import { insertMention } from './mention-insert';
 import { serializeMention } from '../projection/mention';
+import { blockAttributeAt } from '../projection/blocks';
 const person = createMentionPayload('person', 'user-7', 'Ada @ada & [notes]', {
   private: { keep: [7, true] },
 });
@@ -79,6 +80,9 @@ test('person/document controls preserve exact metadata, Word fallback, Markdown,
         );
         expect(properties.map((p) => p.path)).toEqual([['key'], ['value']]);
         expect(properties.every((p) => p.valueStart === null && p.valueEnd === null)).toBe(true);
+        const span = projected.blocks.find((block) => block.id === payload.id)!;
+        expect(blockAttributeAt(projected, span.start + 1)?.property).toBe('value');
+        expect(blockAttributeAt(projected, span.end - 2)?.property).toBe('key');
       }
       const parsed = parseTargetMarkdown(projected.text);
       if (!parsed.success) throw Error(parsed.error);
