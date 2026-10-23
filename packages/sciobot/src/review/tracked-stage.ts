@@ -1,5 +1,5 @@
 import { createDirectListContext } from '../ai/direct-lists';
-import { stageTrackedChecklist } from './tracked-stage-checklists';
+import { stageTrackedList } from './tracked-stage-lists';
 import {
   collectRevisionSites,
   prepareTrackedRunOrigins,
@@ -193,7 +193,7 @@ export function stageTrackedPlan(
           'Formatting tracking is disabled for this document or editor.',
           'unsupported-operation'
         );
-      receipts.push(...stageTrackedChecklist(writer, plan, edit, revision));
+      receipts.push(...stageTrackedList(writer, plan, edit, revision, listContext));
     } else if (edit.kind === 'siblings')
       receipts.push(...stageTrackedSiblings(writer, edit, revision));
     else if (

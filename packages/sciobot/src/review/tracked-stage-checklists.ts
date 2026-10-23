@@ -14,7 +14,11 @@ import {
   type OoxmlNode,
   type RevisionAddress,
 } from '@docx-editor.dev/core/store';
-import { applyDirectListAssignments } from '../ai/direct-lists';
+import {
+  applyDirectListAssignments,
+  createDirectListContext,
+  type DirectListContext,
+} from '../ai/direct-lists';
 import { planListMembership } from '../diff/lists';
 import type { CanonicalEdit, CanonicalEditPlan } from '../diff/plan';
 import { refuseWrite } from '../diff/fragment-seeds';
@@ -32,11 +36,12 @@ export function stageTrackedChecklist(
   writer: TrackedStageWriter,
   plan: CanonicalEditPlan,
   edit: Edit,
-  revision: TrackedStageAttribution
+  revision: TrackedStageAttribution,
+  context: DirectListContext = createDirectListContext()
 ): readonly ReviewGroupReceipt[] {
   const pkg = writer.currentPackage(),
     part = pkg.parts.get(edit.partName)!;
-  if (edit.after.kind !== 'checklist' && !(edit.after.kind === 'none' && edit.before.checkbox))
+  if (edit.after.kind !== 'checklist' && !edit.before.checkbox)
     refuseWrite('This tracked list executor needs a checklist intention.', 'unsupported-operation');
   const protection = propertyControlRefusal(part, edit.paragraphId);
   if (protection) refuseWrite(protection, 'unsupported-operation');
@@ -52,15 +57,31 @@ export function stageTrackedChecklist(
   )
     refuseWrite('The checklist source changed after planning.', 'stale-revision');
   const originalSites = new Set(collectRevisionSites(part).map((site) => site.node.id));
+  if (edit.after.kind === 'ordered' || edit.after.kind === 'bullet')
+    writer.edit((working) =>
+      applyDirectListAssignments(
+        working,
+        edit.partName,
+        [{ paragraphId: edit.paragraphId, before: null, target: edit.after }],
+        context,
+        revision
+      )
+    );
   // Detached transactions isolate preview primitives from the observed live journal.
-  const previewStore = new TreePackageStore(pkg, pkg.parts.get(pkg.mainDocumentPart)!);
+  const previewStore = new TreePackageStore(
+    writer.currentPackage(),
+    writer.currentPackage().parts.get(pkg.mainDocumentPart)!
+  );
   const previewResult = previewStore.transact(
     { kind: 'body' },
     (ctx) => {
       ctx.applyPackage((value) =>
-        applyDirectListAssignments(value, edit.partName, [
-          { paragraphId: edit.paragraphId, before: edit.before, target: edit.after },
-        ])
+        applyDirectListAssignments(
+          value,
+          edit.partName,
+          [{ paragraphId: edit.paragraphId, before: edit.before, target: edit.after }],
+          { instances: new Map(context.instances), levels: new Set(context.levels) }
+        )
       );
     },
     { recordsHistory: false }
@@ -89,7 +110,11 @@ export function stageTrackedChecklist(
   const currentProperties = directParagraphProperties(part, edit.paragraphId);
   const proposedProperties = directParagraphProperties(proposedPart, edit.paragraphId);
   if (JSON.stringify(currentProperties) !== JSON.stringify(proposedProperties)) {
-    if (proposedProperties.some((property) => property.localName === 'numPr'))
+    if (
+      edit.after.kind !== 'ordered' &&
+      edit.after.kind !== 'bullet' &&
+      proposedProperties.some((property) => property.localName === 'numPr')
+    )
       writer.apply(edit.partName, {
         op: 'setListNumbering',
         paragraphId: edit.paragraphId,

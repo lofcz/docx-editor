@@ -57,8 +57,14 @@ export function applyDirectListAssignments(
   input: OoxmlPackage,
   partName: string,
   assignments: readonly DirectListAssignment[],
-  context: DirectListContext = createDirectListContext()
+  context: DirectListContext = createDirectListContext(),
+  revision?: Extract<TreeDocOp, { op: 'setListNumbering' }>['revision']
 ): OoxmlPackage {
+  if (
+    revision &&
+    assignments.some(({ before, target }) => before?.checkbox || target.kind === 'checklist')
+  )
+    throw new ListWriteError('Tracked checkbox changes need the checklist executor.');
   let pkg = input,
     seeds = 0;
   const { instances, levels } = context;
@@ -153,6 +159,7 @@ export function applyDirectListAssignments(
         paragraphId,
         numId: target.kind === 'none' ? '0' : numId(target),
         ...(target.kind === 'none' ? {} : { level: target.level }),
+        ...(revision ? { revision } : {}),
       });
     if (target.kind === 'checklist' || checkbox) {
       const properties = directParagraphProperties(part(), paragraphId),

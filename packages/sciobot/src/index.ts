@@ -73,6 +73,7 @@ export * from './review/native-module';
 export * from './review/track-text';
 export * from './review/track-hyperlinks';
 export * from './review/track-checklists';
+export * from './review/track-format';
 export * from './review/track-blocks';
 export * from './review/track-table-cells';
 export * from './ai/apply-direct';
