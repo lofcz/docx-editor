@@ -1,0 +1,208 @@
+{
+  "schemaVersion": 1,
+  "leaf": "D30",
+  "status": "implementation-progress",
+  "closedLeaves": 0,
+  "runtimeRevision": "7ea0a3d03554d5d6ee7938da88587bfa633cacb3",
+  "implementationCommits": ["7234d5a0", "7ea0a3d0"],
+  "originalRegression": {
+    "file": "docs/engineering/sciobot-port/evidence/regressions/linked-retained-and-new-atoms.test.ts",
+    "sha256": "7195d418bfd6b79336ac2d931482dbf414294d2eccfe989edcf612586f056847",
+    "unchangedSince": "4a0435ad"
+  },
+  "composerFixtures": {
+    "baseline": "4a0435ad",
+    "allUnchanged": true,
+    "sha256": {
+      "packages/sciobot/src/diff/target-c01-matrix.test.ts": "a8d0226c466ce254cf091a74db5e0c70dc31e2886bce5d60376fe39991a01a59",
+      "packages/sciobot/src/review/recompose-application-fragments-collaboration.test.ts": "2448a9677af255cd0a9eaec927490e726f6efc16fca9312b60eb3370d9d98cf7",
+      "packages/sciobot/src/review/recompose-application-fragments.test.ts": "2846622acb66f367c2785b926895e38ec4c4cbe8c35fd1b1ba33166043476a0b",
+      "packages/sciobot/src/review/recompose-atomic-targets.test.ts": "18dff04a3ca8d569188083857ef200be840710adb0510b2adaea1d302cf69467",
+      "packages/sciobot/src/review/recompose-born-peer.test.ts": "befb212b2970c66680a35bb84754fdf95642b8828255e922c4ce14501a862c28",
+      "packages/sciobot/src/review/recompose-born-table-peer.test.ts": "c2d0f27f2c76aa03ad0f5005a4aa5da445f3777c72c57ed305b055cd80387c6a",
+      "packages/sciobot/src/review/recompose-collaboration.test.ts": "bc294a4f31997a66a8f453a3dedfcb6824c48e1310be91c5635a20902ad4aa48",
+      "packages/sciobot/src/review/recompose-compound-targets-collaboration.test.ts": "08abefd279883669640e3f28d09581e4dd384fb4f126ea18f1b7819b4db70dd0",
+      "packages/sciobot/src/review/recompose-compound-targets.test.ts": "9d5e0af88c890fb06d7113a18230aab2da0b9620ef02750ed05f8e52a260598f",
+      "packages/sciobot/src/review/recompose-inserted-lists-collaboration.test.ts": "b1491e5c503e759e4d60d3d8b36afc6040d0dc9e31714c0a64fb2b5d626b1e92",
+      "packages/sciobot/src/review/recompose-inserted-lists.test.ts": "e8bcf7759f3591446db179603e1483af048b8ce5e0db4ef3a3c717f39b1d3e13",
+      "packages/sciobot/src/review/recompose-inserted-tables-collaboration.test.ts": "6e1408312a35e7e227dd2dee41ee2aa509a54e32bf53d6ef691e8338e8805f21",
+      "packages/sciobot/src/review/recompose-inserted-tables.test.ts": "3ba1c94f1815d40ee54fe37e1e2d9daf4f510023a9f2898f019c930ce3d1b7a7",
+      "packages/sciobot/src/review/recompose-links.test.ts": "c498fb862e07489edd0d4afc1aace5b9a56e1e9188d7490810691609f6b5f7a6",
+      "packages/sciobot/src/review/recompose-mixed-collaboration.test.ts": "d5e31af8abd5142ce84a45d104feeeecfd67e5be27148af604a45c2c4687e3cb",
+      "packages/sciobot/src/review/recompose-mixed.test.ts": "29bfc304cb4919e28d817b83ab4aca440aff01ee9144dce9f6a392c4c61c9a6d",
+      "packages/sciobot/src/review/recompose-payloads-collaboration.test.ts": "96bcb2293525aafddfa5ebd22ca458f5e8b751bf2d48c075a9e64db4a2bf3c8c",
+      "packages/sciobot/src/review/recompose-payloads.test.ts": "3e7af2edf47a6c740f79246ea69fc61b7456ce2c1c7d9e5685930ee42b7fe13e",
+      "packages/sciobot/src/review/recompose-table-targets-collaboration.test.ts": "735db3edc0765e6e3d6237849c82a5462f5033dd30277875eac9e57e8b44d56e",
+      "packages/sciobot/src/review/recompose-table-targets.test.ts": "fa57a118a2e0c0c25d8f0e7375265b2ce65000badf267444bf7aa8fad844c39c",
+      "packages/sciobot/src/review/recompose-tables-collaboration.test.ts": "2ec7557a95a2a206e37bc67e58d4c8004f572cca2c7f80b1de1c8e353e16f38b",
+      "packages/sciobot/src/review/recompose-tables.test.ts": "b1dcd05054a2eb0db4503e61573986ce6b67531fcc0147a716fe755e4b760f8a",
+      "packages/sciobot/src/review/recompose.test.ts": "49bad6c7ed0d3e1ec466dbd39d92630d8fc212c28c0646cbf75531474eabc431",
+      "packages/sciobot/src/review/recompose-atomic-targets-collaboration.test.ts": "c294ee8e2d24239242ccb5edd1d8bc57579421526067b8404209e4fa0d0fea99"
+    }
+  },
+  "checks": {
+    "native": {
+      "log": "/tmp/mixed-linked-native-final.log",
+      "passed": 1028,
+      "failed": 0,
+      "assertions": 4494,
+      "command": "bun test --preload ./scripts/test/preload-dom.ts <files>",
+      "files": [
+        "packages/core/src/store/__tests__/tree-ops.test.ts",
+        "packages/core/src/store/__tests__/typed-content-controls.test.ts",
+        "packages/core/src/store/__tests__/hyperlink-control-envelope.test.ts",
+        "packages/core/src/store/__tests__/hyperlink-text-owner.test.ts",
+        "packages/core/src/store/__tests__/tracked-hyperlink-projection.test.ts",
+        "packages/core/src/store/__tests__/tracked-hyperlink-structure.test.ts",
+        "packages/core/src/store/__tests__/tracked-hyperlink-target.test.ts",
+        "packages/core/src/store/__tests__/tracked-inline-content-control.test.ts",
+        "packages/core/src/store/__tests__/hyperlink-lossless-editing.test.ts",
+        "packages/core/src/store/__tests__/hyperlink-mint-model-shape.test.ts",
+        "packages/core/src/store/__tests__/hyperlink-ops.test.ts",
+        "packages/core/src/store/__tests__/hyperlink-roundtrip.test.ts",
+        "packages/core/src/store/__tests__/inline-run-wrappers.test.ts",
+        "packages/core/src/store/__tests__/content-control-addressing.test.ts",
+        "packages/core/src/store/__tests__/content-control-binding.test.ts",
+        "packages/core/src/store/__tests__/content-control-checkbox-defaults.test.ts",
+        "packages/core/src/store/__tests__/content-control-checkbox-structure.test.ts",
+        "packages/core/src/store/__tests__/content-control-destructive-value.test.ts",
+        "packages/core/src/store/__tests__/content-control-fail-closed.test.ts",
+        "packages/core/src/store/__tests__/content-control-inline-locks.test.ts",
+        "packages/core/src/store/__tests__/content-control-insert.test.ts",
+        "packages/core/src/store/__tests__/content-control-lock.test.ts",
+        "packages/core/src/store/__tests__/content-control-locks.test.ts",
+        "packages/core/src/store/__tests__/content-control-nested-reach.test.ts",
+        "packages/core/src/store/__tests__/content-control-nodes-cache.test.ts",
+        "packages/core/src/store/__tests__/content-control-ops.test.ts",
+        "packages/core/src/store/__tests__/content-control-property-identity.test.ts",
+        "packages/core/src/store/__tests__/content-control-protection.test.ts",
+        "packages/core/src/store/__tests__/content-control-restricted-edges.test.ts",
+        "packages/core/src/store/__tests__/content-control-roundtrip.test.ts",
+        "packages/core/src/store/__tests__/content-control-value-structure.test.ts",
+        "packages/core/src/store/__tests__/content-control-walks.test.ts",
+        "packages/core/src/store/__tests__/control-edge-typing-format.test.ts"
+      ]
+    },
+    "compiled": {
+      "log": "/tmp/mixed-linked-compiled-final.log",
+      "passed": 239,
+      "failed": 0,
+      "assertions": 15959,
+      "command": "bun packages/sciobot/scripts/check-code-inline-controls-compiled.mjs inline-images-materialization.test.ts inline-images-collaboration.test.ts imported-image-boundary-collaboration.test.ts retained-atom-links.test.ts retained-atom-links-collaboration.test.ts retained-atom-marks.test.ts retained-atom-marks-collaboration.test.ts mixed-inline-atoms.test.ts mixed-inline-atoms-collaboration.test.ts code-inline-atoms.test.ts code-inline-atoms-collaboration.test.ts code-atom-middle-peer-undo.test.ts",
+      "files": [
+        "inline-images-materialization.test.ts",
+        "inline-images-collaboration.test.ts",
+        "imported-image-boundary-collaboration.test.ts",
+        "retained-atom-links.test.ts",
+        "retained-atom-links-collaboration.test.ts",
+        "retained-atom-marks.test.ts",
+        "retained-atom-marks-collaboration.test.ts",
+        "mixed-inline-atoms.test.ts",
+        "mixed-inline-atoms-collaboration.test.ts",
+        "code-inline-atoms.test.ts",
+        "code-inline-atoms-collaboration.test.ts",
+        "code-atom-middle-peer-undo.test.ts"
+      ]
+    },
+    "composers": {
+      "log": "/tmp/mixed-linked-composers-final.log",
+      "passed": 333,
+      "failed": 0,
+      "assertions": 16071,
+      "command": "bun test --preload ./scripts/test/preload-dom.ts <composerFixtures files>"
+    },
+    "coreTypes": {
+      "command": "bun run --filter '@docx-editor.dev/core' typecheck",
+      "files": 1605,
+      "errors": 0,
+      "log": "/tmp/mixed-linked-core-types-final.log"
+    },
+    "privateTypes": {
+      "command": "bun run --filter '@sciobot/docx' typecheck",
+      "files": 2206,
+      "errors": 0,
+      "log": "/tmp/mixed-linked-private-types-final.log"
+    },
+    "coreBuild": {
+      "command": "bun run --filter '@docx-editor.dev/core' build",
+      "passed": true,
+      "log": "/tmp/mixed-linked-core-build.log"
+    },
+    "privateBuild": {
+      "command": "bun run --filter '@sciobot/docx' build",
+      "modules": 262,
+      "coreExternal": true,
+      "log": "/tmp/mixed-linked-private-build.log"
+    },
+    "coreApi": {
+      "command": "node scripts/api-extractor.mjs --package @docx-editor.dev/core",
+      "entries": 15,
+      "errors": 0,
+      "log": "/tmp/mixed-linked-core-api.log"
+    },
+    "format": {
+      "command": "bun run format",
+      "passed": true,
+      "log": "/tmp/mixed-linked-format.log",
+      "finalFollowup": "Scoped Prettier also formatted both final native files in the isolated inheritance check."
+    },
+    "lint": {
+      "command": "bun run lint",
+      "passed": true,
+      "log": "/tmp/mixed-linked-lint-final.log"
+    },
+    "originalProbes": {
+      "command": "bun test --preload ./scripts/test/preload-dom.ts ./docs/engineering/sciobot-port/evidence/regressions/linked-retained-and-new-atoms.test.ts",
+      "passed": 2,
+      "failed": 0,
+      "assertions": 35,
+      "log": "/tmp/mixed-linked-original-probes-final.log"
+    },
+    "compatibility": {
+      "command": "bun run collaboration:check",
+      "log": "/tmp/mixed-linked-policy-final.log",
+      "decisions": 191,
+      "inheritedFormatFields": 2,
+      "passed": true
+    }
+  },
+  "nativeOracles": [
+    "Exact retained control IDs and canonical Word fingerprints",
+    "Exact retained payloads and media bytes",
+    "Native undo to original Word and media; redo and cold reopening",
+    "Original hyperlink ownership and protection; both actor histories",
+    "Independent native peer typing applied to original and changed Word",
+    "Remote caret coordinates and awareness offsets",
+    "Only fresh image references reach resource resolution",
+    "Serialized plans reconstruct the same complete intentions",
+    "Pending peer formatting records remain only on original text"
+  ],
+  "inventory": {
+    "changedSnapshotKeys": ["applicationRevision"],
+    "pinnedRevision": "5650bdf550b7987174d1b61fe2a925b86fb24f15",
+    "currentRevision": "073cb22447c6ac6a3699958e27bb1f3b8661bd22",
+    "sourceHashes": 199,
+    "sourceHashesMatch": true
+  },
+  "backlogAudit": {
+    "command": "bun docs/engineering/sciobot-port/check.mjs",
+    "passed": false,
+    "reason": "Only applicationRevision differs in the production snapshot; all 199 pinned source hashes match. No capture or application mutations occurred.",
+    "log": "/tmp/mixed-linked-backlog-final.log"
+  },
+  "limitsChanged": false,
+  "productionImportsEvaluationTransport": false,
+  "remaining": [
+    "Ambiguous identical retained/fresh atom identity",
+    "Image removal and replacement",
+    "Nested registered cell fragments",
+    "Tracked atom ownership",
+    "Installed application parity",
+    "Full R19 requirements"
+  ],
+  "backlog": {
+    "total": 276,
+    "closed": 179,
+    "remaining": 97
+  }
+}

@@ -36,13 +36,13 @@ Logs: `/tmp/d30-owned-text-native-broad.log`, `/tmp/d30-leading-owner-source.log
 
 ## Integration gate follow-up
 
-Runtime `827f0820` / `9c8a08c8` resolves the 64 historical composer failures below. The final 333-case gate passes with every original fixture unchanged. See [shared history repairs](composer-shared-history-repairs.md). The linked retained/new atom planning probes remain open.
+Runtime `827f0820` / `9c8a08c8` resolves the 64 historical composer failures below. The final 333-case gate passes with every original fixture unchanged. See [shared history repairs](composer-shared-history-repairs.md). Runtime `7234d5a0` / `7ea0a3d0` resolves both linked retained/new atom probes. See [mixed atom evidence](mixed-inline-atoms.md).
 
 The complete C01/composer run at `d11c08c7` has 269 passing cases and 64 failures across 333 cases. Each failure also occurs at the earlier port checkpoint `88c58801`. All failure names, files and displayed diffs match. This comparison establishes their origin; it does not establish a passing integration gate. The [failure inventory](composer-inherited-failures-2026-10-24.json) retains all 64 names and baseline logs. No expectation changes or baseline recapture occurred. Follow-up leading-link checks pass the existing link recomposition cases.
 
 These failures affect later proposal waves, born tables/lists and offline old-row deletion. One representative expected view contains `Alpha Q end` and `Final`; the actual view retains `Alpha XYZ end` and `New` after reconnect. Repairing these suggestion histories is a priority for the complete port.
 
-Two additional [linked retained/new atom probes](regressions/linked-retained-and-new-atoms.test.ts) fail during planning. They preserve complete media, original-control identity/fingerprint, payload, undo/redo and reopen assertions. One inserts an image beside retained linked math. The other inserts math beside a retained linked image. The current gap planner rejects hyperlinks, and the unchanged-atom stream requires the same complete atom sequence. These cases require whole-paragraph source ownership across retained and fresh atoms.
+At checkpoint `c37f8096`, two additional [linked retained/new atom probes](regressions/linked-retained-and-new-atoms.test.ts) fail during planning. They preserve complete media, original-control identity/fingerprint, payload, undo/redo and reopen assertions. One inserts an image beside retained linked math. The other inserts math beside a retained linked image. The current gap planner rejects hyperlinks, and the unchanged-atom stream requires the same complete atom sequence. These cases require whole-paragraph source ownership across retained and fresh atoms.
 
 D30 remains open. Image removal/replacement, nested registered cell fragments, tracked atom ownership and installed application parity remain open. The backlog stays at 179 closed and 97 open leaves.
 
