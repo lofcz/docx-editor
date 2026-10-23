@@ -162,6 +162,9 @@ Five malformed-input cases expose a wrapper exception before the coordinator val
 
 The final guard checkout is `/tmp/sciobot-docx-r06-final`, branch `codex/r06-format-final`. The wrapper validates and copies the bounded canonical plan before dispatch. Five malformed inputs now return `invalid-input` without package, revision, or history writes. All five complete affected files pass 69 cases and 1232 assertions in `/tmp/r06-final-focused.log`. Private types pass 2062 files in `/tmp/r06-guard-types.log`. The private build verifies 217 modules with core external in `/tmp/r06-guard-build.log`. Root lint passes with inherited warnings in `/tmp/r06-guard-root-lint.log`; scoped formatting passes in `/tmp/r06-guard-format.log`. The broad frozen run remains on the original isolated runtime. Its result and exact source check must finish before closure; the final wrapper and two added test files have the separate five-file verification above.
 
+
+**Primary integration checkpoint:** The final R06 source now resides on `codex/react-block-proof`. All thirteen changed package/audit files match `/tmp/sciobot-docx-r06-final` byte for byte. Fresh seed allocation also fixes repeated independent numbering starts and checkbox creations. Six complete affected files pass 71 cases and 1240 assertions in `/tmp/r06-final-seeds-focused.log`. Private types pass 2063 files; the build verifies 217 modules with core external. Root lint and compatibility pass. The final root formatting retry passes; `/tmp/r06-final-root-format-retry.log`. The actual primary checkout passes the one-core package boundary test: one case and eight assertions in `/tmp/r06-primary-boundary.log`. The isolated boundary failure came from its shared dependency symlink's package metadata path. R06 remains open while the frozen broad run completes and its native table failures receive final regression review.
+
 ## R07
 
 - [x] Execute tracked table cell edits
