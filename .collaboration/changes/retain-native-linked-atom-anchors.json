@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Named hyperlink insertions at protected child-control edges resolved into the child and refused. Mixed retained and fresh linked atoms had no native reconciliation path.",
+  "after": "Named hyperlink insertions resolve to a sibling inside the named hyperlink at protected child edges. Interior and ancestor restrictions still refuse. The private planner anchors retained controls and compiles only fresh atoms, preserving native controls, payloads, media and both histories.",
+  "reason": "This repairs local native destination selection and application. No canonical primitive, shared field, message shape or public signature changes. The private plan uses the existing inline-atoms codec. Evaluation transport remains test-only under the EigenPal Pro License.",
+  "tests": [
+    "packages/core/src/store/__tests__/hyperlink-text-owner.test.ts",
+    "packages/sciobot/src/diff/mixed-inline-atoms.test.ts",
+    "packages/sciobot/src/diff/mixed-inline-atoms-collaboration.test.ts"
+  ],
+  "changeset": "retain-native-linked-atom-anchors",
+  "migration": null
+}

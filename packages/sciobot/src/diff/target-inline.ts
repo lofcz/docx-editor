@@ -1,3 +1,4 @@
+import { mixedInlineAtoms } from './mixed-inline-atoms';
 import { linkAwareBias } from './link-aware-text';
 import { planRetainedAtomMarks } from './retained-atom-marks';
 import { retainedAtomGaps } from './retained-atom-gaps';
@@ -41,6 +42,9 @@ export interface TargetParagraphSource {
   readonly nativeRange?: { readonly start: number; readonly end: number };
   readonly allocateBlockId?: () => string;
   readonly headingStyle?: (depth: number) => string | null;
+  /** Internal anchored diff, computed before retained controls become synthetic text. */
+  readonly anchoredText?: EditPlanResult;
+  readonly textAnchors?: readonly { start: number; end: number }[];
 }
 const fail = (error: string): EditPlanResult => ({
   success: false,
@@ -190,6 +194,22 @@ export function planTargetParagraph(context: TargetParagraphSource): EditPlanRes
     ]);
   }
   if (a.plainText === null && b.plainText === null) {
+    const mixed = mixedInlineAtoms(
+      context,
+      part,
+      paragraphId,
+      a,
+      b,
+      owner.checklist?.native.end ?? 0
+    );
+    if (mixed)
+      return planTargetParagraph({
+        ...context,
+        before: { ...before, ast: mixed.before },
+        after: { ...after, ast: mixed.after },
+        anchoredText: mixed.text,
+        textAnchors: mixed.anchors,
+      });
     const marks = planRetainedAtomMarks(
       context,
       part,
@@ -324,12 +344,21 @@ export function planTargetParagraph(context: TargetParagraphSource): EditPlanRes
   const nativeText = paragraphTextOf(part, paragraphId);
   if (nativeText === null || nativeText.slice(base, context.nativeRange?.end) !== beforeText)
     return fail('The source paragraph needs complete visible-to-model text mapping.');
-  const text = planParagraphText(
-    { revision, partName: part.name, paragraphId, text: beforeText, offset: base },
-    afterText
-  );
+  const text =
+    context.anchoredText ??
+    planParagraphText(
+      { revision, partName: part.name, paragraphId, text: beforeText, offset: base },
+      afterText
+    );
   if (!text.success) return text;
-  const textEdits = linkAwareBias(part, paragraphId, base, text.plan.operations, b);
+  const textEdits = linkAwareBias(
+    part,
+    paragraphId,
+    base,
+    text.plan.operations,
+    b,
+    context.textAnchors
+  );
   const insertionMarks: CanonicalEdit[] = [];
   const runsBefore = binding.generatedTask ? [] : textRuns(a),
     runsAfter = afterText === '' && binding.generatedTask ? [] : textRuns(b);

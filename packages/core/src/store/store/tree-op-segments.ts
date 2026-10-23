@@ -493,7 +493,15 @@ export function insertionSite(
   bias: 'left' | 'right' = 'left'
 ): InsertionSite {
   const raw = rawInsertionSite(paragraph, offset, owner, bias);
-  if (owner !== null) return raw;
+  if (owner !== null) {
+    // A named link owns its wrapper, not the protected controls nested inside it.
+    // Keep edge insertions in that link while preserving every outer protection gate.
+    if (owner.kind === 'hyperlink') {
+      const beside = besideRestrictedControlAt(paragraph, offset, raw);
+      if (beside && containsNode(owner, siteLandingNodeId(beside))) return beside;
+    }
+    return raw;
+  }
   // Beside a control typing cannot enter, then out of a deletion around wherever that is.
   const site = besideRestrictedControlAt(paragraph, offset, raw) ?? raw;
   if (site.kind !== 'newRun' && site.kind !== 'atRunIndex') return site;

@@ -15,7 +15,8 @@ export function linkAwareBias(
   paragraphId: string,
   base: number,
   edits: readonly CanonicalEdit[],
-  target: CompiledInlineTarget
+  target: CompiledInlineTarget,
+  anchors: readonly { start: number; end: number }[] = []
 ): CanonicalEdit[] {
   const paragraph = findNode(part, paragraphId);
   if (paragraph?.kind !== 'paragraph' || !target.tokens.length) return [...edits];
@@ -82,7 +83,10 @@ export function linkAwareBias(
       return {
         ...edit,
         bias: atStart === inside ? ('right' as const) : ('left' as const),
-        ...(owner && owner.end === edit.start ? { insideHyperlink: owner.id } : {}),
+        ...(owner &&
+        (owner.end === edit.start || anchors.some((anchor) => anchor.start === edit.start))
+          ? { insideHyperlink: owner.id }
+          : {}),
       };
     });
   const inspect = (operations: readonly CanonicalEdit[]) => {
@@ -114,6 +118,7 @@ export function linkAwareBias(
       const lo = Math.min(at, edit.start),
         hi = Math.max(at, edit.start),
         between = native.slice(lo, hi);
+      if (anchors.some((anchor) => anchor.start < hi && anchor.end > lo)) continue;
       if (between + edit.after !== edit.after + between) continue;
       if (
         operations.some(

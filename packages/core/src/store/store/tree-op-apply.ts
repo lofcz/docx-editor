@@ -885,12 +885,23 @@ function applyInsertContent(
       );
       return finishContentEdit(inserted, control, options);
     }
+    const scoped = owner ? segments.filter((segment) => contains(owner, segment.node.id)) : [];
+    const left = findLast(scoped, (segment) => segment.end === offset);
+    const right = scoped.find((segment) => segment.start === offset);
+    const neighbor = bias === 'left' ? (left ?? right) : (right ?? left);
+    const run = neighbor ? findNode(part, neighbor.runId) : null;
+    const properties =
+      run?.kind === 'run'
+        ? run.children
+            .filter((child) => child.kind === 'runProperties')
+            .map((child) => withFreshIds(child, nextId))
+        : [];
     inserted = fromEdit(
       insertChildren(
         part,
         site.holder.id,
-        site.holder.children.length,
-        [runElement(nextId, nodes)],
+        site.index ?? site.holder.children.length,
+        [runElement(nextId, [...properties, ...nodes])],
         deferOptions(options, control)
       ),
       effect

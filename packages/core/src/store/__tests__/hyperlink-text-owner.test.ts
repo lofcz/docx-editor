@@ -94,7 +94,7 @@ for (const properties of [
           : paragraph(link(control(properties, run)));
       const part = load(body),
         before = canonicalOoxmlFingerprint(part);
-      const op = insertion(part);
+      const op = insertion(part, placement === 'nested' ? 8 : 11);
       expect(validateTreeOp(part, op)).toBe(
         properties.includes('dataBinding') ? 'bound' : 'locked'
       );
@@ -134,3 +134,34 @@ test('invalid owners, foreign paragraphs, outside offsets and tracked ownership 
     expect(canonicalOoxmlFingerprint(part)).toBe(before);
   }
 });
+
+for (const properties of [
+  '<w:lock w:val="contentLocked"/>',
+  '<w:lock w:val="sdtContentLocked"/>',
+  '<w:dataBinding w:xpath="/a" w:storeItemID="{G}"/>',
+])
+  for (const offset of [6, 11])
+    test(`named link edge inserts a sibling beside protected content: ${properties}/${offset}`, () => {
+      const part = load(paragraph(link(control(properties, run))));
+      const original = nodes(part.root).find((node) => node.kind === 'contentControl')!;
+      const op = insertion(part, offset);
+      expect(validateTreeOp(part, op)).toBeNull();
+      const result = applyTreeOp(part, op);
+      if (!result.ok) throw Error(result.reason);
+      expect(canonicalOoxmlFingerprint(findNode(result.part, original.id)!)).toBe(
+        canonicalOoxmlFingerprint(original)
+      );
+      const p = nodes(result.part.root).find((node) => node.kind === 'paragraph')!;
+      if (p.kind !== 'paragraph') throw Error('Missing paragraph');
+      const kept = findNode(result.part, (op as Extract<TreeDocOp, { op: 'insertText' }>).inside!)!;
+      expect(paragraphOffsetIndex(p).spanOf(kept)).toEqual({ start: 6, end: 12 });
+      expect(paragraphTextOf(result.part, p.id)).toBe(
+        offset === 6 ? 'Keep.  label End.' : 'Keep. label  End.'
+      );
+      const reopened = readOoxmlPart(serializeOoxmlPart(result.part), {
+        name: part.name,
+        contentType: part.contentType,
+      });
+      if (!reopened.ok) throw Error(reopened.reason);
+      expect(canonicalOoxmlFingerprint(reopened.part)).toBe(canonicalOoxmlFingerprint(result.part));
+    });
