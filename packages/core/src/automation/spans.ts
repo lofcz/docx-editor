@@ -1,3 +1,8 @@
+import {
+  logicalParagraphPoint,
+  logicalParagraphRange,
+  hasJoinedBoundary,
+} from './joined-paragraphs.ts';
 import { scopedStoryReads } from './reads.ts';
 import { findNode } from '../store/package/ooxml-edit.ts';
 // Turning the protocol's positions into positions in a document.
@@ -114,6 +119,11 @@ export function resolveEndpoint(
   const story = reads.story(paragraph.value.story);
   const length = (story?.rawText(paragraph.value.paragraphId) ?? '').length;
   const { offset } = endpoint;
+  const target = handles.resolve(endpoint.paragraph, 'paragraph');
+  if (target?.kind === 'paragraph' && target.logical && story) {
+    const point = logicalParagraphPoint(story, target.paragraphId, offset);
+    return point ? ok(point) : fail('invalid-offset', 'offset outside logical paragraph');
+  }
   if (!Number.isInteger(offset) || offset < 0 || offset > length)
     return fail('invalid-offset', `offset ${String(offset)} outside 0..${String(length)}`);
   return ok({ ...paragraph.value, offset });
@@ -129,6 +139,14 @@ export function resolvePoint(
     if (!('at' in point)) return resolveEndpoint(point, handles, reads);
     const paragraph = resolveParagraphHandle(point.paragraph, handles, reads);
     if (!paragraph.ok) return paragraph;
+    const target = handles.resolve(point.paragraph, 'paragraph');
+    const logicalStory = reads.story(paragraph.value.story);
+    if (target?.kind === 'paragraph' && target.logical && logicalStory) {
+      const range = logicalParagraphRange(logicalStory, target.paragraphId);
+      return range
+        ? ok(point.at === 'start' ? range.start : range.end)
+        : fail('invalid-handle', 'paragraph-not-in-body');
+    }
     if (point.at === 'start') return paragraph;
     const story = reads.story(paragraph.value.story);
     const length = (story?.rawText(paragraph.value.paragraphId) ?? '').length;
@@ -197,6 +215,9 @@ export function resolveSpanRef(
     const paragraph = resolveParagraphHandle(span.paragraph, handles, reads);
     if (!paragraph.ok) return paragraph;
     const story = reads.story(paragraph.value.story);
+    const target = handles.resolve(span.paragraph, 'paragraph');
+    if (target?.kind === 'paragraph' && target.logical && story)
+      return ok(logicalParagraphRange(story, target.paragraphId));
     const length = (story?.rawText(paragraph.value.paragraphId) ?? '').length;
     return ok({ start: paragraph.value, end: { ...paragraph.value, offset: length } });
   }
@@ -330,11 +351,17 @@ export function spanText(
       const projected = reads.projectedText(id, projection);
       if (!projected) return '';
       const rawLength = (reads.rawText(id) ?? '').length;
-      if (position === 0) return projected.sliceRaw(span.start.offset, rawLength);
-      if (position === ids.length - 1) return projected.sliceRaw(0, span.end.offset);
-      return projected.text;
+      const value =
+        position === 0
+          ? projected.sliceRaw(span.start.offset, rawLength)
+          : position === ids.length - 1
+            ? projected.sliceRaw(0, span.end.offset)
+            : projected.text;
+      const separator =
+        position > 0 && !hasJoinedBoundary(reads, ids[position - 1]!, id) ? paragraphMark : '';
+      return separator + value;
     })
-    .join(paragraphMark);
+    .join('');
 }
 
 /** A resolved range in protocol vocabulary, with handles minted for its endpoints. */

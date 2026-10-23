@@ -1,3 +1,4 @@
+import { logicalParagraphIds } from './joined-paragraphs.ts';
 // What a list IS, read out of a story.
 //
 // A `.docx` has no list element. `numbering.xml` defines abstract formats and `w:num` instances
@@ -79,7 +80,7 @@ export function listMembershipOf(paragraph: OoxmlNode): AutomationListMembership
  */
 export function listReads(reads: AutomationStoryReads): readonly AutomationListRead[] {
   const byNumId = new Map<string, string[]>();
-  for (const paragraphId of reads.paragraphIds) {
+  for (const paragraphId of logicalParagraphIds(reads)) {
     const node = reads.node(paragraphId);
     if (!node) continue;
     const membership = listMembershipOf(node);

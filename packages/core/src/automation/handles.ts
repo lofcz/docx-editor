@@ -82,6 +82,8 @@ export type AutomationHandleTarget =
     }
   | {
       readonly kind: 'paragraph';
+      /** Logical Word coordinates; omitted for canonical fragment range endpoints. */
+      readonly logical?: boolean;
       readonly paragraphId: string;
       readonly story: AutomationStoryId;
     }
@@ -149,7 +151,11 @@ export interface AutomationHandleTable {
   inlinePicture(drawingNodeId: string, story: AutomationStoryId): AutomationHandle<'inlinePicture'>;
   shape(shapeId: number, owner: AutomationStoryId): AutomationHandle<'shape'>;
   /** The handle for a canonical paragraph id, minted once and reused thereafter. */
-  paragraph(paragraphId: string, story: AutomationStoryId): AutomationHandle<'paragraph'>;
+  paragraph(
+    paragraphId: string,
+    story: AutomationStoryId,
+    logical?: boolean
+  ): AutomationHandle<'paragraph'>;
   section(index: number): AutomationHandle<'section'>;
   note(noteKind: NoteKind, noteId: number): AutomationHandle<'note'>;
   comment(commentId: string, story: AutomationStoryId): AutomationHandle<'comment'>;
@@ -168,7 +174,7 @@ export interface AutomationHandleTable {
    * it just created. Nothing else in the lane may call this: an identity that can be re-aimed
    * for convenience is not an identity.
    */
-  retarget(fromParagraphId: string, toParagraphId: string): void;
+  retarget(fromParagraphId: string, toParagraphId: string, logicalOnly?: boolean): void;
   /**
    * Keep an issued revision handle on its change after the change's identity moved.
    *
@@ -274,11 +280,17 @@ export function createHandleTable(): AutomationHandleTable {
         owner,
       });
     },
-    paragraph(paragraphId, story) {
-      const existing = refByParagraph.get(paragraphId);
+    paragraph(paragraphId, story, logical = false) {
+      const key = logical ? `logical:${paragraphId}` : paragraphId;
+      const existing = refByParagraph.get(key);
       if (existing) return Object.freeze({ kind: 'paragraph' as const, ref: existing });
-      const handle = mint('paragraph', { kind: 'paragraph', paragraphId, story });
-      refByParagraph.set(paragraphId, handle.ref);
+      const handle = mint('paragraph', {
+        kind: 'paragraph',
+        paragraphId,
+        story,
+        ...(logical ? { logical: true } : {}),
+      });
+      refByParagraph.set(key, handle.ref);
       return handle;
     },
     section(index) {
@@ -332,18 +344,19 @@ export function createHandleTable(): AutomationHandleTable {
         targets.set(ref, { kind: 'revision', revisionId: to, story });
       }
     },
-    retarget(fromParagraphId, toParagraphId) {
-      const ref = refByParagraph.get(fromParagraphId);
-      // Nobody ever asked for this paragraph, so no reference can be pointing at the wrong one.
-      if (!ref || fromParagraphId === toParagraphId) return;
-      const target = targets.get(ref);
-      if (!target || target.kind !== 'paragraph') return;
-      refByParagraph.delete(fromParagraphId);
-      // The STORY is carried over: re-aiming an identity must not also move it to another story.
-      targets.set(ref, { kind: 'paragraph', paragraphId: toParagraphId, story: target.story });
-      // The destination is a node this transaction created, so it cannot already have a ref;
-      // guarded anyway, because two refs naming one paragraph would break handle identity.
-      if (!refByParagraph.has(toParagraphId)) refByParagraph.set(toParagraphId, ref);
+    retarget(fromParagraphId, toParagraphId, logicalOnly = false) {
+      if (fromParagraphId === toParagraphId) return;
+      for (const prefix of logicalOnly ? ['logical:'] : ['', 'logical:']) {
+        const from = prefix + fromParagraphId,
+          to = prefix + toParagraphId;
+        const ref = refByParagraph.get(from);
+        if (!ref) continue;
+        const target = targets.get(ref);
+        if (!target || target.kind !== 'paragraph') continue;
+        refByParagraph.delete(from);
+        targets.set(ref, { ...target, paragraphId: toParagraphId });
+        if (!refByParagraph.has(to)) refByParagraph.set(to, ref);
+      }
     },
     resolve(handle, expected) {
       if (!isHandleShaped(handle)) return null;

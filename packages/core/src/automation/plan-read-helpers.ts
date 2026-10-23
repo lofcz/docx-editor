@@ -7,12 +7,13 @@ import type { ResolvedRange } from './spans.ts';
 export function delimitedText(
   reads: AutomationStoryReads,
   paragraphId: string,
-  delimiters: readonly string[]
+  delimiters: readonly string[],
+  fragments: readonly string[] = [paragraphId]
 ): {
   readonly text: string;
   readonly occurrences: readonly { readonly start: number; readonly length: number }[];
 } {
-  const text = readTextOf(reads, paragraphId);
+  const text = fragments.map((id) => readTextOf(reads, id)).join('');
   return { text, occurrences: delimiterOccurrences(text, delimiters) };
 }
 

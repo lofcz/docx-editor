@@ -1,3 +1,4 @@
+import { hasJoinedBoundary } from './joined-paragraphs.ts';
 // Every read the protocol answers, derived from one canonical package.
 //
 // INTERNAL. There is exactly one implementation of "what are this story's paragraphs", "what
@@ -286,7 +287,7 @@ function storyReadsOver(
     return projected;
   };
 
-  return {
+  const reads: AutomationStoryReads = {
     story,
     part,
     root,
@@ -309,9 +310,17 @@ function storyReadsOver(
     paragraphText: (paragraphId, projection) => projectionOf(paragraphId, projection)?.text ?? null,
     projectedText: projectionOf,
     text: (projection) =>
-      paragraphIds.map((id) => projectionOf(id, projection)?.text ?? '').join(PARAGRAPH_MARK),
+      paragraphIds
+        .map(
+          (id, index) =>
+            (index > 0 && !hasJoinedBoundary(reads, paragraphIds[index - 1]!, id)
+              ? PARAGRAPH_MARK
+              : '') + (projectionOf(id, projection)?.text ?? '')
+        )
+        .join(''),
     styles,
   };
+  return reads;
 }
 
 /** A cell body shares its story's offsets while restricting reads and whole-body edits to the cell. */

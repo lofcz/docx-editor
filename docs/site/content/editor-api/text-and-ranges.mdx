@@ -9,6 +9,8 @@ Use `Body` for a story, `Paragraph` for a paragraph, and `Range` for an addresse
 
 Create a `runtime` with [Runtime and setup](/docs/2.x/editor-api/runtime). Use `context` and document proxies inside `runtime.run()`.
 
+After accepting a paragraph-mark deletion, paragraph collections and text reads expose the joined paragraph. Searches, word ranges, and subsequent edits use that paragraph.
+
 ## Refresh ranges after edits
 
 A `Range` stores paragraph identities and UTF-16 offsets from the moment it was found. It does not follow later edits inside those paragraphs. For example, a range over `alpha` still names offsets zero through five after text is inserted before it. Using that range, to read or to edit, then fails with `StaleDocument` instead of addressing different text. Edits after the range and formatting changes keep it valid. Deleting an endpoint paragraph invalidates the range.

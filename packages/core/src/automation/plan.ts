@@ -1,3 +1,15 @@
+import { planTextRead } from './plan-text-read.ts';
+import {
+  paragraphSplitEdits,
+  invalidSplitDelimiters,
+  unchangedLogicalSplitRange,
+} from './paragraph-split-edits.ts';
+import {
+  logicalParagraphHandles,
+  isLogicalParagraph,
+  joinedParagraphGroups,
+  logicalParagraphRange,
+} from './joined-paragraphs.ts';
 import { areInsertableTexts } from '../store/store/tree-op-inline-elements.ts';
 import { TARGET_REMOVED } from './target-removed.ts';
 import { planShapes } from './plan-shapes.ts';
@@ -162,8 +174,6 @@ import {
 import type { OoxmlNode } from '../store/package/ooxml-tree.ts';
 
 /** Most delimiters one split accepts, and the longest each may be. Both are host input. */
-const MAX_DELIMITERS = 16;
-const MAX_DELIMITER_LENGTH = 64;
 
 /** A position in the symbolic story order. Bound to a real id after the commit. */
 interface Slot {
@@ -252,7 +262,11 @@ interface StoryPlan {
   readonly formatted: Set<string>;
   /** Selections resolve before writes but apply afterward; edits cannot share their paragraphs. */
   readonly selected: Set<string>;
-  readonly retargets: { readonly from: string; readonly slot: Slot }[];
+  readonly retargets: {
+    readonly from: string;
+    readonly slot: Slot;
+    readonly logicalOnly?: boolean;
+  }[];
 }
 
 export function createBatchPlanner(host: BatchPlannerHost): BatchPlanner {
@@ -676,6 +690,13 @@ export function createBatchPlanner(host: BatchPlannerHost): BatchPlanner {
       for (const middle of ids.slice(1, -1)) ops.push({ op: 'deleteBlock', blockId: middle });
       ops.push({ op: 'joinParagraphs', firstId: first, secondId: last });
       for (const gone of ids.slice(1)) {
+        const keeper = plan.slotById.get(first);
+        if (
+          keeper &&
+          isLogicalParagraph(reads, gone) &&
+          joinedParagraphGroups(reads).byFragment.get(gone)?.id === gone
+        )
+          plan.retargets.push({ from: gone, slot: keeper, logicalOnly: true });
         const slot = plan.slotById.get(gone);
         if (slot) plan.order.splice(positionOf(plan, slot), 1);
       }
@@ -890,71 +911,58 @@ export function createBatchPlanner(host: BatchPlannerHost): BatchPlanner {
     paragraph: ResolvedPoint,
     delimiters: readonly string[],
     trimDelimiters: boolean,
-    trimSpacing: boolean
+    trimSpacing: boolean,
+    fragments: readonly string[] = [paragraph.paragraphId]
   ): PlannedOperation => {
     const reads = plan.reads;
-    if (!Array.isArray(delimiters) || delimiters.length === 0)
-      return refuse('unsupported-content', 'split needs at least one delimiter', 'delimiters');
-    if (delimiters.length > MAX_DELIMITERS)
-      return refuse('unsupported-content', 'too many delimiters', String(delimiters.length));
-    for (const delimiter of delimiters) {
-      if (typeof delimiter !== 'string' || delimiter.length === 0)
-        return refuse(
-          'unsupported-content',
-          'a delimiter must be a non-empty string',
-          'delimiters'
-        );
-      if (delimiter.length > MAX_DELIMITER_LENGTH)
-        return refuse('unsupported-content', 'that delimiter is too long', 'delimiters');
-    }
+    const invalid = invalidSplitDelimiters(delimiters);
+    if (invalid) return refuse('unsupported-content', invalid.message, invalid.detail);
     const pin = pinWrite(plan);
     if (pin) return pin;
-    const conflict = claim(plan, paragraph.paragraphId);
-    if (conflict) return conflict;
-
+    const original = paragraph.paragraphId;
+    for (const id of fragments) {
+      const conflict = claim(plan, id);
+      if (conflict) return conflict;
+    }
+    paragraph = { ...paragraph, paragraphId: fragments[0]!, index: reads.indexOf(fragments[0]!) };
     const slot = plan.slotById.get(paragraph.paragraphId);
     if (!slot) return refuse('invalid-handle', 'that paragraph is not in the body');
-    const { text, occurrences } = delimitedText(reads, paragraph.paragraphId, delimiters);
+    const { text, occurrences } = delimitedText(
+      reads,
+      paragraph.paragraphId,
+      delimiters,
+      fragments
+    );
 
-    const ops: TreeDocOp[] = [];
-    const offsets: number[] = [];
-    /** The text each resulting paragraph will hold, for the answered ranges. */
-    const pieces: string[] = [];
-
-    if (occurrences.length === 0) {
-      pieces.push(text);
-    } else if (trimDelimiters) {
-      // Cut the delimiters out from the LAST backwards, so every remaining op's offsets still
-      // describe the paragraph the caller measured.
-      for (const occurrence of [...occurrences].reverse()) {
-        ops.push({
-          op: 'deleteText',
-          paragraphId: paragraph.paragraphId,
-          start: occurrence.start,
-          end: occurrence.start + occurrence.length,
-        });
+    const { ops, offsets, pieces } = paragraphSplitEdits(
+      paragraph.paragraphId,
+      text,
+      occurrences,
+      trimDelimiters
+    );
+    if (fragments.length > 1) {
+      if (!offsets.length)
+        return {
+          ok: true,
+          kind: 'command',
+          ops: [],
+          story: reads.story,
+          answer: () => ({
+            kind: 'spans',
+            spans: [spanOf(unchangedLogicalSplitRange(reads, original, text, trimSpacing)!)],
+          }),
+        };
+      ops.unshift(
+        ...fragments
+          .slice(1)
+          .map((id): TreeDocOp => ({ op: 'joinParagraphs', firstId: fragments[0]!, secondId: id }))
+      );
+      for (const id of fragments.slice(1)) {
+        const gone = plan.slotById.get(id);
+        if (gone) plan.order.splice(positionOf(plan, gone), 1);
       }
-      let removed = 0;
-      let previous = 0;
-      for (const occurrence of occurrences) {
-        const at = occurrence.start - removed;
-        offsets.push(at);
-        pieces.push(text.slice(previous, occurrence.start));
-        previous = occurrence.start + occurrence.length;
-        removed += occurrence.length;
-      }
-      pieces.push(text.slice(previous));
-    } else {
-      let previous = 0;
-      for (const occurrence of occurrences) {
-        const at = occurrence.start + occurrence.length;
-        offsets.push(at);
-        pieces.push(text.slice(previous, at));
-        previous = at;
-      }
-      pieces.push(text.slice(previous));
+      plan.retargets.push({ from: original, slot, logicalOnly: true });
     }
-
     if (offsets.length > 0)
       ops.push({ op: 'splitParagraphMany', paragraphId: paragraph.paragraphId, offsets });
 
@@ -981,17 +989,23 @@ export function createBatchPlanner(host: BatchPlannerHost): BatchPlanner {
     return { ok: true, kind: 'command', ops, story: reads.story, answer };
   };
 
-  const planDeleteParagraph = (plan: StoryPlan, paragraph: ResolvedPoint): PlannedOperation => {
+  const planDeleteParagraph = (
+    plan: StoryPlan,
+    paragraph: ResolvedPoint,
+    fragments: readonly string[] = [paragraph.paragraphId]
+  ): PlannedOperation => {
     const pin = pinWrite(plan);
     if (pin) return pin;
-    const conflict = claim(plan, paragraph.paragraphId);
-    if (conflict) return conflict;
-    const slot = plan.slotById.get(paragraph.paragraphId);
-    if (slot) plan.order.splice(positionOf(plan, slot), 1);
+    for (const id of fragments) {
+      const conflict = claim(plan, id);
+      if (conflict) return conflict;
+      const slot = plan.slotById.get(id);
+      if (slot) plan.order.splice(positionOf(plan, slot), 1);
+    }
     return {
       ok: true,
       kind: 'command',
-      ops: [{ op: 'deleteBlock', blockId: paragraph.paragraphId }],
+      ops: fragments.map((id) => ({ op: 'deleteBlock', blockId: id })),
       story: plan.reads.story,
       answer: () => APPLIED,
     };
@@ -1699,7 +1713,7 @@ export function createBatchPlanner(host: BatchPlannerHost): BatchPlanner {
         if (!story.ok) return refuse(story.code, 'that handle does not name a body', story.detail);
         return query({
           kind: 'handles',
-          handles: story.value.paragraphIds.map((id) => handles.paragraph(id, story.value.story)),
+          handles: logicalParagraphHandles(story.value, handles),
         });
       }
 
@@ -1725,42 +1739,16 @@ export function createBatchPlanner(host: BatchPlannerHost): BatchPlanner {
         if (!story.ok) return refuse(story.code, 'that span is not a place', story.detail);
         return query({
           kind: 'handles',
-          handles: spanParagraphIds(resolved.value, story.value).map((id) =>
-            handles.paragraph(id, story.value.story)
+          handles: logicalParagraphHandles(
+            story.value,
+            handles,
+            spanParagraphIds(resolved.value, story.value)
           ),
         });
       }
 
-      case 'getText': {
-        if (!isTextProjection(operation.projection))
-          return refuse('unsupported-content', 'unknown text projection', 'projection');
-        const body = handles.resolve(operation.target, 'body');
-        if (body) {
-          const story = storyOfHandle(operation.target, 'body', handles, packageReads);
-          if (!story.ok)
-            return refuse(story.code, 'that handle does not name a body', story.detail);
-          return query({
-            kind: 'text',
-            text: story.value.text(operation.projection ?? 'allMarkup'),
-          });
-        }
-        const paragraph = resolveParagraphHandle(operation.target, handles, packageReads);
-        if (!paragraph.ok)
-          return refuse(
-            paragraph.code,
-            'that handle does not name a body or a paragraph',
-            paragraph.detail
-          );
-        const story = packageReads.story(paragraph.value.story);
-        return query({
-          kind: 'text',
-          text:
-            story?.paragraphText(
-              paragraph.value.paragraphId,
-              operation.projection ?? 'allMarkup'
-            ) ?? '',
-        });
-      }
+      case 'getText':
+        return planTextRead(operation, handles, packageReads);
       case 'getSpanText': {
         if (!isTextProjection(operation.projection))
           return refuse('unsupported-content', 'unknown text projection', 'projection');
@@ -1878,7 +1866,14 @@ export function createBatchPlanner(host: BatchPlannerHost): BatchPlanner {
         const error =
           tracked && trackedParagraphInsertError(story, anchor.value.paragraphId, trackingAuthor!);
         if (error) return { ok: false, error };
-        return planInsertParagraph(planFor(story), anchor.value, operation.where, operation.text);
+        return planInsertParagraph(
+          planFor(story),
+          operation.where === 'before' && isLogicalParagraph(story, anchor.value.paragraphId)
+            ? logicalParagraphRange(story, anchor.value.paragraphId)!.start
+            : anchor.value,
+          operation.where,
+          operation.text
+        );
       }
 
       case 'splitParagraph': {
@@ -1892,7 +1887,8 @@ export function createBatchPlanner(host: BatchPlannerHost): BatchPlanner {
           paragraph.value,
           operation.delimiters,
           operation.trimDelimiters === true,
-          operation.trimSpacing === true
+          operation.trimSpacing === true,
+          joinedParagraphGroups(story).byFragment.get(paragraph.value.paragraphId)?.fragments
         );
       }
 
@@ -1970,7 +1966,11 @@ export function createBatchPlanner(host: BatchPlannerHost): BatchPlanner {
           return refuse(paragraph.code, 'that handle does not name a paragraph', paragraph.detail);
         const story = packageReads.story(paragraph.value.story);
         if (!story) return refuse('invalid-handle', 'that story is not in this document');
-        return planDeleteParagraph(planFor(story), paragraph.value);
+        return planDeleteParagraph(
+          planFor(story),
+          paragraph.value,
+          joinedParagraphGroups(story).byFragment.get(paragraph.value.paragraphId)?.fragments
+        );
       }
 
       case 'getSections': {
@@ -2146,7 +2146,7 @@ export function createBatchPlanner(host: BatchPlannerHost): BatchPlanner {
             : found.list.paragraphIds.filter((id) => membershipIn(reads, id)?.level === level);
         return query({
           kind: 'handles',
-          handles: ids.map((id) => handles.paragraph(id, reads.story)),
+          handles: logicalParagraphHandles(reads, handles, ids),
         });
       }
 
@@ -2576,7 +2576,7 @@ export function createBatchPlanner(host: BatchPlannerHost): BatchPlanner {
         if (!('control' in found)) return found;
         return query({
           kind: 'handles',
-          handles: found.control.paragraphIds.map((id) => handles.paragraph(id, found.reads.story)),
+          handles: logicalParagraphHandles(found.reads, handles, found.control.paragraphIds),
         });
       }
 
@@ -2924,7 +2924,8 @@ export function createBatchPlanner(host: BatchPlannerHost): BatchPlanner {
           slot.id = fresh[index] ?? null;
         });
         for (const retarget of pinned.retargets) {
-          if (retarget.slot.id) handles.retarget(retarget.from, retarget.slot.id);
+          if (retarget.slot.id)
+            handles.retarget(retarget.from, retarget.slot.id, retarget.logicalOnly);
         }
       }
       // LAST GATE BEFORE A CARET MOVES. Planning already refuses a batch that selects a paragraph

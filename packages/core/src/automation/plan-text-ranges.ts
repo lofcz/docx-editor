@@ -1,3 +1,10 @@
+import {
+  logicalParagraphIds,
+  logicalParagraphOffset,
+  logicalParagraphPoint,
+  logicalParagraphProjection,
+  hasJoinedBoundary,
+} from './joined-paragraphs.ts';
 // Planning the range reads an agent uses to address and re-read words: `Range.getTextRanges`,
 // `Paragraph.getTextRanges`, `Range.expandTo`, and `getReviewedText` on a range or a paragraph.
 //
@@ -195,16 +202,19 @@ function textRangeSpans(
   projection: AutomationTextProjection
 ): readonly AutomationSpan[] {
   if (!span) return [];
-  const ids = spanParagraphIds(span, story);
+  const ids = logicalParagraphIds(story, spanParagraphIds(span, story));
   const last = ids.length - 1;
   const spans: AutomationSpan[] = [];
   for (const [position, paragraphId] of ids.entries()) {
-    const model = story.projectedText(paragraphId, 'model');
-    const shown = story.projectedText(paragraphId, projection);
+    const model = logicalParagraphProjection(story, paragraphId, 'model');
+    const shown = logicalParagraphProjection(story, paragraphId, projection);
     if (!model || !shown) continue;
-    const from = position === 0 ? span.start.offset : 0;
-    const to = position === last ? span.end.offset : model.text.length;
-    const paragraph = handles.paragraph(paragraphId, story.story);
+    const from =
+      position === 0 ? logicalParagraphOffset(story, span.start.paragraphId, span.start.offset) : 0;
+    const to =
+      position === last
+        ? logicalParagraphOffset(story, span.end.paragraphId, span.end.offset)
+        : model.text.length;
     // A model character is shown when the view gives it at least one character of its own.
     const projected = shown.projectedOffsets(from, to);
     const isShown = (offset: number): boolean =>
@@ -217,7 +227,9 @@ function textRangeSpans(
       trimSpacing,
       isShown
     )) {
-      spans.push({ start: { paragraph, offset: start }, end: { paragraph, offset: end } });
+      const from = logicalParagraphPoint(story, paragraphId, start),
+        to = logicalParagraphPoint(story, paragraphId, end, 'end');
+      if (from && to) spans.push(spanValue({ start: from, end: to }, handles));
     }
   }
   return spans;
@@ -245,7 +257,8 @@ function reviewedText(
     // The mark between this paragraph and the next: a pending deletion of it joins the two once
     // accepted, and a pending insertion of it was never there originally.
     const markHidden = paragraphMarkRevisionOf(node, version === 'current' ? 'del' : 'ins');
-    if (!markHidden) text += PARAGRAPH_MARK;
+    if (!markHidden && !hasJoinedBoundary(story, paragraphId, ids[position + 1]!))
+      text += PARAGRAPH_MARK;
   }
   return text;
 }

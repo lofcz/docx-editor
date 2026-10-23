@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Automation enumerated physical recovery paragraphs separately after accepting a paragraph-mark deletion, and inserted paragraph marks into their text reads.",
+  "after": "Automation groups resolved forward fragments into Word paragraphs and maps ranges, searches and edits onto their original canonical addresses. Structural writes use existing tree operations.",
+  "reason": "Logical paragraph handle metadata is local to one automation host. No room field or persisted DOCX field changes. Corrected writes use existing shared primitives and paragraph recovery markers; older readers retain their representation. The EigenPal Pro License transport remains evaluation-only for the private production adapter.",
+  "tests": [
+    "packages/core/src/automation/__tests__/joined-paragraph-reads.test.ts",
+    "packages/editor-api/src/runtime/__tests__/runtime-joined-paragraphs.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-tracked-equation-insert.test.ts"
+  ],
+  "changeset": "logical-joined-paragraph-automation",
+  "migration": null
+}
