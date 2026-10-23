@@ -1,0 +1,15 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "The private adapter had no explicit block presence record for new or removed application controls. Version-one property records require an existing payload owner.",
+  "after": "Dormant version-two presence primitives retain explicit before/after existence, complete nested payload membership, and bounded native ownership hashes. Pure snapshots hide the absent side without canonical write primitives. Revision allocation recognizes only the validated presence format, which has no native revision addresses. Existing property readers preserve its bytes and explicitly refuse its unsupported version.",
+  "reason": "Production authoring and review decisions do not emit these records yet. Storage uses the existing opaque custom XML review nodes and native journals. No shared fields, descriptors, or published package inputs change. Capability admission and decision integration remain required before enabling the writer.",
+  "tests": [
+    "packages/sciobot/src/review/block-presence.test.ts",
+    "packages/sciobot/src/review/block-presence-collaboration.test.ts",
+    "packages/sciobot/src/review/group-allocation.test.ts",
+    "packages/sciobot/src/review/property-record-store.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}
