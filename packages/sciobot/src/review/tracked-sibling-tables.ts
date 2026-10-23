@@ -1,3 +1,4 @@
+import { stageSiblingApplicationBlock } from './tracked-sibling-application-blocks';
 import { findNode, type OoxmlNode } from '@docx-editor.dev/core/store';
 import type { DirectListContext } from '../ai/direct-lists';
 import { contentWidth, refuseWrite, type SiblingFragmentSeeds } from '../diff/fragment-seeds';
@@ -19,11 +20,10 @@ export function stageSiblingTables(
   listContext: DirectListContext
 ): void {
   for (const seed of seeds.placed) {
-    if (seed.kind !== 'table')
-      refuseWrite(
-        'Tracked application block ownership needs its own stage.',
-        'unsupported-operation'
-      );
+    if (seed.kind === 'block') {
+      stageSiblingApplicationBlock(writer, edit, seeds, seed, fresh, listContext);
+      continue;
+    }
     const anchor = seed.anchor === null ? edit.afterId : fresh[seed.anchor]!;
     const before = currentStagePart(writer, edit.partName);
     if (!anchor || findNode(before, anchor)?.kind !== 'paragraph')

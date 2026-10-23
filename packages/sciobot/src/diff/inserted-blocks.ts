@@ -1,3 +1,4 @@
+import { MDX_BLOCK } from '../projection/mdx';
 import type { OoxmlPackage } from '@docx-editor.dev/core/store';
 import { encodeBlockPayload, isBlockId, type BlockPayload } from '../blocks/payload-schema';
 import type { NativeEditFailure, RevisionToken } from '../contracts/document';
@@ -19,6 +20,11 @@ export interface InsertedBlockBinding {
   /** Readable control alias and payload record label. */
   readonly label: string;
 }
+
+export type NewBlockPayload = (
+  ast: TargetAstNode,
+  id: string
+) => { readonly payload: BlockPayload; readonly label: string } | null;
 
 const fail = (error: string): NativeEditFailure => ({
   success: false,
@@ -60,7 +66,8 @@ export function planInsertedBlocks(
     readonly partName: string;
   },
   inserted: readonly { readonly block: LogicalBlock; readonly ast: TargetAstNode }[],
-  allocate: () => string = defaultBlockId
+  allocate: () => string = defaultBlockId,
+  authorPayload?: NewBlockPayload
 ): { success: true; plan: InsertedBlockPlan } | NativeEditFailure {
   const blocks: InsertedBlockBinding[] = [],
     lists: InsertedListBinding[] = [];
@@ -83,11 +90,21 @@ export function planInsertedBlocks(
     }
     const id = allocate();
     if (!isBlockId(id)) return fail('The block ID allocator returned an invalid ID.');
-    const payload = insertedPayload(ast, id);
+    const authored = authorPayload?.(ast, id);
+    const payload = authored?.payload ?? insertedPayload(ast, id);
     const definition = payload && DOMAIN_BLOCK_TAGS.get(payload.type);
-    if (!payload || !definition || definition.kind !== block.kind)
+    const opaque = payload?.type === MDX_BLOCK && block.kind === 'atomic';
+    if (
+      !payload ||
+      payload.id !== id ||
+      (!opaque && (!definition || definition.kind !== block.kind)) ||
+      !payloadMatches(ast, payload)
+    )
       return fail('New application blocks need a registered payload type.');
-    blocks.push({ path: [...path], payload, label: definition.tag });
+    const label = authored?.label ?? definition?.tag;
+    if (typeof label !== 'string' || label.length > 256)
+      return fail('A new application block needs a bounded readable label.');
+    blocks.push({ path: [...path], payload, label });
     if (block.kind === 'atomic') return null;
     const group = block as LogicalGroup;
     const children = (ast.children ?? []) as TargetAstNode[];
@@ -156,7 +173,28 @@ export function isInsertedBlockBindings(
       }
       if (!node || !mdx(node) || !payloadMatches(node, binding.payload)) return false;
     }
-    return true;
+    // A complete atomic AST owns its descendants. Extra child bindings would create orphan payloads.
+    const byPath = new Map(
+      (value as InsertedBlockBinding[]).map((binding) => [binding.path.join('/'), binding])
+    );
+    let matched = 0;
+    const visit = (node: TargetAstNode, path: readonly number[]): void => {
+      const binding = byPath.get(path.join('/'));
+      if (binding) {
+        matched++;
+        if (
+          binding.payload.type === MDX_BLOCK ||
+          DOMAIN_BLOCK_TAGS.get(binding.payload.type)?.kind === 'atomic'
+        )
+          return;
+      }
+      if (Array.isArray(node.children))
+        (node.children as TargetAstNode[]).forEach((child, index) =>
+          visit(child, [...path, index])
+        );
+    };
+    inserted.forEach((node, index) => visit(node, [index]));
+    return matched === byPath.size;
   } catch {
     return false;
   }

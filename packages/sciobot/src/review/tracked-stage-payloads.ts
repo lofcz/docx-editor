@@ -6,6 +6,8 @@ import type { TrackedStageAttribution, TrackedStageWriter } from './tracked-stag
 
 /** Host-authored localized labels and fresh, explicit private proposal identities. */
 export interface TrackedPayloadOptions {
+  /** Fresh host identity for inserted application subtree presence ownership. */
+  readonly presence?: { readonly proposalId: string };
   readonly properties?: {
     readonly proposalId: string;
     readonly fallbackTargets: readonly PropertyFallbackTarget[];
@@ -27,7 +29,7 @@ export function stageTrackedPayloads(
     !options ||
     typeof options !== 'object' ||
     Array.isArray(options) ||
-    Object.keys(options).some((key) => !['properties', 'atomic'].includes(key))
+    Object.keys(options).some((key) => !['properties', 'atomic', 'presence'].includes(key))
   )
     refuseWrite('Invalid application payload staging options.', 'invalid-input');
   for (const executor of ['properties', 'atomic'] as const) {

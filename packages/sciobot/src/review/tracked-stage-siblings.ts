@@ -67,11 +67,6 @@ export function stageTrackedSiblings(
   listContext: DirectListContext
 ): readonly NativeSiblingProposal[] {
   const before = currentStagePart(writer, edit.partName);
-  if (edit.blocks?.length)
-    refuseWrite(
-      'Tracked application fragments need their own staged executor.',
-      'unsupported-operation'
-    );
   const ids = gap(before, edit);
   if (
     !ids ||
@@ -149,12 +144,14 @@ export function stageTrackedSiblings(
   if (inserted.length !== seeds.paragraphs.length)
     refuseWrite('Native sibling allocation did not match the planned gap.', 'apply-failed');
   stageParagraphResources(writer, before.name, inserted, seeds);
-  const listBindings = (edit.lists ?? []).map((binding) => {
-    const index = binding.path.length === 1 ? seeds.paragraphOf.get(binding.path[0]!) : undefined;
-    if (index === undefined)
-      refuseWrite('A native list binding has no new paragraph.', 'ambiguous-target');
-    return { ...binding, path: [index] };
-  });
+  const listBindings = (edit.lists ?? [])
+    .filter((binding) => binding.path.length === 1)
+    .map((binding) => {
+      const index = binding.path.length === 1 ? seeds.paragraphOf.get(binding.path[0]!) : undefined;
+      if (index === undefined)
+        refuseWrite('A native list binding has no new paragraph.', 'ambiguous-target');
+      return { ...binding, path: [index] };
+    });
   const lists = newCellListAssignments(inserted, listBindings);
   if (lists.length)
     // The paragraph insertion owns the whole new list item. Its properties need no
@@ -215,7 +212,8 @@ export function stageTrackedSiblings(
   }
   if (
     addresses.size !==
-    Number(Boolean(bornRoots.length)) + Number(Boolean(edit.removedIds.length))
+    Number(bornRoots.some((id) => findNode(current, id)?.kind !== 'contentControl')) +
+      Number(Boolean(edit.removedIds.length))
   )
     refuseWrite('A structural gap lost its distinct insertion/deletion addresses.', 'apply-failed');
   if (!addresses.size) return [];

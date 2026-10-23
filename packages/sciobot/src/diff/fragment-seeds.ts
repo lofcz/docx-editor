@@ -1,3 +1,4 @@
+import { MDX_BLOCK } from '../projection/mdx';
 import { applyNewCellProperties, type NewCellProperties } from './new-cell-properties';
 import {
   applyDirectListAssignments,
@@ -10,6 +11,10 @@ import {
   applyTreeOp,
   bodyStoryRoot,
   createNodeIdAllocator,
+  mintParaId,
+  mintedParagraphIdentityAttributes,
+  usedParaIds,
+  w14RootPrefix,
   directParagraphProperties,
   ensureHyperlinkRelationship,
   escapeXml,
@@ -546,7 +551,10 @@ function blockXml(node: TargetAstNode, path: readonly number[], context: RenderC
       'unsupported-operation'
     );
   const properties = `<w:sdtPr><w:alias w:val="${escapeXml(binding.label)}"/><w:tag w:val="${escapeXml(blockTag(binding.payload.id))}"/></w:sdtPr>`;
-  if (DOMAIN_BLOCK_TAGS.get(binding.payload.type)?.kind === 'atomic') {
+  if (
+    binding.payload.type === MDX_BLOCK ||
+    DOMAIN_BLOCK_TAGS.get(binding.payload.type)?.kind === 'atomic'
+  ) {
     const attributes = binding.payload.attributes,
       fallback = ['alt', 'title', 'prompt', 'name', 'url']
         .map((name) => attributes[name])
@@ -560,12 +568,26 @@ function blockXml(node: TargetAstNode, path: readonly number[], context: RenderC
   if (!children.length || children.at(-1)!.type === 'table') content += seedParagraph(context);
   return `<w:sdt>${properties}<w:sdtContent>${content}</w:sdtContent></w:sdt>`;
 }
-function cloneFresh(node: OoxmlNode, next: () => string): OoxmlNode {
+function cloneFresh(
+  node: OoxmlNode,
+  next: () => string,
+  identity: { readonly prefix: string | null; readonly used: Set<string>; readonly seed: string }
+): OoxmlNode {
   if (node.kind === 'textValue') return { ...node, id: next() };
+  let attributes = node.attributes;
+  if (node.kind === 'paragraph' && identity.prefix !== null) {
+    const minted = mintParaId(`${identity.seed}:${String(identity.used.size)}`, identity.used);
+    identity.used.add(minted);
+    attributes = [
+      ...attributes,
+      ...mintedParagraphIdentityAttributes(identity.prefix, minted),
+    ] as typeof attributes;
+  }
   return {
     ...node,
     id: next(),
-    children: node.children.map((child) => cloneFresh(child, next)),
+    attributes,
+    children: node.children.map((child) => cloneFresh(child, next, identity)),
   } as OoxmlNode;
 }
 function paragraphsIn(nodes: readonly OoxmlNode[]): string[] {
@@ -616,7 +638,11 @@ function placeBlock(
   pkg = context.pkg;
   part = pkg.parts.get(partName)!;
   const next = createNodeIdAllocator(part, 'new'),
-    node = cloneFresh(body.children[0]!, next),
+    node = cloneFresh(body.children[0]!, next, {
+      prefix: w14RootPrefix(part.root),
+      used: new Set(usedParaIds(part.root)),
+      seed: `scio-fragment:${bindings.get(seed.path.join('/'))!.payload.id}`,
+    }),
     parent = findNode(part, parentId) as OoxmlElement;
   const terminal = parent.children.findIndex((child) => wmlElement(child, 'sectPr'));
   const at =

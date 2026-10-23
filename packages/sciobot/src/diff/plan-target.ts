@@ -21,7 +21,7 @@ import { planDomainProperties } from './domain-properties';
 import { domainNodeFromAst } from './domain-ast';
 import { sameContainerIdentity } from './domain-strategies';
 import { planListMembership } from './lists';
-import { planInsertedBlocks } from './inserted-blocks';
+import { planInsertedBlocks, type NewBlockPayload } from './inserted-blocks';
 import { resolveTargetLists } from './target-lists';
 import { planSiblingBlocks, siblingContentPairable } from './sibling-blocks';
 import { createEditPlan, type CanonicalEdit, type CanonicalEditPlan } from './plan';
@@ -40,6 +40,8 @@ export interface TargetDocumentOptions {
   readonly quoteStyle?: () => string | null;
   /** Persistent IDs for new registered blocks; defaults to random UUIDs. */
   readonly allocateBlockId?: () => string;
+  /** Trusted host data for new atomic React blocks. AST expressions remain inert stored text. */
+  readonly newBlockPayload?: NewBlockPayload;
 }
 export interface TargetDocumentPair {
   readonly id: string;
@@ -325,7 +327,8 @@ export function planTargetDocument(
           block: after[gap.afterStart + insertedIndex]!,
           ast,
         })),
-        options.allocateBlockId
+        options.allocateBlockId,
+        options.newBlockPayload
       );
       if (!nestedBlocks.success) return nestedBlocks;
       structural.push({

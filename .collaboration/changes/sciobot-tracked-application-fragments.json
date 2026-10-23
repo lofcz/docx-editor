@@ -1,0 +1,15 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "The tracked sibling executor refused inserted application controls. New sibling fragments lacked stable Word paragraph identities. Historical content-type bytes could omit retained application metadata on export.",
+  "after": "Tracked sibling insertion owns fully initialized application subtrees through existing version-two presence records. The host supplies fresh presence identities and can explicitly author opaque React MDX payloads. Nested payloads, lists, marks, and links use the existing fragment compiler. Paragraph identities exist before ownership proofs. Pure DOCX export restores retained native content-type override metadata without canonical writes.",
+  "reason": "Existing application payload, presence, native operation, and canonical declaration fields carry these changes. No transport or shared schema changes. EigenPal Pro License transport is test-only. Inline source atoms, edits from unseen participants inside removed controls, complete resource ledgers, and installed application evidence remain open gates.",
+  "tests": [
+    "packages/core/src/store/package/__tests__/content-type-export.test.ts",
+    "packages/sciobot/src/review/recompose-application-fragments.test.ts",
+    "packages/sciobot/src/review/recompose-application-fragments-collaboration.test.ts",
+    "packages/sciobot/src/diff/inserted-blocks.test.ts"
+  ],
+  "changeset": "retain-typed-part-declarations",
+  "migration": null
+}

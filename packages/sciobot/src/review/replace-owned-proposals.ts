@@ -1,3 +1,4 @@
+import { stageTrackedPresence } from './tracked-stage-presence';
 import { stageTrackedPayloads, type TrackedPayloadOptions } from './tracked-stage-payloads';
 import type { DocxEditorInstance } from '@docx-editor.dev/core/editor';
 import {
@@ -238,6 +239,17 @@ function commit(
             plan,
             { author: attribution.author, date },
             input.payloads
+          );
+          stageTrackedPresence(
+            {
+              currentPackage: () => ctx.currentPackage(),
+              apply: (partName, op) => step(() => ctx.applyTo(partName, op)),
+              edit,
+            },
+            middle,
+            plan,
+            { author: attribution.author, date },
+            input.payloads.presence
           );
           preserveRemainingRevisions(middle, ctx.currentPackage());
           edit((working) => persistReviewGroups(middle, working, receipts, allowInitialization));

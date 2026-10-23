@@ -1,3 +1,4 @@
+import { projectContentTypeBytes } from './content-type-export.ts';
 // Bounded OPC loading into canonical typed OOXML trees (typed-ooxml-paragraph-editor task 4.4).
 //
 // Composes the already-hardened package primitives — `readZip` (entry/size/ratio limits and
@@ -641,8 +642,10 @@ export function writeOoxmlPackage(pkg: OoxmlPackage): Uint8Array {
  * @internal
  */
 export function* writeOoxmlPackageSteps(pkg: OoxmlPackage): Generator<void, Uint8Array> {
-  const exported = yield* textboxFallbackExportPackageSteps(
-    retiredParagraphExportPackage(commentExportPackage(pkg))
+  const exported = projectContentTypeBytes(
+    yield* textboxFallbackExportPackageSteps(
+      retiredParagraphExportPackage(commentExportPackage(pkg))
+    )
   );
   yield;
   const entries = new Map<string, Uint8Array>(exported.partBytes);
