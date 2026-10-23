@@ -38,9 +38,12 @@ export class TextSources {
     return this.replayed.has(id);
   }
   constructor(effects: readonly CanonicalPrimitiveEffect[]) {
+    // Ordinary typing has fresh characters. Structural journals without source recipes
+    // retain the fragment reconciliation that carries concurrent peer text between waves.
+    const typing = effects.every((effect) => effect.kind === 'spliceText');
     this.enabled = effects.some(
       (e) =>
-        e.kind === 'spliceText' ||
+        (typing && e.kind === 'spliceText') ||
         (e.kind === 'putNode' &&
           e.descriptor.kind === 'textValue' &&
           e.descriptor.sourceText !== undefined)
