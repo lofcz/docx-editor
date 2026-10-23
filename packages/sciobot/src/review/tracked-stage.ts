@@ -36,6 +36,11 @@ export function stageTrackedPlan(
   revision: TrackedStageAttribution,
   trackFormatting: boolean
 ): readonly ReviewGroupReceipt[] {
+  if (plan.operations.some((edit) => edit.kind === 'inline-atoms'))
+    refuseWrite(
+      'Inserted inline atoms need native asset and payload reconciliation.',
+      'unsupported-operation'
+    );
   const listContext = createDirectListContext();
   const receipts: ReviewGroupReceipt[] = [];
   const formatReceipts = new Map<string, ReviewGroupReceipt[]>();

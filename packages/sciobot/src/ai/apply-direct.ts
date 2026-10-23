@@ -1,3 +1,4 @@
+import { lowerRetainedAtoms } from './direct-inline-atoms';
 import { cellPropertiesAt } from '../diff/new-cell-properties';
 import { cellListBindings } from '../diff/inserted-cell-lists';
 import { resolveTableGeometry, geometrySplitCells } from '../diff/table-geometry';
@@ -332,6 +333,12 @@ function lowerDirectPlan(pkg: OoxmlPackage, plan: CanonicalEditPlan): Lowering {
           preview = (result as { part: OoxmlPart }).part;
           staged.push({ retarget: edit, link: next });
         }
+        break;
+      }
+      case 'inline-atoms': {
+        const lowered = lowerRetainedAtoms(pkg, preview, edit);
+        for (const op of lowered.ops) apply(op);
+        deferred.push((working) => lowered.complete(working));
         break;
       }
       case 'siblings': {
@@ -843,7 +850,9 @@ export function applyDirectPlan(
     original = nodeIds(session.part());
   if (
     editor.snapshot().collaborationStatus !== 'inactive' &&
-    plan.operations.some((edit) => edit.kind === 'siblings' && edit.atoms?.length) &&
+    plan.operations.some(
+      (edit) => edit.kind === 'inline-atoms' || (edit.kind === 'siblings' && edit.atoms?.length)
+    ) &&
     readPayloadStore(pkg).status !== 'ready'
   )
     return {

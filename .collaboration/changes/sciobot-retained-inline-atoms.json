@@ -1,0 +1,13 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Complete-target editing refused atom insertion into retained paragraphs and text edits beside existing inline controls.",
+  "after": "A private inline-atoms plan kind carries validated retained locations, target AST, exact text gap before-values and persistent payload IDs. Text edits precede native inline insertion. Existing controls anchor independently edited gaps without rebuilding their paragraph or payloads.",
+  "reason": "The private adapter uses existing canonical text/control/run operations, version-one payload records and shared history. No core, transport, dependency or shared format changes occur. New shared births require prepared payload storage. Tracked ownership, drawings and linked/code-marked atom insertion remain explicit unsupported paths.",
+  "tests": [
+    "packages/sciobot/src/diff/retained-atoms.test.ts",
+    "packages/sciobot/src/diff/retained-atoms-collaboration.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

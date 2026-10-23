@@ -1,3 +1,4 @@
+import { isRetainedAtomBindings } from './retained-atoms';
 import { isInsertedAtomBindings } from './inserted-atom-bindings';
 import type { InsertedInlineAtom } from './inserted-atoms';
 import { isTableGeometryIntent, type TableGeometryIntent } from './table-geometry';
@@ -93,6 +94,15 @@ export type CanonicalEdit = LocatedEdit &
         readonly after: string;
         /** Formatting ownership when inserted text falls exactly on a run boundary. */
         readonly bias?: 'left' | 'right';
+      }
+    | {
+        readonly kind: 'inline-atoms';
+        readonly paragraphId: string;
+        /** Exact post-text native paragraph before atom insertion. */
+        readonly before: string;
+        readonly offset: number;
+        readonly ast: TargetAstNode;
+        readonly atoms: readonly InsertedInlineAtom[];
       }
     | {
         readonly kind: 'format';
@@ -295,6 +305,22 @@ function editProblem(edit: unknown): string | null {
         keysOnly(edit, [...base, 'paragraphId', 'start', 'end', 'before', 'after', 'bias'])
         ? null
         : 'invalid-text-edit';
+    case 'inline-atoms':
+      return id(edit.paragraphId) &&
+        integer(edit.offset) &&
+        typeof edit.before === 'string' &&
+        record(edit.ast) &&
+        isTargetFragment(edit.ast) &&
+        isRetainedAtomBindings(
+          edit.paragraphId,
+          edit.offset,
+          edit.before,
+          edit.ast as unknown as TargetAstNode,
+          edit.atoms
+        ) &&
+        keysOnly(edit, [...base, 'paragraphId', 'before', 'offset', 'ast', 'atoms'])
+        ? null
+        : 'invalid-inline-atoms-edit';
     case 'format': {
       if (
         !formatTarget(edit.target) ||
@@ -442,6 +468,7 @@ function withoutNoop(edit: CanonicalEdit): CanonicalEdit | null {
     }
     case 'siblings':
       return edit.removedIds.length || edit.inserted.length ? edit : null;
+    case 'inline-atoms':
     case 'table':
     case 'insert-row':
     case 'insert-column':

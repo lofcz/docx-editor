@@ -1,3 +1,6 @@
+import { retainedAtomGaps } from './retained-atom-gaps';
+import { withoutInlineAtoms } from './retained-atoms';
+import { planInsertedAtoms } from './inserted-atoms';
 import {
   findNode,
   type OoxmlPart,
@@ -34,6 +37,8 @@ export interface TargetParagraphSource {
   readonly before: LogicalParagraph;
   readonly after: LogicalParagraph;
   /** Host resolves heading depths to actual native style IDs. Null refuses unresolved styles. */
+  readonly nativeRange?: { readonly start: number; readonly end: number };
+  readonly allocateBlockId?: () => string;
   readonly headingStyle?: (depth: number) => string | null;
 }
 const fail = (error: string): EditPlanResult => ({
@@ -165,6 +170,65 @@ export function planTargetParagraph(context: TargetParagraphSource): EditPlanRes
     if (!result.success) return result;
     operations.push(...result.plan.operations);
   }
+  if (a.plainText !== null && b.plainText === null) {
+    const skeleton = withoutInlineAtoms(after.ast);
+    if (!skeleton) return fail('The retained paragraph has no resolved atom skeleton.');
+    const text = planTargetParagraph({ ...context, after: { ...after, ast: skeleton } });
+    if (!text.success) return text;
+    const base = context.nativeRange?.start ?? owner.checklist?.native.end ?? 0;
+    const atoms = planInsertedAtoms(
+      {
+        pkg: input.pkg,
+        location: { kind: 'retained-paragraph', paragraphId },
+        offset: base,
+        allocateBlockId: context.allocateBlockId,
+      },
+      after.ast
+    );
+    if (!atoms.success) return atoms;
+    const compiled = compileInlineTarget(skeleton);
+    if (!compiled.success || compiled.target.plainText === null)
+      return fail('The retained atom skeleton still has unresolved source.');
+    const native = paragraphTextOf(part, paragraphId);
+    if (native === null) return fail('The retained paragraph no longer exists.');
+    return createEditPlan(revision, [
+      ...text.plan.operations,
+      {
+        kind: 'inline-atoms',
+        partName: part.name,
+        paragraphId,
+        offset: base,
+        before: compiled.target.plainText,
+        ast: after.ast,
+        atoms: atoms.plan.operations,
+      },
+    ]);
+  }
+  if (a.plainText === null && !context.nativeRange) {
+    const gaps = retainedAtomGaps(
+      part,
+      paragraphId,
+      source,
+      binding,
+      a,
+      b,
+      owner.checklist?.native.end ?? 0
+    );
+    if (gaps) {
+      // Right-to-left gaps keep every remaining source range in its original coordinates.
+      for (const gap of [...gaps].reverse()) {
+        const planned = planTargetParagraph({
+          ...context,
+          before: { ...before, ast: gap.before },
+          after: { ...after, ast: gap.after },
+          nativeRange: { start: gap.start, end: gap.end },
+        });
+        if (!planned.success) return planned;
+        operations.push(...planned.plan.operations);
+      }
+      return createEditPlan(revision, operations);
+    }
+  }
   if (a.plainText === null || b.plainText === null) {
     if (a.tokens.length !== b.tokens.length || a.hyperlinks.length || b.hyperlinks.length)
       return fail('Changed opaque inline structure needs native atom reconciliation.');
@@ -233,8 +297,8 @@ export function planTargetParagraph(context: TargetParagraphSource): EditPlanRes
   const task = owner.checklist;
   if (task && task.native.start !== 0)
     return fail('The task marker needs a contiguous native body range.');
-  const base = task?.native.end ?? 0;
-  const beforeText = binding.generatedTask ? '' : a.plainText;
+  const base = context.nativeRange?.start ?? task?.native.end ?? 0;
+  const beforeText = binding.generatedTask && !context.nativeRange ? '' : a.plainText;
   const afterText =
     binding.generatedTask &&
     after.list?.checked !== null &&
@@ -243,7 +307,7 @@ export function planTargetParagraph(context: TargetParagraphSource): EditPlanRes
       ? ''
       : b.plainText;
   const nativeText = paragraphTextOf(part, paragraphId);
-  if (nativeText === null || nativeText.slice(base) !== beforeText)
+  if (nativeText === null || nativeText.slice(base, context.nativeRange?.end) !== beforeText)
     return fail('The source paragraph needs complete visible-to-model text mapping.');
   const text = planParagraphText(
     { revision, partName: part.name, paragraphId, text: beforeText, offset: base },

@@ -424,6 +424,7 @@ export function planTargetDocument(
           before: entry.block,
           after: next,
           headingStyle: options.headingStyle,
+          allocateBlockId: options.allocateBlockId,
         });
         if (!paragraph.success) return paragraph;
         operations.push(...paragraph.plan.operations);
