@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Fresh atoms with the same visible target syntax as retained controls refused because counts no longer supplied unique ordinal pairing.",
+  "after": "The private planner aligns all retained native identities in order, minimizing text edits around them. Added equal atoms receive fresh identities. Mandatory retained controls cannot disappear through ordinary lexical matching. Existing native operations and source provenance still carry concurrent edits, actor histories and offline deletion.",
+  "reason": "Only private target planning changes. The existing inline-atoms codec describes fresh births. No shared field, native primitive, protocol or public signature changes. Search retains the existing paragraph diff deadline and target node bound. Evaluation transport stays confined to tests under the EigenPal Pro License.",
+  "tests": [
+    "packages/sciobot/src/diff/retained-atom-alignment.test.ts",
+    "packages/sciobot/src/diff/repeated-inline-atoms.test.ts",
+    "packages/sciobot/src/diff/repeated-inline-atoms-collaboration.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

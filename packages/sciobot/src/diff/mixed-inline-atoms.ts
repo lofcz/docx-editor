@@ -1,3 +1,4 @@
+import { alignRetainedAtoms } from './retained-atom-alignment';
 import { paragraphTextOf, type OoxmlPart } from '@docx-editor.dev/core/store';
 import { targetSourceRangeAt, type TargetAstNode } from '../projection/parse-target';
 import type { TargetParagraphSource } from './target-inline';
@@ -36,6 +37,10 @@ export function mixedInlineAtoms(
   };
   const oldCounts = counts(oldKeys),
     nextCounts = counts(keys);
+  if ([...oldCounts].some(([key, count]) => (nextCounts.get(key) ?? 0) < count)) return null;
+  const repeated = [...oldCounts].some(([key, count]) => nextCounts.get(key) !== count);
+  const alignment = repeated ? alignRetainedAtoms(before, after) : null;
+  if (repeated && (!alignment || alignment.length !== oldAtoms.length)) return null;
   const candidates = new Map<string, number[]>();
   keys.forEach((key, index) => {
     const entries = candidates.get(key) ?? [];
@@ -54,11 +59,9 @@ export function mixedInlineAtoms(
   for (let i = 0; i < oldAtoms.length; i++) {
     const atom = oldAtoms[i]!,
       key = oldKeys[i]!;
-    // Added identical atoms have no unique native identity. Refuse that ambiguity.
-    if (oldCounts.get(key) !== nextCounts.get(key)) return null;
     const ordinal = ordinals.get(key) ?? 0;
-    const next = candidates.get(key)?.[ordinal];
-    if (next === undefined || next < nextAt) return null;
+    const next = alignment?.[i] ?? candidates.get(key)?.[ordinal];
+    if (next === undefined || next < nextAt || keys[next] !== key) return null;
     ordinals.set(key, ordinal + 1);
     nextAt = next + 1;
     const position = atom.ast.position as
