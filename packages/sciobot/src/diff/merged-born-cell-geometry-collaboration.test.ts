@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import * as Y from 'yjs';
 import {
   bodyStoryRoot,
+  applyTreeOp,
   canonicalOoxmlFingerprint,
   paragraphTextOf,
   type OoxmlPart,
@@ -257,3 +258,166 @@ for (const kind of ['column', 'split'] as const)
         pair.destroy();
       }
     }, 60_000);
+
+for (const clientIds of [
+  [41, 73],
+  [73, 41],
+] as const)
+  test(`deleting the geometry carrier row preserves another peer-owned column cell: ${clientIds}`, async () => {
+    const bottom =
+      '<w:tr><w:tc><w:p><w:r><w:t>Stay</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>Bottom</w:t></w:r></w:p></w:tc></w:tr>';
+    const prepared = prepareNativeDocument(
+      docxFixture(initialXml.replace('</w:tbl>', `${bottom}</w:tbl>`))
+    );
+    if (!prepared.success) throw Error(prepared.error);
+    const fixture = { document: prepared.document, clientIds };
+    const pair = await createTwoEditorFixture(fixture);
+    try {
+      const [alice, bob] = pair.editors;
+      const initial = alice!.surface!.session.part();
+      const table = nodeChildren(bodyStoryRoot(initial)!).find((node) => node.kind === 'table')!;
+      const carrierRow = tableRows(initial, table.id)[1]!;
+      const removedOriginal = applyTreeOp(initial, {
+        op: 'deleteTableRow',
+        tableId: table.id,
+        rowId: carrierRow.id,
+      });
+      if (!removedOriginal.ok) throw Error(removedOriginal.reason);
+      const td = (text: string, span = 1) =>
+        `<td${span > 1 ? ` colspan="${span}"` : ''}>\n\n${text}\n\n</td>`;
+      const revision = readEditorRevision(alice!, context.documentId, context.epoch)!;
+      const source = await readWorkingView(alice!.surface!.session, revision);
+      if (!source.success) throw Error(source.error);
+      const planned = planTargetDocument(
+        {
+          revision,
+          pkg: alice!.surface!.session.currentPackage(),
+          projection: source.view.projection,
+        },
+        `<table>\n<tr>\n${td('Merged', 3)}\n</tr>\n<tr>\n${td('Keep')}\n${td('Tail $x$')}\n${td('Peer')}\n</tr>\n<tr>\n${td('Stay')}\n${td('Tail $y$')}\n${td('Bottom')}\n</tr>\n</table>`
+      );
+      if (!planned.success) throw Error(planned.error);
+      const applied = applyDirectPlan(alice!, planned.plan, context);
+      if (!applied.success) throw Error(applied.error);
+      await pair.settle();
+      const born = bob!
+        .surface!.session.paragraphIds()
+        .filter((id) => paragraphTextOf(bob!.surface!.session.part(), id)?.startsWith('Tail'));
+      expect(born).toHaveLength(2);
+      expect(
+        bob!.surface!.applyAutomationOps(
+          () =>
+            born.map((paragraphId) => ({
+              op: 'insertText' as const,
+              paragraphId,
+              offset: paragraphTextOf(bob!.surface!.session.part(), paragraphId)!.length,
+              text: ' peerborn',
+            })),
+          { kind: 'body' },
+          [],
+          false,
+          true
+        ).rejected
+      ).toBe(false);
+      await pair.settle();
+      expect(alice!.exec({ type: 'undo' }).ok).toBe(true);
+      await pair.settle();
+      const recoveredWord = canonicalOoxmlFingerprint(alice!.surface!.session.part());
+      expect(
+        alice!.surface!.applyAutomationOps(
+          () => [{ op: 'deleteTableRow', tableId: table.id, rowId: carrierRow.id }],
+          { kind: 'body' },
+          [],
+          false,
+          true
+        ).rejected
+      ).toBe(false);
+      await pair.settle();
+      const expected = {
+        grid: 3,
+        rows: [
+          [{ text: 'Merged', span: 3 }],
+          [
+            { text: 'Stay', span: 1 },
+            { text: ' peerborn', span: 1 },
+            { text: 'Bottom', span: 1 },
+          ],
+        ],
+      };
+      for (const editor of pair.editors)
+        expect(topology(editor.surface!.session.part())).toEqual(expected);
+      const deletedWord = canonicalOoxmlFingerprint(alice!.surface!.session.part());
+      for (const room of [false, true]) {
+        const reopened = await createTwoEditorFixture({
+          ...fixture,
+          clientIds: undefined,
+          document: new Uint8Array(await alice!.save()),
+          ...(room ? { roomSnapshot: Y.encodeStateAsUpdate(pair.documents[0]!) } : {}),
+        });
+        try {
+          await reopened.settle();
+          for (const editor of reopened.editors) {
+            expect(canonicalOoxmlFingerprint(editor.surface!.session.part())).toBe(deletedWord);
+            expect(topology(editor.surface!.session.part())).toEqual(expected);
+          }
+        } finally {
+          reopened.destroy();
+        }
+      }
+      // Later geometry writes must find the frame even after its first cell's row disappeared.
+      const header = rowCells(tableRows(bob!.surface!.session.part(), table.id)[0]!)[0]!;
+      expect(
+        bob!.surface!.applyAutomationOps(
+          () => [
+            { op: 'splitTableCell', tableId: table.id, cellId: header.id, rows: 1, columns: 2 },
+          ],
+          { kind: 'body' },
+          [],
+          false,
+          true
+        ).rejected
+      ).toBe(false);
+      await pair.settle();
+      for (const editor of pair.editors)
+        expect(topology(editor.surface!.session.part())).toEqual({
+          grid: 4,
+          rows: [
+            [
+              { text: 'Merged', span: 2 },
+              { text: '', span: 2 },
+            ],
+            [
+              { text: 'Stay', span: 1 },
+              { text: ' peerborn', span: 2 },
+              { text: 'Bottom', span: 1 },
+            ],
+          ],
+        });
+      expect(bob!.exec({ type: 'undo' }).ok).toBe(true);
+      await pair.settle();
+      for (const editor of pair.editors)
+        expect(canonicalOoxmlFingerprint(editor.surface!.session.part())).toBe(deletedWord);
+      expect(alice!.exec({ type: 'undo' }).ok).toBe(true);
+      await pair.settle();
+      for (const editor of pair.editors)
+        expect(canonicalOoxmlFingerprint(editor.surface!.session.part())).toBe(recoveredWord);
+      expect(alice!.exec({ type: 'redo' }).ok).toBe(true);
+      await pair.settle();
+      for (const editor of pair.editors)
+        expect(canonicalOoxmlFingerprint(editor.surface!.session.part())).toBe(deletedWord);
+      expect(bob!.exec({ type: 'undo' }).ok).toBe(true);
+      await pair.settle();
+      for (const editor of pair.editors)
+        expect(canonicalOoxmlFingerprint(editor.surface!.session.part())).toBe(
+          canonicalOoxmlFingerprint(removedOriginal.part)
+        );
+      expect(bob!.exec({ type: 'redo' }).ok).toBe(true);
+      await pair.settle();
+      for (const editor of pair.editors)
+        expect(canonicalOoxmlFingerprint(editor.surface!.session.part())).toBe(deletedWord);
+      const digests = await pair.savedDigests();
+      expect(digests[0]).toEqual(digests[1]);
+    } finally {
+      pair.destroy();
+    }
+  }, 60_000);

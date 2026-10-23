@@ -5,7 +5,7 @@ Production use requires a commercial agreement: licensing@eigenpal.com
 */
 import * as Y from 'yjs';
 import type { DocumentRegistry } from './registry.ts';
-import type { LogicalId } from './identity.ts';
+import { asLogicalId, type LogicalId } from './identity.ts';
 import { isElementRecord, type ElementRecord } from './schema.ts';
 import type { SharedEffect } from './shared-effect.ts';
 
@@ -144,9 +144,16 @@ export function prepareBirthTableGeometry(
       )
         continue;
       const frame: BirthTableGeometry = { table, born: members, before: coverage, after };
-      const carrier = registry.schema.nodes.get(members[0]!);
-      if (carrier && !carrier.has(NODE_TABLE_BIRTH_GEOMETRY))
-        carrier.set(NODE_TABLE_BIRTH_GEOMETRY, frame);
+      // A deleted row must not hide evidence still needed by another surviving born cell.
+      const owner = registry.schema.nodes.get(table);
+      if (!owner) continue;
+      let directory = owner.get(NODE_TABLE_BIRTH_GEOMETRY);
+      if (!(directory instanceof Y.Map)) {
+        directory = new Y.Map<BirthTableGeometry>();
+        owner.set(NODE_TABLE_BIRTH_GEOMETRY, directory);
+      }
+      const frames = directory as Y.Map<BirthTableGeometry>;
+      if (!frames.has(members[0]!)) frames.set(members[0]!, frame);
     }
   };
 }
@@ -167,15 +174,14 @@ export function prepareBirthGeometryWrites(
     if (record?.namespaceUri !== W || record.localName !== 'gridSpan') continue;
     const table = tableOf(registry, effect.logicalId);
     if (!table) continue;
-    for (const cell of tableCoverage(registry, table).cells) {
-      const frame = birthTableGeometry(registry, cell.id);
+    for (const [carrier, frame] of birthTableGeometries(registry, table)) {
       if (
         frame?.table === table &&
         [...frame.before.cells, ...frame.after.cells].some(
           (coverage) => coverage.span === effect.logicalId
         )
       )
-        writes.push({ span: effect.logicalId, carrier: cell.id });
+        writes.push({ span: effect.logicalId, carrier });
     }
   }
   return () => {
@@ -200,11 +206,11 @@ export function hasBirthGeometryWrite(
   return owners instanceof Y.Map && owners.get(carrier) === true;
 }
 /** A shared field is untrusted. Bound every collection before using IDs to read native records. */
-export function birthTableGeometry(
+function readBirthTableGeometry(
   registry: DocumentRegistry,
-  carrier: LogicalId
+  carrier: LogicalId,
+  source: unknown
 ): BirthTableGeometry | null {
-  const source = registry.schema.nodes.get(carrier)?.get(NODE_TABLE_BIRTH_GEOMETRY);
   if (!source || typeof source !== 'object' || Array.isArray(source)) return null;
   try {
     const frame = source as BirthTableGeometry;
@@ -240,4 +246,55 @@ export function birthTableGeometry(
   } catch {
     return null;
   }
+}
+
+/** Immutable frames belong to the retained table, including when their first row is deleted. */
+export function birthTableGeometries(
+  registry: DocumentRegistry,
+  table: LogicalId
+): readonly (readonly [LogicalId, BirthTableGeometry])[] {
+  const directory = registry.schema.nodes.get(table)?.get(NODE_TABLE_BIRTH_GEOMETRY);
+  if (!(directory instanceof Y.Map) || directory.size > registry.limits.maxNodes) return [];
+  const frames: (readonly [LogicalId, BirthTableGeometry])[] = [];
+  for (const [key, value] of directory.entries()) {
+    const carrier = asLogicalId(key);
+    const frame = readBirthTableGeometry(registry, carrier, value);
+    if (frame?.table === table) frames.push([carrier, frame]);
+  }
+  // Y.Map insertion order can differ between replicas. Order causal predecessors first,
+  // and traverse independent frames using stable keys. Never depend on receipt order.
+  frames.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+  const owners = new Map<LogicalId, LogicalId>();
+  for (const [carrier, frame] of frames)
+    for (const born of frame.born) if (!owners.has(born)) owners.set(born, carrier);
+  const dependencies = new Map<LogicalId, number>();
+  const followers = new Map<LogicalId, LogicalId[]>();
+  const byId = new Map(frames);
+  const ready: LogicalId[] = [];
+  for (const [carrier, frame] of frames) {
+    const prior = new Set<LogicalId>();
+    for (const cell of frame.before.cells) {
+      const owner = owners.get(cell.id);
+      if (owner && owner !== carrier) prior.add(owner);
+    }
+    dependencies.set(carrier, prior.size);
+    if (!prior.size) ready.push(carrier);
+    for (const id of prior) {
+      const next = followers.get(id) ?? [];
+      next.push(carrier);
+      followers.set(id, next);
+    }
+  }
+  const ordered: (readonly [LogicalId, BirthTableGeometry])[] = [];
+  for (let at = 0; at < ready.length; at++) {
+    const carrier = ready[at]!;
+    ordered.push([carrier, byId.get(carrier)!]);
+    for (const next of followers.get(carrier) ?? []) {
+      const remaining = dependencies.get(next)! - 1;
+      dependencies.set(next, remaining);
+      if (!remaining) ready.push(next);
+    }
+  }
+  // Cyclic peer-written evidence cannot describe a native history and never enters the queue.
+  return ordered;
 }

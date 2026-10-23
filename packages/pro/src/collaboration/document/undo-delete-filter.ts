@@ -56,6 +56,13 @@ export function nodeRecordDeleteFilter(nodes: unknown): (item: Y.Item) => boolea
     if ((parent as unknown) === nodes) return false;
     // A field of a record: its holder sits directly in `nodes`.
     const holder = holderItem(parent);
+    // Frame entries are immutable evidence, retained with their table-owned directory.
+    // The birth undo marker controls whether projection needs them; deleting a row does not.
+    if (
+      holder?.parentSub === NODE_TABLE_BIRTH_GEOMETRY &&
+      holderItem(holder.parent)?.parent === nodes
+    )
+      return false;
     if (holder === null || (holder.parent as unknown) !== nodes) return true;
     // A descendant created by another author still needs its origin's ancestry after undo.
     // Unlike splitFrom (which records the active split), this lineage is immutable evidence.

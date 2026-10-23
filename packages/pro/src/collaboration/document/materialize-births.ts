@@ -7,7 +7,7 @@ import type { DocumentRegistry } from './registry.ts';
 import type { LogicalId } from './identity.ts';
 import { nodeRecordUndone, isElementRecord, isTextRecord, type ElementRecord } from './schema.ts';
 import { BIRTH_GEOMETRY_NAMES } from './birth-undo-dependencies.ts';
-import { birthTableGeometry, hasBirthGeometryWrite } from './birth-table-geometry.ts';
+import { birthTableGeometries, hasBirthGeometryWrite } from './birth-table-geometry.ts';
 const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 const W14 = 'http://schemas.microsoft.com/office/word/2010/wordml';
 /** An undo-owned marker on a retained main-document birth. Redo removes the marker. */
@@ -197,8 +197,7 @@ export class BirthProjection {
     }
     const spans = new Map<LogicalId, number>();
     const bornCells = new Map<LogicalId, boolean>();
-    for (const carrier of rawCells) {
-      const frame = birthTableGeometry(this.registry, carrier);
+    for (const [carrier, frame] of birthTableGeometries(this.registry, id)) {
       if (
         !frame ||
         frame.table !== id ||
