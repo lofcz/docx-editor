@@ -71,7 +71,7 @@ test('consistent packages retain exact content-type bytes, defaults, and unrelat
   const { complete } = retained();
   expect(projectContentTypeBytes(complete)).toBe(complete);
   expect(unzipSync(writeOoxmlPackage(complete))['[Content_Types].xml']).toEqual(
-    complete.partBytes.get(TYPES)!
+    new Uint8Array(complete.partBytes.get(TYPES)!)
   );
 });
 test('cold export in an observed native transaction records no canonical primitive and changes no history', () => {
