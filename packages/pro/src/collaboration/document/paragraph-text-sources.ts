@@ -38,12 +38,17 @@ export class TextSources {
     return this.replayed.has(id);
   }
   constructor(effects: readonly CanonicalPrimitiveEffect[]) {
-    // Ordinary typing has fresh characters. Structural journals without source recipes
-    // retain the fragment reconciliation that carries concurrent peer text between waves.
-    const typing = effects.every((effect) => effect.kind === 'spliceText');
+    // Typing retains fresh origins even beside metadata writes. Rebuilt text without
+    // native source recipes still needs the established fragment reconciliation.
+    const implicitText = effects.some(
+      (effect) =>
+        effect.kind === 'putNode' &&
+        effect.descriptor.kind === 'textValue' &&
+        effect.descriptor.sourceText === undefined
+    );
     this.enabled = effects.some(
       (e) =>
-        (typing && e.kind === 'spliceText') ||
+        (!implicitText && e.kind === 'spliceText') ||
         (e.kind === 'putNode' &&
           e.descriptor.kind === 'textValue' &&
           e.descriptor.sourceText !== undefined)

@@ -61,13 +61,15 @@ function apply(part: OoxmlPart, op: TreeDocOp) {
 function descendants(node: OoxmlNode): OoxmlNode[] {
   return [node, ...(node.kind === 'textValue' ? [] : node.children.flatMap(descendants))];
 }
-for (const mode of ['add', 'retarget', 'remove'] as const)
+for (const [mode, compound] of (['add', 'retarget', 'remove'] as const).flatMap((mode) =>
+  [false, true].map((compound) => [mode, compound] as const)
+))
   for (const clients of [
     [41, 73],
     [73, 41],
   ] as const)
     for (const writer of [0, 1] as const)
-      test(`retained atom ${mode} links keep peer text, deletion and exact histories ${clients}/${writer}`, async () => {
+      test(`retained atom ${mode} links keep peer text, deletion and exact histories ${clients}/${writer}/compound=${compound}`, async () => {
         const seed = createDocxEditor({
           container: document.createElement('div'),
           document: docxFixture('<w:p><w:r><w:t>Keep.</w:t></w:r></w:p>'),
@@ -197,29 +199,41 @@ for (const mode of ['add', 'retarget', 'remove'] as const)
           expect(canonicalOoxmlFingerprint(actor.surface!.session.part())).toBe(
             canonicalOoxmlFingerprint(marked)
           );
+          const paragraphOp: TreeDocOp = {
+            op: 'setParagraphProperties',
+            paragraphId,
+            properties: [{ localName: 'spacing', attributes: { after: '120' } }],
+          };
+          const withParagraphProperty = (part: OoxmlPart) =>
+            compound ? apply(part, paragraphOp) : part;
           const typed = peer.surface!.applyAutomationOps(
-            () => [{ op: 'insertText', paragraphId, offset: 1, text: ' peer' }],
+            () => [
+              { op: 'insertText', paragraphId, offset: 1, text: ' peer' },
+              ...(compound ? [paragraphOp] : []),
+            ],
             { kind: 'body' },
             [],
             false,
             true
           );
           expect(typed.rejected).toBe(false);
-          const peerOnly = apply(original, {
+          let peerOnly = apply(original, {
             op: 'insertText',
             paragraphId,
             offset: 1,
             text: ' peer',
           });
+          peerOnly = withParagraphProperty(peerOnly);
           expect(canonicalOoxmlFingerprint(peer.surface!.session.part())).toBe(
             canonicalOoxmlFingerprint(peerOnly)
           );
-          const both = apply(marked, {
+          let both = apply(marked, {
             op: 'insertText',
             paragraphId,
             offset: 1,
             text: ' peer',
           });
+          both = withParagraphProperty(both);
           pair.reconnect(writer);
           await pair.settle();
           const check = (expected: OoxmlPart) => {

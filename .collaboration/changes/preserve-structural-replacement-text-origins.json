@@ -2,8 +2,8 @@
   "impact": "compatible",
   "fields": [],
   "before": "Fresh typing provenance was enabled for every journal containing a text splice. Structural replacement journals without explicit native source recipes then treated their rebuilt text as entirely fresh, losing the fragment reconciliation that carries concurrent peer text into later proposal waves.",
-  "after": "Pure text-splice journals retain exact fresh typing origins. Structural journals with explicit native source recipes retain exact source mapping. Other structural journals continue to use their existing fragment reconciliation, preserving peer text across replacement, native decisions, both histories and reopening.",
-  "reason": "This restores the established interpretation of structural journals that do not carry optional source recipes. No primitive, shared field or message shape changes. Existing native typing offsets and explicit source descriptors keep their meaning. The EigenPal Pro License transport remains confined to evaluation fixtures.",
+  "after": "Text splices without new unannotated text leaves retain exact fresh typing origins, including compound paragraph metadata writes. Structural journals with explicit native source recipes retain exact source mapping. Other structural journals continue their established fragment reconciliation, preserving peer text across replacement, native decisions, both histories and reopening.",
+  "reason": "This restores the established interpretation of structural journals without optional source recipes while preserving fresh origins for text edits beside scalar or element metadata. No primitive, shared field or message shape changes. Existing native typing offsets and explicit source descriptors keep their meaning. The EigenPal Pro License transport remains confined to evaluation fixtures.",
   "tests": [
     "packages/sciobot/src/review/recompose-born-peer.test.ts",
     "packages/sciobot/src/review/recompose-born-table-peer.test.ts",
