@@ -1,0 +1,101 @@
+{
+  "leaf": "R19",
+  "status": "partial checkpoint; dormant primitives; leaf remains open",
+  "runtimeRevision": "f260c2923aefddc22e408317e0b6dfb399d649a8",
+  "sourceHashes": {
+    ".collaboration/changes/sciobot-block-presence-preflight.json": "eb0d18bfee0ab8a9f17dd3fffe4904a1a9fed1f5a00d29d17f1d5b6d6a792a89",
+    "packages/sciobot/src/review/block-presence-collaboration.test.ts": "c1423df4c8563f2c41ed5a79cbea7b1d7ffb0ad0d9962dde8d6c285fa737d402",
+    "packages/sciobot/src/review/block-presence-owner.ts": "9a3c3582cbfbd368aeefd5b8dc29f95c33821309496853da4a846e9ec787b1b4",
+    "packages/sciobot/src/review/block-presence-plan.ts": "2cc66fbaf2a77873fbefff65830b5dee872052ba2138d8ef0381905ab5e61a23",
+    "packages/sciobot/src/review/block-presence-projection.ts": "ead989f2eae7999dd1fb858a8a9c121dc9b65c000a91cee4e7eed73a78062e6e",
+    "packages/sciobot/src/review/block-presence-schema.ts": "b53a39e8e626aaed1eae6324a42914fda76b6429681581fdd954636f6c8a9e98",
+    "packages/sciobot/src/review/block-presence-store.ts": "5e3e43a48f242f721c3b897d9221afcd5caaa5858123d7f0b7f691fa10e889cf",
+    "packages/sciobot/src/review/block-presence.test.ts": "c68c73db8ce972917c023c050427d56cdd9320e5914e3e6615383c3da9cf8db7",
+    "packages/sciobot/src/review/group-allocation.ts": "f3273f861707fa5eb318cbe5a1747667396149ad09b7540d873f84a0e6acd144",
+    "packages/sciobot/test/support/block-presence.ts": "20188b0482f3f38e612487ab853535fa9def8f51bfe6a399ed189596bb9f6a63"
+  },
+  "integration": {
+    "isolatedCheckout": "/tmp/sciobot-docx-presence",
+    "comparedFiles": 10,
+    "differences": 0,
+    "primaryDraftBackup": "/tmp/r19-presence-primary-draft/manifest.json"
+  },
+  "tests": {
+    "files": 5,
+    "passed": 43,
+    "failed": 0,
+    "assertions": 1001,
+    "focusedCases": 33,
+    "focusedAssertions": 551,
+    "existingAllocationCollaborationCases": 10,
+    "existingAllocationCollaborationAssertions": 450
+  },
+  "gates": {
+    "privateTypedFiles": 2093,
+    "privateRuntimeModules": 223,
+    "coreExternal": true,
+    "privateBuild": true,
+    "rootFormat": true,
+    "rootLint": true,
+    "compatibilityDecisions": 155,
+    "changedSharedFormatFields": 0,
+    "verifiedProductionSourceHashes": 199
+  },
+  "logs": {
+    "focused": {
+      "path": "/tmp/r19-presence-complete-focused.log",
+      "sha256": "ee3403b4018ff6190c760bc4b3e5cb87d8357a39c207da8b8332b3c37e8264f6"
+    },
+    "existingAllocationCollaboration": {
+      "path": "/tmp/r19-presence-allocation-shared.log",
+      "sha256": "880eef795b23692f72e380c11dc8ff08c3feec639e31c360ed928ba8fa697a5d"
+    },
+    "privateTypes": {
+      "path": "/tmp/r19-presence-verified-types.log",
+      "sha256": "834bade915eb9ffa987c9e98925903975c008760ad1f260dd0e026ea2ff3c543"
+    },
+    "privateBuild": {
+      "path": "/tmp/r19-presence-private-build.log",
+      "sha256": "3d76d3edd54e39bf94cd5e032a8ce761bf3ee74ea777cf7eaa4080bcb03e8e40"
+    },
+    "format": {
+      "path": "/tmp/r19-presence-root-format.log",
+      "sha256": "0416b9fc6641c7ba4f19c821e124097cb5124882c0d73af9b938b87d7dfdd1ea"
+    },
+    "lint": {
+      "path": "/tmp/r19-presence-root-lint.log",
+      "sha256": "43bcf5a9f3b97429e6692f22bf5a639db50fa1a1777c2b60aba948490aa2302f"
+    },
+    "compatibility": {
+      "path": "/tmp/r19-presence-policy.log",
+      "sha256": "c128b09e7c9fe8791d8e0a3fdc3a3e1f98b38a1a5878d282f4c64246582547b1"
+    },
+    "sourceAudit": {
+      "path": "/tmp/r19-presence-source-audit.log",
+      "sha256": "67377bf014e19a0e192c6ed8c1295eac76c7e5980f110eeaa615f941af8f59b8"
+    }
+  },
+  "proven": [
+    "Explicit insertion and removal presence states, complete nested payloads, and labels survive native Word save/reopen.",
+    "Ownership rebinds by stable application IDs and semantic fingerprints, without persisted canonical node IDs.",
+    "Pure absent-side projections remove exact control/payload owners and preserve unrelated parts.",
+    "Seen native, payload, and label changes, overlapping pending native/application ownership, reused identities, malformed records, and unknown versions refuse.",
+    "Legacy property readers retain raw version-two bytes and refuse unsupported reads. Native revision allocation accepts only the validated presence format.",
+    "Six real-session cases verify concurrent independent metadata, outside peer text, independent undo/redo, convergence, and room reopening.",
+    "Projection inside an observed transaction leaves both complete Yjs room documents byte-identical."
+  ],
+  "limits": [
+    "These primitives are not exported as production authoring commands and the AI replacement stage does not emit these records.",
+    "Current normal property readers still refuse version two. A combined presence/property reader is required.",
+    "No review-card, accept/reject presence decision, complete media/resource retirement, late peer recovery within removed controls, or AI-wave continuation claim is made.",
+    "Capability admission must protect older and mixed readers before enabling the writer.",
+    "No installed application or full private suite result is claimed for this scoped checkpoint."
+  ],
+  "remaining": [
+    "Integrate presence records with stable review groups and combined views.",
+    "Implement guarded native and payload decisions, undo/redo, exact resource ledgers, and late peer recovery.",
+    "Stage new application controls through the shared materializer and compose later AI waves.",
+    "Complete remaining R19 criteria and installed application verification."
+  ],
+  "todosClosed": 0
+}
