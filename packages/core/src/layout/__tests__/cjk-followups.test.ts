@@ -68,15 +68,26 @@ function layout(
 }
 const textLines = (...args: Parameters<typeof layout>) =>
   layout(...args).map((line) => line.spans.map((span) => span.text).join(''));
+// Punctuation hangs only when the document defaults name an East Asian face.
+const eastAsianLines = (
+  parts: readonly string[],
+  width: number,
+  pPr = '',
+  rPr = '',
+  settings = ''
+) => textLines(parts, width, pPr, rPr, settings, true);
 
 describe('CJK follow-up: protected groups across every run seam', () => {
+  // A group that fits its line stays whole across the seam. One wider than the whole line
+  // is cut at its last fitting character, the seam included (kinsoku-oversized-group).
   test.each([
-    [['月。', '。盈'], 7, ['月。。', '盈']],
-    [['月、', '」盈'], 7, ['月、」', '盈']],
-    [['（以', '）来'], 7, ['（以）', '来']],
-    [['「方」', '）盈'], 13, ['「方」）', '盈']],
-  ] as const)('%j at %dpt', (parts, width, expected) => {
+    [['月。', '。盈'], 18, ['月。。', '盈'], ['月', '。', '。', '盈']],
+    [['月、', '」盈'], 18, ['月、」', '盈'], ['月', '、', '」', '盈']],
+    [['（以', '）来'], 18, ['（以）', '来'], ['（', '以', '）', '来']],
+    [['「方」', '）盈'], 24, ['「方」）', '盈'], ['「', '方', '」', '）', '盈']],
+  ] as const)('%j at %dpt', (parts, width, expected, oneCharacter) => {
     expect(textLines(parts, width)).toEqual([...expected]);
+    expect(textLines(parts, 7)).toEqual([...oneCharacter]);
   });
 
   test('long Latin words wrap after a protected opening or combining seam', () => {
@@ -90,12 +101,38 @@ describe('CJK follow-up: protected groups across every run seam', () => {
         ['A\u0301BC', 'DEFG', 'HIJ中'],
       ],
     ] as const) {
-      const lines = layout(parts, 24);
+      const lines = layout(parts, 24, '<w:autoSpaceDE w:val="0"/>');
       expect(lines.map((line) => line.spans.map((span) => span.text).join(''))).toEqual([
         ...expected,
       ]);
       for (const line of lines) expect(line.width).toBeLessThanOrEqual(24);
-      expect(textLines([parts.join('')], 24)).toEqual([...expected]);
+      expect(textLines([parts.join('')], 24, '<w:autoSpaceDE w:val="0"/>')).toEqual([...expected]);
+      const automatic = layout(parts, 24);
+      // No authored Latin metric is admitted, so the reverse seam adds no gap.
+      const defaultExpected = [...expected];
+      expect(automatic.map((line) => line.spans.map((span) => span.text).join(''))).toEqual(
+        defaultExpected
+      );
+      expect(textLines([parts.join('')], 24)).toEqual(defaultExpected);
+      for (const line of automatic) {
+        expect(line.width).toBeLessThanOrEqual(24);
+        for (const span of line.spans)
+          expect(span.text).toBe(parts.join('').slice(span.range.start, span.range.end));
+      }
+      expect(
+        automatic
+          .flatMap((line) => line.spans)
+          .map((span) => span.text)
+          .join('')
+      ).toBe(parts.join(''));
+      expect(automatic.at(-1)!.spans.at(-1)!.range.end).toBe(parts.join('').length);
+      if (parts[0] !== '（') {
+        // HIJ中 is exactly 24pt. The absent authored metric adds no reverse gap.
+        expect(lines.at(-1)!.width).toBeCloseTo(24, 8);
+        expect(automatic.at(-2)!.width).toBeCloseTo(24, 8);
+        expect(automatic.at(-1)!.width).toBeCloseTo(24, 8);
+        expect(automatic.at(-1)!.spans[0]!.box.x).toBeCloseTo(0, 8);
+      }
     }
   });
 
@@ -164,7 +201,9 @@ describe('CJK follow-up: mixed text and figure groups', () => {
   });
   test('ASCII punctuation beside CJK stays with its carrier', () => {
     expect(textLines(['天地,月'], 13)).toEqual(['天', '地,', '月']);
-    expect(textLines(['天(', '地)月'], 13)).toEqual(['天', '(地)', '月']);
+    expect(textLines(['天(', '地)月'], 18)).toEqual(['天', '(地)', '月']);
+    // Wider than its line, the group is cut where it stops fitting.
+    expect(textLines(['天(', '地)月'], 13)).toEqual(['天', '(地', ')月']);
   });
   test('Korean word wrapping is selectable without dividing a syllable', () => {
     expect(textLines(['가나 다라마'], 25)).toEqual(['가나 ', '다라마']);
@@ -180,9 +219,16 @@ describe('CJK follow-up: document and paragraph policy', () => {
   });
   test('Japanese normal and strict kinsoku use different small-kana rules', () => {
     const lang = '<w:lang w:eastAsia="ja-JP"/>';
-    expect(textLines(['あゃい'], 7, '', lang)).toEqual(['あ', 'ゃ', 'い']);
+    expect(textLines(['あいゃう'], 13, '', lang)).toEqual(['あい', 'ゃう']);
+    expect(textLines(['あいゃう'], 13, '', lang, '<w:strictFirstAndLastChars/>')).toEqual([
+      'あ',
+      'いゃ',
+      'う',
+    ]);
+    // A strict group wider than its line is cut like any other.
     expect(textLines(['あゃい'], 7, '', lang, '<w:strictFirstAndLastChars/>')).toEqual([
-      'あゃ',
+      'あ',
+      'ゃ',
       'い',
     ]);
   });
@@ -230,39 +276,59 @@ describe('CJK follow-up: document and paragraph policy', () => {
   test('punctuation overflow follows the paragraph switch and allows only one character', () => {
     // Punctuation hangs only on justified lines.
     const jc = '<w:jc w:val="both"/>';
-    expect(textLines(['天地。人'], 12, `<w:overflowPunct/>${jc}`)).toEqual(['天地。', '人']);
-    expect(textLines(['天地。人'], 12, `<w:overflowPunct w:val="0"/>${jc}`)).toEqual([
+    expect(eastAsianLines(['天地。人'], 12, `<w:overflowPunct/>${jc}`)).toEqual(['天地。', '人']);
+    expect(eastAsianLines(['天地。人'], 12, `<w:overflowPunct w:val="0"/>${jc}`)).toEqual([
       '天',
       '地。',
       '人',
     ]);
-    expect(textLines(['天地。。人'], 12, `<w:overflowPunct/>${jc}`)).toEqual([
+    expect(eastAsianLines(['天地。。人'], 12, `<w:overflowPunct/>${jc}`)).toEqual([
       '天',
       '地。。',
       '人',
     ]);
     for (const align of ['left', 'center', 'right'])
-      expect(textLines(['天地。人'], 12, `<w:overflowPunct/><w:jc w:val="${align}"/>`)).toEqual([
-        '天',
-        '地。',
-        '人',
-      ]);
+      expect(
+        eastAsianLines(['天地。人'], 12, `<w:overflowPunct/><w:jc w:val="${align}"/>`)
+      ).toEqual(['天', '地。', '人']);
+  });
+  test('Latin punctuation in an East Asian language run hangs on a justified line', () => {
+    const props = '<w:overflowPunct/><w:jc w:val="both"/>';
+    const language = '<w:lang w:eastAsia="zh-CN"/>';
+    expect(eastAsianLines(['Alpha Beta, Next'], 60, props, language)).toEqual([
+      'Alpha Beta,',
+      ' Next',
+    ]);
+    expect(
+      eastAsianLines(['Alpha Beta, Next'], 60, props + '<w:overflowPunct w:val="0"/>', language)
+    ).toEqual(['Alpha ', 'Beta, Next']);
+    expect(eastAsianLines(['Alpha Beta, Next'], 60, props)).toEqual(['Alpha ', 'Beta, Next']);
   });
   test.each(['left', 'center', 'right'])(
-    'Latin punctuation keeps its overflow switch with %s alignment',
+    'Latin punctuation in an East Asian language run stays inside a %s-aligned line',
     (alignment) => {
       const props = `<w:overflowPunct/><w:jc w:val="${alignment}"/>`;
       const language = '<w:lang w:eastAsia="zh-CN"/>';
-      expect(textLines(['Alpha Beta, Next'], 60, props, language)).toEqual([
-        'Alpha Beta,',
-        ' Next',
+      expect(eastAsianLines(['Alpha Beta, Next'], 60, props, language)).toEqual([
+        'Alpha ',
+        'Beta, Next',
       ]);
-      expect(
-        textLines(['Alpha Beta, Next'], 60, props + '<w:overflowPunct w:val="0"/>', language)
-      ).toEqual(['Alpha ', 'Beta, Next']);
-      expect(textLines(['Alpha Beta, Next'], 60, props)).toEqual(['Alpha ', 'Beta, Next']);
     }
   );
+  test('a closing curly quote in a Japanese run hangs only on a justified line', () => {
+    const japanese = '<w:lang w:eastAsia="ja-JP"/>';
+    const props = (alignment: string) => `<w:overflowPunct/><w:jc w:val="${alignment}"/>`;
+    expect(eastAsianLines(['天地人”'], 18, props('both'), japanese)).toEqual(['天地人”']);
+    expect(eastAsianLines(['天地人”'], 18, props('left'), japanese)).toEqual(['天地', '人”']);
+  });
+  test('a document whose defaults name no East Asian face hangs no punctuation', () => {
+    const props = '<w:overflowPunct/><w:jc w:val="both"/>';
+    expect(textLines(['天地。人'], 12, props)).toEqual(['天', '地。', '人']);
+    expect(textLines(['天地人”'], 18, props, '<w:lang w:eastAsia="ja-JP"/>')).toEqual([
+      '天地',
+      '人”',
+    ]);
+  });
   test('authored punctuation thresholds act independently of characterSpacingControl', () => {
     const ordinary = layout(['天地。。'], 21);
     expect(ordinary).toHaveLength(2);
@@ -301,8 +367,8 @@ describe('CJK follow-up: document and paragraph policy', () => {
     const settings = '<w:characterSpacingControl w:val="compressPunctuation"/>';
     // Punctuation hangs only on justified lines.
     const hang = '<w:overflowPunct/><w:jc w:val="both"/>';
-    expect(textLines(['天地。人'], 12, hang, '', settings)).toEqual(['天地。', '人']);
-    expect(textLines(['天地。人'], 12, '<w:overflowPunct w:val="0"/>', '', settings)).toEqual([
+    expect(eastAsianLines(['天地。人'], 12, hang, '', settings)).toEqual(['天地。', '人']);
+    expect(eastAsianLines(['天地。人'], 12, '<w:overflowPunct w:val="0"/>', '', settings)).toEqual([
       '天',
       '地。',
       '人',
