@@ -674,7 +674,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 ## X38
 
-- [ ] Persist native mention identity and Markdown syntax
+- [x] Persist native mention identity and Markdown syntax
 
 **Depends:** [B02](02-react-blocks.md#b02), [P04](03-agent-projection.md#p04), [B19](02-react-blocks.md#b19), [V01](11-verification.md#v01)
 
@@ -688,4 +688,4 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add focused explicit codec/projection/native cases. Add the V01 two-session scenario for concurrent insertions, deletion during peer editing, both histories, remote geometry, reconnect, and DOCX/room reopening. Run private types/build, scoped formatting/lint, and the collaboration policy.
 
-**Claim:** codex solo, branch `codex/x38-native-mentions`. **Evidence:** Required prerequisite identified by D30. The application inserts `mention` nodes with `key` and `value`; document keys start with `/`. D30 now carries these fields in deferred control descriptions, but native insertion and lossless projection are not yet connected. X22 still owns browser suggestions, selection triggers, and rendering.
+**Claim:** codex solo, branch `codex/x38-native-mentions`. **Evidence:** Runtime `e0cbe6e8`, final test source `058f66e0`. Native person/document controls preserve exact keys, labels, private attributes, readable fallback, and independent history. Escaped existing mention syntax roundtrips empty, multiline, Unicode, Markdown-looking, and at-sign labels. The captured raw mention parser references remain unchanged. Field spans distinguish label/identifier ownership without false value slices. Native GFM cells stay GFM. Five real shared cases cover concurrent insertion, peer editing during deletion, both histories, remote geometry, unchanged shared state during projection reads, and DOCX/room reopening. `bun test --preload ./scripts/test/preload-dom.ts` over the 45 files in [native mention evidence](evidence/native-mention-storage.json) passes 504 cases at `19bb6de6`. Final field-range checks pass 87 cases across eight files; the actual compiled private/core harness passes 14 cases. Private types (2129 files), build, root formatting/lint with final scoped checks, compatibility policy, and backlog validation pass. All 199 application source hashes remain exact; inventory changes only add X38 to the two mention mappings. X22 browser controls and D30 AI execution remain open.

@@ -1,0 +1,171 @@
+{
+  "schemaVersion": 1,
+  "leaf": "X38",
+  "status": "verified",
+  "runtimeSource": "e0cbe6e8",
+  "finalVerificationSource": "058f66e0",
+  "sourceHashes": {
+    "packages/sciobot/src/blocks/mention-codec.ts": "85ddf111bda6352dd26abc84056705e6218b1696c7a7bf599d27aeaf26d644b4",
+    "packages/sciobot/src/blocks/mention-insert.ts": "305a73a33bb95596967b053097b2a689b53853228b81f8ba672254f940b619d5",
+    "packages/sciobot/src/blocks/mention-codec.test.ts": "5b5f6b41f586f81db69db728e03c2fc6ca1f2f12a9c0f34f365ad7aba5f0a931",
+    "packages/sciobot/src/blocks/mention-insert.test.ts": "7d1c482ee59a3438c6d03e7159cb0399d4b0b144aac9f2eeea9844b1563d357c",
+    "packages/sciobot/src/blocks/mention-collaboration.test.ts": "036cfe2e0241d766c1936d6f2c1ecef4c1460b2129965c9a5e446dcbba5e148e",
+    "packages/sciobot/src/projection/mention.ts": "efce83adb79c84130f6b5a9f948ec2d93b814543db2f91f41651961469967642",
+    "packages/sciobot/src/projection/block-tags.ts": "a7ec9ec8c5d91d0fa17842ecba2f4fe0a63435b3f262380056f59895230150ea",
+    "packages/sciobot/src/projection/blocks.ts": "97806fce143e49d298fb2c3f008ed6d93b4f76c4abb362d716d398307cd20b34",
+    "packages/sciobot/src/projection/target-mentions.ts": "ade052ec13d75fcec68488b1f3f12bc893df0d438558368c33d234f76bfc177c",
+    "packages/sciobot/src/diff/inserted-atoms.ts": "cb733f52487caf8a8f7efc8b14dde2e79be306c95da24419975ca66fb3f9ca10",
+    "packages/sciobot/src/index.ts": "7fe7118a63e002d88e2874c94dece9c0de03219f16d1ea348b0d16e3ba7ffac3",
+    "packages/sciobot/test/support/math-document.ts": "1659e00c66456d867f9850fe023f9b44f52594afb95613237c253c2afe06bf61"
+  },
+  "requirements": {
+    "identity": "Mention payload attributes retain application key separately from persistent block ID and display value. Person IDs, document IDs beginning with /, Unicode, optional icons, cover references, and private JSON fields stay exact.",
+    "projection": "Existing [label](mention:identifier) syntax encodes identifiers and escapes display syntax. Empty strings, literal at-signs, Markdown/MDX-looking text, whitespace, CR/LF/tab, and entity-looking strings parse back exactly. Raw link source positions remain available.",
+    "compatibility": "Link-style display labels remain atomic. The captured raw @mention transform remains unchanged, including its historical traversal behavior. Both original parser parity oracles pass without reference or assertion edits.",
+    "nativeInsertion": "A locked inline content control, alias, and payload record commit as one native history unit. Word fallback normalizes line boundaries only; an empty display uses the key. Duplicate IDs, invalid positions, stale reads, suggestion mode, and unprepared rooms refuse before writes.",
+    "propertyOwnership": "Label syntax and identifier syntax have separate property spans. Escaped values expose no direct substring write range. Native source-map lookups resolve the correct payload field.",
+    "tables": "Mention serialization declares literal GFM-safe cell syntax. Native mention controls preserve GFM tables without promoting them to HTML. Rich opaque serializers retain their existing HTML requirement.",
+    "nativeFidelity": "Exact metadata, imported inline/display OMML fingerprints, fallback text, package history, native typing on both control boundaries, and DOCX save/reopen pass.",
+    "sharedScenario": "Two fixed client orders times two delivery receivers. Concurrent person/document insertion, deletion during peer editing, both independent histories, reconnect, remote geometry, exact main Word and saved convergence, DOCX/room reopening, and unchanged Yjs snapshots across projection reads pass."
+  },
+  "affectedTests": {
+    "revision": "19bb6de6",
+    "pass": 504,
+    "fail": 0,
+    "assertions": 9144,
+    "files": [
+      "packages/sciobot/src/ai/apply-direct.test.ts",
+      "packages/sciobot/src/ai/change-ledger.test.ts",
+      "packages/sciobot/src/ai/direct-baseline.test.ts",
+      "packages/sciobot/src/ai/playback.test.ts",
+      "packages/sciobot/src/blocks/block-index.test.ts",
+      "packages/sciobot/src/blocks/insert.test.ts",
+      "packages/sciobot/src/blocks/math-codec.test.ts",
+      "packages/sciobot/src/blocks/math-collaboration.test.ts",
+      "packages/sciobot/src/blocks/math-insert.test.ts",
+      "packages/sciobot/src/blocks/mention-codec.test.ts",
+      "packages/sciobot/src/blocks/mention-collaboration.test.ts",
+      "packages/sciobot/src/blocks/mention-insert.test.ts",
+      "packages/sciobot/src/blocks/move.test.ts",
+      "packages/sciobot/src/blocks/payload-concurrency-collaboration.test.ts",
+      "packages/sciobot/src/blocks/payload-fields.test.ts",
+      "packages/sciobot/src/blocks/payload-label-collaboration.test.ts",
+      "packages/sciobot/src/blocks/payload-label.test.ts",
+      "packages/sciobot/src/blocks/payload-opc-codec.test.ts",
+      "packages/sciobot/src/blocks/payload-part.test.ts",
+      "packages/sciobot/src/blocks/payload-schema.test.ts",
+      "packages/sciobot/src/blocks/remove.test.ts",
+      "packages/sciobot/src/diff/bind-source.test.ts",
+      "packages/sciobot/src/diff/inline-target.test.ts",
+      "packages/sciobot/src/diff/inserted-atoms.test.ts",
+      "packages/sciobot/src/diff/inserted-blocks.test.ts",
+      "packages/sciobot/src/diff/plan-target.test.ts",
+      "packages/sciobot/src/diff/target-source.test.ts",
+      "packages/sciobot/src/projection/blocks.test.ts",
+      "packages/sciobot/src/projection/container-tags.test.ts",
+      "packages/sciobot/src/projection/lists.test.ts",
+      "packages/sciobot/src/projection/markdown.test.ts",
+      "packages/sciobot/src/projection/mdx.test.ts",
+      "packages/sciobot/src/projection/parse-target.test.ts",
+      "packages/sciobot/src/projection/protected-content.test.ts",
+      "packages/sciobot/src/projection/quote-selection.test.ts",
+      "packages/sciobot/src/projection/resolve-patch.test.ts",
+      "packages/sciobot/src/projection/revision-cache.test.ts",
+      "packages/sciobot/src/projection/tables.test.ts",
+      "packages/sciobot/src/projection/target-source-map.test.ts",
+      "packages/sciobot/src/projection/text.test.ts",
+      "packages/sciobot/src/review/committed-view.test.ts",
+      "packages/sciobot/src/review/property-projection.test.ts",
+      "packages/sciobot/src/review/recompose-collaboration.test.ts",
+      "packages/sciobot/src/review/recompose.test.ts",
+      "packages/sciobot/src/review/working-view.test.ts"
+    ],
+    "log": "/tmp/x38-mentions-affected.log",
+    "command": "bun test --preload ./scripts/test/preload-dom.ts <files listed here>",
+    "scope": "Includes original parser references, C01 direct matrix, composer, blocks, projections, source binding, and review reads."
+  },
+  "finalFocusedTests": {
+    "revision": "058f66e0",
+    "pass": 87,
+    "fail": 0,
+    "assertions": 1877,
+    "files": [
+      "packages/sciobot/src/blocks/mention-codec.test.ts",
+      "packages/sciobot/src/blocks/mention-insert.test.ts",
+      "packages/sciobot/src/blocks/mention-collaboration.test.ts",
+      "packages/sciobot/src/projection/blocks.test.ts",
+      "packages/sciobot/src/projection/resolve-patch.test.ts",
+      "packages/sciobot/src/diff/target-source.test.ts",
+      "packages/sciobot/src/diff/bind-source.test.ts",
+      "packages/sciobot/src/diff/inserted-atoms.test.ts"
+    ],
+    "log": "/tmp/x38-mentions-final-focused.log",
+    "command": "bun test --preload ./scripts/test/preload-dom.ts <files listed here>",
+    "scope": "Repeated affected subset after distinguishing mention field ranges. Contains one additional explicit property-range case. Composite source coverage is 505 distinct cases; no single full 505-case run is claimed."
+  },
+  "compiledTests": {
+    "revision": "058f66e0",
+    "pass": 14,
+    "fail": 0,
+    "assertions": 1102,
+    "files": 3,
+    "harness": "/tmp/x38-mentions-built",
+    "log": "/tmp/x38-mentions-built.log",
+    "command": "bun test --tsconfig-override ./tsconfig.json --preload /tmp/sciobot-resolved-table-targets/scripts/test/preload-dom.ts ./mentions.test.ts ./mention-codec.test.ts ./mention-insert.test.ts",
+    "scope": "Actual private main/collaboration entries and one compiled core. Includes all five real shared scenarios, codecs, native history, GFM cells, and field lookups. The expected-syntax serializer comparator imports its pure source helper; production registry serialization runs from the compiled bundle. Collaboration transport remains test-only."
+  },
+  "checks": {
+    "typecheck": {
+      "command": "bun run --filter '@sciobot/docx' typecheck",
+      "result": "2129 files; no errors",
+      "log": "/tmp/x38-mentions-types.log"
+    },
+    "build": {
+      "command": "bun run --filter '@sciobot/docx' build",
+      "result": "238 private modules; core external; no excluded runtime",
+      "log": "/tmp/x38-mentions-build.log"
+    },
+    "format": {
+      "command": "bun run format; final changed files also pass scoped Prettier checks",
+      "result": "pass",
+      "logs": [
+        "/tmp/x38-mentions-format.log",
+        "/tmp/x38-mentions-final-format.log"
+      ]
+    },
+    "lint": {
+      "command": "bun run lint; final changed files also pass scoped oxlint",
+      "result": "pass with existing repository warnings",
+      "logs": [
+        "/tmp/x38-mentions-lint.log",
+        "/tmp/x38-mentions-final-lint.log"
+      ]
+    },
+    "policy": {
+      "command": "bun run collaboration:check --base 2c740189",
+      "result": "1 compatible decision; 0 shared format fields changed",
+      "log": "/tmp/x38-mentions-policy.log"
+    },
+    "coverageInventory": {
+      "command": "bun scripts/sciobot-port/check-production-coverage.mjs --capture",
+      "result": "Reviewed only two leaf arrays: MentionKit and BaseMentionKit now include X38. All 199 source hashes and application revision 5650bdf550b7987174d1b61fe2a925b86fb24f15 remain unchanged. JSON formatting retains the existing style.",
+      "log": "/tmp/x38-mentions-source-capture.log"
+    },
+    "unchangedReferences": {
+      "command": "git diff 2c740189 -- packages/core packages/pro packages/i18n scripts package.json bun.lock packages/sciobot/src/__tests__/fixtures",
+      "result": "empty"
+    },
+    "backlog": {
+      "command": "bun docs/engineering/sciobot-port/check.mjs",
+      "log": "/tmp/x38-mentions-backlog.log"
+    }
+  },
+  "limits": [
+    "X22 still owns browser suggestion menus, insertion triggers, React rendering, and mention editing controls.",
+    "D30 still owns canonical plan decoding, retained-atom diffing, AI materialization, and media reconciliation.",
+    "Direct insertion keeps suggestion mode enabled and refuses tracked authoring; tracked authoring belongs to the review executor.",
+    "No installed application cutover or full mention UI parity is claimed.",
+    "Mention identifiers and labels must contain valid Unicode/XML source characters and fit existing payload limits.",
+    "Source-only collaboration transport uses the EigenPal Pro License in tests; production adapters import Apache native core only."
+  ]
+}
