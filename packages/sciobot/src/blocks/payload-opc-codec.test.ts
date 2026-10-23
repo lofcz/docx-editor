@@ -21,6 +21,7 @@ import {
   payloadReferences,
   readPayloadStore,
   withPayloadRecord,
+  withInitializedPayloadStore,
 } from './payload-opc-codec';
 
 function emptyPackage() {
@@ -155,4 +156,23 @@ test('a label that cannot survive XML serialization refuses without changing the
   const refused = withPayloadRecord(pkg, payload(), 'Bad\u0000label');
   expect(refused.ok).toBe(false);
   expect(refused.pkg).toBe(pkg);
+});
+
+test('pre-bootstrap payload storage is empty, stable, and preserves populated and invalid imports', () => {
+  const pkg = emptyPackage();
+  const before = canonicalOoxmlFingerprint(pkg.parts.get(pkg.mainDocumentPart)!);
+  const initialized = withInitializedPayloadStore(pkg);
+  if (!initialized.ok) throw Error(initialized.reason);
+  expect(readPayloadStore(initialized.pkg)).toMatchObject({ status: 'ready', entries: new Map() });
+  expect(canonicalOoxmlFingerprint(initialized.pkg.parts.get(pkg.mainDocumentPart)!)).toBe(before);
+  expect(withInitializedPayloadStore(initialized.pkg)).toEqual({ ok: true, pkg: initialized.pkg });
+  const stored = write(initialized.pkg);
+  expect(withInitializedPayloadStore(stored.pkg)).toEqual({ ok: true, pkg: stored.pkg });
+  const root = stored.pkg.parts.get(stored.part.partName)!;
+  const malformed = withPart(stored.pkg, { ...root, root: { ...root.root, localName: 'wrong' } });
+  expect(withInitializedPayloadStore(malformed)).toEqual({
+    ok: false,
+    pkg: malformed,
+    reason: 'invalid-store-root',
+  });
 });

@@ -98,6 +98,8 @@ export * from './blocks/payload-opc-codec';
 export * from './blocks/payload-part';
 export * from './blocks/block-index';
 export * from './blocks/insert';
+export * from './blocks/math-codec';
+export * from './blocks/math-insert';
 export * from './blocks/remove';
 export * from './blocks/move';
 export * from './native/inline-code';

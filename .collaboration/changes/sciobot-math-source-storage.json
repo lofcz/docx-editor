@@ -1,0 +1,16 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Application equations had no dedicated source codec. Concurrent first payload writers could own the same store infrastructure and leave orphaned metadata after undo.",
+  "after": "Application equations retain exact LaTeX in existing payload records and use readable native content controls. Native preparation seeds empty payload infrastructure before sharing; both actor histories preserve independent equations and imported OMML.",
+  "reason": "The private adapter uses existing canonical controls, custom XML payload records, relationships, and history operations. No core transport, shared schema, version field, or Pro runtime changes. Existing imported parts remain intact. Hosts prepare bytes before room creation.",
+  "tests": [
+    "packages/sciobot/src/blocks/math-codec.test.ts",
+    "packages/sciobot/src/blocks/math-insert.test.ts",
+    "packages/sciobot/src/blocks/math-collaboration.test.ts",
+    "packages/sciobot/src/blocks/payload-opc-codec.test.ts",
+    "packages/sciobot/src/native/prepare-document.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

@@ -1,3 +1,4 @@
+import { withInitializedPayloadStore } from '../blocks/payload-opc-codec';
 import { withNativeNumberingInfrastructure } from './numbering-infrastructure';
 import { readOoxmlPackage } from '@docx-editor.dev/core/store';
 import type { NativeEditFailure } from '../contracts/document';
@@ -20,7 +21,7 @@ export type PreparedNativeDocument =
   | NativeEditFailure;
 
 /**
- * Initialize application-owned code styles, numbering infrastructure, and review storage before opening or sharing DOCX bytes.
+ * Initialize application-owned code styles, numbering infrastructure, payload storage, and review storage before opening or sharing DOCX bytes.
  *
  * Call this once before a collaboration room bootstraps, not after editors join. Otherwise two
  * offline first writers can each create the styles part, and undoing one part's creation leaves
@@ -50,11 +51,13 @@ export function prepareNativeDocument(document: Uint8Array): PreparedNativeDocum
   // Group initialization also creates a missing owner relationship part. Styles need that part.
   const groups = withInitializedReviewGroupStore(original);
   if (!groups.ok) return { success: false, code: 'invalid-document', error: groups.reason };
-  const state = inlineCodeStyleState(groups.pkg);
+  const payloads = withInitializedPayloadStore(groups.pkg);
+  if (!payloads.ok) return { success: false, code: 'invalid-document', error: payloads.reason };
+  const state = inlineCodeStyleState(payloads.pkg);
   const styled =
     state === 'conflict'
-      ? groups.pkg
-      : withInlineCodeStyle(groups.pkg, inlineCodeInitializationStyles(groups.pkg));
+      ? payloads.pkg
+      : withInlineCodeStyle(payloads.pkg, inlineCodeInitializationStyles(payloads.pkg));
   if (!styled)
     return {
       success: false,

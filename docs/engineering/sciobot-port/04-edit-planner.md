@@ -532,7 +532,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 - [ ] Plan inserted inline atoms
 
-**Depends:** [D15](04-edit-planner.md#d15), [D29](04-edit-planner.md#d29)
+**Depends:** [D15](04-edit-planner.md#d15), [D29](04-edit-planner.md#d29), [X23](08-domain-content.md#x23)
 
 **Primary files:** `fork:packages/sciobot/src/diff/inserted-atoms.ts`; `sibling inserted-atoms.test.ts`
 

@@ -418,7 +418,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused native document regression. Include save/reopen and undo/redo. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** codex solo, branch `codex/x23-math-sources`. **Evidence:** In progress. Source math nodes use `texExpression`. The codec retains that string in application payloads and keeps imported OMML opaque.
 
 ## X24
 

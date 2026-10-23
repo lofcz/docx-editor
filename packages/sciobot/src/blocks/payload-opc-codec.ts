@@ -104,6 +104,21 @@ export type PayloadStoreRead =
       readonly entries: ReadonlyMap<string, StoredPayload>;
     };
 
+/** Initialize before room bootstrap so no actor owns the shared store lifetime. */
+export function withInitializedPayloadStore(
+  pkg: OoxmlPackage
+):
+  | { readonly ok: true; readonly pkg: OoxmlPackage }
+  | { readonly ok: false; readonly pkg: OoxmlPackage; readonly reason: string } {
+  const current = readPayloadStore(pkg);
+  if (current.status === 'invalid') return { ok: false, pkg, reason: current.reason };
+  if (current.status === 'ready') return { ok: true, pkg };
+  const created = withCustomXmlDataPart(pkg, pkg.mainDocumentPart, PAYLOAD_NAMESPACE, PAYLOAD_ROOT);
+  if (!created.part || readPayloadStore(created.pkg).status !== 'ready')
+    return { ok: false, pkg, reason: 'payload-store-initialization-refused' };
+  return { ok: true, pkg: created.pkg };
+}
+
 export function readPayloadStore(pkg: OoxmlPackage): PayloadStoreRead {
   const stores = customXmlDataParts(pkg, pkg.mainDocumentPart).filter(
     (part) => part.namespaceUri === PAYLOAD_NAMESPACE

@@ -9,6 +9,7 @@ import {
 import { docxFixture } from '../../test/support/document';
 import { inlineCodeStyleId, inlineCodeStyleState } from './inline-code';
 import { prepareNativeDocument } from './prepare-document';
+import { readPayloadStore } from '../blocks/payload-opc-codec';
 import { readReviewGroupStore } from '../review/group-record-store';
 
 const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
@@ -46,6 +47,10 @@ test('preparation adds shared code infrastructure and preserves every unrelated 
   expect(input).toEqual(original);
   expect(inlineCodeStyleState(pkg(prepared.document))).toBe('present');
   expect(readReviewGroupStore(pkg(prepared.document)).status).toBe('ready');
+  expect(readPayloadStore(pkg(prepared.document))).toMatchObject({
+    status: 'ready',
+    entries: new Map(),
+  });
   expect(strFromU8(after['word/styles.xml']!).match(/w:styleId="SciobotCode"/g)).toHaveLength(1);
   expect(strFromU8(after['word/_rels/document.xml.rels']!)).toContain('Target="styles.xml"');
   expect(ready(prepared.document)).toMatchObject({ changed: false, codeStyleReady: true });
@@ -91,11 +96,19 @@ test('preparation retains imported style definitions and their nonstandard part 
       target: '../customXml/item1.xml',
     },
     {
+      type: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/customXml',
+      target: '../customXml/item2.xml',
+    },
+    {
       type: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering',
       target: 'numbering.xml',
     },
   ]);
   expect(readReviewGroupStore(pkg(prepared.document)).status).toBe('ready');
+  expect(readPayloadStore(pkg(prepared.document))).toMatchObject({
+    status: 'ready',
+    entries: new Map(),
+  });
   expect(canonicalOoxmlFingerprint(stylesPartOf(pkg(prepared.document))!.root.children[0]!)).toBe(
     canonicalOoxmlFingerprint(imported)
   );
