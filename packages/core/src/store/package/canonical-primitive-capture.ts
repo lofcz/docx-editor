@@ -184,7 +184,8 @@ export function recordNativeTextSlice(
     frame.suppressDepth ||
     !frame.effects ||
     !frame.textSlices ||
-    source.id === target.id
+    source.id === target.id ||
+    target.value.length === 0
   )
     return;
   if (

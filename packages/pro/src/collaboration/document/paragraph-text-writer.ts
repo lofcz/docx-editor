@@ -462,6 +462,7 @@ export function routeInlineEffects(
         if (node) node.kind = registry.kindOf(id) ?? 'generic';
       }
     }
+    scratch.sources.finishSeed();
     return { scratch, embedsBefore };
   };
   let { scratch, embedsBefore } = build(touched);
@@ -479,6 +480,11 @@ export function routeInlineEffects(
     }
   }
 
+  // Native source targets were fresh at capture. Seeing every target identifies a replay
+  // of the atomic journal; replaying property constructors would duplicate implicit shells.
+  if (scratch.sources.alreadyApplied)
+    return { passThrough: [], plan: { paragraphs: [], embedsBefore: new Set() } };
+
   const applied: boolean[] = [];
   // A paragraph splice that adds or removes a block child also goes to the record pipeline,
   // as a splice over block children only: that pipeline resolves concurrent property copies.
@@ -494,6 +500,15 @@ export function routeInlineEffects(
     if (block) blockSplices.set(applied.length, block);
     applied.push(replay(scratch, effect, registry));
     if (scratch.refusal) return { passThrough: [...effects], plan: null, refusal: scratch.refusal };
+  }
+
+  for (const id of scratch.sources.unproven) {
+    if (scratch.region(id as LogicalId)?.inline)
+      return {
+        passThrough: [...effects],
+        plan: null,
+        refusal: { code: 'unknown-logical-id', detail: id },
+      };
   }
 
   const passThrough: SharedEffect[] = [];
@@ -579,7 +594,11 @@ function replay(scratch: Scratch, effect: SharedEffect, registry: DocumentRegist
       return true;
     }
     case 'spliceText': {
-      if (scratch.sources.isReplayedSource(effect.logicalId)) return true;
+      if (
+        scratch.sources.isReplayedSource(effect.logicalId) ||
+        scratch.sources.isReplayedTarget(effect.logicalId)
+      )
+        return true;
       const node = scratch.nodes.get(effect.logicalId);
       if (!node || node.value === null || !scratch.open(effect.logicalId)) return false;
       // A journal applied again describes its new text nodes again and fills them with the
@@ -605,7 +624,7 @@ function replay(scratch: Scratch, effect: SharedEffect, registry: DocumentRegist
         effect.utf16Start === 0 &&
         effect.deleteCount === 0 &&
         effect.insert.length > 0 &&
-        effect.insert === node.value
+        (effect.insert === node.value || scratch.sources.isReplayedTarget(effect.logicalId))
       ) {
         return true;
       }

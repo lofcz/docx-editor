@@ -23,8 +23,10 @@ export class TextSources {
   private readonly events = new Map<number, { id: string; slice: Slice }[]>();
   private readonly copies = new Map<string, { value: string; sources: TextSource[] }>();
   private invalid = false;
+  readonly unproven = new Set<string>();
   private readonly initial = new Set<string>();
   private readonly replayed = new Set<string>();
+  private readonly replayedTargets = new Set<string>();
   isReplayedSource(id: string): boolean {
     return this.replayed.has(id);
   }
@@ -40,10 +42,14 @@ export class TextSources {
       if (
         effect.kind !== 'putNode' ||
         effect.descriptor.kind !== 'textValue' ||
-        !effect.descriptor.sourceText
+        effect.descriptor.sourceText === undefined
       )
         return;
       const slice = effect.descriptor.sourceText;
+      if (!slice || typeof slice !== 'object' || Array.isArray(slice)) {
+        this.invalid = true;
+        return;
+      }
       if (
         !Number.isSafeInteger(slice.beforeEffect) ||
         slice.beforeEffect < 0 ||
@@ -75,26 +81,45 @@ export class TextSources {
       this.values.set(id, [...sources]);
     }
   }
+  finishSeed(): void {
+    const knownSources = new Map<string, boolean>();
+    for (const events of this.events.values())
+      for (const { id, slice } of events) {
+        const known = this.initial.has(id);
+        knownSources.set(slice.logicalId, (knownSources.get(slice.logicalId) ?? true) && known);
+        if (known) this.replayedTargets.add(id);
+      }
+    for (const [id, allKnown] of knownSources) if (allKnown) this.replayed.add(id);
+  }
+  isReplayedTarget(id: string): boolean {
+    return this.replayedTargets.has(id);
+  }
+  get alreadyApplied(): boolean {
+    return (
+      !this.invalid &&
+      this.events.size > 0 &&
+      [...this.events.values()].every((events) =>
+        events.every((event) => this.initial.has(event.id))
+      )
+    );
+  }
   capture(index: number, nodeOf: (id: string) => TextValue | undefined): boolean {
     if (this.invalid) return false;
     const events = this.events.get(index) ?? [];
-    const knownSources = new Map<string, boolean>();
-    for (const { id, slice } of events)
-      knownSources.set(
-        slice.logicalId,
-        (knownSources.get(slice.logicalId) ?? true) && this.initial.has(id)
-      );
-    // Fresh target identities already present identify a repeated native split.
-    for (const [id, allKnown] of knownSources) if (allKnown) this.replayed.add(id);
     for (const { id, slice } of events) {
       // An already shown target belongs to a replay; its own native content is authoritative.
       if (this.values.has(id)) continue;
       const source = nodeOf(slice.logicalId);
-      if (!source) continue; // Record-owned opaque content has no paragraph-text provenance.
+      if (!source) {
+        this.unproven.add(id);
+        continue;
+      }
+      if (this.unproven.has(slice.logicalId)) this.unproven.add(id);
       if (source.value === null || slice.utf16Start + slice.utf16Length > source.value.length)
         return false;
       const sources = this.values.get(slice.logicalId);
       if (!sources || sources.length !== source.value.length || this.copies.has(id)) return false;
+      if (slice.utf16Length === 0) continue;
       this.copies.set(id, {
         value: source.value.slice(slice.utf16Start, slice.utf16Start + slice.utf16Length),
         sources: sources.slice(slice.utf16Start, slice.utf16Start + slice.utf16Length),

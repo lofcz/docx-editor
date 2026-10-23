@@ -6,9 +6,11 @@ Production use requires a commercial agreement: licensing@eigenpal.com
 // Character-format journals must not change document text.
 
 import { afterEach, describe, expect, test } from 'bun:test';
+import * as Y from 'yjs';
 import { strToU8, zipSync } from 'fflate';
 import {
   TreePackageStore,
+  canonicalOoxmlFingerprint,
   normalizeParagraphIdentity,
   readOoxmlPackage,
   type OoxmlNode,
@@ -207,3 +209,61 @@ describe('character format journals keep document text', () => {
     expect(hasLocalName(packageOf(replica), 'u')).toBe(true);
   });
 });
+
+test('repeating a source-split journal preserves later peer text inside a created fragment', async () => {
+  const baseline = openStore(ONE_RUN).currentPackage();
+  const { journal } = captureFormatJournal(ONE_RUN, 6, 18, 'b');
+  const replica = await seedReplica(baseline);
+  opened.push({ destroy: () => destroyReplica(replica) });
+  applyJournal(replica, journal);
+  const pkg = packageOf(replica);
+  const store = new TreePackageStore(pkg, pkg.parts.get(pkg.mainDocumentPart)!);
+  const port = createCollaborationDocumentPort(store, { documentId: 'format-peer' });
+  const edits: CanonicalPrimitiveJournal[] = [];
+  const stop = port.observePrimitiveJournal((edit) => edits.push(edit));
+  const changed = store.transact({ kind: 'body' }, (context) => {
+    context.apply({ op: 'insertText', paragraphId: paragraphId(store), offset: 1, text: ' peer ' });
+  });
+  stop();
+  if (!changed.ok) throw Error('Native peer insertion failed');
+  expect(edits).toHaveLength(1);
+  applyJournal(replica, edits[0]!);
+  const expected = canonicalOoxmlFingerprint(store.bodyStore().part);
+  expect(canonicalOoxmlFingerprint(packageOf(replica).parts.get(pkg.mainDocumentPart)!)).toBe(
+    expected
+  );
+  applyJournal(replica, structuredClone(journal));
+  expect(canonicalOoxmlFingerprint(packageOf(replica).parts.get(pkg.mainDocumentPart)!)).toBe(
+    expected
+  );
+  expect(packageText(packageOf(replica))).toBe('D peer ate: March 2 2026');
+});
+
+for (const [field, value, code] of [
+  ['beforeEffect', 99999, 'invalid-bound'],
+  ['utf16Start', -1, 'invalid-bound'],
+  ['utf16Length', 1e9, 'invalid-bound'],
+  ['utf16Length', 2, 'invalid-bound'],
+  ['logicalId', '__proto__', 'invalid-bound'],
+  ['logicalId', 'missing-source', 'unknown-logical-id'],
+] as const)
+  test(`invalid source provenance ${field}=${value} refuses without shared writes`, async () => {
+    const baseline = openStore(ONE_RUN).currentPackage();
+    const captured = captureFormatJournal(ONE_RUN, 6, 18, 'b');
+    const journal = structuredClone(captured.journal);
+    const descriptor = journal.effects.find(
+      (effect) =>
+        effect.kind === 'putNode' &&
+        effect.descriptor.kind === 'textValue' &&
+        effect.descriptor.sourceText
+    );
+    if (descriptor?.kind !== 'putNode' || descriptor.descriptor.kind !== 'textValue')
+      throw Error('Missing native provenance');
+    Reflect.set(descriptor.descriptor.sourceText!, field, value);
+    const replica = await seedReplica(baseline);
+    opened.push({ destroy: () => destroyReplica(replica) });
+    const before = Y.encodeStateAsUpdate(replica.doc);
+    expect(() => applyJournal(replica, journal)).toThrow(code);
+    expect(Y.encodeStateAsUpdate(replica.doc)).toEqual(before);
+    expect(packageText(packageOf(replica))).toBe('Date: March 2 2026');
+  });
