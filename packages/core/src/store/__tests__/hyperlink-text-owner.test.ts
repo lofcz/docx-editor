@@ -165,3 +165,22 @@ for (const properties of [
       if (!reopened.ok) throw Error(reopened.reason);
       expect(canonicalOoxmlFingerprint(reopened.part)).toBe(canonicalOoxmlFingerprint(result.part));
     });
+
+test('new named-link sibling inherits the visible face without copying a pending format record', () => {
+  const marked = run.replace(
+    '<w:color w:val="112233"/>',
+    '<w:color w:val="112233"/><w:rPrChange w:id="14" w:author="Peer" w:date="2026-10-24T10:00:00Z"><w:rPr><w:color w:val="445566"/></w:rPr></w:rPrChange>'
+  );
+  const part = load(paragraph(link(control('<w:lock w:val="sdtContentLocked"/>', marked))));
+  const oldControl = nodes(part.root).find((node) => node.kind === 'contentControl')!;
+  const result = applyTreeOp(part, insertion(part));
+  if (!result.ok) throw Error(result.reason);
+  expect(canonicalOoxmlFingerprint(findNode(result.part, oldControl.id)!)).toBe(
+    canonicalOoxmlFingerprint(oldControl)
+  );
+  const records = nodes(result.part.root).filter(
+    (node) => node.kind !== 'textValue' && node.localName === 'rPrChange'
+  );
+  expect(records).toHaveLength(1);
+  expect(serializeOoxmlPart(result.part).match(/112233/g)).toHaveLength(2);
+});

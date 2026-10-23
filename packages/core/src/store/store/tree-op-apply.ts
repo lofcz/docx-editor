@@ -890,12 +890,7 @@ function applyInsertContent(
     const right = scoped.find((segment) => segment.start === offset);
     const neighbor = bias === 'left' ? (left ?? right) : (right ?? left);
     const run = neighbor ? findNode(part, neighbor.runId) : null;
-    const properties =
-      run?.kind === 'run'
-        ? run.children
-            .filter((child) => child.kind === 'runProperties')
-            .map((child) => withFreshIds(child, nextId))
-        : [];
+    const properties = run?.kind === 'run' ? insertedRunProperties(nextId, run) : [];
     inserted = fromEdit(
       insertChildren(
         part,
