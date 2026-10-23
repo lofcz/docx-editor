@@ -424,6 +424,8 @@ Six pure planning cases use independently authored complete payloads, including 
 
 The atomic target primary integration is `ebff1210`. Its five changed source/test files match the isolated checkout. The complete six-file command passes 52 cases and 612 assertions again with the native paragraph fix included. Primary types pass 2077 files; build verifies 221 private modules. Root lint, compatibility, backlog validation, and all 199 production source hashes pass. See [atomic target checkpoint](evidence/complete-atomic-targets.json). R19 remains open.
 
+The born-table Original recovery checkpoint makes Original retain the independent peer suffix at the same boundary as native rejection. The full native layout check passes 158 cases. Four real-session cases verify both client orders, both reconnect receivers, exact native decisions, unchanged source fingerprints, Original-to-rejection caret geometry, author/decision history, and DOCX/shared-room reopening. Core/private types, both builds, root format/lint, compatibility, and all 199 source hashes pass. The remaining rich application fragments, package ledgers, peer deletion evidence, and installed application verification still prevent R19 closure. See the Original recovery section in [implementation notes](evidence/implementation-notes.md).
+
 ## R20
 
 - [ ] Keep imported and foreign revisions separate

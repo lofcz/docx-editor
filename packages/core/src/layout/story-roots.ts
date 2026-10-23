@@ -1,3 +1,4 @@
+import { tableRecoveryParagraphs } from './table-recovery-paragraphs.ts';
 import { isUnsupportedLayoutParagraph, unsupportedBlockParagraph } from './unsupported-content.ts';
 import { currentFieldResultsMode } from '../store/package/field-result-mode.ts';
 import { tocCodeRanges } from './field-code-toc.ts';
@@ -250,10 +251,13 @@ export function mergedFlowBlocks(
   numberingIndex?: NumberingIndex,
   excludedParagraphs?: ReadonlySet<string> | (() => ReadonlySet<string>)
 ): OoxmlElement[] {
-  const blocks = flowBlocksWithParent(children).map((entry) => ({
-    ...entry,
-    block: projectRevisionFormatting(entry.block, displayMode, authorFilter),
-  }));
+  const blocks = flowBlocksWithParent(children).flatMap((entry) => [
+    ...tableRecoveryParagraphs(entry.block, displayMode, authorFilter).map((block) => ({
+      ...entry,
+      block: projectRevisionFormatting(block, displayMode, authorFilter),
+    })),
+    { ...entry, block: projectRevisionFormatting(entry.block, displayMode, authorFilter) },
+  ]);
   const revisionBlocks = withMergedParagraphs(blocks, displayMode, authorFilter).filter((entry) =>
     acceptStoryBlock(entry.block, displayMode, authorFilter)
   );

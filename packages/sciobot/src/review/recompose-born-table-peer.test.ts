@@ -1,7 +1,9 @@
+import * as Y from 'yjs';
 // The test-only transport uses the EigenPal Pro License.
 import { expect, test } from 'bun:test';
 import {
   paragraphTextOf,
+  canonicalOoxmlFingerprint,
   readOoxmlPackage,
   readOoxmlPart,
   replaceChildren,
@@ -86,8 +88,8 @@ for (const clients of [
         if (!second.success) throw Error(second.error);
         pair.reconnect(receiver);
         await pair.settle();
-        // Word's Original view hides the inserted rows. Decision recovery retains foreign text outside them.
-        const original = 'Before\n\nAfter';
+        // Original shows the independent peer text at the same boundary as rejection.
+        const original = 'Before\n\n\u00a0Peer\n\nAfter';
         const proposed = target('One Peer revised');
         const check = async (expected: readonly string[]) => {
           for (const editor of pair.editors) expect(await views(editor)).toEqual([...expected]);
@@ -122,6 +124,25 @@ for (const clients of [
           x: carets[1]!.x,
           y: carets[1]!.y,
         });
+        const unchanged = pair.editors.map((editor) =>
+          canonicalOoxmlFingerprint(editor.surface!.session.part())
+        );
+        for (const editor of pair.editors) editor.surface!.setRevisionDisplayMode('original');
+        await pair.settle();
+        const originalCarets = pair.editors.map((editor) =>
+          caretAt(editor.surface!.layout(), { paragraphId: liveParagraphId, offset: liveOffset })
+        );
+        expect(originalCarets[0]).not.toBeNull();
+        expect(originalCarets[1]).not.toBeNull();
+        expect({ x: originalCarets[0]!.x, y: originalCarets[0]!.y }).toEqual({
+          x: originalCarets[1]!.x,
+          y: originalCarets[1]!.y,
+        });
+        for (const [index, editor] of pair.editors.entries()) {
+          expect(canonicalOoxmlFingerprint(editor.surface!.session.part())).toBe(unchanged[index]!);
+          editor.surface!.setRevisionDisplayMode('all-markup');
+        }
+        await pair.settle();
         expect(alice.exec({ type: 'undo' }).ok).toBe(true);
         await pair.settle();
         await check([original, target('One Peer')]);
@@ -193,6 +214,22 @@ for (const clients of [
                 ? [proposed, proposed]
                 : ['Before\n\n\u00a0Peer\n\nAfter', 'Before\n\n\u00a0Peer\n\nAfter']
             );
+            if (action === 'reject') {
+              for (const [index, editor] of pair.editors.entries()) {
+                expect(paragraphTextOf(editor.surface!.session.part(), liveParagraphId)).toBe(
+                  ' Peer'
+                );
+                const recoveredCaret = caretAt(editor.surface!.layout(), {
+                  paragraphId: liveParagraphId,
+                  offset: ' Peer'.length,
+                });
+                expect(recoveredCaret).not.toBeNull();
+                expect({ x: recoveredCaret!.x, y: recoveredCaret!.y }).toEqual({
+                  x: originalCarets[index]!.x,
+                  y: originalCarets[index]!.y,
+                });
+              }
+            }
             for (const editor of pair.editors)
               expect(bornWordBody(editor.surface!.session.currentPackage(), imported)).toBe(
                 bornWordBody(action === 'accept' ? acceptedPackage : rejectedPackage, imported)
@@ -217,6 +254,33 @@ for (const clients of [
           expect(await views(reopened)).toEqual([original, proposed]);
         } finally {
           reopened.destroy();
+        }
+        const room = await createTwoEditorFixture({
+          document: new Uint8Array(await alice.save()),
+          roomSnapshot: Y.encodeStateAsUpdate(pair.documents[0]!),
+          documentId: context.documentId,
+          ownedAttributes: true,
+          editor: { modules: [SCIOBOT_NATIVE_REVIEW_MODULE] },
+        });
+        try {
+          await room.settle();
+          for (const editor of room.editors)
+            expect(await views(editor)).toEqual([original, proposed]);
+          expect(
+            room.editors[1]!.exec({ type: 'resolveAllReviewChanges', action: 'reject' }).ok
+          ).toBe(true);
+          await room.settle();
+          for (const editor of room.editors) {
+            expect(await views(editor)).toEqual([original, original]);
+            expect(bornWordBody(editor.surface!.session.currentPackage(), imported)).toBe(
+              bornWordBody(rejectedPackage, imported)
+            );
+          }
+          const digests = await room.savedDigests();
+          expect(digests[0]).toEqual(digests[1]);
+          room.ownership.forEach((handle) => handle.assertHealthy());
+        } finally {
+          room.destroy();
         }
         pair.ownership.forEach((handle) => handle.assertHealthy());
       } finally {

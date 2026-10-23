@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Original hid untracked peer text inside inserted rows even when rejection recovered that text outside the removed table. Resolved view caret and projection reads could omit the recovered text.",
+  "after": "Resolved story layout projects independently marked row paragraphs at their recovery boundary. It retains native text wrappers and offsets, removes only the projected paragraph mark, and respects author and node filters. Ordinary row ownership and retained nested tables keep their existing behavior.",
+  "reason": "The change only derives layout nodes from existing canonical rows and paragraphs. It writes no document or room state and adds no operation types, shared fields, or format descriptors.",
+  "tests": [
+    "packages/core/src/layout/__tests__/table-recovery-paragraphs.test.ts",
+    "packages/core/src/layout/__tests__/table-cell-revision-view.test.ts",
+    "packages/sciobot/src/review/recompose-born-table-peer.test.ts"
+  ],
+  "changeset": "original-table-peer-recovery",
+  "migration": null
+}
