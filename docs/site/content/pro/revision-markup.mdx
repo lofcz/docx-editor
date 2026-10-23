@@ -272,3 +272,7 @@ Cell colors apply to cell revisions and inserted or deleted rows. Explicit cell 
 Markup styles appear according to `reviewDisplayMode`. Use `all-markup` to inspect text decorations and colors. Display settings do not resolve revisions.
 
 For PDF output, pass the snapshot's `revisionMarkup` and `reviewDisplayMode` as `revisionMarkup` and `displayMode`. See [Export the same preferences](/docs/2.x/pro/review-styling#export-the-same-preferences) for color and author mapping limits.
+
+Tracked replacement retains source run boundaries when concurrent text arrives from another participant. The native engine stores bounded source bindings outside character formatting. Native decisions transfer the selected bindings to the original run and text identities. XML export transfers those proofs and removes load-local bindings before document reopening. Clipboard copies materialize the proofs before assigning independent proposal scopes.
+
+Use matching current engines for shared documents with source bindings. Mixed shared sessions with older engines are not certified for this behavior. DOCX export retains the existing versioned run-origin metadata without load-local identity bindings.

@@ -1,3 +1,4 @@
+import { materializeTrackedSourceBindings } from './tracked-source-bindings.ts';
 // Canonical OOXML serialization and the semantic equality oracle.
 //
 // This module owns normalized XML output from a canonical part — repository-controlled
@@ -300,6 +301,7 @@ export function serializeNode(
   /** Output accumulator — one flat join at the end beats per-element string assembly. */
   out: MarkupChunk[]
 ): void {
+  if (node.kind === 'paragraph') node = materializeTrackedSourceBindings(node);
   serializeNodeVisits += 1;
   if (node.kind === 'textValue') {
     out.push(escapeXmlChecked(node.value, 'OOXML text'));

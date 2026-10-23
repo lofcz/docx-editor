@@ -1,9 +1,15 @@
+import {
+  withTrackedSourceBindings,
+  readTrackedSourceBindings,
+  type TrackedSourceBinding,
+} from '../package/tracked-source-bindings.ts';
 import { sourceOriginIdentity } from './run-origin-identity.ts';
 import {
   createNodeIdAllocator,
   findNode,
   parentNodeOf,
   replaceChildren,
+  replaceNode,
 } from '../package/ooxml-edit.ts';
 import { namespaceBindingsAt, wmlFreshNamespaceContextAt } from '../package/wml-namespace.ts';
 import {
@@ -176,6 +182,7 @@ export function prepareTrackedRunOrigins(
   const scope = crypto.randomUUID();
   const prefix = originPrefix(nodes, inherited, `runOrigin${scope.replace(/-/g, '')}`);
   const mint = createNodeIdAllocator(part);
+  const sourceBindings: TrackedSourceBinding[] = [];
   const next = mapOriginNodes(nodes, (node) => {
     if (node.kind !== 'run' || !ids.has(node.id)) return node;
     const old = runProperties(node);
@@ -189,6 +196,25 @@ export function prepareTrackedRunOrigins(
         namespaceBindings: context.rowBinding ? [context.rowBinding] : [],
       } as OoxmlElement;
     }
+    sourceBindings.push({
+      scope,
+      runId: node.id,
+      token: `${scope}/${sourceIdentity(node)}`,
+      absent: !old,
+      retained: retained ? (JSON.parse(retained) as string[]) : [],
+      texts: node.children
+        .filter((child) => child.kind === 'text')
+        .map((child) => ({
+          id: child.id,
+          token: `${scope}/${sourceIdentity(child)}`,
+          space:
+            child.attributes.find(
+              (attr) =>
+                attr.namespaceUri === 'http://www.w3.org/XML/1998/namespace' &&
+                attr.localName === 'space'
+            )?.value ?? 'absent',
+        })),
+    });
     const marked = withOriginMetadata(
       properties,
       {
@@ -227,7 +253,12 @@ export function prepareTrackedRunOrigins(
     } as OoxmlNode;
   });
   if (next.kind !== 'paragraph') throw new Error('Invalid run-origin paragraph.');
-  const made = replaceChildren(part, paragraphId, next.children);
+  const bound = withTrackedSourceBindings(
+    next,
+    [...readTrackedSourceBindings(paragraph), ...sourceBindings],
+    originPrefix(nodes, inherited, 'sourceBindings')
+  );
+  const made = replaceNode(part, paragraphId, bound);
   if (!made.ok) throw new PackageEditRefusal('Run-origin annotation failed.', 'tree-invariant');
   return { part: made.part, scope };
 }

@@ -1,3 +1,4 @@
+import { materializeTrackedSourceBindings } from './tracked-source-bindings.ts';
 // The namespace walks that choose a part's controlled prefixes.
 //
 // Before a part serializes, two walks find every namespace it uses: the namespaces and authored
@@ -24,6 +25,7 @@ export function collectNamespacesAndAliases(
   namespaceUris: Set<string>,
   aliasUris: Map<string, Set<string>>
 ): void {
+  if (node.kind === 'paragraph') node = materializeTrackedSourceBindings(node);
   if (node.kind === 'textValue') return;
   if (isMemoizedBlock(node)) {
     const summary = memoizedNamespaceSummary(node, () => {
@@ -90,6 +92,7 @@ export function collectNonEmptyPrefixUris(
   inheritedBindings: ReadonlyMap<string, string>,
   uris: Set<string>
 ): void {
+  if (node.kind === 'paragraph') node = materializeTrackedSourceBindings(node);
   if (node.kind === 'textValue') return;
   if (isMemoizedBlock(node)) {
     const own = memoizedNonEmptyPrefixUris(node, inheritedBindings, () => {

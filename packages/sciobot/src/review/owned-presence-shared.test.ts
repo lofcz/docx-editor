@@ -17,7 +17,11 @@ import {
   presenceReviewFixture,
   installPresenceOwnership,
 } from '../../test/support/presence-ownership';
-import { propertyContext, propertyToken } from '../../test/support/property-execution';
+import {
+  propertyContext,
+  propertyToken,
+  propertyEditor,
+} from '../../test/support/property-execution';
 import { buildBlockIndex } from '../blocks/block-index';
 import { readPayloadStore } from '../blocks/payload-opc-codec';
 import { planParagraphText } from '../diff/paragraph-text';
@@ -185,6 +189,64 @@ for (const clients of [
           const direct = previewDirectPlan(expectedOriginal, directPlan.plan);
           if (!direct.success) throw Error(direct.error);
           const expected = decision === 'accept' ? direct.pkg : expectedOriginal;
+          const roomBytes = pair.documents.map((doc) => Y.encodeStateAsUpdate(doc));
+          let pendingWord: Uint8Array | undefined;
+          const serialized = alice!.surface!.applyAutomationOps(
+            () => [],
+            { kind: 'body' },
+            [
+              (working) => {
+                pendingWord = writeOoxmlPackage(working);
+                return working;
+              },
+            ],
+            true,
+            true,
+            'after'
+          );
+          expect(serialized.rejected).toBe(false);
+          await pair.settle();
+          pair.documents.forEach((doc, index) =>
+            expect(Y.encodeStateAsUpdate(doc)).toEqual(roomBytes[index]!)
+          );
+          const wordRead = readOoxmlPackage(pendingWord!);
+          if (!wordRead.ok) throw Error(wordRead.reason);
+          expect(native(wordRead.package)).not.toContain(
+            'urn:docx-editor:tracked-source-bindings:1'
+          );
+          const local = propertyEditor(wordRead.package);
+          try {
+            const wordDecision = (
+              decision === 'accept' ? acceptAllReviewGroups : rejectAllReviewGroups
+            )(local, propertyToken(local), propertyContext);
+            if (!wordDecision.success) throw Error(wordDecision.error);
+            expect(word(local.surface!.session.currentPackage())).toBe(word(expected));
+            expect(local.exec({ type: 'undo' }).ok).toBe(true);
+            expect(local.exec({ type: 'redo' }).ok).toBe(true);
+            expect(word(local.surface!.session.currentPackage())).toBe(word(expected));
+          } finally {
+            local.destroy();
+          }
+          const pendingRoom = await createTwoEditorFixture({
+            document: pendingWord!,
+            documentId: propertyContext.documentId,
+            ownedAttributes: true,
+            editor: { modules: [SCIOBOT_NATIVE_REVIEW_MODULE] },
+            roomSnapshot: roomBytes[0]!,
+          });
+          try {
+            await pendingRoom.settle();
+            const roomDecision = (
+              decision === 'accept' ? acceptAllReviewGroups : rejectAllReviewGroups
+            )(pendingRoom.editors[0]!, propertyToken(pendingRoom.editors[0]!), propertyContext);
+            if (!roomDecision.success) throw Error(roomDecision.error);
+            await pendingRoom.settle();
+            for (const editor of pendingRoom.editors)
+              expect(word(editor.surface!.session.currentPackage())).toBe(word(expected));
+            pendingRoom.ownership.forEach((handle) => handle.assertHealthy());
+          } finally {
+            pendingRoom.destroy();
+          }
           const pending = pair.editors.map((editor) =>
             native(editor.surface!.session.currentPackage())
           );
@@ -233,3 +295,75 @@ for (const clients of [
           pair.destroy();
         }
       }, 30000);
+
+test('rich paragraph source bindings pass shared field limits and restore every original run after an offline suffix', async () => {
+  const { docxFixture } = await import('../../test/support/document');
+  const { replaceOwnedProposals } = await import('./replace-owned-proposals');
+  const pair = await createTwoEditorFixture({
+    document: docxFixture('<w:p>' + '<w:r><w:t>X</w:t></w:r>'.repeat(80) + '</w:p>'),
+    documentId: propertyContext.documentId,
+    ownedAttributes: true,
+    clientIds: [41, 73],
+    editor: { modules: [SCIOBOT_NATIVE_REVIEW_MODULE] },
+  });
+  try {
+    const [alice, bob] = pair.editors;
+    const baseline = alice!.surface!.session.currentPackage();
+    const paragraphId = alice!.surface!.session.paragraphIds()[0]!;
+    pair.pause();
+    expect(
+      bob!.surface!.applyAutomationOps(() => [
+        { op: 'insertText', paragraphId, offset: 80, text: ' Peer' },
+      ]).rejected
+    ).toBe(false);
+    const plan = planParagraphText(
+      {
+        revision: propertyToken(alice!),
+        partName: baseline.mainDocumentPart,
+        paragraphId,
+        text: 'X'.repeat(80),
+      },
+      'Y'
+    );
+    if (!plan.success) throw Error(plan.error);
+    const proposed = replaceOwnedProposals(alice!, [], plan.plan, propertyContext);
+    if (!proposed.success) throw Error(proposed.error);
+    pair.reconnect(1);
+    await pair.settle();
+    const boundPart = alice!.surface!.session.part();
+    const { findNode } = await import('@docx-editor.dev/core/store');
+    const paragraph = findNode(boundPart, paragraphId)!;
+    if (paragraph.kind !== 'paragraph') throw Error('Missing rich paragraph');
+    const fields = paragraph.attributes.filter(
+      (attribute) => attribute.namespaceUri === 'urn:docx-editor:tracked-source-bindings:1'
+    );
+    expect(fields.length).toBeGreaterThan(1);
+    expect(fields.every((attribute) => attribute.value.length <= 2048)).toBe(true);
+    const expected = applyTreeOp(baseline.parts.get(baseline.mainDocumentPart)!, {
+      op: 'insertText',
+      paragraphId,
+      offset: 80,
+      text: ' Peer',
+    });
+    if (!expected.ok) throw Error(expected.reason);
+    const pending = native(alice!.surface!.session.currentPackage());
+    const rejected = rejectAllReviewGroups(alice!, propertyToken(alice!), propertyContext);
+    if (!rejected.success) throw Error(rejected.error);
+    await pair.settle();
+    for (const editor of pair.editors)
+      expect(word(editor.surface!.session.currentPackage())).toBe(
+        word(withPart(baseline, expected.part))
+      );
+    expect(alice!.exec({ type: 'undo' }).ok).toBe(true);
+    await pair.settle();
+    for (const editor of pair.editors)
+      expect(native(editor.surface!.session.currentPackage())).toBe(pending);
+    expect(alice!.exec({ type: 'redo' }).ok).toBe(true);
+    await pair.settle();
+    const saved = await pair.savedDigests();
+    expect(saved[0]).toEqual(saved[1]);
+    pair.ownership.forEach((handle) => handle.assertHealthy());
+  } finally {
+    pair.destroy();
+  }
+}, 30000);

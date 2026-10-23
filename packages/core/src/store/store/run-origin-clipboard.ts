@@ -1,3 +1,4 @@
+import { materializeTrackedSourceBindings } from '../package/tracked-source-bindings.ts';
 import type { OoxmlNode } from '../package/ooxml-tree.ts';
 import {
   children,
@@ -21,6 +22,7 @@ export function freshenCopiedRunOrigins(
   maxDepth: number
 ): readonly OoxmlNode[] {
   const groups: OoxmlNode[][] = [];
+  const preparedBlocks: OoxmlNode[] = [];
   const parents = new Map<OoxmlNode, OoxmlNode>();
   let total = 0;
   let any = false;
@@ -41,9 +43,28 @@ export function freshenCopiedRunOrigins(
         pending.push({ node: child, depth: depth + 1 });
       }
     }
-    groups.push(nodes);
+    const projected = materializeTrackedSourceBindings(block);
+    preparedBlocks.push(projected);
+    if (projected === block) groups.push(nodes);
+    else {
+      const projectedNodes: OoxmlNode[] = [],
+        pending = [projected];
+      while (pending.length) {
+        const node = pending.pop()!;
+        projectedNodes.push(node);
+        any ||= hasOriginMetadata(node);
+        for (const child of [...children(node)].reverse()) {
+          parents.set(child, node);
+          pending.push(child);
+        }
+      }
+      groups.push(projectedNodes);
+    }
   }
-  if (!any) return blocks;
+  if (!any)
+    return preparedBlocks.every((block, index) => block === blocks[index])
+      ? blocks
+      : preparedBlocks;
   const ordinary = (node: OoxmlNode): boolean => {
     let owner = parents.get(node);
     if (node.kind === 'text' || node.kind === 'deletedText' || node.kind === 'runProperties') {

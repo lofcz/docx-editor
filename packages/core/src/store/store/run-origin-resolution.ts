@@ -1,21 +1,16 @@
+import { materializeTrackedSourceBindings } from '../package/tracked-source-bindings.ts';
 import { settleDeferredRunOrigins } from './run-origin-deferred.ts';
 import {
   INSERTED_PARAGRAPH_PROPERTY_NS,
   preservesInsertedParagraphProperty,
 } from './inserted-paragraph-property-presence.ts';
-import {
-  findNode,
-  parentNodeOf,
-  replaceChildren,
-  type EditOptions,
-} from '../package/ooxml-edit.ts';
+import { findNode, parentNodeOf, replaceNode, type EditOptions } from '../package/ooxml-edit.ts';
 import type { OoxmlNode, OoxmlPart } from '../package/ooxml-tree.ts';
 import { PackageEditRefusal, isPackageEditRefusal } from './package-edit-refusal.ts';
 import type { TreeOpRejection } from './tree-op-types.ts';
 import { joinOriginRuns } from './run-origin-merge.ts';
 import { pruneRunOriginNamespaces } from './run-origin-namespaces.ts';
 import {
-  children,
   mapOriginNodes,
   originNodes,
   readRevisionOrigin,
@@ -108,6 +103,7 @@ function normalizedParagraph(
   retained: Set<string>,
   hints: readonly { readonly scope: string; readonly source: string }[]
 ): OoxmlNode {
+  root = materializeTrackedSourceBindings(root, selected);
   const settled = settleDeferredRunOrigins(root, selected, hints);
   root = settled.root;
   const nodes = originNodes(root),
@@ -267,7 +263,7 @@ function normalizeOrigins(
       resolution.sourceHints.get(paragraphId) ?? []
     );
     if (normalized === paragraph) continue;
-    const made = replaceChildren(current, paragraphId, children(normalized), options);
+    const made = replaceNode(current, paragraphId, normalized, options);
     if (!made.ok) throw new PackageEditRefusal('Run-origin resolution failed.', 'tree-invariant');
     current = made.part;
   }
