@@ -156,6 +156,10 @@ Twenty-four real-session list cases pass 660 assertions in `/tmp/r06-list-shared
 
 R06 stays unchecked until the integration regression run, package/runtime boundary build, repository gates, and final acceptance audit pass. The full direct/review package and numbering-resource acceptance evidence still needs review. No installed application claim follows from these source tests.
 
+The complete-package oracle adds four passing cases and 28 assertions in `/tmp/r06-package-proof-final2.log`. It compares every modeled part, unmodeled byte, content type, relationship, and external target after saved reopen. An independent XML definition pins the extra numbering instance, template reference, nesting, and start override. The expected review record pins its schema and native address; only its validated random identity varies. Header, opaque XML, and binary data remain exact. The initial expected-root union type error was fixed with a checked generic-root narrowing; private types pass 2061 files in `/tmp/r06-final-types2.log`. Root formatting and lint pass in `/tmp/r06-root-format.log` and `/tmp/r06-root-lint.log`. Compatibility passes one decision with no format changes in `/tmp/r06-policy.log`.
+
+Five malformed-input cases expose a wrapper exception before the coordinator validates the plan: `/tmp/r06-validation-repro.log`. Keep these regressions. Fix the wrapper in a separate checkout while the 231-file run retains its exact source. The frozen runtime is `e228477a`; `/tmp/r06-frozen-source.json` records 4124 inputs. R06 remains open.
+
 ## R07
 
 - [x] Execute tracked table cell edits
