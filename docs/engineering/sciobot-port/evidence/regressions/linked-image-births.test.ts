@@ -1,4 +1,4 @@
-// Open D30 regression: linked image births still require native reservation ownership.
+// Resolved D30 probes: linked image births preserve native reservation ownership.
 import { expect, test } from 'bun:test';
 import { createDocxEditor, type DocxEditorInstance } from '@docx-editor.dev/core/editor';
 import {
