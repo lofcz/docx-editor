@@ -46,6 +46,7 @@ async function plan(editor: DocxEditorInstance, target: string) {
 for (const target of [
   'Keep.\n\nA ![Cat](asset:cat "Photo") Z',
   'Keep. A ![Cat](asset:cat "Photo") Z',
+  'Keep. [Link](https://example.test)![Cat](asset:cat "Photo") Z',
   'Keep.\n\n<phase type="evocation">\nA ![Cat](asset:cat "Photo") Z\n</phase>',
   'Keep.\n\n| H |\n| - |\n| A ![Cat](asset:cat "Photo") Z |',
   'Keep. A $x$ ![Cat](asset:cat "Photo") [Ada](mention:user) Z',

@@ -1,4 +1,4 @@
-import { bindInlineImageRelationship } from './inline-image-relationship';
+import { embedInlineImage } from './inline-image-media';
 import { inlinePicture } from './inline-picture';
 import {
   applyTreeOp,
@@ -7,7 +7,6 @@ import {
   parentNodeOf,
   paragraphOffsetIndex,
   paragraphTextOf,
-  withEmbeddedImage,
   withPart,
   escapeXml,
   type OoxmlPackage,
@@ -111,14 +110,8 @@ export function createInlineImageRuntime(
           if (store.status === 'invalid' || (store.status === 'ready' && store.entries.has(id)))
             throw Error('The image payload identity is unavailable.');
           const resource = resources.get(atom.resource.reference)!;
-          const embedded = withEmbeddedImage(next, partName, resource);
-          if (!embedded.ok) throw Error(`Image resource embedding refused: ${embedded.reason}.`);
-          next = bindInlineImageRelationship(
-            embedded.pkg,
-            partName,
-            embedded.relationshipId,
-            embedded.partName
-          );
+          const embedded = embedInlineImage(next, partName, id, resource);
+          next = embedded.pkg;
           apply({ op: 'removeContentControl', controlId: control.id, keepContent: true });
           const drawing = inlinePicture({
             docPrId: embedded.docPrId,
