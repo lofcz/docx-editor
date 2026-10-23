@@ -265,10 +265,13 @@ export class BirthProjection {
     for (const [carrier, frame] of frames) {
       const after = new Map(frame.after.cells.map((cell) => [cell.id, cell]));
       const originalGrid = new Set(frame.before.grid);
+      const restoring = frame.born.some((cell) => undoneBirth(this.registry, cell));
       for (const old of frame.before.cells) {
         const current = after.get(old.id);
         if (!current || !rawCellSet.has(old.id) || this.registry.isTombstoned(old.id)) continue;
-        const covered = new Set(old.columns.filter((column) => active.has(column)));
+        const covered = new Set(
+          (restoring ? old.columns : current.columns).filter((column) => active.has(column))
+        );
         for (const column of current.columns)
           if (!originalGrid.has(column) && active.has(column)) covered.add(column);
         for (const [cell, owned] of ownedByRow.get(old.row) ?? []) {
