@@ -146,7 +146,7 @@ export function prepareBirthTableGeometry(
       const frame: BirthTableGeometry = { table, born: members, before: coverage, after };
       const carrier = registry.schema.nodes.get(members[0]!);
       if (carrier && !carrier.has(NODE_TABLE_BIRTH_GEOMETRY))
-        carrier.set(NODE_TABLE_BIRTH_GEOMETRY, JSON.stringify(frame));
+        carrier.set(NODE_TABLE_BIRTH_GEOMETRY, frame);
     }
   };
 }
@@ -205,11 +205,9 @@ export function birthTableGeometry(
   carrier: LogicalId
 ): BirthTableGeometry | null {
   const source = registry.schema.nodes.get(carrier)?.get(NODE_TABLE_BIRTH_GEOMETRY);
-  if (typeof source !== 'string' || source.length > registry.limits.maxStringLength) return null;
+  if (!source || typeof source !== 'object' || Array.isArray(source)) return null;
   try {
-    const value: unknown = JSON.parse(source);
-    if (!value || typeof value !== 'object') return null;
-    const frame = value as BirthTableGeometry;
+    const frame = source as BirthTableGeometry;
     const id = (value: unknown): value is LogicalId =>
       typeof value === 'string' &&
       value.length > 0 &&

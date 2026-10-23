@@ -48,7 +48,18 @@ function topology(part: OoxmlPart) {
 for (const kind of ['column', 'split'] as const)
   for (const late of [false, true])
     test(`foreign text retains exact ${kind} coverage below a merged header, late=${late}`, async () => {
-      const prepared = prepareNativeDocument(docxFixture(initialXml));
+      // Ten rows require topology evidence larger than an ordinary 4096-character XML value.
+      const extra =
+        kind === 'column' && late
+          ? Array.from({ length: 8 }, (_, index) => [`F${index}`, `G${index}`] as const)
+          : [];
+      const cellXml = (text: string) => `<w:tc><w:p><w:r><w:t>${text}</w:t></w:r></w:p></w:tc>`;
+      const extraXml = extra
+        .map(([left, right]) => `<w:tr>${cellXml(left)}${cellXml(right)}</w:tr>`)
+        .join('');
+      const prepared = prepareNativeDocument(
+        docxFixture(initialXml.replace('</w:tbl>', `${extraXml}</w:tbl>`))
+      );
       if (!prepared.success) throw Error(prepared.error);
       const fixture = { document: prepared.document, clientIds: [41, 73] as const };
       const pair = await createTwoEditorFixture(fixture);
@@ -62,7 +73,7 @@ for (const kind of ['column', 'split'] as const)
           `<td${span > 1 ? ` colspan="${span}"` : ''}>\n\n${text}\n\n</td>`;
         const target =
           kind === 'column'
-            ? `<table>\n<tr>\n${td('Merged', 3)}\n</tr>\n<tr>\n${td('Keep')}\n${td('Tail $x$')}\n${td('Peer')}\n</tr>\n</table>`
+            ? `<table>\n<tr>\n${td('Merged', 3)}\n</tr>\n<tr>\n${td('Keep')}\n${td('Tail $x$')}\n${td('Peer')}\n</tr>\n${extra.map(([left, right]) => `<tr>\n${td(left)}\n${td('')}\n${td(right)}\n</tr>\n`).join('')}</table>`
             : `<table>\n<tr>\n${td('Merged')}\n${td('Tail $x$')}\n</tr>\n<tr>\n${td('Keep')}\n${td('Peer')}\n</tr>\n</table>`;
         const planned = planTargetDocument(
           {
@@ -116,6 +127,11 @@ for (const kind of ['column', 'split'] as const)
                     { text: ' peerborn', span: 1 },
                     { text: 'Peer', span: 1 },
                   ],
+                  ...extra.map(([left, right]) => [
+                    { text: left, span: 1 },
+                    { text: '', span: 1 },
+                    { text: right, span: 1 },
+                  ]),
                 ],
               }
             : {
@@ -187,6 +203,11 @@ for (const kind of ['column', 'split'] as const)
                   { text: ' peerborn', span: 2 },
                   { text: 'Peer', span: 1 },
                 ],
+                ...extra.map(([left, right]) => [
+                  { text: left, span: 1 },
+                  { text: '', span: 2 },
+                  { text: right, span: 1 },
+                ]),
               ],
             });
           const splitWord = canonicalOoxmlFingerprint(bob!.surface!.session.part());
