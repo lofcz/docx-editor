@@ -1,3 +1,4 @@
+export type { OoxmlProperty } from '@docx-editor.dev/core/store';
 export type { InlineDrawingFormatting } from '@docx-editor.dev/core/layout';
 import {
   checkExportAbort,
