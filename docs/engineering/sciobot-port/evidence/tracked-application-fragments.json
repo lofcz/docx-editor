@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "leaf": "R19",
+  "status": "in-progress",
+  "runtimeSource": "914663d1",
+  "testFixtureCorrection": "ba27f313",
+  "sourceHashes": {
+    "packages/core/src/store/package/__tests__/content-type-export.test.ts": "843c4aa7e5d06ab38b59886eae6bc2cd49a0cf3f0ec01bb9f129d87b8b968861",
+    "packages/core/src/store/package/content-type-export.ts": "539c8bb7d2453e2b9c6ba73f6f4e76643bfa9d00e27589a5e18ea7be8ed4db2f",
+    "packages/core/src/store/package/ooxml-package.ts": "70be1a854e9d5f9be93a3e96ee0e072bf71b56d5e67aa5049d16fabc29b46f13",
+    "packages/sciobot/src/diff/fragment-seeds.ts": "ce7d0c47d9485859f6b1ddb11a68de07a79bfa9c01269dad04698a8eec7ad521",
+    "packages/sciobot/src/diff/inserted-blocks.ts": "20afffd3795b37f5a812c82fcd3b49e20efa5b99a8833fae45d3e65c150e90bd",
+    "packages/sciobot/src/diff/plan-target.ts": "6a620772871c1cb75b033fce1b308668079e2dcffd65ce8682100fd4b601ad8b",
+    "packages/sciobot/src/review/recompose-application-fragments-collaboration.test.ts": "a17f645217ab7c361496f5d292e8e9136e81a4544ac3dd8f7777cea1d347e778",
+    "packages/sciobot/src/review/recompose-application-fragments.test.ts": "2846622acb66f367c2785b926895e38ec4c4cbe8c35fd1b1ba33166043476a0b",
+    "packages/sciobot/src/review/replace-owned-proposals.ts": "ef49f3123f6012efac596e738267760c9a6ecb3f7b38b8361b6b2733d57fdc8d",
+    "packages/sciobot/src/review/tracked-sibling-application-blocks.ts": "24933788d8ace06e904d256705e6c108d77867a744b713f24b74542311e99f08",
+    "packages/sciobot/src/review/tracked-sibling-tables.ts": "c4ebda192b0d476b0136f22fe4aa8c0b812637224ebc6501b9418b5473adb1cd",
+    "packages/sciobot/src/review/tracked-stage-payloads.ts": "61f2e121a391f07db2c0eadfc15679f72a443886ebb2146c585c093004a179c8",
+    "packages/sciobot/src/review/tracked-stage-presence.ts": "49293a907bf0696a6fb37544ef00b9f859786bbe87a9f519d2696ae7c35c1f71",
+    "packages/sciobot/src/review/tracked-stage-siblings.ts": "c4f81f56a5b3c464ace9748266c66b1e0885dcd168ada197b11b407eabffccea",
+    "packages/sciobot/test/support/application-fragments.ts": "9f6c6f00805ddc40ae0c319262829b53d6df253d139d1ba2b760279ed79d7a17"
+  },
+  "native": {
+    "pass": 413,
+    "fail": 0,
+    "assertions": 8007,
+    "cases": 413,
+    "files": 42,
+    "log": "/tmp/r19-application-native-affected.log"
+  },
+  "private": {
+    "pass": 697,
+    "fail": 0,
+    "assertions": 23463,
+    "cases": 697,
+    "files": 51,
+    "log": "/tmp/r19-application-private-affected.log"
+  },
+  "nativeFinalFixtureRerun": {
+    "pass": 3,
+    "fail": 0,
+    "assertions": 14,
+    "cases": 3,
+    "files": 1,
+    "log": "/tmp/r19-application-native-fixture-corrected.log"
+  },
+  "correction": "The final native fixture copies expected declaration bytes into a concrete Uint8Array for Bun expect typing. Exact byte equality remains. No runtime source changes follow 914663d1. The three affected cases pass again at ba27f313.",
+  "oracles": "Complete canonical main-Word fingerprints remain exact. Independent direct compilation models retained first-wave resource history and the actual author allocation scope. No identifier or run-boundary normalization changes expected output. Complete package/media resource retirement is not certified.",
+  "checks": {
+    "format": [
+      "/tmp/r19-application-fragments-root-format.log",
+      "/tmp/r19-application-fragments-format-correction.log",
+      "/tmp/r19-application-native-fixture-format.log"
+    ],
+    "lint": "/tmp/r19-application-lint.log",
+    "coreTypes": "/tmp/r19-application-core-types-corrected.log",
+    "privateTypes": "/tmp/r19-application-private-types.log",
+    "build": [
+      "/tmp/r19-application-core-build.log",
+      "/tmp/r19-application-private-build.log"
+    ],
+    "coreAPI": "/tmp/r19-application-core-api.log",
+    "lanes": "/tmp/r19-application-lanes.log",
+    "compatibility": "/tmp/r19-application-policy.log",
+    "productionSources": "/tmp/r19-application-source-audit.log",
+    "builtCoreEntries": [
+      "/tmp/r19-application-built-esm.log",
+      "/tmp/r19-application-built-cjs.log"
+    ],
+    "builtPrivateSingleCore": "/tmp/r19-application-private-built-smoke.log"
+  },
+  "remaining": [
+    "Inline source atoms in new native application fragments",
+    "Reconciliation of controls edited after presence proof capture",
+    "Unseen participant edits inside removed controls and delivery after final source-scope closure",
+    "Complete package/media resource ledgers",
+    "Capability admission and external review reconciliation",
+    "Installed application runtime verification"
+  ],
+  "nextReview": "Verify that overlapping edits cannot make an unselected actionable presence group read-only during replacement.",
+  "todoLeavesClosed": 0
+}
