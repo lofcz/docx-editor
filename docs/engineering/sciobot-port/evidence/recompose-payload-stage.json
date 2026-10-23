@@ -1,0 +1,51 @@
+{
+  "leaf": "R19",
+  "status": "partial checkpoint; leaf remains open",
+  "runtimeRevision": "b8c26928b2c7072e50fa6c08e67d602f50152fea",
+  "privateSourceComparison": {
+    "files": 26,
+    "differences": 0
+  },
+  "tests": {
+    "command": "bun test packages/sciobot/src/review/track-properties.test.ts packages/sciobot/src/review/track-atomic.test.ts packages/sciobot/src/review/recompose-payloads.test.ts packages/sciobot/src/review/recompose-payloads-collaboration.test.ts packages/sciobot/src/review/replace-owned-payloads.test.ts packages/sciobot/src/review/replace-owned-proposals.test.ts packages/sciobot/src/review/recompose.test.ts --timeout 30000",
+    "passed": 90,
+    "failed": 0,
+    "assertions": 754,
+    "files": 7,
+    "log": "/tmp/r19-primary-payload-tests.log"
+  },
+  "typecheck": {
+    "command": "bun run --filter '@sciobot/docx' typecheck",
+    "files": 2073,
+    "log": "/tmp/r19-primary-payload-types.log"
+  },
+  "build": {
+    "command": "bun run --filter '@sciobot/docx' build",
+    "privateModules": 220,
+    "coreExternal": true,
+    "log": "/tmp/r19-primary-payload-build.log"
+  },
+  "format": {
+    "command": "bun run format --cache",
+    "exitCode": 0,
+    "log": "/tmp/r19-payload-root-format.log",
+    "followingTestOnlyFiles": "Scoped formatting also covers the final atomic fixture and type-only export."
+  },
+  "lint": {
+    "command": "bun run lint",
+    "exitCode": 0,
+    "log": "/tmp/r19-primary-payload-lint.log"
+  },
+  "compatibility": {
+    "decision": ".collaboration/changes/sciobot-recompose-payload-stage.json",
+    "newFormatFields": 0,
+    "log": "/tmp/r19-primary-payload-policy.log"
+  },
+  "remaining": [
+    "Complete-target atomic dispatch",
+    "Rich inserted application fragments",
+    "Broader peer deletion during affected edits",
+    "Complete package acceptance oracles",
+    "Installed-runtime verification"
+  ]
+}

@@ -413,6 +413,9 @@ The next table tranche adds ordered native rows/columns, merge/split, table prop
 
 An initial four-session regression detects discarded validation projections entering the observed shared journal. Preparation now uses pure domain/atomic planners and performs no derived package writes. All four real-session property cases pass unchanged output expectations. Both client orders and reconnect receivers cover baseline canonical payload retention, offline peer text, author and reviewer history, remote caret geometry, decisions, and saved convergence. The seven-file affected command passes **90 cases and 754 assertions** in `/tmp/r19-payload-all-focused.log`. Private types pass 2073 files in `/tmp/r19-payload-all-types-final.log`. The new atomic fixture needed an explicit `BlockPayload[]` annotation; runtime expectations remain exact. Build verifies 220 modules with native core external. Root formatting, root lint, and compatibility pass; `.collaboration/changes/sciobot-recompose-payload-stage.json` adds no format fields or published source changes. R19 remains open: complete-target atomic dispatch, rich inserted application fragments, broader affected-peer deletion, complete package acceptance oracles, and installed-runtime verification remain required.
 
+
+The primary integration is `b8c26928`. All 26 changed private source/test files match the isolated checkout byte for byte. The complete seven-file command passes 90 cases and 754 assertions again with the native paragraph fix included. Primary types pass 2073 files; build verifies 220 modules with core external. Root lint, compatibility, backlog validation, and all 199 production source hashes pass. See [payload replacement checkpoint](evidence/recompose-payload-stage.json). R19 remains unchecked.
+
 ## R20
 
 - [ ] Keep imported and foreign revisions separate
