@@ -404,7 +404,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 ## X23
 
-- [ ] Persist inline and block math sources
+- [x] Persist inline and block math sources
 
 **Depends:** [B02](02-react-blocks.md#b02), [P04](03-agent-projection.md#p04), [B19](02-react-blocks.md#b19), [V01](11-verification.md#v01)
 
@@ -418,7 +418,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused native document regression. Include save/reopen and undo/redo. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** codex solo, branch `codex/x23-math-sources`. **Evidence:** In progress. Source math nodes use `texExpression`. The codec retains that string in application payloads and keeps imported OMML opaque.
+**Claim:** codex solo, branch `codex/x23-math-sources`. **Evidence:** Runtime `e0846e38`, final test source `ecf76b9f`. The codec preserves exact inline/multiline LaTeX and unknown payload fields. Native insertion commits source metadata and readable Word fallback together. Imported inline and display OMML keep exact fingerprints through adjacent edits, history, and DOCX reopening. Preparation initializes shared payload infrastructure before first writers. `bun test --preload ./scripts/test/preload-dom.ts` over the 23 files in [math storage evidence](evidence/math-source-storage.json) passes 213 cases. Final focused checks pass 17 cases. The actual compiled private/core harness passes all five shared cases, including concurrency, deletion during peer editing, both histories, remote geometry, and DOCX/room reopening. Private types/build, root format/lint, and the collaboration policy pass. X24 controls and D30 AI atom execution remain separate.
 
 ## X24
 

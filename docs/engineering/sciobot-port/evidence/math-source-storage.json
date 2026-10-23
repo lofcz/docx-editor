@@ -1,0 +1,131 @@
+{
+  "schemaVersion": 1,
+  "leaf": "X23",
+  "status": "verified",
+  "runtimeSource": "e0846e38",
+  "finalVerificationSource": "ecf76b9f",
+  "sourceHashes": {
+    "packages/sciobot/src/blocks/math-codec.ts": "a01619e09b8001fb49870e16d2b6e607624c7603751955c0bd83ce4f7f871733",
+    "packages/sciobot/src/blocks/math-insert.ts": "32eba1ac0f2b28b35381eb08dc071ae5e2ca4f6521259f28c5029e76aece8d27",
+    "packages/sciobot/src/blocks/math-codec.test.ts": "e30cdb8a7e0c26dd0e52c8bbc94926436095c92e3e695f611c49c5498ccec7db",
+    "packages/sciobot/src/blocks/math-insert.test.ts": "347b26337c80c439884130818cb90a9258913df9a0a82d6db14fd1a3d8716a2a",
+    "packages/sciobot/src/blocks/math-collaboration.test.ts": "80153f5403fcd3c59046afa146abbf6954099e553bd90698456272066e9ba768",
+    "packages/sciobot/src/blocks/payload-opc-codec.ts": "29f21fc9d45d5652d9e7672e78b7603a9a5050e0bcf4d82e1fddbd0a6a3c92db",
+    "packages/sciobot/src/blocks/payload-opc-codec.test.ts": "d34bc14a2d5d86ed0632c1edcee6363034593617d79e0f66415042814e01b67d",
+    "packages/sciobot/src/native/prepare-document.ts": "70d4eefa2458ad0b327fb6b845cf205a9f77b0ac285a206d39e44d920d887119",
+    "packages/sciobot/src/native/prepare-document.test.ts": "fb153129deed8f15d6e0413a7362cc4f2353fce5b8e1a898956320b08ffd05ed",
+    "packages/sciobot/src/index.ts": "6c40f9397b78feb71f77d0f054c435bae711312bbf81e0fc418716d2dce553c9",
+    "packages/sciobot/test/support/math-document.ts": "1659e00c66456d867f9850fe023f9b44f52594afb95613237c253c2afe06bf61"
+  },
+  "requirements": {
+    "sourcePersistence": "Inline and block payloads retain exact texExpression strings, including multiline CRLF/CR/LF, Unicode, escapes, and whitespace. Unknown fields survive source-only updates. Unknown versions remain opaque.",
+    "wordFallback": "Native content controls contain readable literal LaTeX. Inline line boundaries become spaces; block line boundaries become separate paragraphs. Empty source displays a square. The payload source is unchanged.",
+    "importedOmml": "Exact canonical fingerprints cover an imported inline fraction, retained vendor extension and properties, and a display equation with its full oMathPara wrapper. Both survive surrounding text edits, history, save/reopen, and real sharing.",
+    "history": "Each equation insertion includes native control and payload in one history unit. Both actors retain independent undo/redo across concurrent first insertions and deletion during peer editing.",
+    "initialization": "Native preparation seeds an empty existing-format payload store before room bootstrap. No actor owns its lifetime. Existing populated or invalid imports stay intact; incomplete shared setup refuses before mutation.",
+    "sharedScenario": "Two fixed client orders times two delivery receivers. Offline inline/block insertions, equation deletion while a peer edits the same paragraph, both histories, remote selection geometry, saved semantic convergence, DOCX and room reopening."
+  },
+  "affectedTests": {
+    "revision": "e0846e38",
+    "pass": 213,
+    "fail": 0,
+    "assertions": 6031,
+    "files": [
+      "packages/sciobot/src/blocks/block-index.test.ts",
+      "packages/sciobot/src/blocks/insert.test.ts",
+      "packages/sciobot/src/blocks/math-codec.test.ts",
+      "packages/sciobot/src/blocks/math-collaboration.test.ts",
+      "packages/sciobot/src/blocks/math-insert.test.ts",
+      "packages/sciobot/src/blocks/move.test.ts",
+      "packages/sciobot/src/blocks/payload-concurrency-collaboration.test.ts",
+      "packages/sciobot/src/blocks/payload-fields.test.ts",
+      "packages/sciobot/src/blocks/payload-label-collaboration.test.ts",
+      "packages/sciobot/src/blocks/payload-label.test.ts",
+      "packages/sciobot/src/blocks/payload-opc-codec.test.ts",
+      "packages/sciobot/src/blocks/payload-part.test.ts",
+      "packages/sciobot/src/blocks/payload-schema.test.ts",
+      "packages/sciobot/src/blocks/remove.test.ts",
+      "packages/sciobot/src/native/horizontal-rule.test.ts",
+      "packages/sciobot/src/native/inline-code-collaboration.test.ts",
+      "packages/sciobot/src/native/inline-code.test.ts",
+      "packages/sciobot/src/native/numbering-infrastructure.test.ts",
+      "packages/sciobot/src/native/prepare-document-collaboration.test.ts",
+      "packages/sciobot/src/native/prepare-document.test.ts",
+      "packages/sciobot/src/review/recompose-application-fragments-collaboration.test.ts",
+      "packages/sciobot/src/review/track-blocks-inline-code.test.ts",
+      "packages/sciobot/src/review/unselected-presence-admission-collaboration.test.ts"
+    ],
+    "log": "/tmp/x23-math-affected.log",
+    "command": "bun test --preload ./scripts/test/preload-dom.ts <files listed here>"
+  },
+  "finalFocusedTests": {
+    "revision": "ecf76b9f",
+    "pass": 17,
+    "fail": 0,
+    "assertions": 759,
+    "files": [
+      "packages/sciobot/src/blocks/math-codec.test.ts",
+      "packages/sciobot/src/blocks/math-insert.test.ts",
+      "packages/sciobot/src/blocks/math-collaboration.test.ts",
+      "packages/sciobot/src/blocks/payload-opc-codec.test.ts"
+    ],
+    "log": "/tmp/x23-math-final-focused.log",
+    "command": "bun test --preload ./scripts/test/preload-dom.ts <files listed here>",
+    "scope": "Subset of the 213 affected cases, repeated after test-only type narrowing. Runtime sources remain unchanged."
+  },
+  "compiledSharedTests": {
+    "revision": "ecf76b9f",
+    "pass": 5,
+    "fail": 0,
+    "assertions": 656,
+    "harness": "/tmp/x23-math-built",
+    "log": "/tmp/x23-math-built-shared.log",
+    "command": "bun test --tsconfig-override ./tsconfig.json --preload /tmp/sciobot-resolved-table-targets/scripts/test/preload-dom.ts ./math.test.ts",
+    "scope": "Same five shared cases; runtime imports use actual private main/collaboration bundles and one compiled native core. Test transport remains test-only."
+  },
+  "checks": {
+    "typecheck": {
+      "command": "bun run typecheck",
+      "cwd": "packages/sciobot",
+      "result": "2121 files; no errors",
+      "log": "/tmp/x23-math-types.log"
+    },
+    "build": {
+      "command": "bun run build",
+      "cwd": "packages/sciobot",
+      "result": "234 private modules; native core external; no excluded production runtime",
+      "log": "/tmp/x23-math-build.log"
+    },
+    "format": {
+      "command": "bun run format",
+      "result": "pass; final test-only edits also pass scoped Prettier",
+      "log": "/tmp/x23-math-format.log"
+    },
+    "lint": {
+      "command": "bun run lint",
+      "result": "pass with existing repository warnings; changed tests also pass scoped oxlint",
+      "log": "/tmp/x23-math-lint.log"
+    },
+    "compatibility": {
+      "command": "bun run collaboration:check --base d3f62862",
+      "result": "1 compatible decision; 0 format fields changed",
+      "log": "/tmp/x23-math-policy.log"
+    },
+    "unchangedEngineInputs": {
+      "command": "git diff d3f62862 -- packages/core packages/pro packages/i18n scripts package.json bun.lock",
+      "result": "empty"
+    },
+    "backlog": {
+      "command": "bun docs/engineering/sciobot-port/check.mjs",
+      "log": "/tmp/x23-math-backlog.log"
+    }
+  },
+  "limits": [
+    "X24 still owns application equation controls and editing actions.",
+    "D30 still owns AI planning/materialization of all inline atom kinds.",
+    "Tracked equation insertion belongs to the review executor. This direct insertion API keeps suggestion mode enabled and refuses tracked authoring.",
+    "No installed application cutover or full mathematical rendering parity is claimed.",
+    "Sources must fit existing bounded JSON/native paragraph limits and contain valid Unicode/XML characters.",
+    "The production adapter imports Apache native core only; test collaboration transport uses the EigenPal Pro License."
+  ]
+}
