@@ -304,3 +304,36 @@ describe('insertContentControl refuses a position nothing can divide', () => {
     ).toBe('locked');
   });
 });
+
+test('inline controls retain the trailing native text address across repeated cuts', () => {
+  const part = parseDoc('<w:p><w:r><w:t xml:space="preserve">one and two</w:t></w:r></w:p>');
+  const paragraph = paragraphs(part)[0]!;
+  const leaves = (node: OoxmlNode): OoxmlNode[] =>
+    node.kind === 'textValue' ? [node] : node.children.flatMap(leaves);
+  const original = leaves(paragraph)[0]!;
+  const first = apply(part, {
+    op: 'insertInlineContentControl',
+    paragraphId: paragraph.id,
+    offset: 4,
+    text: 'A',
+    tag: 'first',
+  });
+  const next = apply(first, {
+    op: 'insertInlineContentControl',
+    paragraphId: paragraph.id,
+    offset: 9,
+    text: 'B',
+    tag: 'second',
+  });
+  const tail = leaves(next.root).find((node) => node.id === original.id);
+  expect(tail).toEqual({ ...original, value: 'two' });
+  expect(paragraphTextOf(next, paragraph.id)).toBe('one Aand Btwo');
+  const ids: string[] = [];
+  const visit = (node: OoxmlNode): void => {
+    ids.push(node.id);
+    if (node.kind !== 'textValue') node.children.forEach(visit);
+  };
+  visit(next.root);
+  expect(new Set(ids).size).toBe(ids.length);
+  expect(serializeOoxmlPart(next)).toContain('<w:t>two</w:t>');
+});

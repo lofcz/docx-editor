@@ -2865,7 +2865,7 @@ export function distributeInline(
     }
     const lastSlice = segment.node.value.slice(sliceStart - from);
     if (lastSlice.length > 0) {
-      contentByPiece[piece]!.push(inlineTextSlice(nextId, lastSlice, segmentOwner));
+      contentByPiece[piece]!.push(inlineTextSlice(nextId, lastSlice, segmentOwner, true));
     }
   }
   let keptOriginalRpr = false;

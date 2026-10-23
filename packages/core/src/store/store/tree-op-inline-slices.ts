@@ -2,7 +2,12 @@ import type { OoxmlNode, OoxmlRunNode } from '../package/ooxml-tree.ts';
 import { textElement } from './tree-op-inline-elements.ts';
 const XML = 'http://www.w3.org/XML/1998/namespace';
 /** Keep source element metadata on native range slices; mint only their structural identities. */
-export function inlineTextSlice(mint: () => string, value: string, source: OoxmlNode): OoxmlNode {
+export function inlineTextSlice(
+  mint: () => string,
+  value: string,
+  source: OoxmlNode,
+  retainIdentity = false
+): OoxmlNode {
   if (source.kind !== 'text' && source.kind !== 'deletedText') return textElement(mint, value);
   const created = textElement(mint, value, source.kind);
   // An internal source space becomes a boundary space after a split. Word must preserve it.
@@ -12,11 +17,17 @@ export function inlineTextSlice(mint: () => string, value: string, source: Ooxml
           !(attr.namespaceUri === XML && attr.localName === 'space' && attr.value === 'default')
       )
     : source.attributes;
+  // One trailing fragment keeps the observed leaf. Other fragments mint independent IDs.
+  // Shared text can then anchor unchanged source characters across an inserted control.
+  const retained =
+    retainIdentity && source.children.length === 1 && source.children[0]?.kind === 'textValue'
+      ? { ...source.children[0], value }
+      : null;
   return {
     ...source,
-    id: created.id,
+    id: retained ? source.id : created.id,
     attributes,
-    children: created.kind === 'textValue' ? [] : created.children,
+    children: retained ? [retained] : created.kind === 'textValue' ? [] : created.children,
   } as OoxmlNode;
 }
 export function inlineRunSlice(
