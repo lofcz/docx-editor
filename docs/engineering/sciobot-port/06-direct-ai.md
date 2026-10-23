@@ -134,7 +134,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 ## A08
 
-- [ ] Insert generated content at a stable AI anchor
+- [x] Insert generated content at a stable AI anchor
 
 **Depends:** [A10](06-direct-ai.md#a10), [D05](04-edit-planner.md#d05), [A01](06-direct-ai.md#a01), [B11](02-react-blocks.md#b11), [V01](11-verification.md#v01)
 
@@ -154,7 +154,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 The final focused command covers all eight raw-stream cases and six numbering concurrency cases in `/tmp/a10-final-focused.log`. Both reconnect receivers retain independent peer text, exact expected numbering infrastructure, modeled numbering parts, full package fingerprints, undo/redo, and saved convergence. The exact raw-stream numbering oracle remains intact. The initial defect remains recorded in [historical A10 evidence](evidence/a10-numbering-undo.json).
 
-The affected anchor, insertion, structural-scope, inserted-block, and target suites pass 37 cases and 370 assertions in `/tmp/a10-private-affected.log`. The quote suite adds 13 cases and 269 assertions in `/tmp/a10-private-quotes.log`. These include activity movement, table/control placement, peer row insertion, peer caret geometry, deletion during peer editing, and complete peer-only undo packages. Private types pass 2055 files; the private build verifies 215 modules with native core external. Logs: `/tmp/a10-final-private-types.log`, `/tmp/a10-final-private-build.log`. A10 owns the shared numbering repair and its additional provider checks.
+The affected anchor, insertion, structural-scope, inserted-block, and target suites pass 37 cases and 370 assertions in `/tmp/a10-private-affected.log`. The quote suite adds 13 cases and 269 assertions in `/tmp/a10-private-quotes.log`. These include activity movement, table/control placement, peer row insertion, peer caret geometry, deletion during peer editing, and complete peer-only undo packages. Private types pass 2055 files; the private build verifies 215 modules with native core external. Logs: `/tmp/a10-final-private-types.log`, `/tmp/a10-final-private-build.log`. A10 closes the shared numbering prerequisite in `259c7db2`. Root format and lint pass in `/tmp/a10-final-format.log` and `/tmp/a10-final-lint.log`. Scoped formatting and backlog validation pass. The production inventory verifies all 198 source hashes. No application Generate cutover is claimed.
 
 ## A09
 
@@ -176,7 +176,7 @@ The affected anchor, insertion, structural-scope, inserted-block, and target sui
 
 ## A10
 
-- [ ] Export valid numbering infrastructure after shared undo
+- [x] Export valid numbering infrastructure after shared undo
 
 **Depends:** [V01](11-verification.md#v01)
 
@@ -199,3 +199,5 @@ All 18 original focused cases pass with 345 assertions in `/tmp/a10-final-focuse
 Nine affected provider suites pass 49 cases and 223 assertions. Logs: `/tmp/a10-affected-document-list-renumber.log`, `/tmp/a10-affected-document-style-numbered-list-level.log`, `/tmp/a10-affected-document-history-groups.log`, `/tmp/a10-affected-document-history-groups-editor.log`, `/tmp/a10-affected-document-history-groups-review.log`, `/tmp/a10-affected-history-group-capture.log`, `/tmp/a10-affected-registry-undo-tombstone.log`, `/tmp/a10-affected-materializer-spine-rebuild.log`, `/tmp/a10-affected-materialize-steps.log`. The test command uses the repository CI runner's existing 30000 ms budget. Earlier five-second runs timed out under host CPU contention; those results remain in `/tmp/a10-delayed.log`. Test source deadlines and acceptance oracles remain unchanged.
 
 Compatibility decision: `.collaboration/changes/numbering-undo-dependencies.json`; patch changeset: `.changeset/numbering-undo-dependencies.md`. Policy passes against HEAD with zero format-field changes in `/tmp/a10-final-policy.log`. Pro types pass 2277 source files and 1834 declaration inputs in `/tmp/a10-final-pro-types.log`. This repair affects the test transport under the EigenPal Pro License. Production continues to use the Apache core and private application adapter.
+
+Completion gates pass for `259c7db2`: full public package builds, third-party notices, root formatting, root lint, scoped formatting, and diff checks. Logs: `/tmp/a10-final-all-build.log`, `/tmp/a10-final-notices.log`, `/tmp/a10-final-format.log`, `/tmp/a10-final-lint.log`, `/tmp/a10-final-scoped-format.log`. Lint retains existing warnings. Final Pro types also pass in `/tmp/a10-final-pro-types-latest.log`. Branch compatibility passes 145 decisions and zero format-field changes in `/tmp/a10-final-branch-policy.log`. The packed candidate passes against published 2.32.0 with both deterministic seeds, both mixed writer directions, saved-room reopening, and ordinary editing/history: `/tmp/a10-final-mixed.log`. This is one cataloged release, not a claim that the complete release catalog ran. The repair and streaming gate cover 118 distinct focused/affected cases.
