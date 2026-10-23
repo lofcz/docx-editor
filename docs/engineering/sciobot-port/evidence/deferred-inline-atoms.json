@@ -1,0 +1,109 @@
+{
+  "schemaVersion": 1,
+  "leaf": "D30",
+  "status": "in-progress",
+  "runtimeSource": "123ed877",
+  "finalVerificationSource": "3162ea0d",
+  "sourceHashes": {
+    "packages/sciobot/src/diff/inserted-atoms.ts": "f34b298720ae09e6839358a7e2dcb32094a55bb95e32712dbf5eb44081e9e667",
+    "packages/sciobot/src/diff/inserted-atoms.test.ts": "46e3ab30bfaa1933a73308f092eeb8ac6ba0f0454888ee48812a8c8b5d1ad9db",
+    "packages/sciobot/src/index.ts": "c47912c9ba826e7b33c8ad50961c9399363547cde674acfcb16feac38493e3b6"
+  },
+  "implemented": [
+    "Deferred drawing references for images; planning does not fetch or embed assets.",
+    "Inline control payload descriptions for math, mentions, and registered source atoms.",
+    "New paragraph paths and retained native paragraph IDs share UTF-16 insertion-fragment offsets.",
+    "Formatting and link ownership travel with each atom. Control widths use explicit Word fallback lengths.",
+    "Math uses the X23 codec. Mention identifiers use application key separately from display value.",
+    "Persistent IDs are distinct and checked against payload storage and controls in every story.",
+    "Unknown semantic fields and nested source children refuse instead of being silently flattened."
+  ],
+  "focusedTests": {
+    "revision": "123ed877",
+    "files": [
+      "packages/sciobot/src/diff/inserted-atoms.test.ts",
+      "packages/sciobot/src/diff/inline-target.test.ts",
+      "packages/sciobot/src/diff/inserted-blocks.test.ts"
+    ],
+    "pass": 35,
+    "fail": 0,
+    "assertions": 333,
+    "log": "/tmp/d30-atoms-focused.log",
+    "command": "bun test --preload ./scripts/test/preload-dom.ts <files listed here>"
+  },
+  "finalTests": {
+    "revision": "3162ea0d",
+    "pass": 9,
+    "fail": 0,
+    "assertions": 49,
+    "log": "/tmp/d30-atoms-final.log",
+    "command": "bun test --preload ./scripts/test/preload-dom.ts ./packages/sciobot/src/diff/inserted-atoms.test.ts",
+    "scope": "Subset of the 35 cases; repeated after test-only JSON type annotations."
+  },
+  "compiledTests": {
+    "revision": "3162ea0d",
+    "pass": 9,
+    "fail": 0,
+    "assertions": 49,
+    "log": "/tmp/d30-atoms-built.log",
+    "harness": "/tmp/d30-atoms-built",
+    "command": "bun test --tsconfig-override ./tsconfig.json --preload /tmp/sciobot-resolved-table-targets/scripts/test/preload-dom.ts ./atoms.test.ts",
+    "scope": "Same pure planner cases through the actual private main bundle and a single compiled core."
+  },
+  "checks": {
+    "typecheck": {
+      "command": "bun run --filter '@sciobot/docx' typecheck",
+      "result": "2123 files; no errors",
+      "log": "/tmp/d30-atoms-types.log"
+    },
+    "build": {
+      "command": "bun run --filter '@sciobot/docx' build",
+      "result": "235 modules; native core remains external",
+      "log": "/tmp/d30-atoms-build.log"
+    },
+    "format": {
+      "command": "bun run format; final changed files also pass scoped prettier --check",
+      "result": "pass",
+      "logs": [
+        "/tmp/d30-atoms-format.log",
+        "/tmp/d30-atoms-scoped-format.log"
+      ]
+    },
+    "lint": {
+      "command": "bun run lint; final changed files also pass scoped oxlint",
+      "result": "pass with existing repository warnings",
+      "logs": [
+        "/tmp/d30-atoms-lint.log",
+        "/tmp/d30-atoms-scoped-lint.log"
+      ]
+    },
+    "policy": {
+      "command": "bun run collaboration:check --base c2277a25",
+      "result": "1 no-impact decision; 0 shared format fields changed",
+      "log": "/tmp/d30-atoms-policy.log"
+    },
+    "backlog": {
+      "command": "bun docs/engineering/sciobot-port/check.mjs",
+      "result": "276 leaves; 178 closed; 98 remaining; 199 application source hashes verified",
+      "log": "/tmp/d30-atoms-backlog.log"
+    },
+    "engineInputs": {
+      "command": "git diff c2277a25 -- packages/core packages/pro scripts package.json bun.lock",
+      "result": "empty"
+    }
+  },
+  "remaining": [
+    "X38 must implement native mention storage and lossless existing Markdown syntax before mention execution.",
+    "Resolve exact projection for empty and multiline inline math without silently changing source semantics.",
+    "Integrate atom descriptions with the canonical D01 plan codec and A01/R05 execution.",
+    "Align existing atom ownership and surrounding text when diffing retained paragraphs.",
+    "Resolve image references in the executor, reuse retained media, and add media only for new images.",
+    "Prove target Markdown through native save/reopen and the required full C01/composer and two-session integration gates."
+  ],
+  "limits": [
+    "The helper plans insertion fragments only; it does not diff whole retained paragraphs.",
+    "The existing native materializers still refuse unsupported new inline atoms.",
+    "No TODO closes at this checkpoint. X38 adds one necessary prerequisite leaf.",
+    "No production application or shared mutation path uses this helper yet. New helpers do not establish application parity."
+  ]
+}
