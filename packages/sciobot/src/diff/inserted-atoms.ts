@@ -1,3 +1,4 @@
+import { createMentionPayload, mentionWordFallback } from '../blocks/mention-codec';
 import type { OoxmlPackage } from '@docx-editor.dev/core/store';
 import { createMathPayload, mathWordFallback } from '../blocks/math-codec';
 import { encodeBlockPayload, type BlockPayload } from '../blocks/payload-schema';
@@ -230,10 +231,10 @@ export function planInsertedAtoms(
                   child.type === 'text' && typeof child.value === 'string' ? child.value : ''
                 )
                 .join('') || ast.username;
-        if (!xmlText(value) || !value || /[\r\n]/.test(value))
-          return fail('A mention needs a readable single-line label.');
-        payload = { id, type: 'mention', version: 1, attributes: { key: ast.username, value } };
-        fallback = value;
+        if (!xmlText(value)) return fail('A mention needs a readable single-line label.');
+        const mention = createMentionPayload(id, ast.username, value);
+        payload = mention;
+        fallback = mentionWordFallback(mention).text;
         atom = 'mention';
       } else {
         if (

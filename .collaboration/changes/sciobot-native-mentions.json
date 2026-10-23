@@ -1,0 +1,16 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Application mentions had no native codec or atomic insertion. Mention parsing could turn display-label at-signs into nested mentions and replace empty labels with identifiers. Serialized controls inside tables always required HTML.",
+  "after": "Application-owned inline controls retain mention keys, exact display labels, and private metadata with one history unit. Escaped existing mention link syntax roundtrips labels and source positions. Mention labels stay atomic, including empty labels and literal at-signs. GFM-safe serializers can retain native table syntax.",
+  "reason": "The private adapter reuses existing native content controls and version-one custom XML payload storage. Shared histories use the existing canonical operation protocol and pre-bootstrap payload infrastructure. No core, Pro, transport, format field, or dependency changes occur.",
+  "tests": [
+    "packages/sciobot/src/blocks/mention-codec.test.ts",
+    "packages/sciobot/src/blocks/mention-insert.test.ts",
+    "packages/sciobot/src/blocks/mention-collaboration.test.ts",
+    "packages/sciobot/src/projection/blocks.test.ts",
+    "packages/sciobot/src/diff/inserted-atoms.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

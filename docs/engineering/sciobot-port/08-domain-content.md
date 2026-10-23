@@ -688,4 +688,4 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add focused explicit codec/projection/native cases. Add the V01 two-session scenario for concurrent insertions, deletion during peer editing, both histories, remote geometry, reconnect, and DOCX/room reopening. Run private types/build, scoped formatting/lint, and the collaboration policy.
 
-**Claim:** unclaimed. **Evidence:** Required prerequisite identified by D30. The application inserts `mention` nodes with `key` and `value`; document keys start with `/`. D30 now carries these fields in deferred control descriptions, but native insertion and lossless projection are not yet connected. X22 still owns browser suggestions, selection triggers, and rendering.
+**Claim:** codex solo, branch `codex/x38-native-mentions`. **Evidence:** Required prerequisite identified by D30. The application inserts `mention` nodes with `key` and `value`; document keys start with `/`. D30 now carries these fields in deferred control descriptions, but native insertion and lossless projection are not yet connected. X22 still owns browser suggestions, selection triggers, and rendering.

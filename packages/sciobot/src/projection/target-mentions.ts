@@ -10,6 +10,7 @@ export type MentionNode = {
   type: 'mention';
   username: string;
   displayText?: string;
+  position?: Link['position'];
 };
 
 declare module 'mdast' {
@@ -40,13 +41,19 @@ export const remarkTargetMentions: Plugin = () => (tree: Node) => {
       // Decode URL-encoded spaces and special characters
       username = decodeURIComponent(username);
       const first = node.children[0];
-      const displayText = first && 'value' in first && first.value ? first.value : username;
+      const displayText =
+        node.children.length === 0
+          ? ''
+          : first && 'value' in first && typeof first.value === 'string'
+            ? first.value
+            : username;
 
       const mentionNode: MentionNode = {
         children: [{ type: 'text', value: displayText }],
         displayText,
         type: 'mention',
         username,
+        ...(node.position ? { position: node.position } : {}),
       };
 
       parent.children[index] = mentionNode;
@@ -59,7 +66,7 @@ export const remarkTargetMentions: Plugin = () => (tree: Node) => {
 
     // Skip processing @mentions within link nodes
     // Links should remain as links, not be converted to mentions
-    if (parent.type === 'link') return;
+    if (parent.type === 'link' || parent.type === 'mention') return;
 
     // Pattern for @username mentions (no spaces)
     // Matches @username but excludes trailing punctuation

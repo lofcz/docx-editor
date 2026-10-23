@@ -174,7 +174,11 @@ export function projectBlocks(
     visit(part.root, [], undefined, false, undefined, 0);
     // Rich opaque trees need cell paragraph boundaries that GFM cannot express.
     const richCells = [...anchors.values()].some(
-      (anchor) => anchor.node && anchor.inCell && anchor.definition.serialize
+      (anchor) =>
+        anchor.node &&
+        anchor.inCell &&
+        anchor.definition.serialize &&
+        anchor.definition.serializedCellSyntax !== 'gfm'
     );
     if (richCells && options.tableSyntax === 'gfm')
       return {

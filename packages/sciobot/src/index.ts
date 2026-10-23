@@ -100,6 +100,8 @@ export * from './blocks/payload-part';
 export * from './blocks/block-index';
 export * from './blocks/insert';
 export * from './blocks/math-codec';
+export * from './blocks/mention-codec';
+export * from './blocks/mention-insert';
 export * from './blocks/math-insert';
 export * from './blocks/remove';
 export * from './blocks/move';

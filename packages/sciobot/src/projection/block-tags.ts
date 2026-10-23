@@ -1,3 +1,4 @@
+import { serializeMention } from './mention';
 import type { BlockPayload, JsonValue } from '../blocks/payload-schema';
 
 export interface BlockAttributeBinding {
@@ -31,6 +32,8 @@ export interface BlockTagDefinition {
   readonly attributes: (payload: BlockPayload) => readonly BlockAttributeBinding[];
   /** Atomic payloads can serialize complete stored syntax, including opaque MDX trees. */
   readonly serialize?: (payload: BlockPayload) => SerializedBlockTag;
+  /** Rich serializers default to HTML cells. Literal inline syntax can explicitly retain GFM. */
+  readonly serializedCellSyntax?: 'gfm' | 'html';
 }
 
 function all(payload: BlockPayload): BlockAttributeBinding[] {
@@ -211,6 +214,16 @@ export const DOMAIN_BLOCK_TAGS: ReadonlyMap<string, BlockTagDefinition> = new Ma
   ],
   ['lesson_visual', { tag: 'lesson_visual', kind: 'atomic', attributes: visual }],
   ['source', { tag: 'source', kind: 'atomic', attributes: source }],
+  [
+    'mention',
+    {
+      tag: 'mention',
+      kind: 'atomic',
+      attributes: (payload) => ordered(payload, ['key', 'value']),
+      serialize: serializeMention,
+      serializedCellSyntax: 'gfm',
+    },
+  ],
   ['source_excerpt', { tag: 'source', kind: 'container', attributes: source }],
 ]);
 
