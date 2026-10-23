@@ -32,11 +32,16 @@ export class JournalProjection {
 
   private readonly births: BirthProjection;
   private readonly hiddenChildren = new Set<LogicalId>();
+  private readonly retainedChildCounts = new Map<LogicalId, number>();
   constructor(private readonly registry: DocumentRegistry) {
     this.births = new BirthProjection(registry);
   }
   hasHiddenChildren(id: LogicalId): boolean {
     return this.hiddenChildren.has(id);
+  }
+  /** Retained hidden ancestry still occupies shared child slots throughout the journal. */
+  sharedChildCount(id: LogicalId): number {
+    return (this.node(id)?.children.length ?? 0) + (this.retainedChildCounts.get(id) ?? 0);
   }
 
   has(id: LogicalId): boolean {
@@ -58,6 +63,7 @@ export class JournalProjection {
     const shown = shape.children.filter((child) => this.births.shown(id, child));
     if (shown.length !== shape.children.length) {
       this.hiddenChildren.add(id);
+      this.retainedChildCounts.set(id, shape.children.length - shown.length);
       shape.children = shown;
     }
     this.touched.set(id, shape);

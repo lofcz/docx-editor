@@ -161,7 +161,7 @@ export class BirthProjection {
     ) {
       if (seen.has(at)) return null;
       seen.add(at);
-      if (this.element(at)?.kind === 'table') return at;
+      if (this.registry.kindOf(at) === 'table') return at;
     }
     return null;
   }
@@ -282,6 +282,9 @@ export class BirthProjection {
     );
   }
   shown(parent: LogicalId, child: LogicalId): boolean {
+    // Ordinary projected journals need only registry shape reads. Table birth repair
+    // must not require shared record maps for unrelated paragraphs or split runs.
+    if (this.registry.kindOf(child) !== 'table' && this.tableOf(parent) === null) return true;
     if (!undoneBirth(this.registry, child)) return true;
     const record = this.element(child);
     if (!record) return this.hasContent(child);

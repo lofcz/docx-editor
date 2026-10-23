@@ -15,7 +15,10 @@ import {
   SHARED_BLOBS_KEY,
 } from '../../../pro/src/collaboration/shared-blob-store';
 import { JOURNAL_ORIGIN } from '../../../pro/src/collaboration/document/schema';
-import { applyPrimitiveJournal } from '../../../pro/src/collaboration/document/index';
+import {
+  applyPrimitiveJournal,
+  DocumentRegistry,
+} from '../../../pro/src/collaboration/document/index';
 import { asLogicalId } from '../../../pro/src/collaboration/document/identity';
 import {
   applyJournal,
@@ -215,6 +218,33 @@ for (const kind of ['middle', 'end', 'prefix', 'cross-prefix'] as const)
         const currentPart = () =>
           packageOf(replica).parts.get(packageOf(replica).mainDocumentPart)!;
         expect(canonicalOoxmlFingerprint(currentPart())).toBe(canonicalOoxmlFingerprint(expected));
+        if (otherTable) {
+          const boundedDoc = new Y.Doc();
+          const bounded = new DocumentRegistry(boundedDoc, { maxChildren: 6 });
+          try {
+            bounded.beginBulkLoad();
+            Y.applyUpdate(boundedDoc, Y.encodeStateAsUpdate(replica.doc), 'join');
+            bounded.endBulkLoad();
+            const before = Y.encodeStateAsUpdate(boundedDoc);
+            const row = tableRows(initial, otherTable.id)[0]!;
+            expect(
+              applyPrimitiveJournal(bounded, {
+                effects: [
+                  {
+                    kind: 'moveNode',
+                    logicalId: row.id,
+                    destinationParentLogicalId: sourceTable.id,
+                    destinationIndex: base,
+                  },
+                ],
+              })
+            ).toMatchObject({ ok: false, code: 'too-many-children' });
+            expect(Y.encodeStateAsUpdate(boundedDoc)).toEqual(before);
+          } finally {
+            bounded.destroy();
+            boundedDoc.destroy();
+          }
+        }
         if (kind === 'middle') {
           const before = Y.encodeStateAsUpdate(replica.doc);
           const destination = replica.mint.take();
@@ -249,6 +279,13 @@ for (const kind of ['middle', 'end', 'prefix', 'cross-prefix'] as const)
         ];
         expect(texts(currentPart())).toEqual(expectedRows);
         const withPeer = canonicalOoxmlFingerprint(currentPart());
+        const expectedUndo = canonicalOoxmlFingerprint(
+          reordered(currentPart(), [
+            tableRows(currentPart(), sourceTable.id)[0]!.id,
+            ...originalRows.map((row) => row.id),
+          ])
+        );
+        const beforeReads = Y.encodeStateAsUpdate(replica.doc);
         const cold = joinReplica(replica, 98, undefined, roomBlobs);
         try {
           expect(
@@ -262,6 +299,7 @@ for (const kind of ['middle', 'end', 'prefix', 'cross-prefix'] as const)
         expect(
           canonicalOoxmlFingerprint(opened.package.parts.get(opened.package.mainDocumentPart)!)
         ).toBe(withPeer);
+        expect(Y.encodeStateAsUpdate(replica.doc)).toEqual(beforeReads);
         undo.undo();
         expect(replica.materializer.rebuild().ok).toBe(true);
         expect(texts(currentPart())).toEqual([
@@ -270,6 +308,7 @@ for (const kind of ['middle', 'end', 'prefix', 'cross-prefix'] as const)
           ['Keep', 'Peer'],
           ['End', 'Last'],
         ]);
+        expect(canonicalOoxmlFingerprint(currentPart())).toBe(expectedUndo);
         undo.redo();
         expect(replica.materializer.rebuild().ok).toBe(true);
         expect(canonicalOoxmlFingerprint(currentPart())).toBe(withPeer);

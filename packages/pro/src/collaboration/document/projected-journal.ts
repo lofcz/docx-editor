@@ -265,6 +265,9 @@ class VisibleJournalProjection extends JournalProjection {
   ) {
     super(shared);
   }
+  override sharedChildCount(id: LogicalId): number {
+    return this.raw.sharedChildCount(id);
+  }
   override node(id: LogicalId): ReturnType<JournalProjection['node']> {
     const node = super.node(id);
     if (node && !this.filtered.has(id)) {

@@ -182,7 +182,9 @@ export function validateEffect(
           return { ok: false, code: 'invalid-bound', detail: effect.parentLogicalId };
         }
         if (
-          parent.children.length - effect.deleteCount + effect.childLogicalIds.length >
+          projection.sharedChildCount(effect.parentLogicalId) -
+            effect.deleteCount +
+            effect.childLogicalIds.length >
           registry.limits.maxChildren
         ) {
           return { ok: false, code: 'too-many-children' };
@@ -201,7 +203,8 @@ export function validateEffect(
       if (!parent || parent.isText)
         return { ok: false, code: 'invalid-bound', detail: effect.destinationParentLogicalId };
       if (
-        parent.children.length + (parent.children.includes(effect.logicalId) ? 0 : 1) >
+        projection.sharedChildCount(effect.destinationParentLogicalId) +
+          (parent.children.includes(effect.logicalId) ? 0 : 1) >
         registry.limits.maxChildren
       )
         return { ok: false, code: 'too-many-children' };
