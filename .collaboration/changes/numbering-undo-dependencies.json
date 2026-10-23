@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Undo could export empty numbering definition shells and omit the retained numbering content type from saved bytes.",
+  "after": "Undo retains allocation data for delayed references, marks unused definitions unavailable, and restores needed definitions with existing shared updates. Saved bytes retain the numbering content type.",
+  "reason": "The wire schema and identities do not change. Allocation attributes and children remain ordinary existing data. Existing undone marks still mean unavailable; restoring a live dependency removes that mark using the existing restore origin. Released readers understand these records and mark removals. The content-type repair reconciles saved bytes with the existing authoritative metadata index without shared writes.",
+  "tests": [
+    "packages/pro/src/collaboration/__tests__/numbering-infrastructure.test.ts",
+    "packages/sciobot/src/ai/numbering-stream-undo.test.ts",
+    "packages/sciobot/src/ai/markdown-stream.test.ts"
+  ],
+  "changeset": "numbering-undo-dependencies",
+  "migration": null
+}

@@ -4,7 +4,7 @@ Licensed under the EigenPal Pro Evaluation License 1.0 — see packages/pro/LICE
 Production use requires a commercial agreement: licensing@eigenpal.com
 */
 /**
- * Comments and notes an undo takes out of their part stay out on every replica.
+ * Directory members an undo takes out of their part stay out on every replica.
  *
  * An undo of an insert removes the record's listing and keeps the record, so a redo can list
  * it again. A comment or note no parent lists looks, to every replica, like one a concurrent
@@ -23,10 +23,11 @@ import { deleteSetRuns, structAt } from './yjs-items.ts';
 import { textMarksOf } from './paragraph-text-marks.ts';
 
 /**
- * The part members a part always lists. Numbering definitions are not among them: concurrent
- * list edits leave them loose by design, and the repair is how they show.
+ * Directory members removed by undo stay unlisted. Numbering allocations retain their data
+ * for delayed references; dependency repair restores members that live references need.
  */
 const LISTED_MEMBERS = new Set(['comment', 'footnote', 'endnote']);
+const NUMBERING_MEMBERS = new Set(['num', 'abstractNum']);
 
 /** The meta key under which a history step keeps the records its undo marked. */
 const MARKED = 'docx-undone-records';
@@ -51,7 +52,10 @@ export function markUndoneRecords(
             !registry.isTombstoned(id) &&
             !!record &&
             isElementRecord(record) &&
-            LISTED_MEMBERS.has(record.localName)
+            (LISTED_MEMBERS.has(record.localName) ||
+              (record.namespaceUri ===
+                'http://schemas.openxmlformats.org/wordprocessingml/2006/main' &&
+                NUMBERING_MEMBERS.has(record.localName)))
           );
         })
       : [];

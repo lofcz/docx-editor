@@ -92,7 +92,21 @@ function numberingSortKey(node: OoxmlElement): string {
 
 function isNumberingMember(record: ElementRecord): boolean {
   if (record.namespaceUri !== WML_NAMESPACE_URI) return false;
-  return record.localName === 'abstractNum' || record.localName === 'num';
+  const identifier =
+    record.localName === 'abstractNum'
+      ? 'abstractNumId'
+      : record.localName === 'num'
+        ? 'numId'
+        : null;
+  // Undo retains immutable node shells. An unlisted shell without its identifying
+  // attribute is no longer a definition to adopt into the numbering directory.
+  return (
+    identifier !== null &&
+    record.attributes.some(
+      (attribute) =>
+        attribute.namespaceUri === WML_NAMESPACE_URI && attribute.localName === identifier
+    )
+  );
 }
 
 export function partMemberSpecFor(root: OoxmlElement): PartMemberSpec | null {

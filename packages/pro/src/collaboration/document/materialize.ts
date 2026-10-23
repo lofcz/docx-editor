@@ -49,6 +49,7 @@ import { partMemberSpecFor, shownMemberChildren } from './materialize-part-membe
 import { adoptLooseMembers } from './materialize-orphans.ts';
 import { rescuedPartEntries, typeUntypedParts } from './materialize-rescued-parts.ts';
 import { PackageProjectionCache } from './materialize-package-cache.ts';
+import { withNumberingTypeBytes } from './materialize-numbering-types.ts';
 import { MaterializeSplitProjection } from './materialize-split-projection.ts';
 import { hasSingletonRules, partitionWithMerges, sharedChildShell } from './singleton-children.ts';
 import { spineChildren } from './materialize-spine.ts';
@@ -973,14 +974,16 @@ export class PackageMaterializer {
       '';
     return {
       ok: true,
-      package: Object.freeze({
-        parts,
-        partBytes,
-        relationships: assembly.byOwner,
-        externalTargets: assembly.externalTargets,
-        contentTypes,
-        mainDocumentPart,
-      }),
+      package: withNumberingTypeBytes(
+        Object.freeze({
+          parts,
+          partBytes,
+          relationships: assembly.byOwner,
+          externalTargets: assembly.externalTargets,
+          contentTypes,
+          mainDocumentPart,
+        })
+      ),
       issues: [...this.issues],
     };
   }

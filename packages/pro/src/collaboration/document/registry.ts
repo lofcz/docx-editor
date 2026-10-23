@@ -90,8 +90,7 @@ import {
   readContentTypeOverrides,
   readPartEntries,
 } from './registry-package-reads.ts';
-import { retainsNumberingInfrastructure } from './undo-numbering.ts';
-import { nodeRecordDeleteFilter } from './undo-delete-filter.ts';
+import { NumberingUndoDependencies } from './numbering-undo-dependencies.ts';
 
 /** Child-ID arrays are the only replicated membership and order authority. */
 export class DocumentRegistry {
@@ -130,6 +129,7 @@ export class DocumentRegistry {
   private partCountCache = -1;
 
   private readonly stopObserving: () => void;
+  private readonly numberingDependencies: NumberingUndoDependencies;
 
   constructor(
     readonly doc: Y.Doc,
@@ -192,6 +192,7 @@ export class DocumentRegistry {
         this.partCountCache = -1;
       },
     });
+    this.numberingDependencies = new NumberingUndoDependencies(this, () => this.bulkLoad === 0);
   }
 
   /**
@@ -203,6 +204,7 @@ export class DocumentRegistry {
    * per call on a long-lived server document, so this detach is load-bearing.
    */
   destroy(): void {
+    this.numberingDependencies.destroy();
     this.stopObserving();
     this.stopMarks();
     this.stopKeepingMarkers();
@@ -214,7 +216,10 @@ export class DocumentRegistry {
 
   endBulkLoad(): void {
     this.bulkLoad = Math.max(0, this.bulkLoad - 1);
-    if (this.bulkLoad === 0) this.rebuildDerivedIndexes();
+    if (this.bulkLoad === 0) {
+      this.rebuildDerivedIndexes();
+      this.numberingDependencies.reconcile();
+    }
   }
 
   trackedTypes(): readonly Y.AbstractType<unknown>[] {
@@ -241,8 +246,7 @@ export class DocumentRegistry {
    * {@link nodeRecordDeleteFilter}. Omitting this is silent data loss, not a missing nicety.
    */
   undoDeleteFilter(): (item: Y.Item) => boolean {
-    const nodeFilter = nodeRecordDeleteFilter(this.schema.nodes);
-    return (item) => !retainsNumberingInfrastructure(this.schema, item) && nodeFilter(item);
+    return this.numberingDependencies.deleteFilter();
   }
 
   encodeSnapshot(): Uint8Array {
