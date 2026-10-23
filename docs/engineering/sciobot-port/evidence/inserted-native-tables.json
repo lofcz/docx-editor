@@ -1,0 +1,101 @@
+{
+  "leaf": "R19",
+  "status": "partial checkpoint; leaf remains open",
+  "runtimeRevision": "61da2c140fb56dfd52922c88f20b48f131d42ee0",
+  "sourceHashes": {
+    "packages/core/src/store/__tests__/accepted-table-mark-holders.test.ts": "bafcc3e7646849ec88b5fd02b8e6e7c431366bc68e8f6a095f33c580d30c47c4",
+    "packages/core/src/store/store/revision-marker-content.ts": "a6a7b16e3e8dde9288fd51e51f0802be425b21166d5ec30468054caba512f0be",
+    "packages/core/src/store/store/tree-op-revisions.ts": "1a0ccf8fa109e2741e97367ad577ef9aa092408a69c2671e39b673b42b55af3f",
+    "packages/sciobot/src/diff/fragment-seeds.ts": "8efcdb20a9fb21a90f2523f5cd4d0de6d529b1791f8292c0926f546dfa9b91e6",
+    "packages/sciobot/src/review/recompose-inserted-tables-collaboration.test.ts": "6e1408312a35e7e227dd2dee41ee2aa509a54e32bf53d6ef691e8338e8805f21",
+    "packages/sciobot/src/review/recompose-inserted-tables.test.ts": "3ba1c94f1815d40ee54fe37e1e2d9daf4f510023a9f2898f019c930ce3d1b7a7",
+    "packages/sciobot/src/review/tracked-sibling-tables.ts": "d574989cae69d6ed7fcd5563cc07377570ccc08787c7a868e3cbd2f196086713",
+    "packages/sciobot/src/review/tracked-stage-siblings.ts": "1324fa714dea3b603a51f28558f9e14c4ec407a9f624ac3700051b9b1190782a",
+    "packages/sciobot/test/support/born-word-body.ts": "208a1c905e97156983b742fedd662914114ff484f77480f69ce7790337b6de78"
+  },
+  "verified": {
+    "coreCases": 196,
+    "coreAssertions": 1430,
+    "privateCases": 54,
+    "privateAssertions": 1053,
+    "additionalTwoSessionCases": 4,
+    "additionalTwoSessionAssertions": 320,
+    "coreTypedFiles": 1583,
+    "privateTypedFiles": 2081,
+    "privateRuntimeModules": 222,
+    "sharedFormatFieldsChanged": 0,
+    "productionReferenceHashes": 199,
+    "coreBuild": true,
+    "privateBuild": true,
+    "rootFormat": true,
+    "rootLint": true
+  },
+  "logs": {
+    "coreRegression": {
+      "path": "/tmp/r19-table-accept-core-regression.log",
+      "sha256": "de8f283e1c3c647a2f8cda505946f2ded9576763a218fa181759ddd02aed3358"
+    },
+    "privateRegression": {
+      "path": "/tmp/r19-rich-siblings-regression.log",
+      "sha256": "07e646ec882a348717c8f516056a63dcc49efa86dccd35fe7b58636b219ce312"
+    },
+    "twoSessionRegression": {
+      "path": "/tmp/r19-born-table-shared-second.log",
+      "sha256": "a7e1d2430322d14b9c4cfb2d4ed409ec3fccefc24830e5f186c503a42a4af0a0"
+    },
+    "coreTypes": {
+      "path": "/tmp/r19-born-core-types.log",
+      "sha256": "f2555149a330c8a3eb567aabe5e94f6fd2bb59dd5c3ca331b44e3c2252643268"
+    },
+    "privateTypes": {
+      "path": "/tmp/r19-born-private-types.log",
+      "sha256": "c7231ef2f99c3e4ec4e759f5dfbfae7155eff0f2b5e753a1d3a5c3056360b86b"
+    },
+    "coreBuild": {
+      "path": "/tmp/r19-born-core-build.log",
+      "sha256": "557266c6b1eab52ba1ed48390b7b3cd758c48946019c757a841872ffca821e54"
+    },
+    "privateBuild": {
+      "path": "/tmp/r19-born-private-build.log",
+      "sha256": "d2eeb4a6fd9386a30cc5302bb90795a0ba92d25b85b405af78a87ebc266f0637"
+    },
+    "format": {
+      "path": "/tmp/r19-born-root-format.log",
+      "sha256": "1fe030ad33cf769111a855b6fde5ed5f67773ed697ae47372ea20fcb83e161c8"
+    },
+    "lint": {
+      "path": "/tmp/r19-born-root-lint.log",
+      "sha256": "5cfc8d15aa5afb63e8aa5840440f236641d4f589ba13655fdd9fcdc88aebf331"
+    },
+    "compatibility": {
+      "path": "/tmp/r19-born-compat.log",
+      "sha256": "ec4333132d092f024a3f107d55ea4a336cff2a80d149107523effe4e0bdd09c6"
+    },
+    "sourceAudit": {
+      "path": "/tmp/r19-born-source-audit-bun.log",
+      "sha256": "67377bf014e19a0e192c6ed8c1295eac76c7e5980f110eeaa615f941af8f59b8"
+    },
+    "unresolvedPeerCellProbe": {
+      "path": "/tmp/r19-table-peer-probe.log",
+      "sha256": "042395d8e5e0e22236a267a28d7325ee5325f0500b168b7774f967476fb8fa22"
+    }
+  },
+  "oracles": [
+    "Complete saved native body acceptance against independent direct execution, resolving fresh identities and references by validated meanings.",
+    "Complete saved native body rejection against independently peer-edited original paragraphs.",
+    "Complete decision undo restoration, author undo/redo, saved convergence, remote selections, born-cell carets, DOCX and room reopening."
+  ],
+  "remaining": [
+    "Offline peer edits within first-wave born table cells disappear when a second wave removes their table owners. The diagnostic is failing and requires implementation.",
+    "Application block presence ownership.",
+    "Complete package-resource ledgers.",
+    "Installed application verification and remaining R19 criteria."
+  ],
+  "probeSource": "/tmp/r19-born-table-peer-probe.test.ts",
+  "probeSourceSha256": "fe07a701c6ed700eb44041994fe275154a826369544ad5d66cb9c62242fa1e61",
+  "limits": [
+    "No TODO closes at this checkpoint.",
+    "The broad private suite was not repeated for this scoped implementation batch.",
+    "The diagnostic probe used an adapted list test. Its logged views establish peer text loss; its remaining list-specific expected output is not a table acceptance oracle."
+  ]
+}
