@@ -75,6 +75,8 @@ Read the [source inventory](evidence/production-coverage.json) for direct defini
 
 Run `bun scripts/sciobot-port/check-production-coverage.mjs` after changing the inventory.
 
+The source inventory includes the export selection component `ExportMaterialPicker.tsx`. The application delegates selection presentation from `WorkspaceExportModal.tsx` to that component. The workspace, static, and print mappings remain unchanged. The snapshot verifies 199 source hashes. [I17](10-app-integration.md#i17) still owns export parity; this inventory update does not close that integration.
+
 ## Scope checks
 
 - Inspect live callers before adding demo-only CommentKit, DiscussionKit, or CopilotKit work.

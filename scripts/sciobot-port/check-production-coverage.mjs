@@ -217,6 +217,7 @@ for (const path of [
   'src/lib/documentTextExport.ts',
   'src/lib/workspace-lesson-serialize.tsx',
   'src/components/workspace/WorkspaceExportModal.tsx',
+  'src/components/workspace/ExportMaterialPicker.tsx',
   'src/components/chat/renderer/UserMessageWithInlineMarkers.tsx',
   'src/components/chat/chat-input/EdixTextarea.tsx',
 ])
