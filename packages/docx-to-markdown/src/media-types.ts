@@ -74,6 +74,12 @@ export interface MarkdownProjectionOptions extends MarkdownLayoutOptions {
   readonly signal?: AbortSignal;
 }
 
+/** Caller-owned media for synchronous detached layout projection. No resources are fetched. @public */
+export interface DetachedMarkdownLayoutOptions extends MarkdownLayoutOptions {
+  /** Already-resolved assets, normally retained from exportMarkdownFrom with images enabled. */
+  readonly imageAssets?: readonly MarkdownImageAsset[];
+}
+
 /** Format controls shared by detached layouts and live export sessions. @public */
 export interface MarkdownLayoutOptions extends MarkdownSourceMapOptions {
   /** GFM by default. HTML preserves structured cells. Auto selects HTML for spans or rich cells. */

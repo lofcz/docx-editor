@@ -8,7 +8,7 @@ import {
 import type {
   MarkdownImageData,
   MarkdownProjectionOptions,
-  MarkdownLayoutOptions,
+  DetachedMarkdownLayoutOptions,
 } from './media-types.ts';
 export type {
   MarkdownSourceBoundary,
@@ -25,6 +25,7 @@ export type {
   MarkdownImageOptions,
   MarkdownProjectionOptions,
   MarkdownLayoutOptions,
+  DetachedMarkdownLayoutOptions,
 } from './media-types.ts';
 export { MarkdownMediaError, MarkdownBundleError } from './media-errors.ts';
 export { toMarkdownJSON, createMarkdownZip } from './markdown-bundle.ts';
@@ -440,9 +441,9 @@ export async function exportMarkdownFrom(
 /** Translate a detached immutable core layout after its producer session is disposed. @public */
 export function exportMarkdownLayout(
   layout: ExportSemanticLayout,
-  options: MarkdownLayoutOptions = {}
+  options: DetachedMarkdownLayoutOptions = {}
 ): MarkdownExportResult {
-  return translateMarkdownLayout(layout, undefined, undefined, {
+  return translateMarkdownLayout(layout, options.imageAssets, undefined, {
     sourceMap: options.sourceMap,
     tableSyntax: options.tableSyntax,
     codeCharacterStyles: options.codeCharacterStyles,

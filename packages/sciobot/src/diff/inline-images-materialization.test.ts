@@ -474,7 +474,9 @@ test('images in nonstandard main parts resolve their actual native media through
       const resource = resolveImageRelationship([record], pkg.mainDocumentPart, record.id);
       expect(resource.mode).toBe('internal');
       if (resource.mode !== 'internal') throw Error('The image has no native media relationship.');
-      expect(resource.partName).toBe(image.payload.attributes.mediaPartName);
+      const mediaPartName = image.payload.attributes.mediaPartName;
+      if (typeof mediaPartName !== 'string') throw Error('The image media part is invalid.');
+      expect(resource.partName).toBe(mediaPartName);
       expect(pkg.partBytes.get(resource.partName)).toEqual(png);
     }
     expect((await plan(editor, target)).operations).toEqual([]);

@@ -89,7 +89,7 @@ export function createInlineImageRuntime(
           next = withPart(next, (result as { part: OoxmlPart }).part);
         };
         for (const { atom, id } of bindings) {
-          let part = next.parts.get(partName)!;
+          const part = next.parts.get(partName)!;
           const controls = contentControlsIn(part.root).filter(
             ({ node }) => contentControlPropertiesOf(node).tag === PREFIX + id
           );

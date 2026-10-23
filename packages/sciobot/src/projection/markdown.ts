@@ -5,6 +5,7 @@ import {
   type MarkdownSourceMap,
   type MarkdownSourceSlice,
   type MarkdownLayoutOptions,
+  type MarkdownImageAsset,
 } from '@docx-editor.dev/docx-to-markdown';
 import type { RevisionToken } from '../contracts/document';
 import { SCIOBOT_CODE_CHARACTER_STYLES } from '../native/inline-code';
@@ -37,6 +38,7 @@ export function projectMarkdown(
   options: Pick<MarkdownLayoutOptions, 'tableSyntax' | 'codeCharacterStyles'> & {
     /** The immutable package used to produce this layout and revision. */
     readonly nativePackage?: OoxmlPackage;
+    readonly imageAssets?: readonly MarkdownImageAsset[];
   } = {}
 ): MarkdownProjection {
   // Code spans come only from the explicit application character style, never from fonts.
@@ -49,6 +51,8 @@ export function projectMarkdown(
     ...converterOptions,
     sourceMap: true,
   });
+  if (options.imageAssets?.length && result.media.length !== options.imageAssets.length)
+    throw Error('Managed image projection requires the matching native Markdown exporter.');
   const nativeSourceMap = result.sourceMap!;
   // Native optional fields can be explicitly undefined. Keep this private read DTO plain JSON.
   const sources = nativeSourceMap.sources.map((source) => {

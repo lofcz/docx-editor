@@ -54,6 +54,8 @@ const MARKDOWN_SEMANTIC_POLICY_RATCHETS = Object.freeze({
     props: 'explicitly-omitted',
     style: 'represented',
     box: 'layout-only',
+    // Widget geometry does not replace canonical source text.
+    inlineWidget: 'layout-only',
     lineEndWhitespace: 'layout-only',
     // A line-end hyphen belongs to one layout width; Markdown text reflows.
     optionalHyphenBreak: 'layout-only',

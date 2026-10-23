@@ -3,12 +3,13 @@
   "fields": [],
   "before": "Inline image plans retained unresolved resource references and refused native materialization.",
   "after": "A revision-bound opaque preparation handle validates snapshotted image bytes through the host decode port. Existing native media, drawing, rich-text control and payload primitives materialize Word pictures plus exact source provenance in the same direct transaction. Planning performs no fetching or embedding.",
-  "reason": "The private adapter reuses canonical operations, binary-part journals, existing payload records and native shared history. No core, Pro, dependency or shared format changes occur. Imported unregistered drawings keep their existing omitted/protected projection contract. Marked/linked image ownership and tracked image births remain explicit unsupported paths.",
+  "reason": "The private adapter reuses canonical operations, binary-part journals, existing payload records and native shared history. No core, Pro, dependency or shared format changes occur. Imported unregistered drawings keep their existing omitted/protected projection contract. Marked/linked image ownership and tracked image births remain explicit unsupported paths. An additive detached Markdown option supplies managed image assets to the existing native renderer, preserving exact spans beside hyperlinks without shared writes.",
   "tests": [
     "packages/sciobot/src/diff/inline-images-materialization.test.ts",
     "packages/sciobot/src/projection/inline-image.test.ts",
-    "packages/sciobot/src/diff/inline-images-collaboration.test.ts"
+    "packages/sciobot/src/diff/inline-images-collaboration.test.ts",
+    "packages/docx-to-markdown/test/markdown-layout-assets.test.ts"
   ],
-  "changeset": null,
+  "changeset": "detached-markdown-image-assets",
   "migration": null
 }

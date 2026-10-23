@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import type { ParagraphFragmentRecord } from '@docx-editor.dev/core/layout';
 import { openDocumentForExport } from '@docx-editor.dev/core/export';
 import {
   openHeadlessDocument,
@@ -103,7 +104,10 @@ test('native paint carries exactly one closing stroke per single, adjacent, and 
       const layout = await opened.session.layout();
       const paragraphs = layout.pages
         .flatMap((page) => page.fragments)
-        .filter((record) => record.kind === 'paragraph' && record.styleId === ID);
+        .filter(
+          (record): record is ParagraphFragmentRecord =>
+            record.kind === 'paragraph' && record.styleId === ID
+        );
       const strokes = paragraphs.flatMap((paragraph) => paragraph.borders ?? []);
       expect(strokes).toHaveLength(body === rule() ? 1 : 2);
       expect(

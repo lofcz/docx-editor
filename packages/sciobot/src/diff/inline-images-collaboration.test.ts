@@ -151,7 +151,7 @@ for (const alternate of [false, true])
             });
             if (!result.success) throw Error(result.error);
           };
-          let peerImageWord: string | undefined;
+          const peerImage = { word: undefined as string | undefined };
           const check = async (a = true, b = true, prefix = ' Peer', tail = '') => {
             const updates = pair.documents.map((doc) => Y.encodeStateAsUpdate(doc));
             for (const editor of pair.editors) {
@@ -177,7 +177,10 @@ for (const alternate of [false, true])
                 expect(resource.mode).toBe('internal');
                 if (resource.mode !== 'internal')
                   throw Error('The image has no native media relationship.');
-                expect(resource.partName).toBe(block.payload.attributes.mediaPartName);
+                const mediaPartName = block.payload.attributes.mediaPartName;
+                if (typeof mediaPartName !== 'string')
+                  throw Error('The image media part is invalid.');
+                expect(resource.partName).toBe(mediaPartName);
                 expect(
                   pkg.partBytes.get(resource.partName) ??
                     pkg.partBytes.get(resource.partName.replace(/^\//, ''))
@@ -186,7 +189,7 @@ for (const alternate of [false, true])
               expect(paragraphTextOf(editor.surface!.session.part(), neighbor)).toBe(
                 'Neigh' + prefix + 'bor' + (a ? ' A \uFFFC Z' : '') + tail
               );
-              if (b && peerImageWord !== undefined)
+              if (b && peerImage.word !== undefined)
                 expect(
                   canonicalOoxmlFingerprint(
                     findNode(
@@ -194,7 +197,7 @@ for (const alternate of [false, true])
                       byReference.get('asset:dog')!.controlId
                     )!
                   )
-                ).toBe(peerImageWord);
+                ).toBe(peerImage.word);
               const revision = readEditorRevision(editor, context.documentId, context.epoch)!;
               const source = await readWorkingView(editor.surface!.session, revision);
               if (!source.success) throw Error(source.error);
@@ -239,7 +242,7 @@ for (const alternate of [false, true])
           const peerBlock = [
             ...buildBlockIndex(alice!.surface!.session.currentPackage()).byId.values(),
           ].find((block) => block.payload.attributes.reference === 'asset:dog')!;
-          peerImageWord = canonicalOoxmlFingerprint(
+          peerImage.word = canonicalOoxmlFingerprint(
             findNode(alice!.surface!.session.part(), peerBlock.controlId)!
           );
           pair.pause();

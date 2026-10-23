@@ -1,3 +1,4 @@
+import type { MarkdownImageAsset } from '@docx-editor.dev/docx-to-markdown';
 import type { ExportSemanticLayout } from '@docx-editor.dev/core/export';
 import type { OoxmlPackage } from '@docx-editor.dev/core/store';
 import type { NativeEditFailure, RevisionToken } from '../contracts/document';
@@ -32,7 +33,10 @@ export function projectLists(
   pkg: OoxmlPackage,
   layout: ExportSemanticLayout,
   revision: RevisionToken,
-  options: { readonly tableSyntax?: 'gfm' | 'html' | 'auto' } = {}
+  options: {
+    readonly tableSyntax?: 'gfm' | 'html' | 'auto';
+    readonly imageAssets?: readonly MarkdownImageAsset[];
+  } = {}
 ): { readonly success: true; readonly projection: ChecklistProjection } | NativeEditFailure {
   const token = createEditPlan(revision, []);
   if (!token.success) return token;
@@ -41,6 +45,7 @@ export function projectLists(
     const trimmed = records.size ? withoutChecklistGlyphs(layout, records) : layout;
     const base = projectMarkdown(trimmed, revision, {
       nativePackage: pkg,
+      imageAssets: options.imageAssets,
       codeCharacterStyles: inlineCodeCharacterStyles(pkg),
       tableSyntax: [...records.values()].some((record) => record.inCell)
         ? 'html'

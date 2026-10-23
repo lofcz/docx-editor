@@ -1,3 +1,4 @@
+import { managedInlineImageAssets } from './inline-image-assets';
 import type { ExportSemanticLayout } from '@docx-editor.dev/core/export';
 import type { MarkdownLayoutOptions, MarkdownSourceSlice } from '@docx-editor.dev/docx-to-markdown';
 import {
@@ -188,6 +189,11 @@ export function projectBlocks(
       };
     const listed = projectLists(pkg, layout, revision, {
       tableSyntax: richCells ? 'html' : (options.tableSyntax ?? 'gfm'),
+      imageAssets: managedInlineImageAssets(
+        pkg,
+        layout,
+        [...anchors.values()].map((anchor) => anchor.block)
+      ),
     });
     if (!listed.success) return listed;
     const base = listed.projection;

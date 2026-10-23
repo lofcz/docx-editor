@@ -166,3 +166,19 @@ Markdown does not reproduce every Word feature: merged table cells are flattened
 - [Connect conversion to your application](/docs/2.x/export/markdown/integrations).
 - [Reuse a layout with an export session](https://github.com/eigenpal/docx-editor/blob/main/packages/docx-to-markdown/docs/api.md#reuse-an-export-session).
 - [Review the quickstart](/docs/2.x/export/markdown).
+
+## Detached layouts with images
+
+`exportMarkdownLayout(layout, options?: DetachedMarkdownLayoutOptions)` accepts `imageAssets` alongside the layout options. Retain these assets from `exportMarkdownFrom(session, { images: true })` before disposing the session. Use assets from the same layout revision.
+
+```ts
+const layout = await session.layout();
+const exported = await exportMarkdownFrom(session, { images: true });
+session.dispose();
+const result = exportMarkdownLayout(layout, {
+  imageAssets: exported.media,
+  sourceMap: true,
+});
+```
+
+The detached exporter uses resolved URLs and occurrence positions from the supplied assets. It does not fetch or extract media. Without `imageAssets`, detached output remains text-only.

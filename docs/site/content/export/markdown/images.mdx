@@ -183,7 +183,7 @@ const result = await exportMarkdownFrom(session, {
 });
 ```
 
-`exportMarkdownFrom` leaves the caller's session open. Returned bytes survive disposal. `exportMarkdownLayout` remains synchronous and text-only because detached layouts do not own image bytes.
+`exportMarkdownFrom` leaves the caller's session open. Returned bytes survive disposal. `exportMarkdownLayout` remains synchronous and defaults to text-only output. Pass retained assets through `imageAssets` to include images with native source positions after disposal. Use assets from the same layout revision. Detached export does not fetch or extract media. Assets omitted from `imageAssets` remain omitted from the Markdown.
 
 The default limit is 64 MiB of unique extracted bytes, including assets from omitted text-box stories. It is not a total parsing, layout, or transient-memory limit. `maxTotalBytes` must be a positive safe integer. A limit failure rejects the export before any resolver runs. It does not return partial Markdown. Raise the limit or use `images: false`.
 
