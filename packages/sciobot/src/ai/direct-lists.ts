@@ -1,5 +1,6 @@
 import {
   applyTreeOp,
+  createNodeIdAllocator,
   contentControlPropertiesOf,
   directParagraphProperties,
   ensureListDefinition,
@@ -8,6 +9,7 @@ import {
   readOoxmlPart,
   withPart,
   type OoxmlPackage,
+  type OoxmlNode,
   type OoxmlPart,
   type TreeDocOp,
 } from '@docx-editor.dev/core/store';
@@ -37,6 +39,16 @@ export function createDirectListContext(): DirectListContext {
 
 class ListWriteError extends Error {}
 
+/** Controlled XML seeds need fresh identities in their destination, including across calls. */
+function freshSeeds(part: OoxmlPart, nodes: readonly OoxmlNode[]): OoxmlNode[] {
+  const mint = createNodeIdAllocator(part);
+  const copy = (node: OoxmlNode): OoxmlNode =>
+    node.kind === 'textValue'
+      ? { ...node, id: mint() }
+      : ({ ...node, id: mint(), children: node.children.map(copy) } as OoxmlNode);
+  return nodes.map(copy);
+}
+
 function seedNodes(part: OoxmlPart, xml: string, name: string) {
   const parsed = readOoxmlPart(
     `<w:document xmlns:w="${W}" xmlns:w14="${W14}"><w:body>${xml}</w:body></w:document>`,
@@ -46,7 +58,7 @@ function seedNodes(part: OoxmlPart, xml: string, name: string) {
   const body = parsed.part.root.children.find(
     (node) => node.kind !== 'textValue' && node.localName === 'body'
   );
-  return body && body.kind !== 'textValue' ? body.children : [];
+  return body && body.kind !== 'textValue' ? freshSeeds(part, body.children) : [];
 }
 
 /**
@@ -106,7 +118,7 @@ export function applyDirectListAssignments(
       const wrapper = parsed.part.root.children[0]!;
       if (wrapper.kind === 'textValue') throw new ListWriteError('Invalid native list start.');
       const inserted = insertChildren(numbering, num.id, num.children.length, [
-        wrapper.children[0]!,
+        ...freshSeeds(numbering, [wrapper.children[0]!]),
       ]);
       if (!inserted.ok) throw new ListWriteError('The native list start was refused.');
       pkg = withPart(pkg, inserted.part);

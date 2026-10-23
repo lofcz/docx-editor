@@ -1,0 +1,12 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Separate list creations could reuse canonical IDs parsed from an earlier controlled XML seed and fail native validation.",
+  "after": "Controlled list start and checkbox seeds receive fresh identities from the destination part allocator before insertion.",
+  "reason": "The writer uses the existing public core allocator. Node identities retain their established meaning and representation; existing readers already understand the corrected unique records. No shared fields, version descriptors, or published package source change.",
+  "tests": [
+    "packages/sciobot/src/ai/list-seed-identities.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}
