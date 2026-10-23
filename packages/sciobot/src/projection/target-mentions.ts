@@ -31,6 +31,8 @@ declare module 'mdast' {
  * - [display text](mention:id) - Markdown link-style format (supports spaces)
  */
 export const remarkTargetMentions: Plugin = () => (tree: Node) => {
+  // Link labels are authored display data. Preserve the captured raw @mention transform elsewhere.
+  const linkMentions = new WeakSet<object>();
   // First, convert link nodes with mention: protocol to mention nodes
   visit(tree, 'link', (node: Link, index: number, parent: Parent | undefined) => {
     if (!parent || typeof index !== 'number') return;
@@ -56,6 +58,7 @@ export const remarkTargetMentions: Plugin = () => (tree: Node) => {
         ...(node.position ? { position: node.position } : {}),
       };
 
+      linkMentions.add(mentionNode);
       parent.children[index] = mentionNode;
     }
   });
@@ -66,7 +69,7 @@ export const remarkTargetMentions: Plugin = () => (tree: Node) => {
 
     // Skip processing @mentions within link nodes
     // Links should remain as links, not be converted to mentions
-    if (parent.type === 'link' || parent.type === 'mention') return;
+    if (parent.type === 'link' || linkMentions.has(parent)) return;
 
     // Pattern for @username mentions (no spaces)
     // Matches @username but excludes trailing punctuation

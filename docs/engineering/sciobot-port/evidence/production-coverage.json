@@ -837,7 +837,7 @@
             }
           }
         ],
-        "leaves": ["B18", "B19", "B20", "B21", "X22"],
+        "leaves": ["B18", "B19", "B20", "B21", "X22", "X38"],
         "verification": "Pending production verification"
       },
       {
@@ -1706,7 +1706,7 @@
         ],
         "workspaceFeature": "MentionKit",
         "savedData": "mention key, coverImage, icon and label. mention_input is transient.",
-        "leaves": ["I17", "I21", "B18", "B19", "B20", "B21", "X22"],
+        "leaves": ["I17", "I21", "B18", "B19", "B20", "B21", "X22", "X38"],
         "verification": "Pending production verification"
       },
       {
