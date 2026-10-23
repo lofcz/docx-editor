@@ -73,15 +73,24 @@ export type TargetParseResult =
       readonly markdown?: string;
     });
 
-const processor = unified()
-  .use(remarkParse)
-  .use(remarkMath)
-  .use(remarkGfm)
-  .use(remarkMdx)
-  .use(remarkNativeMath)
-  .use(remarkNativeImage)
-  .use(remarkTargetMentions)
-  .use(remarkImageGalleries);
+const createTargetProcessor = (preserveLinkedImages: boolean) =>
+  unified()
+    .use(remarkParse)
+    .use(remarkMath)
+    .use(remarkGfm)
+    .use(remarkMdx)
+    .use(remarkNativeMath)
+    .use(remarkNativeImage)
+    .use(remarkTargetMentions)
+    .use(remarkImageGalleries, { preserveLinkedImages });
+
+const processor = createTargetProcessor(true);
+let plateProcessor: ReturnType<typeof createTargetProcessor> | undefined;
+
+/** Native parsing retains authored links. Reference capture can request exact Plate grouping. */
+export interface TargetParseOptions extends Partial<TargetParseLimits> {
+  readonly preserveLinkedImages?: boolean;
+}
 
 class ParseLimit extends Error {
   constructor(readonly code: TargetParseIssue['code']) {
@@ -191,7 +200,7 @@ function issueOf(cause: unknown): TargetParseIssue {
  */
 export function parseTargetMarkdown(
   input: string,
-  options: Partial<TargetParseLimits> = {}
+  options: TargetParseOptions = {}
 ): TargetParseResult {
   let markdown: string | undefined;
   const failure = (issue: TargetParseIssue): TargetParseResult => ({
@@ -204,14 +213,24 @@ export function parseTargetMarkdown(
   if (typeof input !== 'string')
     return failure({ code: 'invalid-input', message: 'Target Markdown must be a string.' });
   try {
-    const limits = limitsOf(options);
+    if (
+      options.preserveLinkedImages !== undefined &&
+      typeof options.preserveLinkedImages !== 'boolean'
+    )
+      throw new TypeError('Invalid linked image preservation mode.');
+    const { preserveLinkedImages, ...limitOverrides } = options;
+    const limits = limitsOf(limitOverrides);
+    const parser =
+      preserveLinkedImages === false
+        ? (plateProcessor ??= createTargetProcessor(false))
+        : processor;
     checkBytes(input, limits);
     const normalizedSource = normalizeTargetSource(input);
     markdown = normalizedSource.markdown;
     checkBytes(markdown, limits);
-    const parsed = processor.parse(markdown);
+    const parsed = parser.parse(markdown);
     checkTree(parsed, limits);
-    const transformed = processor.runSync(parsed);
+    const transformed = parser.runSync(parsed);
     checkTree(transformed, limits);
     // Only parser-generated compiler caches are omitted. Raw expression source remains inert data.
     const ast = JSON.parse(

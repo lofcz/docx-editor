@@ -51,7 +51,7 @@ try {
   for (const filename of fixtures) {
     let source = readFileSync(join(packageRoot, 'src/diff', filename), 'utf8');
     source = source.replace(
-      /from '(?:\.\.\/(?:review|projection|blocks|ai|native)\/[^']+|\.\/(?:plan-target|plan))'/g,
+      /from '(?:\.\.\/(?:review|projection|blocks|ai|native)\/[^']+|\.\/(?:plan-target|plan|target-key))'/g,
       "from '@sciobot/docx'"
     );
     source = source.replaceAll(

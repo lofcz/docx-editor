@@ -1,20 +1,15 @@
+import { materializeImageReservation } from './inline-image-reservation';
 import { embedInlineImage } from './inline-image-media';
 import { inlinePicture } from './inline-picture';
 import {
-  applyTreeOp,
   contentControlsIn,
   contentControlPropertiesOf,
-  parentNodeOf,
-  paragraphOffsetIndex,
-  paragraphTextOf,
-  withPart,
   escapeXml,
   type OoxmlPackage,
-  type OoxmlPart,
   type TreeDocOp,
 } from '@docx-editor.dev/core/store';
 import { createInlineImagePayload } from '../blocks/inline-image-codec';
-import { blockTag, readPayloadStore, withPayloadRecord } from '../blocks/payload-opc-codec';
+import { readPayloadStore, withPayloadRecord } from '../blocks/payload-opc-codec';
 import type { NativeEditFailure } from '../contracts/document';
 import type { CanonicalEditPlan } from '../diff/plan';
 import type { InsertedInlineAtom } from '../diff/inserted-atoms';
@@ -42,12 +37,6 @@ export function createInlineImageRuntime(
       success: false,
       code: 'unsupported-operation',
       error: 'Image resources require revision-bound executor preparation.',
-    };
-  if (drawings.some((atom) => atom.hyperlink || atom.marks.length))
-    return {
-      success: false,
-      code: 'unsupported-operation',
-      error: 'Marked and linked images need explicit native ownership.',
     };
   const bindings = drawings.map((atom) => ({ atom, id: crypto.randomUUID() }));
   const byResource = new WeakMap(
@@ -83,11 +72,6 @@ export function createInlineImageRuntime(
       complete(pkg) {
         let next = pkg;
         const partName = pkg.mainDocumentPart;
-        const apply = (op: TreeDocOp) => {
-          const result = applyTreeOp(next.parts.get(partName)!, op);
-          if (!result.ok) throw Error(`Native image operation refused: ${result.reason}.`);
-          next = withPart(next, (result as { part: OoxmlPart }).part);
-        };
         for (const { atom, id } of bindings) {
           const part = next.parts.get(partName)!;
           const controls = contentControlsIn(part.root).filter(
@@ -95,24 +79,13 @@ export function createInlineImageRuntime(
           );
           if (controls.length !== 1)
             throw Error('The image reservation must resolve to exactly one native control.');
-          const control = controls[0]!.node,
-            paragraph = parentNodeOf(part, control.id);
-          if (paragraph?.kind !== 'paragraph')
-            throw Error('The native image reservation must belong to a paragraph.');
-          const span = paragraphOffsetIndex(paragraph).spanOf(control);
-          if (
-            !span ||
-            span.end !== span.start + 1 ||
-            paragraphTextOf(part, paragraph.id)?.slice(span.start, span.end) !== '\uFFFC'
-          )
-            throw Error('The native image reservation changed before materialization.');
+          const control = controls[0]!.node;
           const store = readPayloadStore(next);
           if (store.status === 'invalid' || (store.status === 'ready' && store.entries.has(id)))
             throw Error('The image payload identity is unavailable.');
           const resource = resources.get(atom.resource.reference)!;
           const embedded = embedInlineImage(next, partName, id, resource);
           next = embedded.pkg;
-          apply({ op: 'removeContentControl', controlId: control.id, keepContent: true });
           const drawing = inlinePicture({
             docPrId: embedded.docPrId,
             relationshipId: embedded.relationshipId,
@@ -123,23 +96,15 @@ export function createInlineImageRuntime(
           });
           if (drawing.kind !== 'drawing')
             throw Error('The native image builder returned no drawing.');
-          apply({ op: 'insertDrawing', paragraphId: paragraph.id, offset: span.start, drawing });
-          apply({
-            op: 'deleteText',
-            paragraphId: paragraph.id,
-            start: span.start + 1,
-            end: span.start + 2,
-          });
-          apply({
-            op: 'insertContentControl',
-            paragraphId: paragraph.id,
-            start: span.start,
-            end: span.start + 1,
-            type: 'richText',
-            tag: blockTag(id),
-            alias: 'Image',
-            lock: 'sdtContentLocked',
-          });
+          next = materializeImageReservation(
+            next,
+            partName,
+            control.id,
+            PREFIX + id,
+            id,
+            drawing,
+            atom.marks
+          );
           const payload = createInlineImagePayload(id, {
             reference: atom.resource.reference,
             alt: atom.resource.alt,

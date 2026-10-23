@@ -24,5 +24,8 @@ export function inlinePicture(input: {
   };
   visit(parsed.part.root);
   if (!drawing) throw Error('The picture XML has no native drawing.');
-  return drawing;
+  return {
+    ...drawing,
+    namespaceBindings: [...parsed.part.root.namespaceBindings, ...drawing.namespaceBindings],
+  };
 }

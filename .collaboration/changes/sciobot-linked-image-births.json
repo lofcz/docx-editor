@@ -1,0 +1,10 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Private image resource preparation refused marked or linked drawings. Image materialization replaced reservation controls and required direct paragraph parents. Image-only linked paragraphs lost their authored links during gallery normalization.",
+  "after": "Private image materialization replaces only its validated reservation text with a native drawing. It retains the control, native run properties and enclosing hyperlinks, applies target marks and code styles, then locks the completed image. Native target parsing preserves linked image paragraphs. Explicit Plate compatibility parsing retains the immutable captured gallery behavior.",
+  "reason": "The private adapter uses existing Apache native drawing, targeted canonical replacement, run-formatting, control metadata and media operations. No public document API, shared state schema, payload schema or journal kind changes. The EigenPal Pro License transport remains confined to evaluation fixtures.",
+  "tests": ["packages/sciobot/src/diff/inline-images-materialization.test.ts", "packages/sciobot/src/diff/inline-images-collaboration.test.ts", "packages/sciobot/src/projection/parse-target.test.ts"],
+  "changeset": null,
+  "migration": null
+}

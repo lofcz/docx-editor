@@ -54,9 +54,11 @@ interface GalleryImageData {
  *     the editor saves, so the AI prompts and human edits both work with
  *     the natural markdown form.
  */
-export const remarkImageGalleries: Plugin = () => (tree) => {
-  transformContainer(tree as unknown as NodeWithChildren);
-};
+export const remarkImageGalleries: Plugin<[{ readonly preserveLinkedImages?: boolean }?]> =
+  (options = {}) =>
+  (tree) => {
+    transformContainer(tree as unknown as NodeWithChildren, options.preserveLinkedImages === true);
+  };
 
 interface NodeWithChildren {
   children: unknown[];
@@ -99,7 +101,7 @@ const BLOCK_CONTAINER_TYPES = new Set<string>([
   'containerDirective',
 ]);
 
-function transformContainer(node: NodeWithChildren): void {
+function transformContainer(node: NodeWithChildren, preserveLinkedImages = false): void {
   if (!Array.isArray(node.children)) return;
 
   // Depth-first: recurse into block-level containers so nested transforms
@@ -111,7 +113,7 @@ function transformContainer(node: NodeWithChildren): void {
       typeof child === 'object' &&
       BLOCK_CONTAINER_TYPES.has((child as MdastNode).type)
     ) {
-      transformContainer(child as unknown as NodeWithChildren);
+      transformContainer(child as unknown as NodeWithChildren, preserveLinkedImages);
     }
   }
 
@@ -121,7 +123,7 @@ function transformContainer(node: NodeWithChildren): void {
   const next: unknown[] = [];
   let i = 0;
   while (i < node.children.length) {
-    const images = extractImagesIfImageOnly(node.children[i]);
+    const images = extractImagesIfImageOnly(node.children[i], preserveLinkedImages);
     if (images.length === 0) {
       next.push(node.children[i]);
       i += 1;
@@ -129,7 +131,7 @@ function transformContainer(node: NodeWithChildren): void {
     }
     let j = i + 1;
     while (j < node.children.length) {
-      const more = extractImagesIfImageOnly(node.children[j]);
+      const more = extractImagesIfImageOnly(node.children[j], preserveLinkedImages);
       if (more.length === 0) break;
       images.push(...more);
       j += 1;
@@ -146,7 +148,7 @@ function transformContainer(node: NodeWithChildren): void {
  * images / image-wrapped links). Otherwise returns an empty array — which
  * the caller treats as "leave this node alone".
  */
-function extractImagesIfImageOnly(node: unknown): GalleryImageData[] {
+function extractImagesIfImageOnly(node: unknown, preserveLinkedImages = false): GalleryImageData[] {
   if (!node || typeof node !== 'object') return [];
   const n = node as MdastNode;
 
@@ -172,6 +174,7 @@ function extractImagesIfImageOnly(node: unknown): GalleryImageData[] {
     // `[![alt](src)](href)` — markdown for an image wrapped in a link.
     // Strip the link, keep the inner image.
     if (child.type === 'link' && Array.isArray(child.children)) {
+      if (preserveLinkedImages) return [];
       const inner = extractSingleImageFromLink(child.children);
       if (inner) {
         out.push(inner);

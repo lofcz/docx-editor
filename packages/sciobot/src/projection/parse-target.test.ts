@@ -9,10 +9,11 @@ import {
   type ParsedTargetMarkdown,
   type TargetAstNode,
   type TargetParseLimits,
+  type TargetParseOptions,
 } from './parse-target';
 
-function parsed(markdown: string): ParsedTargetMarkdown {
-  const result = parseTargetMarkdown(markdown);
+function parsed(markdown: string, options?: TargetParseOptions): ParsedTargetMarkdown {
+  const result = parseTargetMarkdown(markdown, options);
   if (!result.success) throw new Error(result.error);
   return result.target;
 }
@@ -31,17 +32,20 @@ function allFrozen(value: JsonValue): boolean {
   );
 }
 
-test.each(fixture.cases)('target parsing matches the production pipeline: $name', (value) => {
-  const first = parsed(value.input);
-  const second = parsed(value.input);
-  expect(first.sourceMarkdown).toBe(value.input);
-  expect(first.markdown).toBe(value.markdown);
-  expect<unknown>(first.normalizedAst).toEqual(value.normalizedAst);
-  expect(first).toEqual(second);
-  expect(first === second).toBe(false);
-  expect(allFrozen(first.ast)).toBe(true);
-  expect(allFrozen(first.normalizedAst)).toBe(true);
-});
+test.each(fixture.cases)(
+  'Plate compatibility parsing matches the captured production pipeline: $name',
+  (value) => {
+    const first = parsed(value.input, { preserveLinkedImages: false });
+    const second = parsed(value.input, { preserveLinkedImages: false });
+    expect(first.sourceMarkdown).toBe(value.input);
+    expect(first.markdown).toBe(value.markdown);
+    expect<unknown>(first.normalizedAst).toEqual(value.normalizedAst);
+    expect(first).toEqual(second);
+    expect(first === second).toBe(false);
+    expect(allFrozen(first.ast)).toBe(true);
+    expect(allFrozen(first.normalizedAst)).toBe(true);
+  }
+);
 
 test.each(fixture.failures)(
   'malformed MDX returns the production syntax location: $input',
@@ -227,4 +231,21 @@ test('success and syntax failures preserve existing native bytes, revisions, sel
   } finally {
     editor.destroy();
   }
+});
+
+test('native targets preserve linked image paragraphs and their exact authored metadata', () => {
+  const target = parsed(
+    '![One](one.png)\n\n[![Linked](asset:linked "Photo")](https://outer.test "Read")'
+  );
+  const galleries = nodesOfType(target.normalizedAst, 'mdxJsxFlowElement').filter(
+    (node) => node.name === 'image_gallery'
+  );
+  expect(galleries).toHaveLength(1);
+  const links = nodesOfType(target.normalizedAst, 'link');
+  expect(links).toHaveLength(1);
+  expect(links[0]).toMatchObject({
+    url: 'https://outer.test',
+    title: 'Read',
+    children: [{ type: 'image', url: 'asset:linked', alt: 'Linked', title: 'Photo' }],
+  });
 });

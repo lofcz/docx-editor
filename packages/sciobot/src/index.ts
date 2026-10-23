@@ -13,6 +13,7 @@ export * from './diff/domain-properties';
 export * from './diff/atomic-blocks';
 export * from './diff/plan';
 export * from './diff/inline-target';
+export { targetAstKey } from './diff/target-key';
 export * from './diff/inserted-atoms';
 export * from './diff/target-source';
 export * from './diff/logical-blocks';

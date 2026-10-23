@@ -44,6 +44,14 @@ async function plan(editor: DocxEditorInstance, target: string) {
   return result.plan;
 }
 for (const target of [
+  'Keep. [![Cat](asset:cat "Photo")](https://outer.test "Read") Z',
+  'Keep.\n\n[![Cat](asset:cat "Photo")](https://outer.test "Read")',
+  'Keep.\n\n| H |\n| - |\n| [![Cat](asset:cat "Photo")](https://outer.test "Read") |',
+  'Keep.\n\n<phase type="evocation">\n[![Cat](asset:cat "Photo")](https://outer.test "Read")\n</phase>',
+  'Keep. **![Cat](asset:cat)** Z',
+  'Keep. [![Cat](asset:cat)](https://example.test) Z',
+  'Keep. <code>**![Cat](asset:cat "Photo")**</code> Z',
+  'Keep.\n\nA <code>**[![Cat](asset:cat "Photo")](https://outer.test "Read")**</code> Z',
   'Keep.\n\nA ![Cat](asset:cat "Photo") Z',
   'Keep. A ![Cat](asset:cat "Photo") Z',
   'Keep. [Link](https://example.test)![Cat](asset:cat "Photo") Z',
@@ -400,7 +408,7 @@ for (const kind of ['heading', 'table'] as const)
     }
   });
 
-test('unsupported marked and linked image ownership refuses before resolving resources', async () => {
+test('marked and linked image execution requires revision-bound prepared resources', async () => {
   const editor = createDocxEditor({
     container: document.createElement('div'),
     imageDecodePort: decode,
@@ -413,17 +421,8 @@ test('unsupported marked and linked image ownership refuses before resolving res
       'Keep. [![Cat](asset:cat)](https://example.test) Z',
     ]) {
       const planned = await plan(editor, target);
-      let resolved = false;
-      const result = await prepareInlineImageResources(
-        planned,
-        async () => {
-          resolved = true;
-          return { bytes: png, mime: 'image/png' };
-        },
-        decode
-      );
+      const result = applyDirectPlan(editor, planned, context);
       expect(result).toMatchObject({ success: false, code: 'unsupported-operation' });
-      expect(resolved).toBe(false);
       expect(editor.surface!.session.currentPackage()).toBe(before);
       expect(editor.surface!.session.canUndo()).toBe(false);
     }

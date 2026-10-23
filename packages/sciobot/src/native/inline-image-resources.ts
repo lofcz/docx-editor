@@ -61,12 +61,6 @@ export async function prepareInlineImageResources(
     if (!decoded.success) return decoded;
     const plan = decoded.plan,
       resources = new Map<string, ResolvedInlineImage>();
-    if (planInlineDrawings(plan).some((atom) => atom.hyperlink || atom.marks.length))
-      return {
-        success: false,
-        code: 'unsupported-operation',
-        error: 'Marked and linked images need explicit native ownership.',
-      };
     let total = 0;
     for (const atom of planInlineDrawings(plan)) {
       if (signal?.aborted) throw Error('Image resource preparation was aborted.');
