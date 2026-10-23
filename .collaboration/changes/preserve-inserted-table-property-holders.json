@@ -10,7 +10,8 @@
     "packages/core/src/store/__tests__/tracked-table-columns.test.ts",
     "packages/core/src/store/__tests__/tracked-table-composition.test.ts",
     "packages/core/src/store/__tests__/tracked-table-properties.test.ts",
-    "packages/pro/src/collaboration/__tests__/document-table-revisions.test.ts"
+    "packages/pro/src/collaboration/__tests__/document-table-revisions.test.ts",
+    "packages/sciobot/scripts/check-table-holder-reader-compatibility.ts"
   ],
   "changeset": "preserve-inserted-table-property-holders",
   "migration": null
