@@ -1,0 +1,16 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "A shared transaction could publish before nested before-observer normalization transactions delivered their namespace and attribute events. Redo then materialized restored revision attributes without their namespace bindings, refused the part and retained the previous proposal view.",
+  "after": "The evaluation transport publishes shared state after all synchronous Yjs transaction cleanup observers finish. Ordinary local journals retain their original commit frame and absolute coordinates. Proposal replacement histories read the complete registry state. Destroy removes the cleanup listener.",
+  "reason": "Only local publication timing changes. No shared fields, native primitives, message kinds or namespace representation change. Earlier readers interpret the same completed room state and native splice effects. The EigenPal Pro License transport remains confined to evaluation fixtures; production adapter imports do not change.",
+  "tests": [
+    "packages/sciobot/src/review/recompose-tables-collaboration.test.ts",
+    "packages/sciobot/src/review/recompose-inserted-tables-collaboration.test.ts",
+    "packages/sciobot/src/review/recompose-compound-targets-collaboration.test.ts",
+    "packages/pro/src/collaboration/__tests__/remote-receive-supersession.test.ts",
+    "packages/pro/src/collaboration/__tests__/queued-journal-staleness.test.ts"
+  ],
+  "changeset": "complete-collaboration-cleanup-before-publishing",
+  "migration": null
+}

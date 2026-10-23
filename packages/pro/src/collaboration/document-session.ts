@@ -180,7 +180,7 @@ class DocumentSession implements DocumentCollaborationSession {
       viewIsCurrent: () => !this.viewWaiting,
     });
     ydoc.on('beforeTransaction', this.onBeforeYjsTransaction);
-    ydoc.on('afterTransaction', this.onYjsTransaction);
+    ydoc.on('afterAllTransactions', this.onYjsTransactions);
     awareness.on('change', this.onAwarenessChange);
     this.stopBlobWatch = blobs.observeChanges((digests) => {
       const poisoned = blobs.verifyNow(digests);
@@ -537,7 +537,7 @@ class DocumentSession implements DocumentCollaborationSession {
     this.stopBlobWatch();
     this.stopSeedWatch();
     this.ydoc.off('beforeTransaction', this.onBeforeYjsTransaction);
-    this.ydoc.off('afterTransaction', this.onYjsTransaction);
+    this.ydoc.off('afterAllTransactions', this.onYjsTransactions);
     this.awareness.off('change', this.onAwarenessChange);
     // Withdraw only this session's presence. The host owns the awareness and may keep its own
     // fields on it; a hook that owns it destroys it, which removes the whole state.
@@ -670,17 +670,18 @@ class DocumentSession implements DocumentCollaborationSession {
     return this.caretAnchors.move();
   }
 
-  private readonly onYjsTransaction = (transaction: Y.Transaction): void => {
+  private readonly onYjsTransactions = (
+    _doc: Y.Doc,
+    transactions: readonly Y.Transaction[]
+  ): void => {
     if (this.destroyed || !this.hasCompatibleSharedSchema() || !this.port) return;
     // The canonical store already holds a local commit. Its journal translates visible
     // positions before writing shared state, so no local materialization is necessary.
-    if (transaction.origin === this.localOrigin) return;
-    // Nothing is published from here. A journal describes the tree as it stood when its
-    // transaction committed, and its `spliceText` / `spliceChildren` positions are absolute.
-    // This update has already integrated, so applying a journal now would address the wrong
-    // offset or the wrong sibling — inside bounds, so admitted, so agreed on by every replica.
-    // Journals reach shared state in the frame that commits them instead, which is why there
-    // is nothing left to publish at this point.
+    if (transactions.every((transaction) => transaction.origin === this.localOrigin)) return;
+    // Before-observer normalization can queue attribute and namespace restoration.
+    // Every cleanup observer must update its indexes before the package is read.
+    // Local journals already published in their original commit frame. Never replay
+    // their absolute positions here against a document that has since changed.
     this.publishSharedToPort();
   };
 
