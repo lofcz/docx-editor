@@ -1,3 +1,4 @@
+import { stageTrackedPayloads, type TrackedPayloadOptions } from './tracked-stage-payloads';
 import type { DocxEditorInstance } from '@docx-editor.dev/core/editor';
 import {
   TreePackageStore,
@@ -118,23 +119,28 @@ export function replaceOwnedProposals(
   editor: DocxEditorInstance,
   selection: readonly OwnedProposalGroup[],
   replacement: CanonicalEditPlan,
-  context: TrackTextContext
+  context: TrackTextContext,
+  payloads: TrackedPayloadOptions = {}
 ): OwnedProposalReplacementResult {
-  return withReviewDecisionGuard(editor, () => commit(editor, selection, replacement, context));
+  return withReviewDecisionGuard(editor, () =>
+    commit(editor, selection, replacement, context, payloads)
+  );
 }
 
 function commit(
   editor: DocxEditorInstance,
   selection: readonly OwnedProposalGroup[],
   replacement: CanonicalEditPlan,
-  context: TrackTextContext
+  context: TrackTextContext,
+  payloads: TrackedPayloadOptions
 ): OwnedProposalReplacementResult {
-  const copied = copyBoundedJson({ selection, replacement, context }, EDIT_PLAN_LIMITS);
+  const copied = copyBoundedJson({ selection, replacement, context, payloads }, EDIT_PLAN_LIMITS);
   if (!copied.ok) return fail(copied.reason);
   const input = copied.value as unknown as {
     selection: readonly OwnedProposalGroup[];
     replacement: CanonicalEditPlan;
     context: TrackTextContext;
+    payloads: TrackedPayloadOptions;
   };
   const attribution = input.context;
   if (
@@ -218,10 +224,20 @@ function commit(
               apply: (partName, op) => step(() => ctx.applyTo(partName, op)),
               edit,
             },
-            plan,
+            { ...plan, operations: plan.operations.filter((edit) => edit.kind !== 'payload') },
             { author: attribution.author, date },
             !surface.session.trackingSettings().doNotTrackFormatting &&
               editor.snapshot().revisionMarkup.trackFormatting
+          );
+          stageTrackedPayloads(
+            {
+              currentPackage: () => ctx.currentPackage(),
+              apply: (partName, op) => step(() => ctx.applyTo(partName, op)),
+              edit,
+            },
+            plan,
+            { author: attribution.author, date },
+            input.payloads
           );
           preserveRemainingRevisions(middle, ctx.currentPackage());
           edit((working) => persistReviewGroups(middle, working, receipts, allowInitialization));

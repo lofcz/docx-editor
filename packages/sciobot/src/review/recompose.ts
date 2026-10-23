@@ -1,3 +1,4 @@
+import type { TrackedPayloadOptions } from './tracked-stage-payloads';
 import type { DocxEditorInstance } from '@docx-editor.dev/core/editor';
 import {
   TreePackageStore,
@@ -43,6 +44,8 @@ export interface RecomposeOptions {
   /** Trusted host layout services. These never supply a replacement canonical document. */
   readonly view?: Omit<ReviewViewOptions, 'pendingProperties'>;
   readonly target?: TargetDocumentOptions;
+  /** Exact localized Word fallback labels for changed property and atomic payloads. */
+  readonly payloads?: TrackedPayloadOptions;
 }
 
 const active = new WeakSet<DocxEditorInstance>();
@@ -69,11 +72,15 @@ export async function recomposeOwnedProposals(
     return fail('A review recomposition is already running.', 'unsupported-operation');
   active.add(editor);
   try {
-    const copied = copyBoundedJson({ request, context }, EDIT_PLAN_LIMITS);
+    const copied = copyBoundedJson(
+      { request, context, payloads: options.payloads ?? {} },
+      EDIT_PLAN_LIMITS
+    );
     if (!copied.ok) return fail(copied.reason);
     const input = copied.value as unknown as {
       request: RecomposeRequest;
       context: TrackTextContext;
+      payloads: TrackedPayloadOptions;
     };
     if (
       !input.request ||
@@ -202,7 +209,13 @@ export async function recomposeOwnedProposals(
       proofs
     );
     if (changedContent) return changedContent;
-    const result = replaceOwnedProposals(editor, selected.selection, planned.plan, input.context);
+    const result = replaceOwnedProposals(
+      editor,
+      selected.selection,
+      planned.plan,
+      input.context,
+      input.payloads
+    );
     if (!result.success) return result;
     const ledger = new Map(input.request.ownership.map((group) => [group.groupId, group]));
     for (const group of result.ownership) ledger.set(group.groupId, group);

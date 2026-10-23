@@ -110,3 +110,5 @@ export * from './chrome/block-input';
 export * from './chrome/block-toolbar';
 
 export * from './review/group-allocation';
+
+export type { TrackedPayloadOptions } from './review/tracked-stage-payloads';

@@ -1,0 +1,18 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Owned replacement and later-wave recomposition refused application payload edits even when the host could supply exact localized native fallback labels.",
+  "after": "The private coordinator stages existing property and atomic payload records plus native fallback revisions in its existing atomic replacement transaction. Property preparation uses pure planners so discarded validation projections cannot enter a shared journal.",
+  "reason": "The writer uses established property/atomic record schemas, native revision primitives, group decisions, and budget admission. It adds no shared fields or version descriptors. Only the private adapter changes; no published package source or API changes.",
+  "tests": [
+    "packages/sciobot/src/review/recompose-payloads.test.ts",
+    "packages/sciobot/src/review/recompose-payloads-collaboration.test.ts",
+    "packages/sciobot/src/review/track-properties.test.ts",
+    "packages/sciobot/src/review/track-atomic.test.ts",
+    "packages/sciobot/src/review/replace-owned-proposals.test.ts",
+    "packages/sciobot/src/review/recompose.test.ts",
+    "packages/sciobot/src/review/replace-owned-payloads.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}
