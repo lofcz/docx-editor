@@ -1,0 +1,121 @@
+{
+  "leaf": "R19",
+  "status": "partial checkpoint; leaf remains open",
+  "runtimeRevision": "a004b370552d0511dc7fbcb416bb2dcb3a7dcbba",
+  "sourceHashes": {
+    "packages/core/src/store/__tests__/removed-table-paragraph-recovery.test.ts": "8d600ae30e65873887269d1294206d339ebd7496ec14b809cc3d50005ea2bbcf",
+    "packages/core/src/store/store/revision-rebuild-plan.ts": "ee31e75ec433e212389bd5184efe08e079acc478081f9b00aeca708aa46b7077",
+    "packages/core/src/store/store/revision-table-recovery.ts": "45ea632062f788c450c0d9ac7398df20a6ec6f3ee872eb75cf517aa3ecb405b2",
+    "packages/core/src/store/store/tree-op-revisions.ts": "3d6edc0b3bb01330f83c8e5c9144099209a212b6e79dbda816a0253c8aba4bb3",
+    "packages/sciobot/src/review/recompose-born-table-peer.test.ts": "6a1ec084b17fa98ddbe896dec3c35b206b512b27eefc4469d0e0209c2a34ae60",
+    "packages/sciobot/src/review/tracked-sibling-tables.ts": "4ff41642b966d5306649247319c2be613a97bc23901c374bb4451e553cb10dc1",
+    "packages/sciobot/src/review/tracked-stage-cells.ts": "3f6a0f95218d3a1144d1c715f3b9cb2ac6336d71c85a7268cf1349936bba0954"
+  },
+  "tests": {
+    "finalSourceCases": 317,
+    "finalSourceAssertions": 3508,
+    "files": 13,
+    "failed": 0,
+    "groups": [
+      {
+        "cases": 253,
+        "assertions": 1777,
+        "files": 8,
+        "log": "/tmp/r19-recovery-core-fixed.log"
+      },
+      {
+        "cases": 22,
+        "assertions": 652,
+        "files": 2,
+        "log": "/tmp/r19-recovery-peer-and-existing-rows.log"
+      },
+      {
+        "cases": 42,
+        "assertions": 1079,
+        "files": 3,
+        "log": "/tmp/r19-recovery-structural-fixed.log"
+      }
+    ]
+  },
+  "gates": {
+    "coreTypedFiles": 1585,
+    "privateTypedFiles": 2084,
+    "coreBuild": true,
+    "privateBuild": true,
+    "privateRuntimeModules": 222,
+    "coreExternal": true,
+    "rootFormat": true,
+    "rootLint": true,
+    "compatibilityDecisions": 153,
+    "changedSharedFormatFields": 0,
+    "productionSourceHashes": 199
+  },
+  "logs": {
+    "core": {
+      "path": "/tmp/r19-recovery-core-fixed.log",
+      "sha256": "6daed42bb84d05538aef4fcfc198c5cd1c227e715e655a9a41723b2de39bd57a"
+    },
+    "peerAndExistingRows": {
+      "path": "/tmp/r19-recovery-peer-and-existing-rows.log",
+      "sha256": "8cbe211d790a73973535610b432c0f1a18aefb4fc6347e19a84bad827a8b9e74"
+    },
+    "structural": {
+      "path": "/tmp/r19-recovery-structural-fixed.log",
+      "sha256": "b975b251d80e2bb82ec9b100fdd76b055e82ae3e54bb49f700c467522e76af35"
+    },
+    "coreTypes": {
+      "path": "/tmp/r19-recovery-core-types-fixed.log",
+      "sha256": "ba872c900f2afb7a4742cd876d75a0547028e6893eadab3ce5e4c6a12dc1046c"
+    },
+    "privateTypes": {
+      "path": "/tmp/r19-recovery-private-types-fixed.log",
+      "sha256": "188a80c71e1a9a9fb0aa12726e9618d89c8a381e8e5ecf14fc6b49adc9c3b4cf"
+    },
+    "coreBuild": {
+      "path": "/tmp/r19-recovery-core-build-fixed.log",
+      "sha256": "3708c1564f1d6b84a01fd097c6c240750742d59165f897bd31ff042e720b0233"
+    },
+    "privateBuild": {
+      "path": "/tmp/r19-recovery-private-build-fixed.log",
+      "sha256": "44716895b860e1c947b51623518a7d472498e86e885d9a17a898f793f009a7a6"
+    },
+    "format": {
+      "path": "/tmp/r19-recovery-root-format-fixed.log",
+      "sha256": "fafdb8771fbd5f8d2ac06cb9f2c1ace3973e73d69df0a2e7697dfbf5425038ff"
+    },
+    "lint": {
+      "path": "/tmp/r19-recovery-root-lint-fixed.log",
+      "sha256": "e728f37efde8c71be44d41895e7378b31a7ab26a864aa27414925ccf944adeb1"
+    },
+    "compatibility": {
+      "path": "/tmp/r19-recovery-policy-fixed.log",
+      "sha256": "ffb77b29f83568c90f908e1e775d91df178feb478ebe666a026d03aaf06bec8c"
+    },
+    "sourceAudit": {
+      "path": "/tmp/r19-recovery-source-audit.log",
+      "sha256": "67377bf014e19a0e192c6ed8c1295eac76c7e5980f110eeaa615f941af8f59b8"
+    },
+    "initialBroaderRunWithTwoRowRegressions": {
+      "path": "/tmp/r19-recovery-private-final.log",
+      "sha256": "d1f32e3c614f625afdd00cb0327fe8969660e0212212f3c5fbc059be88e84e0a"
+    }
+  },
+  "oracles": [
+    "Full saved native acceptance body against independent direct table structure and literal AI/peer/AI run boundaries.",
+    "Full saved native rejection body against an independent peer paragraph, preserving imported Word identities.",
+    "Opaque property attributes, opaque children, and original empty property holder presence remain exact.",
+    "Author history, independent decision history, carets, remote selection geometry, saved convergence, and DOCX reopening."
+  ],
+  "scope": [
+    "Only independently marked native text or paragraph ownership retains foreign content outside a removed table structure. Existing ordinary row deletion expectations remain unchanged.",
+    "The initial seven-file private run had 74 passing cases and two ordinary row failures. The corrected ownership condition passes the complete affected two-file rerun plus three structural files on the final source.",
+    "No broader private suite was rerun for this checkpoint."
+  ],
+  "remaining": [
+    "Native Original projection still hides foreign text inside inserted rows until rejection recovers that text outside the table. It must agree with the recovered rejection baseline.",
+    "Application block presence ownership.",
+    "Complete package ledgers and required peer deletion cases.",
+    "Installed application verification and remaining R19 criteria."
+  ],
+  "todosClosed": 0
+}
