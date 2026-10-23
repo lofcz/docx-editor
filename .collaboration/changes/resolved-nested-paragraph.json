@@ -1,0 +1,17 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Solo revision decisions retained an extra resolved empty terminal paragraph in cells and controls. Shared decisions retired the same paragraph, so their Word outputs differed. Tracked merges could reject to extra empty cell paragraphs.",
+  "after": "Solo decisions remove the resolved empty sibling when another paragraph remains. Shared decisions retain its retired identity for late peer text, and Word export removes the empty sibling. Required sole paragraphs and pending or opaque content retain their existing protections.",
+  "reason": "The change uses existing canonical removal and retired paragraph metadata. It adds no shared fields or format descriptors. Both readers retain their established node and operation representation.",
+  "tests": [
+    "packages/core/src/store/__tests__/retired-paragraph.test.ts",
+    "packages/core/src/store/__tests__/tracked-table-merges.test.ts",
+    "packages/sciobot/src/review/track-table-merges.test.ts",
+    "packages/sciobot/src/review/owned-proposal-plan.test.ts",
+    "packages/sciobot/src/review/reject-all-native-collaboration.test.ts",
+    "packages/sciobot/src/review/recompose-compound-targets.test.ts"
+  ],
+  "changeset": "resolved-nested-paragraph",
+  "migration": null
+}

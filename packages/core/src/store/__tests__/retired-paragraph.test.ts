@@ -542,3 +542,36 @@ for (const actor of [null, 'alice'])
           revisions[0]!.node.attributes.find((attribute) => attribute.localName === 'author')?.value
         ).toBe('Peer');
       });
+
+for (const action of ['accept', 'reject'] as const)
+  test(`shared and solo ${action} remove the terminal cell insertion and retain future peer text`, () => {
+    const name = action === 'accept' ? 'del' : 'ins';
+    const text = name === 'del' ? '<w:delText>Old</w:delText>' : '<w:t>New</w:t>';
+    const terminal = `<w:p><w:pPr><w:rPr><w:${name} ${rev}/></w:rPr></w:pPr><w:${name} ${rev}><w:r>${text}</w:r></w:${name}></w:p>`;
+    const table = (content: string) =>
+      `<w:tbl><w:tblGrid><w:gridCol w:w="2000"/></w:tblGrid><w:tr><w:tc>${content}</w:tc></w:tr></w:tbl>`;
+    const source = load(table(p('Keep') + terminal));
+    const original = main(source);
+    const paragraphs: OoxmlElement[] = [];
+    walkAllStoryParagraphs(body(original).children, 0, (node) => paragraphs.push(node));
+    const terminalId = paragraphs[1]!.id;
+    const op: TreeDocOp = { op: action === 'accept' ? 'acceptAllRevisions' : 'rejectAllRevisions' };
+    const solo = apply(original, op, null);
+    const shared = apply(original, op);
+    const expected = main(load(table(p('Keep'))));
+    expect(canonicalOoxmlFingerprint(solo)).toBe(canonicalOoxmlFingerprint(expected));
+    expect(findNode(solo, terminalId)).toBeNull();
+    expect(findNode(shared, terminalId)).not.toBeNull();
+    expect(isRetiredParagraph(findNode(shared, terminalId)!)).toBe(true);
+    expect(collectRevisionSites(shared)).toHaveLength(0);
+    expect(canonicalOoxmlFingerprint(main(reopened(withPart(source, shared))))).toBe(
+      canonicalOoxmlFingerprint(expected)
+    );
+    const peer = apply(
+      shared,
+      { op: 'insertText', paragraphId: terminalId, offset: 0, text: 'Peer' },
+      'bob'
+    );
+    expect(paragraphTextOf(peer, terminalId)).toBe('Peer');
+    expect(serializeOoxmlPart(main(reopened(withPart(source, peer))))).toContain('Peer');
+  });

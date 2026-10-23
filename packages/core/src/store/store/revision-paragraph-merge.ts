@@ -133,9 +133,9 @@ export function mergeRevisionParagraphs(
         marks.has(node.id) &&
         !sources.has(node.id) &&
         carried.length === 0 &&
-        // Shared decisions retire nested source addresses. Solo decisions preserve native
-        // cell and control ending paragraphs; their container-specific joins run below.
-        (retainSources || container === '' || container === 'body') &&
+        // A cell or control needs one ending paragraph, not an extra resolved empty
+        // sibling. Shared decisions retain that sibling only for future peer text.
+        (retainSources || hasSurvivingParagraph || container === '' || container === 'body') &&
         (lastBlock(out)?.kind === 'paragraph' ||
           (hasSurvivingParagraph && lastBlock(out)?.kind !== 'table')) &&
         canRemoveEmptyParagraph(node)
