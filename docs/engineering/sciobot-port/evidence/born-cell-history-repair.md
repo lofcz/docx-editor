@@ -1,7 +1,7 @@
 # D30 table birth history investigation
 
 This work remains isolated on `codex/d30-born-cell-history` in `/tmp/sciobot-resolved-table-targets`.
-Runtime `bd2727de` follows the work-in-progress checkpoints `015d5bea`, `a9a00a00`, and `2a915a72`.
+Runtime `db8e74e7` follows the work-in-progress checkpoints `015d5bea`, `a9a00a00`, `2a915a72`, and `bd2727de`.
 The primary branch remains at `75930cb4`. D30 remains open.
 
 The evaluated transport uses the EigenPal Pro License. These changes add no private production imports.
@@ -69,15 +69,41 @@ Together with repair version 3, the proposed format is `docx-collaboration:1.6.3
 The changeset, compatibility decision, and migration guide require export and reseed.
 No migration or deployment has occurred.
 
+## Geometry survives deletion of its first row
+
+Two new real-session cases expose a cold-read failure at `9b001c54`, with both client orders.
+Alice creates a middle column below a merged header. Bob types inside two new cells in different rows.
+Alice undoes the column birth, then deletes the first body row.
+The live cached header still has span 3, but room reopening shows span 2.
+The immutable frame lived on the first born cell, so row deletion hid it from frame discovery.
+Both original cold-read assertions fail. Neither assertion changes during the repair.
+
+Runtime `db8e74e7` places frames in an immutable directory on the retained native table record.
+The first born cell identity remains the frame key, but its placement no longer owns frame visibility.
+The undo delete filter retains both the directory and its immutable entries.
+Native undo markers continue to determine when a retained frame contributes geometry.
+Later native span writes also read the table-owned directory.
+Frame traversal follows causal dependencies from native cell identities, with deterministic key ordering for independent frames.
+It does not depend on Y.Map receipt order.
+
+All six geometry cases pass with 212 assertions in 8.72 seconds.
+The new cases verify explicit native topology, complete Word fingerprints, DOCX/room reopening, deletion undo/redo, and both peer histories.
+They also apply and undo a later native split after the first row disappears.
+The main Pro type check passes across 2287 files.
+The private SDK type check passes across 2165 files.
+Its older history oracle now narrows text nodes before reading `localName`; expected values and assertions remain unchanged.
+All 115 affected cases pass across 12 files, with 3487 assertions, in 47.55 seconds.
+The four original investigation cases pass unchanged, with 34 assertions, in 3.16 seconds.
+Root formatting, root lint and collaboration compatibility policy pass.
+The proposed schema remains the unreleased `docx-collaboration:1.6.3.1`; no deployed room changes.
+
 ## Remaining work
 
 The target planner still refuses an unequal header split into spans 2 and 1.
 The stronger history test uses the actual supported native split command and verifies its exact resulting four-column grid.
 That command does not establish target-planner support for the unequal split.
 More combined topology, vertical merge, and newly allocated span-property cases remain unverified.
-Geometry evidence currently lives on the first born cell record.
-Verify deletion of its row while peer content in another born cell still needs the column.
-The table may need to own the immutable frame directory so deleted rows cannot hide required geometry evidence.
+Concurrent independent geometry frames still need combined native topology verification.
 Move destinations against hidden child lists remain unverified.
 Do not merge or release this checkpoint as a completed history repair.
 

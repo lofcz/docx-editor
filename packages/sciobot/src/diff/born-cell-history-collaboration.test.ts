@@ -39,7 +39,7 @@ const topologyOf = (part: OoxmlPart) => {
       )
     ),
     widths: nodeChildren(grid)
-      .filter((node) => node.localName === 'gridCol')
+      .filter((node) => node.kind !== 'textValue' && node.localName === 'gridCol')
       .map((node) =>
         node.kind === 'textValue'
           ? null
