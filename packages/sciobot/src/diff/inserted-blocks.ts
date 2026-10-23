@@ -112,7 +112,8 @@ export function planInsertedBlocks(
     }
     const id = allocate();
     if (!isBlockId(id)) return fail('The block ID allocator returned an invalid ID.');
-    const authored = authorPayload?.(ast, id);
+    // Native math has its own codec; React admission receives MDX syntax only.
+    const authored = math ? undefined : authorPayload?.(ast, id);
     const payload = authored?.payload ?? insertedPayload(ast, id);
     const definition = payload && DOMAIN_BLOCK_TAGS.get(payload.type);
     const opaque = payload?.type === MDX_BLOCK && block.kind === 'atomic';

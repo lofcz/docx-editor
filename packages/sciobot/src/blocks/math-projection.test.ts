@@ -90,9 +90,15 @@ test('registered lossless display syntax materializes original source and readab
   try {
     const initial = canonicalOoxmlFingerprint(editor.surface!.session.part());
     const target = 'Keep.\n\n<equation texExpression="1&#13;&#10;2" />';
+    let admissions = 0;
     const planned = planTargetDocument(await source(editor), target, {
       allocateBlockId: () => 'new-equation',
+      newBlockPayload: () => {
+        admissions++;
+        return null;
+      },
     });
+    expect(admissions).toBe(0);
     if (!planned.success) throw Error(planned.error);
     expect(decodeEditPlan(serializeEditPlan(planned.plan))).toEqual({
       success: true,
