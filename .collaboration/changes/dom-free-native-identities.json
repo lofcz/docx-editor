@@ -1,0 +1,16 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Existing native metadata writers referenced the DOM crypto global directly and required randomUUID.",
+  "after": "DOM-free native writers use the host's secure UUID method or format secure random bytes as UUID v4.",
+  "reason": "Generated identity values retain the existing UUID v4 spelling and metadata fields. No room field, origin proof format or stored DOCX field changes. The fallback uses getRandomValues and refuses a host without a secure random source.",
+  "tests": [
+    "packages/core/src/store/__tests__/random-uuid.test.ts",
+    "packages/core/src/store/__tests__/run-origins.test.ts",
+    "packages/core/src/store/__tests__/run-origins-clipboard.test.ts",
+    "packages/core/src/store/__tests__/run-origins-versioned-metadata.test.ts",
+    "packages/editor-api/src/runtime/__tests__/runtime-boundaries.test.ts"
+  ],
+  "changeset": "dom-free-native-identities",
+  "migration": null
+}

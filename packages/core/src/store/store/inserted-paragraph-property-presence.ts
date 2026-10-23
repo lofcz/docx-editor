@@ -1,3 +1,4 @@
+import { secureRandomUuid } from '../package/random-uuid.ts';
 import type { OoxmlElement, OoxmlNode } from '../package/ooxml-tree.ts';
 
 export const INSERTED_PARAGRAPH_PROPERTY_NS =
@@ -10,7 +11,7 @@ export function withInsertedParagraphPropertyPresence(
   runProperties: OoxmlNode | undefined
 ): OoxmlElement {
   if (!properties) return mark;
-  const prefix = `paragraphOrigin${crypto.randomUUID().replace(/-/g, '')}`;
+  const prefix = `paragraphOrigin${secureRandomUuid().replace(/-/g, '')}`;
   return {
     ...mark,
     namespaceBindings: [

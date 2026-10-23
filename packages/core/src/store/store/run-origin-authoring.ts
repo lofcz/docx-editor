@@ -1,3 +1,4 @@
+import { secureRandomUuid } from '../package/random-uuid.ts';
 import {
   withTrackedSourceBindings,
   readTrackedSourceBindings,
@@ -179,7 +180,7 @@ export function prepareTrackedRunOrigins(
     ]),
   ]);
   const sourceIdentity = sourceOriginIdentity(nodes);
-  const scope = crypto.randomUUID();
+  const scope = secureRandomUuid();
   const prefix = originPrefix(nodes, inherited, `runOrigin${scope.replace(/-/g, '')}`);
   const mint = createNodeIdAllocator(part);
   const sourceBindings: TrackedSourceBinding[] = [];

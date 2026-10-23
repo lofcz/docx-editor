@@ -1,3 +1,4 @@
+import { secureRandomUuid } from '../package/random-uuid.ts';
 import { materializeTrackedSourceBindings } from '../package/tracked-source-bindings.ts';
 import type { OoxmlNode } from '../package/ooxml-tree.ts';
 import {
@@ -123,7 +124,7 @@ export function freshenCopiedRunOrigins(
       for (const origin of readRevisionOrigins(node)) {
         const id = key(origin.namespaceUri, origin.scope);
         if (!scopes.has(id)) {
-          const scope = crypto.randomUUID();
+          const scope = secureRandomUuid();
           scopes.set(id, {
             scope,
             namespaceUri: originNamespaceForScope(scope),
@@ -159,7 +160,7 @@ export function freshenCopiedRunOrigins(
     for (const source of byScope.get(id) ?? [])
       for (const other of bySource.get(source) ?? []) {
         if (!scopes.has(other)) {
-          const scope = crypto.randomUUID();
+          const scope = secureRandomUuid();
           scopes.set(other, {
             scope,
             namespaceUri: originNamespaceForScope(scope),
@@ -213,7 +214,7 @@ export function freshenCopiedRunOrigins(
                   : `${namespaceUri}|${attr.value}`;
               let source = tokens.get(id);
               if (!source) {
-                source = crypto.randomUUID();
+                source = secureRandomUuid();
                 tokens.set(id, source);
               }
               value = `${target.scope}/${source}`;
