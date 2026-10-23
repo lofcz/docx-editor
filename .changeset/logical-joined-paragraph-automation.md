@@ -1,5 +1,5 @@
 ---
-"@docx-editor.dev/core": minor
+"@docx-editor.dev/core": patch
 ---
 
 Read and edit accepted paragraph joins as one Word paragraph while preserving collaboration fragment addresses.

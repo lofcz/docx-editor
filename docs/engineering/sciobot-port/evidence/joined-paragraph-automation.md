@@ -9,3 +9,11 @@ Logical paragraph handles carry local coordinate metadata. Ordinary paragraph ha
 Focused checks pass the original six-case shared equation/mark file, existing story reads and searches, ten joined-paragraph runtime cases, and five immutable native grouping cases. An additional word-range case verifies tokens crossing old marks, both reviewed-text versions, and an editable token. The runtime and native grouping checks preserve exact assertions. Source type checks and root lint pass at this implementation checkpoint. Wider suites, compiled API verification and further shared-history checks remain pending.
 
 The private production adapter still uses Apache core and its own package. The EigenPal Pro License collaboration transport and document API checks are evaluation fixtures.
+
+
+The broader core automation run at `9cfd1f3d` passes 654 cases and exposes three failures. The 4,000-paragraph benchmark passes separately under its unchanged 4,000 ms limit; the prior reader/writer revision also passes that check. Two native tracked-row acceptance fingerprints fail unchanged at `15b9dcfe`; they remain separate inherited defects. The complete document API runtime run passes 730 cases and exposes six DOM-free compilation diagnostics from direct `crypto.randomUUID()` calls in existing native metadata writers. The following UUID repair keeps their existing UUID representation and removes the DOM type dependency.
+
+Four shared cases cover both client orders and both replacement writers. A tracked split is accepted on the other peer, then a range spanning physical fragments is replaced. Both peers retain exact saved Word XML through writer undo and redo. Cold server reopening and re-saving produce the same native XML. These cases pass with 72 assertions.
+
+
+The DOM-free repair passes the original neutral-project compiler assertion and three secure-UUID cases. The prior revision fails that same compiler assertion. All 80 native origin/clipboard/export cases pass unchanged with 256 assertions. Core types pass across 1,601 files. The complete runtime suite's 730 behavioral cases pass; its only compilation failure passes with this repair. The two inherited native table fingerprint failures remain open. No broad all-green claim or TODO closure is made.

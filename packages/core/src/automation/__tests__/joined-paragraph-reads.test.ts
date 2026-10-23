@@ -27,7 +27,7 @@ for (const [body, expected] of [
     const groups = joinedParagraphGroups(reads).ordered;
     expect(
       groups.map((group) => logicalParagraphProjection(reads, group.id, 'allMarkup')!.text)
-    ).toEqual(expected);
+    ).toEqual([...expected]);
     for (const group of groups) {
       const range = logicalParagraphRange(reads, group.id)!;
       expect(range.start.paragraphId).toBe(group.fragments[0]!);
