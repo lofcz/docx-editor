@@ -115,3 +115,29 @@ test('coalescing an empty imported text element creates no nonexistent source wi
   );
   stop();
 });
+
+test('coalescing native text preserves boundary spaces when imported xml:space is default', () => {
+  const part = readOoxmlPart(
+    '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t xml:space="default"> left</w:t><w:t xml:space="default"> right </w:t></w:r></w:p></w:body></w:document>',
+    {
+      name: '/word/document.xml',
+      contentType:
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml',
+    }
+  );
+  if (!part.ok) throw Error('Invalid fixture');
+  const texts: OoxmlNode[] = [];
+  const visit = (node: OoxmlNode) => {
+    if (node.kind === 'text') texts.push(node);
+    if (node.kind !== 'textValue') node.children.forEach(visit);
+  };
+  visit(part.part.root);
+  let next = 0;
+  const merged = inlineTextMerged(() => `joined-${next++}`, texts[0]!, texts[1]!);
+  if (merged.kind === 'textValue' || merged.children[0]?.kind !== 'textValue')
+    throw Error('Missing text');
+  expect(merged.children[0].value).toBe(' left right ');
+  expect(
+    merged.attributes.some((attr) => attr.localName === 'space' && attr.value === 'default')
+  ).toBe(false);
+});

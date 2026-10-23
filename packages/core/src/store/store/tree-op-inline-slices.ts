@@ -5,6 +5,15 @@ import {
   recordNativeTextMerge,
 } from '../package/canonical-primitive-capture.ts';
 const XML = 'http://www.w3.org/XML/1998/namespace';
+/** A native boundary space must survive when fragments are sliced or joined. */
+function sliceAttributes(source: Exclude<OoxmlNode, { kind: 'textValue' }>, value: string) {
+  return /^\s|\s$/.test(value)
+    ? source.attributes.filter(
+        (attr) =>
+          !(attr.namespaceUri === XML && attr.localName === 'space' && attr.value === 'default')
+      )
+    : source.attributes;
+}
 /** Keep source element metadata on native range slices; mint only their structural identities. */
 export function inlineTextSlice(
   mint: () => string,
@@ -15,13 +24,7 @@ export function inlineTextSlice(
 ): OoxmlNode {
   if (source.kind !== 'text' && source.kind !== 'deletedText') return textElement(mint, value);
   const created = textElement(mint, value, source.kind);
-  // An internal source space becomes a boundary space after a split. Word must preserve it.
-  const attributes = /^\s|\s$/.test(value)
-    ? source.attributes.filter(
-        (attr) =>
-          !(attr.namespaceUri === XML && attr.localName === 'space' && attr.value === 'default')
-      )
-    : source.attributes;
+  const attributes = sliceAttributes(source, value);
   // One trailing fragment keeps the observed leaf. Other fragments mint independent IDs.
   // Shared text can then anchor unchanged source characters across an inserted control.
   const retained =
@@ -57,7 +60,12 @@ export function inlineTextMerged(mint: () => string, left: OoxmlNode, right: Oox
   if (created.kind === 'textValue' || created.children[0]?.kind !== 'textValue')
     throw new Error('Expected text leaf.');
   recordNativeTextMerge(a, b, created.children[0]);
-  return { ...left, id: created.id, children: created.children } as OoxmlNode;
+  return {
+    ...left,
+    id: created.id,
+    attributes: sliceAttributes(left, a.value + b.value),
+    children: created.children,
+  } as OoxmlNode;
 }
 
 export function inlineRunSlice(
