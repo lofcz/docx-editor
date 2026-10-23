@@ -51,6 +51,8 @@ test('every equation source and kind roundtrip exactly, including empty, multili
       '$',
       '$$\n$$$',
       '\\frac{x}{y}',
+      '<br>',
+      '\\text{A<br>B}',
       'a|b',
       'a\\|b',
       '<entity foo="x"> &copy; {inert()}\r\n',

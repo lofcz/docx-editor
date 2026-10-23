@@ -11,7 +11,7 @@ import { mathDocument, importedMath } from '../../test/support/math-document';
 import { docxFixture } from '../../test/support/document';
 import { readWorkingView } from '../review/working-view';
 import { readEditorRevision } from '../projection/revision-cache';
-import { parseTargetMarkdown } from '../projection/parse-target';
+import { parseTargetMarkdown, type TargetAstNode } from '../projection/parse-target';
 import { planTargetDocument } from '../diff/plan-target';
 import { decodeEditPlan, serializeEditPlan } from '../diff/plan';
 import { applyDirectPlan } from '../ai/apply-direct';
@@ -20,6 +20,10 @@ import { createMathPayload } from './math-codec';
 import { insertMath } from './math-insert';
 import { buildBlockIndex } from './block-index';
 const context = { documentId: 'math', epoch: 'projection' };
+const mathValues = (node: TargetAstNode): unknown[] =>
+  node.type === 'math' || node.type === 'inlineMath'
+    ? [node.value]
+    : ((node.children as TargetAstNode[] | undefined)?.flatMap(mathValues) ?? []);
 async function source(editor: DocxEditorInstance) {
   const revision = readEditorRevision(editor, context.documentId, context.epoch)!;
   const view = await readWorkingView(editor.surface!.session, revision);
@@ -37,7 +41,7 @@ const paragraphs = (node: OoxmlNode): OoxmlNode[] =>
       ? [node]
       : node.children.flatMap(paragraphs);
 
-for (const expression of ['', 'x^2', '  a\r\nb | 𝛼\n'])
+for (const expression of ['', 'x^2', '<br>', '  a\r\nb | 𝛼\n'])
   test(`native inline/block math projection preserves source, metadata, untouched OMML and empty replanning: ${JSON.stringify(expression)}`, async () => {
     const editor = createDocxEditor({
       container: document.createElement('div'),
@@ -68,10 +72,15 @@ for (const expression of ['', 'x^2', '  a\r\nb | 𝛼\n'])
       const planned = planTargetDocument(input, input.projection.text);
       if (!planned.success) throw Error(planned.error);
       expect(planned.plan.operations).toEqual([]);
-      for (const id of ['inline', 'block'])
+      for (const id of ['inline', 'block']) {
         expect(
           input.projection.attributes.filter((p) => p.blockId === id).map((p) => p.path)
         ).toEqual([['texExpression']]);
+        const span = input.projection.blocks.find((block) => block.id === id)!;
+        const parsed = parseTargetMarkdown(input.projection.text.slice(span.start, span.end));
+        if (!parsed.success) throw Error(parsed.error);
+        expect(mathValues(parsed.target.normalizedAst)).toEqual([expression]);
+      }
       const loaded = readOoxmlPackage(new Uint8Array(await editor.save()));
       if (!loaded.ok) throw Error(loaded.reason);
       expect(importedMath(loaded.package)).toEqual(omml);

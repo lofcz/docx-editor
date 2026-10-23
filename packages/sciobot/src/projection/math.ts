@@ -1,3 +1,4 @@
+import { normalizeTargetSource } from './normalize-target';
 import remarkMath from 'remark-math';
 import remarkParse from 'remark-parse';
 import remarkStringify from 'remark-stringify';
@@ -45,7 +46,7 @@ export function serializeMath(payload: BlockPayload): SerializedBlockTag {
   };
   const printed = processor.stringify(root as Parameters<typeof processor.stringify>[0]);
   const candidate = printed.endsWith('\n') ? printed.slice(0, -1) : printed;
-  const parsed = processor.parse(candidate);
+  const parsed = processor.parse(normalizeTargetSource(candidate).markdown);
   const children = parsed.children;
   const recovered =
     children.length === 1 && children[0]!.type === 'paragraph'
