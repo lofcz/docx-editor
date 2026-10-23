@@ -1,0 +1,96 @@
+{
+  "leaf": "R19",
+  "status": "partial checkpoint; authoring disabled; leaf remains open",
+  "runtimeRevision": "c920e4d731ee154a62c09f9a10ec1dbf2ca8428d",
+  "sourceHashes": {
+    ".collaboration/changes/sciobot-block-presence-decisions.json": "5b1aefe70b2dd9e5e24e4e08661a1a2661e1b37bb06d3a7e72ffed8b3878203a",
+    "packages/sciobot/src/review/application-proposals.test.ts": "ac944ad743331dc61516d3f7cc3d934b663d5372bf7896a0d777f11060a1d765",
+    "packages/sciobot/src/review/application-proposals.ts": "a71692adecd5c3e1bcee621464c171ab232b6c5b588c3eca53fd0b49e32239c7",
+    "packages/sciobot/src/review/block-presence-lifecycle.test.ts": "ec76dbc7b9962838fbfa46f35266ab89bf0cf15f5c2e2779609d8f23cac64642",
+    "packages/sciobot/src/review/block-presence-shared-decisions.test.ts": "6e95b4ea1d27657afa51be029989184445b8044fc9ed56fff6e99621a6e97d60",
+    "packages/sciobot/src/review/decide-group.ts": "3320000baadadf6c330b99c6862b2b1ff759064d8c2e2ac49281621b7e41ccd6",
+    "packages/sciobot/src/review/document-view.ts": "9c9191cd3f6436b48689d2cba08c510f9fefa1106e6dd731e03fbda063251015",
+    "packages/sciobot/src/review/groups.ts": "18ef74bc01d130e9212c8dc9c77ef867c24bd2dd00e3c85f81b9378512d9d037",
+    "packages/sciobot/src/review/prepare-presence-decision.ts": "76bd925003fa195b6b07f9f77af201566e37ba89fcdcf7726757e46373e54fe6",
+    "packages/sciobot/src/review/restore.ts": "62d3850da342dd39d70013496c7a675d92317b2ec787e10c79171e823beeb792",
+    "packages/sciobot/src/review/stored-property-proposals.ts": "f3ef1e0937c28de63334888373a20bd4091caa85ce412c3f8372ef5db8c6291a"
+  },
+  "behavior": [
+    "Combined property/presence Original and Working reads preserve live state and source revision labels.",
+    "Stable presence groups refuse overlapping ownership and changed native controls.",
+    "Guarded native decisions retire exact owned payload records by identity, retaining empty shared-history shells.",
+    "Reload restores pending presence separately from property deltas.",
+    "Causal property ancestry remains connected through pending and resolved presence records without raw metadata rewrites."
+  ],
+  "verification": {
+    "affectedReview": {
+      "passed": 138,
+      "assertions": 2908,
+      "files": 15
+    },
+    "finalRestoreAndLifecycle": {
+      "passed": 22,
+      "assertions": 649,
+      "files": 3
+    },
+    "distinctCases": 146,
+    "distinctFiles": 16,
+    "privateTypedFiles": 2098,
+    "privateRuntimeModules": 228,
+    "coreExternal": true,
+    "compatibilityDecisions": 156,
+    "changedSharedFormatFields": 0,
+    "verifiedProductionSourceHashes": 199
+  },
+  "logs": {
+    "affectedReview": {
+      "path": "/tmp/r19-presence-integration-focused.log",
+      "sha256": "792e7e99a50d4b240d342a466057d54317f21fcac0e623f60dd2473bc6ae5495"
+    },
+    "finalRestoreAndLifecycle": {
+      "path": "/tmp/r19-presence-restore.log",
+      "sha256": "00841e69e1d27fe312ee8b7c4aea3aa476ccb448b1dc0da7012ccb5ed4d6281a"
+    },
+    "privateTypes": {
+      "path": "/tmp/r19-presence-restored-types.log",
+      "sha256": "ae5d6862a50ccb8e320c4d1c8aad0fdaab3df368de7969d76f40cbdf2e1fd2d2"
+    },
+    "privateBuild": {
+      "path": "/tmp/r19-presence-restored-build.log",
+      "sha256": "5329751dd22b1934c8bdf78d8b2876dc29101e3913aa4f9293168a951b6c1bb8"
+    },
+    "rootFormat": {
+      "path": "/tmp/r19-presence-integration-format.log",
+      "sha256": "7b3451514fd730d2681f697b21183fd1c2abdc38a955dc793655ec74e1f85c40"
+    },
+    "finalScopedFormat": {
+      "path": "/tmp/r19-presence-integration-scoped-format.log",
+      "sha256": "3f00c27b28708c81baff7cd7be59eac392c59f1cc22ebef9203cd5d47ba56776"
+    },
+    "rootLint": {
+      "path": "/tmp/r19-presence-restored-lint.log",
+      "sha256": "fa76f221b45c9e019ff4d332ce21acbc5e9d1edc8b58de0cce7f88c7b7179fcb"
+    },
+    "compatibility": {
+      "path": "/tmp/r19-presence-integration-policy.log",
+      "sha256": "d709755363d09829f66469a6914bdf66254fa0ce6546fd273687800dc95b3a38"
+    },
+    "productionReferenceAudit": {
+      "path": "/tmp/r19-presence-integration-source-audit.log",
+      "sha256": "67377bf014e19a0e192c6ed8c1295eac76c7e5980f110eeaa615f941af8f59b8"
+    }
+  },
+  "diagnostics": [
+    "Initial shared deletion removed the native control but left one payload. Sequential and batched positional removal failed unchanged expectations. Identity-based retirement passes both decisions, actor orders, independent history, and room reopening. No Pro implementation changed.",
+    "Diagnostic type errors in independent native fixture construction were corrected. Final checks preserve every native oracle and source timeout."
+  ],
+  "remaining": [
+    "Enable authored legal application fragments through guarded AI replacement, with explicit presence ownership and capability admission.",
+    "Integrate ownership proof capture, inverse replacement, external reconciliation, and review presentation.",
+    "Preserve unseen peer text and payload edits inside removed controls.",
+    "Complete package/media resource ledgers and exact full-package decision oracles.",
+    "Complete cell-only and retained nested-row evidence and all other R19 requirements.",
+    "Validate actual installed application artifacts and runtime."
+  ],
+  "closedTodos": 0
+}
