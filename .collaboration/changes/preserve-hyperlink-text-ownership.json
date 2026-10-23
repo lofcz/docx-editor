@@ -7,7 +7,8 @@
   "tests": [
     "packages/core/src/store/__tests__/hyperlink-text-owner.test.ts",
     "packages/sciobot/src/diff/inline-images-materialization.test.ts",
-    "packages/sciobot/src/diff/imported-image-boundary-collaboration.test.ts"
+    "packages/sciobot/src/diff/imported-image-boundary-collaboration.test.ts",
+    "packages/sciobot/scripts/check-hyperlink-text-reader-compatibility.ts"
   ],
   "changeset": "preserve-hyperlink-text-ownership",
   "migration": null

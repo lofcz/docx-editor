@@ -1,0 +1,276 @@
+{
+  "schemaVersion": 1,
+  "baselineRevision": "88c58801",
+  "candidateRevision": "d11c08c7",
+  "candidateRun": {
+    "tests": 333,
+    "passed": 269,
+    "failed": 64,
+    "log": "/tmp/d30-owned-text-composers.log"
+  },
+  "baselineRuns": [
+    "/tmp/d30-owned-text-baseline-tables-full.log",
+    "/tmp/d30-owned-text-baseline-born-tables.log",
+    "/tmp/d30-owned-text-baseline-other-composers.log"
+  ],
+  "sameFailureNamesAndFiles": true,
+  "sameDisplayedDiffs": true,
+  "failures": [
+    {
+      "file": "packages/sciobot/src/review/recompose-inserted-tables-collaboration.test.ts",
+      "name": "born table later waves retain peer text, native decisions, history, carets, and reopen; ids=101,202, receiver=0"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-inserted-tables-collaboration.test.ts",
+      "name": "born table later waves retain peer text, native decisions, history, carets, and reopen; ids=101,202, receiver=1"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-inserted-tables-collaboration.test.ts",
+      "name": "born table later waves retain peer text, native decisions, history, carets, and reopen; ids=202,101, receiver=0"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-inserted-tables-collaboration.test.ts",
+      "name": "born table later waves retain peer text, native decisions, history, carets, and reopen; ids=202,101, receiver=1"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-compound-targets-collaboration.test.ts",
+      "name": "complete target column after owned merge; accept, both histories, reconnect 47,79/0"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-compound-targets-collaboration.test.ts",
+      "name": "complete target column after owned merge; accept, both histories, reconnect 47,79/1"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-compound-targets-collaboration.test.ts",
+      "name": "complete target column after owned merge; accept, both histories, reconnect 79,47/0"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-compound-targets-collaboration.test.ts",
+      "name": "complete target column after owned merge; accept, both histories, reconnect 79,47/1"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-compound-targets-collaboration.test.ts",
+      "name": "complete target column after owned merge; reject, both histories, reconnect 47,79/0"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-compound-targets-collaboration.test.ts",
+      "name": "complete target column after owned merge; reject, both histories, reconnect 47,79/1"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-compound-targets-collaboration.test.ts",
+      "name": "complete target column after owned merge; reject, both histories, reconnect 79,47/0"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-compound-targets-collaboration.test.ts",
+      "name": "complete target column after owned merge; reject, both histories, reconnect 79,47/1"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-compound-targets-collaboration.test.ts",
+      "name": "complete target compiler retains offline old-row deletion through both histories; 47,79/0"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-compound-targets-collaboration.test.ts",
+      "name": "complete target compiler retains offline old-row deletion through both histories; 47,79/1"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-compound-targets-collaboration.test.ts",
+      "name": "complete target compiler retains offline old-row deletion through both histories; 79,47/0"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-compound-targets-collaboration.test.ts",
+      "name": "complete target compiler retains offline old-row deletion through both histories; 79,47/1"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-compound-targets-collaboration.test.ts",
+      "name": "complete target row after owned merge; accept, both histories, reconnect 47,79/0"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-compound-targets-collaboration.test.ts",
+      "name": "complete target row after owned merge; accept, both histories, reconnect 47,79/1"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-compound-targets-collaboration.test.ts",
+      "name": "complete target row after owned merge; accept, both histories, reconnect 79,47/0"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-compound-targets-collaboration.test.ts",
+      "name": "complete target row after owned merge; accept, both histories, reconnect 79,47/1"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-compound-targets-collaboration.test.ts",
+      "name": "complete target row after owned merge; reject, both histories, reconnect 47,79/0"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-compound-targets-collaboration.test.ts",
+      "name": "complete target row after owned merge; reject, both histories, reconnect 47,79/1"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-compound-targets-collaboration.test.ts",
+      "name": "complete target row after owned merge; reject, both histories, reconnect 79,47/0"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-compound-targets-collaboration.test.ts",
+      "name": "complete target row after owned merge; reject, both histories, reconnect 79,47/1"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-tables-collaboration.test.ts",
+      "name": "deleting the old row owner offline preserves a later wave and peer history; 41,73/0"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-tables-collaboration.test.ts",
+      "name": "deleting the old row owner offline preserves a later wave and peer history; 41,73/1"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-tables-collaboration.test.ts",
+      "name": "deleting the old row owner offline preserves a later wave and peer history; 73,41/0"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-tables-collaboration.test.ts",
+      "name": "deleting the old row owner offline preserves a later wave and peer history; 73,41/1"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-tables-collaboration.test.ts",
+      "name": "mixed insert-column waves preserve peer cells, both histories, accept, geometry, and reopening; 41,73/0"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-tables-collaboration.test.ts",
+      "name": "mixed insert-column waves preserve peer cells, both histories, accept, geometry, and reopening; 41,73/1"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-tables-collaboration.test.ts",
+      "name": "mixed insert-column waves preserve peer cells, both histories, accept, geometry, and reopening; 73,41/0"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-tables-collaboration.test.ts",
+      "name": "mixed insert-column waves preserve peer cells, both histories, accept, geometry, and reopening; 73,41/1"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-tables-collaboration.test.ts",
+      "name": "mixed insert-column waves preserve peer cells, both histories, reject, geometry, and reopening; 41,73/0"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-tables-collaboration.test.ts",
+      "name": "mixed insert-column waves preserve peer cells, both histories, reject, geometry, and reopening; 41,73/1"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-tables-collaboration.test.ts",
+      "name": "mixed insert-column waves preserve peer cells, both histories, reject, geometry, and reopening; 73,41/0"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-tables-collaboration.test.ts",
+      "name": "mixed insert-column waves preserve peer cells, both histories, reject, geometry, and reopening; 73,41/1"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-tables-collaboration.test.ts",
+      "name": "mixed insert-row waves preserve peer cells, both histories, accept, geometry, and reopening; 41,73/0"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-tables-collaboration.test.ts",
+      "name": "mixed insert-row waves preserve peer cells, both histories, accept, geometry, and reopening; 41,73/1"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-tables-collaboration.test.ts",
+      "name": "mixed insert-row waves preserve peer cells, both histories, accept, geometry, and reopening; 73,41/0"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-tables-collaboration.test.ts",
+      "name": "mixed insert-row waves preserve peer cells, both histories, accept, geometry, and reopening; 73,41/1"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-tables-collaboration.test.ts",
+      "name": "mixed insert-row waves preserve peer cells, both histories, reject, geometry, and reopening; 41,73/0"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-tables-collaboration.test.ts",
+      "name": "mixed insert-row waves preserve peer cells, both histories, reject, geometry, and reopening; 41,73/1"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-tables-collaboration.test.ts",
+      "name": "mixed insert-row waves preserve peer cells, both histories, reject, geometry, and reopening; 73,41/0"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-tables-collaboration.test.ts",
+      "name": "mixed insert-row waves preserve peer cells, both histories, reject, geometry, and reopening; 73,41/1"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-tables-collaboration.test.ts",
+      "name": "mixed split waves preserve peer cells, both histories, accept, geometry, and reopening; 41,73/0"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-tables-collaboration.test.ts",
+      "name": "mixed split waves preserve peer cells, both histories, accept, geometry, and reopening; 41,73/1"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-tables-collaboration.test.ts",
+      "name": "mixed split waves preserve peer cells, both histories, accept, geometry, and reopening; 73,41/0"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-tables-collaboration.test.ts",
+      "name": "mixed split waves preserve peer cells, both histories, accept, geometry, and reopening; 73,41/1"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-tables-collaboration.test.ts",
+      "name": "mixed split waves preserve peer cells, both histories, reject, geometry, and reopening; 41,73/0"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-tables-collaboration.test.ts",
+      "name": "mixed split waves preserve peer cells, both histories, reject, geometry, and reopening; 41,73/1"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-tables-collaboration.test.ts",
+      "name": "mixed split waves preserve peer cells, both histories, reject, geometry, and reopening; 73,41/0"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-tables-collaboration.test.ts",
+      "name": "mixed split waves preserve peer cells, both histories, reject, geometry, and reopening; 73,41/1"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-born-peer.test.ts",
+      "name": "peer suffix inside a born bullet survives later waves and both decisions; 41,73/0"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-born-peer.test.ts",
+      "name": "peer suffix inside a born bullet survives later waves and both decisions; 41,73/1"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-born-peer.test.ts",
+      "name": "peer suffix inside a born bullet survives later waves and both decisions; 73,41/0"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-born-peer.test.ts",
+      "name": "peer suffix inside a born bullet survives later waves and both decisions; 73,41/1"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-born-peer.test.ts",
+      "name": "peer suffix inside a born checkbox survives later waves and both decisions; 41,73/0"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-born-peer.test.ts",
+      "name": "peer suffix inside a born checkbox survives later waves and both decisions; 41,73/1"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-born-peer.test.ts",
+      "name": "peer suffix inside a born checkbox survives later waves and both decisions; 73,41/0"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-born-peer.test.ts",
+      "name": "peer suffix inside a born checkbox survives later waves and both decisions; 73,41/1"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-born-table-peer.test.ts",
+      "name": "peer suffix inside a born table survives replacement, decisions, history, carets, and Word reopen; 41,73/0"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-born-table-peer.test.ts",
+      "name": "peer suffix inside a born table survives replacement, decisions, history, carets, and Word reopen; 41,73/1"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-born-table-peer.test.ts",
+      "name": "peer suffix inside a born table survives replacement, decisions, history, carets, and Word reopen; 73,41/0"
+    },
+    {
+      "file": "packages/sciobot/src/review/recompose-born-table-peer.test.ts",
+      "name": "peer suffix inside a born table survives replacement, decisions, history, carets, and Word reopen; 73,41/1"
+    }
+  ]
+}

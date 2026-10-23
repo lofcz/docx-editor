@@ -20,7 +20,9 @@ Logs: `/tmp/d30-linked-image-original-probes.log`, `/tmp/d30-linked-image-batch.
 
 ## Remaining work
 
-The stronger [imported link boundary regression](regressions/imported-linked-image-boundary.test.ts) fails at the original hyperlink identity assertion. Its source has imported history/frame attributes, a character style, a color and opaque run metadata. Inserting an image after `label ` inside that link produces a lexical space insertion after an identical existing space outside the link. The skeleton planner removes the old wrapper. The native trailing-link typing rule also keeps automatic typing outside a link, even with left bias. Moving an equivalent space insertion to that boundary alone does not fix ownership.
+Follow-up `d11c08c7` / `c37f8096` resolves the boundary failure below. See [hyperlink text ownership](hyperlink-text-ownership.md) for source, compiled, shared-history and earlier-reader evidence.
+
+At checkpoint `2b4fe004`, the stronger [imported link boundary regression](regressions/imported-linked-image-boundary.test.ts) fails at the original hyperlink identity assertion. Its source has imported history/frame attributes, a character style, a color and opaque run metadata. Inserting an image after `label ` inside that link produces a lexical space insertion after an identical existing space outside the link. The skeleton planner removes the old wrapper. The native trailing-link typing rule also keeps automatic typing outside a link, even with left bias. Moving an equivalent space insertion to that boundary alone does not fix ownership.
 
 Keep this full regression and its native metadata, derived code style, undo/redo and reopen assertions. Resolve explicit link ownership through planning and execution next. Do not relax ordinary native typing semantics or replace source identity with Markdown equality.
 
