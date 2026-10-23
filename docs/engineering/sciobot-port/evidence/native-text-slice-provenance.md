@@ -23,3 +23,10 @@ The follow-up malformed-recipe check passes 19 cases. Primitive completeness and
 A separate process runs the prior source reader/writer at `15b9dcfe`, without the descriptor implementation. It opens the corrected room, edits retained peer text, and performs undo and redo. Both current editors consume its updates. The original writer redoes its atom birth while preserving those edits. All 16 native snapshots match independent native-operation oracles. No `sourceText` field enters shared state. Run `bun --preload ./scripts/test/preload-dom.ts packages/sciobot/scripts/check-text-slice-reader-compatibility.ts <prior-checkout>`.
 
 Core types pass across 1,596 files. Transport types pass across 2,301 ordinary files and 1,853 Vue files. Private types pass across 2,183 files. Core, fonts, exporter and private SDK builds pass at `ffadfbef`; core stays external across 256 private modules. Core API extraction and checking pass with the additive descriptor snapshot. Root formatting, lint and compatibility policy pass; policy covers 181 decisions and two inherited format fields. The boundary-space follow-up is source-tested separately from the compiled `ffadfbef` artifacts.
+
+
+## Remaining joined-paragraph read defect
+
+The unchanged failing case also fails at `15b9dcfe`. Its primitive journal accepts the deleted mark by adding `urn:docx-editor.dev:review:retired-paragraph:1` / `joined` recovery metadata. It preserves both physical paragraphs and their identities. Word export correctly folds those records into `yworldNext`. Automation `storyReadsOver` in `packages/core/src/automation/reads.ts` still enumerates them separately, and the live paragraph query returns `yworld` and `Next`.
+
+The next repair must expose logical joined paragraphs while preserving canonical physical addresses for editing. Paragraph ranges, search and subsequent writes need mappings through every physical fragment. A text-only concatenation would give those writes incorrect offsets. Keep the existing acceptance oracle and native recovery metadata. No diagnostic instrumentation remains in runtime or test sources.
