@@ -1,7 +1,15 @@
 import { expect, test } from 'bun:test';
 import { canonicalOoxmlFingerprint } from '@docx-editor.dev/core/store';
-import { presencePropertyFixture, installPresenceOwnership } from '../../test/support/presence-ownership';
-import { propertyContext, propertyEditor, propertyToken, executeProperties } from '../../test/support/property-execution';
+import {
+  presencePropertyFixture,
+  installPresenceOwnership,
+} from '../../test/support/presence-ownership';
+import {
+  propertyContext,
+  propertyEditor,
+  propertyToken,
+  executeProperties,
+} from '../../test/support/property-execution';
 import { createEditPlan } from '../diff/plan';
 import { buildBlockIndex } from '../blocks/block-index';
 import { readReviewGroups } from './groups';
@@ -21,12 +29,28 @@ for (const decision of ['accept', 'reject'] as const)
       const rows = readReviewGroups(editor.surface!.session.currentPackage());
       if (!rows.success) throw Error(rows.error);
       expect(rows.groups).toHaveLength(2);
-      const group = rows.groups.find(row => row.properties.some(member => member.blockId === 'activity'))!;
-      const decided = (decision === 'accept' ? acceptReviewGroup : rejectReviewGroup)(editor, group.id, propertyToken(editor), propertyContext);
+      const group = rows.groups.find((row) =>
+        row.properties.some((member) => member.blockId === 'activity')
+      )!;
+      const decided = (decision === 'accept' ? acceptReviewGroup : rejectReviewGroup)(
+        editor,
+        group.id,
+        propertyToken(editor),
+        propertyContext
+      );
       if (!decided.success) throw Error(decided.error);
       const current = editor.surface!.session.currentPackage();
-      expect(buildBlockIndex(current).byId.get('activity')!.payload.attributes.duration).toBe(decision === 'accept' ? 15 : 10);
-      expect(verifyOwnedProposalContentProofs(current, propertyToken(editor), owned.ownership, owned.contentProofs)).toBeNull();
+      expect(buildBlockIndex(current).byId.get('activity')!.payload.attributes.duration).toBe(
+        decision === 'accept' ? 15 : 10
+      );
+      expect(
+        verifyOwnedProposalContentProofs(
+          current,
+          propertyToken(editor),
+          owned.ownership,
+          owned.contentProofs
+        )
+      ).toBeNull();
       const accepted = canonicalOoxmlFingerprint(editor.surface!.session.part());
       expect(editor.exec({ type: 'undo' }).ok).toBe(true);
       const undone = readReviewGroups(editor.surface!.session.currentPackage());
@@ -40,6 +64,10 @@ for (const decision of ['accept', 'reject'] as const)
       const index = buildBlockIndex(editor.surface!.session.currentPackage());
       expect(index.byId.has('outer')).toBe(false);
       expect(index.byId.has('inner')).toBe(false);
-      expect(index.byId.get('activity')!.payload.attributes.duration).toBe(decision === 'accept' ? 15 : 10);
-    } finally { editor.destroy(); }
+      expect(index.byId.get('activity')!.payload.attributes.duration).toBe(
+        decision === 'accept' ? 15 : 10
+      );
+    } finally {
+      editor.destroy();
+    }
   }, 30000);
