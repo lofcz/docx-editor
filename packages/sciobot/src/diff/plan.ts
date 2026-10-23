@@ -532,6 +532,30 @@ export function createEditPlan(
       const problem = editProblem(edit);
       if (problem) throw new TypeError(problem);
     }
+    const insertedIds = new Set<string>();
+    for (const edit of copy.operations as CanonicalEdit[]) {
+      const blocks =
+        edit.kind === 'siblings'
+          ? (edit.blocks ?? [])
+          : edit.kind === 'insert-row' ||
+              edit.kind === 'insert-column' ||
+              edit.kind === 'split-cell'
+            ? edit.intent.payloads
+            : [];
+      const atoms =
+        edit.kind === 'inline-atoms'
+          ? edit.atoms
+          : edit.kind === 'siblings'
+            ? (edit.atoms ?? [])
+            : [];
+      for (const id of [
+        ...blocks.map((binding) => binding.payload.id),
+        ...atoms.flatMap((atom) => (atom.kind === 'inline-control' ? [atom.payload.id] : [])),
+      ]) {
+        if (insertedIds.has(id)) throw new TypeError('duplicate-inserted-block-id');
+        insertedIds.add(id);
+      }
+    }
     const instances = new Map<string, string>();
     for (const edit of copy.operations as CanonicalEdit[]) {
       const targets =
