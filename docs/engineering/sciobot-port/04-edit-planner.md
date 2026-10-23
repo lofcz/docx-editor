@@ -532,7 +532,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 - [ ] Plan inserted inline atoms
 
-**Depends:** [D15](04-edit-planner.md#d15), [D29](04-edit-planner.md#d29), [X23](08-domain-content.md#x23)
+**Depends:** [D15](04-edit-planner.md#d15), [D29](04-edit-planner.md#d29), [X23](08-domain-content.md#x23), [X38](08-domain-content.md#x38)
 
 **Primary files:** `fork:packages/sciobot/src/diff/inserted-atoms.ts`; `sibling inserted-atoms.test.ts`
 
@@ -544,7 +544,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused Bun test with explicit expected results. Run the C01 matrix and composer regressions.
 
-**Claim:** unclaimed. **Evidence:** Not started. Notes for the next worker: inline `source` atoms can reuse the D29 materializer (inline control plus payload record), and images can use native `insertDrawing` with host-supplied bytes. Inline math still lacks a native representation and projection (X23). The native representation of mentions is undefined; add a prerequisite leaf before planning them.
+**Claim:** codex solo, branch `codex/d30-inline-atoms`. **Evidence:** In progress. `inserted-atoms.ts` plans deferred drawing references and registered inline control payloads for paragraph insertion fragments. Descriptions retain new-paragraph paths or retained paragraph IDs, UTF-16 offsets, marks, link ownership, and original source metadata. Image references remain unembedded. Math reuses X23. Mention descriptions separate application `key` and display `value`; X38 must connect native persistence/projection before execution. Focused tests cover all four kinds in both locations, collisions, inert unknown syntax, model widths, empty/multiline math, and detached planning. This helper does not yet diff retained atom ownership, enter the canonical D01 plan codec, integrate A01/R05 materialization, or land target Markdown through save/reopen. Those requirements remain open. Math projection also needs an exact policy for empty/multiline inline sources.
 
 ## D31
 

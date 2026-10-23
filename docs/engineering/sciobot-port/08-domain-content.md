@@ -388,7 +388,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 - [ ] Render and insert mention chips
 
-**Depends:** [B05](02-react-blocks.md#b05), [B20](02-react-blocks.md#b20), [B21](02-react-blocks.md#b21), [V01](11-verification.md#v01)
+**Depends:** [X38](08-domain-content.md#x38), [B05](02-react-blocks.md#b05), [B20](02-react-blocks.md#b20), [B21](02-react-blocks.md#b21), [V01](11-verification.md#v01)
 
 **Primary files:** `app:src/components/workspace/docx/blocks/mention.tsx`; `sibling browser test`
 
@@ -671,3 +671,21 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 **Check:** Add focused projection cases beside the P04 tests. Run private typecheck/build and a compatibility decision. Pure projection needs no session test.
 
 **Claim:** codex X37 worker, branch `codex/react-block-proof`. **Evidence:** Native baseline `3278fa04`, local working tree. `bun scripts/sciobot-port/capture-container-reference.mjs` captures six application attribute outputs and three modern/legacy callout alias parses. `packages/sciobot/src/__tests__/fixtures/container-tags.json` records application revision `aec740a3` and four source hashes. `bun test packages/sciobot/src/projection/container-tags.test.ts packages/sciobot/src/projection/blocks.test.ts` passes 17 cases and 166 assertions. Working-view fixtures retain exact ordered attributes, optional icons, native paragraph IDs, UTF-16 offsets, property paths, nested/empty containers, and save/reopen payloads. Callout serializes `variant` as `type` after remaining attributes, matching the application rule. Unknown properties remain inert, including JSON, boolean, constructor, and event-shaped names. Reads preserve package bytes, revision, and history. `bun run --filter '@sciobot/docx' build` passes with 189 private modules and external native core. Scoped Prettier, oxlint, and diff checks pass. Combined private types pass 1958 files. The completed-leaf checkpoint `988042a5` builds 190 private modules with external native core; The isolated completed-leaf suite passes 2652 cases with one package-path assertion failure caused by shared dependency links. The unchanged package-boundary test passes separately in the real checkout: one case and eight assertions. Logs: `/tmp/codex-closed-private-suite2.log` and `/tmp/codex-main-boundary-final.log`. These runs cover 2653 cases across 197 files; later work remains separately verified. No-impact decision: `.collaboration/changes/sciobot-container-tag-projection.json`. This pure projection change needs no collaboration mutation scenario. X13–X15 application rendering remains separate; no importer or canonical edit path changes.
+
+## X38
+
+- [ ] Persist native mention identity and Markdown syntax
+
+**Depends:** [B02](02-react-blocks.md#b02), [P04](03-agent-projection.md#p04), [B19](02-react-blocks.md#b19), [V01](11-verification.md#v01)
+
+**Primary files:** `fork:packages/sciobot/src/blocks/mention-codec.ts`; `focused native and collaboration tests`; `fork:packages/sciobot/src/projection/block-tags.ts`
+
+**Read:** [S13](sources.md#s13), [S25](sources.md#s25)
+
+**Change:** Define application-owned inline mention controls. Store the application `key` separately from display `value`, preserving document identifiers beginning with `/` and optional private attributes. Keep a readable native fallback and project the existing mention Markdown syntax without evaluating content. Reuse the same codec for D30 insertion plans and later X22 controls.
+
+**Close when:** Person and document mentions keep exact identifiers, labels, and private attributes through native insertion, Markdown projection, undo/redo, and save/reopen. Adjacent native text remains editable. The existing mention parser reads the projected identifier and display label exactly.
+
+**Check:** Add focused explicit codec/projection/native cases. Add the V01 two-session scenario for concurrent insertions, deletion during peer editing, both histories, remote geometry, reconnect, and DOCX/room reopening. Run private types/build, scoped formatting/lint, and the collaboration policy.
+
+**Claim:** unclaimed. **Evidence:** Required prerequisite identified by D30. The application inserts `mention` nodes with `key` and `value`; document keys start with `/`. D30 now carries these fields in deferred control descriptions, but native insertion and lossless projection are not yet connected. X22 still owns browser suggestions, selection triggers, and rendering.

@@ -2,7 +2,7 @@
 
 Port the production workspace editor to the DOCX fork. Keep AI editing, suggestions, and React blocks as required capabilities.
 
-This backlog contains 275 leaves across 11 workstreams. Each leaf has its own status and evidence.
+This backlog contains 276 leaves across 11 workstreams. Each leaf has its own status and evidence.
 
 The React block proof supplies a tested starting point. It does not establish full application parity.
 
