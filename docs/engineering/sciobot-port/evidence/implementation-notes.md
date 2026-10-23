@@ -2325,3 +2325,8 @@ Runtime `14d9787f` fixes six inherited DOM-free compiler diagnostics by generati
 ## D30 tracked table property holders
 
 Runtime `f7ca8c5e` retains explicitly present row/cell holders and missing source holders through native revision decisions. Both inherited table-authoring acceptance expectations now pass unchanged. All 657 core automation cases pass; 40 focused cases preserve exact native accept/reject and DOCX reopening. The older-reader tool passes 72 exact native snapshots, including foreign text, both histories, and current acceptance undo/redo. See [table holder evidence](tracked-table-property-holders.md). D30 remains open, with 179 leaves closed and 97 open.
+
+
+## D30 retained inline atom marks
+
+Runtime `956ba1e9` plans native formatting over unchanged math, mention, source, and image sequences. Explicit host policy admits direct formatting while preserving stored locks. Drawing layout records carry resolved run formatting, so projection retains image marks and structural code syntax. Twenty-two source and compiled cases pass, including independent native oracles, both peer orders, both histories, remote geometry, and DOCX/room reopening. Another 467 existing private/exporter/drawing cases pass. Builds, types, public API checks, root formatting/lint, and compatibility policy pass. The unchanged production inventory still rejects application revision drift; all 199 pinned file hashes match. See [retained mark evidence](retained-atom-mark-changes.md). D30 remains open; 179 leaves remain closed and 97 open. Next, reconcile retained hyperlink ownership and changed atom sequences without replacing retained controls or losing media/history ownership.

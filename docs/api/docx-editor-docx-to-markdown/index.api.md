@@ -391,6 +391,14 @@ export type ImageResourceState = {
 // @public
 export type ImageWrapTarget = 'inline' | 'square' | 'squareLeft' | 'squareRight' | 'tight' | 'through' | 'topAndBottom' | 'behind' | 'inFront';
 
+// @public
+export interface InlineDrawingFormatting {
+    // (undocumented)
+    readonly props: readonly OoxmlProperty[];
+    // (undocumented)
+    readonly style: ResolvedRunStyle;
+}
+
 // @public (undocumented)
 export interface InlineDrawingRecord {
     // (undocumented)
@@ -414,6 +422,7 @@ export interface InlineDrawingRecord {
     readonly drawingNodeId: string;
     // (undocumented)
     readonly effects: DrawingImageEffects;
+    readonly formatting?: InlineDrawingFormatting;
     // (undocumented)
     readonly geometry: DrawingGeometry;
     readonly groupPicture?: DrawingGroupPictureRecord;
@@ -745,6 +754,14 @@ export interface MarkdownWarning {
     readonly message: string;
     readonly pageNumber?: number;
     readonly partName?: string;
+}
+
+// @public
+export interface OoxmlProperty {
+    // (undocumented)
+    readonly attributes?: Readonly<Record<string, string>>;
+    // (undocumented)
+    readonly localName: string;
 }
 
 // @public
