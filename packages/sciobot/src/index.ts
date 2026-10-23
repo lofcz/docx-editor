@@ -117,3 +117,10 @@ export * from './chrome/block-toolbar';
 export * from './review/group-allocation';
 
 export type { TrackedPayloadOptions } from './review/tracked-stage-payloads';
+
+export {
+  prepareInlineImageResources,
+  type PreparedInlineImages,
+  type InlineImageSource,
+  type InlineImageResolver,
+} from './native/inline-image-resources';

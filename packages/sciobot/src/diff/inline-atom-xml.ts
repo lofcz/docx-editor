@@ -1,11 +1,14 @@
+import type { InlineImageRuntime } from '../native/inline-image-runtime';
 import { escapeXml } from '@docx-editor.dev/core/store';
 import { blockTag } from '../blocks/payload-opc-codec';
 import type { InsertedInlineAtom } from './inserted-atoms';
 
 /** New control fallback only. Character styles are applied after native paragraph allocation. */
 export function inlineAtomXml(
-  op: InsertedInlineAtom
+  op: InsertedInlineAtom,
+  images?: InlineImageRuntime
 ): { readonly xml: string; readonly length: number } | null {
+  if (op.kind === 'drawing') return images?.render(op) ?? null;
   if (op.kind !== 'inline-control' || op.hyperlink !== null || op.marks.includes('code'))
     return null;
   const properties = op.marks

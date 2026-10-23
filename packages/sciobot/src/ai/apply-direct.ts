@@ -1,3 +1,5 @@
+import { createInlineImageRuntime, type InlineImageRuntime } from '../native/inline-image-runtime';
+import type { PreparedInlineImages } from '../native/inline-image-resources';
 import { lowerRetainedAtoms } from './direct-inline-atoms';
 import { cellPropertiesAt } from '../diff/new-cell-properties';
 import { cellListBindings } from '../diff/inserted-cell-lists';
@@ -65,6 +67,7 @@ import {
 
 /** Mount identity for the editor that owns the plan's revision token. */
 export interface DirectPlanContext {
+  readonly images?: PreparedInlineImages;
   readonly documentId: string;
   readonly epoch: string;
 }
@@ -165,6 +168,7 @@ function freshInGap(
     .map((node) => node.id);
 }
 interface Lowering {
+  readonly images?: InlineImageRuntime;
   readonly staged: readonly Staged[];
   readonly deferred: readonly Deferred[];
 }
@@ -181,7 +185,14 @@ function insertsInlineCode(value: unknown): boolean {
   return node.type === 'inlineCode' || Object.values(node).some(insertsInlineCode);
 }
 
-function lowerDirectPlan(pkg: OoxmlPackage, plan: CanonicalEditPlan): Lowering {
+function lowerDirectPlan(
+  pkg: OoxmlPackage,
+  plan: CanonicalEditPlan,
+  preparedImages?: PreparedInlineImages
+): Lowering {
+  const prepared = createInlineImageRuntime(plan, preparedImages);
+  if (!prepared.success) refuse(prepared.error, prepared.code);
+  const images = prepared.runtime;
   const partName = pkg.mainDocumentPart,
     staged: Staged[] = [],
     deferred: Deferred[] = [],
@@ -336,7 +347,7 @@ function lowerDirectPlan(pkg: OoxmlPackage, plan: CanonicalEditPlan): Lowering {
         break;
       }
       case 'inline-atoms': {
-        const lowered = lowerRetainedAtoms(pkg, preview, edit);
+        const lowered = lowerRetainedAtoms(pkg, preview, edit, images);
         for (const op of lowered.ops) apply(op);
         deferred.push((working) => lowered.complete(working));
         break;
@@ -353,7 +364,8 @@ function lowerDirectPlan(pkg: OoxmlPackage, plan: CanonicalEditPlan): Lowering {
         }
         const prepared = siblingFragmentSeeds(
           edit,
-          edit.afterId !== null && findNode(preview, edit.afterId)?.kind === 'paragraph'
+          edit.afterId !== null && findNode(preview, edit.afterId)?.kind === 'paragraph',
+          images
         );
         if (!prepared.success) refuse(prepared.error, prepared.code);
         const seeds = prepared.seeds;
@@ -389,7 +401,14 @@ function lowerDirectPlan(pkg: OoxmlPackage, plan: CanonicalEditPlan): Lowering {
         )
           deferred.push((working, original, listContext) => {
             const fresh = freshInGap(working.parts.get(partName)!, edit, original);
-            const completed = completeSiblingFragments(working, partName, edit, seeds, fresh);
+            const completed = completeSiblingFragments(
+              working,
+              partName,
+              edit,
+              seeds,
+              fresh,
+              images
+            );
             for (const blockId of lateRemoval) {
               const removed = applyTreeOp(completed.pkg.parts.get(partName)!, {
                 op: 'deleteBlock',
@@ -708,7 +727,7 @@ function lowerDirectPlan(pkg: OoxmlPackage, plan: CanonicalEditPlan): Lowering {
         refuse('The document cannot gain the inline code style.', 'unsupported-operation');
       return styled!;
     });
-  return { staged, deferred };
+  return { staged, deferred, images };
 }
 
 function wrapOp(edit: Edit<'link'>, relationshipId: string | undefined): TreeDocOp {
@@ -772,16 +791,17 @@ function previewLowering(pkg: OoxmlPackage, lowering: Lowering): OoxmlPackage {
   preview = withPart(preview, part);
   const listContext = createDirectListContext();
   for (const step of lowering.deferred) preview = step(preview, original, listContext);
-  return preview;
+  return lowering.images ? lowering.images.complete(preview) : preview;
 }
 
 /** Internal target read candidate. Never install this package into a live editor. */
 export function previewDirectPlan(
   pkg: OoxmlPackage,
-  plan: CanonicalEditPlan
+  plan: CanonicalEditPlan,
+  images?: PreparedInlineImages
 ): { readonly success: true; readonly pkg: OoxmlPackage } | NativeEditFailure {
   try {
-    return { success: true, pkg: previewLowering(pkg, lowerDirectPlan(pkg, plan)) };
+    return { success: true, pkg: previewLowering(pkg, lowerDirectPlan(pkg, plan, images)) };
   } catch (error) {
     return failure(error);
   }
@@ -862,22 +882,24 @@ export function applyDirectPlan(
     };
   let lowering: Lowering;
   try {
-    lowering = lowerDirectPlan(pkg, plan);
+    lowering = lowerDirectPlan(pkg, plan, context.images);
     previewLowering(pkg, lowering);
   } catch (error) {
     return failure(error);
   }
-  const complete = lowering.deferred.length
-    ? [
-        (working: OoxmlPackage) => {
-          const listContext = createDirectListContext();
-          return lowering.deferred.reduce(
-            (next, step) => step(next, original, listContext),
-            working
-          );
-        },
-      ]
-    : undefined;
+  const complete =
+    lowering.deferred.length || lowering.images
+      ? [
+          (working: OoxmlPackage) => {
+            const listContext = createDirectListContext();
+            const completed = lowering.deferred.reduce(
+              (next, step) => step(next, original, listContext),
+              working
+            );
+            return lowering.images ? lowering.images.complete(completed) : completed;
+          },
+        ]
+      : undefined;
   try {
     const result = surface.applyAutomationOps(
       (relate) => stagedOps(lowering.staged, relate),

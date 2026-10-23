@@ -1,3 +1,4 @@
+import type { InlineImageRuntime } from '../native/inline-image-runtime';
 import {
   applyTreeOp,
   contentControlsIn,
@@ -18,7 +19,8 @@ import { refuseWrite } from '../diff/fragment-seeds';
 export function lowerRetainedAtoms(
   pkg: OoxmlPackage,
   part: OoxmlPart,
-  edit: Extract<CanonicalEdit, { kind: 'inline-atoms' }>
+  edit: Extract<CanonicalEdit, { kind: 'inline-atoms' }>,
+  images?: InlineImageRuntime
 ): { readonly ops: readonly TreeDocOp[]; readonly complete: (pkg: OoxmlPackage) => OoxmlPackage } {
   if (
     paragraphTextOf(part, edit.paragraphId)?.slice(
@@ -27,13 +29,14 @@ export function lowerRetainedAtoms(
     ) !== edit.before
   )
     refuseWrite('The retained atom insertion text no longer matches.', 'stale-revision');
-  const controls = edit.atoms.map((atom) => {
+  const controls = edit.atoms.flatMap((atom) => {
+    if (atom.kind === 'drawing' && images) return [];
     if (atom.kind !== 'inline-control' || !inlineAtomXml(atom))
       refuseWrite(
         'Inserted atoms need supported native payload and resource reconciliation.',
         'unsupported-operation'
       );
-    return atom as Extract<typeof atom, { kind: 'inline-control' }>;
+    return [atom as Extract<typeof atom, { kind: 'inline-control' }>];
   });
   const problem = insertedPayloadProblem(
     withPart(pkg, part),
@@ -53,7 +56,11 @@ export function lowerRetainedAtoms(
     preview = (result as { part: OoxmlPart }).part;
     ops.push(op);
   };
-  for (const atom of controls) {
+  for (const atom of edit.atoms) {
+    if (atom.kind === 'drawing') {
+      apply(images!.reservation(atom, edit.paragraphId));
+      continue;
+    }
     apply({
       op: 'insertInlineContentControl',
       paragraphId: edit.paragraphId,

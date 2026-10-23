@@ -1,3 +1,4 @@
+import { serializeInlineImage } from './inline-image';
 import { serializeMath } from './math';
 import { serializeMention } from './mention';
 import type { BlockPayload, JsonValue } from '../blocks/payload-schema';
@@ -241,6 +242,16 @@ export const DOMAIN_BLOCK_TAGS: ReadonlyMap<string, BlockTagDefinition> = new Ma
       kind: 'atomic',
       attributes: (payload) => ordered(payload, ['key', 'value']),
       serialize: serializeMention,
+      serializedCellSyntax: 'gfm',
+    },
+  ],
+  [
+    'inline_image',
+    {
+      tag: 'scio-inline-image',
+      kind: 'atomic',
+      attributes: empty,
+      serialize: serializeInlineImage,
       serializedCellSyntax: 'gfm',
     },
   ],

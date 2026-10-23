@@ -1,3 +1,4 @@
+import type { InlineImageRuntime } from '../native/inline-image-runtime';
 import { inlineAtomXml, inlineAtomKey, inlineAtomsByPath } from './inline-atom-xml';
 import type { InsertedInlineAtom } from './inserted-atoms';
 import { BLOCK_MATH, INLINE_MATH, decodeMathPayload, mathWordFallback } from '../blocks/math-codec';
@@ -214,7 +215,8 @@ export function fillNewCells(
   pkg: OoxmlPackage,
   partName: string,
   cells: readonly NewCellContent[],
-  listContext?: DirectListContext
+  listContext?: DirectListContext,
+  images?: InlineImageRuntime
 ): OoxmlPackage {
   let working = pkg;
   const assignments: DirectListAssignment[] = [];
@@ -225,7 +227,7 @@ export function fillNewCells(
       code: true,
       atom: (token, index) => {
         const op = mappedAtoms.get(inlineAtomKey([index], token.path));
-        return op ? inlineAtomXml(op) : null;
+        return op ? inlineAtomXml(op, images) : null;
       },
     });
     if (!seeds.success) refuseWrite(seeds.error, seeds.code);
@@ -341,7 +343,8 @@ function tableRows(node: TargetAstNode) {
 export function siblingFragmentSeeds(
   edit: SiblingEdit,
   /** Whether the gap's `afterId` names a native paragraph a trailing new table can precede. */
-  followingParagraph: boolean
+  followingParagraph: boolean,
+  images?: InlineImageRuntime
 ): SiblingSeedsResult {
   const styles = new Map(
     (edit.styles ?? []).map((binding) => [binding.path.join('/'), binding.styleId])
@@ -395,7 +398,7 @@ export function siblingFragmentSeeds(
     code: true,
     atom: (token, index) => {
       const op = mappedAtoms.get(inlineAtomKey(flatPaths[index]!, token.path));
-      return op ? inlineAtomXml(op) : null;
+      return op ? inlineAtomXml(op, images) : null;
     },
   });
   if (!seeds.success) return seeds;
@@ -475,6 +478,7 @@ interface RenderContext {
   readonly width: number;
   readonly bindings: ReadonlyMap<string, InsertedBlockBinding>;
   readonly atoms: ReadonlyMap<string, InsertedInlineAtom>;
+  readonly images?: InlineImageRuntime;
   pkg: OoxmlPackage;
   /** Paragraph AST paths in the order their elements appear in the rendered XML. */
   readonly paragraphs: string[];
@@ -519,7 +523,7 @@ function paragraphXml(
     }
     if (token.kind === 'atom') {
       const op = context.atoms.get(inlineAtomKey(path, token.path)),
-        rendered = op && inlineAtomXml(op);
+        rendered = op && inlineAtomXml(op, context.images);
       if (!rendered)
         refuseWrite(
           'Inserted atoms need their supported native payload or resource representation.',
@@ -661,7 +665,8 @@ function placeBlock(
   beforeId: string | null,
   seed: BlockSeed,
   bindings: ReadonlyMap<string, InsertedBlockBinding>,
-  atoms: ReadonlyMap<string, InsertedInlineAtom>
+  atoms: ReadonlyMap<string, InsertedInlineAtom>,
+  images?: InlineImageRuntime
 ): { pkg: OoxmlPackage; paragraphs: Map<string, string> } {
   let part = pkg.parts.get(partName)!;
   const context: RenderContext = {
@@ -669,6 +674,7 @@ function placeBlock(
     width: contentWidth(part),
     bindings,
     atoms,
+    images,
     pkg,
     paragraphs: [],
   };
@@ -723,7 +729,8 @@ export function completeSiblingFragments(
   partName: string,
   edit: SiblingEdit,
   seeds: SiblingFragmentSeeds,
-  fresh: readonly string[]
+  fresh: readonly string[],
+  images?: InlineImageRuntime
 ): { pkg: OoxmlPackage; paragraphs: ReadonlyMap<string, string> } {
   if (fresh.length !== seeds.paragraphs.length)
     refuseWrite('Native sibling allocation did not match the planned gap.', 'apply-failed');
@@ -746,7 +753,8 @@ export function completeSiblingFragments(
         anchor,
         seed,
         bindings,
-        inlineAtomsByPath(edit.atoms ?? [])
+        inlineAtomsByPath(edit.atoms ?? []),
+        images
       );
       pkg = placed.pkg;
       for (const [path, id] of placed.paragraphs) paragraphs.set(path, id);
@@ -797,7 +805,9 @@ export function completeSiblingFragments(
               },
             })),
         }))
-      )
+      ),
+      undefined,
+      images
     );
   }
   for (const binding of bindings.values()) {
@@ -807,8 +817,11 @@ export function completeSiblingFragments(
     pkg = stored.pkg;
   }
   for (const op of edit.atoms ?? []) {
-    if (op.kind !== 'inline-control')
-      refuseWrite('Image resources require an executor resolver.', 'unsupported-operation');
+    if (op.kind !== 'inline-control') {
+      if (!images)
+        refuseWrite('Image resources require an executor resolver.', 'unsupported-operation');
+      continue;
+    }
     const stored = withPayloadRecord(pkg, op.payload, op.label);
     if (!stored.ok)
       refuseWrite(`Inline payload storage refused: ${stored.reason}.`, 'apply-failed');
