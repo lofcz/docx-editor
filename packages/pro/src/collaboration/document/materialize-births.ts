@@ -7,6 +7,7 @@ import type { DocumentRegistry } from './registry.ts';
 import type { LogicalId } from './identity.ts';
 import { nodeRecordUndone, isElementRecord, isTextRecord, type ElementRecord } from './schema.ts';
 import { BIRTH_GEOMETRY_NAMES } from './birth-undo-dependencies.ts';
+import { birthTableGeometry, hasBirthGeometryWrite } from './birth-table-geometry.ts';
 const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 const W14 = 'http://schemas.microsoft.com/office/word/2010/wordml';
 /** An undo-owned marker on a retained main-document birth. Redo removes the marker. */
@@ -31,6 +32,8 @@ interface TableContext {
   readonly columns: ReadonlySet<number>;
   readonly cells: ReadonlyMap<LogicalId, readonly [number, number]>;
   readonly grid: readonly LogicalId[];
+  readonly spans: ReadonlyMap<LogicalId, number>;
+  readonly bornCells: ReadonlyMap<LogicalId, boolean>;
 }
 /** One immutable materialization pass. Retained shells carry foreign content, never original text. */
 export class BirthProjection {
@@ -68,6 +71,24 @@ export class BirthProjection {
     for (const id of touched) {
       const record = this.element(id);
       if (record?.kind !== 'table') continue;
+      const context = this.table(id);
+      // A surviving split can change spans without changing the visible column mask.
+      // Rebuild the exact native property paths whose projected geometry depends on peer content.
+      if (context.spans.size) {
+        dirty.add(id);
+        for (const span of context.spans.keys()) {
+          const seen = new Set<LogicalId>();
+          for (
+            let at: LogicalId | null = span;
+            at && at !== id && seen.size < this.registry.limits.maxTreeDepth;
+            at = this.registry.parentOf(at)
+          ) {
+            if (seen.has(at)) break;
+            seen.add(at);
+            dirty.add(at);
+          }
+        }
+      }
       const grid = record.childIds
         .map((child) => this.element(child))
         .find((child) => child?.namespaceUri === W && child.localName === 'tblGrid');
@@ -77,7 +98,6 @@ export class BirthProjection {
           !grid.childIds.some((child) => undoneBirth(this.registry, child)))
       )
         continue;
-      const context = this.table(id);
       const next = [...context.columns].sort((a, b) => a - b).join('/');
       if (this.columnVisibility.get(id) !== next) {
         dirty.add(id);
@@ -158,6 +178,7 @@ export class BirthProjection {
       grid.flatMap((child, index) => (undoneBirth(this.registry, child) ? [] : [index]))
     );
     const cells = new Map<LogicalId, readonly [number, number]>();
+    const rawCells: LogicalId[] = [];
     for (const rowId of table.childIds) {
       const row = this.element(rowId);
       if (row?.kind !== 'tableRow') continue;
@@ -166,6 +187,7 @@ export class BirthProjection {
       for (const cellId of row.childIds) {
         const cell = this.element(cellId);
         if (cell?.kind !== 'tableCell') continue;
+        rawCells.push(cellId);
         const span = Math.max(1, Number(this.property(cellId, 'tcPr', 'gridSpan') ?? 1));
         cells.set(cellId, [column, column + span]);
         if (visible && undoneBirth(this.registry, cellId) && this.hasContent(cellId))
@@ -173,9 +195,82 @@ export class BirthProjection {
         column += span;
       }
     }
-    const context = { columns, cells, grid };
+    const spans = new Map<LogicalId, number>();
+    const bornCells = new Map<LogicalId, boolean>();
+    for (const carrier of rawCells) {
+      const frame = birthTableGeometry(this.registry, carrier);
+      if (
+        !frame ||
+        frame.table !== id ||
+        !frame.born.some((child) => undoneBirth(this.registry, child))
+      )
+        continue;
+      const after = new Map(frame.after.cells.map((cell) => [cell.id, cell]));
+      const active = new Set([...columns].map((column) => grid[column]!));
+      // Recorded column identities, rather than restored scalar spans, locate retained births.
+      for (const cellId of rawCells) {
+        const coverage = after.get(cellId);
+        if (!coverage?.columns.length) continue;
+        const indexes = coverage.columns
+          .map((column) => grid.indexOf(column))
+          .filter((column) => column >= 0);
+        if (indexes.length) cells.set(cellId, [Math.min(...indexes), Math.max(...indexes) + 1]);
+        if (undoneBirth(this.registry, cellId) && this.hasContent(cellId))
+          for (const column of coverage.columns) {
+            const index = grid.indexOf(column);
+            if (index >= 0) {
+              columns.add(index);
+              active.add(column);
+            }
+          }
+      }
+      for (const cellId of frame.born) {
+        const coverage = after.get(cellId);
+        if (!coverage || !rawCells.includes(cellId)) continue;
+        const needed =
+          this.hasContent(cellId) ||
+          coverage.columns.some(
+            (column) =>
+              active.has(column) &&
+              !frame.before.cells.some(
+                (old) => old.row === coverage.row && old.columns.includes(column)
+              )
+          );
+        bornCells.set(cellId, needed);
+      }
+      const originalGrid = new Set(frame.before.grid);
+      for (const old of frame.before.cells) {
+        const current = after.get(old.id);
+        if (!current || !rawCells.includes(old.id) || this.registry.isTombstoned(old.id)) continue;
+        const covered = new Set(old.columns.filter((column) => active.has(column)));
+        for (const column of current.columns)
+          if (!originalGrid.has(column) && active.has(column)) covered.add(column);
+        for (const cellId of frame.born) {
+          const born = after.get(cellId);
+          if (born?.row === old.row && bornCells.get(cellId))
+            for (const column of born.columns) covered.delete(column);
+        }
+        const span = old.span ?? current.span;
+        if (span && covered.size && !hasBirthGeometryWrite(this.registry, span, carrier))
+          spans.set(span, covered.size);
+      }
+    }
+    const context = { columns, cells, grid, spans, bornCells };
     this.contexts.set(id, context);
     return context;
+  }
+  /** Derive native span attributes without writing shared state or replacing content nodes. */
+  project(record: ElementRecord): ElementRecord {
+    if (record.namespaceUri !== W || record.localName !== 'gridSpan') return record;
+    const table = this.tableOf(record.logicalId);
+    const span = table ? this.table(table).spans.get(record.logicalId) : undefined;
+    if (span === undefined) return record;
+    const attributes = record.attributes.map((attribute) =>
+      attribute.namespaceUri === W && attribute.localName === 'val'
+        ? { ...attribute, value: String(span) }
+        : attribute
+    );
+    return { ...record, attributes };
   }
   private geometry(id: LogicalId, seen = new Set<LogicalId>()): boolean {
     if (seen.has(id) || seen.size >= this.registry.limits.maxTreeDepth) return false;
@@ -200,6 +295,8 @@ export class BirthProjection {
       if (tableId) {
         const context = this.table(tableId);
         if (record.kind === 'tableCell') {
+          const needed = context.bornCells.get(child);
+          if (needed !== undefined) return needed;
           const range = context.cells.get(child);
           return (
             !!range &&

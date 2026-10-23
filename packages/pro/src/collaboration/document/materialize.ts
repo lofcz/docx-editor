@@ -455,7 +455,7 @@ export class PackageMaterializer {
     if (spine) return spine;
     placed.add(logicalId);
     countRecordRead();
-    const record = this.registry.record(logicalId);
+    let record = this.registry.record(logicalId);
     if (!record) {
       this.push('missing-node', logicalId);
       return null;
@@ -470,6 +470,7 @@ export class PackageMaterializer {
       this.cache.remember(logicalId, next);
       return next;
     }
+    record = this.birthProjection.project(record);
     path.add(logicalId);
     const issuesAtStart = this.issues.length;
     const seenChildren = new Set<LogicalId>();

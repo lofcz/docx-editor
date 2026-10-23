@@ -206,6 +206,7 @@ test('a wrong metadata container refuses with a stable code without changing the
 test('release 2.32 repair semantics refuse admission without changing saved room state', () => {
   const doc = savedRoom();
   try {
+    doc.getMap(PACKAGE_META_KEY).set('sharedSchemaVersion', 5);
     doc.getMap(PACKAGE_META_KEY).set('repairVersion', 2);
     const before = Y.encodeStateAsUpdate(doc);
     expect(readCollaborationFormatVersion(doc)).toBe('docx-collaboration:1.5.2.1');

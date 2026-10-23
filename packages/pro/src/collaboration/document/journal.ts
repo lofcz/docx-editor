@@ -4,6 +4,8 @@ Licensed under the EigenPal Pro Evaluation License 1.0 — see packages/pro/LICE
 Production use requires a commercial agreement: licensing@eigenpal.com
 */
 import { applyBirthChildSplice, type BirthChildSplice } from './birth-journal-splice.ts';
+import { prepareBirthTableGeometry, prepareBirthGeometryWrites } from './birth-table-geometry.ts';
+import { BirthProjection } from './materialize-births.ts';
 import { projectedTextTarget } from './projected-text-target.ts';
 import { routeInlineEffects, type InlinePlan } from './paragraph-text-writer.ts';
 import { recordRelocatedMarkers } from './relocated-markers.ts';
@@ -621,6 +623,12 @@ export function applyPrimitiveJournal(
     if (!(error instanceof SharedTextValueRefused)) throw error;
     return { ok: false, code: error.code, detail: error.detail };
   }
+  const recordBirthGeometry = prepareBirthTableGeometry(
+    registry,
+    effects,
+    new BirthProjection(registry)
+  );
+  const recordGeometryWrites = prepareBirthGeometryWrites(registry, effects);
   registry.doc.transact(() => {
     // Inside the transaction, so the flag is set before Yjs can deliver the events that clear
     // it. A flush that runs while a remote update is still being processed opens a DEFERRED
@@ -671,6 +679,8 @@ export function applyPrimitiveJournal(
     deleteHeldOriginals(registry, removed.held, written.copied);
     recordDeletions(registry, written, removed.shown);
     deleteEmbedsOfRemoved(registry, removed.embeds, planned.removed, written);
+    recordBirthGeometry();
+    recordGeometryWrites();
   }, JOURNAL_ORIGIN);
   return { ok: true };
 }

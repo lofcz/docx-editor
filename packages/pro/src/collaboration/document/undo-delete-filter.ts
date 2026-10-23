@@ -6,6 +6,7 @@ Production use requires a commercial agreement: licensing@eigenpal.com
 import * as Y from 'yjs';
 import { holderItem } from './yjs-items.ts';
 import { NODE_INITIAL_SHELL_FIELD, NODE_SPLIT_LINEAGE_FIELD } from './schema.ts';
+import { NODE_TABLE_BIRTH_GEOMETRY } from './birth-table-geometry.ts';
 
 /** Whether an item carries a shared type, so deleting it takes a whole subtree along. */
 function carriesType(item: Y.Item): boolean {
@@ -62,6 +63,7 @@ export function nodeRecordDeleteFilter(nodes: unknown): (item: Y.Item) => boolea
     // Retain the immutable fallback, not mutable shell items: a rename back to the initial
     // QName must still undo, even though its value equals the creation descriptor.
     if (item.parentSub === NODE_INITIAL_SHELL_FIELD) return false;
+    if (item.parentSub === NODE_TABLE_BIRTH_GEOMETRY) return false;
     return !carriesType(item);
   };
 }
