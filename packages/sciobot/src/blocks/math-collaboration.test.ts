@@ -51,7 +51,7 @@ for (const clients of [
               const part = pkg.parts.get(pkg.mainDocumentPart)!;
               // Reopen can assign fresh native IDs; paragraph order is stable.
               const body = part.root.children.find((n) => n.kind === 'body');
-              if (!body) throw Error('Missing body');
+              if (!body || body.kind !== 'body') throw Error('Missing body');
               const paragraph = body.children.find((n) => n.kind === 'paragraph')!;
               expect(paragraphTextOf(part, paragraph.id)).toBe(
                 'Before' +
