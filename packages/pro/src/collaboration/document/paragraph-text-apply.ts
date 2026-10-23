@@ -24,6 +24,7 @@ import {
   type ItemId,
 } from './yjs-items.ts';
 import { textMarksOf } from './paragraph-text-marks.ts';
+import { diffSourceTokens } from './paragraph-text-source-diff.ts';
 import { textDeletionsOf, type DeletedRun } from './paragraph-text-deletions.ts';
 import { asLogicalId, isNextClock, parseClientClock, type LogicalId } from './identity.ts';
 import { rejectDangerousKey } from './limits.ts';
@@ -875,25 +876,38 @@ export function applyInlinePlan(
       if (source !== id && registry.inline.isDeletedParagraph(source)) adopted.add(source);
     }
   }
-  for (const { id, after } of plan.paragraphs) {
+  for (const { id, after, sourceOf } of plan.paragraphs) {
     const record = registry.schema.nodes.get(id);
     if (!record || adopted.has(id)) continue;
-    const tokens = encoded.get(id) ?? tokensOfParagraph(after, registry.limits);
+    const tokens = encoded.get(id) ?? tokensOfParagraph(after, registry.limits, sourceOf);
     for (const token of tokens) {
       if (typeof token.insert !== 'string' && 'n' in token.insert) embedsAfter.add(token.insert.n);
     }
     const text = registry.inline.textOf(id);
     const shown = text ? registry.inline.viewOf(id).shown(text) : null;
-    const before = text
+    const rawBefore = text
       ? tokensOfText(text, shown?.hidden, { limits: registry.limits, paragraphId: id })
       : [];
+    const before = sourceOf
+      ? rawBefore.map((token) =>
+          typeof token.insert === 'string'
+            ? {
+                ...token,
+                source:
+                  shown?.identities.ids[token.position!] ??
+                  shown?.identities.items[token.position!] ??
+                  null,
+              }
+            : token
+        )
+      : rawBefore;
     writes.push({
       id,
       record,
       text,
       before,
       after: tokens,
-      steps: diffTokens(before, tokens),
+      steps: sourceOf ? diffSourceTokens(before, tokens) : diffTokens(before, tokens),
       identities: shown?.identities.ids ?? [],
       shownIdentities: shown?.identities ?? null,
       hidden: shown?.hidden ?? new Set(),

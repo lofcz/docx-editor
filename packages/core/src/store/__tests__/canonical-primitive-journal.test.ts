@@ -831,3 +831,69 @@ describe('journal capture is silent without observers (task 3.9)', () => {
     ]);
   });
 });
+
+test('native text slices carry frozen source windows through structured journal cloning', () => {
+  const store = openStore();
+  const journals: CanonicalPrimitiveJournal[] = [];
+  observeCanonicalPrimitiveJournal(store, (journal) => journals.push(journal));
+  const before = store.bodyStore().part;
+  const paragraphId = paragraphIdOf(before);
+  const original = findNode(before, (node) => node.kind === 'textValue' && node.value === 'Hello');
+  const result = store.transact({ kind: 'body' }, (context) => {
+    context.apply({ op: 'insertText', paragraphId, offset: 0, text: 'New ' });
+    context.apply({
+      op: 'insertInlineContentControl',
+      paragraphId,
+      offset: 4,
+      text: 'X',
+      tag: 'slice',
+    });
+  });
+  expect(result.ok).toBe(true);
+  expect(journals).toHaveLength(1);
+  const slices = journals[0]!.effects.flatMap((effect) =>
+    effect.kind === 'putNode' &&
+    effect.descriptor.kind === 'textValue' &&
+    effect.descriptor.sourceText
+      ? [effect.descriptor]
+      : []
+  );
+  expect(slices).toHaveLength(1);
+  expect(slices[0]!.sourceText).toEqual({
+    logicalId: original.id,
+    utf16Start: 0,
+    utf16Length: 4,
+    beforeEffect: 1,
+  });
+  expect(Object.isFrozen(slices[0]!.sourceText)).toBe(true);
+  expect(Reflect.set(slices[0]!.sourceText!, 'utf16Start', 99)).toBe(false);
+  expect(structuredClone(journals[0])).toEqual(journals[0]);
+});
+
+test('a rejected native slice cannot lend source provenance to the next transaction', () => {
+  const store = openStore();
+  const journals: CanonicalPrimitiveJournal[] = [];
+  observeCanonicalPrimitiveJournal(store, (journal) => journals.push(journal));
+  const paragraphId = paragraphIdOf(store.bodyStore().part);
+  const failed = store.transact({ kind: 'body' }, (context) => {
+    context.apply({
+      op: 'insertInlineContentControl',
+      paragraphId,
+      offset: 2,
+      text: 'X',
+      tag: 'failed',
+    });
+    context.apply({ op: 'insertText', paragraphId: 'missing-paragraph', offset: 0, text: 'bad' });
+  });
+  expect(failed.ok).toBe(false);
+  expect(journals).toHaveLength(0);
+  const next = store.transact({ kind: 'body' }, (context) => {
+    context.apply({ op: 'insertText', paragraphId, offset: 0, text: 'Fresh ' });
+  });
+  expect(next.ok).toBe(true);
+  expect(journals).toHaveLength(1);
+  expect(journals[0]!.effects).toHaveLength(1);
+  expect(journals[0]!.effects[0]).toEqual(
+    expect.objectContaining({ kind: 'spliceText', insert: 'Fresh ' })
+  );
+});

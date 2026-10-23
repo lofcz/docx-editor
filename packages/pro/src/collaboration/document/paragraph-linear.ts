@@ -39,7 +39,12 @@ export interface LinearAttributes {
 }
 
 export type LinearItem =
-  | { readonly kind: 'char'; readonly value: string; readonly attributes: LinearAttributes }
+  | {
+      readonly kind: 'char';
+      readonly value: string;
+      readonly attributes: LinearAttributes;
+      readonly source?: string | null;
+    }
   | { readonly kind: 'embed'; readonly node: OoxmlNode; readonly attributes: LinearAttributes }
   /** Keeps an element that holds no content: an empty run, text element, or wrapper. */
   | { readonly kind: 'anchor'; readonly attributes: LinearAttributes };
@@ -91,7 +96,10 @@ function isTextElement(node: OoxmlNode): node is OoxmlElement {
 }
 
 /** The paragraph's inline content as one sequence. */
-export function linearizeParagraph(paragraph: OoxmlElement): LinearParagraph {
+export function linearizeParagraph(
+  paragraph: OoxmlElement,
+  sourceOf?: (node: OoxmlNode) => readonly (string | null)[] | undefined
+): LinearParagraph {
   const items: LinearItem[] = [];
   const block: OoxmlNode[] = [];
   const none: LinearAttributes = {
@@ -127,8 +135,22 @@ export function linearizeParagraph(paragraph: OoxmlElement): LinearParagraph {
         if (value.length === 0) items.push({ kind: 'anchor', attributes });
         // One item per UTF-16 code unit: shared text counts code units, so its offsets and
         // these items stay the same numbers. A surrogate pair is two items with one attribute set.
+        const sources = sourceOf
+          ? child.children.flatMap(
+              (node) =>
+                sourceOf(node) ??
+                (node.kind === 'textValue'
+                  ? Array<string | null>(node.value.length).fill(null)
+                  : [])
+            )
+          : undefined;
         for (let at = 0; at < value.length; at += 1) {
-          items.push({ kind: 'char', value: value[at]!, attributes });
+          items.push({
+            ...(sources ? { source: sources[at] ?? null } : {}),
+            kind: 'char',
+            value: value[at]!,
+            attributes,
+          });
         }
       } else {
         items.push({ kind: 'embed', node: child, attributes: base });

@@ -1,9 +1,9 @@
 {
-  "impact": "no-impact",
+  "impact": "compatible",
   "fields": [],
   "before": "A native inline split mints fresh addresses for every text fragment.",
   "after": "The trailing fragment retains its observed text element and value addresses; other fragments keep fresh addresses.",
-  "reason": "Native operations preserve an existing logical address. Shared field shapes and codecs do not change. Existing inline text diffing can retain the corresponding source characters through actor undo.",
+  "reason": "Native operations retain an observed logical address instead of replacing it. Existing readers already understand the corrected character writes. Shared field shapes and codecs stay unchanged; older writers retain their original placement bug.",
   "tests": [
     "packages/core/src/store/__tests__/content-control-insert.test.ts",
     "packages/sciobot/src/diff/code-inline-atoms-collaboration.test.ts"

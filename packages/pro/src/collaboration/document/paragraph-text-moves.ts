@@ -82,6 +82,7 @@ interface MoveToken {
   readonly insert: unknown;
   readonly attributes: Readonly<Record<string, string>>;
   readonly position?: number;
+  readonly source?: string | null;
 }
 
 type MoveStep =
@@ -102,6 +103,74 @@ interface Run {
   readonly paragraph: number;
   readonly indexes: readonly number[];
   readonly value: string;
+}
+
+/** Explicit native sources override value matching, including for equally spelled new labels. */
+function markSourceMoves<T extends MoveToken>(
+  writes: readonly ParagraphWrite<T>[],
+  withOrigin: (token: T, origin: string) => T,
+  signature: (token: T) => string,
+  scopeOf: (paragraph: number) => string
+): ReadonlySet<string> {
+  const deleted = new Map<string, { any: Set<string>; scopes: Map<string, Set<string>> }>();
+  writes.forEach((write, paragraph) => {
+    const scope = scopeOf(paragraph);
+    for (const step of write.steps) {
+      if (step.op !== 'del') continue;
+      const token = write.before[step.before]!;
+      if (typeof token.insert !== 'string' || !token.source) continue;
+      const entry = deleted.get(token.source) ?? {
+        any: new Set<string>(),
+        scopes: new Map<string, Set<string>>(),
+      };
+      const values = entry.scopes.get(scope) ?? new Set<string>();
+      values.add(token.insert);
+      entry.scopes.set(scope, values);
+      entry.any.add(token.insert);
+      deleted.set(token.source, entry);
+    }
+  });
+  const copied = new Set<string>();
+  writes.forEach((write, paragraph) => {
+    const scope = scopeOf(paragraph);
+    let origin: string | null = null,
+      previous: string | null = null,
+      previousSignature = '',
+      previousIndex = -2;
+    for (const step of write.steps) {
+      if (step.op !== 'ins') {
+        origin = previous = null;
+        continue;
+      }
+      const token = write.after[step.after]!;
+      const source = token.source;
+      const entry = source ? deleted.get(source) : undefined;
+      const matches =
+        entry &&
+        typeof token.insert === 'string' &&
+        (scope === ''
+          ? entry.any.has(token.insert)
+          : entry.scopes.get(scope)?.has(token.insert) || entry.scopes.get('')?.has(token.insert));
+      if (!source || !matches) {
+        origin = previous = null;
+        continue;
+      }
+      const currentSignature = signature(token);
+      if (
+        !origin ||
+        previousIndex + 1 !== step.after ||
+        previousSignature !== currentSignature ||
+        !isNextClock(previous, source)
+      )
+        origin = source;
+      write.after[step.after] = withOrigin(token, origin);
+      copied.add(source);
+      previous = source;
+      previousSignature = currentSignature;
+      previousIndex = step.after;
+    }
+  });
+  return copied;
 }
 
 /** Contiguous character runs of one step kind. */
@@ -232,6 +301,14 @@ export function markMoves<T extends MoveToken>(
   holderOf: (token: T, paragraph: number) => string = () => '',
   scopeOf: (paragraph: number) => string = () => ''
 ): ReadonlySet<string> {
+  if (
+    writes.some(
+      (write) =>
+        write.before.some((token) => token.source !== undefined) ||
+        write.after.some((token) => token.source !== undefined)
+    )
+  )
+    return markSourceMoves(writes, withOrigin, signature, scopeOf);
   const copied = new Set<string>();
   const deleted = writes.flatMap((write, paragraph) => runsOf(write, paragraph, 'del'));
   if (deleted.length === 0) return copied;

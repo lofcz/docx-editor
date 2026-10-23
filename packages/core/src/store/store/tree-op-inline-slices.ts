@@ -1,11 +1,13 @@
 import type { OoxmlNode, OoxmlRunNode } from '../package/ooxml-tree.ts';
 import { textElement } from './tree-op-inline-elements.ts';
+import { recordNativeTextSlice } from '../package/canonical-primitive-capture.ts';
 const XML = 'http://www.w3.org/XML/1998/namespace';
 /** Keep source element metadata on native range slices; mint only their structural identities. */
 export function inlineTextSlice(
   mint: () => string,
   value: string,
   source: OoxmlNode,
+  sourceOffset = 0,
   retainIdentity = false
 ): OoxmlNode {
   if (source.kind !== 'text' && source.kind !== 'deletedText') return textElement(mint, value);
@@ -23,6 +25,14 @@ export function inlineTextSlice(
     retainIdentity && source.children.length === 1 && source.children[0]?.kind === 'textValue'
       ? { ...source.children[0], value }
       : null;
+  const leaf = created.kind !== 'textValue' ? created.children[0] : undefined;
+  if (
+    !retained &&
+    source.children.length === 1 &&
+    source.children[0]?.kind === 'textValue' &&
+    leaf?.kind === 'textValue'
+  )
+    recordNativeTextSlice(source.children[0], leaf, sourceOffset);
   return {
     ...source,
     id: retained ? source.id : created.id,

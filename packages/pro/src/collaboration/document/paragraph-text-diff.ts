@@ -8,7 +8,7 @@ Production use requires a commercial agreement: licensing@eigenpal.com
  * left: an edit script over tokens, one per character, embed or empty element.
  */
 import type * as Y from 'yjs';
-import type { OoxmlElement } from '@docx-editor.dev/core/store';
+import type { OoxmlElement, OoxmlNode } from '@docx-editor.dev/core/store';
 import { linearizeParagraph } from './paragraph-linear.ts';
 import type { DocumentLimits } from './limits.ts';
 import {
@@ -32,6 +32,7 @@ export interface Token {
   readonly position?: number;
   /** The revisions it belongs to (`revisionTrail`), or empty when read without a paragraph. */
   readonly trail?: string;
+  readonly source?: string | null;
 }
 
 /** The paragraph and limits a shared text is read under. */
@@ -86,11 +87,15 @@ export function tokensOfText(
   return tokens;
 }
 
-export function tokensOfParagraph(after: OoxmlElement, limits: DocumentLimits): Token[] {
+export function tokensOfParagraph(
+  after: OoxmlElement,
+  limits: DocumentLimits,
+  sourceOf?: (node: OoxmlNode) => readonly (string | null)[] | undefined
+): Token[] {
   const paragraphId = after.id;
   // Characters of one run share one attributes object, so each is encoded once.
   const encoded = new Map<object, { attributes: InlineAttributes; trail: string }>();
-  return linearizeParagraph(after).items.map((item) => {
+  return linearizeParagraph(after, sourceOf).items.map((item) => {
     let entry = encoded.get(item.attributes);
     if (!entry) {
       const attributes = encodeAttributes(item.attributes, paragraphId, limits);
@@ -101,7 +106,14 @@ export function tokensOfParagraph(after: OoxmlElement, limits: DocumentLimits): 
     if (item.kind === 'char') {
       const key = `c${item.value}`;
       const strong = `${key}\u0000${textIdOf(attributes)}`;
-      return { key, strong, insert: item.value, attributes, trail };
+      return {
+        key,
+        strong,
+        insert: item.value,
+        attributes,
+        trail,
+        ...(sourceOf ? { source: item.source ?? null } : {}),
+      };
     }
     if (item.kind === 'embed') {
       const insert = embedContent(item);

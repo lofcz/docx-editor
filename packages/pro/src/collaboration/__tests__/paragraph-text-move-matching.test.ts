@@ -15,6 +15,7 @@ interface Token {
   readonly insert: string;
   readonly attributes: Readonly<Record<string, string>>;
   readonly position?: number;
+  readonly source?: string | null;
 }
 
 /** Characters of one text element; `element` empty for text that names none. */
@@ -163,4 +164,46 @@ describe('move matching cost', () => {
     );
     expect(performance.now() - started).toBeLessThan(3_000);
   });
+});
+
+function sourceWord(ids: readonly string[]): ParagraphWrite<Token> {
+  const before = chars('and', 'native').map((token, index) => ({ ...token, source: ids[index] }));
+  return {
+    before,
+    after: [],
+    identities: ids,
+    steps: before.map((_, before) => ({ op: 'del', before })),
+  };
+}
+const attach = (token: Token, origin: string): Token => ({
+  ...token,
+  attributes: { ...token.attributes, [ORIGIN_KEY]: origin },
+});
+test('native move provenance selects the observed source among identical words', () => {
+  const first = sourceWord(['5:0', '5:1', '5:2']);
+  const second = sourceWord(['8:0', '8:1', '8:2']);
+  const target: ParagraphWrite<Token> = {
+    before: [],
+    identities: [],
+    after: chars('and', 'fresh').map((token, index) => ({ ...token, source: `8:${index}` })),
+    steps: [0, 1, 2].map((after) => ({ op: 'ins', after })),
+  };
+  const copied = markMoves([first, second, target], attach, (token) =>
+    JSON.stringify(token.attributes)
+  );
+  expect([...copied]).toEqual(['8:0', '8:1', '8:2']);
+  expect(originsOf(target.after)).toEqual(['8:0', '8:0', '8:0']);
+});
+test('equally spelled new labels cannot acquire a deleted source identity', () => {
+  const first = sourceWord(['5:0', '5:1', '5:2']);
+  const target: ParagraphWrite<Token> = {
+    before: [],
+    identities: [],
+    after: chars('and', 'fresh').map((token) => ({ ...token, source: null })),
+    steps: [0, 1, 2].map((after) => ({ op: 'ins', after })),
+  };
+  expect([
+    ...markMoves([first, target], attach, (token) => JSON.stringify(token.attributes)),
+  ]).toEqual([]);
+  expect(originsOf(target.after)).toEqual([null, null, null]);
 });

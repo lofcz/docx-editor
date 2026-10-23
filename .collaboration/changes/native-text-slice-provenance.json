@@ -1,0 +1,17 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "A native split replaced text leaf identities. Paragraph diffing could move peer text when actor undo restored the original leaf.",
+  "after": "Optional plain-data source windows on native text descriptors retain exact shared character identities through every split fragment, including equal labels, repeated words and supplementary characters.",
+  "reason": "The optional local provider metadata survives journal cloning but is never stored in the shared room or DOCX. Corrected writers emit the existing Y.Text character representation; older readers retain its meaning. Older providers can ignore the metadata and retain their existing writer bug. The EigenPal Pro License transport remains test-only for the private adapter.",
+  "tests": [
+    "packages/core/src/store/__tests__/canonical-primitive-journal.test.ts",
+    "packages/pro/src/collaboration/__tests__/paragraph-text-source-diff.test.ts",
+    "packages/pro/src/collaboration/__tests__/format-text-identity.test.ts",
+    "packages/sciobot/src/diff/code-atom-middle-peer-undo.test.ts",
+    "packages/pro/src/collaboration/__tests__/paragraph-text-move-matching.test.ts",
+    "packages/sciobot/scripts/check-text-slice-reader-compatibility.ts"
+  ],
+  "changeset": "native-text-slice-provenance",
+  "migration": null
+}

@@ -12,6 +12,7 @@ import type {
   CanonicalNodeDescriptor,
   CanonicalPrimitiveEffect,
   CanonicalPrimitiveJournal,
+  CanonicalTextNodeDescriptor,
 } from './canonical-primitive-journal.ts';
 import {
   bindCanonicalPrimitiveJournalListeners,
@@ -33,6 +34,7 @@ interface CaptureFrame {
   /** The gesture the transaction named, carried onto the journal it publishes. */
   readonly historyGroup: HistoryGroup | undefined;
   suppressDepth: number;
+  textSlices: WeakMap<object, NonNullable<CanonicalTextNodeDescriptor['sourceText']>> | null;
 }
 
 const observersByStore = new WeakMap<object, Set<(journal: CanonicalPrimitiveJournal) => void>>();
@@ -57,8 +59,10 @@ export function journalCaptureMark(): number {
 /** Drop effects recorded after {@link journalCaptureMark}, when the edit that produced them failed. */
 export function truncateJournalCapture(mark: number): void {
   const frame = topFrame();
-  if (!frame?.effects || frame.effects.length <= mark) return;
-  frame.effects.length = mark;
+  if (!frame?.effects) return;
+  // Unpublished preview leaves from a failed edit cannot lend provenance to a retry.
+  if (frame.textSlices) frame.textSlices = new WeakMap();
+  if (frame.effects.length > mark) frame.effects.length = mark;
 }
 
 /** True only while the top frame is observed and that frame is not suppressed. */
@@ -97,7 +101,13 @@ function storeObserverCount(store: object): number {
 function pushFrame(observed: boolean, historyGroup: HistoryGroup | undefined): void {
   const effects = observed ? [] : null;
   if (observed) allocationCount += 1;
-  frames.push({ observed, effects, historyGroup, suppressDepth: 0 });
+  frames.push({
+    observed,
+    effects,
+    historyGroup,
+    suppressDepth: 0,
+    textSlices: observed ? new WeakMap() : null,
+  });
 }
 
 function popFrame(): CaptureFrame | undefined {
@@ -160,6 +170,40 @@ function record(effect: CanonicalPrimitiveEffect): void {
   const frame = topFrame();
   if (!frame || !frame.observed || frame.suppressDepth !== 0 || !frame.effects) return;
   frame.effects.push(effect);
+}
+
+/** Record exact native slicing only in the observed transaction that creates the leaf. */
+export function recordNativeTextSlice(
+  source: { readonly id: string; readonly value: string },
+  target: { readonly id: string; readonly value: string },
+  start: number
+): void {
+  const frame = topFrame();
+  if (
+    !frame?.observed ||
+    frame.suppressDepth ||
+    !frame.effects ||
+    !frame.textSlices ||
+    source.id === target.id
+  )
+    return;
+  if (
+    !Number.isSafeInteger(start) ||
+    start < 0 ||
+    source.value.slice(start, start + target.value.length) !== target.value
+  )
+    throw new Error('Native text slice does not match its source.');
+  frame.textSlices.set(target, {
+    logicalId: source.id,
+    utf16Start: start,
+    utf16Length: target.value.length,
+    beforeEffect: frame.effects.length,
+  });
+}
+
+/** A preview or a different transaction cannot lend provenance to this journal. */
+export function nativeTextSliceOf(node: object): CanonicalTextNodeDescriptor['sourceText'] {
+  return isCanonicalPrimitiveCaptureActive() ? topFrame()?.textSlices?.get(node) : undefined;
 }
 
 export function recordPutNode(descriptor: CanonicalNodeDescriptor): void {

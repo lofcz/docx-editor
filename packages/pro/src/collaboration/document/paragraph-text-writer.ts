@@ -35,6 +35,8 @@ import { sharedEffect, type SharedEffect } from './shared-effect.ts';
 import { rejectDangerousKey } from './limits.ts';
 import type { DocumentRegistry } from './registry.ts';
 import { inlineChildren } from './paragraph-text-view.ts';
+import { TextSources } from './paragraph-text-sources.ts';
+import { linearizeParagraph } from './paragraph-linear.ts';
 import { partitionChildIds, sharedChildShell } from './singleton-children.ts';
 
 interface ScratchNode {
@@ -60,7 +62,11 @@ interface ScratchNode {
 
 /** What one journal changes in paragraph shared texts. */
 export interface InlinePlan {
-  readonly paragraphs: readonly { readonly id: LogicalId; readonly after: OoxmlElement }[];
+  readonly paragraphs: readonly {
+    readonly id: LogicalId;
+    readonly after: OoxmlElement;
+    readonly sourceOf?: (node: OoxmlNode) => readonly (string | null)[] | undefined;
+  }[];
   /** Embedded nodes the touched paragraphs held before the journal. */
   readonly embedsBefore: ReadonlySet<LogicalId>;
 }
@@ -146,6 +152,7 @@ interface RouteRefusal {
 }
 
 class Scratch {
+  constructor(readonly sources: TextSources) {}
   readonly nodes = new Map<LogicalId, ScratchNode>();
   /** The first effect whose bounds the scratch tree cannot satisfy. */
   refusal: RouteRefusal | null = null;
@@ -273,7 +280,9 @@ class Scratch {
     shown.add(id);
     const node = this.nodes.get(id)!;
     if (node.kind === 'textValue') {
-      return textNode(shellId(node.id), node.value ?? '');
+      const made = textNode(shellId(node.id), node.value ?? '');
+      this.sources.remember(made, node.id);
+      return made;
     }
     return elementFrom({
       id: node.paragraph || node.opaque ? node.id : shellId(node.id),
@@ -315,7 +324,12 @@ function insideShellPart(chain: readonly ScratchNode[], index: number): boolean 
 function referencedIds(effect: SharedEffect): LogicalId[] {
   switch (effect.kind) {
     case 'putNode':
-      return [effect.descriptor.logicalId];
+      return [
+        effect.descriptor.logicalId,
+        ...(effect.descriptor.kind === 'textValue' && effect.descriptor.sourceText
+          ? [effect.descriptor.sourceText.logicalId as LogicalId]
+          : []),
+      ];
     case 'spliceText':
     case 'setAttribute':
     case 'setNamespaceBinding':
@@ -366,7 +380,7 @@ export function routeInlineEffects(
   if (touched.size === 0) return { passThrough: [...effects], plan: null };
 
   const build = (paragraphs: ReadonlySet<LogicalId>) => {
-    const scratch = new Scratch();
+    const scratch = new Scratch(new TextSources(given));
     const embedsBefore = new Set<LogicalId>();
     for (const paragraphId of paragraphs) {
       const text = registry.inline.textOf(paragraphId);
@@ -399,15 +413,48 @@ export function routeInlineEffects(
         embedded.add(id);
         return embedPlaceholder(id);
       };
-      for (const child of inlineChildren(
+      const characters: (string | null)[] = [];
+      const children = inlineChildren(
         paragraphId,
         text,
         placeholderOf,
         registry.limits,
-        registry.inline.viewOf(paragraphId)
-      )) {
+        registry.inline.viewOf(paragraphId),
+        scratch.sources.enabled
+          ? (character) => characters.push(character?.identity ?? character?.item ?? null)
+          : undefined
+      );
+      for (const child of children) {
         scratch.add(child, paragraphId, embedded);
         root.children.push(idOf(child));
+      }
+      if (scratch.sources.enabled) {
+        const paragraph = elementFrom({
+          id: paragraphId,
+          kind: 'paragraph',
+          namespaceUri: WML_NAMESPACE_URI,
+          localName: 'p',
+          namespaceBindings: [],
+          attributes: [],
+          children,
+        });
+        const byLeaf = new Map<string, (string | null)[]>();
+        let at = 0;
+        for (const item of linearizeParagraph(paragraph).items) {
+          if (item.kind !== 'char') continue;
+          const id = item.attributes.textValueId;
+          const source = characters[at++] ?? null;
+          if (id) {
+            const list = byLeaf.get(id) ?? [];
+            list.push(source);
+            byLeaf.set(id, list);
+          }
+        }
+        for (const [id, sources] of byLeaf) {
+          const node = scratch.nodes.get(id as LogicalId);
+          if (node?.value !== null && node?.value !== undefined)
+            scratch.sources.seed(id, node.value, sources);
+        }
       }
       for (const id of embedded) {
         embedsBefore.add(id);
@@ -436,7 +483,13 @@ export function routeInlineEffects(
   // A paragraph splice that adds or removes a block child also goes to the record pipeline,
   // as a splice over block children only: that pipeline resolves concurrent property copies.
   const blockSplices = new Map<number, SharedEffect>();
-  for (const effect of effects) {
+  for (const [index, effect] of effects.entries()) {
+    if (!scratch.sources.capture(index, (id) => scratch.nodes.get(id as LogicalId)))
+      return {
+        passThrough: [...effects],
+        plan: null,
+        refusal: { code: 'invalid-bound', detail: 'Invalid native text slice provenance.' },
+      };
     const block = blockSplice(scratch, effect, registry);
     if (block) blockSplices.set(applied.length, block);
     applied.push(replay(scratch, effect, registry));
@@ -451,7 +504,11 @@ export function routeInlineEffects(
   });
   const paragraphs = [...touched]
     .filter((id) => scratch.nodes.get(id)?.paragraph)
-    .map((id) => ({ id, after: expectElement(scratch.toTree(id)) }));
+    .map((id) => ({
+      id,
+      after: expectElement(scratch.toTree(id)),
+      ...(scratch.sources.enabled ? { sourceOf: scratch.sources.of } : {}),
+    }));
   return { passThrough, plan: { paragraphs, embedsBefore } };
 }
 
@@ -522,6 +579,7 @@ function replay(scratch: Scratch, effect: SharedEffect, registry: DocumentRegist
       return true;
     }
     case 'spliceText': {
+      if (scratch.sources.isReplayedSource(effect.logicalId)) return true;
       const node = scratch.nodes.get(effect.logicalId);
       if (!node || node.value === null || !scratch.open(effect.logicalId)) return false;
       // A journal applied again describes its new text nodes again and fills them with the
@@ -551,6 +609,16 @@ function replay(scratch: Scratch, effect: SharedEffect, registry: DocumentRegist
       ) {
         return true;
       }
+      if (
+        !scratch.sources.splice(
+          effect.logicalId,
+          node.value,
+          effect.utf16Start,
+          effect.deleteCount,
+          effect.insert
+        )
+      )
+        return scratch.refuse('invalid-bound', effect.logicalId);
       node.value =
         node.value.slice(0, effect.utf16Start) +
         effect.insert +

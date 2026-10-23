@@ -38,7 +38,11 @@ try {
     `[test]\npreload = [${JSON.stringify(join(repoRoot, 'scripts/test/preload-dom.ts'))}]\n`
   );
   symlinkSync(join(packageRoot, 'node_modules'), join(directory, 'node_modules'), 'dir');
-  const fixtures = ['code-inline-atoms.test.ts', 'code-inline-atoms-collaboration.test.ts'];
+  const fixtures = [
+    'code-inline-atoms.test.ts',
+    'code-inline-atoms-collaboration.test.ts',
+    'code-atom-middle-peer-undo.test.ts',
+  ];
   for (const filename of fixtures) {
     let source = readFileSync(join(packageRoot, 'src/diff', filename), 'utf8');
     source = source.replace(

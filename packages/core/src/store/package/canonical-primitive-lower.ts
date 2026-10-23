@@ -5,6 +5,7 @@ import type { OoxmlAttribute, OoxmlElement, OoxmlNode, OoxmlPart } from './ooxml
 import {
   isCanonicalPrimitiveCaptureActive,
   recordPutNode,
+  nativeTextSliceOf,
   recordPutXmlPart,
   recordSetAttribute,
   recordSetNamespaceBinding,
@@ -96,7 +97,10 @@ function lowerNamespaceBindings(
 }
 
 function nodeDescriptor(node: OoxmlNode): CanonicalNodeDescriptor {
-  if (node.kind === 'textValue') return { logicalId: node.id, kind: 'textValue' };
+  if (node.kind === 'textValue') {
+    const sourceText = nativeTextSliceOf(node);
+    return { logicalId: node.id, kind: 'textValue', ...(sourceText ? { sourceText } : {}) };
+  }
   return {
     logicalId: node.id,
     kind: node.kind,

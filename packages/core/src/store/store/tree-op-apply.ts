@@ -1,4 +1,4 @@
-import { contains, textKindOfValue, findTextParent } from './tree-op-text-node-lookup.ts';
+import { contains, findTextParent } from './tree-op-text-node-lookup.ts';
 import { inlineRunSlice, inlineTextSlice } from './tree-op-inline-slices.ts';
 import {
   isTrackedHyperlinkStructure,
@@ -819,9 +819,8 @@ function applyInsertContent(
     }
     const plain = insertIntoText(segment);
     if (plain) return plain;
-    const kind = textNode.kind === 'deletedText' ? 'deletedText' : 'text';
-    const head = textElement(nextId, value.slice(0, local), kind);
-    const tail = textElement(nextId, value.slice(local), kind);
+    const head = inlineTextSlice(nextId, value.slice(0, local), textNode, 0);
+    const tail = inlineTextSlice(nextId, value.slice(local), textNode, local, true);
     const rebuilt = run.children.flatMap((child) =>
       child.id === textNode.id ? [head, ...nodes, tail] : [child]
     );
@@ -2517,9 +2516,10 @@ function divideInline(
     else if (segment.start >= offset) tailContent.push(grand);
     else if (segment.node.kind === 'textValue') {
       const local = offset - segment.start;
-      const splitKind = textKindOfValue(child, segment.node.id);
-      headContent.push(textElement(nextId, segment.node.value.slice(0, local), splitKind));
-      tailContent.push(textElement(nextId, segment.node.value.slice(local), splitKind));
+      headContent.push(inlineTextSlice(nextId, segment.node.value.slice(0, local), child, 0));
+      tailContent.push(
+        inlineTextSlice(nextId, segment.node.value.slice(local), child, local, true)
+      );
     } else headContent.push(grand);
   }
   const clonedRpr = rPr ? cloneWithNewIds(rPr, nextId) : null;
@@ -2852,7 +2852,9 @@ export function distributeInline(
       // emitted, exactly as a split at a paragraph edge emits no text.
       const slice = segment.node.value.slice(sliceStart - from, boundary - from);
       if (slice.length > 0) {
-        contentByPiece[piece]!.push(inlineTextSlice(nextId, slice, segmentOwner));
+        contentByPiece[piece]!.push(
+          inlineTextSlice(nextId, slice, segmentOwner, sliceStart - from)
+        );
       }
       sliceStart = boundary;
       piece += 1;
@@ -2865,7 +2867,9 @@ export function distributeInline(
     }
     const lastSlice = segment.node.value.slice(sliceStart - from);
     if (lastSlice.length > 0) {
-      contentByPiece[piece]!.push(inlineTextSlice(nextId, lastSlice, segmentOwner, true));
+      contentByPiece[piece]!.push(
+        inlineTextSlice(nextId, lastSlice, segmentOwner, sliceStart - from, true)
+      );
     }
   }
   let keptOriginalRpr = false;
@@ -3453,9 +3457,10 @@ export function splitRunsAt(
     else if (segment.start >= offset) tailContent.push(child);
     else if (segment.node.kind === 'textValue') {
       const local = offset - segment.start;
-      const splitKind = textKindOfValue(child, segment.node.id);
-      headContent.push(textElement(nextId, segment.node.value.slice(0, local), splitKind));
-      tailContent.push(textElement(nextId, segment.node.value.slice(local), splitKind));
+      headContent.push(inlineTextSlice(nextId, segment.node.value.slice(0, local), child, 0));
+      tailContent.push(
+        inlineTextSlice(nextId, segment.node.value.slice(local), child, local, true)
+      );
     } else headContent.push(child);
   }
   const head = runElement(nextId, rPr ? [rPr, ...headContent] : headContent);

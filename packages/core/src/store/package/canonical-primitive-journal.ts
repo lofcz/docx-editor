@@ -26,6 +26,13 @@ export interface CanonicalBinaryDescriptor {
 export interface CanonicalTextNodeDescriptor {
   readonly logicalId: string;
   readonly kind: 'textValue';
+  /** Exact native source slice before the indexed effect; optional writer provenance. */
+  readonly sourceText?: {
+    readonly logicalId: string;
+    readonly utf16Start: number;
+    readonly utf16Length: number;
+    readonly beforeEffect: number;
+  };
 }
 
 /** OOXML element shell. Attributes, bindings, and children arrive as later effects. @public */
@@ -185,7 +192,11 @@ function freezeCanonicalNodeDescriptor(
   descriptor: CanonicalNodeDescriptor
 ): CanonicalNodeDescriptor {
   if (descriptor.kind === 'textValue') {
-    return Object.freeze({ logicalId: descriptor.logicalId, kind: 'textValue' });
+    return Object.freeze({
+      logicalId: descriptor.logicalId,
+      kind: 'textValue',
+      ...(descriptor.sourceText ? { sourceText: Object.freeze({ ...descriptor.sourceText }) } : {}),
+    });
   }
   return Object.freeze({
     logicalId: descriptor.logicalId,

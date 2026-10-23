@@ -652,7 +652,10 @@ export function applyPrimitiveJournal(
   let tokens: ReadonlyMap<LogicalId, Token[]>;
   try {
     tokens = new Map(
-      plan?.paragraphs.map(({ id, after }) => [id, tokensOfParagraph(after, registry.limits)])
+      plan?.paragraphs.map(({ id, after, sourceOf }) => [
+        id,
+        tokensOfParagraph(after, registry.limits, sourceOf),
+      ])
     );
   } catch (error) {
     if (!(error instanceof SharedTextValueRefused)) throw error;
