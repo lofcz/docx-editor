@@ -3,7 +3,12 @@ import type { NativeEditFailure } from '../contracts/document';
 import type { TargetAstNode } from '../projection/parse-target';
 import type { InsertedCellPayloadBinding } from './inserted-cell-fragments';
 import type { InsertedInlineAtom } from './inserted-atoms';
-import { isInsertedAtomBindings, planInsertedAtomBindings } from './inserted-atom-bindings';
+import {
+  isInsertedAtomBindings,
+  planInsertedAtomBindings,
+  insertedParagraphs,
+} from './inserted-atom-bindings';
+import { compileInlineTarget } from './inline-target';
 
 /** Prefix every paragraph address with its physical cell stream. No preview IDs enter the plan. */
 const roots = (cells: readonly (readonly TargetAstNode[])[]): readonly TargetAstNode[] =>
@@ -24,7 +29,16 @@ export function isInsertedCellAtoms(
   payloads: readonly InsertedCellPayloadBinding[],
   atoms: unknown
 ): boolean {
-  return isInsertedAtomBindings(roots(cells), payloads, atoms === undefined ? [] : atoms);
+  const streams = roots(cells);
+  if (atoms === undefined) {
+    // Legacy plain fragments defer invalid leaf values to native admission. A valid
+    // atom stream still requires its complete inventory; deleting bindings cannot hide it.
+    return insertedParagraphs(streams, payloads).every(({ ast }) => {
+      const compiled = compileInlineTarget(ast);
+      return !compiled.success || compiled.target.tokens.every((token) => token.kind !== 'atom');
+    });
+  }
+  return isInsertedAtomBindings(streams, payloads, atoms);
 }
 
 /** Strip the physical cell prefix only after execution allocates that cell's native identity. */
