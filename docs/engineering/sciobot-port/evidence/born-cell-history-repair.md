@@ -1,7 +1,7 @@
 # D30 table birth history investigation
 
 This work remains isolated on `codex/d30-born-cell-history` in `/tmp/sciobot-resolved-table-targets`.
-Runtime `d3889299` follows the work-in-progress checkpoints `015d5bea`, `a9a00a00`, `2a915a72`, `bd2727de`, `db8e74e7`, and `d697de99`.
+Runtime `20eb0d7c` follows the work-in-progress checkpoints `015d5bea`, `a9a00a00`, `2a915a72`, `bd2727de`, `db8e74e7`, `d697de99`, `d3889299`, and `37b117d9`.
 The primary branch remains at `75930cb4`. D30 remains open.
 
 The evaluated transport uses the EigenPal Pro License. These changes add no private production imports.
@@ -141,13 +141,55 @@ Root formatting and root lint pass at the final runtime checkpoint.
 The four original investigation cases pass unchanged, with 34 assertions, in 2.28 seconds.
 Final compatibility policy passes with 169 decisions and two changed format fields.
 
+## Concurrent native column coverage
+
+Four new real-session cases fail at `f9c484b9`, with both client orders and reconnect receivers.
+Alice and Bob each insert a middle column while disconnected, below the same merged header.
+Both columns survive in the native grid, but the header span remains 3 instead of 4.
+The merged native header also holds duplicate fixed-width properties.
+
+The first repair reveals two further causes.
+Lazy creation replaces the table's geometry map when two disconnected replicas each create it.
+Tables now allocate that shared map during native record creation, before writers can disconnect.
+Grid-span records also allocate the later-write ownership map at creation.
+Native topology capture must read current shared attribute values inside the journal transaction.
+The derived attribute index still describes the preceding state until that transaction finishes.
+The before/after coverage reader now distinguishes those written shared values from pure projected reads.
+
+Runtime `37b117d9` combines independent coverage by native column identity.
+Causal dependency ordering includes new cell and grid-column identities from the source state.
+Later observed edits replace prior coverage; independent edits retain each contributor's columns.
+Surviving born cells reserve their recorded columns before original cells derive their spans.
+Concurrent merged headers derive fixed widths from the surviving native grid widths.
+Only one peer-created width property shows; imported duplicate properties remain unchanged when no peer-created copy exists.
+Projection restores a required span value even when author undo removed its raw attribute.
+Dependency invalidation compares both span and width projections, including transitions back to raw values.
+
+The four cases verify complete header fingerprints, exact native cell identities, both authored atom fingerprints, and untouched original body cells.
+Bob types inside Alice's new cell before Alice undoes.
+Both histories preserve that foreign content, remove unused columns, and restore exact authored Word fingerprints on redo.
+DOCX and room reopening match the full recovered Word fingerprint without shared-state writes during reads.
+All ten concurrent and existing geometry cases pass, with 528 assertions, in 50.97 seconds.
+Pro types cover 2288 files. Private SDK types cover 2169 files.
+Root formatting and lint pass. Compatibility policy passes with 169 decisions and two changed format fields.
+The proposed format remains unreleased `docx-collaboration:1.6.3.1`; the primary branch has not adopted this repair.
+
+The first expanded 18-file run passes 161 cases and exposes one original native merge regression.
+Active merge geometry must use its after coverage; undo repair must use before coverage plus surviving peer-owned columns.
+Runtime `20eb0d7c` distinguishes those states before joining independent coverage.
+The original `typing in a cell a peer merges away keeps the typing in the merged cell` expectation remains unchanged.
+All 22 focused concurrent, existing geometry and native merge/split cases pass with 582 assertions in 25.14 seconds.
+Final affected verification passes all 162 cases across 18 files, with 4067 assertions, in 107.18 seconds.
+The final Pro type check covers 2288 files and root lint passes.
+The four original regression probes pass unchanged, with 34 assertions, in 20.18 seconds.
+
 ## Remaining work
 
 The target planner still refuses an unequal header split into spans 2 and 1.
 The stronger history test uses the actual supported native split command and verifies its exact resulting four-column grid.
 That command does not establish target-planner support for the unequal split.
 More combined topology, vertical merge, and newly allocated span-property cases remain unverified.
-Concurrent independent geometry frames still need combined native topology verification.
+Independent split and column edits, concurrent geometry-only writes, and vertical merge coverage still need verification.
 Further combined move, topology, and concurrent geometry interactions remain unverified.
 Do not merge or release this checkpoint as a completed history repair.
 
