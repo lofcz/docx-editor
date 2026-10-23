@@ -35,6 +35,7 @@ interface CaptureFrame {
   readonly historyGroup: HistoryGroup | undefined;
   suppressDepth: number;
   textSlices: WeakMap<object, NonNullable<CanonicalTextNodeDescriptor['sourceText']>> | null;
+  textSplices: WeakMap<object, NativeTextSplice> | null;
 }
 
 const observersByStore = new WeakMap<object, Set<(journal: CanonicalPrimitiveJournal) => void>>();
@@ -62,6 +63,7 @@ export function truncateJournalCapture(mark: number): void {
   if (!frame?.effects) return;
   // Unpublished preview leaves from a failed edit cannot lend provenance to a retry.
   if (frame.textSlices) frame.textSlices = new WeakMap();
+  if (frame.textSplices) frame.textSplices = new WeakMap();
   if (frame.effects.length > mark) frame.effects.length = mark;
 }
 
@@ -107,6 +109,7 @@ function pushFrame(observed: boolean, historyGroup: HistoryGroup | undefined): v
     historyGroup,
     suppressDepth: 0,
     textSlices: observed ? new WeakMap() : null,
+    textSplices: observed ? new WeakMap() : null,
   });
 }
 
@@ -231,6 +234,40 @@ function rememberPieces(target: TextLeaf, pieces: TextPieces): void {
     } else normalized.push(piece);
   }
   topFrame()?.textSlices?.set(target, normalized);
+}
+
+interface NativeTextSplice {
+  readonly source: object;
+  readonly utf16Start: number;
+  readonly deleteCount: number;
+  readonly insert: string;
+}
+
+/** Preserve the authored boundary when equal characters admit several lexical diffs. */
+export function nativeTextSpliced<T extends TextLeaf>(
+  source: T,
+  start: number,
+  deleteCount: number,
+  insert: string
+): T {
+  const target = {
+    ...source,
+    value: source.value.slice(0, start) + insert + source.value.slice(start + deleteCount),
+  };
+  if (isCanonicalPrimitiveCaptureActive())
+    topFrame()?.textSplices?.set(target, { source, utf16Start: start, deleteCount, insert });
+  return target;
+}
+
+/** Hints belong to the exact source object and the currently observed transaction only. */
+export function nativeTextSpliceOf(
+  source: object,
+  target: object
+): Omit<NativeTextSplice, 'source'> | undefined {
+  const hint = isCanonicalPrimitiveCaptureActive()
+    ? topFrame()?.textSplices?.get(target)
+    : undefined;
+  return hint?.source === source ? hint : undefined;
 }
 
 /** Record exact native slicing only in the observed transaction that creates the leaf. */

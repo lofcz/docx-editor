@@ -1,8 +1,10 @@
+import { applyTreeOp, bodyStoryRoot, paragraphTextOf, storyParagraphs } from '../index.ts';
 import { inlineTextMerged } from '../store/tree-op-inline-slices.ts';
 import { readOoxmlPart, type OoxmlNode } from '../package/ooxml-tree.ts';
 import { expect, test } from 'bun:test';
 import {
   nativeTextSliceOf,
+  nativeTextSpliceOf,
   observeCanonicalPrimitiveJournal,
   recordNativeFreshText,
   recordNativeTextMerge,
@@ -141,3 +143,52 @@ test('coalescing native text preserves boundary spaces when imported xml:space i
     merged.attributes.some((attr) => attr.localName === 'space' && attr.value === 'default')
   ).toBe(false);
 });
+
+for (const [value, offset, insert] of [
+  ['A ', 1, ' peer'],
+  ['aaaa', 1, 'a'],
+  ['😀 😀', 3, '😀 '],
+] as const)
+  test(`native typing keeps its exact primitive boundary: ${JSON.stringify([value, offset, insert])}`, () => {
+    const loaded = readOoxmlPart(
+      `<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t xml:space="preserve">${value}</w:t></w:r></w:p></w:body></w:document>`,
+      { name: '/word/document.xml', contentType: 'application/xml' }
+    );
+    if (!loaded.ok) throw Error(loaded.reason);
+    const store = {},
+      journals: CanonicalPrimitiveJournal[] = [];
+    const stop = observeCanonicalPrimitiveJournal(store, (journal) => journals.push(journal));
+    const paragraphId = storyParagraphs(bodyStoryRoot(loaded.part)!)[0]!.id;
+    let output = loaded.part;
+    runObservedStoreTransaction(
+      store,
+      () => {
+        const result = applyTreeOp(loaded.part, {
+          op: 'insertText',
+          paragraphId,
+          offset,
+          text: insert,
+        });
+        if (!result.ok) throw Error(result.reason);
+        output = result.part;
+      },
+      () => true
+    );
+    stop();
+    expect(paragraphTextOf(output, paragraphId)).toBe(
+      value.slice(0, offset) + insert + value.slice(offset)
+    );
+    const splices = journals[0]!.effects.filter((e) => e.kind === 'spliceText');
+    expect(splices).toHaveLength(1);
+    expect(splices[0]).toMatchObject({ utf16Start: offset, deleteCount: 0, insert });
+    expect(Object.keys(splices[0]!).sort()).toEqual([
+      'deleteCount',
+      'insert',
+      'kind',
+      'logicalId',
+      'utf16Start',
+    ]);
+    const leaf = (node: OoxmlNode): OoxmlNode | null =>
+      node.kind === 'textValue' ? node : (node.children.map(leaf).find(Boolean) ?? null);
+    expect(nativeTextSpliceOf(leaf(loaded.part.root)!, leaf(output.root)!)).toBeUndefined();
+  });

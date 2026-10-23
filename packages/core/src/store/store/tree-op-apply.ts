@@ -1,3 +1,4 @@
+import { nativeTextSpliced } from '../package/canonical-primitive-capture.ts';
 import { pieceIndexOf } from './tree-op-piece-index.ts';
 import { contains, findTextParent } from './tree-op-text-node-lookup.ts';
 import { inlineRunSlice, inlineTextSlice } from './tree-op-inline-slices.ts';
@@ -780,11 +781,7 @@ function applyInsertContent(
         replaceNode(
           part,
           segment.node.id,
-          {
-            ...segment.node,
-            value:
-              segment.node.value.slice(0, local) + text.value + segment.node.value.slice(local),
-          },
+          nativeTextSpliced(segment.node, local, 0, text.value),
           deferOptions(options, control)
         ),
         effect

@@ -6,6 +6,7 @@ import {
   isCanonicalPrimitiveCaptureActive,
   recordPutNode,
   nativeTextSliceOf,
+  nativeTextSpliceOf,
   recordPutXmlPart,
   recordSetAttribute,
   recordSetNamespaceBinding,
@@ -180,7 +181,7 @@ function lowerSameIdentity(
   if (previous.kind === 'textValue' || next.kind === 'textValue') {
     const before = previous.kind === 'textValue' ? previous.value : '';
     const after = next.kind === 'textValue' ? next.value : '';
-    const splice = textSplice(before, after);
+    const splice = nativeTextSpliceOf(previous, next) ?? textSplice(before, after);
     recordSpliceText(previous.id, splice.utf16Start, splice.deleteCount, splice.insert);
     return;
   }

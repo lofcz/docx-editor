@@ -40,9 +40,10 @@ export class TextSources {
   constructor(effects: readonly CanonicalPrimitiveEffect[]) {
     this.enabled = effects.some(
       (e) =>
-        e.kind === 'putNode' &&
-        e.descriptor.kind === 'textValue' &&
-        e.descriptor.sourceText !== undefined
+        e.kind === 'spliceText' ||
+        (e.kind === 'putNode' &&
+          e.descriptor.kind === 'textValue' &&
+          e.descriptor.sourceText !== undefined)
     );
     if (!this.enabled) return;
     effects.forEach((effect, index) => {
