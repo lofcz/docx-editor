@@ -196,11 +196,12 @@ test('unsafe coordinates and invalid source characters refuse instead of truncat
       ).success
     ).toBe(false);
   }
-  for (const atom of [
+  const invalidAtoms: readonly TargetAstNode[] = [
     { type: 'inlineMath', value: '\u0000' },
     { type: 'mention', username: 'key', displayText: 'split\nlabel' },
     { type: 'image', url: 'asset:one', alt: '\ud800' },
-  ]) {
+  ];
+  for (const atom of invalidAtoms) {
     expect(
       planInsertedAtoms(
         { pkg, location: { kind: 'new-paragraph', path: [0] }, offset: 0 },
@@ -211,7 +212,7 @@ test('unsafe coordinates and invalid source characters refuse instead of truncat
 });
 
 test('unknown semantic atom fields and nested source children never disappear into fallback', () => {
-  for (const atom of [
+  const unknownAtoms: readonly TargetAstNode[] = [
     { type: 'image', url: 'asset:one', width: 123 },
     { type: 'inlineMath', value: 'x', data: { private: 'retain' } },
     { type: 'mention', username: 'ada', children: [{ type: 'text', value: 'Ada', private: true }] },
@@ -221,7 +222,8 @@ test('unknown semantic atom fields and nested source children never disappear in
       attributes: [],
       children: [{ type: 'mdxJsxTextElement', name: 'widget', attributes: [], children: [] }],
     },
-  ]) {
+  ];
+  for (const atom of unknownAtoms) {
     const result = planInsertedAtoms(
       { pkg: packageOf(), location: { kind: 'new-paragraph', path: [0] }, offset: 0 },
       { type: 'paragraph', children: [atom] }
