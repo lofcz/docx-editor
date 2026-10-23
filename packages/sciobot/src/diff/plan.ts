@@ -1,3 +1,5 @@
+import { isInsertedAtomBindings } from './inserted-atom-bindings';
+import type { InsertedInlineAtom } from './inserted-atoms';
 import { isTableGeometryIntent, type TableGeometryIntent } from './table-geometry';
 import type { TreeDocOp } from '@docx-editor.dev/core/store';
 import { isBlockId } from '../blocks/payload-schema';
@@ -112,6 +114,7 @@ export type CanonicalEdit = LocatedEdit &
         readonly styles?: readonly InsertedStyleBinding[];
         /** New registered blocks and their new payloads, by inserted index path. */
         readonly blocks?: readonly InsertedBlockBinding[];
+        readonly atoms?: readonly InsertedInlineAtom[];
       }
     | {
         /** Wrap an exact post-text range in a new hyperlink; the executor mints any relationship. */
@@ -329,6 +332,12 @@ function editProblem(edit: unknown): string | null {
         (!Object.hasOwn(edit, 'lists') || isInsertedListBindings(edit.inserted, edit.lists)) &&
         (!Object.hasOwn(edit, 'styles') || insertedStyles(edit.inserted, edit.styles)) &&
         (!Object.hasOwn(edit, 'blocks') || isInsertedBlockBindings(edit.inserted, edit.blocks)) &&
+        (!Object.hasOwn(edit, 'atoms') ||
+          isInsertedAtomBindings(
+            edit.inserted,
+            (edit.blocks ?? []) as InsertedBlockBinding[],
+            edit.atoms
+          )) &&
         keysOnly(edit, [
           ...base,
           'parentId',
@@ -339,6 +348,7 @@ function editProblem(edit: unknown): string | null {
           'lists',
           'styles',
           'blocks',
+          'atoms',
         ])
         ? null
         : 'invalid-sibling-edit';

@@ -1,3 +1,5 @@
+import { inlineAtomXml, inlineAtomKey, inlineAtomsByPath } from './inline-atom-xml';
+import type { InsertedInlineAtom } from './inserted-atoms';
 import { BLOCK_MATH, INLINE_MATH, decodeMathPayload, mathWordFallback } from '../blocks/math-codec';
 import { encodeBlockPayload } from '../blocks/payload-schema';
 import { MDX_BLOCK } from '../projection/mdx';
@@ -12,6 +14,8 @@ import { newCellListAssignments } from './new-cell-list-assignments';
 import {
   applyTreeOp,
   bodyStoryRoot,
+  contentControlsIn,
+  contentControlPropertiesOf,
   createNodeIdAllocator,
   mintParaId,
   mintedParagraphIdentityAttributes,
@@ -200,6 +204,7 @@ export interface NewCellContent {
   readonly properties?: NewCellProperties;
   readonly lists?: readonly InsertedListBinding[];
   readonly cellId: string;
+  readonly atoms?: readonly InsertedInlineAtom[];
   readonly blocks: readonly TargetAstNode[];
   /** Word `w:jc` value for every new paragraph in this cell. */
   readonly alignment?: string | null;
@@ -213,9 +218,16 @@ export function fillNewCells(
 ): OoxmlPackage {
   let working = pkg;
   const assignments: DirectListAssignment[] = [];
-  for (const { cellId, blocks, alignment, lists } of cells) {
+  for (const { cellId, blocks, alignment, lists, atoms = [] } of cells) {
     if (!blocks.length) continue;
-    const seeds = newParagraphSeeds(blocks, { code: true });
+    const mappedAtoms = inlineAtomsByPath(atoms);
+    const seeds = newParagraphSeeds(blocks, {
+      code: true,
+      atom: (token, index) => {
+        const op = mappedAtoms.get(inlineAtomKey([index], token.path));
+        return op ? inlineAtomXml(op) : null;
+      },
+    });
     if (!seeds.success) refuseWrite(seeds.error, seeds.code);
     let part = working.parts.get(partName)!;
     const cell = findNode(part, cellId) as OoxmlElement,
@@ -250,6 +262,7 @@ export function fillNewCells(
 
 interface TableSeed {
   readonly kind: 'table';
+  readonly path: readonly number[];
   /** Index in `paragraphs` of the new paragraph that follows this table; null uses the gap's `afterId`. */
   readonly anchor: number | null;
   readonly rows: readonly (readonly (readonly TargetAstNode[])[])[];
@@ -334,6 +347,7 @@ export function siblingFragmentSeeds(
     (edit.styles ?? []).map((binding) => [binding.path.join('/'), binding.styleId])
   );
   const bound = new Set((edit.blocks ?? []).map((binding) => binding.path.join('/')));
+  const flatPaths: (readonly number[])[] = [];
   const flat: TargetAstNode[] = [],
     styleOf = new Map<number, string>(),
     paragraphOf = new Map<number, number>(),
@@ -341,12 +355,15 @@ export function siblingFragmentSeeds(
   // Word needs a paragraph after every table; an empty one projects to nothing.
   const separateTable = () => {
     const last = placed.at(-1);
-    if (last?.seed.kind === 'table' && last.before === flat.length)
+    if (last?.seed.kind === 'table' && last.before === flat.length) {
+      flatPaths.push([]);
       flat.push({ type: 'paragraph', children: [] } as TargetAstNode);
+    }
   };
   for (const [index, node] of edit.inserted.entries()) {
     if (node.type === 'paragraph' || node.type === 'heading') {
       paragraphOf.set(index, flat.length);
+      flatPaths.push([index]);
       flat.push(node);
     } else if (node.type === 'blockquote') {
       const style = styles.get(String(index));
@@ -354,15 +371,16 @@ export function siblingFragmentSeeds(
       const children = (node.children ?? []) as TargetAstNode[];
       if (!children.length || children.some((child) => child.type !== 'paragraph'))
         return fail('New block quotes can contain paragraphs only.');
-      for (const child of children) {
+      for (const [childIndex, child] of children.entries()) {
         styleOf.set(flat.length, style);
+        flatPaths.push([index, childIndex]);
         flat.push(child);
       }
     } else if (node.type === 'table') {
       separateTable();
       const table = tableRows(node);
       if (!table) return fail('A new table needs complete rectangular GFM rows and alignments.');
-      placed.push({ before: flat.length, seed: { kind: 'table', ...table } });
+      placed.push({ before: flat.length, seed: { kind: 'table', path: [index], ...table } });
     } else if (
       (node.type === 'mdxJsxFlowElement' || node.type === 'math') &&
       bound.has(String(index))
@@ -372,7 +390,14 @@ export function siblingFragmentSeeds(
     } else return fail(`Inserted ${node.type} blocks need their own native representation.`);
   }
   if (!followingParagraph && placed.at(-1)?.seed.kind === 'table') separateTable();
-  const seeds = newParagraphSeeds(flat, { code: true });
+  const mappedAtoms = inlineAtomsByPath(edit.atoms ?? []);
+  const seeds = newParagraphSeeds(flat, {
+    code: true,
+    atom: (token, index) => {
+      const op = mappedAtoms.get(inlineAtomKey(flatPaths[index]!, token.path));
+      return op ? inlineAtomXml(op) : null;
+    },
+  });
   if (!seeds.success) return seeds;
   return {
     success: true,
@@ -449,6 +474,7 @@ interface RenderContext {
   readonly partName: string;
   readonly width: number;
   readonly bindings: ReadonlyMap<string, InsertedBlockBinding>;
+  readonly atoms: ReadonlyMap<string, InsertedInlineAtom>;
   pkg: OoxmlPackage;
   /** Paragraph AST paths in the order their elements appear in the rendered XML. */
   readonly paragraphs: string[];
@@ -460,14 +486,6 @@ function paragraphXml(
 ): string {
   const inline = compileInlineTarget(node);
   if (!inline.success) refuseWrite(inline.error, inline.code);
-  if (
-    inline.target.plainText === null ||
-    inline.target.tokens.some((token) => token.kind !== 'text')
-  )
-    refuseWrite(
-      'Inline atoms need their own native fragment representation.',
-      'unsupported-operation'
-    );
   if (inline.target.tokens.some((token) => token.marks.includes('code'))) {
     const styled = withInlineCodeStyle(context.pkg);
     if (!styled)
@@ -478,7 +496,6 @@ function paragraphXml(
   let xml = '',
     open: string | null = null;
   for (const token of inline.target.tokens) {
-    if (token.kind !== 'text') continue;
     const key = token.hyperlink ? token.hyperlink.join('/') : null;
     if (key !== open) {
       if (open !== null) xml += '</w:hyperlink>';
@@ -499,6 +516,17 @@ function paragraphXml(
         }
         xml += `<w:hyperlink ${target}${link.title !== null ? ` w:tooltip="${escapeXml(link.title)}"` : ''}>`;
       }
+    }
+    if (token.kind === 'atom') {
+      const op = context.atoms.get(inlineAtomKey(path, token.path)),
+        rendered = op && inlineAtomXml(op);
+      if (!rendered)
+        refuseWrite(
+          'Inserted atoms need their supported native payload or resource representation.',
+          'unsupported-operation'
+        );
+      xml += rendered.xml;
+      continue;
     }
     xml += runXml(token.value, token.marks);
   }
@@ -632,13 +660,15 @@ function placeBlock(
   parentId: string,
   beforeId: string | null,
   seed: BlockSeed,
-  bindings: ReadonlyMap<string, InsertedBlockBinding>
+  bindings: ReadonlyMap<string, InsertedBlockBinding>,
+  atoms: ReadonlyMap<string, InsertedInlineAtom>
 ): { pkg: OoxmlPackage; paragraphs: Map<string, string> } {
   let part = pkg.parts.get(partName)!;
   const context: RenderContext = {
     partName,
     width: contentWidth(part),
     bindings,
+    atoms,
     pkg,
     paragraphs: [],
   };
@@ -709,7 +739,15 @@ export function completeSiblingFragments(
   for (const seed of seeds.placed) {
     const anchor = seed.anchor === null ? edit.afterId : fresh[seed.anchor]!;
     if (seed.kind === 'block') {
-      const placed = placeBlock(pkg, partName, edit.parentId, anchor, seed, bindings);
+      const placed = placeBlock(
+        pkg,
+        partName,
+        edit.parentId,
+        anchor,
+        seed,
+        bindings,
+        inlineAtomsByPath(edit.atoms ?? [])
+      );
       pkg = placed.pkg;
       for (const [path, id] of placed.paragraphs) paragraphs.set(path, id);
       continue;
@@ -741,6 +779,23 @@ export function completeSiblingFragments(
           cellId,
           blocks: table.rows[row]![column]!,
           alignment: table.alignment[column],
+          atoms: (edit.atoms ?? [])
+            .filter(
+              (op) =>
+                op.location.kind === 'new-paragraph' &&
+                [...table.path, row, column].every(
+                  (v, at) => op.location.kind === 'new-paragraph' && op.location.path[at] === v
+                )
+            )
+            .map((op) => ({
+              ...op,
+              location: {
+                kind: 'new-paragraph' as const,
+                path: (
+                  op.location as { kind: 'new-paragraph'; path: readonly number[] }
+                ).path.slice(table.path.length + 2),
+              },
+            })),
         }))
       )
     );
@@ -750,6 +805,24 @@ export function completeSiblingFragments(
     if (!stored.ok)
       refuseWrite(`New block payload storage refused: ${stored.reason}.`, 'apply-failed');
     pkg = stored.pkg;
+  }
+  for (const op of edit.atoms ?? []) {
+    if (op.kind !== 'inline-control')
+      refuseWrite('Image resources require an executor resolver.', 'unsupported-operation');
+    const stored = withPayloadRecord(pkg, op.payload, op.label);
+    if (!stored.ok)
+      refuseWrite(`Inline payload storage refused: ${stored.reason}.`, 'apply-failed');
+    pkg = stored.pkg;
+    const part = pkg.parts.get(partName)!;
+    const control = contentControlsIn(part.root).find(
+      ({ node }) => contentControlPropertiesOf(node).tag === blockTag(op.payload.id)
+    )?.node;
+    if (!control) refuseWrite('The inserted inline control was not allocated.', 'apply-failed');
+    pkg = applyOp(pkg, partName, {
+      op: 'setContentControlProperties',
+      controlId: control.id,
+      lock: 'sdtContentLocked',
+    });
   }
   return { pkg, paragraphs };
 }

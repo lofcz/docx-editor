@@ -4,6 +4,7 @@ import { resolveTableGeometry, geometrySplitCells } from '../diff/table-geometry
 import type { DocxEditorInstance } from '@docx-editor.dev/core/editor';
 import {
   applyTreeOp,
+  validateTreeOp,
   directParagraphProperties,
   ensureHyperlinkRelationship,
   findNode,
@@ -353,7 +354,16 @@ function lowerDirectPlan(pkg: OoxmlPackage, plan: CanonicalEditPlan): Lowering {
         for (const binding of lists)
           if (binding.path.length === 1 && !seeds.paragraphOf.has(binding.path[0]!))
             refuse('An inserted list binding names no new paragraph.', 'apply-failed');
-        for (const id of edit.removedIds) apply({ op: 'deleteBlock', blockId: id });
+        const lateRemoval: string[] = [];
+        for (const id of edit.removedIds) {
+          const op = { op: 'deleteBlock' as const, blockId: id };
+          if (
+            (seeds.paragraphs.length || seeds.placed.length) &&
+            validateTreeOp(preview, op) === 'block-required'
+          )
+            lateRemoval.push(id);
+          else apply(op);
+        }
         if (seeds.paragraphs.length)
           apply({
             op: 'insertParagraphs',
@@ -361,10 +371,27 @@ function lowerDirectPlan(pkg: OoxmlPackage, plan: CanonicalEditPlan): Lowering {
             beforeId: edit.afterId,
             paragraphs: seeds.paragraphs,
           });
-        if (seeds.links.length || seeds.styles.size || seeds.placed.length || lists.length)
+        if (
+          seeds.links.length ||
+          seeds.codes.length ||
+          seeds.styles.size ||
+          seeds.placed.length ||
+          lists.length ||
+          edit.atoms?.length ||
+          lateRemoval.length
+        )
           deferred.push((working, original, listContext) => {
             const fresh = freshInGap(working.parts.get(partName)!, edit, original);
             const completed = completeSiblingFragments(working, partName, edit, seeds, fresh);
+            for (const blockId of lateRemoval) {
+              const removed = applyTreeOp(completed.pkg.parts.get(partName)!, {
+                op: 'deleteBlock',
+                blockId,
+              });
+              if (!removed.ok)
+                refuse(`Delayed sibling removal refused: ${removed.reason}.`, 'apply-failed');
+              completed.pkg = withPart(completed.pkg, (removed as { part: OoxmlPart }).part);
+            }
             return applyDirectListAssignments(
               completed.pkg,
               partName,
@@ -814,6 +841,16 @@ export function applyDirectPlan(
   const session = surface.session,
     pkg = session.currentPackage(),
     original = nodeIds(session.part());
+  if (
+    editor.snapshot().collaborationStatus !== 'inactive' &&
+    plan.operations.some((edit) => edit.kind === 'siblings' && edit.atoms?.length) &&
+    readPayloadStore(pkg).status !== 'ready'
+  )
+    return {
+      success: false,
+      code: 'unsupported-operation',
+      error: 'Prepare native payload storage before sharing inline atom births.',
+    };
   let lowering: Lowering;
   try {
     lowering = lowerDirectPlan(pkg, plan);

@@ -5,7 +5,11 @@ import {
   type OoxmlParagraphNode,
 } from '@docx-editor.dev/core/store';
 import type { NativeEditFailure } from '../contracts/document';
-import { compileInlineTarget, type InlineTargetHyperlink } from '../diff/inline-target';
+import {
+  compileInlineTarget,
+  type InlineTargetHyperlink,
+  type InlineTargetToken,
+} from '../diff/inline-target';
 import type { TargetAstNode } from '../projection/parse-target';
 
 const fail = (error: string): NativeEditFailure => ({
@@ -50,6 +54,11 @@ export function newParagraphSeeds(
      * caller applies the application character style (N18) after allocation.
      */
     readonly code?: boolean;
+    /** Validated new controls only; no resource resolution occurs in this seed builder. */
+    readonly atom?: (
+      token: Extract<InlineTargetToken, { kind: 'atom' }>,
+      paragraphIndex: number
+    ) => { readonly xml: string; readonly length: number } | null;
   } = {}
 ):
   | {
@@ -75,31 +84,44 @@ export function newParagraphSeeds(
     const inline = compileInlineTarget(node);
     if (!inline.success) return inline;
     if (
-      inline.target.plainText === null ||
+      (inline.target.plainText === null && !options.atom) ||
       (!options.code && inline.target.tokens.some((token) => token.marks.includes('code')))
     )
       return fail('Inline atoms and code need their own native fragment representation.');
+    const rendered = new Map<
+      InlineTargetToken,
+      { readonly xml: string; readonly length: number }
+    >();
+    for (const token of inline.target.tokens)
+      if (token.kind === 'atom') {
+        const atom = options.atom?.(token, paragraphs.length);
+        if (!atom || !Number.isSafeInteger(atom.length) || atom.length < 1)
+          return fail(
+            'Inserted atoms need their supported native payload or resource representation.'
+          );
+        rendered.set(token, atom);
+      }
     let offset = 0;
     const spans = new Map<string, { start: number; end: number }>();
     for (const token of inline.target.tokens) {
-      if (token.kind !== 'text') return fail('Opaque inline atoms cannot become native text.');
+      const width = token.kind === 'text' ? token.value.length : rendered.get(token)!.length;
       if (token.hyperlink !== null) {
         const key = JSON.stringify(token.hyperlink),
           previous = spans.get(key);
-        spans.set(key, { start: previous?.start ?? offset, end: offset + token.value.length });
+        spans.set(key, { start: previous?.start ?? offset, end: offset + width });
       }
-      if (token.marks.includes('code') && token.value.length) {
+      if (token.marks.includes('code') && width) {
         const previous = codes.at(-1);
         if (previous?.paragraphIndex === paragraphs.length && previous.end === offset)
-          codes[codes.length - 1] = { ...previous, end: offset + token.value.length };
+          codes[codes.length - 1] = { ...previous, end: offset + width };
         else
           codes.push({
             paragraphIndex: paragraphs.length,
             start: offset,
-            end: offset + token.value.length,
+            end: offset + width,
           });
       }
-      offset += token.value.length;
+      offset += width;
     }
     for (const link of inline.target.hyperlinks) {
       const span = spans.get(JSON.stringify(link.path));
@@ -114,7 +136,10 @@ export function newParagraphSeeds(
     }
     const runs: string[] = [];
     for (const token of inline.target.tokens) {
-      if (token.kind !== 'text') return fail('Opaque inline atoms cannot become native text.');
+      if (token.kind === 'atom') {
+        runs.push(rendered.get(token)!.xml);
+        continue;
+      }
       const properties = token.marks
         .filter((mark) => mark !== 'code')
         .map((mark) => (mark === 'bold' ? '<w:b/>' : mark === 'italic' ? '<w:i/>' : '<w:strike/>'))

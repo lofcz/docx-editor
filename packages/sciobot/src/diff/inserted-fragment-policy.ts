@@ -35,8 +35,7 @@ export function documentQuoteStyle(pkg: OoxmlPackage): string | null {
 const inlineProblem = (ast: TargetAstNode): NativeEditFailure | null => {
   const inline = compileInlineTarget(ast);
   if (!inline.success) return inline;
-  if (inline.target.plainText === null)
-    return fail('Inserted inline atoms need native asset and payload reconciliation.');
+  // D30 validates each atom and binds payload/resource ownership after structural pairing.
   // Inline code is the application character style (N18); fragment seeds write it.
   return null;
 };

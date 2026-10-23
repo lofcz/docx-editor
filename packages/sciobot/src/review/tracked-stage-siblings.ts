@@ -103,6 +103,11 @@ export function stageTrackedSiblings(
         'unsupported-operation'
       );
   }
+  if (edit.atoms?.length)
+    refuseWrite(
+      'Tracked inline atom births require explicit review ownership.',
+      'unsupported-operation'
+    );
   const seeded = siblingFragmentSeeds(
     edit,
     !!edit.afterId && findNode(before, edit.afterId)?.kind === 'paragraph'

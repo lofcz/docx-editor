@@ -217,16 +217,16 @@ export function projectBlocks(
         const wholeParagraph =
           span.start === 0 && span.end === paragraphTextOf(part, anchor.paragraph.id)?.length;
         const paragraph = paragraphConstructs.get(anchor.paragraph.id);
-        const start = wholeParagraph
-          ? paragraph?.markdownStart
-          : sourceMarkdownOffset(
-              paragraphSources.get(anchor.paragraph.id) ?? [],
-              span.start,
-              'start'
-            );
-        const end = wholeParagraph
-          ? paragraph?.markdownEnd
-          : sourceMarkdownOffset(paragraphSources.get(anchor.paragraph.id) ?? [], span.end, 'end');
+        // Inline ownership covers its native text, not generated heading/list/mark syntax.
+        const start =
+          sourceMarkdownOffset(
+            paragraphSources.get(anchor.paragraph.id) ?? [],
+            span.start,
+            'start'
+          ) ?? (wholeParagraph ? paragraph?.markdownStart : undefined);
+        const end =
+          sourceMarkdownOffset(paragraphSources.get(anchor.paragraph.id) ?? [], span.end, 'end') ??
+          (wholeParagraph ? paragraph?.markdownEnd : undefined);
         if (start !== undefined && start !== null && end !== undefined && end !== null)
           constructs.push({ start, end });
       } else {

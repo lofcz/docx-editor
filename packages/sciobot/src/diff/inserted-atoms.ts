@@ -115,8 +115,8 @@ function mathFields(node: TargetAstNode): boolean {
  * coordinate contract. This does not diff existing atom ownership or publish native edits.
  * Resources remain references: planning never fetches, decodes, embeds, or mutates package parts.
  */
-export function planInsertedAtoms(
-  source: InsertedInlineAtomSource,
+export function compileInsertedAtoms(
+  source: Omit<InsertedInlineAtomSource, 'pkg'>,
   paragraph: TargetAstNode
 ): { readonly success: true; readonly plan: InsertedInlineAtomPlan } | NativeEditFailure {
   if (!Number.isSafeInteger(source.offset) || source.offset < 0)
@@ -289,10 +289,22 @@ export function planInsertedAtoms(
     );
     if (new Set(controls.map((control) => control.payload.id)).size !== controls.length)
       return fail('Inserted atom block IDs must be distinct.');
-    const problem = insertedPayloadProblem(source.pkg, controls);
-    if (problem) return problem;
     return { success: true, plan: freeze({ operations, modelLength: offset - source.offset }) };
   } catch (error) {
     return fail(error instanceof Error ? error.message : 'The inline atom plan was refused.');
   }
+}
+
+/** Validate compiled atom ownership against the immutable source package before planning writes. */
+export function planInsertedAtoms(
+  source: InsertedInlineAtomSource,
+  paragraph: TargetAstNode
+): { readonly success: true; readonly plan: InsertedInlineAtomPlan } | NativeEditFailure {
+  const compiled = compileInsertedAtoms(source, paragraph);
+  if (!compiled.success) return compiled;
+  const controls = compiled.plan.operations.flatMap((op) =>
+    op.kind === 'inline-control' ? [{ path: op.path, payload: op.payload, label: op.label }] : []
+  );
+  const problem = insertedPayloadProblem(source.pkg, controls);
+  return problem ?? compiled;
 }

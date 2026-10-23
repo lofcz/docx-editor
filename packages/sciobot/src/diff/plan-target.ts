@@ -1,3 +1,4 @@
+import { planInsertedAtomBindings } from './inserted-atom-bindings';
 import { atomicTargetsPairable, planTargetAtomic } from './target-atomic';
 import {
   logicalBlockAst as astOf,
@@ -331,8 +332,20 @@ export function planTargetDocument(
         options.newBlockPayload
       );
       if (!nestedBlocks.success) return nestedBlocks;
+      const blockBindings = nestedBlocks.plan.blocks.map((binding) => ({
+        ...binding,
+        path: fragments.path(binding.path),
+      }));
+      const atomBindings = planInsertedAtomBindings(
+        input.pkg,
+        inserted,
+        blockBindings,
+        options.allocateBlockId
+      );
+      if (!atomBindings.success) return atomBindings;
       structural.push({
         ...edit,
+        ...(atomBindings.atoms.length ? { atoms: atomBindings.atoms } : {}),
         inserted,
         lists: [
           ...edit.inserted.flatMap((ast, insertedIndex) =>
