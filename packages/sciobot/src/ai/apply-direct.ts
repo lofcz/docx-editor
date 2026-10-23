@@ -227,6 +227,11 @@ function lowerDirectPlan(
       refuse('Direct AI plans address the main document story only.', 'unsupported-operation');
     switch (edit.kind) {
       case 'text': {
+        if (
+          edit.insideHyperlink !== undefined &&
+          findNode(preview, edit.insideHyperlink)?.kind !== 'hyperlink'
+        )
+          refuse('The planned hyperlink owner no longer exists.', 'stale-revision');
         const text = paragraphTextOf(preview, edit.paragraphId);
         if (
           text === null ||

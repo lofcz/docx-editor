@@ -162,6 +162,7 @@ import {
 } from './tree-op-content-controls.ts';
 import {
   insertionDestination,
+  insertionLandingNodeId,
   fieldInsertionEndAt,
   paragraphOffsetIndex,
   runsUnder,
@@ -733,7 +734,11 @@ function applyInsertContent(
   inside?: string,
   bias: 'left' | 'right' = 'left'
 ): TreeOpResult {
-  const control = contentControlAtCaret(part, paragraph, offset, offset, bias);
+  const named = inside === undefined ? null : findNode(part, inside);
+  const control =
+    named?.kind === 'hyperlink'
+      ? innermostContentControlAround(part, insertionLandingNodeId(paragraph, offset, named, bias))
+      : contentControlAtCaret(part, paragraph, offset, offset, bias);
   if (control && isShowingPlaceholder(control)) {
     return applyPlaceholderReplace(part, control, builders, options);
   }

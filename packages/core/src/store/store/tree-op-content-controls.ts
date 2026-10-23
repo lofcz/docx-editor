@@ -707,6 +707,20 @@ export function resolveReach(part: OoxmlPart, reach: TreeOpReach): ResolvedReach
     return { touches, unprotected: [part.root.id] };
   }
   if (reach.kind === 'control') {
+    const named = findNode(part, reach.controlId);
+    if (named?.kind === 'hyperlink' && reach.intent === 'value' && reach.at) {
+      const line = landingControls(part, reach.at, named);
+      return {
+        touches: line.map((control, index) => ({
+          control,
+          locks: locksOf(line.slice(0, index + 1)),
+          removed: false,
+          discarded: false,
+        })),
+        // A hyperlink is not a form field. Only actual enclosing controls permit filling.
+        unprotected: line.length ? [] : [named.id],
+      };
+    }
     const chain = enclosingContentControls(part, reach.controlId);
     const own = chain[chain.length - 1];
     // A NAME THAT IS NOT A CONTROL BUYS NOTHING. Being addressed at a control is what forms

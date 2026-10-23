@@ -324,6 +324,11 @@ export function prepareTrackedInlinePlan(
   const paragraphIds = new Set<string>();
   let atoms = 0;
   for (const edit of plan.operations) {
+    if (edit.kind === 'text' && edit.insideHyperlink !== undefined)
+      return fail(
+        'Tracked hyperlink-owned insertion needs native revision ownership.',
+        'unsupported-operation'
+      );
     if (
       edit.partName !== part.name ||
       (edit.kind !== 'text' &&

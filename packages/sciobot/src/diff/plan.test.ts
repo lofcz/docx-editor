@@ -298,6 +298,10 @@ test('invalid addresses and structural anchors fail without partial plans', () =
     { ...text, start: -1 },
     { ...text, end: 5 },
     { ...text, bias: 'unknown' },
+    { ...text, insideHyperlink: '' },
+    { ...text, insideHyperlink: 'link', after: 'line\nbreak' },
+    { ...text, insideHyperlink: 'link', after: '' },
+    { ...text, insideHyperlink: 'link', before: 'x', start: 0, end: 1 },
     { ...text, partName: '/word/../document.xml' },
     { ...payload, path: [-1] },
     {

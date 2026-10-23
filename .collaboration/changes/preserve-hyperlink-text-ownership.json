@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Native named text insertion accepted content-control owners only. Ambiguous repeated-space target diffs could insert outside an imported link, rebuild its envelope and lose metadata or inherited formatting.",
+  "after": "Untracked native insertion can explicitly name an enclosing hyperlink. Actual landing controls enforce locks, bindings, temporary transitions and forms protection. Ordinary unnamed typing retains its existing behavior. Private target plans preserve exact native link boundaries by selecting equivalent source-coordinate insertions and naming their link owner. Tracked hyperlink-owned insertions refuse explicitly.",
+  "reason": "The existing native inside field accepts an additional typed owner; no operation kind or serialized room field changes. Existing canonical splice primitives preserve the authored text leaf and UTF-16 offset. Released readers already interpret these primitives and native hyperlink envelopes. The optional private plan field is not stored in shared rooms. The EigenPal Pro License transport remains confined to evaluation fixtures.",
+  "tests": [
+    "packages/core/src/store/__tests__/hyperlink-text-owner.test.ts",
+    "packages/sciobot/src/diff/inline-images-materialization.test.ts",
+    "packages/sciobot/src/diff/imported-image-boundary-collaboration.test.ts"
+  ],
+  "changeset": "preserve-hyperlink-text-ownership",
+  "migration": null
+}

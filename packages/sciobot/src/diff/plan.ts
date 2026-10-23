@@ -95,6 +95,8 @@ export type CanonicalEdit = LocatedEdit &
         readonly after: string;
         /** Formatting ownership when inserted text falls exactly on a run boundary. */
         readonly bias?: 'left' | 'right';
+        /** Exact native hyperlink ownership for a pure text insertion. */
+        readonly insideHyperlink?: string;
       }
     | {
         readonly kind: 'inline-atoms';
@@ -303,7 +305,22 @@ function editProblem(edit: unknown): string | null {
         typeof edit.after === 'string' &&
         edit.before.length === edit.end - edit.start &&
         (!Object.hasOwn(edit, 'bias') || edit.bias === 'left' || edit.bias === 'right') &&
-        keysOnly(edit, [...base, 'paragraphId', 'start', 'end', 'before', 'after', 'bias'])
+        (!Object.hasOwn(edit, 'insideHyperlink') ||
+          (id(edit.insideHyperlink) &&
+            edit.start === edit.end &&
+            edit.before === '' &&
+            edit.after.length > 0 &&
+            !/[\n\t\u001e\u001f]/.test(edit.after))) &&
+        keysOnly(edit, [
+          ...base,
+          'paragraphId',
+          'start',
+          'end',
+          'before',
+          'after',
+          'bias',
+          'insideHyperlink',
+        ])
         ? null
         : 'invalid-text-edit';
     case 'inline-atoms':

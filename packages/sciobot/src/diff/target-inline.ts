@@ -1,13 +1,13 @@
+import { linkAwareBias } from './link-aware-text';
 import { planRetainedAtomMarks } from './retained-atom-marks';
 import { retainedAtomGaps } from './retained-atom-gaps';
 import { withoutInlineAtoms } from './retained-atoms';
 import { planInsertedAtoms } from './inserted-atoms';
 import {
   findNode,
-  type OoxmlPart,
+  type OoxmlNode,
   paragraphOffsetIndex,
   paragraphTextOf,
-  type OoxmlNode,
 } from '@docx-editor.dev/core/store';
 import { buildBlockIndex } from '../blocks/block-index';
 import { targetSourceRangeAt, type TargetAstNode } from '../projection/parse-target';
@@ -88,51 +88,6 @@ export function targetParagraphHtmlKey(paragraph: LogicalParagraph): string {
         !(key === 'attributes' && Array.isArray(html.attributes) && !html.attributes.length)
     );
   return meaningful ? targetAstKey({ ...html, type: 'mdxJsxFlowElement' }) : 'null';
-}
-
-/**
- * Pure insertions at a native link boundary join the run on the bias side. Point the bias into the
- * link exactly when the target places the inserted characters inside a link, so wrappers survive.
- */
-function linkAwareBias(
-  part: OoxmlPart,
-  paragraphId: string,
-  base: number,
-  edits: readonly CanonicalEdit[],
-  target: CompiledInlineTarget
-): CanonicalEdit[] {
-  const paragraph = findNode(part, paragraphId);
-  if (paragraph?.kind !== 'paragraph' || !target.tokens.length) return [...edits];
-  const offsets = paragraphOffsetIndex(paragraph),
-    spans: { start: number; end: number }[] = [],
-    stack: OoxmlNode[] = [paragraph];
-  while (stack.length) {
-    const node = stack.pop()!;
-    if (node.kind === 'hyperlink') {
-      const span = offsets.spanOf(node);
-      if (span) spans.push(span);
-    } else if (node.kind !== 'textValue') stack.push(...node.children);
-  }
-  if (!spans.length) return [...edits];
-  const linked: boolean[] = [];
-  for (const token of target.tokens)
-    if (token.kind === 'text') for (const _ of token.value) linked.push(token.hyperlink !== null);
-  return edits.map((edit) => {
-    if (edit.kind !== 'text' || edit.before || !edit.after) return edit;
-    const atStart = spans.some((span) => span.start === edit.start),
-      atEnd = spans.some((span) => span.end === edit.start);
-    if (atStart === atEnd) return edit;
-    // Edits run right to left in original coordinates; earlier edits shift this one.
-    const shift = edits.reduce(
-      (total, other) =>
-        other.kind === 'text' && other.start < edit.start
-          ? total + other.after.length - (other.end - other.start)
-          : total,
-      0
-    );
-    const inside = linked[edit.start + shift - base] ?? false;
-    return { ...edit, bias: atStart === inside ? 'right' : 'left' };
-  });
 }
 
 /** Compose existing paragraph planners. Refuse unresolved inline intentions instead of dropping them. */

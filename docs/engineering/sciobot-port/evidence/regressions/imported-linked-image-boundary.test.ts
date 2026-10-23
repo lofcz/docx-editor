@@ -1,4 +1,4 @@
-// Open D30 regression: repeated-space insertion discards an imported native hyperlink.
+// Resolved D30 regression: repeated-space insertion discards an imported native hyperlink.
 import { expect, test } from 'bun:test';
 import { createDocxEditor, type DocxEditorInstance } from '@docx-editor.dev/core/editor';
 import {
@@ -72,7 +72,18 @@ test('a linked image birth preserves imported link metadata, inherited native pr
     const metadata = nodes(link).find(
       (node) => node.kind !== 'textValue' && node.namespaceUri === 'urn:sciobot:proof'
     )!;
+    const outside = nodes(before.root).find(
+      (node) => node.kind === 'textValue' && node.value === ' End.'
+    )!;
     const planned = await plan(editor, target);
+    expect(planned.operations.find((edit) => edit.kind === 'text')).toMatchObject({
+      kind: 'text',
+      start: 11,
+      end: 11,
+      before: '',
+      after: ' ',
+      insideHyperlink: link.id,
+    });
     const prepared = await prepareInlineImageResources(
       planned,
       async () => ({ bytes: png, mime: 'image/png', widthPoints: 12, heightPoints: 8 }),
@@ -86,26 +97,24 @@ test('a linked image birth preserves imported link metadata, inherited native pr
     expect(currentLink?.kind).toBe('hyperlink');
     if (currentLink?.kind !== 'hyperlink') throw Error('The imported link disappeared');
     expect(currentLink.attributes).toEqual(link.attributes);
+    expect(canonicalOoxmlFingerprint(findNode(part, outside.id)!)).toBe(
+      canonicalOoxmlFingerprint(outside)
+    );
     const image = [...buildBlockIndex(editor.surface!.session.currentPackage()).byId.values()].find(
       (block) => block.payload.type === 'inline_image'
     )!;
     const control = findNode(part, image.controlId)!;
     const elements = nodes(control).filter((node) => node.kind !== 'textValue');
-    const property = (name: string) =>
-      elements.find((node) => node.kind !== 'textValue' && node.localName === name);
+    const property = (name: string) => elements.find((node) => node.localName === name);
     const style = property('rStyle'),
       color = property('color');
-    expect(
-      style?.kind !== 'textValue' &&
-        style?.attributes.find((attribute) => attribute.localName === 'val')?.value
-    ).toBe('SciobotCode__ImportedBase');
-    expect(
-      color?.kind !== 'textValue' &&
-        color?.attributes.find((attribute) => attribute.localName === 'val')?.value
-    ).toBe('112233');
-    const copied = elements.find(
-      (node) => node.kind !== 'textValue' && node.namespaceUri === 'urn:sciobot:proof'
-    )!;
+    expect(style?.attributes.find((attribute) => attribute.localName === 'val')?.value).toBe(
+      'SciobotCode__ImportedBase'
+    );
+    expect(color?.attributes.find((attribute) => attribute.localName === 'val')?.value).toBe(
+      '112233'
+    );
+    const copied = elements.find((node) => node.namespaceUri === 'urn:sciobot:proof')!;
     expect(canonicalOoxmlFingerprint(copied)).toBe(canonicalOoxmlFingerprint(metadata));
     expect(nodes(currentLink).some((node) => node.id === image.controlId)).toBe(true);
     expect((await plan(editor, target)).operations).toEqual([]);

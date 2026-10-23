@@ -165,6 +165,7 @@ export function directParagraphTextOps(edit: PlannedTextEdit): readonly TreeDocO
         offset,
         text,
         bias: edit.bias ?? (edit.before ? 'right' : 'left'),
+        ...(edit.insideHyperlink ? { inside: edit.insideHyperlink } : {}),
       });
     offset += text.length;
   }

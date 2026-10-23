@@ -1,3 +1,5 @@
+import { namedOwnerRefusal } from './named-text-owner.ts';
+export { namedOwnerRefusal } from './named-text-owner.ts';
 import { hyperlinkContentRefusal } from './hyperlink-content-refusal.ts';
 import { validateTrackedHyperlinkStructure } from './tree-op-tracked-link-structure.ts';
 import { isInsertableText } from './tree-op-inline-elements.ts';
@@ -46,7 +48,6 @@ import {
   CONTENT_CONTROL_LOCKS,
   validateInsertContentControl,
   deleteBlockTouchesContentRestriction,
-  holds,
   rejectContentEdit,
   nodeTouchesContentRestriction,
   validateRemoveContentControl,
@@ -106,13 +107,7 @@ import { rangePartiallyOverlapsDrawingAtom } from '../package/drawing-projection
 import { isDrawingTreeDocOp, validateDrawingOp } from './tree-op-drawings.ts';
 import { validateInsertFragment } from './tree-op-fragment.ts';
 import { validateInsertParagraphs } from './tree-op-insert-paragraphs.ts';
-import {
-  isParagraph,
-  paragraphLength,
-  paragraphOffsetIndex,
-  segmentsOf,
-  splitsSurrogate,
-} from './tree-op-segments.ts';
+import { isParagraph, paragraphLength, segmentsOf, splitsSurrogate } from './tree-op-segments.ts';
 import {
   validateInsertToc,
   validateReplaceTocResult,
@@ -202,45 +197,6 @@ function rangeTouchesHyperlink(paragraph: OoxmlParagraphNode, start: number, end
   );
 }
 
-/**
- * Whether the control an insertion names is one it could actually be writing into.
- *
- * Three things have to hold, and each of them is a way in if it does not. The name must resolve
- * to a TYPED content control — a paragraph, a run, or a `w:sdt` the read demoted is not something
- * this engine can address as a field. The control and the addressed paragraph must be on one
- * ancestor line: a block control holds the paragraph, an inline control sits in it, and a control
- * somewhere else in the document is not the owner of this write however sincerely it is named.
- * And the offset must fall in the span the control covers IN THAT PARAGRAPH, so the write lands
- * where the name claims.
- *
- * The two kinds of control are constrained by the same rule rather than by two: a block control
- * covers the whole of a paragraph it holds, an inline one covers its own offsets, and "any offset
- * in an enclosed paragraph is fine" was a rule only one of them was ever checked against.
- */
-export function namedOwnerRefusal(
-  part: OoxmlPart,
-  paragraphId: string,
-  offset: number,
-  inside: string
-): TreeOpRejection | null {
-  if (typeof inside !== 'string' || inside.length === 0) return 'invalidArgs';
-  const owner = findNode(part, inside);
-  if (!owner) return 'unknown-content-control';
-  if (owner.kind !== 'contentControl') return 'not-a-content-control';
-  const paragraph = findNode(part, paragraphId);
-  if (!paragraph || !isParagraph(paragraph)) return null;
-  const span = holds(owner, paragraphId)
-    ? { start: 0, end: paragraphLength(paragraph) }
-    : holds(paragraph, inside)
-      ? paragraphOffsetIndex(paragraph).spanOf(owner)
-      : null;
-  if (!span) return 'unknown-content-control';
-  if (!Number.isInteger(offset) || offset < span.start || offset > span.end) {
-    return 'offset-out-of-range';
-  }
-  return null;
-}
-
 /** Structural validation, run before any tree work so a rejection changes nothing. */
 export function validateTreeOp(
   part: OoxmlPart,
@@ -268,8 +224,10 @@ export function validateTreeOp(
   // that is not a control the write lands in would classify the op as filling in a field, which
   // is the one thing forms protection lets through.
   if (op.op === 'insertText' && op.inside !== undefined) {
-    const owner = namedOwnerRefusal(part, op.paragraphId, op.offset, op.inside);
+    const owner = namedOwnerRefusal(part, op.paragraphId, op.offset, op.inside, true);
     if (owner) return owner;
+    if (op.revision !== undefined && findNode(part, op.inside)?.kind === 'hyperlink')
+      return 'unsupported';
   }
 
   // OPT-IN: restyling does not rewrite what a control SAYS, so a host that protects the words and
@@ -969,8 +927,8 @@ export {
 export {
   inlineControlEndingAt,
   inlineControlStartingAt,
-  isParagraph,
   paragraphOffsetIndex,
+  isParagraph,
   runsUnder,
   segmentsOf,
   type InlineControlSpan,
