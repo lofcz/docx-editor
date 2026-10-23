@@ -182,3 +182,35 @@ test('invalid, stale, reused and suggesting insertions refuse before package wri
     editor.destroy();
   }
 });
+
+for (const side of ['before', 'after'] as const)
+  test(`native typing immediately ${side} a mention preserves atomic metadata and independent history`, () => {
+    const editor = createDocxEditor({
+      container: document.createElement('div'),
+      document: docxFixture('<w:p><w:r><w:t>Before After</w:t></w:r></w:p>'),
+    });
+    try {
+      const surface = editor.surface!,
+        paragraphId = surface.session.paragraphIds()[0]!;
+      const payload = createMentionPayload('boundary', 'user', 'Ada');
+      expect(insertMention(editor, { payload, paragraphId, offset: 7 }).success).toBe(true);
+      const beforeTyping = canonicalOoxmlFingerprint(surface.session.part());
+      const offset = side === 'before' ? 7 : 7 + mentionWordFallback(payload).text.length;
+      surface.setSelection({ anchor: { paragraphId, offset }, head: { paragraphId, offset } });
+      surface.insertPlainText(' typed ');
+      surface.flushPendingInput();
+      expect(paragraphTextOf(surface.session.part(), paragraphId)).toBe(
+        side === 'before' ? 'Before  typed AdaAfter' : 'Before Ada typed After'
+      );
+      expect(
+        buildBlockIndex(surface.session.currentPackage()).byId.get(payload.id)?.payload
+      ).toEqual(payload);
+      expect(editor.exec({ type: 'undo' }).ok).toBe(true);
+      expect(canonicalOoxmlFingerprint(surface.session.part())).toBe(beforeTyping);
+      expect(
+        buildBlockIndex(surface.session.currentPackage()).byId.get(payload.id)?.payload
+      ).toEqual(payload);
+    } finally {
+      editor.destroy();
+    }
+  });
