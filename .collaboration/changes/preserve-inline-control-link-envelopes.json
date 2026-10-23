@@ -1,9 +1,9 @@
 {
   "impact": "compatible",
   "fields": [],
-  "before": "Direct native link insertion treated unchanged enclosed controls as edited content. Link removal also treated those controls as restructured content. Derived drawing records omitted their hyperlink envelopes.",
+  "before": "Direct native link insertion treated unchanged enclosed controls as edited content. Link removal also treated those controls as restructured content. Derived drawing records omitted their hyperlink envelopes. Ordinary typing journals could shift insertion boundaries across equal spaces, so concurrent wrapper edits could adopt peer text into another atom.",
   "after": "Direct unstyled link envelopes preserve wholly covered controls. Partial, styled, tracked, and ancestor-protected edits retain existing restrictions. Native wrapper removal preserves descendant controls. Derived drawing formatting carries the existing resolved hyperlink record. The private planner resolves retained atoms to native widths before planning mark and link structure changes. Exact native splice positions also preserve authored insertion boundaries across equal characters; shared paragraph writes retain those character origins.",
-  "reason": "Stored OOXML, shared messages, and operation shapes do not change. Earlier readers already support hyperlinks containing controls and ordinary native wrapper updates. The new optional link field exists only in derived layout records. Literal linked-mention syntax is private projection data parsed into the existing mention AST; it is not persisted to a room or document.",
+  "reason": "Stored OOXML, shared messages, and operation shapes do not change. Earlier readers already support hyperlinks containing controls and ordinary native wrapper updates. The new optional link field exists only in derived layout records. Literal linked-mention syntax is private projection data parsed into the existing mention AST; it is not persisted to a room or document. Native text splices retain their existing kind and fields. Corrected writers keep the authored offsets; earlier writers retain their prior lexical-diff behavior.",
   "tests": [
     "packages/core/src/store/__tests__/hyperlink-control-envelope.test.ts",
     "packages/core/src/store/__tests__/content-control-lock.test.ts",

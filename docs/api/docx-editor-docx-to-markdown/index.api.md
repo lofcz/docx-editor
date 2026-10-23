@@ -393,6 +393,7 @@ export type ImageWrapTarget = 'inline' | 'square' | 'squareLeft' | 'squareRight'
 
 // @public
 export interface InlineDrawingFormatting {
+    readonly link?: SpanLinkRecord;
     // (undocumented)
     readonly props: readonly OoxmlProperty[];
     // (undocumented)
@@ -1053,6 +1054,17 @@ export interface SourceCrop {
     readonly right: number;
     // (undocumented)
     readonly top: number;
+}
+
+// @public
+export interface SpanLinkRecord {
+    readonly anchor?: string;
+    readonly href: string | null;
+    // (undocumented)
+    readonly id: string;
+    // (undocumented)
+    readonly kind: 'external' | 'internal' | 'unresolved';
+    readonly tooltip?: string;
 }
 
 // @public

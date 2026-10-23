@@ -1581,6 +1581,7 @@ export function initializeHarfBuzz(): Promise<void>;
 
 // @public
 export interface InlineDrawingFormatting {
+    readonly link?: SpanLinkRecord;
     // (undocumented)
     readonly props: readonly OoxmlProperty[];
     // (undocumented)
