@@ -6,7 +6,8 @@
   "reason": "Private staging uses existing native numbering, paragraph insertions, revision wrappers, and public canonical primitives. Shared fields, provider code, and public package source remain unchanged.",
   "tests": [
     "packages/sciobot/src/review/recompose-inserted-lists.test.ts",
-    "packages/sciobot/src/review/recompose-inserted-lists-collaboration.test.ts"
+    "packages/sciobot/src/review/recompose-inserted-lists-collaboration.test.ts",
+    "packages/sciobot/src/review/recompose-born-peer.test.ts"
   ],
   "changeset": null,
   "migration": null
