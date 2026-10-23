@@ -259,7 +259,7 @@ for (const [field, value, code] of [
     );
     if (descriptor?.kind !== 'putNode' || descriptor.descriptor.kind !== 'textValue')
       throw Error('Missing native provenance');
-    Reflect.set(descriptor.descriptor.sourceText!, field, value);
+    Reflect.set(descriptor.descriptor.sourceText![0]!, field, value);
     const replica = await seedReplica(baseline);
     opened.push({ destroy: () => destroyReplica(replica) });
     const before = Y.encodeStateAsUpdate(replica.doc);

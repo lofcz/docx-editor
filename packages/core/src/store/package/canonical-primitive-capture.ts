@@ -172,39 +172,95 @@ function record(effect: CanonicalPrimitiveEffect): void {
   frame.effects.push(effect);
 }
 
+type TextLeaf = { readonly id: string; readonly value: string };
+type TextPieces = NonNullable<CanonicalTextNodeDescriptor['sourceText']>;
+
+/** Mark authored characters before unpublished text can join an observed source. */
+export function recordNativeFreshText(target: TextLeaf): void {
+  if (isCanonicalPrimitiveCaptureActive())
+    topFrame()?.textSlices?.set(target, [{ utf16Length: target.value.length }]);
+}
+
+function sourcePieces(source: TextLeaf, start: number, length: number): TextPieces {
+  const frame = topFrame()!;
+  const existing = frame.textSlices?.get(source);
+  if (!existing)
+    return [
+      {
+        logicalId: source.id,
+        utf16Start: start,
+        utf16Length: length,
+        beforeEffect: frame.effects!.length,
+      },
+    ];
+  const pieces: TextPieces[number][] = [];
+  let offset = 0;
+  for (const piece of existing) {
+    const from = Math.max(start, offset);
+    const to = Math.min(start + length, offset + piece.utf16Length);
+    if (to > from)
+      pieces.push(
+        'logicalId' in piece
+          ? { ...piece, utf16Start: piece.utf16Start + from - offset, utf16Length: to - from }
+          : { utf16Length: to - from }
+      );
+    offset += piece.utf16Length;
+  }
+  return pieces;
+}
+
+function rememberPieces(target: TextLeaf, pieces: TextPieces): void {
+  const normalized: TextPieces[number][] = [];
+  for (const piece of pieces) {
+    const previous = normalized.at(-1);
+    if (previous && !('logicalId' in previous) && !('logicalId' in piece)) {
+      normalized[normalized.length - 1] = { utf16Length: previous.utf16Length + piece.utf16Length };
+    } else if (
+      previous &&
+      'logicalId' in previous &&
+      'logicalId' in piece &&
+      previous.logicalId === piece.logicalId &&
+      previous.beforeEffect === piece.beforeEffect &&
+      previous.utf16Start + previous.utf16Length === piece.utf16Start
+    ) {
+      normalized[normalized.length - 1] = {
+        ...previous,
+        utf16Length: previous.utf16Length + piece.utf16Length,
+      };
+    } else normalized.push(piece);
+  }
+  topFrame()?.textSlices?.set(target, normalized);
+}
+
 /** Record exact native slicing only in the observed transaction that creates the leaf. */
-export function recordNativeTextSlice(
-  source: { readonly id: string; readonly value: string },
-  target: { readonly id: string; readonly value: string },
-  start: number
-): void {
-  const frame = topFrame();
-  if (
-    !frame?.observed ||
-    frame.suppressDepth ||
-    !frame.effects ||
-    !frame.textSlices ||
-    source.id === target.id ||
-    target.value.length === 0
-  )
-    return;
+export function recordNativeTextSlice(source: TextLeaf, target: TextLeaf, start: number): void {
+  if (!isCanonicalPrimitiveCaptureActive()) return;
   if (
     !Number.isSafeInteger(start) ||
     start < 0 ||
     source.value.slice(start, start + target.value.length) !== target.value
   )
     throw new Error('Native text slice does not match its source.');
-  frame.textSlices.set(target, {
-    logicalId: source.id,
-    utf16Start: start,
-    utf16Length: target.value.length,
-    beforeEffect: frame.effects.length,
-  });
+  rememberPieces(target, sourcePieces(source, start, target.value.length));
+}
+
+/** Coalescing keeps every original character and every newly authored character distinct. */
+export function recordNativeTextMerge(left: TextLeaf, right: TextLeaf, target: TextLeaf): void {
+  if (!isCanonicalPrimitiveCaptureActive()) return;
+  if (target.value !== left.value + right.value)
+    throw new Error('Native text merge does not match its sources.');
+  rememberPieces(target, [
+    ...sourcePieces(left, 0, left.value.length),
+    ...sourcePieces(right, 0, right.value.length),
+  ]);
 }
 
 /** A preview or a different transaction cannot lend provenance to this journal. */
 export function nativeTextSliceOf(node: object): CanonicalTextNodeDescriptor['sourceText'] {
-  return isCanonicalPrimitiveCaptureActive() ? topFrame()?.textSlices?.get(node) : undefined;
+  const pieces = isCanonicalPrimitiveCaptureActive()
+    ? topFrame()?.textSlices?.get(node)
+    : undefined;
+  return pieces?.some((piece) => 'logicalId' in piece) ? pieces : undefined;
 }
 
 export function recordPutNode(descriptor: CanonicalNodeDescriptor): void {

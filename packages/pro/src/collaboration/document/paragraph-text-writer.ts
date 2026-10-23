@@ -327,7 +327,9 @@ function referencedIds(effect: SharedEffect): LogicalId[] {
       return [
         effect.descriptor.logicalId,
         ...(effect.descriptor.kind === 'textValue' && effect.descriptor.sourceText
-          ? [effect.descriptor.sourceText.logicalId as LogicalId]
+          ? effect.descriptor.sourceText.flatMap((piece) =>
+              'logicalId' in piece ? [piece.logicalId as LogicalId] : []
+            )
           : []),
       ];
     case 'spliceText':

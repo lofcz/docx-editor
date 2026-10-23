@@ -1,9 +1,11 @@
+import { recordNativeFreshText } from '../package/canonical-primitive-capture.ts';
 import { copy, insertedRunProperties } from './tracked-run-inheritance.ts';
 import { inheritOriginPayload, inheritOriginRun } from './run-origin-payload.ts';
 export { copy, insertedRunProperties } from './tracked-run-inheritance.ts';
 import {
   inlineRunSlice,
   inlineTextSlice,
+  inlineTextMerged,
   sameInlineTextMetadata,
 } from './tree-op-inline-slices.ts';
 // Typing AS A TRACKED CHANGE — what suggesting mode writes — and the node builders, wrapper
@@ -79,13 +81,9 @@ export { build, revisionAttributes } from './tree-op-tracked-builders.ts';
 /** A `w:t`, or the `w:delText` the same characters become once struck. */
 export function textNode(mint: () => string, value: string, deleted: boolean): OoxmlNode {
   const valueId = mint();
-  return build(
-    mint(),
-    deleted ? 'deletedText' : 'text',
-    deleted ? 'delText' : 't',
-    [],
-    [{ id: valueId, kind: 'textValue', value } as OoxmlNode]
-  );
+  const leaf = { id: valueId, kind: 'textValue' as const, value };
+  recordNativeFreshText(leaf);
+  return build(mint(), deleted ? 'deletedText' : 'text', deleted ? 'delText' : 't', [], [leaf]);
 }
 
 /** A `w:r` over its children — the ONE spelling of the run shape this module writes. */
@@ -836,8 +834,8 @@ export function splitRun(
       const value = childrenOf(child).find((grand) => grand.kind === 'textValue');
       const raw = value && value.kind === 'textValue' ? value.value : '';
       const at = local - seen;
-      head.push(inlineTextSlice(mint, raw.slice(0, at), child));
-      tail.push(inlineTextSlice(mint, raw.slice(at), child));
+      head.push(inlineTextSlice(mint, raw.slice(0, at), child, 0));
+      tail.push(inlineTextSlice(mint, raw.slice(at), child, at));
     } else tail.push(child);
     seen += length;
   }
@@ -897,12 +895,7 @@ function coalesced(mint: () => string, nodes: readonly OoxmlNode[]): OoxmlNode[]
       out.push(node);
       continue;
     }
-    const left = childrenOf(previous).find((child) => child.kind === 'textValue');
-    const right = childrenOf(node).find((child) => child.kind === 'textValue');
-    const value =
-      (left && left.kind === 'textValue' ? left.value : '') +
-      (right && right.kind === 'textValue' ? right.value : '');
-    out[out.length - 1] = inlineTextSlice(mint, value, previous);
+    out[out.length - 1] = inlineTextMerged(mint, previous, node);
   }
   return out;
 }

@@ -167,3 +167,42 @@ describe('document session setIdentity', () => {
     expect(alice.room.session.identity.name).toBe('Renamed');
   });
 });
+
+test('source windows resolve local identities from earlier journals before their target is minted', async () => {
+  const { LogicalIdentityMap } = await import('../document-identity.ts');
+  const known = new Set<string>();
+  const identities = new LogicalIdentityMap(
+    (id) => known.has(id),
+    '0123456789abcdef0123456789abcdef'
+  );
+  const first = identities.translate({
+    effects: [{ kind: 'putNode', descriptor: { logicalId: 'local-source', kind: 'textValue' } }],
+  });
+  const initial = first.effects[0];
+  if (initial?.kind !== 'putNode') throw Error('Missing source');
+  const sourceId = initial.descriptor.logicalId;
+  known.add(sourceId);
+  const next = identities.translate({
+    effects: [
+      {
+        kind: 'putNode',
+        descriptor: {
+          logicalId: 'local-target',
+          kind: 'textValue',
+          sourceText: [
+            { logicalId: 'local-source', utf16Start: 2, utf16Length: 3, beforeEffect: 0 },
+            { utf16Length: 4 },
+          ],
+        },
+      },
+    ],
+  });
+  const target = next.effects[0];
+  if (target?.kind !== 'putNode' || target.descriptor.kind !== 'textValue')
+    throw Error('Missing target');
+  expect(target.descriptor.logicalId).not.toBe(sourceId);
+  expect(target.descriptor.sourceText).toEqual([
+    { logicalId: sourceId, utf16Start: 2, utf16Length: 3, beforeEffect: 0 },
+    { utf16Length: 4 },
+  ]);
+});

@@ -89,9 +89,7 @@ export class LogicalIdentityMap {
     switch (effect.kind) {
       case 'putNode': {
         const descriptor = this.translateDescriptor(effect.descriptor);
-        return descriptor.logicalId === effect.descriptor.logicalId
-          ? effect
-          : { ...effect, descriptor };
+        return descriptor === effect.descriptor ? effect : { ...effect, descriptor };
       }
       case 'spliceText':
       case 'setAttribute':
@@ -125,10 +123,21 @@ export class LogicalIdentityMap {
   }
 
   private translateDescriptor(descriptor: CanonicalNodeDescriptor): CanonicalNodeDescriptor {
+    // Resolve source addresses before minting the target: a slice names the pre-edit leaf.
+    const sourceText =
+      descriptor.kind === 'textValue'
+        ? descriptor.sourceText?.map((piece) => {
+            if (!('logicalId' in piece)) return piece;
+            const logicalId = this.resolve(piece.logicalId);
+            return logicalId === piece.logicalId ? piece : { ...piece, logicalId };
+          })
+        : undefined;
     const resolved = this.resolve(descriptor.logicalId);
-    // An in-place rename, not a second node. Minting here would leave the original element
-    // untouched in every replica and add an orphan beside it.
-    if (this.knows(resolved)) return { ...descriptor, logicalId: resolved };
-    return { ...descriptor, logicalId: this.mint(descriptor.logicalId) };
+    const logicalId = this.knows(resolved) ? resolved : this.mint(descriptor.logicalId);
+    const sourcesChanged =
+      descriptor.kind === 'textValue' &&
+      sourceText?.some((piece, index) => piece !== descriptor.sourceText?.[index]);
+    if (logicalId === descriptor.logicalId && !sourcesChanged) return descriptor;
+    return { ...descriptor, logicalId, ...(sourceText ? { sourceText } : {}) };
   }
 }

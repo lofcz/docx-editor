@@ -859,14 +859,16 @@ test('native text slices carry frozen source windows through structured journal 
       : []
   );
   expect(slices).toHaveLength(1);
-  expect(slices[0]!.sourceText).toEqual({
-    logicalId: original.id,
-    utf16Start: 0,
-    utf16Length: 4,
-    beforeEffect: 1,
-  });
+  expect(slices[0]!.sourceText).toEqual([
+    {
+      logicalId: original.id,
+      utf16Start: 0,
+      utf16Length: 4,
+      beforeEffect: 1,
+    },
+  ]);
   expect(Object.isFrozen(slices[0]!.sourceText)).toBe(true);
-  expect(Reflect.set(slices[0]!.sourceText!, 'utf16Start', 99)).toBe(false);
+  expect(Reflect.set(slices[0]!.sourceText![0]!, 'utf16Start', 99)).toBe(false);
   expect(structuredClone(journals[0])).toEqual(journals[0]);
 });
 

@@ -12,7 +12,13 @@ import type {
 import { rejectDangerousKey } from './limits.ts';
 
 export type TextSource = string | null;
-type Slice = NonNullable<CanonicalTextNodeDescriptor['sourceText']>;
+type Piece = NonNullable<CanonicalTextNodeDescriptor['sourceText']>[number];
+type Slice = Extract<Piece, { logicalId: string }>;
+interface Copy {
+  length: number;
+  value: string | null;
+  sources: TextSource[];
+}
 interface TextValue {
   readonly value: string | null;
 }
@@ -20,8 +26,9 @@ export class TextSources {
   readonly enabled: boolean;
   private readonly values = new Map<string, TextSource[]>();
   private readonly objects = new WeakMap<object, readonly TextSource[]>();
-  private readonly events = new Map<number, { id: string; slice: Slice }[]>();
-  private readonly copies = new Map<string, { value: string; sources: TextSource[] }>();
+  private readonly events = new Map<number, { id: string; slice: Slice; slot: number }[]>();
+  private readonly targets = new Set<string>();
+  private readonly copies = new Map<string, Copy[]>();
   private invalid = false;
   readonly unproven = new Set<string>();
   private readonly initial = new Set<string>();
@@ -45,30 +52,45 @@ export class TextSources {
         effect.descriptor.sourceText === undefined
       )
         return;
-      const slice = effect.descriptor.sourceText;
-      if (!slice || typeof slice !== 'object' || Array.isArray(slice)) {
+      const pieces = effect.descriptor.sourceText;
+      const id = effect.descriptor.logicalId;
+      if (!Array.isArray(pieces) || pieces.length === 0 || rejectDangerousKey(id)) {
         this.invalid = true;
         return;
       }
-      if (
-        !Number.isSafeInteger(slice.beforeEffect) ||
-        slice.beforeEffect < 0 ||
-        slice.beforeEffect > index ||
-        !Number.isSafeInteger(slice.utf16Start) ||
-        slice.utf16Start < 0 ||
-        !Number.isSafeInteger(slice.utf16Length) ||
-        slice.utf16Length < 0 ||
-        typeof slice.logicalId !== 'string' ||
-        !slice.logicalId ||
-        rejectDangerousKey(slice.logicalId) ||
-        rejectDangerousKey(effect.descriptor.logicalId)
-      ) {
-        this.invalid = true;
-        return;
-      }
-      const list = this.events.get(slice.beforeEffect) ?? [];
-      list.push({ id: effect.descriptor.logicalId, slice });
-      this.events.set(slice.beforeEffect, list);
+      this.targets.add(id);
+      const copies: Copy[] = [];
+      this.copies.set(id, copies);
+      pieces.forEach((piece, slot) => {
+        if (
+          !piece ||
+          typeof piece !== 'object' ||
+          !Number.isSafeInteger(piece.utf16Length) ||
+          piece.utf16Length < 0
+        ) {
+          this.invalid = true;
+          return;
+        }
+        copies.push({ value: null, sources: [], length: piece.utf16Length });
+        if (!('logicalId' in piece)) return;
+        const slice = piece as Slice;
+        if (
+          !Number.isSafeInteger(slice.beforeEffect) ||
+          slice.beforeEffect < 0 ||
+          slice.beforeEffect > index ||
+          !Number.isSafeInteger(slice.utf16Start) ||
+          slice.utf16Start < 0 ||
+          typeof slice.logicalId !== 'string' ||
+          !slice.logicalId ||
+          rejectDangerousKey(slice.logicalId)
+        ) {
+          this.invalid = true;
+          return;
+        }
+        const list = this.events.get(slice.beforeEffect) ?? [];
+        list.push({ id, slice, slot });
+        this.events.set(slice.beforeEffect, list);
+      });
     });
   }
   seed(id: string, value: string, sources: readonly TextSource[]): void {
@@ -97,16 +119,14 @@ export class TextSources {
   get alreadyApplied(): boolean {
     return (
       !this.invalid &&
-      this.events.size > 0 &&
-      [...this.events.values()].every((events) =>
-        events.every((event) => this.initial.has(event.id))
-      )
+      this.targets.size > 0 &&
+      [...this.targets].every((id) => this.initial.has(id))
     );
   }
   capture(index: number, nodeOf: (id: string) => TextValue | undefined): boolean {
     if (this.invalid) return false;
     const events = this.events.get(index) ?? [];
-    for (const { id, slice } of events) {
+    for (const { id, slice, slot } of events) {
       // An already shown target belongs to a replay; its own native content is authoritative.
       if (this.values.has(id)) continue;
       const source = nodeOf(slice.logicalId);
@@ -118,12 +138,13 @@ export class TextSources {
       if (source.value === null || slice.utf16Start + slice.utf16Length > source.value.length)
         return false;
       const sources = this.values.get(slice.logicalId);
-      if (!sources || sources.length !== source.value.length || this.copies.has(id)) return false;
+      if (!sources || sources.length !== source.value.length) return false;
       if (slice.utf16Length === 0) continue;
-      this.copies.set(id, {
+      this.copies.get(id)![slot] = {
+        length: slice.utf16Length,
         value: source.value.slice(slice.utf16Start, slice.utf16Start + slice.utf16Length),
         sources: sources.slice(slice.utf16Start, slice.utf16Start + slice.utf16Length),
-      });
+      };
     }
     return true;
   }
@@ -131,8 +152,18 @@ export class TextSources {
     if (!this.enabled) return true;
     const copied = this.copies.get(id);
     if (copied) {
-      if (value !== '' || start !== 0 || remove !== 0 || copied.value !== insert) return false;
-      this.values.set(id, copied.sources);
+      if (value !== '' || start !== 0 || remove !== 0) return false;
+      if (copied.reduce((sum, piece) => sum + piece.length, 0) !== insert.length) return false;
+      let offset = 0;
+      const origins: TextSource[] = [];
+      for (const piece of copied) {
+        if (piece.value !== null && insert.slice(offset, offset + piece.length) !== piece.value)
+          return false;
+        offset += piece.length;
+        for (let i = 0; i < piece.length; i++) origins.push(piece.sources[i] ?? null);
+      }
+      if (offset !== insert.length) return false;
+      this.values.set(id, origins);
       this.copies.delete(id);
       return true;
     }

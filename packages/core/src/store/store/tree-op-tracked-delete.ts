@@ -337,9 +337,9 @@ function splitRunThree(
     const head = raw.slice(0, Math.max(0, from - childFrom));
     const middle = raw.slice(Math.max(0, from - childFrom), Math.min(raw.length, to - childFrom));
     const tail = raw.slice(Math.min(raw.length, to - childFrom));
-    if (head) before.push(inlineTextSlice(mint, head, child));
-    if (middle) covered.push(inlineTextSlice(mint, middle, child));
-    if (tail) after.push(inlineTextSlice(mint, tail, child));
+    if (head) before.push(inlineTextSlice(mint, head, child, 0));
+    if (middle) covered.push(inlineTextSlice(mint, middle, child, Math.max(0, from - childFrom)));
+    if (tail) after.push(inlineTextSlice(mint, tail, child, Math.min(raw.length, to - childFrom)));
   }
   return {
     before: withProperties(before),
@@ -401,7 +401,7 @@ function toDeleted(mint: () => string, run: OoxmlNode): OoxmlNode {
     const value = childrenOf(child).find((grand) => grand.kind === 'textValue');
     const raw = value && value.kind === 'textValue' ? value.value : '';
     return {
-      ...inlineTextSlice(mint, raw, child),
+      ...inlineTextSlice(mint, raw, child, 0),
       kind: 'deletedText',
       localName: 'delText',
     } as OoxmlNode;

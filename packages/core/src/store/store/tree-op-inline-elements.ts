@@ -1,3 +1,4 @@
+import { recordNativeFreshText } from '../package/canonical-primitive-capture.ts';
 import { isValidXmlText } from '../package/sinks.ts';
 import { hardBreakAttributes } from '../package/hard-break.ts';
 import { NON_BREAKING_HYPHEN_TEXT, OPTIONAL_HYPHEN_TEXT } from '../package/hyphen-text.ts';
@@ -18,6 +19,8 @@ export function textElement(
   kind: 'text' | 'deletedText' = 'text'
 ): OoxmlNode {
   const valueId = nextId();
+  const leaf = { id: valueId, kind: 'textValue' as const, value: text };
+  recordNativeFreshText(leaf);
   return {
     id: nextId(),
     kind,
@@ -28,7 +31,7 @@ export function textElement(
     // `xml:space="preserve"` is not added here: the serializer owns lexical form, and a
     // leading/trailing space is preserved by the tree regardless of the attribute.
     attributes: [],
-    children: [{ id: valueId, kind: 'textValue', value: text }],
+    children: [leaf],
   } as unknown as OoxmlNode;
 }
 

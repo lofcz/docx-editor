@@ -1,3 +1,4 @@
+import { pieceIndexOf } from './tree-op-piece-index.ts';
 import { contains, findTextParent } from './tree-op-text-node-lookup.ts';
 import { inlineRunSlice, inlineTextSlice } from './tree-op-inline-slices.ts';
 import {
@@ -2517,9 +2518,7 @@ function divideInline(
     else if (segment.node.kind === 'textValue') {
       const local = offset - segment.start;
       headContent.push(inlineTextSlice(nextId, segment.node.value.slice(0, local), child, 0));
-      tailContent.push(
-        inlineTextSlice(nextId, segment.node.value.slice(local), child, local, true)
-      );
+      tailContent.push(inlineTextSlice(nextId, segment.node.value.slice(local), child, local));
     } else headContent.push(grand);
   }
   const clonedRpr = rPr ? cloneWithNewIds(rPr, nextId) : null;
@@ -2654,27 +2653,6 @@ function applySplit(
   return fromEdit(replaceChildren(part, parent.id, siblings, options), effect);
 }
 
-/** The resulting paragraph a source offset belongs to: how many boundaries lie at or before it. */
-function pieceIndexOf(
-  offsets: readonly number[],
-  position: number,
-  atBoundary: 'tail' | 'head' = 'tail'
-): number {
-  // Binary search — a whole-document paste can carry thousands of boundaries, and every
-  // segment asks. Content sitting exactly ON a boundary opens that boundary's tail, which
-  // is what the equivalent sequence of single splits does; `head` is for the range-end
-  // markers the single split keeps behind, so a range that closed at the caret stays closed.
-  let low = 0;
-  let high = offsets.length;
-  while (low < high) {
-    const mid = (low + high) >> 1;
-    const before = atBoundary === 'tail' ? offsets[mid]! <= position : offsets[mid]! < position;
-    if (before) low = mid + 1;
-    else high = mid;
-  }
-  return low;
-}
-
 /**
  * Spread ONE inline paragraph child that straddles at least one of `offsets` across the
  * resulting pieces, in piece order.
@@ -2691,7 +2669,8 @@ export function distributeInline(
   pieceCount: number,
   segments: readonly Segment[],
   nextId: () => string,
-  depth = 0
+  depth = 0,
+  retainTextIdentity = true
 ): OoxmlNode[][] {
   const byPiece: OoxmlNode[][] = Array.from({ length: pieceCount }, () => []);
   if (depth >= MAX_INLINE_CONTAINER_DEPTH) {
@@ -2731,7 +2710,15 @@ export function distributeInline(
         innerByPiece[startPiece]!.push(inner);
         continue;
       }
-      const nested = distributeInline(inner, offsets, pieceCount, segments, nextId, depth + 1);
+      const nested = distributeInline(
+        inner,
+        offsets,
+        pieceCount,
+        segments,
+        nextId,
+        depth + 1,
+        retainTextIdentity
+      );
       for (let piece = 0; piece < pieceCount; piece += 1) {
         for (const node of nested[piece]!) innerByPiece[piece]!.push(node);
       }
@@ -2781,7 +2768,15 @@ export function distributeInline(
         innerByPiece[startPiece]!.push(inner);
         continue;
       }
-      const nested = distributeInline(inner, offsets, pieceCount, segments, nextId, depth + 1);
+      const nested = distributeInline(
+        inner,
+        offsets,
+        pieceCount,
+        segments,
+        nextId,
+        depth + 1,
+        retainTextIdentity
+      );
       for (let piece = 0; piece < pieceCount; piece += 1) {
         for (const node of nested[piece]!) innerByPiece[piece]!.push(node);
       }
@@ -2868,7 +2863,7 @@ export function distributeInline(
     const lastSlice = segment.node.value.slice(sliceStart - from);
     if (lastSlice.length > 0) {
       contentByPiece[piece]!.push(
-        inlineTextSlice(nextId, lastSlice, segmentOwner, sliceStart - from, true)
+        inlineTextSlice(nextId, lastSlice, segmentOwner, sliceStart - from, retainTextIdentity)
       );
     }
   }
@@ -2941,7 +2936,7 @@ function applySplitMany(
       pieces[startPiece]!.push(child);
       continue;
     }
-    const distributed = distributeInline(child, offsets, pieceCount, segments, nextId);
+    const distributed = distributeInline(child, offsets, pieceCount, segments, nextId, 0, false);
     for (let piece = 0; piece < pieceCount; piece += 1) {
       for (const node of distributed[piece]!) pieces[piece]!.push(node);
     }
