@@ -9,6 +9,7 @@ import { directParagraphTextOps } from './paragraph-text';
 import type { CanonicalEdit } from './plan';
 import { planRunFormat } from './run-format';
 import { inlineCodeRunChanges } from '../native/inline-code';
+import { jsonDataKey } from './target-key';
 
 export type MarkRun = { value: string; marks: readonly InlineTargetMark[] };
 const MARK_PROPERTIES: Readonly<Record<string, string>> = {
@@ -158,7 +159,26 @@ export function planMarkDeltas(
           });
       }
     }
-    operations.push(...segment);
+    // Projection tokens can split identical deltas at whitespace boundaries. Keep one
+    // continuous intention so native formatting does not split unchanged source text there.
+    for (const edit of segment) {
+      const previous = operations.at(-1);
+      if (
+        edit.kind === 'format' &&
+        edit.target.kind === 'run' &&
+        previous?.kind === 'format' &&
+        previous.target.kind === 'run' &&
+        previous.partName === edit.partName &&
+        previous.target.paragraphId === edit.target.paragraphId &&
+        previous.target.end === edit.target.start &&
+        jsonDataKey(previous.changes) === jsonDataKey(edit.changes)
+      )
+        operations[operations.length - 1] = {
+          ...previous,
+          target: { ...previous.target, end: edit.target.end },
+        };
+      else operations.push(edit);
+    }
   }
   return { success: true, operations };
 }
