@@ -1,7 +1,7 @@
 # D30 table birth history investigation
 
 This work remains isolated on `codex/d30-born-cell-history` in `/tmp/sciobot-resolved-table-targets`.
-Runtime `db8e74e7` follows the work-in-progress checkpoints `015d5bea`, `a9a00a00`, `2a915a72`, and `bd2727de`.
+Runtime `d3889299` follows the work-in-progress checkpoints `015d5bea`, `a9a00a00`, `2a915a72`, `bd2727de`, `db8e74e7`, and `d697de99`.
 The primary branch remains at `75930cb4`. D30 remains open.
 
 The evaluated transport uses the EigenPal Pro License. These changes add no private production imports.
@@ -97,6 +97,50 @@ The four original investigation cases pass unchanged, with 34 assertions, in 3.1
 Root formatting, root lint and collaboration compatibility policy pass.
 The proposed schema remains the unreleased `docx-collaboration:1.6.3.1`; no deployed room changes.
 
+## Native moves after creation undo
+
+Two native move cases fail at `6b77e235`: inserting an existing row into the middle and composing two moves in one journal.
+An append case passes at that checkpoint.
+The failure comes from applying visible destination indexes directly to raw shared lists containing hidden births.
+
+Runtime `d697de99` names visible destination neighbors during journal preflight.
+Execution detaches the moving node before resolving those neighbors against the raw destination list.
+Preflight also retains the source each journal prefix sees.
+This removes an earlier placement when the same row moves across parents twice in one transaction.
+Existing registry parent indexes update after that transaction and cannot name that intermediate source alone.
+Moves into text records refuse before any shared write.
+
+Four cases use real row creation, creation undo, and disconnected peer text in the new row.
+A fresh room replica then applies native primitive journals against the visible Word tree.
+The cases cover middle insertion, append clamping, two moves in one parent, and moves through another table.
+An independent expected tree retains all native nodes and changes only observed row order.
+Late peer text remains in its retained row after those moves.
+Cold room readers use their own snapshot blob maps; DOCX readers match complete native Word fingerprints.
+The initial four cases pass with 52 assertions in 4.59 seconds.
+Main Pro types cover 2287 files; private SDK types cover 2167 files.
+Root format, lint, and compatibility policy pass at the runtime checkpoint.
+
+The wider 17-file check exposes four unchanged projected-journal tests with a read-contract failure.
+Table birth visibility had required shared maps even for unrelated paragraph and split-run shape reads.
+Runtime `d3889299` restricts that repair to actual native table ancestry, using existing kind and parent reads.
+The original projection fixtures and all expected results remain unchanged.
+
+A new bounded-room case also exposes a missing resource refusal.
+Six raw table children include one hidden birth; moving another row into the table must exceed the limit of six.
+Visible child counts alone incorrectly admit that move.
+Projection now tracks shared child occupancy independently of visible indexes throughout the journal.
+The visible split projection delegates occupancy to its raw shared projection.
+The bounded move refuses with `too-many-children`, and complete shared-state bytes remain unchanged.
+
+Move tests also compare complete Word fingerprints after undo and verify that cold reads do not write shared state.
+The focused projection, move and merged-geometry check passes 28 cases with 405 assertions in 7.20 seconds.
+Both package type checks pass: 2287 Pro files and 2167 private SDK files.
+Final affected verification passes 158 cases across 17 files, with 3751 assertions, in 37.76 seconds.
+It includes all direct move-effect journal, projection, repair and convergence fixtures.
+Root formatting and root lint pass at the final runtime checkpoint.
+The four original investigation cases pass unchanged, with 34 assertions, in 2.28 seconds.
+Final compatibility policy passes with 169 decisions and two changed format fields.
+
 ## Remaining work
 
 The target planner still refuses an unequal header split into spans 2 and 1.
@@ -104,7 +148,7 @@ The stronger history test uses the actual supported native split command and ver
 That command does not establish target-planner support for the unequal split.
 More combined topology, vertical merge, and newly allocated span-property cases remain unverified.
 Concurrent independent geometry frames still need combined native topology verification.
-Move destinations against hidden child lists remain unverified.
+Further combined move, topology, and concurrent geometry interactions remain unverified.
 Do not merge or release this checkpoint as a completed history repair.
 
 No TODO closes. D30 also retains its existing atom ownership, nested content and application integration requirements.
