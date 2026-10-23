@@ -57,6 +57,11 @@ export function createMarkdownZip(result: MarkdownExportResult): Promise<Uint8Ar
 export function defineFontResolver<T extends FontResolver>(resolve: T): MarkedFontResolver<T>;
 
 // @public
+export interface DetachedMarkdownLayoutOptions extends MarkdownLayoutOptions {
+    readonly imageAssets?: readonly MarkdownImageAsset[];
+}
+
+// @public
 export class DocumentOpenError extends Error {
     constructor(reason: HeadlessDocumentRejection | 'aborted', detail?: string | undefined);
     // (undocumented)
@@ -221,7 +226,7 @@ export function exportMarkdown(source: ExportDocumentSource, options?: MarkdownE
 export function exportMarkdownFrom(session: ExportSession, options?: MarkdownProjectionOptions): Promise<MarkdownExportResult>;
 
 // @public
-export function exportMarkdownLayout(layout: ExportSemanticLayout, options?: MarkdownLayoutOptions): MarkdownExportResult;
+export function exportMarkdownLayout(layout: ExportSemanticLayout, options?: DetachedMarkdownLayoutOptions): MarkdownExportResult;
 
 // @public
 export class ExportResourceError extends Error {
