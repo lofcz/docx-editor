@@ -1,0 +1,14 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Table pagination errors are declared in the table layout implementation.",
+  "after": "Table layout re-exports the same error constructor from a dedicated module.",
+  "reason": "The extraction keeps the merged layout file within its existing line cap. Error names, codes, constructor identity, operations, and persisted formats stay unchanged.",
+  "tests": [
+    "packages/core/src/layout/__tests__/table-cantsplit-oversized.test.ts",
+    "packages/core/src/layout/__tests__/table-exact-row-overheight.test.ts",
+    "packages/core/src/layout/__tests__/table-vmerge-span-admission.test.ts"
+  ],
+  "changeset": "table-pagination-error-reconcile",
+  "migration": null
+}

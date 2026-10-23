@@ -9,7 +9,7 @@ import {
 import { furnitureTableZones, storyHasFloatingTable } from './furniture-table-exclusion.ts';
 import { headerFooterAnchoredDrawingOrigin } from './header-footer-drawing-origin.ts';
 import type { PageFurniture } from './page-furniture-insets.ts';
-import { TablePaginationError } from './semantic-table-layout.ts';
+import { TablePaginationError } from './table-pagination-error.ts';
 import type { AnchoredDrawingRecord } from './drawing-layout.ts';
 import type { HeaderFooterStoryRecord, PageRecord } from './semantic-records.ts';
 
