@@ -30,7 +30,8 @@ export function lowerRetainedAtoms(
   pkg: OoxmlPackage,
   part: OoxmlPart,
   edit: Extract<CanonicalEdit, { kind: 'inline-atoms' }>,
-  images?: InlineImageRuntime
+  images?: InlineImageRuntime,
+  allocatedCodeStyles: readonly string[] = []
 ): { readonly ops: readonly TreeDocOp[]; readonly complete: (pkg: OoxmlPackage) => OoxmlPackage } {
   if (
     paragraphTextOf(part, edit.paragraphId)?.slice(
@@ -59,7 +60,7 @@ export function lowerRetainedAtoms(
   if (problem) refuseWrite(problem.error, problem.code);
   const ops: TreeDocOp[] = [];
   const links = retainedAtomLinks(pkg, part, edit);
-  const codeStyles = new Set(inlineCodeCharacterStyles(pkg));
+  const codeStyles = new Set([...inlineCodeCharacterStyles(pkg), ...allocatedCodeStyles]);
   let preview = part;
   const apply = (op: TreeDocOp) => {
     const result = applyTreeOp(preview, op);

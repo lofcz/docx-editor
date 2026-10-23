@@ -186,6 +186,18 @@ function insertsInlineCode(value: unknown): boolean {
   const node = value as Record<string, unknown>;
   return node.type === 'inlineCode' || Object.values(node).some(insertsInlineCode);
 }
+/** These code identities come from admitted earlier native formatting operations in this batch. */
+function stagedCodeStyles(staged: readonly Staged[]): string[] {
+  return staged.flatMap((entry) =>
+    'op' in entry &&
+    entry.op === 'setRunProperties' &&
+    typeof entry.characterStyle === 'string' &&
+    (entry.characterStyle === SCIOBOT_CODE_STYLE_ID ||
+      entry.characterStyle.startsWith(`${SCIOBOT_CODE_STYLE_ID}__`))
+      ? [entry.characterStyle]
+      : []
+  );
+}
 
 function lowerDirectPlan(
   pkg: OoxmlPackage,
@@ -349,7 +361,7 @@ function lowerDirectPlan(
         break;
       }
       case 'inline-atoms': {
-        const lowered = lowerRetainedAtoms(pkg, preview, edit, images);
+        const lowered = lowerRetainedAtoms(pkg, preview, edit, images, stagedCodeStyles(staged));
         for (const op of lowered.ops) apply(op);
         deferred.push((working) => lowered.complete(working));
         break;

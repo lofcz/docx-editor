@@ -14,7 +14,7 @@ import { buildBlockIndex } from '../blocks/block-index';
 import { applyDirectPlan } from '../ai/apply-direct';
 import { planTargetDocument } from './plan-target';
 import { decodeEditPlan, serializeEditPlan } from './plan';
-import { SCIOBOT_CODE_STYLE_ID } from '../native/inline-code';
+import { SCIOBOT_CODE_STYLE_ID, inlineCodeStyleId } from '../native/inline-code';
 const context = { documentId: 'code-atoms', epoch: 'native' };
 const sentence = 'A <code>**$x$** and <source title="Paper" url="https://source.test" /></code> Z';
 async function plan(editor: DocxEditorInstance, target: string) {
@@ -40,11 +40,25 @@ for (const [kind, target] of [
   ['table', `Keep.\n\n| H |\n| - |\n| ${sentence} |`],
   ['registered', `Keep.\n\n<phase type="evocation">\n${sentence}\n</phase>`],
   ['retained', `Keep. ${sentence} End.`],
+  ['imported', `Keep. ${sentence.replace('<code>', '<code>lead ')} End.`],
+  [
+    'linked',
+    'Keep. [A <code>**$x$** and <source title="Paper" url="https://source.test" /></code> Z](https://outer.test "Read") End.',
+  ],
 ] as const)
   test(`code-marked inline controls retain native style and payload ownership in ${kind}`, async () => {
     const editor = createDocxEditor({
       container: document.createElement('div'),
-      document: docxFixture('<w:p><w:r><w:t>Keep.</w:t></w:r></w:p>'),
+      document:
+        kind === 'imported'
+          ? docxFixture(
+              '<w:p><w:r><w:rPr><w:rStyle w:val="ImportedBase"/><w:color w:val="112233"/></w:rPr><w:t>Keep.</w:t></w:r></w:p>',
+              {
+                styles:
+                  '<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="character" w:styleId="ImportedBase"><w:name w:val="Imported base"/><w:rPr><w:color w:val="112233"/></w:rPr></w:style></w:styles>',
+              }
+            )
+          : docxFixture('<w:p><w:r><w:t>Keep.</w:t></w:r></w:p>'),
     });
     try {
       const before = canonicalOoxmlFingerprint(editor.surface!.session.part());
@@ -71,7 +85,20 @@ for (const [kind, target] of [
               ? node.attributes.find((attribute) => attribute.localName === 'val')?.value
               : null
           );
-        expect(styles).toEqual([SCIOBOT_CODE_STYLE_ID]);
+        expect(styles).toEqual([
+          kind === 'imported' ? inlineCodeStyleId('ImportedBase') : SCIOBOT_CODE_STYLE_ID,
+        ]);
+        if (kind === 'imported') {
+          expect(
+            descendants(control)
+              .filter((node) => node.kind !== 'textValue' && node.localName === 'color')
+              .map((node) =>
+                node.kind !== 'textValue'
+                  ? node.attributes.find((attribute) => attribute.localName === 'val')?.value
+                  : null
+              )
+          ).toEqual(['112233']);
+        }
         expect(
           descendants(control).filter(
             (node) => node.kind !== 'textValue' && node.localName === 'strike'
