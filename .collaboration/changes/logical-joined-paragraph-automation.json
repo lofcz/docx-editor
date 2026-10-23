@@ -7,7 +7,9 @@
   "tests": [
     "packages/core/src/automation/__tests__/joined-paragraph-reads.test.ts",
     "packages/editor-api/src/runtime/__tests__/runtime-joined-paragraphs.test.ts",
-    "packages/pro/src/collaboration/__tests__/document-tracked-equation-insert.test.ts"
+    "packages/pro/src/collaboration/__tests__/document-tracked-equation-insert.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-joined-paragraph-automation.test.ts",
+    "packages/sciobot/scripts/check-joined-paragraphs-compiled.mjs"
   ],
   "changeset": "logical-joined-paragraph-automation",
   "migration": null

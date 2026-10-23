@@ -17,3 +17,8 @@ Four shared cases cover both client orders and both replacement writers. A track
 
 
 The DOM-free repair passes the original neutral-project compiler assertion and three secure-UUID cases. The prior revision fails that same compiler assertion. All 80 native origin/clipboard/export cases pass unchanged with 256 assertions. Core types pass across 1,601 files. The complete runtime suite's 730 behavioral cases pass; its only compilation failure passes with this repair. The two inherited native table fingerprint failures remain open. No broad all-green claim or TODO closure is made.
+
+
+Final tracking coverage passes all 369 cases across 27 files, with 3,279 assertions. It includes the unchanged acceptance case that failed before this repair. Fresh compiled core and document API packages pass the same four shared-history cases and all 72 original assertions. Run `bun packages/sciobot/scripts/check-joined-paragraphs-compiled.mjs` after building both packages. The runner changes imports only and retains the test-only evaluation transport. Fresh compiled core also passes all 56 private code-control fixtures and 1,267 assertions.
+
+Core and document API builds and API checks pass without public signature snapshot changes. Office.js signature reporting passes; it does not establish full runtime equivalence. Root formatting and lint pass, with targeted formatting checks for follow-up files. Compatibility policy covers 183 decisions and two inherited format fields. No TODO closes. The next native table repair must preserve the empty `trPr` and `tcPr` holders that direct row creation retains; acceptance currently removes them. Keep both original fingerprint assertions.
