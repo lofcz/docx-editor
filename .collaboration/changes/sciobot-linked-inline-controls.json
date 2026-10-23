@@ -4,7 +4,7 @@
   "before": "Private atom execution refused linked inline controls, and no-op planning refused linked native atom ownership.",
   "after": "New native fragments carry linked controls. Retained paragraphs allocate atoms before wrapping their complete authored hyperlink ranges. Observed imported link identities, metadata and surrounding formatting survive. No-op planning compares exact link targets, titles and token ownership. Unrepresented empty terminal paragraphs remain outside the editable sibling range.",
   "reason": "The private adapter uses existing Apache native hyperlink, content-control, formatting and targeted canonical node operations. No public document API, shared state schema, payload schema or primitive journal kind changes. The EigenPal Pro License transport remains confined to evaluation fixtures.",
-  "tests": ["packages/sciobot/src/diff/linked-inline-atoms.test.ts"],
+  "tests": ["packages/sciobot/src/diff/linked-inline-atoms.test.ts", "packages/sciobot/src/diff/linked-inline-atoms-collaboration.test.ts", "packages/sciobot/src/diff/inserted-atoms-materialization.test.ts"],
   "changeset": null,
   "migration": null
 }

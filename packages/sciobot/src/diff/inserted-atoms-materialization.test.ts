@@ -32,6 +32,7 @@ for (const target of [
   `Keep.\n\n${sentence}`,
   'Keep.\n\n# $x^2$',
   'Keep.\n\n**$x^2$**',
+  'Keep.\n\n[$x^2$](https://example.test)',
   'Keep.\n\n[Link](https://link.test)$x^2$',
   '<phase type="evocation">\n[Link](https://link.test)$x^2$\n</phase>',
   'Keep.\n\n<scio-inline-equation texExpression="" />',
@@ -116,10 +117,7 @@ test('D01 atom bindings reject missing records, changed fallbacks, moved paths a
   }
 });
 
-for (const target of [
-  'Keep.\n\n[$x^2$](https://example.test)',
-  'Keep.\n\nA ![Figure](asset:pending) Z',
-])
+for (const target of ['Keep.\n\nA ![Figure](asset:pending) Z'])
   test(`unsupported atom materialization refuses before publication: ${target}`, async () => {
     const editor = createDocxEditor({
       container: document.createElement('div'),
