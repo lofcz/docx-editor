@@ -1,3 +1,4 @@
+import { ownedStructuralContent } from './owned-structural-content';
 import { sha256FontBytes } from '@docx-editor.dev/core/layout';
 import {
   canonicalOoxmlFingerprint,
@@ -124,6 +125,12 @@ export function captureOwnedProposalContentProofs(
         )
       )
         return fail('Owned receipts do not match the complete current group.', 'ambiguous-target');
+      const selectedSites = new Map<string, Set<string>>();
+      for (const member of group.native) {
+        const ids = selectedSites.get(member.partName) ?? new Set<string>();
+        member.siteNodeIds.forEach((id) => ids.add(id));
+        selectedSites.set(member.partName, ids);
+      }
       const native: string[] = [];
       for (const member of group.native) {
         const part = pkg.parts.get(member.partName);
@@ -135,9 +142,19 @@ export function captureOwnedProposalContentProofs(
           if (!node) return fail('An owned native site is missing.', 'invalid-document');
           const saved = semantic(node);
           // An inverse restores current property bags or removes a marked paragraph.
-          // Manual content outside the saved revision subtree must invalidate its proof.
+          // Committed suffixes of independently marked paragraphs survive the inverse.
+          // All other content outside the revision subtree remains guarded.
           const currentContent = currentRevisionGuardContent(part, node);
-          sites.push(currentContent ? JSON.stringify([saved, semantic(currentContent)]) : saved);
+          sites.push(
+            currentContent
+              ? JSON.stringify([
+                  saved,
+                  semantic(
+                    ownedStructuralContent(currentContent, selectedSites.get(member.partName)!)
+                  ),
+                ])
+              : saved
+          );
         }
         native.push(
           JSON.stringify([propertyAddressKey(member.partName, member.address), sites.sort()])

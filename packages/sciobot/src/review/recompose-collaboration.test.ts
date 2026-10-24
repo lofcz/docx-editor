@@ -274,7 +274,7 @@ for (const clientIds of [
         await pair.settle();
         for (const editor of pair.editors)
           expect(await views(editor)).toEqual([
-            'Alpha end\n\nKeep\n\nStay\n\nTail',
+            'Alpha  peerend\n\nKeep\n\nStay\n\nTail',
             'Alpha o peerld end\n\nKeep\n\nStay\n\nTail',
           ]);
         const before = pair.editors.map((editor) => ({
@@ -309,7 +309,7 @@ for (const clientIds of [
         await pair.settle();
         for (const editor of pair.editors)
           expect(await views(editor)).toEqual([
-            'Alpha end\n\nKeep\n\nStay\n\nTail redo',
+            'Alpha  peerend\n\nKeep\n\nStay\n\nTail redo',
             'Alpha o peerld end\n\nKeep\n\nStay\n\nTail redo',
           ]);
         await saved(pair);

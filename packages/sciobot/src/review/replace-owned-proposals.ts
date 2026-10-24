@@ -1,3 +1,4 @@
+import { propertyAddressKey } from './property-fallback';
 import { continueOwnedCellParagraphs } from './recompose-cell-continuity';
 import { createInlineImageRuntime } from '../native/inline-image-runtime';
 import type { PreparedInlineImages } from '../native/inline-image-resources';
@@ -258,7 +259,7 @@ function commit(
         stageOwnedProposalRemoval(ctx, removal, allowInitialization, step);
         const middle = ctx.currentPackage();
         const reserved = withReviewGroupRevisionReservations(middle, () => {
-          const receipts = stageTrackedPlan(
+          let receipts = stageTrackedPlan(
             {
               currentPackage: () => ctx.currentPackage(),
               apply: (partName, op) =>
@@ -290,7 +291,19 @@ function commit(
             { author: attribution.author, date },
             input.payloads
           );
-          edit((working) => continueOwnedCellParagraphs(original, middle, working, removal));
+          const cancelled = new Set<string>();
+          edit((working) =>
+            continueOwnedCellParagraphs(original, middle, working, removal, receipts, cancelled)
+          );
+          if (cancelled.size)
+            receipts = receipts
+              .map((receipt) => ({
+                ...receipt,
+                addresses: receipt.addresses.filter(
+                  (address) => !cancelled.has(propertyAddressKey(receipt.partName, address))
+                ),
+              }))
+              .filter((receipt) => receipt.addresses.length);
           stageTrackedPresence(
             {
               currentPackage: () => ctx.currentPackage(),

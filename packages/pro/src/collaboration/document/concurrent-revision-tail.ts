@@ -11,6 +11,8 @@ import { readRevisions } from './paragraph-text-revisions.ts';
 import type { ShownText } from './paragraph-text-follow.ts';
 import { itemIdentity, type TextIdentities } from './paragraph-text-identity.ts';
 import { structAt } from './yjs-items.ts';
+import { textDeletionsOf } from './paragraph-text-deletions.ts';
+import { decodeAttributes } from './paragraph-text.ts';
 
 /**
  * Read the original typing boundary through formatting clocks, including deleted clocks.
@@ -22,7 +24,8 @@ function authoredBoundary(
   text: Y.Text,
   ids: TextIdentities,
   at: number,
-  visible: ReadonlySet<string | null>
+  visible: ReadonlySet<string | null>,
+  recoverFormatting = false
 ): string | null {
   const original = parseClientClock(ids.ids[at] ?? '');
   const doc = text.doc;
@@ -38,9 +41,13 @@ function authoredBoundary(
     if (!item) return null;
     const identity = itemIdentity(text, item, pointer.clock - item.id.clock);
     if (visible.has(identity)) return identity;
-    // A deleted clock cannot prove an append boundary. Collected formatting
-    // loses its content type, so all replicas must stop at the deletion itself.
-    if (item.deleted || !(item.content instanceof Y.ContentFormat)) return null;
+    // Restored text can cross formatting clocks its own history removed. The shared
+    // deletion ledger still blocks removed characters, including after collection.
+    if (item.deleted) {
+      const clock = parseClientClock(identity);
+      if (!recoverFormatting || !clock || textDeletionsOf(doc).isDeleted(clock.client, clock.clock))
+        return null;
+    } else if (!(item.content instanceof Y.ContentFormat)) return null;
     pointer =
       pointer.clock === item.id.clock
         ? item.origin
@@ -87,8 +94,12 @@ export function concurrentRevisionTail(
       return shown;
     pointer = item.rightOrigin;
   }
-  const origin = authoredBoundary(text, ids, start, visible);
-  if (!origin || authoredBoundary(text, ids, peer, visible) !== origin) return shown;
+  const controlled = decodeAttributes(suffix, limits, paragraphId).wrap.some(
+    (wrapper) => wrapper.kind === 'contentControl'
+  );
+  const restored = ids.restored[start] === true && !controlled;
+  const origin = authoredBoundary(text, ids, start, visible, restored);
+  if (!origin || authoredBoundary(text, ids, peer, visible, restored) !== origin) return shown;
   if (ids.ids.indexOf(origin) + 1 !== peer) return shown;
   const revisions: ReturnType<typeof readRevisions>[] = [];
   const characters: boolean[] = [];

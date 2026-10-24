@@ -241,13 +241,13 @@ test('deleting a revision while another participant edits its text converges', a
     });
     sync(a, b);
     await converged(a, b);
-    // A deletion removes only the text its author saw: the replacement typed meanwhile stays
-    // whole, still inside the insertion it was typed in.
+    // Untracked replacement is committed independently. Rejecting the earlier insertion
+    // preserves the collaborator's replacement without leaving it pending.
     expect(
       b.editor
         .getReviewItems({ pairReplacements: false })
         .some((item) => item.kind === 'revision' && item.revisionKind === 'insert')
-    ).toBe(true);
+    ).toBe(false);
     expect(a.editor.surface!.session.bodyText()).toBe('oldchanged tail');
     expect(b.editor.surface!.session.bodyText()).toBe('oldchanged tail');
   } finally {

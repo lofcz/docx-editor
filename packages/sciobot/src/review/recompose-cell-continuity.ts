@@ -1,3 +1,5 @@
+import { planCellTailContinuation, continueCellTail } from './recompose-cell-tail';
+import type { ReviewGroupReceipt } from './groups';
 import { continueOwnedAtomGapText } from './recompose-atom-text-continuity';
 import {
   contentControlsIn,
@@ -73,10 +75,24 @@ export function continueOwnedCellParagraphs(
   before: OoxmlPackage,
   middle: OoxmlPackage,
   after: OoxmlPackage,
-  removal: OwnedProposalRemovalPlan
+  removal: OwnedProposalRemovalPlan,
+  receipts: readonly ReviewGroupReceipt[] = [],
+  cancelled: Set<string> = new Set()
 ): OoxmlPackage {
   const selectedBlocks = new Set(removal.propertyDecisions.map((member) => member.blockId));
   if (!selectedBlocks.size) return after;
+  const sourcePayloads = readPayloadStore(before),
+    targetPayloads = readPayloadStore(after);
+  if (sourcePayloads.status !== 'ready' || targetPayloads.status !== 'ready')
+    refuseWrite('Atom continuity needs complete native payload stores.', 'invalid-document');
+  const sourceType = (id: string) => {
+    const decoded = sourcePayloads.entries.get(id)?.decoded;
+    return decoded?.status === 'supported' ? decoded.value.type : undefined;
+  };
+  const targetType = (id: string) => {
+    const decoded = targetPayloads.entries.get(id)?.decoded;
+    return decoded?.status === 'supported' ? decoded.value.type : undefined;
+  };
   let result = after;
   for (const partOps of removal.partOps) {
     const selected = new Set(
@@ -150,6 +166,7 @@ export function continueOwnedCellParagraphs(
     }
     candidateTables.forEach(consider);
     const replacements = new Map<string, string>(),
+      tails = new Map<string, NonNullable<ReturnType<typeof planCellTailContinuation>>>(),
       slots = new Set<string>();
     for (const gap of gaps.values()) {
       const parent = findNode(current, gap.parentId);
@@ -186,15 +203,31 @@ export function continueOwnedCellParagraphs(
               !bornParagraphs.has(sourceParagraph.id) ||
               slot?.kind !== 'paragraph' ||
               liveSlot?.kind !== 'paragraph' ||
-              paragraphTextOf(baseline, slot.id) !== '' ||
-              !emptyRecovery(slot) ||
-              paragraphTextOf(current, liveSlot.id) !== '' ||
-              !emptyRecovery(liveSlot) ||
               parentNodeOf(current, liveSlot.id)?.id !== gap.parentId ||
               findNode(baseline, target.id) ||
               slots.has(slot.id)
             )
               continue;
+            const empty = paragraphTextOf(baseline, slot.id) === '';
+            const tail =
+              !empty &&
+              emptyRecovery({
+                ...slot,
+                children: slot.children.filter((n) => n.kind === 'paragraphProperties'),
+              })
+                ? planCellTailContinuation(
+                    current,
+                    sourceParagraph,
+                    slot,
+                    target,
+                    receipts,
+                    selectedBlocks,
+                    sourceType,
+                    targetType
+                  )
+                : null;
+            if (empty ? !emptyRecovery(slot) || !emptyRecovery(liveSlot) : !tail) continue;
+            if (tail) tails.set(target.id, tail);
             replacements.set(target.id, slot.id);
             slots.add(slot.id);
           }
@@ -202,11 +235,8 @@ export function continueOwnedCellParagraphs(
       }
     }
     if (!replacements.size) continue;
-    const sourcePayloads = readPayloadStore(before),
-      targetPayloads = readPayloadStore(after);
-    if (sourcePayloads.status !== 'ready' || targetPayloads.status !== 'ready')
-      refuseWrite('Atom continuity needs complete native payload stores.', 'invalid-document');
     let part: OoxmlPart = current;
+    for (const tail of tails.values()) part = continueCellTail(part, tail, cancelled);
     // Explicit moves preserve native parent ownership. Rebuilding parent lists in a
     // different order can unlink a source after the destination already lists it.
     // This edit owns a transaction boundary; validate the complete resulting part once.
@@ -256,14 +286,8 @@ export function continueOwnedCellParagraphs(
         part,
         source,
         sourceId,
-        (id) => {
-          const decoded = sourcePayloads.entries.get(id)?.decoded;
-          return decoded?.status === 'supported' ? decoded.value.type : undefined;
-        },
-        (id) => {
-          const decoded = targetPayloads.entries.get(id)?.decoded;
-          return decoded?.status === 'supported' ? decoded.value.type : undefined;
-        },
+        sourceType,
+        targetType,
         selectedBlocks
       );
     }

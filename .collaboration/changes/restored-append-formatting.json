@@ -1,0 +1,17 @@
+{
+  "impact": "migration-required",
+  "fields": ["repairVersion"],
+  "before": "After a tracked replacement and offline peer typing, redo could place the replacement's terminal letter after the peer suffix. A conservative deleted-clock guard stopped at formatting clocks removed by undo.",
+  "after": "Explicitly restored ordinary text can cross deleted formatting clocks. The shared character-deletion ledger blocks removed characters. Content-control labels keep their existing conservative guard. Collected clocks and live formatting clocks produce the same ordering.",
+  "reason": "Deterministic text projection changes repairVersion from 12 to 13. Shared schema 7 and journal kinds stay unchanged. Deployment requires verified export with the previous compatible client and fresh room seeding. No saved room is migrated. Transport remains evaluated under the EigenPal Pro License. Test expectations for untracked replacement now follow the user's selected committed-peer ownership policy; the canonical writer already implements that policy.",
+  "tests": [
+    "packages/sciobot/src/review/owned-presence-shared.test.ts",
+    "packages/sciobot/src/review/recompose-new-table-atom-peer-interior.test.ts",
+    "packages/sciobot/src/review/recompose-collaboration.test.ts",
+    "packages/pro/src/collaboration/__tests__/paragraph-control-gap.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-replacement-times.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-format.test.ts"
+  ],
+  "changeset": "restored-append-formatting",
+  "migration": "upgrade-rooms-to-format-17131"
+}

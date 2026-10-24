@@ -82,12 +82,12 @@ try {
         "from '@docx-editor.dev/core/store'"
       );
     source = source.replace(
-      /from '(?:\.\.\/(?:review|projection|blocks|ai|native)\/[^']+|\.\.\/diff\/(?:plan-target|plan|target-key)|\.\/(?:plan-target|plan|target-key))'/g,
+      /from '(?:\.\.\/(?:review|projection|blocks|ai|native)\/[^']+|\.\.\/diff\/(?:plan-target|plan|target-key|paragraph-text)|\.\/(?:plan-target|plan|target-key|paragraph-text))'/g,
       "from '@sciobot/docx'"
     );
     if (filename.startsWith('review/'))
       source = source.replace(
-        /from '\.\/(?:native-module|recompose|working-view|committed-view|groups|accept-all|reject-all|accept-group|reject-group)'/g,
+        /from '\.\/(?:native-module|recompose|working-view|committed-view|groups|owned-proposal-content|accept-all|reject-all|accept-group|reject-group)'/g,
         "from '@sciobot/docx'"
       );
     source = source.replaceAll(
@@ -98,8 +98,14 @@ try {
       "from '../../test/support/",
       `from '${join(packageRoot, 'test/support')}/`
     );
+    source = source.replaceAll("import('./replace-owned-proposals')", "import('@sciobot/docx')");
+    source = source.replaceAll(
+      "import('../../test/support/",
+      `import('${join(packageRoot, 'test/support')}/`
+    );
     // Runtime product imports must use the compiled package. Keep every test body unchanged.
-    if (/from ['"]\.{1,2}\//.test(source)) throw Error(`Unmapped product import in ${filename}`);
+    if (/from ['"]\.{1,2}\//.test(source) || /import\(['"]\.{1,2}\//.test(source))
+      throw Error(`Unmapped product import in ${filename}`);
     writeFileSync(join(directory, filename.replace('/', '--')), source);
   }
   const result = spawnSync(

@@ -1,3 +1,4 @@
+import { isCurrentNativeTarget } from './recompose-current-target';
 import {
   prepareInlineImageResources,
   type InlineImageResolver,
@@ -182,10 +183,21 @@ export async function recomposeOwnedProposals(
     const changedWhileReading = fresh();
     if (changedWhileReading) return changedWhileReading;
     const currentTarget = parseTargetMarkdown(working.view.projection.text);
-    const sameTarget =
+    const sameAst =
       currentTarget.success &&
       targetAstKey(currentTarget.target.normalizedAst) ===
         targetAstKey(target.target.normalizedAst);
+    // Projection spelling can differ while every native operation is already satisfied.
+    // Check the actual working target before inverses can create a redundant replacement.
+    const sameTarget =
+      sameAst ||
+      isCurrentNativeTarget(
+        { revision: actual, pkg, projection: working.view.projection },
+        input.request.targetMarkdown,
+        options.target?.definitions
+      );
+    const changedByCurrentPlan = fresh();
+    if (changedByCurrentPlan) return changedByCurrentPlan;
     const hasMergedCells = working.view.projection.cells.some(
       (cell) => cell.gridSpan > 1 || cell.verticalContinuation
     );

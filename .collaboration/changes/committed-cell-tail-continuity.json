@@ -1,0 +1,16 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "A later AI wave refused a committed peer tail inside an owned table. Bypassing the proof left a redundant tracked deletion outside the new table and a newly owned copy of the peer text. Equivalent target spelling could also create another replacement frame.",
+  "after": "Private ownership proofs exclude only committed trailing text runs of independently marked paragraphs. Same-topology atom replacements withdraw only their own scoped redundant tail revisions, preserve the original peer paragraph and text addresses, and remove the newly generated duplicate. Receipts omit only those explicitly withdrawn addresses. A native no-op target preserves the existing history.",
+  "reason": "Application-only composition uses existing canonical reject, delete, and move operations. No native reader, shared schema, journal kind, payload schema, or public API changes. Format remains compatible with the separately recorded 1.7.13.1 repair. Unselected revisions, paragraph properties, controls, and interior text remain guarded. The private package needs no published changeset. Test transport remains evaluated under the EigenPal Pro License. D30 and R19 remain open.",
+  "tests": [
+    "packages/sciobot/src/review/owned-structural-content.test.ts",
+    "packages/sciobot/src/review/owned-proposal-content.test.ts",
+    "packages/sciobot/src/review/recompose-new-table-atom-peer-online.test.ts",
+    "packages/sciobot/src/review/recompose-new-table-atom-peer-interior.test.ts",
+    "packages/sciobot/src/review/recompose.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

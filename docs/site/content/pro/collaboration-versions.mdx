@@ -306,6 +306,14 @@ These rules change interpretation of existing identity and revision marks. No ne
 
 Stop writes and recover offline edits before upgrading. Back up the room and export with its compatible deployment. Verify peer text placement, hyperlink targets, pending revisions, and inline controls before migration. Reconcile incorrect content in that deployment before export. Follow [Upgrade saved rooms](#upgrade-saved-rooms) to create fresh rooms and persistence keys. Deploy matching clients, servers, workers, and agents. Do not rewrite version metadata or replay old updates into replacement rooms. Keep original rooms as read-only backups.
 
+### Upgrade rooms to format 1.7.13.1
+
+Format `docx-collaboration:1.7.13.1` restores terminal text ordering after shared undo and redo. Restored ordinary text can cross formatting clocks removed by its history. The shared character-deletion ledger blocks traversal through removed text. Collected and uncollected clocks produce the same result. Content-control labels retain their existing boundary rules.
+
+This changes deterministic repair. Shared schema 7 and journal kinds stay unchanged. Clients and workers using `docx-collaboration:1.7.12.1` must not join these rooms. This transport remains evaluated under the EigenPal Pro License.
+
+Export verified documents with the previous compatible deployment. Follow [Reseed rooms](#reseed-rooms) to create fresh rooms. Do not edit saved version fields or replay previous histories into upgraded rooms.
+
 ### Upgrade rooms to format 1.7.12.1
 
 Format `docx-collaboration:1.7.12.1` retains unchanged native text boundaries between replaced inline controls. Peer text stays beside those boundaries through later AI rewrites. Whole-control replacements use an interior native boundary. Ordinary text replacement keeps its existing boundary.

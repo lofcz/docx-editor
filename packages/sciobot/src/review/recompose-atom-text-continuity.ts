@@ -18,7 +18,7 @@ interface Inventory {
   readonly gaps: readonly (readonly Text[])[];
 }
 /** Native text gaps are addressed by ordered atom slots, never by matching labels. */
-function inventory(
+export function ownedAtomGapInventory(
   paragraph: OoxmlParagraphNode,
   typeOf: (id: string) => string | undefined,
   selected?: ReadonlySet<string>
@@ -69,8 +69,8 @@ export function continueOwnedAtomGapText(
   const target = findNode(part, targetId);
   if (target?.kind !== 'paragraph')
     refuseWrite('The continued atom paragraph disappeared.', 'apply-failed');
-  const before = inventory(source, sourceType, selected),
-    after = inventory(target, targetType);
+  const before = ownedAtomGapInventory(source, sourceType, selected),
+    after = ownedAtomGapInventory(target, targetType);
   if (!before || !after || JSON.stringify(before.atoms) !== JSON.stringify(after.atoms))
     return part;
   let result = part;
