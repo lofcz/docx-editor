@@ -1,3 +1,4 @@
+import { encodeStructuralPolicy } from './owned-structure';
 import type * as Y from 'yjs';
 import type { EditorCollaborationSession } from '@docx-editor.dev/core/collaboration';
 import { REVIEW_HISTORY_CAPABILITY } from '../review/group-history';
@@ -15,6 +16,9 @@ export interface OwnedReviewHistory extends Omit<OwnedTextHandle, 'setStructural
 }
 export interface OwnedReviewHistoryOptions extends OwnedTextOptions {
   readonly documentId: string;
+  readonly bootstrap: 'create' | 'join';
+  /** Obtain the provider's advertised native structural keys before room bootstrap. */
+  readonly structuralTextAttributeKeys: readonly string[];
 }
 
 /** Attach before bootstrap or room snapshot loading. Dispose after detaching/destroying the session. */
@@ -30,12 +34,29 @@ export function attachOwnedReviewHistory(
     /[\u0000-\u001f]/.test(options.documentId)
   )
     throw new TypeError('Owned review history needs the current room document ID.');
+  if (options.bootstrap !== 'create' && options.bootstrap !== 'join')
+    throw new TypeError('Owned review history needs a create or join bootstrap mode.');
+  encodeStructuralPolicy(options.structuralTextAttributeKeys);
   const documentId = options.documentId,
-    owned = attachOwnedTextAttributes(doc, { onError: options.onError, protocol: 2 }),
+    owned = attachOwnedTextAttributes(doc, {
+      onError: options.onError,
+      protocol: 2,
+      bootstrap: options.bootstrap,
+    }),
     sessions = new WeakMap<EditorCollaborationSession, EditorCollaborationSession>();
+  try {
+    owned.setStructuralAttributes(options.structuralTextAttributeKeys);
+  } catch (cause) {
+    owned.dispose();
+    throw cause;
+  }
   let flags: OwnedReviewFlags;
   try {
-    flags = attachOwnedReviewFlags(doc, { onError: options.onError, protocol: '2' });
+    flags = attachOwnedReviewFlags(doc, {
+      onError: options.onError,
+      protocol: '2',
+      bootstrap: options.bootstrap,
+    });
   } catch (cause) {
     owned.dispose();
     throw cause;

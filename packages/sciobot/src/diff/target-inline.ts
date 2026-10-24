@@ -221,22 +221,6 @@ export function planTargetParagraph(context: TargetParagraphSource): EditPlanRes
       if (!marks.success) return marks;
       return createEditPlan(revision, [...operations, ...marks.plan.operations]);
     }
-    const mixed = mixedInlineAtoms(
-      context,
-      part,
-      paragraphId,
-      a,
-      b,
-      owner.checklist?.native.end ?? 0
-    );
-    if (mixed)
-      return planTargetParagraph({
-        ...context,
-        before: { ...before, ast: mixed.before },
-        after: { ...after, ast: mixed.after },
-        anchoredText: mixed.text,
-        textAnchors: mixed.anchors,
-      });
   }
   if (a.plainText === null && !context.nativeRange) {
     const gaps = retainedAtomGaps(
@@ -262,6 +246,24 @@ export function planTargetParagraph(context: TargetParagraphSource): EditPlanRes
       }
       return createEditPlan(revision, operations);
     }
+  }
+  if (a.plainText === null && b.plainText === null) {
+    const mixed = mixedInlineAtoms(
+      context,
+      part,
+      paragraphId,
+      a,
+      b,
+      owner.checklist?.native.end ?? 0
+    );
+    if (mixed)
+      return planTargetParagraph({
+        ...context,
+        before: { ...before, ast: mixed.before },
+        after: { ...after, ast: mixed.after },
+        anchoredText: mixed.text,
+        textAnchors: mixed.anchors,
+      });
   }
   if (a.plainText === null || b.plainText === null) {
     const sameLinks =

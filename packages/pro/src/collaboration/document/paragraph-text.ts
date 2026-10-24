@@ -69,7 +69,7 @@ export const INLINE_FIELD = 'inline';
 const KEY_RUN = 'r';
 const KEY_RUN_PROPERTIES = 'rp';
 const KEY_TEXT = 't';
-/** Native run/text shells follow structural splits; visible properties keep independent ownership. */
+/** Native run/text shells follow structural splits; visible properties keep independent ownership. @public */
 export const STRUCTURAL_TEXT_ATTRIBUTE_KEYS: readonly string[] = Object.freeze([
   KEY_RUN,
   KEY_RUN_PROPERTIES,

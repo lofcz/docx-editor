@@ -8,7 +8,10 @@ import {
   type DocxEditorInstance,
 } from '@docx-editor.dev/core/editor';
 import { readOoxmlPackage, semanticDigest } from '@docx-editor.dev/core/store';
-import { createDocumentCollaboration } from '../../../pro/src/collaboration/document-session';
+import {
+  createDocumentCollaboration,
+  DOCUMENT_STRUCTURAL_TEXT_ATTRIBUTE_KEYS,
+} from '../../../pro/src/collaboration/document-session';
 import { attachOwnedReviewHistory } from '../../src/collaboration';
 import { prepareReviewGroupDocument } from '../../src/native/prepare-review-groups';
 
@@ -33,8 +36,12 @@ export async function createTwoEditorFixture(options: TwoEditorOptions) {
       document.clientID = options.clientIds![index]!;
     });
   const ownership = options.ownedAttributes
-    ? documents.map((doc) =>
-        attachOwnedReviewHistory(doc, { documentId: options.documentId ?? 'sciobot-parity' })
+    ? documents.map((doc, index) =>
+        attachOwnedReviewHistory(doc, {
+          documentId: options.documentId ?? 'sciobot-parity',
+          structuralTextAttributeKeys: DOCUMENT_STRUCTURAL_TEXT_ATTRIBUTE_KEYS,
+          bootstrap: options.roomSnapshot || index === 1 ? 'join' : 'create',
+        })
       )
     : [];
   const awareness = documents.map((doc) => new Awareness(doc));

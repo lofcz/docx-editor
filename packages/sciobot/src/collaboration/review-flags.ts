@@ -16,6 +16,7 @@ import { flagMap } from './review-flag-items';
 
 export interface OwnedReviewFlagOptions extends OwnedTextOptions {
   readonly protocol?: '1' | '2';
+  readonly bootstrap?: 'create' | 'join';
 }
 
 interface State {
@@ -250,10 +251,14 @@ export function attachOwnedReviewFlags(
   };
   doc.on('beforeTransaction', beforeTransaction);
   doc.on('beforeObserverCalls', beforeObservers);
-  if (protocol === '2' && storedProtocol === undefined)
+  if (protocol === '2' && storedProtocol === undefined && options.bootstrap !== 'join')
     set.call(state.targets, 'protocol', protocol);
   return Object.freeze({
-    assertHealthy: () => healthy(state),
+    assertHealthy: () => {
+      healthy(state);
+      if (protocol === '2' && state.targets.get('protocol') !== protocol)
+        throw new ReviewFlagError('Unsupported review flag protocol.');
+    },
     capture<T>(run: () => T, flagWrites: number): T {
       healthy(state);
       if (doc.store.pendingStructs || doc.store.pendingDs)

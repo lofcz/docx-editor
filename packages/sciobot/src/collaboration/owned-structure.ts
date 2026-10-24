@@ -12,20 +12,26 @@ export function assertOwnedProtocol(
 ): void {
   const value = operations.get('protocol');
   if (value === undefined && allowMissing) return;
-  if (value !== expected) throw new OwnedTextError('Unsupported owned-text protocol.');
   let item = operations._map.get('protocol'),
-    count = 0;
+    count = 0,
+    same = false,
+    different = false;
   while (item) {
     if (++count > 4096) throw new OwnedTextError('Owned-text protocol history exceeds its limit.');
-    if (item.content.getContent().some((value) => value !== expected)) {
-      operations.set('protocol', 'mixed');
-      throw new OwnedTextError('Unsupported owned-text protocol.');
+    for (const entry of item.content.getContent()) {
+      if (entry === expected) same = true;
+      else different = true;
     }
     item = item.left ?? undefined;
   }
+  if (same && different) {
+    operations.set('protocol', 'mixed');
+    throw new OwnedTextError('Unsupported owned-text protocol.');
+  }
+  if (value !== expected) throw new OwnedTextError('Unsupported owned-text protocol.');
 }
 
-function encoded(keys: readonly string[]): string {
+export function encodeStructuralPolicy(keys: readonly string[]): string {
   if (
     !Array.isArray(keys) ||
     keys.length > 64 ||
@@ -43,22 +49,38 @@ function encoded(keys: readonly string[]): string {
     throw new OwnedTextError('Invalid structural text attribute policy.');
   return JSON.stringify([...keys].sort());
 }
-export function structuralAttributes(doc: Y.Doc, expected: string | null): ReadonlySet<string> {
+export function structuralAttributes(
+  doc: Y.Doc,
+  expected: string | null,
+  allowUnbound = false
+): ReadonlySet<string> {
   const operations = doc.getMap(OWNED_TEXT_OPERATIONS),
     protocol = operations.get('protocol');
   const raw = operations.get(OWNED_STRUCTURE_FIELD);
   if (protocol !== '2') {
-    if (raw !== undefined)
+    if (raw !== undefined || expected !== null)
       throw new OwnedTextError('Structural attributes require owned-text protocol 2.');
     return empty;
   }
   if (raw === undefined) {
-    if (expected !== null)
-      throw new OwnedTextError('The structural text attribute policy disappeared.');
+    if (!allowUnbound || expected !== null)
+      throw new OwnedTextError('Bind a structural text attribute policy before editing.');
     return empty;
   }
   if (typeof raw !== 'string' || raw.length > 32768)
     throw new OwnedTextError('Invalid structural text attribute policy.');
+  if (raw === 'mixed') throw new OwnedTextError('Incompatible structural text attribute policy.');
+  let item = operations._map.get(OWNED_STRUCTURE_FIELD),
+    count = 0;
+  while (item) {
+    if (++count > 4096)
+      throw new OwnedTextError('Structural text policy history exceeds its limit.');
+    if (item.content.getContent().some((value) => value !== raw)) {
+      operations.set(OWNED_STRUCTURE_FIELD, 'mixed');
+      throw new OwnedTextError('Incompatible structural text attribute policy.');
+    }
+    item = item.left ?? undefined;
+  }
   if (expected !== null && expected !== raw)
     throw new OwnedTextError('Incompatible structural text attribute policy.');
   const cached = decoded.get(raw);
@@ -69,7 +91,11 @@ export function structuralAttributes(doc: Y.Doc, expected: string | null): Reado
   } catch {
     throw new OwnedTextError('Invalid structural text attribute policy.');
   }
-  if (!Array.isArray(keys) || encoded(keys) !== raw || (expected !== null && expected !== raw))
+  if (
+    !Array.isArray(keys) ||
+    encodeStructuralPolicy(keys) !== raw ||
+    (expected !== null && expected !== raw)
+  )
     throw new OwnedTextError('Incompatible structural text attribute policy.');
   const result = new Set<string>(keys);
   if (decoded.size >= 64) decoded.clear();
@@ -82,11 +108,11 @@ export function bindStructuralAttributes(
   keys: readonly string[],
   previous: string | null
 ): string {
-  const profile = encoded(keys),
+  const profile = encodeStructuralPolicy(keys),
     operations = doc.getMap<string>(OWNED_TEXT_OPERATIONS);
   if (operations.get('protocol') !== '2')
     throw new OwnedTextError('Structural attributes require owned-text protocol 2.');
-  structuralAttributes(doc, previous);
+  structuralAttributes(doc, previous, previous === null);
   const existing = operations.get(OWNED_STRUCTURE_FIELD);
   if (
     (previous !== null && profile !== previous) ||

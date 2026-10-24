@@ -25,7 +25,11 @@ const session = (source: unknown = new Transport()) =>
 
 test('owned review sessions retain native method receivers, stable functions, frozen transports, and repeat binding', () => {
   const doc = new Y.Doc(),
-    scope = attachOwnedReviewHistory(doc, { documentId: 'room' }),
+    scope = attachOwnedReviewHistory(doc, {
+      documentId: 'room',
+      bootstrap: 'create',
+      structuralTextAttributeKeys: [],
+    }),
     transport = Object.freeze(new Transport());
   try {
     const native = session(transport),
@@ -62,14 +66,28 @@ test('owned review sessions retain native method receivers, stable functions, fr
 test('missing, foreign, disposed, and destroyed history scopes refuse with explicit reasons', () => {
   const doc = new Y.Doc(),
     otherDoc = new Y.Doc(),
-    scope = attachOwnedReviewHistory(doc, { documentId: 'room' }),
-    other = attachOwnedReviewHistory(otherDoc, { documentId: 'room' });
+    scope = attachOwnedReviewHistory(doc, {
+      documentId: 'room',
+      bootstrap: 'create',
+      structuralTextAttributeKeys: [],
+    }),
+    other = attachOwnedReviewHistory(otherDoc, {
+      documentId: 'room',
+      bootstrap: 'create',
+      structuralTextAttributeKeys: [],
+    });
   try {
     expect(reviewGroupHistoryRefusal(session())).toContain('before room bootstrap');
     expect(() => scope.bindSession(session(new Transport('other')))).toThrow('document identity');
     const bound = scope.bindSession(session());
     expect(() => other.bindSession(bound)).toThrow('another review history scope');
-    expect(() => attachOwnedReviewHistory(doc, { documentId: 'room' })).toThrow('already attached');
+    expect(() =>
+      attachOwnedReviewHistory(doc, {
+        documentId: 'room',
+        bootstrap: 'create',
+        structuralTextAttributeKeys: [],
+      })
+    ).toThrow('already attached');
     scope.dispose();
     scope.dispose();
     expect(reviewGroupHistoryRefusal(bound)).toContain('no longer active');
@@ -89,13 +107,27 @@ test('configuration validates before attachment, and legacy rooms require an exp
   const doc = new Y.Doc();
   try {
     for (const documentId of ['', ' ', 'x\u0000y', 'x'.repeat(4097)])
-      expect(() => attachOwnedReviewHistory(doc, { documentId })).toThrow('document ID');
-    const scope = attachOwnedReviewHistory(doc, { documentId: 'room' });
+      expect(() =>
+        attachOwnedReviewHistory(doc, {
+          documentId,
+          bootstrap: 'create',
+          structuralTextAttributeKeys: [],
+        })
+      ).toThrow('document ID');
+    const scope = attachOwnedReviewHistory(doc, {
+      documentId: 'room',
+      bootstrap: 'create',
+      structuralTextAttributeKeys: [],
+    });
     scope.dispose();
     doc.getText('legacy').insert(0, 'Native content');
-    expect(() => attachOwnedReviewHistory(doc, { documentId: 'room' })).toThrow(
-      'before legacy room content'
-    );
+    expect(() =>
+      attachOwnedReviewHistory(doc, {
+        documentId: 'room',
+        bootstrap: 'create',
+        structuralTextAttributeKeys: [],
+      })
+    ).toThrow('before legacy room content');
     expect(doc.getText('legacy').toString()).toBe('Native content');
   } finally {
     doc.destroy();
@@ -107,6 +139,8 @@ test('poisoned ownership data refuses future review operations without replacing
     errors: Error[] = [],
     scope = attachOwnedReviewHistory(doc, {
       documentId: 'room',
+      bootstrap: 'create',
+      structuralTextAttributeKeys: [],
       onError: (error) => errors.push(error),
     }),
     bound = scope.bindSession(session());
@@ -128,11 +162,19 @@ test('review flag protocol failures release partial attachment and refuse stale 
   try {
     doc.getMap(OWNED_TEXT_OPERATIONS).set('protocol', '2');
     doc.getMap(REVIEW_FLAG_TARGETS).set('protocol', '1');
-    expect(() => attachOwnedReviewHistory(doc, { documentId: 'room' })).toThrow(
-      'Unsupported review flag protocol'
-    );
+    expect(() =>
+      attachOwnedReviewHistory(doc, {
+        documentId: 'room',
+        bootstrap: 'create',
+        structuralTextAttributeKeys: [],
+      })
+    ).toThrow('Unsupported review flag protocol');
     doc.getMap(REVIEW_FLAG_TARGETS).delete('protocol');
-    const scope = attachOwnedReviewHistory(doc, { documentId: 'room' });
+    const scope = attachOwnedReviewHistory(doc, {
+      documentId: 'room',
+      bootstrap: 'create',
+      structuralTextAttributeKeys: [],
+    });
     try {
       expect(reviewGroupHistoryRefusal(scope.bindSession(session()))).toBeNull();
       for (const version of [1, 2, 3, 4]) {
@@ -158,7 +200,11 @@ for (const clients of [
       legacy = new Y.Doc();
     doc.clientID = clients[0];
     legacy.clientID = clients[1];
-    const scope = attachOwnedReviewHistory(doc, { documentId: 'room' });
+    const scope = attachOwnedReviewHistory(doc, {
+      documentId: 'room',
+      bootstrap: 'create',
+      structuralTextAttributeKeys: [],
+    });
     legacy.getMap(OWNED_TEXT_OPERATIONS).set('protocol', '1');
     legacy.getMap(REVIEW_FLAG_TARGETS).set('protocol', '1');
     try {
@@ -168,9 +214,13 @@ for (const clients of [
       const reopened = new Y.Doc();
       try {
         Y.applyUpdate(reopened, Y.encodeStateAsUpdate(doc));
-        expect(() => attachOwnedReviewHistory(reopened, { documentId: 'room' })).toThrow(
-          'protocol'
-        );
+        expect(() =>
+          attachOwnedReviewHistory(reopened, {
+            documentId: 'room',
+            bootstrap: 'create',
+            structuralTextAttributeKeys: [],
+          })
+        ).toThrow('protocol');
       } finally {
         reopened.destroy();
       }

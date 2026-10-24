@@ -34,13 +34,15 @@ Tool capture executes the original schema factory, read/search helpers, and exec
 
 ## Collaborative ownership
 
-Attach `attachOwnedReviewHistory(doc, { documentId })` from `@sciobot/docx/collaboration` before room bootstrap or snapshot loading. Bind the provider session through `scope.bindSession(session)` before attaching the editor. Dispose the scope after the session stops.
+Obtain the provider's structural keys before bootstrap. Attach `attachOwnedReviewHistory(doc, { documentId, bootstrap, structuralTextAttributeKeys })` from `@sciobot/docx/collaboration` before room bootstrap or snapshot loading. Bind the provider session through `scope.bindSession(session)` before attaching the editor. Dispose the scope after the session stops.
+
+Use the same `create` or `join` bootstrap mode as the native provider. Only a creator seeds room ownership metadata. Joiners validate that metadata before native text can materialize. The evaluated provider exports `DOCUMENT_STRUCTURAL_TEXT_ATTRIBUTE_KEYS` for configuration before bootstrap. Session binding verifies the same advertisement.
 
 Complete review history uses private owned-text protocol 2. The provider must advertise `structuralTextAttributeKeys` through the core session contract. The adapter stores this policy and refuses missing or conflicting policies. Native run and text identity attributes follow the provider's structural reconciliation. Authored formatting retains per-character ownership. The adapter reads no provider codec and imports no Pro runtime.
 
 Protocol 1 application rooms require an explicit upgrade. Stop every writer, export the DOCX with the previous compatible application, retain the old room snapshot, and bootstrap a fresh room with protocol 2. Do not rewrite an existing room's protocol header or combine protocol 1 and protocol 2 clients. Conflicting headers remain refused after reopening. Export/reseed does not preserve the old room's undo history.
 
-The generic `attachOwnedTextAttributes` helper keeps protocol 1 as its default for standalone use. It does not supply the complete native review scope required by shared suggestions or image replacement.
+The generic `attachOwnedTextAttributes` helper keeps protocol 1 as its default for standalone use. It does not supply the complete native review scope required by shared suggestions or image replacement. For low-level protocol 2 use, call `setStructuralAttributes` before local edits or remote delivery. Join mode configures that expectation without writing room metadata.
 
 ## Native data and writes
 

@@ -211,6 +211,9 @@ export interface CreateDocumentCollaborationOptions {
 export const DOCUMENT_COLLABORATION_VERSIONS: DocumentCollaborationVersions;
 
 // @public
+export const DOCUMENT_STRUCTURAL_TEXT_ATTRIBUTE_KEYS: readonly string[];
+
+// @public
 export type DocumentCollaborationHandle = CollaborationHandle<DocumentCollaborationSession>;
 
 // @public

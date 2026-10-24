@@ -3,6 +3,7 @@ import {
   assertOwnedProtocol,
   structuralAttributes,
   bindStructuralAttributes,
+  encodeStructuralPolicy,
 } from './owned-structure';
 import * as Y from 'yjs';
 import { copyBoundedJson } from '../data/json';
@@ -35,6 +36,8 @@ export interface OwnedTextOptions {
 export interface OwnedTextAttributesOptions extends OwnedTextOptions {
   /** Version 2 also binds provider-declared structural keys before editing. */
   readonly protocol?: 1 | 2;
+  /** Join validates existing room metadata without advertising a second creator. */
+  readonly bootstrap?: 'create' | 'join';
 }
 export interface OwnedTextHandle {
   readonly protocol: 1 | 2;
@@ -46,6 +49,7 @@ interface State {
   readonly doc: Y.Doc;
   readonly options: OwnedTextOptions;
   readonly protocol: 1 | 2;
+  readonly bootstrap: 'create' | 'join';
   structuralProfile: string | null;
   error: Error | null;
   repairing: boolean;
@@ -74,6 +78,10 @@ function validRange(text: Y.Text, index: number, length: number) {
 }
 function check(state: State) {
   if (state.error) throw state.error;
+}
+function checkForText(state: State) {
+  check(state);
+  if (state.protocol === 2) structuralAttributes(state.doc, state.structuralProfile);
 }
 function nextIntent(
   doc: Y.Doc,
@@ -130,7 +138,7 @@ function publish(
 ) {
   const map = state.doc.getMap<string>(OWNED_TEXT_OPERATIONS);
   const version = map.get('protocol');
-  assertOwnedProtocol(map, String(state.protocol), true);
+  assertOwnedProtocol(map, String(state.protocol), state.protocol === 1);
   if (version === undefined) map.set('protocol', String(state.protocol));
   if (map.has(item.key)) throw new OwnedTextError('Owned attribute identity was reused.');
   map.set(item.key, item.data);
@@ -159,7 +167,7 @@ function install() {
   Y.Text.prototype.insert = function (index, value, attributes) {
     const state = this.doc ? attached.get(this.doc) : undefined;
     if (!state || !value.length) return original.insert.call(this, index, value, attributes);
-    check(state);
+    checkForText(state);
     if (!Number.isSafeInteger(index) || index < 0)
       throw new OwnedTextError('Invalid shared-text insertion index.');
     const at = Math.min(index, this.length),
@@ -172,7 +180,7 @@ function install() {
   Y.Text.prototype.insertEmbed = function (index, value, attributes) {
     const state = this.doc ? attached.get(this.doc) : undefined;
     if (!state) return original.insertEmbed.call(this, index, value, attributes);
-    check(state);
+    checkForText(state);
     if (!Number.isSafeInteger(index) || index < 0)
       throw new OwnedTextError('Invalid shared-text embed index.');
     const at = Math.min(index, this.length),
@@ -185,7 +193,7 @@ function install() {
   Y.Text.prototype.format = function (index, length, attributes) {
     const state = this.doc ? attached.get(this.doc) : undefined;
     if (!state) return original.format.call(this, index, length, attributes);
-    check(state);
+    checkForText(state);
     validRange(this, index, length);
     if (!length) return;
     const values = detachedAttributes(attributes);
@@ -202,7 +210,7 @@ function install() {
   Y.Text.prototype.applyDelta = function (delta, options) {
     const state = this.doc ? attached.get(this.doc) : undefined;
     if (!state) return original.applyDelta.call(this, delta, options);
-    check(state);
+    checkForText(state);
     const copy = copyBoundedJson(delta, {
       maxBytes: 16 * 1024 * 1024,
       maxNodes: 1_000_000,
@@ -360,7 +368,11 @@ function changedTexts(transaction: Y.Transaction) {
 }
 function validateChangedLedgers(state: State, transaction: Y.Transaction) {
   const doc = state.doc;
-  assertOwnedProtocol(doc.getMap(OWNED_TEXT_OPERATIONS), String(state.protocol), true);
+  assertOwnedProtocol(
+    doc.getMap(OWNED_TEXT_OPERATIONS),
+    String(state.protocol),
+    state.protocol === 1
+  );
   structuralAttributes(doc, state.structuralProfile);
   const operations = doc.getMap(OWNED_TEXT_OPERATIONS),
     lineage = doc.getMap(OWNED_TEXT_LINEAGE);
@@ -406,6 +418,12 @@ export function attachOwnedTextAttributes(
     throw new OwnedTextError('The room must use the same pinned Yjs instance.');
   if (options.protocol !== undefined && options.protocol !== 1 && options.protocol !== 2)
     throw new OwnedTextError('Unsupported owned-text protocol.');
+  if (
+    options.bootstrap !== undefined &&
+    options.bootstrap !== 'create' &&
+    options.bootstrap !== 'join'
+  )
+    throw new OwnedTextError('Invalid owned room bootstrap mode.');
   if (attached.has(doc))
     throw new OwnedTextError('Owned attributes are already attached to this room.');
   const operations = doc.getMap(OWNED_TEXT_OPERATIONS);
@@ -415,12 +433,18 @@ export function attachOwnedTextAttributes(
     throw new OwnedTextError('Unsupported owned-text protocol.');
   if (protocol === undefined && [...doc.store.clients.values()].some((items) => items.length))
     throw new OwnedTextError('Attach owned attributes before legacy room content is authored.');
+  structuralAttributes(
+    doc,
+    null,
+    options.bootstrap !== 'join' || ![...doc.store.clients.values()].some((items) => items.length)
+  );
   doc.getMap(OWNED_TEXT_LINEAGE);
   install();
   const state: State = {
     doc,
     options,
     protocol: options.protocol ?? OWNED_TEXT_PROTOCOL,
+    bootstrap: options.bootstrap ?? 'create',
     structuralProfile: null,
     error: null,
     repairing: false,
@@ -450,13 +474,22 @@ export function attachOwnedTextAttributes(
     );
   }
   attached.set(doc, state);
-  if (state.protocol === 2 && protocol === undefined)
+  if (state.protocol === 2 && state.bootstrap === 'create' && protocol === undefined)
     doc.transact(() => operations.set('protocol', '2'));
   const before = (transaction: Y.Transaction) => {
     if (transaction.origin === REPAIR || state.repairing) return;
     try {
       check(state);
       state.repairing = true;
+      const operations = doc.getMap(OWNED_TEXT_OPERATIONS);
+      if (
+        state.bootstrap === 'join' &&
+        (doc.store.pendingStructs || doc.store.pendingDs) &&
+        (!operations._map.has('protocol') || !operations._map.has(OWNED_STRUCTURE_FIELD))
+      ) {
+        for (const text of changedTexts(transaction)) state.deferred.add(text);
+        return;
+      }
       recordRestoredLineage(doc, transaction, REPAIR);
       validateChangedLedgers(state, transaction);
       const texts = changedTexts(transaction);
@@ -470,8 +503,10 @@ export function attachOwnedTextAttributes(
       state.deferred.clear();
       for (const text of texts) if (!text._item?.deleted && text.doc === doc) repair(state, text);
     } catch (error) {
-      state.error = error instanceof Error ? error : new OwnedTextError(String(error));
-      state.options.onError?.(state.error);
+      if (!state.error) {
+        state.error = error instanceof Error ? error : new OwnedTextError(String(error));
+        state.options.onError?.(state.error);
+      }
       throw state.error;
     } finally {
       state.repairing = false;
@@ -483,11 +518,24 @@ export function attachOwnedTextAttributes(
     protocol: state.protocol,
     setStructuralAttributes(keys: readonly string[]) {
       check(state);
-      state.structuralProfile = bindStructuralAttributes(doc, keys, state.structuralProfile);
+      if (
+        state.bootstrap === 'join' &&
+        doc.getMap(OWNED_TEXT_OPERATIONS).get('protocol') === undefined &&
+        ![...doc.store.clients.values()].some((items) => items.length)
+      ) {
+        const profile = encodeStructuralPolicy(keys);
+        if (state.structuralProfile !== null && state.structuralProfile !== profile)
+          throw new OwnedTextError('Incompatible structural text attribute policy.');
+        state.structuralProfile = profile;
+      } else state.structuralProfile = bindStructuralAttributes(doc, keys, state.structuralProfile);
     },
     assertHealthy() {
       check(state);
-      assertOwnedProtocol(doc.getMap(OWNED_TEXT_OPERATIONS), String(state.protocol), true);
+      assertOwnedProtocol(
+        doc.getMap(OWNED_TEXT_OPERATIONS),
+        String(state.protocol),
+        state.protocol === 1
+      );
       structuralAttributes(doc, state.structuralProfile);
     },
     dispose() {

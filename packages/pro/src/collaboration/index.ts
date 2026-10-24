@@ -23,6 +23,7 @@ export type {
 } from './types.ts';
 export {
   createDocumentCollaboration,
+  DOCUMENT_STRUCTURAL_TEXT_ATTRIBUTE_KEYS,
   readCollaborationDocument,
   type CreateDocumentCollaborationOptions,
   type DocumentCollaborationHandle,

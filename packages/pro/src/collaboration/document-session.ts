@@ -13,6 +13,7 @@ Production use requires a commercial agreement: licensing@eigenpal.com
  */
 
 import { STRUCTURAL_TEXT_ATTRIBUTE_KEYS } from './document/paragraph-text.ts';
+export { STRUCTURAL_TEXT_ATTRIBUTE_KEYS as DOCUMENT_STRUCTURAL_TEXT_ATTRIBUTE_KEYS } from './document/paragraph-text.ts';
 import { projectTypingOrJournal } from './document/projected-journal.ts';
 import { editWaits } from './document/journal.ts';
 import { markRestoredText } from './document/paragraph-text-restore.ts';
