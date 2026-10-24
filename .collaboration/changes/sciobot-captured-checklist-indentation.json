@@ -1,0 +1,22 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "The private list adapter creates real Word checkboxes but does not implement the captured indentTodo action. The source action instead increases indentation, applies disc style, and retains checked:false without displaying a checkbox.",
+  "after": "indentManualChecklist plans the captured action separately from native checkbox conversion. It authors native bullet membership and bounded inert list metadata in the same canonical transaction. The private list source and serialized plan validate and fingerprint dormant checked state. Existing checkbox conversion and list-level commands retain their meanings. Real two-session cases verify concurrent text, both review decisions, independent histories, and saved/reopened native main parts.",
+  "reason": "The private adapter uses existing canonical generic XML nodes, namespace bindings, attributes, native numbering operations, and property-change snapshots. No native shared schema, repair, protocol, or model field changes. Existing readers already preserve unknown namespace nodes and attributes. Dormant metadata uses a versioned application namespace with MCE hints. Its preservation through external Word editing is unverified; fork save/reopen is tested. The private plan extension is optional and applies only to new list instances. Existing plan fixtures and absent-metadata fingerprints remain unchanged. Numeric limits remain unchanged. No room migration, automatic reseeding, application edit, or reference capture occurs. An empty private Changeset records this adapter work. N08 remains open for its existing production ownership and source sequence requirements.",
+  "tests": [
+    "packages/sciobot/src/chrome/checklist-indentation.test.ts",
+    "packages/sciobot/src/chrome/checklist-indentation-collaboration.test.ts",
+    "packages/sciobot/src/chrome/lists.test.ts",
+    "packages/sciobot/src/chrome/lists-collaboration.test.ts",
+    "packages/sciobot/src/chrome/list-split-tracking.test.ts",
+    "packages/sciobot/src/diff/lists.test.ts",
+    "packages/sciobot/src/diff/target-lists.test.ts",
+    "packages/sciobot/src/review/track-checklists.test.ts",
+    "packages/sciobot/src/review/track-checklists-collaboration.test.ts",
+    "packages/sciobot/src/projection/lists.test.ts",
+    "e2e/sciobot-lists.spec.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

@@ -349,3 +349,48 @@ for (const [style, label] of [
         );
       }
     });
+
+for (const prior of [false, true])
+  test(`captured checklist indentation uses the real toolbar and preserves native typing: prior=${prior}`, async ({
+    page,
+  }) => {
+    await page.goto('/lists.html');
+    await page.waitForFunction(() => !!window.listControls);
+    const toolbar = page.locator('[data-pane="0"]').getByRole('toolbar', { name: 'Lists' });
+    if (prior) {
+      await page.evaluate(() => window.listControls.select(0, 2));
+      await toolbar.getByRole('combobox', { name: 'List style' }).selectOption('todo');
+      await toolbar.getByRole('button', { name: 'Apply list', exact: true }).click();
+      await page.evaluate(() => window.listControls.settle());
+    }
+    await page.evaluate((prior) => window.listControls.select(0, prior ? 3 : 2), prior);
+    const before = await page.evaluate(() => window.listControls.state());
+    await toolbar.getByRole('button', { name: 'Indent checklist', exact: true }).click();
+    await page.evaluate(() => window.listControls.settle());
+    const after = await page.evaluate(() => window.listControls.state());
+    expect(after.paragraphs[0]!.membership).toMatchObject({
+      checkbox: null,
+      dormantChecked: false,
+      numbering: { level: prior ? 1 : 0 },
+    });
+    expect(after.paragraphs[0]!.marker?.text).toBe('•');
+    expect(after.selection).toEqual({
+      anchor: { paragraphId: before.paragraphs[0]!.id, offset: 2 },
+      head: { paragraphId: before.paragraphs[0]!.id, offset: 2 },
+    });
+    expect(await page.evaluate(() => window.listControls.undo())).toBe(true);
+    expect((await page.evaluate(() => window.listControls.state())).fingerprint).toEqual(
+      before.fingerprint
+    );
+    expect(await page.evaluate(() => window.listControls.redo())).toBe(true);
+    expect((await page.evaluate(() => window.listControls.state())).fingerprint).toEqual(
+      after.fingerprint
+    );
+    await page.keyboard.type('!');
+    await page.evaluate(() => window.listControls.settle());
+    expect((await page.evaluate(() => window.listControls.state())).paragraphs[0]!.text).toBe(
+      'Al!pha'
+    );
+    const saved = await page.evaluate(() => window.listControls.saved());
+    expect(saved[0]).toEqual(saved[1]);
+  });

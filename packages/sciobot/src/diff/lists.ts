@@ -1,3 +1,4 @@
+import { readDormantListState } from './list-metadata';
 import {
   buildNumberingIndex,
   buildStyleCascadeTable,
@@ -248,6 +249,8 @@ function inspectListSource(
   if (paragraph?.kind !== 'paragraph')
     return fail('The native list paragraph does not exist.', 'invalid-document');
   const pPr = propertyContainer(paragraph, 'paragraphProperties', 'pPr');
+  const dormant = readDormantListState(pPr);
+  if (!dormant.ok) return fail(dormant.reason, 'unsupported-operation');
   const native = readNumPr(cascadeParagraphFormatting(styles, pPr).paragraphPropertyNodes);
   const membership =
     native && native.numId !== '0' ? { numId: native.numId, level: native.ilvl } : null;
@@ -257,6 +260,11 @@ function inspectListSource(
     return fail('The paragraph has multiple owned checklist markers.', 'ambiguous-target');
   const marker = owned[0],
     markerProperties = marker && contentControlPropertiesOf(marker);
+  if (marker && dormant.checked !== undefined)
+    return fail(
+      'An active checklist cannot also carry dormant list state.',
+      'unsupported-operation'
+    );
   if (markerProperties && (!markerProperties.checkbox || markerProperties.dataBinding))
     return fail('The owned checklist marker is invalid or data-bound.', 'unsupported-operation');
   const indentation = named(pPr, 'ind');
@@ -282,6 +290,9 @@ function inspectListSource(
     checkboxLevel = twips / 720 - 1;
   }
   const state: ListSourceState = {
+    // Imported editors can remove membership while preserving opaque extension data.
+    // Such data stays lossless but does not create a metadata-only list suggestion.
+    ...(!membership || dormant.checked === undefined ? {} : { dormantChecked: dormant.checked }),
     numbering: membership,
     checkbox: marker
       ? {
@@ -296,6 +307,7 @@ function inspectListSource(
           named(pPr, 'numPr') ? canonicalOoxmlFingerprint(named(pPr, 'numPr')!) : null,
           indentation ? canonicalOoxmlFingerprint(indentation) : null,
           marker ? canonicalOoxmlFingerprint(marker) : null,
+          ...(dormant.node ? [canonicalOoxmlFingerprint(dormant.node)] : []),
         ])
       )
     ),
@@ -351,13 +363,15 @@ export function planListMembership(
     const membership = state.numbering,
       marker = state.checkbox;
     const target = patch.target;
-    if (target.kind === 'none' && !membership && !marker) continue;
+    if (target.kind === 'none' && !membership && !marker && state.dormantChecked === undefined)
+      continue;
     if (target.kind === 'checklist') {
       if (
         !membership &&
         state.checkbox &&
         state.checkbox.checked === target.checked &&
-        state.checkbox.level === target.level
+        state.checkbox.level === target.level &&
+        state.dormantChecked === undefined
       )
         continue;
     } else if (target.kind !== 'none') {
@@ -377,7 +391,8 @@ export function planListMembership(
           !marker &&
           membership &&
           membership.numId === target.instance.numId &&
-          membership.level === target.level
+          membership.level === target.level &&
+          (target.dormantChecked === undefined || target.dormantChecked === state.dormantChecked)
         )
           continue;
       } else {

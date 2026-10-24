@@ -1,3 +1,4 @@
+import { writeDormantListState } from '../diff/list-metadata';
 import { styleListInstance } from './direct-list-style';
 import {
   applyTreeOp,
@@ -199,6 +200,11 @@ export function applyDirectListAssignments(
         ],
       });
     }
+    const dormant =
+      target.kind === 'none' || target.kind === 'checklist'
+        ? undefined
+        : (target.dormantChecked ?? before?.dormantChecked);
+    pkg = withPart(pkg, writeDormantListState(part(), paragraphId, dormant));
   }
   return pkg;
 }

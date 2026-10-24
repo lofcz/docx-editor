@@ -23,10 +23,13 @@ export type ListTarget =
       readonly instance: ListInstance;
       /** Style for all levels of a new counter instance; omitted uses the Word template. */
       readonly style?: ListStyle;
+      /** Inert source state authored with a new list instance. */
+      readonly dormantChecked?: boolean;
     }
   | { readonly kind: 'checklist'; readonly level: number; readonly checked: boolean };
 
 export interface ListSourceState {
+  readonly dormantChecked?: boolean;
   readonly numbering: { readonly numId: string; readonly level: number } | null;
   readonly checkbox: {
     readonly controlId: string;
@@ -55,7 +58,8 @@ export function isListTarget(value: unknown): value is ListTarget {
     return typeof value.checked === 'boolean' && keys(value, ['kind', 'level', 'checked']);
   if (
     !['bullet', 'ordered'].includes(String(value.kind)) ||
-    !keys(value, ['kind', 'level', 'instance', 'style'])
+    !keys(value, ['kind', 'level', 'instance', 'style', 'dormantChecked']) ||
+    (value.dormantChecked !== undefined && typeof value.dormantChecked !== 'boolean')
   )
     return false;
   if (
@@ -68,6 +72,7 @@ export function isListTarget(value: unknown): value is ListTarget {
   if (!record(instance)) return false;
   if (instance.kind === 'existing')
     return (
+      value.dormantChecked === undefined &&
       value.style === undefined &&
       typeof instance.numId === 'string' &&
       /^\d{1,9}$/.test(instance.numId) &&
@@ -89,7 +94,8 @@ export function isListTarget(value: unknown): value is ListTarget {
 export function isListSourceState(value: unknown): value is ListSourceState {
   if (
     !record(value) ||
-    !keys(value, ['numbering', 'checkbox', 'fingerprint']) ||
+    !keys(value, ['numbering', 'checkbox', 'fingerprint', 'dormantChecked']) ||
+    (value.dormantChecked !== undefined && typeof value.dormantChecked !== 'boolean') ||
     typeof value.fingerprint !== 'string' ||
     !/^sha256:[a-f0-9]{64}$/.test(value.fingerprint)
   )

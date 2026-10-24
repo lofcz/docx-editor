@@ -213,6 +213,31 @@ export function toggleManualList(
     });
   return setManualList(editor, active ? 'none' : style, context);
 }
+/** Match the captured indentTodo action, independently of native checkbox conversion. */
+export function indentManualChecklist(editor: DocxEditorInstance, context: BlockCommandContext) {
+  editor.surface?.flushPendingInput();
+  const key = `checklist-indent:${editor.surface?.session.packageRevision() ?? 0}`;
+  return change(editor, context, (state, id) => {
+    let level = (state.checkbox?.level ?? state.numbering?.level ?? -1) + 1;
+    if (!state.checkbox && !state.numbering) {
+      const paragraph = editor.surface
+        ?.layout()
+        .pages.flatMap((page) => paragraphFragmentsOf(page))
+        .find((fragment) => fragment.paragraphId === id);
+      if (!paragraph) return fail('The selected paragraph has no native layout.');
+      level = Math.round(paragraph.indent.left * 20) / 360;
+    }
+    if (!Number.isInteger(level) || level < 0 || level > 8)
+      return fail('The checklist indentation exceeds the supported native list levels.');
+    return {
+      kind: 'bullet',
+      style: 'disc',
+      level,
+      dormantChecked: false,
+      instance: { kind: 'new', key },
+    };
+  });
+}
 export function setManualChecklist(
   editor: DocxEditorInstance,
   checked: boolean,
@@ -325,6 +350,7 @@ export function createListToolbar(editor: DocxEditorInstance, context: BlockComm
     ['Insert checklist', () => insertManualList(editor, 'todo', context)],
     ['Check item', () => setManualListChecked(editor, true, context)],
     ['Uncheck item', () => setManualListChecked(editor, false, context)],
+    ['Indent checklist', () => indentManualChecklist(editor, context)],
     ['Indent list', () => adjustManualListLevel(editor, 'increase', context)],
     ['Outdent list', () => adjustManualListLevel(editor, 'decrease', context)],
   ] as const;

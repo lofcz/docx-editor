@@ -158,6 +158,7 @@ export {
   setManualList,
   toggleManualList,
   setManualListChecked,
+  indentManualChecklist,
   adjustManualListLevel,
   createListToolbar,
   manualListState,
