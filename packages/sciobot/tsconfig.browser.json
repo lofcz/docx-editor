@@ -39,6 +39,8 @@
     "../../e2e/sciobot-table-indent.spec.ts",
     "../../e2e/sciobot-table-indent.config.ts",
     "../../e2e/sciobot-manual-tracking.spec.ts",
-    "../../e2e/sciobot-manual-tracking.config.ts"
+    "../../e2e/sciobot-manual-tracking.config.ts",
+    "../../e2e/sciobot-lists.spec.ts",
+    "../../e2e/sciobot-lists.config.ts"
   ]
 }

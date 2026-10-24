@@ -153,3 +153,15 @@ export {
   setManualSuggestionMode,
   createManualSuggestionToggle,
 } from './review/manual-tracking';
+
+export {
+  setManualList,
+  toggleManualList,
+  setManualListChecked,
+  adjustManualListLevel,
+  createListToolbar,
+  manualListState,
+  manualListMarker,
+  LIST_STYLES,
+} from './chrome/lists';
+export { installListEditing } from './chrome/list-input';

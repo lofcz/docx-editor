@@ -1,3 +1,4 @@
+import { styleListInstance } from './direct-list-style';
 import {
   applyTreeOp,
   createNodeIdAllocator,
@@ -92,7 +93,7 @@ export function applyDirectListAssignments(
     if (!id) {
       const made = ensureListDefinition(pkg, target.kind);
       if (!made) throw new ListWriteError('The native engine refused a new list definition.');
-      pkg = made.pkg;
+      pkg = target.style ? styleListInstance(made.pkg, made.numId, target.style) : made.pkg;
       id = made.numId;
       instances.set(target.instance.key, id);
     }

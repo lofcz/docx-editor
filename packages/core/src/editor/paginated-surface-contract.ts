@@ -683,6 +683,8 @@ export interface PaginatedSurface extends SurfaceBlockReservations {
    * reason counts as refused (`'rejected'`). Gate and `run` reasons also become
    * `lastRejection`; a skipped refresh changes nothing, `lastRejection` included.
    *
+   * An optional trusted selection resolves after writing, before local history and presence capture.
+   *
    * `run` receives the store history token of this commit, for the store write it performs.
    */
   commitReviewOps(
@@ -690,7 +692,8 @@ export interface PaginatedSurface extends SurfaceBlockReservations {
       readonly committed: boolean;
       readonly reason?: unknown;
     },
-    intent?: ReviewWriteIntent
+    intent?: ReviewWriteIntent,
+    selectionAfter?: () => SemanticSelection | null
   ): string | null;
   /**
    * The layout as last PUBLISHED, without forcing pending work.

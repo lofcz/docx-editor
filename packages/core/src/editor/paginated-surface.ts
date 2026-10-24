@@ -5153,7 +5153,7 @@ export function mountPaginatedSurface(
         pageOffsetX: materializedExtent?.pageOffsetX ?? new Map<number, number>(),
       }),
 
-    commitReviewOps: (run, intent) => {
+    commitReviewOps: (run, intent, selectionAfter) => {
       // The text the caret's paragraph held BEFORE the resolution, so the caret can be mapped
       // across what Accept or Reject removed. Clamping alone only fires when the paragraph
       // ends up shorter than the offset; a caret in the MIDDLE of a paragraph that shrank
@@ -5223,6 +5223,8 @@ export function mountPaginatedSurface(
             // and the flush above consumed it — so the render that follows read the stale DOM
             // selection back over the clamp and the caret jumped to the paragraph start.
             selectionSync.noteModelMoved();
+            const requested = selectionAfter?.();
+            if (requested) return clampedToDocument(editingLayout(), paragraphOrder(), requested);
             // Clamped within the story the READER is in, for the reason `applyAutomationOps`
             // states below: the body's paragraph list is the wrong ruler while a header or a
             // note is open, and clamping to it moved the caret into the document while the

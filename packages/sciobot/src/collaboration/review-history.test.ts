@@ -230,3 +230,35 @@ for (const clients of [
       legacy.destroy();
     }
   });
+
+test('a bound session shares its native undo authority without creating a second history owner', async () => {
+  const { registerUndoHistoryPosition } =
+    await import('@docx-editor.dev/core/collaboration/replication');
+  const { undoHistoryPosition } =
+    await import('../../../core/src/store/store/undo-history-position');
+  const doc = new Y.Doc(),
+    scope = attachOwnedReviewHistory(doc, {
+      documentId: 'room',
+      bootstrap: 'create',
+      structuralTextAttributeKeys: [],
+    }),
+    native = session(),
+    key = {};
+  let splits = 0;
+  registerUndoHistoryPosition(native, {
+    current: () => key,
+    split: () => {
+      splits++;
+    },
+  });
+  try {
+    const bound = scope.bindSession(native);
+    expect(undoHistoryPosition(bound)).toBe(undoHistoryPosition(native));
+    expect(undoHistoryPosition(bound)!.current()).toBe(key);
+    undoHistoryPosition(bound)!.split();
+    expect(splits).toBe(1);
+  } finally {
+    scope.dispose();
+    doc.destroy();
+  }
+});

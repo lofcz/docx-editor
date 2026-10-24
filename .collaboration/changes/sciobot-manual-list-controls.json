@@ -1,0 +1,18 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Private manual list controls and marker-style selection were not connected. Native guarded writes always derived their final caret from text comparison.",
+  "after": "Private controls reuse canonical list planning, direct execution, and tracked execution. An optional private plan style creates Word level overrides only on a new counter instance. Guarded native writes can accept a post-edit selection before local history and presence capture.",
+  "reason": "Existing Word numbering and checkbox nodes, primitive journals, shared attribute codecs, and history formats stay unchanged. Existing readers already interpret num/lvlOverride and tracked property records. The DOM-free application session wrapper exposes its native authority through an editor-local forwarding symbol. Core reads the existing registry entry, preserving native caret and format history across redo without importing an editor runtime into the protocol. The callback, authority binding, and plan arguments stay local. Transport tests use the EigenPal Pro License. N08 remains open until its complete capture and keyboard contract passes.",
+  "tests": [
+    "packages/sciobot/src/chrome/lists.test.ts",
+    "packages/sciobot/src/chrome/list-input.test.ts",
+    "packages/sciobot/src/chrome/lists-collaboration.test.ts",
+    "e2e/sciobot-lists.spec.ts",
+    "packages/core/src/editor/__tests__/guarded-write-selection.test.ts",
+    "packages/core/src/store/__tests__/undo-history-authority.test.ts",
+    "packages/sciobot/src/collaboration/review-history.test.ts"
+  ],
+  "changeset": "native-guarded-selection",
+  "migration": null
+}

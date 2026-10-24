@@ -1,3 +1,14 @@
+export const LIST_STYLES = [
+  'disc',
+  'circle',
+  'square',
+  'decimal',
+  'lower-alpha',
+  'upper-alpha',
+  'lower-roman',
+  'upper-roman',
+] as const;
+export type ListStyle = (typeof LIST_STYLES)[number];
 /** Semantic list ownership. New instances receive native IDs inside the eventual transaction. */
 export type ListInstance =
   | { readonly kind: 'existing'; readonly numId: string }
@@ -6,7 +17,13 @@ export type ListInstance =
 
 export type ListTarget =
   | { readonly kind: 'none' }
-  | { readonly kind: 'bullet' | 'ordered'; readonly level: number; readonly instance: ListInstance }
+  | {
+      readonly kind: 'bullet' | 'ordered';
+      readonly level: number;
+      readonly instance: ListInstance;
+      /** Style for all levels of a new counter instance; omitted uses the Word template. */
+      readonly style?: ListStyle;
+    }
   | { readonly kind: 'checklist'; readonly level: number; readonly checked: boolean };
 
 export interface ListSourceState {
@@ -38,13 +55,20 @@ export function isListTarget(value: unknown): value is ListTarget {
     return typeof value.checked === 'boolean' && keys(value, ['kind', 'level', 'checked']);
   if (
     !['bullet', 'ordered'].includes(String(value.kind)) ||
-    !keys(value, ['kind', 'level', 'instance'])
+    !keys(value, ['kind', 'level', 'instance', 'style'])
+  )
+    return false;
+  if (
+    value.style !== undefined &&
+    (!LIST_STYLES.includes(value.style as ListStyle) ||
+      (value.kind === 'bullet') !== ['disc', 'circle', 'square'].includes(String(value.style)))
   )
     return false;
   const instance = value.instance;
   if (!record(instance)) return false;
   if (instance.kind === 'existing')
     return (
+      value.style === undefined &&
       typeof instance.numId === 'string' &&
       /^\d{1,9}$/.test(instance.numId) &&
       Number(instance.numId) > 0 &&

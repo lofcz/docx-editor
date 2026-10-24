@@ -140,6 +140,7 @@ export function planListMembership(
   const { styles, numbering } = listContext(source.pkg);
   const seen = new Set<string>(),
     newInstances = new Map<string, string>(),
+    newStyles = new Map<string, string | null>(),
     operations: CanonicalEdit[] = [];
   for (const patch of patches) {
     if (
@@ -241,9 +242,14 @@ export function planListMembership(
         )
           continue;
       } else {
+        const style = target.style ?? null;
+        if (newStyles.has(target.instance.key) && newStyles.get(target.instance.key) !== style)
+          return fail('One new list instance has conflicting marker styles.', 'ambiguous-target');
+        newStyles.set(target.instance.key, style);
         const levelKey = JSON.stringify([target.instance.key, target.level]),
           definition = JSON.stringify([
             target.kind,
+            target.style ?? null,
             target.kind === 'ordered' ? (target.instance.start ?? 1) : null,
           ]);
         const previous = newInstances.get(levelKey);

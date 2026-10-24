@@ -2523,7 +2523,7 @@ export interface PaginatedSurface extends SurfaceBlockReservations {
     commitReviewOps(run: (historyToken: symbol | undefined) => {
         readonly committed: boolean;
         readonly reason?: unknown;
-    }, intent?: ReviewWriteIntent): string | null;
+    }, intent?: ReviewWriteIntent, selectionAfter?: () => SemanticSelection | null): string | null;
     readonly contentControls: ContentControlOps;
     // (undocumented)
     convertAllNotes(fromKind: 'footnote' | 'endnote'): boolean;

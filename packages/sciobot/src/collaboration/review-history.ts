@@ -9,6 +9,8 @@ import {
 } from './owned-text';
 import { attachOwnedReviewFlags, type OwnedReviewFlags } from './review-flags';
 import { attachOwnedReviewFields } from './review-fields';
+// A local wrapper capability; it never enters the shared ownership protocol.
+const NATIVE_UNDO_AUTHORITY = Symbol.for('@docx-editor.dev/undo-history-authority');
 
 export interface OwnedReviewHistory extends Omit<OwnedTextHandle, 'setStructuralAttributes'> {
   /** Bind the session created over this scope's document. All native methods keep their receiver. */
@@ -107,6 +109,7 @@ export function attachOwnedReviewHistory(
         Object.create(Object.getPrototypeOf(session)) as EditorCollaborationSession,
         {
           get(_target, key) {
+            if (key === NATIVE_UNDO_AUTHORITY) return session;
             if (key === REVIEW_HISTORY_CAPABILITY) return assertHealthy;
             const value = Reflect.get(session, key, session);
             if (typeof value !== 'function') return value;
