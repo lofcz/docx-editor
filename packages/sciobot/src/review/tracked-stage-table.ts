@@ -1,4 +1,5 @@
-import { insertedAtomsOfEdit } from '../diff/inserted-cell-atoms';
+import type { InlineImageRuntime } from '../native/inline-image-runtime';
+import { cellAtomBindings, insertedAtomsOfEdit } from '../diff/inserted-cell-atoms';
 import { cellPropertiesAt } from '../diff/new-cell-properties';
 import type { DirectListContext } from '../ai/direct-lists';
 import { cellListBindings } from '../diff/inserted-cell-lists';
@@ -89,13 +90,11 @@ export function stageTrackedTable(
   edit: TableEdit,
   revision: TrackedStageAttribution,
   trackFormatting: boolean,
-  listContext?: DirectListContext
+  listContext?: DirectListContext,
+  images?: InlineImageRuntime
 ): readonly ReviewGroupReceipt[] {
-  if (insertedAtomsOfEdit(edit).length)
-    refuseWrite(
-      'Tracked cell atoms need explicit birth and resource ownership.',
-      'unsupported-operation'
-    );
+  const atoms = insertedAtomsOfEdit(edit);
+  const cellRevision = atoms.length ? revision : undefined;
   const before = currentStagePart(writer, edit.partName),
     tableId = trackedTableId(edit);
   if (findNode(before, tableId)?.kind !== 'table')
@@ -143,11 +142,15 @@ export function stageTrackedTable(
         fresh.map((cellId, index) => ({
           cellId,
           blocks: streams[index]!,
+          atoms: cellAtomBindings(atoms, index),
           properties:
             edit.intent.kind === 'split'
               ? cellPropertiesAt(edit.intent.cellProperties, index)
               : undefined,
-        }))
+        })),
+        listContext,
+        cellRevision,
+        images
       );
     }
   } else if (edit.kind === 'insert-row') {
@@ -182,10 +185,13 @@ export function stageTrackedTable(
       fresh.map((cell, index) => ({
         cellId: cell.id,
         blocks: intent.cells[index]!,
+        atoms: cellAtomBindings(atoms, index),
         lists: cellListBindings(intent.lists, index),
         properties: cellPropertiesAt(intent.cellProperties, index),
       })),
-      listContext
+      listContext,
+      cellRevision,
+      images
     );
   } else if (edit.kind === 'insert-column') {
     const intent = edit.intent;
@@ -214,13 +220,14 @@ export function stageTrackedTable(
             {
               cellId: created[0]!.id,
               blocks: entry.blocks,
+              atoms: cellAtomBindings(atoms, index),
               lists: cellListBindings(intent.lists, index),
               properties: cellPropertiesAt(intent.cellProperties, index),
             },
           ]
         : [];
     });
-    stageNewCells(writer, edit.partName, fresh, listContext);
+    stageNewCells(writer, edit.partName, fresh, listContext, cellRevision, images);
   } else {
     const intent = edit.intent;
     if (intent.payloads.length)
@@ -253,8 +260,12 @@ export function stageTrackedTable(
       fresh.map((cellId, index) => ({
         cellId,
         blocks: intent.cells[index]!,
+        atoms: cellAtomBindings(atoms, index),
         properties: cellPropertiesAt(intent.cellProperties, index),
-      }))
+      })),
+      listContext,
+      cellRevision,
+      images
     );
   }
   const current = currentStagePart(writer, edit.partName),

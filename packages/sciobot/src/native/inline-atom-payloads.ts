@@ -1,3 +1,4 @@
+import { withInlineControlId } from './inline-image-control-id';
 import {
   applyTreeOp,
   contentControlsIn,
@@ -25,7 +26,8 @@ export function completeInlineAtomPayloads(
       ({ node }) => contentControlPropertiesOf(node).tag === blockTag(atom.payload.id)
     );
     if (controls.length !== 1) throw Error('The inserted atom needs one native control.');
-    const locked = applyTreeOp(part, {
+    pkg = withInlineControlId(pkg, partName, controls[0]!.node.id);
+    const locked = applyTreeOp(pkg.parts.get(partName)!, {
       op: 'setContentControlProperties',
       controlId: controls[0]!.node.id,
       lock: 'sdtContentLocked',

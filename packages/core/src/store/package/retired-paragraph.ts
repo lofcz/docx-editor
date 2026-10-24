@@ -88,7 +88,17 @@ export function hiddenRetiredParagraphs(children: readonly OoxmlNode[]): Readonl
   const normal = children.some(
     (node) => node.kind === 'paragraph' && !isEmptyRetiredParagraph(node)
   );
-  return new Set((normal ? retired : retired.slice(1)).map((node) => node.id));
+  if (normal) return new Set(retired.map((node) => node.id));
+  let lastTable = -1;
+  for (let index = 0; index < children.length; index++)
+    if (children[index]!.kind === 'table') lastTable = index;
+  // A recovery slot before a table is not the terminal caret paragraph Word requires.
+  // Keep a terminal slot when one exists, without adding a leading paragraph to a table-only story.
+  const caret =
+    lastTable < 0
+      ? retired[0]
+      : children.find((node, index) => index > lastTable && isEmptyRetiredParagraph(node));
+  return new Set(retired.filter((node) => node !== caret).map((node) => node.id));
 }
 
 export function retireParagraph(

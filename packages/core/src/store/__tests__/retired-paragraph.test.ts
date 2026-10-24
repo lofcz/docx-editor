@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { storyBlocks } from '../../layout/story-roots.ts';
 import { runWithTransactionActor } from '../package/actor-scoped-ids.ts';
-import { isRetiredParagraph } from '../package/retired-paragraph.ts';
+import { retireParagraph, isRetiredParagraph } from '../package/retired-paragraph.ts';
 import { storyParagraphs } from '../package/story-blocks.ts';
 import { collectFlowBlocks, walkAllStoryParagraphs } from '../package/content-control-walk.ts';
 import { zipDoc } from './canonical-primitive-journal-coverage-support.ts';
@@ -575,3 +575,47 @@ for (const action of ['accept', 'reject'] as const)
     expect(paragraphTextOf(peer, terminalId)).toBe('Peer');
     expect(serializeOoxmlPart(main(reopened(withPart(source, peer))))).toContain('Peer');
   });
+
+test('a recovered empty slot before a table stays hidden through exact Word export and can receive peer text', () => {
+  const original = load(
+    '<w:tbl><w:tblPr/><w:tblGrid><w:gridCol w:w="3000"/></w:tblGrid><w:tr><w:tc>' +
+      p('Cell') +
+      '</w:tc></w:tr></w:tbl>'
+  );
+  const source = main(original),
+    container = body(source);
+  const paragraph = body(main(load(p('')))).children[0]!;
+  if (paragraph.kind !== 'paragraph') throw Error('Missing recovery paragraph.');
+  let id = 0;
+  const retired = retireParagraph(
+    { ...paragraph, id: 'recovery-slot', children: [] },
+    () => `recovery-slot-${id++}`
+  );
+  const next = {
+    ...source,
+    root: {
+      ...source.root,
+      children: source.root.children.map((node) =>
+        node.id === container.id
+          ? { ...container, children: [retired, ...container.children] }
+          : node
+      ),
+    },
+  } as OoxmlPart;
+  expect(validateOoxmlPart(next)).toEqual({ ok: true });
+  expect(storyParagraphs(body(next)).map((node) => node.id)).toEqual(
+    storyParagraphs(container).map((node) => node.id)
+  );
+  expect(serializeOoxmlPart(main(reopened(withPart(original, next))))).toBe(
+    serializeOoxmlPart(source)
+  );
+  expect(findNode(next, retired.id)).toBe(retired);
+  const revived = apply(
+    next,
+    { op: 'insertText', paragraphId: retired.id, offset: 0, text: 'Peer' },
+    'bob'
+  );
+  expect(paragraphTextOf(revived, retired.id)).toBe('Peer');
+  expect(storyParagraphs(body(revived)).some((node) => node.id === retired.id)).toBe(true);
+  expect(serializeOoxmlPart(main(reopened(withPart(original, revived))))).toContain('Peer');
+});

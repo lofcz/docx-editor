@@ -13,18 +13,18 @@ import {
 } from '@docx-editor.dev/core/store';
 
 /** Raw paragraph fragments need the same Word control identity as native control insertions. */
-export function withImageControlId(
+export function withInlineControlId(
   pkg: OoxmlPackage,
   partName: string,
   controlId: string
 ): OoxmlPackage {
   const part = pkg.parts.get(partName)!;
   const control = findNode(part, controlId);
-  if (control?.kind !== 'contentControl') throw Error('The image control is missing.');
+  if (control?.kind !== 'contentControl') throw Error('The inline control is missing.');
   if (contentControlPropertiesOf(control).id !== undefined) return pkg;
   const properties = contentControlPropertiesNodeOf(control);
   const id = allocateContentControlId(part.root);
-  if (!properties || id === null) throw Error('The image Word control identity is unavailable.');
+  if (!properties || id === null) throw Error('The inline Word control identity is unavailable.');
   const mint = createNodeIdAllocator(part);
   const identity: OoxmlNode = {
     id: mint(),
@@ -49,6 +49,8 @@ export function withImageControlId(
     properties.id,
     orderedContentControlProperties([...properties.children, identity])
   );
-  if (!bound.ok) throw Error('The image Word control identity could not be stored.');
+  if (!bound.ok) throw Error('The inline Word control identity could not be stored.');
   return withPart(pkg, bound.part);
 }
+
+export const withImageControlId = withInlineControlId;

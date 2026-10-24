@@ -1,3 +1,4 @@
+import { bindCellInlinePresenceNative } from './cell-inline-presence-native';
 import { bindBornInlinePresenceNative } from './born-inline-presence-native';
 import {
   collectRevisionSites,
@@ -17,6 +18,8 @@ export interface InlinePresenceNative {
   readonly revision: RevisionAddress;
   /** Version four: the complete paragraph birth/replacement receipt. */
   readonly gap?: readonly RevisionAddress[];
+  /** Version five: exact native topology owner and its complete structural receipt. */
+  readonly cell?: { readonly kind: 'row' | 'cell'; readonly revision: RevisionAddress };
 }
 export interface BoundInlinePresenceNative extends InlinePresenceNative {
   readonly siteNodeId: string;
@@ -51,6 +54,8 @@ export function bindInlinePresenceNative(
   kind: 'ins' | 'del',
   expected?: InlinePresenceNative
 ): BoundInlinePresenceNative {
+  if (expected?.cell)
+    return bindCellInlinePresenceNative(pkg, blockId, partName, controlId, expected);
   if (expected?.gap) {
     if (kind !== 'ins') throw Error('Paragraph birth ownership cannot own an inline deletion.');
     return bindBornInlinePresenceNative(pkg, blockId, partName, controlId, expected);
@@ -89,13 +94,18 @@ export function bindInlinePresenceNative(
 export function inlinePresenceExtension(owners: readonly InlinePresenceNative[]): JsonObject {
   return {
     nativeInline: {
-      schemaVersion: owners.some((owner) => owner.gap) ? 2 : 1,
-      owners: owners.map(({ blockId, partName, kind, revision, gap }) => ({
+      schemaVersion: owners.some((owner) => owner.cell)
+        ? 3
+        : owners.some((owner) => owner.gap)
+          ? 2
+          : 1,
+      owners: owners.map(({ blockId, partName, kind, revision, gap, cell }) => ({
         blockId,
         partName,
         kind,
         revision: { ...revision },
         ...(gap ? { gap: gap.map((address) => ({ ...address })) } : {}),
+        ...(cell ? { cell: { kind: cell.kind, revision: { ...cell.revision } } } : {}),
       })),
     },
   };
@@ -107,12 +117,12 @@ export function readInlinePresenceExtension(
 ): ReadonlyMap<string, InlinePresenceNative> | null {
   const data = record.extension?.nativeInline;
   if (data === undefined) return null;
-  if (record.schemaVersion !== 3 && record.schemaVersion !== 4)
+  if (record.schemaVersion !== 3 && record.schemaVersion !== 4 && record.schemaVersion !== 5)
     throw Error('Inline presence requires a supported private proposal schema.');
   if (
     !object(data) ||
     !exact(data, ['schemaVersion', 'owners']) ||
-    data.schemaVersion !== (record.schemaVersion === 4 ? 2 : 1) ||
+    data.schemaVersion !== (record.schemaVersion === 5 ? 3 : record.schemaVersion === 4 ? 2 : 1) ||
     !Array.isArray(data.owners) ||
     !data.owners.length ||
     data.owners.length > 1024
@@ -128,6 +138,7 @@ export function readInlinePresenceExtension(
         'kind',
         'revision',
         ...(object(entry) && Object.hasOwn(entry, 'gap') ? ['gap'] : []),
+        ...(object(entry) && Object.hasOwn(entry, 'cell') ? ['cell'] : []),
       ]) ||
       typeof entry.blockId !== 'string' ||
       !entry.blockId ||
@@ -145,7 +156,7 @@ export function readInlinePresenceExtension(
       throw Error('Invalid inline presence native ownership.');
     if (Object.hasOwn(entry, 'gap')) {
       if (
-        record.schemaVersion !== 4 ||
+        (record.schemaVersion !== 4 && record.schemaVersion !== 5) ||
         entry.kind !== 'ins' ||
         !Array.isArray(entry.gap) ||
         !entry.gap.length ||
@@ -158,15 +169,34 @@ export function readInlinePresenceExtension(
           typeof address.id !== 'string' ||
           !address.id ||
           typeof address.author !== 'string' ||
-          !address.author ||
+          (!address.author && !(record.schemaVersion === 5 && entry.cell)) ||
           (address.date !== undefined && typeof address.date !== 'string') ||
           !Object.keys(address).every((key) => ['id', 'author', 'date'].includes(key))
         )
           throw Error('Invalid paragraph birth native address.');
     }
+    if (
+      Object.hasOwn(entry, 'cell') &&
+      (record.schemaVersion !== 5 ||
+        entry.kind !== 'ins' ||
+        !entry.gap ||
+        !object(entry.cell) ||
+        !exact(entry.cell, ['kind', 'revision']) ||
+        !['row', 'cell'].includes(String(entry.cell.kind)) ||
+        !object(entry.cell.revision) ||
+        !Object.keys(entry.cell.revision).every((key) => ['id', 'author', 'date'].includes(key)) ||
+        typeof entry.cell.revision.id !== 'string' ||
+        !entry.cell.revision.id ||
+        typeof entry.cell.revision.author !== 'string' ||
+        !entry.cell.revision.author ||
+        (entry.cell.revision.date !== undefined && typeof entry.cell.revision.date !== 'string'))
+    )
+      throw Error('Invalid native cell ownership.');
     owners.set(entry.blockId, entry as unknown as InlinePresenceNative);
   }
   if (record.schemaVersion === 4 && ![...owners.values()].some((owner) => owner.gap))
     throw Error('Paragraph birth profile has no structural owner.');
+  if (record.schemaVersion === 5 && ![...owners.values()].some((owner) => owner.cell))
+    throw Error('Cell birth profile has no topology owner.');
   return owners;
 }

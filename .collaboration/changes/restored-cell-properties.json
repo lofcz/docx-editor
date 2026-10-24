@@ -1,0 +1,14 @@
+{
+  "impact": "migration-required",
+  "fields": ["repairVersion"],
+  "before": "Decision undo could restore a native cell property holder after retained paragraph edges. The materialized cell then emitted tcPr after its content.",
+  "after": "Typed native cell records project their tcPr child first. Authored content order remains exact. Retired recovery slots before a table stay hidden during Word export without changing required terminal paragraphs.",
+  "reason": "Restored native cell order changes deterministic materialization, increasing repairVersion from 8 to 9. The shared schema and journal kinds stay unchanged. The reader change is evaluated under the EigenPal Pro License. Native retirement visibility remains in Apache core. No saved room is migrated; upgraded deployment requires verified export and fresh room seeding.",
+  "tests": [
+    "packages/sciobot/src/review/recompose-cell-atoms-shared.test.ts",
+    "packages/core/src/store/__tests__/retired-paragraph.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-format.test.ts"
+  ],
+  "changeset": "restored-cell-properties",
+  "migration": "upgrade-rooms-to-format-1791"
+}

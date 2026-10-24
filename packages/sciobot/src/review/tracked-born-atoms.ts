@@ -1,3 +1,4 @@
+import { withInlineControlId } from '../native/inline-image-control-id';
 import type { InlineImageRuntime } from '../native/inline-image-runtime';
 import {
   contentControlsIn,
@@ -38,7 +39,11 @@ export function stageBornAtoms(
         'unsupported-operation'
       );
     writer.edit((pkg) => {
-      const stored = withPayloadRecord(pkg, atom.payload, atom.label);
+      const stored = withPayloadRecord(
+        withInlineControlId(pkg, partName, control.id),
+        atom.payload,
+        atom.label
+      );
       if (!stored.ok) refuseWrite('The born atom payload could not be stored.', 'apply-failed');
       return stored.pkg;
     });

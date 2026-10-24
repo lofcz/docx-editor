@@ -25,7 +25,7 @@ export interface BlockPresenceChange {
 }
 /** Versions two and three own blocks and retained inline controls. Version four couples paragraph births. */
 export interface BlockPresenceRecord {
-  readonly schemaVersion: 2 | 3 | 4;
+  readonly schemaVersion: 2 | 3 | 4 | 5;
   readonly executor: typeof BLOCK_PRESENCE_EXECUTOR;
   readonly id: string;
   readonly author: string;
@@ -76,7 +76,10 @@ export function blockPresenceAttributionProblem(
 function problem(value: JsonValue): string | null {
   if (
     !object(value) ||
-    (value.schemaVersion !== 2 && value.schemaVersion !== 3 && value.schemaVersion !== 4) ||
+    (value.schemaVersion !== 2 &&
+      value.schemaVersion !== 3 &&
+      value.schemaVersion !== 4 &&
+      value.schemaVersion !== 5) ||
     value.executor !== BLOCK_PRESENCE_EXECUTOR ||
     !keys(value, [
       'schemaVersion',
@@ -91,7 +94,9 @@ function problem(value: JsonValue): string | null {
   )
     return 'invalid-presence-schema';
   const inline = object(value.extension) && Object.hasOwn(value.extension, 'nativeInline');
-  if ((value.schemaVersion === 3 || value.schemaVersion === 4) !== inline)
+  if (
+    (value.schemaVersion === 3 || value.schemaVersion === 4 || value.schemaVersion === 5) !== inline
+  )
     return 'invalid-inline-presence-version';
   const attribution = blockPresenceAttributionProblem(value.id, value.author, value.date);
   if (attribution) return attribution;
@@ -201,7 +206,7 @@ export function decodeBlockPresenceRecord(raw: string): BlockPresenceDecode {
   if (
     value.schemaVersion !== 2 &&
     !(
-      (value.schemaVersion === 3 || value.schemaVersion === 4) &&
+      (value.schemaVersion === 3 || value.schemaVersion === 4 || value.schemaVersion === 5) &&
       object(value.extension) &&
       Object.hasOwn(value.extension, 'nativeInline')
     )

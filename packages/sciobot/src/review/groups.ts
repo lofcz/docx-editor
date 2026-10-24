@@ -276,7 +276,7 @@ function derive(
         });
         if (!pendingBirths.length) continue;
         const completeBirth =
-          presence.value.schemaVersion === 4
+          presence.value.schemaVersion === 4 || presence.value.schemaVersion === 5
             ? bindBlockPresenceRecord(pkg, { ...presence.value, blocks: pendingBirths })
             : null;
         if (completeBirth && !completeBirth.success)

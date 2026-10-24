@@ -1,0 +1,15 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Tracked new-cell atom plans refused execution. Merged-table target normalization previewed image plans before preparing their resources. Raw non-image inline controls could lack Word identities.",
+  "after": "Row, column, and split allocation materialize complete inline controls and image reservations. Presence schema 5 binds persistent row or cell revision addresses to the complete native table receipt. Geometry preview and final execution share bounded immutable asset snapshots. Newly authored inline controls receive Word identities in both executors.",
+  "reason": "This private application proposal profile requires upgraded readers. Earlier built presence readers refuse version 5, including retained decision records. Existing schema 3 and 4 readers keep their subsets. Native transport fields, deterministic repair rules, and operation kinds remain unchanged. Test collaboration uses the EigenPal Pro License; production adapters import no Pro implementation. D30 and R19 remain open pending full feature and integration evidence.",
+  "tests": [
+    "packages/sciobot/src/review/recompose-cell-atoms.test.ts",
+    "packages/sciobot/src/review/recompose-cell-atoms-shared.test.ts",
+    "packages/sciobot/src/review/cell-inline-presence-guards.test.ts",
+    "packages/sciobot/scripts/check-cell-presence-reader.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

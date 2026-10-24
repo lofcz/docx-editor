@@ -1,9 +1,10 @@
+import { insertedAtomsOfEdit } from '../diff/inserted-cell-atoms';
 import type { InlineImageRuntime } from '../native/inline-image-runtime';
 import { buildBlockIndex } from '../blocks/block-index';
 import { nativePropertyAddress, propertyAddressKey } from './property-fallback';
 import type { InlinePresenceNative } from './inline-presence-native';
 import type { ReviewGroupReceipt } from './groups';
-import { parentNodeOf, type OoxmlPackage } from '@docx-editor.dev/core/store';
+import { collectRevisionSites, parentNodeOf, type OoxmlPackage } from '@docx-editor.dev/core/store';
 import type { CanonicalEditPlan } from '../diff/plan';
 import { refuseWrite } from '../diff/fragment-seeds';
 import { createBlockPresenceRecord } from './block-presence-plan';
@@ -21,11 +22,9 @@ export function stageTrackedPresence(
   images?: InlineImageRuntime
 ): void {
   const births = plan.operations.flatMap((edit) =>
-    edit.kind === 'inline-atoms' || edit.kind === 'siblings'
-      ? (edit.atoms ?? []).flatMap((atom) =>
-          atom.kind === 'inline-control' ? [atom.payload.id] : images ? [images.blockId(atom)] : []
-        )
-      : []
+    insertedAtomsOfEdit(edit).flatMap((atom) =>
+      atom.kind === 'inline-control' ? [atom.payload.id] : images ? [images.blockId(atom)] : []
+    )
   );
   const removals = plan.operations.filter((edit) => edit.kind === 'inline-remove');
   const roots = plan.operations.flatMap((edit) =>
@@ -53,8 +52,8 @@ export function stageTrackedPresence(
   const bornInline: InlinePresenceNative[] = [];
   const index = buildBlockIndex(writer.currentPackage());
   for (const edit of plan.operations) {
-    if (edit.kind !== 'siblings') continue;
-    for (const atom of edit.atoms ?? []) {
+    if (edit.kind === 'inline-atoms') continue;
+    for (const atom of insertedAtomsOfEdit(edit)) {
       const blockId = atom.kind === 'inline-control' ? atom.payload.id : images?.blockId(atom);
       if (!blockId)
         refuseWrite('The born image has no admitted resource identity.', 'apply-failed');
@@ -77,12 +76,37 @@ export function stageTrackedPresence(
       );
       if (matching.length !== 1)
         refuseWrite('The born atom has no unique structural receipt.', 'ambiguous-target');
+      let cell: InlinePresenceNative['cell'];
+      if (edit.kind !== 'siblings') {
+        let owner = part && parent ? parentNodeOf(part, parent.id) : null;
+        while (owner && owner.kind !== 'tableCell') owner = parentNodeOf(part!, owner.id);
+        if (!owner) refuseWrite('A cell atom has no native owner.', 'apply-failed');
+        const cellOwner = owner;
+        const row = parentNodeOf(part!, owner.id);
+        if (row?.kind !== 'tableRow') refuseWrite('A cell atom has no native row.', 'apply-failed');
+        const rowBirth = collectRevisionSites({ ...part!, root: row }).find(
+          (site) =>
+            site.node.localName === 'ins' &&
+            parentNodeOf(part!, site.node.id)?.localName === 'trPr' &&
+            parentNodeOf(part!, parentNodeOf(part!, site.node.id)!.id)?.id === row.id
+        );
+        const cellBirth = collectRevisionSites({ ...part!, root: cellOwner }).find(
+          (site) =>
+            site.node.localName === 'cellIns' &&
+            parentNodeOf(part!, parentNodeOf(part!, site.node.id)?.id ?? '')?.id === cellOwner.id
+        );
+        const birth = rowBirth ?? cellBirth;
+        const topology = birth && nativePropertyAddress(birth.node);
+        if (!topology) refuseWrite('The cell atom lost its native topology birth.', 'apply-failed');
+        cell = { kind: rowBirth ? 'row' : 'cell', revision: topology };
+      }
       bornInline.push({
         blockId,
         partName: control.partName,
         kind: 'ins',
         revision: address,
         gap: matching[0]!.addresses,
+        ...(cell ? { cell } : {}),
       });
     }
   }

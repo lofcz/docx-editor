@@ -578,6 +578,8 @@ Additional WIP evidence: [tracked atoms in born paragraphs](evidence/tracked-bor
 
 [Replacement cell coverage](evidence/replacement-cell-coverage.md) repairs the eight mixed-split history regressions through exact native row and column identities. The source batch passes 147 cases; compiled checks pass 58 cases. Four prior committed-view regressions remain unresolved. D30 stays open.
 
+[Tracked new-cell atoms](evidence/tracked-cell-inline-atoms.md) adds row, column, and split atom execution with persistent native topology ownership. Eighteen compiled cases pass both decisions and shared histories. Native history recovery uses evaluated format `1.7.9.1`. D30 stays open.
+
 ## D31
 
 - [x] Plan inline code marks through the native representation

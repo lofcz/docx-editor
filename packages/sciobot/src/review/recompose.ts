@@ -1,6 +1,7 @@
 import {
   prepareInlineImageResources,
   type InlineImageResolver,
+  type InlineImageSource,
 } from '../native/inline-image-resources';
 import type { ImageDecodePort } from '@docx-editor.dev/core/store';
 import type { TrackedPayloadOptions } from './tracked-stage-payloads';
@@ -137,6 +138,41 @@ export async function recomposeOwnedProposals(
       return fail('Content evidence names a group outside the ownership ledger.');
     const target = parseTargetMarkdown(input.request.targetMarkdown);
     if (!target.success) return target;
+    // Geometry preview and final staging share one immutable resolver snapshot per asset.
+    const assetSnapshots = new Map<string, Promise<InlineImageSource>>();
+    let snapshotBytes = 0;
+    const imageServices = options.images;
+    const prepareImages = imageServices
+      ? (plan: import('../diff/plan').CanonicalEditPlan) =>
+          prepareInlineImageResources(
+            plan,
+            (reference, signal) => {
+              let pending = assetSnapshots.get(reference);
+              if (!pending) {
+                pending = Promise.resolve(imageServices.resolve(reference, signal)).then(
+                  (asset) => {
+                    if (
+                      !(asset.bytes instanceof Uint8Array) ||
+                      asset.bytes.byteLength > 64 * 1024 * 1024 - snapshotBytes
+                    )
+                      throw Error('Image resources exceed the preparation byte budget.');
+                    snapshotBytes += asset.bytes.byteLength;
+                    return {
+                      bytes: new Uint8Array(asset.bytes),
+                      mime: asset.mime,
+                      widthPoints: asset.widthPoints,
+                      heightPoints: asset.heightPoints,
+                    };
+                  }
+                );
+                assetSnapshots.set(reference, pending);
+              }
+              return pending;
+            },
+            imageServices.decodePort,
+            imageServices.signal
+          )
+      : undefined;
     const viewOptions = {
       ...options.view,
       tableSyntax: options.view?.tableSyntax ?? ('auto' as const),
@@ -161,7 +197,8 @@ export async function recomposeOwnedProposals(
             target.target,
             viewOptions,
             options.target,
-            fresh
+            fresh,
+            prepareImages
           )
         : { success: true as const, markdown: input.request.targetMarkdown, unchanged: false };
     if (!normalized.success) return normalized;
@@ -211,14 +248,7 @@ export async function recomposeOwnedProposals(
       options.target
     );
     if (!planned.success) return planned;
-    const preparedImages = options.images
-      ? await prepareInlineImageResources(
-          planned.plan,
-          options.images.resolve,
-          options.images.decodePort,
-          options.images.signal
-        )
-      : undefined;
+    const preparedImages = prepareImages ? await prepareImages(planned.plan) : undefined;
     if (preparedImages && !preparedImages.success) return preparedImages;
     const changedByPlanner = fresh();
     if (changedByPlanner) return changedByPlanner;

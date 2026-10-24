@@ -306,6 +306,12 @@ These rules change interpretation of existing identity and revision marks. No ne
 
 Stop writes and recover offline edits before upgrading. Back up the room and export with its compatible deployment. Verify peer text placement, hyperlink targets, pending revisions, and inline controls before migration. Reconcile incorrect content in that deployment before export. Follow [Upgrade saved rooms](#upgrade-saved-rooms) to create fresh rooms and persistence keys. Deploy matching clients, servers, workers, and agents. Do not rewrite version metadata or replay old updates into replacement rooms. Keep original rooms as read-only backups.
 
+### Upgrade rooms to format 1.7.9.1
+
+Format `docx-collaboration:1.7.9.1` projects restored native cell properties before cell content. Undo can retain paragraph edges while restoring a property-holder edge later in the shared sequence. The reader preserves the required Word `tcPr` position without writing another operation. The shared schema and journal kinds stay unchanged.
+
+Stop writes and recover offline changes with the previous compatible deployment. Export and verify each document before seeding a new room with a fresh key. Upgrade clients and export workers together. Verify edits, both participants' history, and native Word output before reopening writes. Do not patch saved version fields or replay old shared updates into the new room. This change performs no room migration.
+
 ### Upgrade rooms to format 1.7.8.1
 
 Format `docx-collaboration:1.7.8.1` records column coverage when a native cell replaces an earlier split cell. Undo can then hide the empty replacement shell without removing a participant's independent content. This changes the deterministic repair rules. The shared schema and journal operation kinds stay unchanged.

@@ -1,3 +1,5 @@
+import type { prepareInlineImageResources } from '../native/inline-image-resources';
+import type { CanonicalEditPlan } from '../diff/plan';
 import { preserveUnchangedTableSyntax } from './recompose-table-syntax';
 import { openDocumentForExport } from '@docx-editor.dev/core/export';
 import {
@@ -97,7 +99,8 @@ export async function normalizeRecompositionTarget(
   target: ParsedTargetMarkdown,
   view: ReviewViewOptions,
   options: TargetDocumentOptions | undefined,
-  fresh: () => NativeEditFailure | null
+  fresh: () => NativeEditFailure | null,
+  prepareImages?: (plan: CanonicalEditPlan) => ReturnType<typeof prepareInlineImageResources>
 ): Promise<
   | NativeEditFailure
   | { readonly success: true; readonly markdown: string; readonly unchanged: boolean }
@@ -136,7 +139,11 @@ export async function normalizeRecompositionTarget(
   if (changedByPlanner) return changedByPlanner;
   if (!plan.plan.operations.length)
     return { success: true, markdown: target.markdown, unchanged: true };
-  const preview = previewDirectPlan(visual.pkg, plan.plan);
+  const prepared = prepareImages ? await prepareImages(plan.plan) : undefined;
+  if (prepared && !prepared.success) return prepared;
+  const changedByResources = fresh();
+  if (changedByResources) return changedByResources;
+  const preview = previewDirectPlan(visual.pkg, plan.plan, prepared?.images);
   if (!preview.success) return preview;
   const proposed = await readTargetPackage(preview.pkg, revision, view);
   if (!proposed.success) return proposed;

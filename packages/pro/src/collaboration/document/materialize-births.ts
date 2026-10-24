@@ -322,6 +322,23 @@ export class BirthProjection {
   }
   /** Derive native span attributes without writing shared state or replacing content nodes. */
   project(record: ElementRecord): ElementRecord {
+    // Retained paragraph edges survive decision undo. A restored property-holder edge
+    // can then follow them in Y.Array order, but native CT_Tc requires tcPr first.
+    if (record.kind === 'tableCell') {
+      const position = record.childIds.findIndex((id) => {
+        const child = this.element(id);
+        return child?.namespaceUri === W && child.localName === 'tcPr';
+      });
+      return position > 0
+        ? {
+            ...record,
+            childIds: [
+              record.childIds[position]!,
+              ...record.childIds.filter((_, index) => index !== position),
+            ],
+          }
+        : record;
+    }
     if (record.namespaceUri !== W || !['gridSpan', 'tcW'].includes(record.localName)) return record;
     const table = this.tableOf(record.logicalId);
     const span = table

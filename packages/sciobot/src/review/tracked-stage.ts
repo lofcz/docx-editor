@@ -45,7 +45,7 @@ export function stageTrackedPlan(
     plan.operations.some((edit) => {
       const atoms = insertedAtomsOfEdit(edit);
       if (!atoms.length || edit.kind === 'inline-atoms') return false;
-      if (edit.kind !== 'siblings') return true;
+      if (edit.kind !== 'siblings') return atoms.some((atom) => atom.kind === 'drawing' && !images);
       return atoms.some(
         (atom) =>
           (atom.kind === 'drawing' && !images) ||
@@ -296,7 +296,9 @@ export function stageTrackedPlan(
       const identity = key(edit.partName, trackedTableId(tableEdit));
       if (tableStageHasStructure(tableEdit)) structuralTables.add(identity);
       const entries = tableReceipts.get(identity) ?? [];
-      entries.push(...stageTrackedTable(writer, tableEdit, revision, trackFormatting, listContext));
+      entries.push(
+        ...stageTrackedTable(writer, tableEdit, revision, trackFormatting, listContext, images)
+      );
       tableReceipts.set(identity, entries);
     } else
       refuseWrite(

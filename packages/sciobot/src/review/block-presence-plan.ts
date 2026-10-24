@@ -251,7 +251,13 @@ export function createBlockPresenceRecord(
   )
     return fail('Paragraph birth ownership contains unmatched or duplicate roots.');
   const record: BlockPresenceRecord = {
-    schemaVersion: native.some((owner) => owner.gap) ? 4 : native.length ? 3 : 2,
+    schemaVersion: native.some((owner) => owner.cell)
+      ? 5
+      : native.some((owner) => owner.gap)
+        ? 4
+        : native.length
+          ? 3
+          : 2,
     executor: BLOCK_PRESENCE_EXECUTOR,
     ...data.attribution,
     predecessors: store.status === 'ready' ? [...store.records.keys()].sort() : [],

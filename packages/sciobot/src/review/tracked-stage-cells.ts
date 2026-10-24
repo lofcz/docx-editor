@@ -1,3 +1,7 @@
+import type { InlineImageRuntime } from '../native/inline-image-runtime';
+import type { InsertedInlineAtom } from '../diff/inserted-atoms';
+import { inlineAtomsByPath, inlineAtomKey, inlineAtomXml } from '../diff/inline-atom-xml';
+import { stageBornAtoms } from './tracked-born-atoms';
 import { applyNewCellProperties, type NewCellProperties } from '../diff/new-cell-properties';
 import {
   applyDirectListAssignments,
@@ -23,13 +27,22 @@ export function stageNewCells(
     blocks: readonly TargetAstNode[];
     lists?: readonly InsertedListBinding[];
     properties?: NewCellProperties;
+    atoms?: readonly InsertedInlineAtom[];
   }[],
   listContext?: DirectListContext,
-  revision?: TrackedStageAttribution
+  revision?: TrackedStageAttribution,
+  images?: InlineImageRuntime
 ): void {
   const assignments: DirectListAssignment[] = [];
-  for (const { cellId, blocks, lists } of cells) {
-    const seeds = newParagraphSeeds(blocks, { code: true });
+  for (const { cellId, blocks, lists, atoms = [] } of cells) {
+    const bindings = inlineAtomsByPath(atoms);
+    const seeds = newParagraphSeeds(blocks, {
+      code: true,
+      atom: (token, index) => {
+        const atom = bindings.get(inlineAtomKey([index], token.path));
+        return atom ? inlineAtomXml(atom, images) : null;
+      },
+    });
     if (!seeds.success) refuseWrite(seeds.error, seeds.code);
     if (!seeds.paragraphs.length) continue;
     const part = currentStagePart(writer, partName),
@@ -55,6 +68,7 @@ export function stageNewCells(
     if (paragraphs.length !== seeds.paragraphs.length)
       refuseWrite('New cell paragraphs did not land one for one.', 'apply-failed');
     stageParagraphResources(writer, partName, paragraphs, seeds);
+    stageBornAtoms(writer, partName, paragraphs, atoms, images);
     assignments.push(...newCellListAssignments(paragraphs, lists));
   }
   for (const { cellId, properties } of cells)
