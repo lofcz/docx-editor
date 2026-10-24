@@ -1,0 +1,48 @@
+{
+  "runtimeRevision": "42eaeaf0",
+  "status": "checkpoint-not-leaf-closure",
+  "sourceBatch": {
+    "tests": 255,
+    "files": 7,
+    "assertions": 30012,
+    "failures": 0
+  },
+  "compiledImageBatch": {
+    "tests": 88,
+    "files": 2,
+    "assertions": 12092,
+    "failures": 0
+  },
+  "evaluationTransportRegressions": {
+    "tests": 7,
+    "files": 4,
+    "assertions": 54,
+    "failures": 0
+  },
+  "proofs": [
+    "Original control and drawing identities, native geometry, exact Word operations, full payloads, and media bytes survive replacement.",
+    "Concurrent resource-only, metadata-only, and combined replacements cover different and identical images, both client orders, both writers, and both reconnect receivers.",
+    "Both actors independently undo and redo replacements beside native peer typing; saved DOCX and complete room snapshots reopen exactly.",
+    "Shared replacement refuses before native or room writes when owned history is unavailable.",
+    "Missing preparation, a different plan preparation handle, stale native revisions, and malformed plans refuse atomically.",
+    "Byte-identical replacements retain native media and relationships while updating source provenance."
+  ],
+  "gates": [
+    "root format",
+    "root lint",
+    "core typecheck",
+    "private typecheck",
+    "Pro typecheck",
+    "core build",
+    "private build",
+    "Pro build",
+    "core API extraction: 15 entries, zero errors",
+    "compatibility policy against a3dd59eb"
+  ],
+  "limits": [
+    "D30 remains open. This checkpoint is not the final C01/composer closure audit.",
+    "Replacement plus fresh atom insertion in the same paragraph still needs reconciliation.",
+    "Shared replacement requires the existing application-owned scalar history scope.",
+    "The production inventory applicationRevision drift remains unresolved; no baseline was recaptured."
+  ]
+}

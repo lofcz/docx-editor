@@ -552,6 +552,8 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Mixed atom follow-up:** Branch `codex/d30-mixed-linked-atoms`, runtime `7ea0a3d0`. Fresh atoms preserve linked native math, images, mentions, and sources. Forty-eight local cases verify serialized plans, repeated-text anchors, complete control fingerprints, media, history, and reopening. Thirty-two shared cases verify both actor histories, independent native peer typing, geometry, and DOCX/room reopening. The compiled SDK/core/exporter passes 239 cases; native checks pass 1,028 cases; all 333 unchanged C01/composer cases pass. Core/private types, builds, API checks, root format/lint, and compatibility checks pass. See [commands and limits](evidence/mixed-inline-atoms.md). The production inventory still rejects application revision drift; all 199 pinned source hashes match. D30 remains open.
 
+**Image replacement checkpoint:** Runtime `42eaeaf0` preserves native image identity, geometry, payloads, and media through concurrent replacements and both actor histories. The [image replacement evidence](evidence/inline-image-replacement.md) records the combined 255-case native batch and 88-case built SDK batch. D30 remains open; this checkpoint does not substitute for its closure audit.
+
 ## D31
 
 - [x] Plan inline code marks through the native representation
