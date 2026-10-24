@@ -1,3 +1,4 @@
+import { bindSiblingInlinePresenceNative } from './sibling-inline-presence-native';
 import { bindCellInlinePresenceNative } from './cell-inline-presence-native';
 import { bindBornInlinePresenceNative } from './born-inline-presence-native';
 import {
@@ -20,6 +21,8 @@ export interface InlinePresenceNative {
   readonly gap?: readonly RevisionAddress[];
   /** Version five: exact native topology owner and its complete structural receipt. */
   readonly cell?: { readonly kind: 'row' | 'cell'; readonly revision: RevisionAddress };
+  /** Version six: a complete native sibling receipt with whole-table births. */
+  readonly siblings?: true;
 }
 export interface BoundInlinePresenceNative extends InlinePresenceNative {
   readonly siteNodeId: string;
@@ -54,6 +57,10 @@ export function bindInlinePresenceNative(
   kind: 'ins' | 'del',
   expected?: InlinePresenceNative
 ): BoundInlinePresenceNative {
+  if (expected && expected.kind !== kind)
+    throw Error('Inline presence ownership changed its native direction.');
+  if (expected?.siblings)
+    return bindSiblingInlinePresenceNative(pkg, blockId, partName, controlId, expected);
   if (expected?.cell)
     return bindCellInlinePresenceNative(pkg, blockId, partName, controlId, expected);
   if (expected?.gap) {
@@ -94,18 +101,21 @@ export function bindInlinePresenceNative(
 export function inlinePresenceExtension(owners: readonly InlinePresenceNative[]): JsonObject {
   return {
     nativeInline: {
-      schemaVersion: owners.some((owner) => owner.cell)
-        ? 3
-        : owners.some((owner) => owner.gap)
-          ? 2
-          : 1,
-      owners: owners.map(({ blockId, partName, kind, revision, gap, cell }) => ({
+      schemaVersion: owners.some((owner) => owner.siblings)
+        ? 4
+        : owners.some((owner) => owner.cell)
+          ? 3
+          : owners.some((owner) => owner.gap)
+            ? 2
+            : 1,
+      owners: owners.map(({ blockId, partName, kind, revision, gap, cell, siblings }) => ({
         blockId,
         partName,
         kind,
         revision: { ...revision },
         ...(gap ? { gap: gap.map((address) => ({ ...address })) } : {}),
         ...(cell ? { cell: { kind: cell.kind, revision: { ...cell.revision } } } : {}),
+        ...(siblings ? { siblings: true } : {}),
       })),
     },
   };
@@ -117,12 +127,24 @@ export function readInlinePresenceExtension(
 ): ReadonlyMap<string, InlinePresenceNative> | null {
   const data = record.extension?.nativeInline;
   if (data === undefined) return null;
-  if (record.schemaVersion !== 3 && record.schemaVersion !== 4 && record.schemaVersion !== 5)
+  if (
+    record.schemaVersion !== 3 &&
+    record.schemaVersion !== 4 &&
+    record.schemaVersion !== 5 &&
+    record.schemaVersion !== 6
+  )
     throw Error('Inline presence requires a supported private proposal schema.');
   if (
     !object(data) ||
     !exact(data, ['schemaVersion', 'owners']) ||
-    data.schemaVersion !== (record.schemaVersion === 5 ? 3 : record.schemaVersion === 4 ? 2 : 1) ||
+    data.schemaVersion !==
+      (record.schemaVersion === 6
+        ? 4
+        : record.schemaVersion === 5
+          ? 3
+          : record.schemaVersion === 4
+            ? 2
+            : 1) ||
     !Array.isArray(data.owners) ||
     !data.owners.length ||
     data.owners.length > 1024
@@ -139,6 +161,7 @@ export function readInlinePresenceExtension(
         'revision',
         ...(object(entry) && Object.hasOwn(entry, 'gap') ? ['gap'] : []),
         ...(object(entry) && Object.hasOwn(entry, 'cell') ? ['cell'] : []),
+        ...(object(entry) && Object.hasOwn(entry, 'siblings') ? ['siblings'] : []),
       ]) ||
       typeof entry.blockId !== 'string' ||
       !entry.blockId ||
@@ -156,7 +179,7 @@ export function readInlinePresenceExtension(
       throw Error('Invalid inline presence native ownership.');
     if (Object.hasOwn(entry, 'gap')) {
       if (
-        (record.schemaVersion !== 4 && record.schemaVersion !== 5) ||
+        (record.schemaVersion !== 4 && record.schemaVersion !== 5 && record.schemaVersion !== 6) ||
         entry.kind !== 'ins' ||
         !Array.isArray(entry.gap) ||
         !entry.gap.length ||
@@ -169,7 +192,8 @@ export function readInlinePresenceExtension(
           typeof address.id !== 'string' ||
           !address.id ||
           typeof address.author !== 'string' ||
-          (!address.author && !(record.schemaVersion === 5 && entry.cell)) ||
+          (!address.author &&
+            !((record.schemaVersion === 5 || record.schemaVersion === 6) && entry.cell)) ||
           (address.date !== undefined && typeof address.date !== 'string') ||
           !Object.keys(address).every((key) => ['id', 'author', 'date'].includes(key))
         )
@@ -177,7 +201,7 @@ export function readInlinePresenceExtension(
     }
     if (
       Object.hasOwn(entry, 'cell') &&
-      (record.schemaVersion !== 5 ||
+      ((record.schemaVersion !== 5 && record.schemaVersion !== 6) ||
         entry.kind !== 'ins' ||
         !entry.gap ||
         !object(entry.cell) ||
@@ -192,11 +216,22 @@ export function readInlinePresenceExtension(
         (entry.cell.revision.date !== undefined && typeof entry.cell.revision.date !== 'string'))
     )
       throw Error('Invalid native cell ownership.');
+    if (
+      Object.hasOwn(entry, 'siblings') &&
+      (record.schemaVersion !== 6 ||
+        entry.siblings !== true ||
+        entry.kind !== 'ins' ||
+        !entry.gap ||
+        entry.cell)
+    )
+      throw Error('Invalid native sibling ownership.');
     owners.set(entry.blockId, entry as unknown as InlinePresenceNative);
   }
   if (record.schemaVersion === 4 && ![...owners.values()].some((owner) => owner.gap))
     throw Error('Paragraph birth profile has no structural owner.');
   if (record.schemaVersion === 5 && ![...owners.values()].some((owner) => owner.cell))
     throw Error('Cell birth profile has no topology owner.');
+  if (record.schemaVersion === 6 && ![...owners.values()].some((owner) => owner.siblings))
+    throw Error('Sibling birth profile has no structural owner.');
   return owners;
 }

@@ -582,6 +582,8 @@ Additional WIP evidence: [tracked atoms in born paragraphs](evidence/tracked-bor
 
 [Repeated cell waves and new-row peer retention](evidence/tracked-cell-atom-peer-retention.md) verifies both decisions and creation histories. The evaluated transport repair advances to `1.7.10.1`. D30 stays open.
 
+[Tracked atoms in complete new tables](evidence/tracked-new-table-inline-atoms.md) adds cell staging and private sibling-gap ownership. Middle, terminal, replacement, mixed-table, and repeated-wave cases retain exact native decisions. D30 stays open.
+
 ## D31
 
 - [x] Plan inline code marks through the native representation

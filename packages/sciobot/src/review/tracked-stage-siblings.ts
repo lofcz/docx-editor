@@ -177,8 +177,18 @@ export function stageTrackedSiblings(
       properties: [...properties, { localName: 'pStyle', attributes: { val: styleId } }],
     });
   }
-  stageSiblingTables(writer, edit, seeds, inserted, revision, listContext);
-  stageBornAtoms(writer, before.name, inserted, edit.atoms ?? [], images);
+  stageSiblingTables(writer, edit, seeds, inserted, revision, listContext, images);
+  stageBornAtoms(
+    writer,
+    before.name,
+    inserted,
+    (edit.atoms ?? []).filter(
+      (atom) =>
+        atom.location.kind === 'new-paragraph' &&
+        edit.inserted[atom.location.path[0]!]?.type !== 'table'
+    ),
+    images
+  );
   current = currentStagePart(writer, before.name);
   const finalGap = gap(current, edit);
   if (!finalGap) refuseWrite('The completed rich sibling gap disappeared.', 'apply-failed');

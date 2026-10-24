@@ -1,3 +1,4 @@
+import type { InlineImageRuntime } from '../native/inline-image-runtime';
 import { stageSiblingApplicationBlock } from './tracked-sibling-application-blocks';
 import { findNode, type OoxmlNode } from '@docx-editor.dev/core/store';
 import type { DirectListContext } from '../ai/direct-lists';
@@ -17,7 +18,8 @@ export function stageSiblingTables(
   seeds: SiblingFragmentSeeds,
   fresh: readonly string[],
   revision: TrackedStageAttribution,
-  listContext: DirectListContext
+  listContext: DirectListContext,
+  images?: InlineImageRuntime
 ): void {
   for (const seed of seeds.placed) {
     if (seed.kind === 'block') {
@@ -56,11 +58,28 @@ export function stageSiblingTables(
       return rowCells.map((cell, c) => ({
         cellId: cell.id,
         blocks: seed.rows[r]![c]!,
+        atoms: (edit.atoms ?? []).flatMap((atom) =>
+          atom.location.kind === 'new-paragraph' &&
+          [...seed.path, r, c].every(
+            (value, index) =>
+              atom.location.kind === 'new-paragraph' && atom.location.path[index] === value
+          )
+            ? [
+                {
+                  ...atom,
+                  location: {
+                    kind: 'new-paragraph' as const,
+                    path: atom.location.path.slice(seed.path.length + 2),
+                  },
+                },
+              ]
+            : []
+        ),
         properties: seed.alignment[c]
           ? { horizontal: seed.alignment[c] as 'left' | 'center' | 'right' }
           : undefined,
       }));
     });
-    stageNewCells(writer, edit.partName, cells, listContext, revision);
+    stageNewCells(writer, edit.partName, cells, listContext, revision, images);
   }
 }

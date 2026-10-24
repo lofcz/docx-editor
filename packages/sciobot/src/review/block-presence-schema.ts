@@ -23,9 +23,9 @@ export interface BlockPresenceChange {
   /** Native ownership proof, without copied Word content or canonical node IDs. */
   readonly nativeFingerprint: `sha256:${string}`;
 }
-/** Versions two and three own blocks and retained inline controls. Version four couples paragraph births. */
+/** Private profiles own blocks, retained atoms, paragraph births, cell births, and whole sibling gaps. */
 export interface BlockPresenceRecord {
-  readonly schemaVersion: 2 | 3 | 4 | 5;
+  readonly schemaVersion: 2 | 3 | 4 | 5 | 6;
   readonly executor: typeof BLOCK_PRESENCE_EXECUTOR;
   readonly id: string;
   readonly author: string;
@@ -79,7 +79,8 @@ function problem(value: JsonValue): string | null {
     (value.schemaVersion !== 2 &&
       value.schemaVersion !== 3 &&
       value.schemaVersion !== 4 &&
-      value.schemaVersion !== 5) ||
+      value.schemaVersion !== 5 &&
+      value.schemaVersion !== 6) ||
     value.executor !== BLOCK_PRESENCE_EXECUTOR ||
     !keys(value, [
       'schemaVersion',
@@ -95,7 +96,10 @@ function problem(value: JsonValue): string | null {
     return 'invalid-presence-schema';
   const inline = object(value.extension) && Object.hasOwn(value.extension, 'nativeInline');
   if (
-    (value.schemaVersion === 3 || value.schemaVersion === 4 || value.schemaVersion === 5) !== inline
+    (value.schemaVersion === 3 ||
+      value.schemaVersion === 4 ||
+      value.schemaVersion === 5 ||
+      value.schemaVersion === 6) !== inline
   )
     return 'invalid-inline-presence-version';
   const attribution = blockPresenceAttributionProblem(value.id, value.author, value.date);
@@ -206,7 +210,10 @@ export function decodeBlockPresenceRecord(raw: string): BlockPresenceDecode {
   if (
     value.schemaVersion !== 2 &&
     !(
-      (value.schemaVersion === 3 || value.schemaVersion === 4 || value.schemaVersion === 5) &&
+      (value.schemaVersion === 3 ||
+        value.schemaVersion === 4 ||
+        value.schemaVersion === 5 ||
+        value.schemaVersion === 6) &&
       object(value.extension) &&
       Object.hasOwn(value.extension, 'nativeInline')
     )

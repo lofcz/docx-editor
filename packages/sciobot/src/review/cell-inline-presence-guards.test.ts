@@ -19,6 +19,7 @@ interface MutableCellProof {
       owners: [
         {
           revision: { id: string; author: string; date?: string };
+          siblings?: true;
           cell: {
             kind: string;
             revision: { id: string; author: string; date?: string };
@@ -80,6 +81,15 @@ test('cell presence binds persistent topology addresses and refuses changed or d
       return value as unknown as BlockPresenceRecord;
     };
     const invalid = [
+      change((value) => {
+        value.schemaVersion = 6;
+        value.extension.nativeInline.schemaVersion = 4;
+        for (const owner of value.extension.nativeInline.owners) {
+          const forged = owner as { cell?: unknown; siblings?: true };
+          delete forged.cell;
+          forged.siblings = true;
+        }
+      }),
       change(
         (value) => (value.extension.nativeInline.owners[0].cell.revision.id = 'missing-topology')
       ),

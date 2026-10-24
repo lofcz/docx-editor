@@ -107,6 +107,9 @@ export function stageTrackedPresence(
         revision: address,
         gap: matching[0]!.addresses,
         ...(cell ? { cell } : {}),
+        ...(edit.kind === 'siblings' && edit.inserted.some((node) => node.type === 'table')
+          ? { siblings: true as const }
+          : {}),
       });
     }
   }

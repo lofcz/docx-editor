@@ -50,7 +50,7 @@ export function stageTrackedPlan(
         (atom) =>
           (atom.kind === 'drawing' && !images) ||
           atom.location.kind !== 'new-paragraph' ||
-          !['paragraph', 'heading', 'blockquote'].includes(
+          !['paragraph', 'heading', 'blockquote', 'table'].includes(
             edit.inserted[atom.location.path[0]!]?.type ?? ''
           )
       );

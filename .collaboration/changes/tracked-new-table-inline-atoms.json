@@ -1,0 +1,18 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Tracked sibling tables omitted cell atom bindings and admitted image resources. Paragraph-only ownership could not prove whole-table rows and following caret paragraphs together.",
+  "after": "New tracked tables stage complete cell atom controls and resources. Private presence schema 6 binds the complete native sibling gap, including whole-table row births, paragraph marks, and coupled insertion/deletion addresses. Birth proofs cannot bind removal intentions. Readers verify exact native membership and refuse forged, incomplete, downgraded, or interleaved scopes.",
+  "reason": "This is a private application proposal profile. Previous built readers refuse schema 6 in pending and retained decision states. Existing private profiles remain unchanged. Native transport fields, deterministic repair, and journal kinds stay unchanged. Collaboration evaluation uses the EigenPal Pro License. Production private runtime imports no Pro implementation. D30 and R19 remain open.",
+  "tests": [
+    "packages/sciobot/src/review/inline-birth-direction.test.ts",
+    "packages/sciobot/src/review/recompose-new-table-atoms.test.ts",
+    "packages/sciobot/src/review/recompose-new-table-atoms-shared.test.ts",
+    "packages/sciobot/src/review/recompose-new-table-atom-waves.test.ts",
+    "packages/sciobot/src/review/sibling-inline-presence-guards.test.ts",
+    "packages/sciobot/src/review/cell-inline-presence-guards.test.ts",
+    "packages/sciobot/scripts/check-sibling-presence-reader.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}
