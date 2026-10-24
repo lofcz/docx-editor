@@ -584,6 +584,8 @@ Additional WIP evidence: [tracked atoms in born paragraphs](evidence/tracked-bor
 
 [Tracked atoms in complete new tables](evidence/tracked-new-table-inline-atoms.md) adds cell staging and private sibling-gap ownership. Middle, terminal, replacement, mixed-table, and repeated-wave cases retain exact native decisions. D30 stays open.
 
+[Peer continuity across atom-table rewrites](evidence/atom-table-peer-continuity.md) preserves offline peer suffixes through two AI waves, native histories, decisions, and caret updates. Native property repair uses evaluated format `1.7.11.1`. D30 stays open.
+
 ## D31
 
 - [x] Plan inline code marks through the native representation

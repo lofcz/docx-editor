@@ -1,3 +1,4 @@
+import { continueOwnedCellParagraphs } from './recompose-cell-continuity';
 import { createInlineImageRuntime } from '../native/inline-image-runtime';
 import type { PreparedInlineImages } from '../native/inline-image-resources';
 import { nativeNumberingInfrastructureReady } from '../native/numbering-infrastructure';
@@ -289,6 +290,7 @@ function commit(
             { author: attribution.author, date },
             input.payloads
           );
+          edit((working) => continueOwnedCellParagraphs(original, middle, working, removal));
           stageTrackedPresence(
             {
               currentPackage: () => ctx.currentPackage(),

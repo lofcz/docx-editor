@@ -1,0 +1,16 @@
+{
+  "impact": "migration-required",
+  "fields": ["repairVersion"],
+  "before": "An offline peer edit could remain outside an atom-bearing table replaced by a later AI wave. Paragraph property moves could be consumed as inline content. An invisible undone property constructor could win singleton selection and hide an earlier paragraph mark during undo.",
+  "after": "Same-topology owned table replacement preserves exact empty recovery paragraph addresses and Word identities through explicit native moves. Paragraph property moves reach the record pipeline. Materialization excludes hidden undone constructors before selecting native property winners.",
+  "reason": "Deterministic native property projection changes repairVersion from 10 to 11. Shared schema 7 and journal kinds stay unchanged. The application derives continuity from selected native births, surviving story boundaries, and physical cells; equal labels grant no identity. It preserves nonempty or independently formatted recovery slots. Transport changes remain evaluation-only under the EigenPal Pro License. No saved room is migrated; upgraded deployment requires verified export and fresh room seeding. D30 and R19 remain open.",
+  "tests": [
+    "packages/sciobot/src/review/recompose-new-table-atom-peer.test.ts",
+    "packages/sciobot/src/review/recompose-new-table-atom-peer-waves.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-paragraph-property-move.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-undone-property-winner.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-format.test.ts"
+  ],
+  "changeset": "visible-born-property-winners",
+  "migration": "upgrade-rooms-to-format-17111"
+}

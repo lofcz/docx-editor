@@ -492,7 +492,7 @@ export function routeInlineEffects(
   const applied: boolean[] = [];
   // A paragraph splice that adds or removes a block child also goes to the record pipeline,
   // as a splice over block children only: that pipeline resolves concurrent property copies.
-  const blockSplices = new Map<number, SharedEffect>();
+  const blockEffects = new Map<number, SharedEffect>();
   for (const [index, effect] of effects.entries()) {
     if (!scratch.sources.capture(index, (id) => scratch.nodes.get(id as LogicalId)))
       return {
@@ -500,8 +500,8 @@ export function routeInlineEffects(
         plan: null,
         refusal: { code: 'invalid-bound', detail: 'Invalid native text slice provenance.' },
       };
-    const block = blockSplice(scratch, effect, registry);
-    if (block) blockSplices.set(applied.length, block);
+    const block = blockSplice(scratch, effect, registry) ?? blockMove(scratch, effect, registry);
+    if (block) blockEffects.set(applied.length, block);
     applied.push(replay(scratch, effect, registry));
     if (scratch.refusal) return { passThrough: [...effects], plan: null, refusal: scratch.refusal };
   }
@@ -517,7 +517,7 @@ export function routeInlineEffects(
 
   const passThrough: SharedEffect[] = [];
   effects.forEach((effect, index) => {
-    const block = blockSplices.get(index);
+    const block = blockEffects.get(index);
     if (block) passThrough.push(block);
     else if (!applied[index] || !consumed(scratch, effect)) passThrough.push(effect);
   });
@@ -558,6 +558,29 @@ function blockSplice(
     .slice(0, effect.start)
     .filter((id) => shown.includes(id) && scratch.nodes.get(id)?.block).length;
   return { ...effect, start, deleteCount: deleted, childLogicalIds: inserted };
+}
+
+/** Property holders remain record children when their paragraph changes. */
+function blockMove(
+  scratch: Scratch,
+  effect: SharedEffect,
+  registry: DocumentRegistry
+): SharedEffect | null {
+  if (effect.kind !== 'moveNode') return null;
+  const parent = scratch.nodes.get(effect.destinationParentLogicalId);
+  if (!parent?.paragraph) return null;
+  const isBlock = (id: LogicalId) => {
+    const node = scratch.nodes.get(id);
+    return node
+      ? node.block || node.kind === 'paragraphProperties'
+      : registry.kindOf(id) === 'paragraphProperties';
+  };
+  if (!isBlock(effect.logicalId)) return null;
+  const prefix = parent.children
+    .filter((id) => id !== effect.logicalId && scratch.nodes.get(id)?.parent === parent.id)
+    .slice(0, effect.destinationIndex)
+    .filter(isBlock);
+  return { ...effect, destinationIndex: prefix.length };
 }
 
 /** Apply one effect to the scratch tree. False when it does not concern the scratch tree. */

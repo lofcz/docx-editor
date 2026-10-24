@@ -510,7 +510,9 @@ export class PackageMaterializer {
     const children: OoxmlNode[] = [];
     // Concurrent peers can each write a child OOXML allows once; show one, in one order.
     const order = partitionWithMerges(record.kind, childIds, (id) =>
-      this.splitProjection.losers.has(id) ? null : sharedChildShell(this.registry, id)
+      this.splitProjection.losers.has(id) || !this.birthProjection.shown(logicalId, id)
+        ? null
+        : sharedChildShell(this.registry, id)
     );
     for (const id of order.hidden) placed.add(id);
     for (const id of childIds) this.mergeSources.delete(id);
