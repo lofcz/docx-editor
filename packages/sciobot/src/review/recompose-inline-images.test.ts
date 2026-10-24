@@ -1,3 +1,4 @@
+import { expectImageRelationships } from '../../test/support/image-relationships';
 import { previewDirectPlan } from '../ai/apply-direct';
 import { prepareInlineImageResources } from '../native/inline-image-resources';
 import { planTargetDocument } from '../diff/plan-target';
@@ -167,6 +168,7 @@ for (const born of [false, true])
             expectedEditor.destroy();
           }
           const blocks = buildBlockIndex(pending);
+          expectImageRelationships(pending, blocks.byId.values());
           expect(blocks.byId.size).toBe(1);
           expect([...blocks.byId.values()][0]!.payload.type).toBe('inline_image');
           expect([...blocks.byId.values()][0]!.payload.attributes).toMatchObject({
@@ -196,6 +198,7 @@ for (const born of [false, true])
           expect(decide(editor, revision(), context)).toMatchObject({ success: true });
           const resolved = surface.session.currentPackage();
           const resolvedNative = native(resolved);
+          expectImageRelationships(resolved, buildBlockIndex(resolved).byId.values());
           if (decision === 'reject') {
             expect(resolvedNative).toBe(before);
             expect(media(resolved)).toHaveLength(0);
@@ -217,6 +220,10 @@ for (const born of [false, true])
           expect(reopened.ok).toBe(true);
           if (!reopened.ok) throw Error(reopened.reason);
           expect(native(reopened.package)).toBe(resolvedNative);
+          expectImageRelationships(
+            reopened.package,
+            buildBlockIndex(reopened.package).byId.values()
+          );
           const reopenedAgain = readOoxmlPackage(writeOoxmlPackage(reopened.package));
           if (!reopenedAgain.ok) throw Error(reopenedAgain.reason);
           expect(native(reopenedAgain.package)).toBe(native(reopened.package));

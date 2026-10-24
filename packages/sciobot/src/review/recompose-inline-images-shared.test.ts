@@ -1,3 +1,4 @@
+import { expectImageRelationships } from '../../test/support/image-relationships';
 import {
   prepareInlineImageResources,
   type PreparedInlineImages,
@@ -211,7 +212,9 @@ for (const peerOffset of [1, 10])
                   ? 'B peerefore\\. [Lead\\. ![Cat](asset:cat "Photo") Tail\\.](https://target.test "Keep") After\\.'
                   : 'Before\\. [Le peerad\\. ![Cat](asset:cat "Photo") Tail\\.](https://target.test "Keep") After\\.'
               );
-              const groups = readReviewGroups(editor.surface!.session.currentPackage());
+              const pkg = editor.surface!.session.currentPackage();
+              expectImageRelationships(pkg, buildBlockIndex(pkg).byId.values());
+              const groups = readReviewGroups(pkg);
               expect(groups.success && groups.groups.length).toBe(2);
               expect(groups.success && groups.groups.every((group) => !group.readOnly)).toBe(true);
             }
@@ -245,7 +248,9 @@ for (const peerOffset of [1, 10])
             expect(media(editor.surface!.session.currentPackage())).toEqual(
               decision === 'accept' ? media(acceptedExpected) : []
             );
-            const payloads = readPayloadStore(editor.surface!.session.currentPackage());
+            const pkg = editor.surface!.session.currentPackage();
+            expectImageRelationships(pkg, buildBlockIndex(pkg).byId.values());
+            const payloads = readPayloadStore(pkg);
             expect(payloads.status === 'ready' && [...payloads.entries.keys()]).toEqual(
               decision === 'accept' ? [imageId] : []
             );
