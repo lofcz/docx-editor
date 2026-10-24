@@ -200,6 +200,8 @@ Remaining before closure: fix conflict-safe native property rejection with exact
 
 The independent ownership checkpoint fixes mixed paragraph and mark-format scopes. It preserves existing break revisions, section state, foreign metadata, peer formatting, and histories. Experimental withdrawal now passes exact native content-control and package protection admission before cancellation. The affected batch passes 58 cases and 1857 assertions across nine files (`/tmp/n08-independent-property-regression.log`). The private build verifies 323 modules with core external. See [bound property group evidence](evidence/bound-property-groups.md#independent-scopes-and-protection-admission). N08 remains unchecked.
 
+The numbering birth checkpoint preserves observed peer membership when a proposal creates `numPr` or its numbering-only `pPr` ancestry. It verifies cold pending-room rejection, exact decision histories, peer histories, unused ancestry removal, both decisions, and complete saved/reopened native main-part oracles. The affected batch passes 139 cases and 2167 assertions across 16 files (`/tmp/n08-numbering-birth-final.log`). See [numbering birth evidence](evidence/bound-property-groups.md#numbering-births-and-retained-peer-ancestry). Other property constructors, portable pending DOCX ownership, default production admission, and remaining source list behavior still prevent closure. N08 remains unchecked.
+
 ## N09
 
 - [x] Connect manual table insertion

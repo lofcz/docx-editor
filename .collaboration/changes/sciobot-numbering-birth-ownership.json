@@ -1,0 +1,27 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "The unreleased property-history prototype cancels a newly inserted numPr edge even when a peer still owns its descendant membership. New pPr holders do not bind property ownership. Rejecting either proposal can erase observed peer formatting.",
+  "after": "The explicitly selected prototype retains numbering birth edges only while surviving descendant ownership needs them. Experimental numbering constructor scalars follow their native node lifetime. New numbering-only pPr holders resolve through existing paragraph anchors without owning paragraph text. Bound rejection removes the exact property-change records through native acceptance while its conditional receipts decide property values. Native inverse admission still runs first.",
+  "reason": "This extends only the unreleased field-2/flag-3 prototype. The supported field-1/flag-2 attachment and its constructor capture remain unchanged. No package entry exports the prototype. Shared native schema, repair, protocol, and model versions remain 1.9.14.1. Existing bounds and record schemas remain unchanged. No room is migrated, reseeded, or automatically upgraded. A private empty Changeset records this adapter-only implementation. Numbering births now have direct, history, cold pending-room, and saved-reopening evidence. Other property constructors, portable pending DOCX ownership, remaining source list behaviors, and final production admission remain unfinished.",
+  "tests": [
+    "packages/sciobot/src/chrome/list-property-child-births.test.ts",
+    "packages/sciobot/src/chrome/list-property-group-decisions.test.ts",
+    "packages/sciobot/src/chrome/list-property-withdrawal.test.ts",
+    "packages/sciobot/src/review/property-group-boundaries.test.ts",
+    "packages/sciobot/src/review/property-group-boundaries-collaboration.test.ts",
+    "packages/sciobot/src/review/property-decision-admission.test.ts",
+    "packages/sciobot/src/review/reject-group.test.ts",
+    "packages/sciobot/src/review/accept-group.test.ts",
+    "packages/sciobot/src/collaboration/property-group-bindings.test.ts",
+    "packages/sciobot/src/collaboration/property-birth-anchors.test.ts",
+    "packages/sciobot/src/collaboration/review-birth-field-retention.test.ts",
+    "packages/sciobot/src/collaboration/review-fields.test.ts",
+    "packages/sciobot/src/collaboration/review-field-retraction.test.ts",
+    "packages/sciobot/src/collaboration/review-flags.test.ts",
+    "packages/sciobot/src/collaboration/review-sequences.test.ts",
+    "packages/sciobot/src/collaboration/review-interception-order.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

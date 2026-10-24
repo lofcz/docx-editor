@@ -1,5 +1,6 @@
 import { PROPERTY_GROUP_RECEIPTS } from './property-group-codec';
 import { nativeBirthFieldCreation } from './review-birth-field-retention';
+import { retainedNumberingBirths } from './review-numbering-birth-retention';
 // Application-owned review string fields over pinned MIT Yjs.
 // Pinned retained-birth interoperability stays in review-sequence-retention.ts.
 import * as Y from 'yjs';
@@ -161,7 +162,11 @@ function eligible(
   if (!target) return null;
   // The native birth delete filter owns initial geometry and Word identities. Layering
   // an absent scalar baseline over them would erase retained peer-bearing cell structure.
-  if (transaction && nativeBirthFieldCreation(state.doc, transaction, target)) return null;
+  if (
+    transaction &&
+    nativeBirthFieldCreation(state.doc, transaction, target, state.protocol === '2')
+  )
+    return null;
   if (
     map._item &&
     transaction &&
@@ -489,6 +494,7 @@ function records(state: State) {
 }
 function normalize(state: State) {
   const { targets, winners } = records(state),
+    retained = state.protocol === '2' ? retainedNumberingBirths(state.doc, targets, winners) : null,
     edits: (() => void)[] = [],
     arrays = new Map<
       Y.Array<unknown>,
@@ -500,7 +506,9 @@ function normalize(state: State) {
       if (array) {
         const keys = arrays.get(array) ?? [];
         const winner = winners.get(key);
-        const present = winner ? winner.value === 'present' : target.initiallyPresent!;
+        const present = winner
+          ? winner.value === 'present'
+          : target.initiallyPresent! || retained?.has(key) === true;
         keys.push({
           target,
           present,

@@ -19,7 +19,8 @@ const GEOMETRY = new Set([
 export function nativeBirthFieldCreation(
   doc: Y.Doc,
   transaction: Y.Transaction,
-  target: ReviewFieldLocation
+  target: ReviewFieldLocation,
+  numberingConstructors = false
 ): boolean {
   if (target.sequence || target.root !== 'docx-package-attributes-v1') return false;
   const existing = (name: string): Y.Map<unknown> | null => {
@@ -55,5 +56,9 @@ export function nativeBirthFieldCreation(
   const shell = record.get('s') ?? record.get('b');
   if (typeof shell !== 'string') return false;
   const fields = shell.split('\u001f');
-  return fields.length === 4 && fields[1] === 'w' && GEOMETRY.has(fields[2]!);
+  return (
+    fields.length === 4 &&
+    fields[1] === 'w' &&
+    (GEOMETRY.has(fields[2]!) || (numberingConstructors && ['numId', 'ilvl'].includes(fields[2]!)))
+  );
 }

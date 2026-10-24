@@ -12,7 +12,7 @@ const META = 'docx-package-meta-v1',
   NODES = 'docx-package-nodes-v1',
   ATTRS = 'docx-package-attributes-v1';
 const key = (id: string, ns: string, name: string) => [id, ns, name].join('\u001f');
-function fixture(repair = 14) {
+function fixture(repair = 14, protocol: '1' | '2' = '1') {
   const doc = new Y.Doc();
   const meta = doc.getMap(META),
     nodes = doc.getMap<Y.Map<unknown>>(NODES),
@@ -24,7 +24,7 @@ function fixture(repair = 14) {
     canonicalModelVersion: 1,
   }))
     meta.set(name, value);
-  const fields = attachOwnedReviewFields(doc);
+  const fields = attachOwnedReviewFields(doc, { protocol });
   fields.enable();
   return {
     doc,
@@ -147,3 +147,33 @@ test('wire inspection does not create absent native roots', () => {
     doc.destroy();
   }
 });
+
+for (const protocol of ['1', '2'] as const)
+  test(`numbering constructor scalars keep their native lifetime only in experimental protocol ${protocol}`, () => {
+    const f = fixture(14, protocol);
+    const member = key('numbering-member', 'w', 'val'),
+      level = key('numbering-level', 'w', 'val');
+    try {
+      f.fields.capture(
+        () =>
+          f.doc.transact(() => {
+            f.nodes.set('numbering-member', node('numId'));
+            f.nodes.set('numbering-level', node('ilvl'));
+            f.attrs.set(member, '100');
+            f.attrs.set(level, '2');
+          }),
+        8
+      );
+      const targets = f.doc.getMap(REVIEW_FIELD_TARGETS);
+      expect(targets.size).toBe(protocol === '2' ? 0 : 3);
+      f.fields.capture(() => f.doc.transact(() => f.attrs.set(member, '200')), 1);
+      const target = [...targets]
+        .filter(([address]) => address !== 'protocol')
+        .map(([address, raw]) => decodeFieldTarget(address, raw))
+        .find((target) => target.key === member)!;
+      expect(target.baseline).toBe(protocol === '2' ? '100' : null);
+      expect(f.attrs.get(level)).toBe('2');
+    } finally {
+      f.destroy();
+    }
+  });

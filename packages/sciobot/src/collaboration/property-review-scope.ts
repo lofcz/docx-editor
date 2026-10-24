@@ -5,6 +5,7 @@ import { decodeFlagTarget } from './review-flag-codec';
 import { reviewArray } from './review-sequences';
 import { flagMap } from './review-flag-items';
 import type { PropertyReviewReceipt } from './property-review-prototype';
+import type { PropertyGroupScope } from '../review/property-history-contract';
 
 /** Fail before authoring against an unknown native property representation. */
 export function assertNativePropertyProfile(doc: Y.Doc): void {
@@ -23,7 +24,8 @@ export function assertNativePropertyProfile(doc: Y.Doc): void {
 export function propertyScopedReceipt(
   doc: Y.Doc,
   receipt: PropertyReviewReceipt,
-  nodeIds: ReadonlySet<string>
+  nodeIds: ReadonlySet<string>,
+  anchors: PropertyGroupScope['anchors'] = []
 ): PropertyReviewReceipt {
   assertNativePropertyProfile(doc);
   const nativeNodes = doc.share.has('docx-package-nodes-v1')
@@ -49,6 +51,24 @@ export function propertyScopedReceipt(
   // Resolve the complete property subtree from its stable existing containers.
   const resolvedIds = new Set(nodeIds),
     pending = [...nodeIds];
+  for (const anchor of anchors) {
+    const parent = nativeNodes.get(anchor.parentId);
+    const children = parent instanceof Y.Map ? parent.get('children') : null;
+    if (!(children instanceof Y.Array)) throw new Error('Missing native property ancestry.');
+    const matches = children.toArray().filter((id): id is string => {
+      if (typeof id !== 'string') return false;
+      const record = nativeNodes.get(id);
+      return (
+        record instanceof Y.Map &&
+        record.get('deleted') !== true &&
+        record.get('undone') !== true &&
+        wordName(record) === anchor.childName
+      );
+    });
+    if (matches.length !== 1) throw new Error('Ambiguous native property ancestry.');
+    resolvedIds.add(matches[0]!);
+    pending.push(matches[0]!);
+  }
   while (pending.length) {
     const record = nativeNodes.get(pending.pop()!);
     if (!(record instanceof Y.Map)) continue;

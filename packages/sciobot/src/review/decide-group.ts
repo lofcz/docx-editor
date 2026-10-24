@@ -170,6 +170,20 @@ function commitGroupDecision(
           ],
         ])
       );
+      // Conditional withdrawal decides property values. Native acceptance removes only
+      // the selected historical records, including records inside retained constructors.
+      const propertySites = new Map<string, Set<string>>();
+      for (const group of selected.filter((group) => withdrawnGroups.has(group.id)))
+        for (const member of group.native) {
+          const ids = propertySites.get(member.partName) ?? new Set<string>();
+          for (const id of member.siteNodeIds) ids.add(id);
+          propertySites.set(member.partName, ids);
+        }
+      for (const [partName, ids] of propertySites)
+        partOps.set(partName, [
+          ...(partOps.get(partName) ?? []),
+          { op: 'acceptAllRevisions', siteNodeIds: [...ids] },
+        ]);
       const edits: ((pkg: OoxmlPackage) => OoxmlPackage)[] = [];
       for (const groupId of withdrawnGroups) {
         if (!groupId.startsWith('g1:stored:'))

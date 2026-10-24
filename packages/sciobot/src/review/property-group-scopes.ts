@@ -39,6 +39,7 @@ export function freshPropertyGroupScopes(
     )
       continue;
     const ids = new Set<string>();
+    const anchors: { parentId: string; childName: string }[] = [];
     const add = (node: OoxmlNode) => {
       const pending = [node];
       while (pending.length) {
@@ -67,12 +68,31 @@ export function freshPropertyGroupScopes(
         }
         const parent = parentNodeOf(part, id);
         const original = parent && sources.get(member.partName)?.get(parent.id);
-        // Property births need separate peer-bearing ancestry ownership before admission.
-        if (!parent || !original) {
+        if (!parent) {
           complete = false;
           break;
         }
-        add(original);
+        if (!original) {
+          const ancestor = parentNodeOf(part, parent.id);
+          // Numbering constructors have complete conditional ancestry support. Other
+          // new property holders still need their own constructor dependency rules.
+          if (
+            parent.namespaceUri !== WML_NAMESPACE_URI ||
+            parent.localName !== 'pPr' ||
+            parent.children.some(
+              (child) =>
+                child.kind === 'textValue' ||
+                child.namespaceUri !== WML_NAMESPACE_URI ||
+                !['numPr', 'pPrChange'].includes(child.localName)
+            ) ||
+            !ancestor ||
+            !sources.get(member.partName)?.has(ancestor.id)
+          ) {
+            complete = false;
+            break;
+          }
+          anchors.push({ parentId: ancestor.id, childName: parent.localName });
+        } else add(original);
         add(parent);
       }
       if (!complete) break;
@@ -83,6 +103,7 @@ export function freshPropertyGroupScopes(
           groupId: group.id,
           membersKey: propertyGroupMembersKey(group),
           nodeIds: ids,
+          ...(anchors.length ? { anchors: Object.freeze(anchors) } : {}),
         })
       );
   }

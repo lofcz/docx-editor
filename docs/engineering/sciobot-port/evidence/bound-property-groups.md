@@ -38,8 +38,24 @@ Experimental bound rejection now previews its exact selected inverse through a d
 
 The affected batch passes 58 cases and 1857 assertions across nine files. Its log is `/tmp/n08-independent-property-regression.log`. The private build verifies 323 modules with core external. The production attachment remains unchanged. Compatibility decision: `.collaboration/changes/sciobot-property-scope-admission.json`. No leaf closes.
 
+## Numbering births and retained peer ancestry
+
+The observed-unlisting regression already passes without a writer change. Two other cases fail before this checkpoint: rejecting newly created `numPr` removes the peer's observed membership, and rejecting newly created `pPr` restores an empty property bag over the peer's numbering.
+
+Experimental numbering constructor scalars now follow their native node lifetime. Protocol 1 retains its existing capture behavior. Protocol 2 retains a withdrawn numbering birth edge only while surviving descendant field or sequence ownership needs its ancestry. Peer undo releases that ancestry; peer redo restores it. No temporary peer values enter historical Word snapshots.
+
+Numbering-only `pPr` births bind through an existing paragraph anchor. The anchor owns the property edge and its descendants without claiming paragraph text or unrelated fields. Deleted and undone old holders cannot shadow the new holder. Ambiguous live holders refuse without shared writes. Other new property holders still need their own constructor rules.
+
+Bound rejection now removes its exact native property-change records through native acceptance. Conditional receipts decide the property values. This removes a review record embedded in a retained constructor without restoring an old property snapshot. The native inverse admission check still runs first, so content locks and package protection remain authoritative.
+
+Twelve real-session cases cover both client orders, observed unlisting, new numbering children, new paragraph-property holders, and cold pending-room rejection. Decision undo/redo keeps exact pending and decided trees. In live rooms, independent peer undo/redo removes and restores the required ancestry. All cases save and reopen their documents and compare complete native main-part fingerprints with independent Word operation oracles. Cold decided rooms retain the same results and saved package digests.
+
+Sixteen additional cases cover both decisions with unused births and unrelated peer typing. Rejection removes unused ancestry. Acceptance keeps the intended properties. Both preserve peer text, exact decision histories, and complete saved/reopened main-part oracles. Constructor tests prove that supported protocol 1 remains unchanged. Anchor tests exclude tombstones, unrelated text edges, and unrelated scalars.
+
+The affected batch passes 139 cases and 2167 assertions across 16 files. Its log is `/tmp/n08-numbering-birth-final.log`. Private types pass 2399 files. The private build verifies 324 modules with native core external. Compatibility decision: `.collaboration/changes/sciobot-numbering-birth-ownership.json`. The test transport uses the EigenPal Pro License. No leaf closes.
+
 ## Remaining requirements
 
-The binding root exists only in the explicitly selected experimental attachment. The default field-1/flag-2 production factory remains unchanged. Pending DOCX import needs portable original property ownership and fresh-room seeding. Property container and child births need complete peer-bearing ancestry behavior. Final production admission and remaining same-value and mixed property cases need verification. Native lock and forms-protection admission now pass the regressions above. The default review path retains its original conflicting-format regressions.
+The binding root exists only in the explicitly selected experimental attachment. The default field-1/flag-2 production factory remains unchanged. Pending DOCX import needs portable original property ownership and fresh-room seeding. Numbering container and child births now pass the cases above. Other property births still need complete peer-bearing ancestry behavior. Final production admission and remaining same-value and mixed property cases need verification. Native lock and forms-protection admission now pass the regressions above. The default review path retains its original conflicting-format regressions.
 
 Finish source checklist indentation, dormant checked state, sequence resets, sibling conversion, and polite restarts. Run complete N01 list parity and the required final browser/shared coverage before closing N08. No application file, migration, reference capture, or baseline changes. Backlog status remains 193 closed and 83 open across 276 leaves.

@@ -6,6 +6,8 @@ export interface PropertyGroupScope {
   readonly groupId: string;
   readonly membersKey: string;
   readonly nodeIds: ReadonlySet<string>;
+  /** Resolve a newly created property holder through its existing canonical parent. */
+  readonly anchors?: readonly { readonly parentId: string; readonly childName: string }[];
 }
 export interface PropertyGroupPublication {
   readonly preview: readonly PropertyGroupScope[];

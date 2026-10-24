@@ -74,7 +74,7 @@ export function createPropertyGroupBindings(doc: Y.Doc) {
       const claimedFlags = new Set(old.flatMap((record) => record.flags));
       const staged: [string, string][] = [];
       for (const scope of scopes) {
-        const selected = propertyScopedReceipt(doc, receipt, scope.nodeIds);
+        const selected = propertyScopedReceipt(doc, receipt, scope.nodeIds, scope.anchors);
         for (const item of selected.fields) {
           if (claimedFields.has(item.id))
             throw new Error('Property field ownership belongs to another group.');
