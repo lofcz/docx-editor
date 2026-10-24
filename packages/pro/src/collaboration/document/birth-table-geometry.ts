@@ -151,8 +151,21 @@ export function prepareBirthTableGeometry(
       const members = born.filter((id) => listed.has(id));
       if (!members.length) continue;
       const prior = new Map(coverage.cells.map((cell) => [cell.id, cell]));
-      // Row births need ancestry only. Record geometry when an existing cell changes coverage.
+      // Row births need ancestry only. Replacement cells also need coverage evidence:
+      // a later AI wave can replace a prior split without changing any surviving cell's span.
+      const occupied = new Map<LogicalId, Set<LogicalId>>();
+      for (const old of coverage.cells) {
+        const columns = occupied.get(old.row) ?? new Set<LogicalId>();
+        for (const column of old.columns) columns.add(column);
+        occupied.set(old.row, columns);
+      }
+      const membersSet = new Set(members);
+      const replacesCoverage = after.cells.some(
+        (cell) =>
+          membersSet.has(cell.id) && cell.columns.some((id) => occupied.get(cell.row)?.has(id))
+      );
       if (
+        !replacesCoverage &&
         !after.cells.some((cell) => {
           const old = prior.get(cell.id);
           return (

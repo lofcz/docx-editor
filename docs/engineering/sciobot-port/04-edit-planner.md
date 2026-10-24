@@ -574,7 +574,9 @@ Additional WIP evidence: [tracked atoms in born paragraphs](evidence/tracked-bor
 
 [Tracked image staging](evidence/tracked-inline-image-staging.md) adds revision-bound media preparation and native image presence ownership. Verification remains in progress; the checkbox stays open.
 
-[Tracked image removal](evidence/tracked-image-removal.md) passes 67 affected source cases and 16 compiled cases. A stronger offline reference test loses referenced media under both client orders. This critical resource lifetime failure remains open.
+[Tracked image removal](evidence/tracked-image-removal.md) includes live-reference recovery in `2c47facc` and helper extraction in `3e5784fa`. Source, compiled, history, fidelity, and resource-cost checks pass the recorded batches. D30 remains open for the complete integration gates.
+
+[Replacement cell coverage](evidence/replacement-cell-coverage.md) repairs the eight mixed-split history regressions through exact native row and column identities. The source batch passes 147 cases; compiled checks pass 58 cases. Four prior committed-view regressions remain unresolved. D30 stays open.
 
 ## D31
 

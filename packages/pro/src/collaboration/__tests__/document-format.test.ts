@@ -289,3 +289,20 @@ test('retained resource recovery refuses the previous room format without writes
     doc.destroy();
   }
 });
+
+test('replacement cell coverage refuses the previous repair format without writes', () => {
+  const doc = savedRoom();
+  try {
+    doc.getMap(PACKAGE_META_KEY).set('repairVersion', 7);
+    const bytes = Y.encodeStateAsUpdate(doc);
+    const version = readCollaborationFormatVersion(doc);
+    expect(version).toBe('docx-collaboration:1.7.7.1');
+    expect(() => assertCollaborationFormatCompatibility(version)).toThrow(
+      'collaboration-format-mismatch'
+    );
+    expect(() => readCollaborationDocument(doc)).toThrow('schema-version-mismatch');
+    expect(Y.encodeStateAsUpdate(doc)).toEqual(bytes);
+  } finally {
+    doc.destroy();
+  }
+});

@@ -1,0 +1,14 @@
+{
+  "impact": "migration-required",
+  "fields": ["repairVersion"],
+  "before": "A later review wave could replace a split cell without recording its coverage. Undo retained an empty replacement cell at an active column and changed the table width.",
+  "after": "Native birth geometry records replacements of already occupied row columns, even when surviving cells retain their spans. Undo uses exact column ownership to hide empty replacement shells and retain independent peer content.",
+  "reason": "The existing geometry schema and journal kinds stay unchanged. Deterministic birth geometry interpretation changes repairVersion from 7 to 8. The application ancestry normalizer requires the exact new profile. Changes remain evaluation-only under the EigenPal Pro License. No saved rooms are migrated.",
+  "tests": [
+    "packages/sciobot/src/review/recompose-tables-collaboration.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-table-merge-split.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-format.test.ts"
+  ],
+  "changeset": "replacement-cell-coverage",
+  "migration": "upgrade-rooms-to-format-1781"
+}

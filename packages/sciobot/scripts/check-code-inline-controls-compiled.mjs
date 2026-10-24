@@ -54,7 +54,12 @@ try {
   if (/from ['"]\.{1,2}\//.test(support)) throw Error('Unmapped collaboration fixture import.');
   writeFileSync(collaboration, support);
 
-  const selected = process.argv.slice(2);
+  const args = process.argv.slice(2);
+  const patternArgs = args.filter((arg) => arg.startsWith('--test-name-pattern='));
+  if (patternArgs.length > 1) throw Error('Pass at most one --test-name-pattern=REGEX.');
+  const pattern = patternArgs[0]?.slice('--test-name-pattern='.length);
+  if (patternArgs.length && !pattern) throw Error('The test name pattern must not be empty.');
+  const selected = args.filter((arg) => !arg.startsWith('--test-name-pattern='));
   if (selected.some((name) => !/^(?:review\/|core\/)?[a-z0-9-]+\.test\.ts$/.test(name)))
     throw Error('Pass diff fixture basenames, review/name.test.ts, or core/name.test.ts.');
   const fixtures = selected.length
@@ -82,7 +87,7 @@ try {
     );
     if (filename.startsWith('review/'))
       source = source.replace(
-        /from '\.\/(?:native-module|recompose|working-view|committed-view|groups|accept-all|reject-all)'/g,
+        /from '\.\/(?:native-module|recompose|working-view|committed-view|groups|accept-all|reject-all|accept-group|reject-group)'/g,
         "from '@sciobot/docx'"
       );
     source = source.replaceAll(
@@ -103,6 +108,7 @@ try {
       'test',
       '--tsconfig-override',
       join(directory, 'tsconfig.json'),
+      ...(pattern ? ['--test-name-pattern', pattern] : []),
       ...fixtures.map((filename) => join(directory, filename.replace('/', '--'))),
     ],
     { cwd: directory, stdio: 'inherit' }
