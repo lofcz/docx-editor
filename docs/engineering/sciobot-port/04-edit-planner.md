@@ -554,6 +554,8 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Image replacement checkpoint:** Runtime `42eaeaf0` preserves native image identity, geometry, payloads, and media through concurrent replacements and both actor histories. The [image replacement evidence](evidence/inline-image-replacement.md) records the combined 255-case native batch and 88-case built SDK batch. D30 remains open; this checkpoint does not substitute for its closure audit.
 
+**Inline removal checkpoint:** Runtime `72c1e85c` adds explicit native removals for images, inline math, mentions, and sources. Compound edits retain source updates and surviving controls. Payload retirement and image cleanup share owned history. All 27 built removal cases pass, including both client orders, both histories, and DOCX/room reopening. The [removal evidence](evidence/inline-atom-removal.md) records corrected C01 and compound regressions, source timing limits, and remaining scope. D30 remains open.
+
 ## D31
 
 - [x] Plan inline code marks through the native representation
