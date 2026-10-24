@@ -70,7 +70,7 @@ try {
       'utf8'
     );
     source = source.replace(
-      /from '(?:\.\.\/(?:review|projection|blocks|ai|native)\/[^']+|\.\/(?:plan-target|plan|target-key))'/g,
+      /from '(?:\.\.\/(?:review|projection|blocks|ai|native)\/[^']+|\.\.\/diff\/(?:plan-target|plan|target-key)|\.\/(?:plan-target|plan|target-key))'/g,
       "from '@sciobot/docx'"
     );
     source = source.replaceAll(

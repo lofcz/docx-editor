@@ -1,3 +1,4 @@
+import { stageTrackedInlineRemoval } from './tracked-stage-inline-removal';
 import { insertedAtomsOfEdit } from '../diff/inserted-cell-atoms';
 import { createDirectListContext } from '../ai/direct-lists';
 import { stageTrackedList } from './tracked-stage-lists';
@@ -40,6 +41,14 @@ export function stageTrackedPlan(
   if (plan.operations.some((edit) => insertedAtomsOfEdit(edit).length > 0))
     refuseWrite(
       'Inserted inline atoms need native asset and payload reconciliation.',
+      'unsupported-operation'
+    );
+  if (
+    plan.operations.some((edit) => edit.kind === 'inline-remove') &&
+    plan.operations.some((edit) => edit.kind !== 'inline-remove')
+  )
+    refuseWrite(
+      'Combined inline removals need dependent tracked coordinate reconciliation.',
       'unsupported-operation'
     );
   const listContext = createDirectListContext();
@@ -169,7 +178,8 @@ export function stageTrackedPlan(
       coordinates.set(paragraph, stageTrackedText(writer, plan, entries, revision));
       continue;
     }
-    if (edit.kind === 'format') {
+    if (edit.kind === 'inline-remove') stageTrackedInlineRemoval(writer, edit, revision);
+    else if (edit.kind === 'format') {
       if (!trackFormatting)
         refuseWrite(
           'Formatting tracking is disabled for this document or editor.',

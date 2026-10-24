@@ -13,6 +13,7 @@ export function stageTrackedPresence(
   attribution: TrackedStageAttribution,
   supplied?: { readonly proposalId: string }
 ): void {
+  const removals = plan.operations.filter((edit) => edit.kind === 'inline-remove');
   const roots = plan.operations.flatMap((edit) =>
     edit.kind === 'siblings'
       ? (edit.blocks ?? [])
@@ -20,7 +21,7 @@ export function stageTrackedPresence(
           .map((binding) => binding.payload.id)
       : []
   );
-  if (!roots.length) {
+  if (!roots.length && !removals.length) {
     if (supplied)
       refuseWrite('Presence ownership has no inserted application roots.', 'invalid-input');
     return;
@@ -38,8 +39,20 @@ export function stageTrackedPresence(
   const prepared = createBlockPresenceRecord(
     before,
     writer.currentPackage(),
-    roots.map((blockId) => ({ blockId, before: { present: false }, after: { present: true } })),
-    { id: supplied.proposalId, ...attribution }
+    [
+      ...roots.map((blockId) => ({
+        blockId,
+        before: { present: false },
+        after: { present: true },
+      })),
+      ...removals.map((edit) => ({
+        blockId: edit.blockId,
+        before: { present: true },
+        after: { present: false },
+      })),
+    ],
+    { id: supplied.proposalId, ...attribution },
+    removals.length ? { nativeInline: true } : {}
   );
   if (!prepared.success) refuseWrite(prepared.error, prepared.code);
   writer.edit((pkg) => {

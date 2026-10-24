@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "The private AI target coordinator refused whole inline removals despite native tracked control deletion and application presence ownership support.",
+  "after": "Removal-only target plans stage native control deletions through the real transaction writer, preserve complete pending payloads and original host locks, and capture schema 3 presence ownership. Decisions release only an exact owned host content lock when deleting that control. Repeated AI waves retain native address reservations.",
+  "reason": "This uses the existing native removal primitive and schema 3 private proposal profile without adding transport fields. Inline births, image resource ownership, OMML, and dependent mixed text/atom coordinates remain gated. Immutable source validation is shared with direct removal without applying scratch operations inside observed transactions.",
+  "tests": [
+    "packages/sciobot/src/review/recompose-inline-removal.test.ts",
+    "packages/sciobot/src/review/inline-presence-collaboration.test.ts",
+    "packages/sciobot/src/diff/inline-removals.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

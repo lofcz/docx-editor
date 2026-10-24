@@ -23,6 +23,8 @@ import { withPayloadRecord } from '../blocks/payload-opc-codec';
 import { createBlockPresenceRecord } from './block-presence-plan';
 import { withBlockPresenceRecord } from './block-presence-store';
 import { stageTrackedInlineControl } from './tracked-stage-inline-control';
+import { recomposeOwnedProposals } from './recompose';
+import { readWorkingView } from './working-view';
 import { readReviewGroups } from './groups';
 import { acceptReviewGroup } from './accept-group';
 import { rejectReviewGroup } from './reject-group';
@@ -32,9 +34,13 @@ const attribution = { id: 'inline-proposal', author: 'AI', date: '2026-10-24T12:
 const payload = createMentionPayload('inline-chip', 'user-7', 'Ada', { privateData: { keep: 7 } });
 const run = (value: string) => `<w:r><w:t xml:space="preserve">${value}</w:t></w:r>`;
 const word = (part: OoxmlPart) => canonicalOoxmlFingerprint(part);
-function fixture(present: boolean) {
+function fixture(present: boolean, locked = false) {
+  const control = sourceControl(payload.id, run('Ada'));
+  const nativeControl = locked
+    ? control.replace('</w:sdtPr>', '<w:lock w:val="sdtContentLocked"/></w:sdtPr>')
+    : control;
   const content = present
-    ? `${run('Lead. ')}${sourceControl(payload.id, run('Ada'))}${run(' Tail.')}`
+    ? `${run('Lead. ')}${nativeControl}${run(' Tail.')}`
     : run('Lead.  Tail.');
   const read = readOoxmlPackage(
     docxFixture(
@@ -59,15 +65,16 @@ const payloads = (pkg: OoxmlPackage) => {
     .map(([id, block]) => [id, block.payload])
     .sort(([a], [b]) => String(a).localeCompare(String(b)));
 };
-for (const remove of [false, true])
+for (const mode of ['birth', 'remove', 'recompose-remove'] as const)
   for (const clients of [
     [41, 73],
     [73, 41],
   ] as const)
     for (const decision of ['accept', 'reject'] as const)
-      test(`inline native and payload ownership preserve both actor histories: ${remove}/${clients}/${decision}`, async () => {
+      test(`inline native and payload ownership preserve both actor histories: ${mode}/${clients}/${decision}`, async () => {
+        const remove = mode !== 'birth';
         const options = {
-          document: writeOoxmlPackage(fixture(remove)),
+          document: writeOoxmlPackage(fixture(remove, mode === 'recompose-remove')),
           documentId: identity.documentId,
           ownedAttributes: true,
           clientIds: clients,
@@ -83,72 +90,92 @@ for (const remove of [false, true])
           const controlId = remove ? buildBlockIndex(before).byId.get(payload.id)!.controlId : null;
           const oldPayloads = payloads(before);
           pair.pause();
-          const installed = actor.surface!.applyAutomationOps(
-            () =>
-              remove
-                ? [
-                    {
-                      op: 'removeContentControl',
-                      controlId: controlId!,
-                      keepContent: false,
-                      revision: attribution,
-                    },
-                  ]
-                : [],
-            { kind: 'body' },
-            [
-              (working) => {
-                let next = working;
-                if (!remove) {
-                  stageTrackedInlineControl(
-                    {
-                      currentPackage: () => next,
-                      apply(partName, op) {
-                        next = withPart(next, native(next.parts.get(partName)!, op));
+          if (mode === 'recompose-remove') {
+            const revision = readEditorRevision(actor, identity.documentId, identity.epoch)!;
+            const initial = await readWorkingView(actor.surface!.session, revision);
+            if (!initial.success) throw Error(initial.error);
+            const target = initial.view.projection.text.replace(
+              /<scio-mention\b[^>]*\/>|\[Ada\]\(mention:user-7\)/g,
+              ''
+            );
+            expect(target).not.toBe(initial.view.projection.text);
+            const recomposed = await recomposeOwnedProposals(
+              actor,
+              { revision, targetMarkdown: target, ownership: [] },
+              { ...identity, ...attribution },
+              { payloads: { presence: { proposalId: attribution.id } } }
+            );
+            if (!recomposed.success) throw Error(recomposed.error);
+            expect(recomposed.committed).toBe(true);
+            expect(recomposed.ownership).toHaveLength(1);
+          } else {
+            const installed = actor.surface!.applyAutomationOps(
+              () =>
+                remove
+                  ? [
+                      {
+                        op: 'removeContentControl',
+                        controlId: controlId!,
+                        keepContent: false,
+                        revision: attribution,
                       },
-                      edit(change) {
-                        next = change(next);
+                    ]
+                  : [],
+              { kind: 'body' },
+              [
+                (working) => {
+                  let next = working;
+                  if (!remove) {
+                    stageTrackedInlineControl(
+                      {
+                        currentPackage: () => next,
+                        apply(partName, op) {
+                          next = withPart(next, native(next.parts.get(partName)!, op));
+                        },
+                        edit(change) {
+                          next = change(next);
+                        },
                       },
-                    },
-                    next.mainDocumentPart,
-                    {
-                      op: 'insertInlineContentControl',
-                      paragraphId,
-                      offset: 6,
-                      tag: 'scio:1:' + payload.id,
-                      text: 'Ada',
-                      alias: 'Mention',
-                    },
-                    attribution
+                      next.mainDocumentPart,
+                      {
+                        op: 'insertInlineContentControl',
+                        paragraphId,
+                        offset: 6,
+                        tag: 'scio:1:' + payload.id,
+                        text: 'Ada',
+                        alias: 'Mention',
+                      },
+                      attribution
+                    );
+                    const stored = withPayloadRecord(next, payload, 'Mention');
+                    if (!stored.ok) throw Error(stored.reason);
+                    next = stored.pkg;
+                  }
+                  const record = createBlockPresenceRecord(
+                    before,
+                    next,
+                    [
+                      {
+                        blockId: payload.id,
+                        before: { present: remove },
+                        after: { present: !remove },
+                      },
+                    ],
+                    attribution,
+                    { nativeInline: true }
                   );
-                  const stored = withPayloadRecord(next, payload, 'Mention');
-                  if (!stored.ok) throw Error(stored.reason);
-                  next = stored.pkg;
-                }
-                const record = createBlockPresenceRecord(
-                  before,
-                  next,
-                  [
-                    {
-                      blockId: payload.id,
-                      before: { present: remove },
-                      after: { present: !remove },
-                    },
-                  ],
-                  attribution,
-                  { nativeInline: true }
-                );
-                if (!record.success) throw Error(record.error);
-                const stored = withBlockPresenceRecord(next, record.record);
-                if (!stored.success) throw Error(stored.error);
-                return stored.pkg;
-              },
-            ],
-            false,
-            true,
-            'after'
-          );
-          expect(installed.rejected).toBe(false);
+                  if (!record.success) throw Error(record.error);
+                  const stored = withBlockPresenceRecord(next, record.record);
+                  if (!stored.success) throw Error(stored.error);
+                  return stored.pkg;
+                },
+              ],
+              false,
+              true,
+              'after'
+            );
+            expect(installed.rejected).toBe(false);
+          }
           const proposed = actor.surface!.session.part(),
             proposedPayloads = payloads(actor.surface!.session.currentPackage());
           const groups = readReviewGroups(actor.surface!.session.currentPackage());

@@ -22,16 +22,12 @@ import { removableInlinePayload } from '../diff/inline-removal';
 import { jsonDataKey } from '../diff/target-key';
 import { refuseWrite } from '../diff/fragment-seeds';
 
-/** Prepare native deletion without flattening a locked fallback into text. */
-export function lowerInlineRemoval(
+/** Validate an immutable atom source without applying preview operations to an observed transaction. */
+export function validateInlineRemovalSource(
   pkg: OoxmlPackage,
   part: OoxmlPart,
   edit: InlineRemoval
-): {
-  readonly ops: readonly TreeDocOp[];
-  readonly part: OoxmlPart;
-  readonly complete: (pkg: OoxmlPackage) => OoxmlPackage;
-} {
+) {
   const block = buildBlockIndex(pkg).byId.get(edit.blockId),
     control = findNode(part, edit.controlId);
   if (
@@ -91,6 +87,20 @@ export function lowerInlineRemoval(
     if (!resolved || resolved.mode !== 'internal' || resolved.partName !== media)
       refuseWrite('The removed image resource no longer matches its provenance.', 'stale-revision');
   }
+  return { control: control!, relationships, media };
+}
+
+/** Prepare native deletion without flattening a locked fallback into text. */
+export function lowerInlineRemoval(
+  pkg: OoxmlPackage,
+  part: OoxmlPart,
+  edit: InlineRemoval
+): {
+  readonly ops: readonly TreeDocOp[];
+  readonly part: OoxmlPart;
+  readonly complete: (pkg: OoxmlPackage) => OoxmlPackage;
+} {
+  const { control, relationships, media } = validateInlineRemovalSource(pkg, part, edit);
   const ops: TreeDocOp[] = [];
   let preview = part;
   const apply = (op: TreeDocOp) => {

@@ -176,6 +176,7 @@ function commitGroupDecision(
               expectedPropertySites.set(presence.partName, expected);
             }
             partOps.set(presence.partName, [
+              ...(presence.beforeOps ?? []),
               ...(partOps.get(presence.partName) ?? []),
               ...presence.ops,
             ]);

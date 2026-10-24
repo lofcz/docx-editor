@@ -1,6 +1,8 @@
 import { buildBlockIndex } from '../blocks/block-index';
 import { readPayloadStore } from '../blocks/payload-opc-codec';
 import {
+  contentControlPropertiesOf,
+  findNode,
   replaceNode,
   withPart,
   type OoxmlPackage,
@@ -23,6 +25,7 @@ export function preparePresenceDecision(
       readonly success: true;
       readonly partName: string;
       readonly ops: readonly TreeDocOp[];
+      readonly beforeOps?: readonly TreeDocOp[];
       readonly nativeSiteNodeIds?: readonly string[];
       readonly apply: (pkg: OoxmlPackage) => OoxmlPackage;
     }
@@ -52,6 +55,21 @@ export function preparePresenceDecision(
     success: true,
     partName: block.partName,
     ...(inlineNative ? { nativeSiteNodeIds: [inlineNative.siteNodeId] } : {}),
+    ...(inlineNative &&
+    !present &&
+    contentControlPropertiesOf(
+      findNode(pkg.parts.get(block.partName)!, bound.controlIds.get(blockId)!)!
+    ).lock === 'sdtContentLocked'
+      ? {
+          beforeOps: [
+            {
+              op: 'setContentControlProperties' as const,
+              controlId: bound.controlIds.get(blockId)!,
+              lock: 'unlocked' as const,
+            },
+          ],
+        }
+      : {}),
     ops:
       present || inlineNative
         ? []
