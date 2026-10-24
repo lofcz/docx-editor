@@ -1,0 +1,20 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The internal scalar ownership prototype cannot withdraw native child replacement or removal flags. The supported property rejection path overwrites concurrent peer formatting.",
+  "after": "An explicitly selected internal factory combines experimental field protocol 2 and flag protocol 3. Exact receipts withdraw scalar, sequence, and flag ownership in the native publication transaction. Native metadata decisions retain peer formatting, independent histories, exact decision undo/redo, saved DOCX convergence, and cold room reopening. Original inserted edge positions preserve concurrent property winners. The supported history factory and review decision path retain their existing behavior.",
+  "reason": "No supported room, published native format, production attachment, or admitted production update interpretation changes. The supported factory continues to select field protocol 1 and flag protocol 2. It neither exposes nor enables the internal proof factory through package entry exports. Experimental flag protocol 3 rejects stored protocol 2 and mixed historical headers. Experimental field protocol 2 remains an unreleased prototype and is not selected by production attachment. Only explicitly selected test fixtures use the internal path. There is no automatic room upgrade, migration, capture, or application write. Group receipt persistence, pending DOCX import, complete decision admission, peer-bearing property births, and supported review integration remain unfinished. Existing numeric capacity limits and test deadlines remain unchanged.",
+  "tests": [
+    "packages/sciobot/src/chrome/list-property-withdrawal.test.ts",
+    "packages/sciobot/src/chrome/list-sequences-collaboration.test.ts",
+    "packages/sciobot/src/collaboration/review-structure-retraction.test.ts",
+    "packages/sciobot/src/collaboration/review-flag-capacity.test.ts",
+    "packages/sciobot/src/collaboration/review-flags.test.ts",
+    "packages/sciobot/src/collaboration/review-field-retraction.test.ts",
+    "packages/sciobot/src/collaboration/review-fields.test.ts",
+    "packages/sciobot/src/collaboration/review-sequences.test.ts",
+    "packages/sciobot/src/collaboration/review-history.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

@@ -6,6 +6,9 @@ import {
   MAX_REVIEW_FLAGS,
   MAX_REVIEW_FLAG_INTENTS,
   REVIEW_FLAG_INTENTS,
+  REVIEW_FLAG_RETRACTIONS,
+  decodeFlagRetraction,
+  type ReviewFlagReceipt,
   REVIEW_FLAG_TARGETS,
   ReviewFlagError,
   validFlagKey,
@@ -15,21 +18,27 @@ import {
 import { flagMap } from './review-flag-items';
 
 export interface OwnedReviewFlagOptions extends OwnedTextOptions {
-  readonly protocol?: '1' | '2';
+  readonly protocol?: '1' | '2' | '3';
   readonly bootstrap?: 'create' | 'join';
 }
 
 interface State {
-  readonly protocol: '1' | '2';
+  readonly protocol: '1' | '2' | '3';
   readonly doc: Y.Doc;
   readonly targets: Y.Map<unknown>;
   readonly intents: Y.Map<unknown>;
+  readonly retractions: Y.Map<string> | null;
   readonly origins: Set<unknown>;
   readonly known: WeakMap<Y.Map<unknown>, Set<string>>;
   error: Error | null;
   capturing: boolean;
   captureOrigin: { readonly value: unknown } | null;
-  readonly reservations: { remaining: number; readonly captured: Set<string> }[];
+  readonly reservations: {
+    remaining: number;
+    readonly captured: Map<string, string>;
+    readonly retracted?: ReadonlySet<string>;
+    extraRemaining: number;
+  }[];
   normalizing: boolean;
   disposed: boolean;
   deferred: boolean;
@@ -37,7 +46,17 @@ interface State {
 export interface OwnedReviewFlags {
   assertHealthy(): void;
   /** The trusted canonical preview supplies an upper bound for distinct removal flags. */
-  capture<T>(run: () => T, flagWrites: number): T;
+  capture<T>(
+    run: () => T,
+    flagWrites: number,
+    receipt?: (items: readonly ReviewFlagReceipt[]) => void
+  ): T;
+  assertRetraction(items: readonly ReviewFlagReceipt[], flagWrites?: number): void;
+  retractInTransaction<T>(
+    items: readonly ReviewFlagReceipt[],
+    run: () => T,
+    flagWrites?: number
+  ): T;
   dispose(): void;
 }
 const attached = new WeakMap<Y.Doc, State>();
@@ -53,7 +72,7 @@ function healthy(state: State) {
 function retainedIntents(state: State): number {
   // Pinned MIT Yjs keeps a map key's item after undo. Redo reuses that same identity.
   // Visible size alone would let another actor spend the original actor's redo capacity.
-  return state.intents._map.size;
+  return state.intents._map.size + (state.retractions?._map.size ?? 0);
 }
 function captureFlag(state: State, map: Y.Map<unknown>, key: string) {
   healthy(state);
@@ -73,6 +92,7 @@ function captureFlag(state: State, map: Y.Map<unknown>, key: string) {
     address = flagAddress(target);
   const reservation = state.reservations.at(-1);
   if (!reservation) throw new ReviewFlagError('Review flags need a complete capacity reservation.');
+  if (state.reservations.some((scope) => scope.retracted?.has(address))) return;
   if (reservation.captured.has(address)) return;
   if (existing === true && !state.targets.has(address)) return;
   if (!reservation.remaining)
@@ -84,7 +104,7 @@ function captureFlag(state: State, map: Y.Map<unknown>, key: string) {
   )
     throw new ReviewFlagError('Review flag ownership exceeds its record limit.');
   reservation.remaining--;
-  reservation.captured.add(address);
+
   state.doc.transact((transaction) => {
     state.origins.add(transaction.origin);
     if (!state.targets.has('protocol')) set.call(state.targets, 'protocol', state.protocol);
@@ -97,6 +117,7 @@ function captureFlag(state: State, map: Y.Map<unknown>, key: string) {
       id = `${state.doc.clientID}:${clock}`;
     if (state.intents.has(id)) throw new ReviewFlagError('Review flag intent identity was reused.');
     set.call(state.intents, id, address);
+    reservation.captured.set(address, id);
   });
 }
 function install() {
@@ -121,14 +142,16 @@ function normalize(state: State) {
   const version = state.targets.get('protocol');
   if (version === undefined && !state.targets.size && !state.intents.size) return;
   if (version !== state.protocol) throw new ReviewFlagError('Unsupported review flag protocol.');
-  if (state.protocol === '2') {
+  if (state.protocol !== '1') {
     let item = state.targets._map.get('protocol');
     let count = 0;
     while (item) {
       if (++count > 4096) throw new ReviewFlagError('Review protocol history exceeds its limit.');
       if (
         item.parentSub === 'protocol' &&
-        item.content.getContent().some((value) => value === '1')
+        item.content
+          .getContent()
+          .some((value) => value === '1' || (state.protocol === '3' && value === '2'))
       ) {
         // Keep a mixed-room refusal in snapshots after Yjs collects the losing header.
         set.call(state.targets, 'protocol', 'mixed');
@@ -141,10 +164,20 @@ function normalize(state: State) {
     active = new Set<string>();
   for (const [address, data] of state.targets)
     if (address !== 'protocol') targets.set(address, decodeFlagTarget(address, data));
+  const withdrawn = new Set<string>();
+  for (const [id, raw] of state.retractions ?? []) {
+    const receipt = decodeFlagRetraction(id, raw);
+    if (
+      !targets.has(receipt.record) ||
+      (state.intents.has(receipt.id) && state.intents.get(receipt.id) !== receipt.record)
+    )
+      throw new ReviewFlagError('Flag retraction does not match its original intent.');
+    withdrawn.add(receipt.id);
+  }
   for (const [id, value] of state.intents) {
     validateFlagIntent(id, value);
     if (!targets.has(value)) throw new ReviewFlagError('Review flag intent has no target.');
-    active.add(value);
+    if (!withdrawn.has(id)) active.add(value);
   }
   const edits: (() => void)[] = [];
   for (const [address, target] of targets) {
@@ -175,7 +208,7 @@ export function attachOwnedReviewFlags(
   options: OwnedReviewFlagOptions
 ): OwnedReviewFlags {
   const protocol = options.protocol ?? '1';
-  if (protocol !== '1' && protocol !== '2')
+  if (protocol !== '1' && protocol !== '2' && protocol !== '3')
     throw new ReviewFlagError('Unsupported review flag protocol.');
   if (attached.has(doc)) throw new ReviewFlagError('Review flags are already attached.');
   const state: State = {
@@ -183,6 +216,7 @@ export function attachOwnedReviewFlags(
     doc,
     targets: doc.getMap(REVIEW_FLAG_TARGETS),
     intents: doc.getMap(REVIEW_FLAG_INTENTS),
+    retractions: protocol === '3' ? doc.getMap(REVIEW_FLAG_RETRACTIONS) : null,
     origins: new Set(),
     known: new WeakMap(),
     error: null,
@@ -217,6 +251,7 @@ export function attachOwnedReviewFlags(
       // The original frame already contains every inserted ID, including these intent rows.
       // Add their root before the manager pops that frame. No private provider field is read.
       manager.addToScope(state.intents);
+      if (state.retractions) manager.addToScope(state.retractions);
     }
   };
   const beforeObservers = (transaction: Y.Transaction) => {
@@ -233,12 +268,14 @@ export function attachOwnedReviewFlags(
         state.deferred ||
         changed.has(state.targets) ||
         changed.has(state.intents) ||
+        changed.has(state.retractions) ||
         transaction.origin instanceof Y.UndoManager ||
-        [...transaction.changed].some(
-          ([type, keys]) =>
-            type instanceof Y.Map &&
-            [...keys].some((key) => key !== null && state.known.get(type)?.has(key))
-        );
+        ((protocol !== '3' || transaction.local) &&
+          [...transaction.changed].some(
+            ([type, keys]) =>
+              type instanceof Y.Map &&
+              [...keys].some((key) => key !== null && state.known.get(type)?.has(key))
+          ));
       if (!relevant) return;
       state.deferred = false;
       state.normalizing = true;
@@ -251,40 +288,132 @@ export function attachOwnedReviewFlags(
   };
   doc.on('beforeTransaction', beforeTransaction);
   doc.on('beforeObserverCalls', beforeObservers);
-  if (protocol === '2' && storedProtocol === undefined && options.bootstrap !== 'join')
+  if (protocol !== '1' && storedProtocol === undefined && options.bootstrap !== 'join')
     set.call(state.targets, 'protocol', protocol);
+  const capture = <T>(
+    run: () => T,
+    flagWrites: number,
+    receipt?: (items: readonly ReviewFlagReceipt[]) => void,
+    retracted?: ReadonlySet<string>,
+    extraIntents = 0
+  ): T => {
+    healthy(state);
+    if (doc.store.pendingStructs || doc.store.pendingDs)
+      throw new ReviewFlagError('Review decisions must wait for complete room updates.');
+    if (!Number.isSafeInteger(flagWrites) || flagWrites < 0)
+      throw new ReviewFlagError('Review ownership needs a complete bounded removal flag count.');
+    const reserved = state.reservations.reduce((sum, item) => sum + item.remaining, 0),
+      reservedIntents = state.reservations.reduce(
+        (sum, item) => sum + item.remaining + item.extraRemaining,
+        0
+      ),
+      targets = state.targets.size - Number(state.targets.has('protocol'));
+    // Reserve the whole command before its callback can mutate canonical or shared state.
+    if (
+      targets + reserved + flagWrites > MAX_REVIEW_FLAGS ||
+      retainedIntents(state) + reservedIntents + flagWrites + extraIntents > MAX_REVIEW_FLAG_INTENTS
+    )
+      throw new ReviewFlagError('Review flag ownership exceeds its record limit.');
+    const reservation = {
+      remaining: flagWrites,
+      extraRemaining: extraIntents,
+      captured: new Map<string, string>(),
+      retracted,
+    };
+    state.reservations.push(reservation);
+    const previous = state.capturing;
+    const previousOrigin = state.captureOrigin;
+    state.capturing = true;
+    state.captureOrigin = null;
+    try {
+      const result = run();
+      if (receipt)
+        receipt(
+          Object.freeze(
+            [...reservation.captured.values()].map((id) =>
+              Object.freeze({ id, record: state.intents.get(id) as string })
+            )
+          )
+        );
+      return result;
+    } finally {
+      state.reservations.pop();
+      state.capturing = previous;
+      state.captureOrigin = previousOrigin;
+    }
+  };
+  const prepareRetraction = (items: readonly ReviewFlagReceipt[], flagWrites = 0) => {
+    healthy(state);
+    if (!state.retractions)
+      throw new ReviewFlagError('Flag retraction requires explicit protocol 3 attachment.');
+    if (!Array.isArray(items) || items.length > MAX_REVIEW_FLAG_INTENTS)
+      throw new ReviewFlagError('Invalid bounded flag retraction receipt.');
+    if (!Number.isSafeInteger(flagWrites) || flagWrites < 0)
+      throw new ReviewFlagError('Review ownership needs a complete bounded removal flag count.');
+    if (doc.store.pendingStructs || doc.store.pendingDs)
+      throw new ReviewFlagError('Review decisions must wait for complete room updates.');
+    const withdrawn = new Set(
+      [...state.retractions].map(([id, raw]) => decodeFlagRetraction(id, raw).id)
+    );
+    const ids = new Set<string>(),
+      targets = new Set<string>(),
+      encoded: string[] = [];
+    for (const item of items) {
+      if (
+        !item ||
+        typeof item.id !== 'string' ||
+        typeof item.record !== 'string' ||
+        Object.keys(item).length !== 2 ||
+        ids.has(item.id) ||
+        withdrawn.has(item.id) ||
+        state.intents.get(item.id) !== item.record
+      )
+        throw new ReviewFlagError('Flag retraction receipt is stale or invalid.');
+      validateFlagIntent(item.id, item.record);
+      decodeFlagTarget(item.record, state.targets.get(item.record));
+      ids.add(item.id);
+      targets.add(item.record);
+      encoded.push(JSON.stringify(item));
+    }
+
+    return { targets, encoded };
+  };
   return Object.freeze({
     assertHealthy: () => {
       healthy(state);
-      if (protocol === '2' && state.targets.get('protocol') !== protocol)
+      if (protocol !== '1' && state.targets.get('protocol') !== protocol)
         throw new ReviewFlagError('Unsupported review flag protocol.');
     },
-    capture<T>(run: () => T, flagWrites: number): T {
-      healthy(state);
-      if (doc.store.pendingStructs || doc.store.pendingDs)
-        throw new ReviewFlagError('Review decisions must wait for complete room updates.');
-      if (!Number.isSafeInteger(flagWrites) || flagWrites < 0)
-        throw new ReviewFlagError('Review ownership needs a complete bounded removal flag count.');
-      const reserved = state.reservations.reduce((sum, item) => sum + item.remaining, 0),
-        targets = state.targets.size - Number(state.targets.has('protocol'));
-      // Reserve the whole command before its callback can mutate canonical or shared state.
-      if (
-        targets + reserved + flagWrites > MAX_REVIEW_FLAGS ||
-        retainedIntents(state) + reserved + flagWrites > MAX_REVIEW_FLAG_INTENTS
-      )
-        throw new ReviewFlagError('Review flag ownership exceeds its record limit.');
-      state.reservations.push({ remaining: flagWrites, captured: new Set() });
-      const previous = state.capturing;
-      const previousOrigin = state.captureOrigin;
-      state.capturing = true;
-      state.captureOrigin = null;
-      try {
-        return run();
-      } finally {
-        state.reservations.pop();
-        state.capturing = previous;
-        state.captureOrigin = previousOrigin;
-      }
+    capture<T>(
+      run: () => T,
+      flagWrites: number,
+      receipt?: (items: readonly ReviewFlagReceipt[]) => void
+    ): T {
+      return capture(run, flagWrites, receipt);
+    },
+    assertRetraction(items: readonly ReviewFlagReceipt[], flagWrites = 0): void {
+      const { targets } = prepareRetraction(items, flagWrites);
+      capture(() => {}, flagWrites, undefined, targets, items.length);
+    },
+    retractInTransaction<T>(items: readonly ReviewFlagReceipt[], run: () => T, flagWrites = 0): T {
+      const { targets, encoded } = prepareRetraction(items, flagWrites);
+      if (!doc._transaction?.local || doc._transaction.origin instanceof Y.UndoManager)
+        throw new ReviewFlagError('Flag retraction requires an active local native transaction.');
+      return capture(
+        () => {
+          state.origins.add(doc._transaction!.origin);
+          for (const raw of encoded) {
+            const id = `${doc.clientID}:${Y.getState(doc.store, doc.clientID)}`;
+            state.reservations.at(-1)!.extraRemaining--;
+            set.call(state.retractions!, id, raw);
+          }
+          return run();
+        },
+        flagWrites,
+        undefined,
+        targets,
+        items.length
+      );
     },
     dispose() {
       if (state.disposed) return;

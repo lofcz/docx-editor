@@ -1,5 +1,6 @@
 export const REVIEW_FLAG_TARGETS = 'sciobot-review-flag-targets-v1';
 export const REVIEW_FLAG_INTENTS = 'sciobot-review-flag-intents-v1';
+export const REVIEW_FLAG_RETRACTIONS = 'sciobot-review-flag-retractions-v1';
 export const MAX_REVIEW_FLAGS = 50_000;
 export const MAX_REVIEW_FLAG_INTENTS = 100_000;
 export interface ReviewFlagTarget {
@@ -59,4 +60,27 @@ export function validateFlagIntent(key: string, value: unknown): asserts value i
     value.length > 2048
   )
     throw new ReviewFlagError('Invalid review flag intent.');
+}
+
+/** Exact immutable ownership evidence, supplied only by trusted native capture. */
+export interface ReviewFlagReceipt {
+  readonly id: string;
+  readonly record: string;
+}
+export function decodeFlagRetraction(id: string, raw: unknown): ReviewFlagReceipt {
+  if (typeof raw !== 'string' || raw.length > 8192)
+    throw new ReviewFlagError('Invalid bounded flag retraction.');
+  const item = JSON.parse(raw);
+  if (
+    !item ||
+    typeof item !== 'object' ||
+    Array.isArray(item) ||
+    Object.keys(item).length !== 2 ||
+    typeof item.id !== 'string' ||
+    typeof item.record !== 'string'
+  )
+    throw new ReviewFlagError('Invalid flag retraction receipt.');
+  validateFlagIntent(id, item.record);
+  validateFlagIntent(item.id, item.record);
+  return item;
 }

@@ -1,3 +1,10 @@
+import {
+  createPropertyReviewPrototype,
+  PROPERTY_REVIEW_PROTOTYPE,
+  type PropertyReviewPrototype,
+} from './property-review-prototype';
+import type { ReviewFieldReceipt } from './review-fields';
+import type { ReviewFlagReceipt } from './review-flag-codec';
 import { encodeStructuralPolicy } from './owned-structure';
 import type * as Y from 'yjs';
 import type { EditorCollaborationSession } from '@docx-editor.dev/core/collaboration';
@@ -28,6 +35,20 @@ export function attachOwnedReviewHistory(
   doc: Y.Doc,
   options: OwnedReviewHistoryOptions
 ): OwnedReviewHistory {
+  return createReviewHistory(doc, options, false);
+}
+/** Internal proof entry. It is absent from package exports and production attachment. */
+export function attachPropertyReviewHistoryPrototype(
+  doc: Y.Doc,
+  options: OwnedReviewHistoryOptions
+): OwnedReviewHistory {
+  return createReviewHistory(doc, options, true);
+}
+function createReviewHistory(
+  doc: Y.Doc,
+  options: OwnedReviewHistoryOptions,
+  experimentalProperties: boolean
+): OwnedReviewHistory {
   if (
     !options ||
     typeof options.documentId !== 'string' ||
@@ -56,7 +77,7 @@ export function attachOwnedReviewHistory(
   try {
     flags = attachOwnedReviewFlags(doc, {
       onError: options.onError,
-      protocol: '2',
+      protocol: experimentalProperties ? '3' : '2',
       bootstrap: options.bootstrap,
     });
   } catch (cause) {
@@ -65,12 +86,18 @@ export function attachOwnedReviewHistory(
   }
   let fields: ReturnType<typeof attachOwnedReviewFields>;
   try {
-    fields = attachOwnedReviewFields(doc, { onError: options.onError });
+    fields = attachOwnedReviewFields(doc, {
+      onError: options.onError,
+      protocol: experimentalProperties ? '2' : '1',
+    });
   } catch (cause) {
     flags.dispose();
     owned.dispose();
     throw cause;
   }
+  const properties = experimentalProperties
+    ? createPropertyReviewPrototype(doc, fields, flags)
+    : null;
   let disposed = false;
   const assertHealthy = Object.assign(
     () => {
@@ -83,7 +110,21 @@ export function attachOwnedReviewHistory(
     {
       capture: <T>(run: () => T, flagWrites: number, fieldWrites = 0): T => {
         assertHealthy();
-        return flags.capture(() => fields.capture(run, fieldWrites), flagWrites);
+        if (!properties) return flags.capture(() => fields.capture(run, fieldWrites), flagWrites);
+        let fieldReceipt: readonly ReviewFieldReceipt[] = [],
+          flagReceipt: readonly ReviewFlagReceipt[] = [];
+        const value = flags.capture(
+          () =>
+            fields.capture(run, fieldWrites, (items) => {
+              fieldReceipt = items;
+            }),
+          flagWrites,
+          (items) => {
+            flagReceipt = items;
+          }
+        );
+        properties.note({ fields: fieldReceipt, flags: flagReceipt });
+        return value;
       },
     }
   );
@@ -109,6 +150,8 @@ export function attachOwnedReviewHistory(
         Object.create(Object.getPrototypeOf(session)) as EditorCollaborationSession,
         {
           get(_target, key) {
+            if (key === PROPERTY_REVIEW_PROTOTYPE)
+              return properties as PropertyReviewPrototype | null;
             if (key === NATIVE_UNDO_AUTHORITY) return session;
             if (key === REVIEW_HISTORY_CAPABILITY) return assertHealthy;
             const value = Reflect.get(session, key, session);

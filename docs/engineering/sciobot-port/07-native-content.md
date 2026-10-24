@@ -192,6 +192,8 @@ All nine existing insertion Chromium cases pass with original deadlines (`/tmp/n
 
 [Sequence and review checkpoint](evidence/list-sequence-review-checkpoint.md) adds native sequence scanning, heading boundaries, complete numbering-template checks, and coupled review groups. The scalar retraction prototype passes 47 focused ownership cases. Two complete native rejection regressions still fail: rejecting a bridge overwrites a disconnected peer's circle format. The prototype is not connected to native property decisions. N08 remains unchecked.
 
+[Native property withdrawal](evidence/native-property-withdrawal.md) adds a tested internal path for exact scalar, child-edge, and removal-flag cancellation. Both real native client orders preserve complete peer formatting, decision histories, independent peer history, DOCX convergence, and cold room reopening. The focused batch passes 79 cases and 1169 assertions. Persisted group bindings, pending DOCX import, complete admission, and supported review integration remain unfinished. The supported path retains its two original failing regressions. No leaf closes.
+
 Remaining before closure: fix conflict-safe native property rejection with exact proposal ownership, preserved peer histories, and cold reopening. Port the frozen checklist indentation action. Its captures call `indentTodo` and produce `disc`, `checked: false`, and increased indentation. Finish sequence removal/outdent resets, sibling style conversion, and polite restarts. Complete conflicting-format sequence coverage. Run complete N01 list capture parity and the corresponding browser/shared scenarios. N08 remains open. No unsupported branch establishes completion.
 
 ## N09

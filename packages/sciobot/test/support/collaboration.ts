@@ -13,6 +13,7 @@ import {
   DOCUMENT_STRUCTURAL_TEXT_ATTRIBUTE_KEYS,
 } from '../../../pro/src/collaboration/document-session';
 import { attachOwnedReviewHistory } from '../../src/collaboration';
+import { attachPropertyReviewHistoryPrototype } from '../../src/collaboration/review-history';
 import { prepareReviewGroupDocument } from '../../src/native/prepare-review-groups';
 
 export interface TwoEditorOptions {
@@ -24,6 +25,8 @@ export interface TwoEditorOptions {
   readonly clientIds?: readonly [number, number];
   /** Application-owned attribute protocol, installed before room bootstrap. */
   readonly ownedAttributes?: boolean;
+  /** Internal native property ownership integration probe. No production entry enables this. */
+  readonly experimentalPropertyReview?: boolean;
   /** Reopen the complete shared room instead of creating it from DOCX. */
   readonly roomSnapshot?: Uint8Array;
 }
@@ -37,7 +40,9 @@ export async function createTwoEditorFixture(options: TwoEditorOptions) {
     });
   const ownership = options.ownedAttributes
     ? documents.map((doc, index) =>
-        attachOwnedReviewHistory(doc, {
+        (options.experimentalPropertyReview
+          ? attachPropertyReviewHistoryPrototype
+          : attachOwnedReviewHistory)(doc, {
           documentId: options.documentId ?? 'sciobot-parity',
           structuralTextAttributeKeys: DOCUMENT_STRUCTURAL_TEXT_ATTRIBUTE_KEYS,
           bootstrap: options.roomSnapshot || index === 1 ? 'join' : 'create',

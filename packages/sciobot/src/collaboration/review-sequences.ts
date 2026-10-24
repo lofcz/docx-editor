@@ -79,7 +79,8 @@ export function normalizeReviewArray(
   array: Y.Array<unknown>,
   entries: readonly { target: ReviewFieldTarget; present: boolean; restoreOrder: boolean }[],
   remove: typeof Y.Array.prototype.delete,
-  insert: typeof Y.Array.prototype.insert
+  insert: typeof Y.Array.prototype.insert,
+  preserveInsertionOrder = false
 ) {
   if (array._item?.deleted) return;
   for (const { target, present, restoreOrder } of entries) {
@@ -120,7 +121,11 @@ export function normalizeReviewArray(
     }
     if (at !== array.length)
       throw new ReviewFieldError('Review sequence visibility does not match its shared length.');
-    const base = rightAt ?? (right === null ? at : (leftAt ?? (left === null ? 0 : position))),
+    const retainedInsertion = preserveInsertionOrder && !target.initiallyPresent;
+    const base =
+        retainedInsertion && position !== null
+          ? position
+          : (rightAt ?? (right === null ? at : (leftAt ?? (left === null ? 0 : position)))),
       desired = base === null ? null : base - visible.filter((entry) => entry.index < base).length,
       keep =
         !present && !retainedBirthSequenceEntry(doc, array, target.baseline)
@@ -128,7 +133,8 @@ export function normalizeReviewArray(
           : visible
               .filter(
                 (entry, index) =>
-                  !target.initiallyPresent || !restoreOrder || entry.index - index === desired
+                  (!retainedInsertion && (!target.initiallyPresent || !restoreOrder)) ||
+                  entry.index - index === desired
               )
               .sort((a, b) => a.client - b.client || a.clock - b.clock)[0];
     // Undo restores new items. Their later normalization is outside the original redo

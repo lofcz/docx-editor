@@ -3,7 +3,11 @@ import { nativeBirthFieldCreation } from './review-birth-field-retention';
 // Pinned retained-birth interoperability stays in review-sequence-retention.ts.
 import * as Y from 'yjs';
 import { OWNED_TEXT_OPERATIONS, OWNED_TEXT_LINEAGE } from './ownership-codec';
-import { REVIEW_FLAG_TARGETS, REVIEW_FLAG_INTENTS } from './review-flag-codec';
+import {
+  REVIEW_FLAG_TARGETS,
+  REVIEW_FLAG_INTENTS,
+  REVIEW_FLAG_RETRACTIONS,
+} from './review-flag-codec';
 import { flagMap } from './review-flag-items';
 import { recordRestoredLineage } from './ownership-positions';
 import {
@@ -96,6 +100,7 @@ const excluded = new Set([
   REVIEW_FIELD_RETRACTIONS,
   REVIEW_FLAG_TARGETS,
   REVIEW_FLAG_INTENTS,
+  REVIEW_FLAG_RETRACTIONS,
   OWNED_TEXT_OPERATIONS,
   OWNED_TEXT_LINEAGE,
 ]);
@@ -463,8 +468,8 @@ function records(state: State) {
     if (state.intents.has(receipt.id) && state.intents.get(receipt.id) !== receipt.record)
       throw new ReviewFieldError('Field retraction does not match its original intent.');
     const intent = decodeFieldIntent(receipt.id, receipt.record);
-    if (!targets.has(intent.target) || targets.get(intent.target)!.sequence)
-      throw new ReviewFieldError('Field retraction must target a known scalar intent.');
+    if (!targets.has(intent.target))
+      throw new ReviewFieldError('Field retraction must target a known intent.');
     withdrawn.add(receipt.id);
   }
   const winners = new Map<string, ReviewFieldIntent>();
@@ -526,7 +531,14 @@ function normalize(state: State) {
     state.doc.transact(() => {
       for (const edit of edits) edit();
       for (const [array, keys] of arrays)
-        normalizeReviewArray(state.doc, array, keys, removeItems, insertItems);
+        normalizeReviewArray(
+          state.doc,
+          array,
+          keys,
+          removeItems,
+          insertItems,
+          state.protocol === '2'
+        );
     }, NORMALIZE);
 }
 function limits(options: OwnedReviewFieldOptions) {
@@ -550,6 +562,8 @@ export function attachOwnedReviewFields(doc: Y.Doc, options: OwnedReviewFieldOpt
   if (options.protocol !== undefined && !['1', '2'].includes(options.protocol))
     throw new ReviewFieldError('Unsupported owned review field protocol.');
   const protocol = options.protocol ?? '1';
+  // Cold structural receipts need restored item ancestry before their first normalization.
+  if (protocol === '2') doc.getMap<string>(OWNED_TEXT_LINEAGE);
   const state: State = {
     protocol,
     doc,
@@ -606,6 +620,7 @@ export function attachOwnedReviewFields(doc: Y.Doc, options: OwnedReviewFieldOpt
         !changed.has(state.targets) &&
         !changed.has(state.intents) &&
         !changed.has(state.retractions) &&
+        !(state.protocol === '2' && changed.has(doc.share.get(OWNED_TEXT_LINEAGE))) &&
         !(transaction.origin instanceof Y.UndoManager) &&
         !(
           (state.protocol === '1' || transaction.local) &&
@@ -682,6 +697,41 @@ export function attachOwnedReviewFields(doc: Y.Doc, options: OwnedReviewFieldOpt
       state.captureOrigin = origin;
     }
   };
+  const prepareRetraction = (items: readonly ReviewFieldReceipt[], fieldWrites = 0) => {
+    healthy(state);
+    if (!state.retractions)
+      throw new ReviewFieldError('Field retraction requires explicit protocol 2 attachment.');
+    if (!Array.isArray(items) || items.length > state.limits.intents)
+      throw new ReviewFieldError('Invalid bounded field retraction receipt.');
+    if (!Number.isSafeInteger(fieldWrites) || fieldWrites < 0)
+      throw new ReviewFieldError('Review ownership needs a complete bounded field count.');
+    records(state);
+    const withdrawn = new Set(
+      [...state.retractions].map(([id, raw]) => decodeFieldRetraction(id, raw).id)
+    );
+    const ids = new Set<string>(),
+      targets = new Set<string>(),
+      encoded: string[] = [];
+    for (const item of items) {
+      if (
+        !item ||
+        typeof item.id !== 'string' ||
+        typeof item.record !== 'string' ||
+        Object.keys(item).length !== 2 ||
+        ids.has(item.id) ||
+        withdrawn.has(item.id) ||
+        state.intents.get(item.id) !== item.record
+      )
+        throw new ReviewFieldError('Field retraction receipt is stale or invalid.');
+      const intent = decodeFieldIntent(item.id, item.record);
+      decodeFieldTarget(intent.target, state.targets.get(intent.target));
+      ids.add(item.id);
+      targets.add(intent.target);
+      encoded.push(encodeFieldRecord(item));
+    }
+
+    return { targets, encoded };
+  };
   return Object.freeze({
     enable() {
       healthy(state);
@@ -697,47 +747,19 @@ export function attachOwnedReviewFields(doc: Y.Doc, options: OwnedReviewFieldOpt
     ): T {
       return capture(run, fieldWrites, receipt);
     },
-    /** Internal scalar primitive. The caller must own the active native transaction. */
+    assertRetraction(items: readonly ReviewFieldReceipt[], fieldWrites = 0): void {
+      const { targets } = prepareRetraction(items, fieldWrites);
+      capture(() => {}, fieldWrites, undefined, targets, items.length);
+    },
+    /** Internal ownership primitive. The caller must own the active native transaction. */
     retractInTransaction<T>(
       items: readonly ReviewFieldReceipt[],
       run: () => T,
       fieldWrites = 0
     ): T {
-      healthy(state);
-      if (!state.retractions)
-        throw new ReviewFieldError('Field retraction requires explicit protocol 2 attachment.');
+      const { targets, encoded } = prepareRetraction(items, fieldWrites);
       if (!doc._transaction?.local || doc._transaction.origin instanceof Y.UndoManager)
         throw new ReviewFieldError('Field retraction requires an active local native transaction.');
-      if (!Array.isArray(items) || items.length > state.limits.intents)
-        throw new ReviewFieldError('Invalid bounded field retraction receipt.');
-      if (!Number.isSafeInteger(fieldWrites) || fieldWrites < 0)
-        throw new ReviewFieldError('Review ownership needs a complete bounded field count.');
-      records(state);
-      const withdrawn = new Set(
-        [...state.retractions].map(([id, raw]) => decodeFieldRetraction(id, raw).id)
-      );
-      const ids = new Set<string>(),
-        targets = new Set<string>(),
-        encoded: string[] = [];
-      for (const item of items) {
-        if (
-          !item ||
-          typeof item.id !== 'string' ||
-          typeof item.record !== 'string' ||
-          Object.keys(item).length !== 2 ||
-          ids.has(item.id) ||
-          withdrawn.has(item.id) ||
-          state.intents.get(item.id) !== item.record
-        )
-          throw new ReviewFieldError('Field retraction receipt is stale or invalid.');
-        const intent = decodeFieldIntent(item.id, item.record);
-        const target = decodeFieldTarget(intent.target, state.targets.get(intent.target));
-        if (target.sequence)
-          throw new ReviewFieldError('Scalar retraction cannot restore native child sequences.');
-        ids.add(item.id);
-        targets.add(intent.target);
-        encoded.push(encodeFieldRecord(item));
-      }
       return capture(
         () => {
           state.origins.add(doc._transaction!.origin);
