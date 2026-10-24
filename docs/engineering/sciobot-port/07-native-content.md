@@ -202,6 +202,8 @@ The independent ownership checkpoint fixes mixed paragraph and mark-format scope
 
 The numbering birth checkpoint preserves observed peer membership when a proposal creates `numPr` or its numbering-only `pPr` ancestry. It verifies cold pending-room rejection, exact decision histories, peer histories, unused ancestry removal, both decisions, and complete saved/reopened native main-part oracles. The affected batch passes 139 cases and 2167 assertions across 16 files (`/tmp/n08-numbering-birth-final.log`). See [numbering birth evidence](evidence/bound-property-groups.md#numbering-births-and-retained-peer-ancestry). Other property constructors, portable pending DOCX ownership, default production admission, and remaining source list behavior still prevent closure. N08 remains unchecked.
 
+The peer-sibling checkpoint preserves independent alignment and paragraph-mark formatting inside a newly created list `pPr`. It records initial child ownership and uses historical child targets to preserve later peer redo. The affected batch passes 154 cases and 2410 assertions across 18 files (`/tmp/n08-peer-property-birth-regression.log`). It includes cold pending-room decisions, exact saved/reopened main-part oracles, peer removal histories, and remote caret checks. See [peer sibling evidence](evidence/bound-property-groups.md#peer-siblings-in-newly-created-list-properties). N08 remains unchecked.
+
 ## N09
 
 - [x] Connect manual table insertion

@@ -54,6 +54,20 @@ Sixteen additional cases cover both decisions with unused births and unrelated p
 
 The affected batch passes 139 cases and 2167 assertions across 16 files. Its log is `/tmp/n08-numbering-birth-final.log`. Private types pass 2399 files. The private build verifies 324 modules with native core external. Compatibility decision: `.collaboration/changes/sciobot-numbering-birth-ownership.json`. The test transport uses the EigenPal Pro License. No leaf closes.
 
+## Peer siblings in newly created list properties
+
+Four regressions fail before this checkpoint. A peer adds alignment or paragraph-mark formatting inside the proposed list's new `pPr`. Rejecting the list then removes that peer formatting with its ancestry.
+
+Experimental protocol 2 now records the initial child edges of native `pPr` and `numPr` arrays. It can remove the proposal's numbering without removing a peer's independent sibling. Retention follows surviving attributes, namespace bindings, and present child ownership. Removed sequence intents and deleted nodes do not retain unused ancestry. The numbering level/reference pair remains a required constructor dependency when peer numbering survives.
+
+Immutable sequence targets retain historical child ancestry after normalization removes physical entries. Without that graph, peer redo cannot recover a previously removed numbering constructor. The original full fingerprint assertions found this defect during the batch. The corrected implementation restores both membership and its original level/reference children.
+
+Eight real-session cases cover alignment and mark-format peers, both client orders, and cold pending-room rejection. They verify exact decision histories and saved/reopened native main-part oracles. Live cases also verify independent peer histories, remote selection offsets, real remote caret elements, and equal caret geometry. Two further cases remove the peer formatting before rejection, then repeat the peer's undo and redo. Unused ancestry stays absent. The fixture gives the two peer gestures separate native history frames.
+
+Five constructor tests verify creation undo/redo and cold state. Only experimental protocol 2 on the exact native profile captures new property-array entries. Protocol 1, older or newer repair profiles, and foreign namespace lookalikes retain their existing capture behavior. All numeric limits remain unchanged.
+
+The affected batch passes 154 cases and 2410 assertions across 18 files. Its log is `/tmp/n08-peer-property-birth-regression.log`. Private types pass 2401 files. The private build verifies 324 modules with core external. Compatibility decision: `.collaboration/changes/sciobot-peer-property-birth-siblings.json`. No leaf closes. Generic mixed property-holder births, portable pending DOCX ownership, final production admission, and remaining captured list behavior still need work.
+
 ## Remaining requirements
 
 The binding root exists only in the explicitly selected experimental attachment. The default field-1/flag-2 production factory remains unchanged. Pending DOCX import needs portable original property ownership and fresh-room seeding. Numbering container and child births now pass the cases above. Other property births still need complete peer-bearing ancestry behavior. Final production admission and remaining same-value and mixed property cases need verification. Native lock and forms-protection admission now pass the regressions above. The default review path retains its original conflicting-format regressions.

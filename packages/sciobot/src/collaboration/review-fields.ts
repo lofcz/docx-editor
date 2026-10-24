@@ -1,6 +1,9 @@
 import { PROPERTY_GROUP_RECEIPTS } from './property-group-codec';
 import { nativeBirthFieldCreation } from './review-birth-field-retention';
-import { retainedNumberingBirths } from './review-numbering-birth-retention';
+import {
+  retainedNumberingBirths,
+  nativeNumberingChildArray,
+} from './review-numbering-birth-retention';
 // Application-owned review string fields over pinned MIT Yjs.
 // Pinned retained-birth interoperability stays in review-sequence-retention.ts.
 import * as Y from 'yjs';
@@ -393,7 +396,8 @@ function install() {
       root === null ||
       excluded.has(root) ||
       (this._item &&
-        this._item.id.clock >= (transaction.beforeState.get(this._item.id.client) ?? 0))
+        this._item.id.clock >= (transaction.beforeState.get(this._item.id.client) ?? 0) &&
+        !(state.protocol === '2' && nativeNumberingChildArray(state.doc, this)))
     )
       return insertItems.call(this, index, content);
     const count = content.filter((value) => typeof value === 'string').length,

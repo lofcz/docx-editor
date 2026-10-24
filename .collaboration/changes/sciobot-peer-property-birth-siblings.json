@@ -1,0 +1,29 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "The experimental prototype retains a newly created paragraph-property holder only for surviving numbering descendants. Independent peer alignment and paragraph-mark formatting can disappear when its list proposal is rejected. Initial child arrays have no individual ownership receipts, so retaining the holder can also retain the withdrawn numbering.",
+  "after": "Experimental field protocol 2 captures initial child entries in pinned native pPr and numPr arrays. Withdrawal removes the list's owned entries and retains independently owned peer siblings. Surviving numbering retains its original level/reference pair. Immutable child targets preserve ancestry through later peer redo after physical entries disappear. Deleted descendants and removed sequence intents do not retain unused holders.",
+  "reason": "Only the explicitly selected unreleased field-2/flag-3 prototype enables this constructor capture and retention. Supported field-1/flag-2 attachment remains unchanged. Unknown repair versions and foreign namespace lookalikes keep their existing behavior. No package export, released reader, native format version, record schema, or numeric limit changes. No room is migrated, reseeded, or automatically upgraded. A private empty Changeset records the adapter work. Generic mixed property-holder births, portable pending DOCX ownership, final production admission, and remaining source list behaviors remain unfinished.",
+  "tests": [
+    "packages/sciobot/src/chrome/list-property-peer-format-births.test.ts",
+    "packages/sciobot/src/chrome/list-property-child-births.test.ts",
+    "packages/sciobot/src/chrome/list-property-group-decisions.test.ts",
+    "packages/sciobot/src/chrome/list-property-withdrawal.test.ts",
+    "packages/sciobot/src/review/property-group-boundaries.test.ts",
+    "packages/sciobot/src/review/property-group-boundaries-collaboration.test.ts",
+    "packages/sciobot/src/review/property-decision-admission.test.ts",
+    "packages/sciobot/src/review/reject-group.test.ts",
+    "packages/sciobot/src/review/accept-group.test.ts",
+    "packages/sciobot/src/collaboration/property-group-bindings.test.ts",
+    "packages/sciobot/src/collaboration/property-birth-anchors.test.ts",
+    "packages/sciobot/src/collaboration/review-birth-field-retention.test.ts",
+    "packages/sciobot/src/collaboration/review-numbering-birth-retention.test.ts",
+    "packages/sciobot/src/collaboration/review-fields.test.ts",
+    "packages/sciobot/src/collaboration/review-field-retraction.test.ts",
+    "packages/sciobot/src/collaboration/review-flags.test.ts",
+    "packages/sciobot/src/collaboration/review-sequences.test.ts",
+    "packages/sciobot/src/collaboration/review-interception-order.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}
