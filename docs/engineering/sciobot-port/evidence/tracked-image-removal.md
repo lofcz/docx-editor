@@ -31,3 +31,5 @@ The next repair must recover retired resources only when live canonical drawing 
 Cache reference evidence across unchanged immutable nodes. Ordinary text edits must keep the existing zero relationship-decode behavior. Verify removal with no remaining references, surviving shared references, late offline copies, removal of the copied drawing's owner, both histories, and cold reopening. Keep the original room admission and memory limits.
 
 Blindly republishing resources on every observed drawing edit can leave orphan bytes when a concurrent edit removes that drawing's owner. Such a write-only workaround does not prove the required lifetime semantics.
+
+A resource recovery pass must also restore the exact `.rels` XML projection and MIME override. Preserve original relationship-row extensions and relationships-root metadata, including when removing the final relationship removes its directory entry. Keep immutable initial resource descriptors at seeding/put time, rather than adding extra scalar writes to each retirement history step. Any additional shared descriptor fields require a schema upgrade and coordinated room migration.
