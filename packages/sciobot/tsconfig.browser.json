@@ -29,6 +29,8 @@
     "../../e2e/sciobot-tables.spec.ts",
     "../../e2e/sciobot-table-rows.config.ts",
     "../../e2e/sciobot-table-rows.spec.ts",
-    "../../e2e/sciobot-table-controls.config.ts"
+    "../../e2e/sciobot-table-controls.config.ts",
+    "../../e2e/sciobot-table-columns.spec.ts",
+    "../../e2e/sciobot-table-columns.config.ts"
   ]
 }

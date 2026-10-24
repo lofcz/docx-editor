@@ -23,6 +23,7 @@ import {
   cellStructureOp,
   cellStructureRejection,
   outerColumnOfSelection,
+  firstRowReferenceCellId,
   outerRowOfSelection,
   splitCellShapeRefusal,
 } from './table-cell-structure-plan.ts';
@@ -856,7 +857,7 @@ export function planTableCommand(input: TableCommandPlannerInput): TableCommandP
             op: 'insertTableColumn',
             tableId,
             where,
-            referenceCellId: anchor.cellId,
+            referenceCellId: firstRowReferenceCellId(part, anchor),
           };
       return planValidated(part, [op], { kind: 'adoptCommittedCaret' });
     }

@@ -1,0 +1,15 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Private manual column controls were not connected. Shared insertion could retain a provisional caret ID after allocating cells and a grid.",
+  "after": "Private controls run native column commands. Live canonical grid addresses resolve the inserted cell caret, skipping expanded spans and vertical continuations. Gridless insertion from later rows resolves the corresponding first-row source cell required by the existing operation contract. Birth projection hides an undone synthesized grid when none of its columns remain needed. Retained peer text keeps original column geometry alongside its new column.",
+  "reason": "Selection resolution remains local. Existing Word grid operations, shared codecs, birth metadata and protocol fields remain unchanged. Real-session transport tests remain evaluation-only under the EigenPal Pro License. Existing immutable birth-coverage frames provide all geometry evidence; no replicated metadata is added.",
+  "tests": [
+    "packages/sciobot/src/chrome/table-columns.test.ts",
+    "packages/sciobot/src/chrome/table-columns-collaboration.test.ts",
+    "packages/core/src/editor/__tests__/table-command-plan.test.ts",
+    "e2e/sciobot-table-columns.spec.ts"
+  ],
+  "changeset": "gridless-column-birth-undo",
+  "migration": null
+}

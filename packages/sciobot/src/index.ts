@@ -133,3 +133,5 @@ export * from './chrome/paragraph-position';
 export * from './chrome/colors';
 export * from './chrome/tables';
 export * from './chrome/table-rows';
+
+export * from './chrome/table-columns';

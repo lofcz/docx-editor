@@ -1,4 +1,6 @@
 // Browser-only verification. The transport uses the EigenPal Pro License.
+import { manualColumnDocument, columnShape } from '../support/manual-table-columns';
+import { createTableColumnToolbar } from '../../src/chrome/table-columns';
 import { loadDefaultFonts } from '@docx-editor.dev/fonts';
 import {
   canonicalOoxmlFingerprint,
@@ -23,13 +25,22 @@ const fonts = await loadDefaultFonts({ families: ['Calibri'] });
 if (fonts.failures.length) throw new Error('Packaged fonts failed.');
 const parameters = new URL(globalThis.location.href).searchParams;
 const rowMode = parameters.has('rows');
+const columnMode = parameters.has('columns');
+const columnMerge =
+  parameters.get('merge') === 'none'
+    ? 'none'
+    : parameters.get('merge') === 'vertical'
+      ? 'vertical'
+      : 'horizontal';
 const pair = await createTwoEditorFixture({
   editor: { fonts, modules: rowMode ? [SCIOBOT_NATIVE_REVIEW_MODULE] : [] },
-  document: rowMode
-    ? manualTableDocument()
-    : docxFixture(
-        '<w:p><w:r><w:t>Alpha beta</w:t></w:r></w:p><w:p><w:r><w:t>Tail</w:t></w:r></w:p>'
-      ),
+  document: columnMode
+    ? manualColumnDocument(columnMerge, parameters.get('grid') !== '0')
+    : rowMode
+      ? manualTableDocument()
+      : docxFixture(
+          '<w:p><w:r><w:t>Alpha beta</w:t></w:r></w:p><w:p><w:r><w:t>Tail</w:t></w:r></w:p>'
+        ),
 });
 const recovered = parameters.has('recovered') ? await recoverFirstTableCellSource(pair) : null;
 const controls = pair.editors.map((editor, peer) => {
@@ -37,17 +48,23 @@ const controls = pair.editors.map((editor, peer) => {
   pane.dataset.pane = String(peer);
   const grid = createTableInsertionGrid(editor),
     stop = installTableNavigation(editor);
+  const columns = columnMode ? createTableColumnToolbar(editor) : null;
   const rows = rowMode ? createTableRowToolbar(editor) : null;
   pane.append(grid.element, pair.containers[peer]!);
   if (rows) pane.prepend(rows.element);
+  if (columns) pane.prepend(columns.element);
   document.body.append(pane);
   return () => {
     grid.dispose();
     rows?.dispose();
+    columns?.dispose();
     stop();
   };
 });
 const api = {
+  columns(peer = 0) {
+    return columnShape(pair.editors[peer]!.surface!.session.part());
+  },
   selectRecovered() {
     if (!recovered) throw new Error('No recovered source fixture.');
     const s = pair.editors[0]!.surface!,

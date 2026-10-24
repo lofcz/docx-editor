@@ -5,6 +5,7 @@ import {
   type TreeDocOp,
 } from '@docx-editor.dev/core/store';
 import type { SemanticSelection } from '@docx-editor.dev/core/layout';
+import { readMergeableTable } from '../store/store/tree-op-table-cell-shape.ts';
 import type { TreeDocxSessionView } from '../binding/tree-session.ts';
 
 /** Capture the operation hint once and always remove the temporary subscription. */
@@ -60,7 +61,7 @@ export function tableCommandSelection(
     return { anchor: point, head: point };
   }
   const inserted = ops.find((op) => op.op === 'insertTableRow');
-  if (!inserted || inserted.op !== 'insertTableRow') return null;
+  if (!inserted || inserted.op !== 'insertTableRow') return columnInsertionSelection(part, ops);
   const table = findNode(part, inserted.tableId);
   if (table?.kind !== 'table') return null;
   const index = table.children.findIndex((node) => node.id === inserted.rowId);
@@ -75,4 +76,37 @@ export function tableCommandSelection(
   if (!paragraph) return null;
   const point = { paragraphId: paragraph.id, offset: 0 };
   return { anchor: point, head: point };
+}
+
+/** Resolve a newly allocated column cell by its retained canonical grid address. */
+function columnInsertionSelection(
+  part: OoxmlPart,
+  ops: readonly TreeDocOp[]
+): SemanticSelection | null {
+  const inserted = ops.find((op) => op.op === 'insertTableColumn');
+  if (!inserted || inserted.op !== 'insertTableColumn') return null;
+  const read = readMergeableTable(part, inserted.tableId);
+  if (!read.ok) return null;
+  const { table } = read;
+  let column: number;
+  if ('gridColumnId' in inserted) {
+    const source = table.topology.gridColumns.findIndex((col) => col.id === inserted.gridColumnId);
+    if (source < 0) return null;
+    column = source + (inserted.where === 'left' ? -1 : 1);
+  } else {
+    const source = table.index.byId.get(inserted.referenceCellId);
+    if (!source) return null;
+    column = inserted.where === 'left' ? source.startCol - 1 : source.endCol + 1;
+  }
+  for (const cells of table.index.byRow.values()) {
+    const cell = cells.find(
+      (entry) => entry.startCol === column && entry.span === 1 && entry.vMergeKind !== 'continue'
+    );
+    const paragraph = cell?.cell.children.find((node) => node.kind === 'paragraph');
+    if (paragraph) {
+      const point = { paragraphId: paragraph.id, offset: 0 };
+      return { anchor: point, head: point };
+    }
+  }
+  return null;
 }

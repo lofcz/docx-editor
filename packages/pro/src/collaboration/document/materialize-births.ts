@@ -227,6 +227,27 @@ export class BirthProjection {
         if (index !== undefined) columns.add(index);
       }
     }
+    // A synthesized grid also names the pre-existing cells of a gridless table.
+    // Retaining foreign text in a born column needs those original columns too.
+    // Without foreign content the entire born grid disappears, restoring its absence.
+    for (const [, frame] of frames) {
+      if (
+        frame.before.grid.length ||
+        !frame.born.some(
+          (cell) =>
+            visibleCells.has(cell) && undoneBirth(this.registry, cell) && this.hasContent(cell)
+        )
+      )
+        continue;
+      const after = new Map(frame.after.cells.map((cell) => [cell.id, cell]));
+      for (const old of frame.before.cells) {
+        if (!visibleCells.has(old.id) || this.registry.isTombstoned(old.id)) continue;
+        for (const column of after.get(old.id)?.columns ?? []) {
+          const index = gridIndexes.get(column);
+          if (index !== undefined) columns.add(index);
+        }
+      }
+    }
     const active = new Set([...columns].map((column) => grid[column]!));
     const ownedByRow = new Map<LogicalId, Map<LogicalId, readonly LogicalId[]>>();
     for (const [, frame] of frames) {
@@ -400,6 +421,10 @@ export class BirthProjection {
     }
     if (!undoneBirth(this.registry, child)) return true;
     if (!record) return this.hasContent(child);
+    if (record.namespaceUri === W && record.localName === 'tblGrid') {
+      const table = this.tableOf(parent);
+      return table !== null && this.table(table).columns.size > 0;
+    }
     if (record.kind === 'tableRow') return this.hasContent(child);
     if (
       record.kind === 'tableCell' ||

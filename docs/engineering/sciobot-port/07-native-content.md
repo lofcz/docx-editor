@@ -232,7 +232,7 @@ Eleven focused cases pass with 201 assertions (`/tmp/sciobot-n11-tests.log`). Si
 
 ## N12
 
-- [ ] Connect manual table column controls
+- [x] Connect manual table column controls
 
 **Depends:** [N09](07-native-content.md#n09), [V01](11-verification.md#v01)
 
@@ -246,7 +246,11 @@ Eleven focused cases pass with 201 assertions (`/tmp/sciobot-n11-tests.log`). Si
 
 **Check:** Add a focused Chromium case with real input and native selection where applicable. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** codex solo, branch `codex/react-block-proof`. **Evidence:** Baseline `0c498ce0`, completed solo on the same branch. `table-columns.ts` connects native left/right insertion and deletion through selection-preserving, native-can-gated controls. Imported nonuniform widths, horizontal spans, vertical merge chains, header behavior, foreign metadata, and retained paragraph content survive the operations and exact history. New shared cells adopt live canonical caret identities through retained grid-column addresses, skipping expanded spans and vertical continuation cells. Gridless insertion from later rows resolves the corresponding first-row source cell required by the existing native operation contract.
+
+Six local cases and twenty real-session cases cover both client orders, horizontal/vertical merged neighbors, concurrent edits inside the affected column, deletion during peer editing, independent own/peer history, reconnect, changed-grid remote caret/selection geometry, typing in fresh cells, and exact Word save/reopen. Four gridless cases verify native typing and exact two-step restoration, including the original absence of a grid. Four further cases preserve peer text and the complete original-column geometry when the insertion author undoes. Peer undo then restores exact grid absence; redo preserves text and geometry. The evaluated transport now hides an undone synthesized grid only when no columns need it. Existing immutable birth-coverage frames preserve original columns when retained peer text needs a born cell. No shared fields, codecs, operation shapes, or document tuple changes.
+
+The final integration command `bun test --timeout 30000 --preload ./scripts/test/preload-dom.ts packages/sciobot/src/chrome/table*.test.ts packages/core/src/editor/__tests__/table-command-plan.test.ts packages/pro/src/collaboration/__tests__/document-table-merge-split.test.ts packages/sciobot/src/review/owned-presence-shared.test.ts packages/sciobot/src/review/track-table-columns-collaboration.test.ts packages/sciobot/src/review/recompose-inserted-tables-collaboration.test.ts packages/sciobot/src/diff/table-grid-split-collaboration.test.ts packages/sciobot/src/diff/table-format-collaboration.test.ts` passes 143 cases and 4187 assertions across thirteen files (`/tmp/sciobot-n12-integration.log`). This includes previous manual table controls and AI table decisions, presence, split/merge history, and born-table recomposition. `bunx playwright test --config e2e/sciobot-table-columns.config.ts` passes all eight Chromium cases (`/tmp/sciobot-n12-browser-verified.log`), including actual pointer controls, keyboard input, exact undo/redo, merged widths/spans, gridless insertion, and full canonical save/reopen. Original deadlines remain unchanged. `bun check -p packages/sciobot/tsconfig.browser.json` passes 1901 files. Core and Pro builds pass. The private SDK build verifies 300 modules, external core, and its production dependency boundary. Decision: `.collaboration/changes/sciobot-table-column-controls.json`. Patch changesets: `.changeset/shared-column-insertion-caret.md` and `.changeset/gridless-column-birth-undo.md`. The transport remains evaluation-only under the EigenPal Pro License. N19 retains reference-cell addressing in arbitrary grid states; these controls continue using existing native operation shapes. N13/N14 retain merge/split and appearance controls. The backlog audit still detects external application-source drift; no capture command runs. At verification, application HEAD is `a8ec67cc6e3cf0daf5abafeaffba5e36dfd4e406`; changed captured files remain `WorkspaceExportModal.tsx`, `workspace-lesson-serialize.tsx`, and `workspaceExportArchive.ts`.
 
 ## N13
 

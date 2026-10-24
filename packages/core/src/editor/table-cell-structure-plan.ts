@@ -11,6 +11,7 @@ import {
   readMergeableTable,
   visualCellOf,
 } from '../store/store/tree-op-table-cell-shape.ts';
+import { readEditableTableTopology } from '../store/store/tree-op-table-topology.ts';
 import type { TreeDocOp, TreeOpRejection } from '../store/store/tree-op-types.ts';
 
 /** Cell merge and split have no tracked form, so suggesting refuses them. */
@@ -161,4 +162,15 @@ export function outerColumnOfSelection(
           : Math.max(outer, column);
   }
   return outer === null ? null : (read.table.topology.gridColumns[outer]?.id ?? null);
+}
+
+/** A gridless regular table addresses its column through the first row's native cell. */
+export function firstRowReferenceCellId(part: OoxmlPart, anchor: CellAnchor): string {
+  const read = readEditableTableTopology(part.root, anchor.tableId);
+  if (!read.ok) return anchor.cellId;
+  for (const row of read.topology.rows) {
+    const index = row.cells.findIndex((cell) => cell.id === anchor.cellId);
+    if (index >= 0) return read.topology.rows[0]?.cells[index]?.id ?? anchor.cellId;
+  }
+  return anchor.cellId;
 }
