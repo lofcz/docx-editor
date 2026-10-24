@@ -536,6 +536,7 @@ export interface ShownSlot {
 
 /** What of a shared text shows, and text from other paragraphs that shows in it. */
 export interface DecodeView {
+  readonly attributeOverrides?: ReadonlyMap<number, Readonly<Record<string, unknown>>>;
   /** Positions of the text that do not show. */
   readonly hidden?: ReadonlySet<number>;
   /** Text that follows a move, where `placeFollowingText` places it. */
@@ -589,7 +590,12 @@ export function decodeItems(
       for (let at = 0; at < op.insert.length; at += 1, position += 1) {
         if (view.hidden?.has(position)) continue;
         follow(position, true);
-        items.push({ kind: 'char', value: op.insert[at]!, attributes });
+        const override = view.attributeOverrides?.get(position);
+        items.push({
+          kind: 'char',
+          value: op.insert[at]!,
+          attributes: override ? decodeAttributes(override, limits, paragraphId) : attributes,
+        });
         placements.push(undefined);
         if (view.onCharacter) {
           const item = view.characters?.items[position];

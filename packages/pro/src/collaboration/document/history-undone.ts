@@ -14,6 +14,11 @@ Production use requires a commercial agreement: licensing@eigenpal.com
  * that step clears exactly those marks.
  */
 import * as Y from 'yjs';
+import {
+  captureRevisionCopyHistory,
+  restoreRevisionCopyHistory,
+  type RevisionCopyHistory,
+} from './revision-copy-history.ts';
 import type { LogicalId } from './identity.ts';
 import type { DocumentRegistry } from './registry.ts';
 import { RESTORE_ORIGIN } from './paragraph-text-restore.ts';
@@ -116,6 +121,10 @@ export function stepHistory(
   const stack = direction === 'undo' ? history.undoStack : history.redoStack;
   const opposite = direction === 'undo' ? history.redoStack : history.undoStack;
   const popped = stack[stack.length - 1];
+  const revisionCopies =
+    direction === 'undo'
+      ? captureRevisionCopyHistory(registry, popped)
+      : (runsOf<RevisionCopyHistory>(popped, 'docx-review-copy-history') ?? []);
   const runs =
     direction === 'undo'
       ? copiesOf(registry, popped)
@@ -145,7 +154,9 @@ export function stepHistory(
     }
   }
   afterStep();
+  restoreRevisionCopyHistory(registry, revisionCopies, direction);
   let pushed = opposite.length > before ? opposite[opposite.length - 1] : undefined;
+  if (revisionCopies.length && pushed) pushed.meta.set('docx-review-copy-history', revisionCopies);
   if (direction === 'redo') {
     const keys = runsOf<string>(popped, HIDDEN_KEYS);
     if (keys && keys.length > 0) {

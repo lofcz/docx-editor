@@ -252,3 +252,19 @@ test('independent paragraph birth repair refuses the previous room format withou
     doc.destroy();
   }
 });
+
+test('paired review copy repair refuses the previous room format without writes', () => {
+  const doc = savedRoom();
+  try {
+    doc.getMap(PACKAGE_META_KEY).set('repairVersion', 5);
+    const bytes = Y.encodeStateAsUpdate(doc);
+    const version = readCollaborationFormatVersion(doc);
+    expect(version).toBe('docx-collaboration:1.6.5.1');
+    expect(() => assertCollaborationFormatCompatibility(version)).toThrow(
+      'collaboration-format-mismatch'
+    );
+    expect(Y.encodeStateAsUpdate(doc)).toEqual(bytes);
+  } finally {
+    doc.destroy();
+  }
+});

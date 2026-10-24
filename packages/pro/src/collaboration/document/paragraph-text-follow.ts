@@ -20,6 +20,9 @@ Production use requires a commercial agreement: licensing@eigenpal.com
  *   showing nothing, or typing in text that a peer's Enter moves into a new paragraph.
  */
 import type * as Y from 'yjs';
+import { DEFAULT_DOCUMENT_LIMITS, type DocumentLimits } from './limits.ts';
+import { revisionCopyPeers } from './revision-copy-peers.ts';
+import { revisionCopyPositions } from './revision-text-copies.ts';
 import { parseClientClock, type LogicalId } from './identity.ts';
 import { IdentityIndex, identityRuns, type IdentityRun } from './paragraph-identity-index.ts';
 import {
@@ -101,6 +104,9 @@ export interface FollowingText extends PlacedText {
   readonly before: boolean;
   /** Where it shows, when not where a copy of `after` shows: its original's paragraph. */
   readonly target?: LogicalId;
+  /** Derived review-copy placement uses the exact counterpart item, not a repeated identity. */
+  readonly anchorItem?: string;
+  readonly attributesOverride?: Readonly<Record<string, unknown>>;
 }
 
 /**
@@ -194,6 +200,7 @@ export interface ShownText {
   readonly hidden: ReadonlySet<number>;
   /** Text from deleted paragraphs that shows in this one. */
   readonly incoming: readonly FollowingText[];
+  readonly attributeOverrides?: ReadonlyMap<number, Readonly<Record<string, unknown>>>;
 }
 
 export class TextFollow {
@@ -249,7 +256,8 @@ export class TextFollow {
     /** Paragraphs whose view changed when waiting sources were placed. */
     private readonly viewsChanged: (paragraphs: ReadonlySet<LogicalId>) => void,
     /** The paragraph whose text holds the item of an identity, deleted or not. */
-    private readonly originalParagraph: (identity: Identity) => LogicalId | null
+    private readonly originalParagraph: (identity: Identity) => LogicalId | null,
+    private readonly limits: DocumentLimits = DEFAULT_DOCUMENT_LIMITS
   ) {}
 
   /** The paragraph of `paragraphs` that comes last in the document. */
@@ -326,6 +334,9 @@ export class TextFollow {
     // A character in its first place hides behind a copy of it in this paragraph too: a join
     // can bring a copy into the paragraph that still holds what it copies.
     const ownCopies = copiesIn(identities);
+    const reviewCopies = ownCopies.size
+      ? revisionCopyPositions(text, identities, this.limits, paragraphId)
+      : new Map();
     // Characters come in runs of consecutive identities. Most runs share no character with
     // a copy in another paragraph, so one lookup per run settles all of their characters.
     for (let start = 0; start < clients.length; ) {
@@ -360,12 +371,16 @@ export class TextFollow {
               restore: restore.any[at]! > 0,
               laterRestore: restore.later[at]! > 0,
             };
-            if (this.hides(identities, position, held, seen, duplicates)) hidden.add(position);
+            if (
+              this.hides(identities, position, held, seen, duplicates, reviewCopies.has(position))
+            )
+              hidden.add(position);
           }
         }
         if (!isCopy && ownCopies.size > 0) {
           for (let position = start; position < end; position += 1) {
-            if (ownCopies.has(identities.ids[position]!)) hidden.add(position);
+            if (ownCopies.has(identities.ids[position]!) && !reviewCopies.has(position))
+              hidden.add(position);
           }
         }
       }
@@ -378,11 +393,16 @@ export class TextFollow {
     });
     const beside = besideDuplicates(paragraphId, identities, hidden, duplicates);
     const incoming = this.distinctIncoming(paragraphId, identities, hidden);
-    return {
-      identities,
-      hidden,
-      incoming: beside.length > 0 ? [...incoming, ...beside] : incoming,
-    };
+    return revisionCopyPeers(
+      text,
+      {
+        identities,
+        hidden,
+        incoming: beside.length > 0 ? [...incoming, ...beside] : incoming,
+      },
+      paragraphId,
+      reviewCopies
+    );
   }
 
   /**
@@ -438,17 +458,18 @@ export class TextFollow {
       readonly laterRestore: boolean;
     },
     seen: Set<Identity>,
-    duplicates: Set<number>
+    duplicates: Set<number>,
+    reviewCopy = false
   ): boolean {
     const id = identities.ids[position]!;
     let hide = false;
-    if (isCopyAt(identities, position) && seen.has(id)) {
+    if (isCopyAt(identities, position) && seen.has(id) && !reviewCopy) {
       duplicates.add(position);
     }
     // Another holder shows the character when one comes after this paragraph.
-    if (identities.moved[position]) hide = seen.has(id) || held.laterMove;
+    if (identities.moved[position]) hide = (!reviewCopy && seen.has(id)) || held.laterMove;
     else if (identities.restored[position]) {
-      hide = seen.has(id) || held.move || held.laterRestore;
+      hide = (!reviewCopy && seen.has(id)) || held.move || held.laterRestore;
     } else hide = held.move || held.restore;
     if (isCopyAt(identities, position)) seen.add(id);
     return hide;

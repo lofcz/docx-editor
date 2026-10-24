@@ -110,13 +110,18 @@ function markSourceMoves<T extends MoveToken>(
   writes: readonly ParagraphWrite<T>[],
   withOrigin: (token: T, origin: string) => T,
   signature: (token: T) => string,
-  scopeOf: (paragraph: number) => string
+  scopeOf: (paragraph: number) => string,
+  retainedCopies: ReadonlySet<string>
 ): ReadonlySet<string> {
   const deleted = new Map<string, { any: Set<string>; scopes: Map<string, Set<string>> }>();
   writes.forEach((write, paragraph) => {
     const scope = scopeOf(paragraph);
     for (const step of write.steps) {
-      if (step.op !== 'del') continue;
+      if (
+        step.op !== 'del' &&
+        !(step.op === 'eq' && retainedCopies.has(write.before[step.before]!.source ?? ''))
+      )
+        continue;
       const token = write.before[step.before]!;
       if (typeof token.insert !== 'string' || !token.source) continue;
       const entry = deleted.get(token.source) ?? {
@@ -299,7 +304,8 @@ export function markMoves<T extends MoveToken>(
   withOrigin: (token: T, origin: string) => T,
   signature: (token: T) => string,
   holderOf: (token: T, paragraph: number) => string = () => '',
-  scopeOf: (paragraph: number) => string = () => ''
+  scopeOf: (paragraph: number) => string = () => '',
+  retainedCopies: ReadonlySet<string> = new Set()
 ): ReadonlySet<string> {
   if (
     writes.some(
@@ -308,7 +314,7 @@ export function markMoves<T extends MoveToken>(
         write.after.some((token) => token.source !== undefined)
     )
   )
-    return markSourceMoves(writes, withOrigin, signature, scopeOf);
+    return markSourceMoves(writes, withOrigin, signature, scopeOf, retainedCopies);
   const copied = new Set<string>();
   const deleted = writes.flatMap((write, paragraph) => runsOf(write, paragraph, 'del'));
   if (deleted.length === 0) return copied;

@@ -570,6 +570,8 @@ Additional WIP evidence: [tracked atoms in born paragraphs](evidence/tracked-bor
 
 [Native copy provenance WIP](evidence/tracked-text-copy-recipes.md) records exact source recipes for both hyperlink review copies. All 77 native cases pass. The isolated transport still fails the four interior peer cases; paired review copies and causal revision membership remain required.
 
+[Paired review peer copies](evidence/paired-review-peer-copies.md) repairs the interior hyperlink regression through exact decisions, both histories, and reopening. The evaluated format changes to `1.6.6.1`. Four prior composer failures remain reproducible; D30 stays open.
+
 ## D31
 
 - [x] Plan inline code marks through the native representation

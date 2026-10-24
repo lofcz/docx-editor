@@ -1,0 +1,14 @@
+{
+  "impact": "migration-required",
+  "fields": ["repairVersion"],
+  "before": "Tracked hyperlink snapshots lost peer text placement inside their shared native source. Creation history could leave revision cleanup markers, and decisions could address inconsistent physical positions.",
+  "after": "Opposite review snapshots retain explicit native source identities. Peer text projects into both snapshots at its source boundary. Native decisions materialize the same source membership before routing. Creation history restores only the paired revision keys and observed character cohorts owned by its history step.",
+  "reason": "Deterministic interpretation of existing identity and revision marks changes. Repair version increases from 5 to 6, with no new shared fields. Equal text alone never establishes a review pair. The transport remains evaluation-only under the EigenPal Pro License; the private production adapter imports no transport implementation.",
+  "tests": [
+    "packages/pro/src/collaboration/__tests__/revision-text-copies.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-format.test.ts",
+    "packages/sciobot/src/review/recompose-linked-inline-births-shared.test.ts"
+  ],
+  "changeset": "paired-review-peer-copies",
+  "migration": "upgrade-rooms-to-format-1661"
+}

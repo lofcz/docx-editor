@@ -71,7 +71,13 @@ function inlineItems(
       if (!entry && !slot) return;
       const item = following.items[index];
       entries.push({
-        item: entry?.item,
+        item:
+          entry?.item?.kind === 'char' && following.attributesOverride
+            ? {
+                ...entry.item,
+                attributes: decodeAttributes(following.attributesOverride, limits, paragraphId),
+              }
+            : entry?.item,
         placement: entry?.placement,
         ...(slot ? { slot: slotOf(slot) } : {}),
         ...(item !== undefined
@@ -89,6 +95,7 @@ function inlineItems(
   for (const [position, slot] of placement.atPosition) at.set(position, slotOf(slot));
   return decodeItems(delta, embedOf, limits, paragraphId, {
     hidden: shown.hidden,
+    attributeOverrides: shown.attributeOverrides,
     following: { at, atEnd: placement.atEnd.map(pieceOf) },
     onRepair: () => view.noteDrift(),
     ...(onCharacter

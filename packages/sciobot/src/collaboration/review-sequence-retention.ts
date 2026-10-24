@@ -25,7 +25,7 @@ export function retainedBirthSequenceEntry(
   if (
     meta.get('protocolVersion') !== 1 ||
     meta.get('sharedSchemaVersion') !== 6 ||
-    meta.get('repairVersion') !== 5 ||
+    meta.get('repairVersion') !== 6 ||
     meta.get('canonicalModelVersion') !== 1
   )
     return false;

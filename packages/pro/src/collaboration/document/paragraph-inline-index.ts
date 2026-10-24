@@ -154,7 +154,8 @@ export class InlineIndex {
       isDeleted,
       order,
       (paragraphs) => this.noteOthers(paragraphs),
-      (identity) => this.paragraphHolding(identity)
+      (identity) => this.paragraphHolding(identity),
+      limits
     );
   }
 

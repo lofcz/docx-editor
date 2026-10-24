@@ -58,12 +58,15 @@ export function placeFollowingText(shown: ShownText): FollowingPlacement {
       if (identity && !firstInPiece.has(identity)) firstInPiece.set(identity, { piece, index });
     });
   }
+  const exact = new Map(shown.identities.items.map((item, position) => [item, position]));
+  const anchorPosition = (piece: FollowingText) =>
+    piece.anchorItem ? exact.get(piece.anchorItem) : firstShown.get(piece.after);
   const parentOf = new Map<
     FollowingText,
     { readonly piece: FollowingText; readonly index: number }
   >();
   for (const piece of shown.incoming) {
-    if (firstShown.has(piece.after)) continue;
+    if (anchorPosition(piece) !== undefined) continue;
     const host = firstInPiece.get(piece.after);
     if (host && host.piece !== piece) parentOf.set(piece, afterInserts(piece, host, shown));
   }
@@ -95,7 +98,7 @@ export function placeFollowingText(shown: ShownText): FollowingPlacement {
     return slot;
   };
   for (const piece of shown.incoming) {
-    const position = firstShown.get(piece.after);
+    const position = anchorPosition(piece);
     const parent = parentOf.get(piece);
     let slot: MutableSlot | null = null;
     if (position !== undefined) slot = slotIn(atPosition, position);

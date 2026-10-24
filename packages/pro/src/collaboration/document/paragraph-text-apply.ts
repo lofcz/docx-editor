@@ -12,6 +12,8 @@ Production use requires a commercial agreement: licensing@eigenpal.com
  * so a hidden position keeps its place between two shown ones.
  */
 import * as Y from 'yjs';
+import { persistRevisionCopyMembership } from './revision-copy-peers.ts';
+import { pairedRevisionSources } from './revision-text-copies.ts';
 import {
   deleteContent,
   deleteItem,
@@ -327,7 +329,12 @@ function adoptFollowingText(
   text: Y.Text
 ): readonly LogicalId[] {
   const view = registry.inline.viewOf(paragraphId);
-  const shown = view.shown(text);
+  let shown = view.shown(text);
+  if (shown.attributeOverrides?.size) {
+    persistRevisionCopyMembership(text, shown.attributeOverrides);
+    registry.inline.follow.invalidate(paragraphId);
+    shown = view.shown(text);
+  }
   if (shown.incoming.length === 0) return [];
   const { ids } = shown.identities;
   // Written where the view shows it, so the write that follows reads the paragraph in the
@@ -424,7 +431,11 @@ function adoptFollowingText(
       let encoded: Record<string, string> | null = null;
       const attributesOf = (): Record<string, string> =>
         (encoded ??= encodeAttributes(
-          decodeAttributes(op.attributes, registry.limits, following.source),
+          decodeAttributes(
+            following.attributesOverride ?? op.attributes,
+            registry.limits,
+            following.source
+          ),
           paragraphId,
           registry.limits
         ));
@@ -567,11 +578,18 @@ function adoptFollowingText(
 /** What a write deletes from where its paragraph showed it, by identity. */
 function deletedIdentities(write: ParagraphWrite<Token>): Set<string> {
   const gone = new Set<string>();
+  const retained = new Set(write.after.flatMap((token) => (token.source ? [token.source] : [])));
+  for (const step of write.steps)
+    if (step.op === 'eq') {
+      const at = write.before[step.before]!.position;
+      const identity = at === undefined ? null : write.identities[at];
+      if (identity) retained.add(identity);
+    }
   for (const step of write.steps) {
     if (step.op !== 'del') continue;
     const position = write.before[step.before]!.position;
     const identity = position === undefined ? null : write.identities[position];
-    if (identity) gone.add(identity);
+    if (identity && !retained.has(identity)) gone.add(identity);
   }
   return gone;
 }
@@ -923,7 +941,8 @@ export function applyInlinePlan(
     },
     (token, paragraph) =>
       decodeAttributes(token.attributes, registry.limits, writes[paragraph]!.id).text?.id ?? '',
-    (paragraph) => storyRootOf(registry, writes[paragraph]!.id)
+    (paragraph) => storyRootOf(registry, writes[paragraph]!.id),
+    pairedRevisionSources(writes, registry.limits)
   );
   for (const write of writes) {
     const text = write.text ?? writeInlineText(write.record, []);
