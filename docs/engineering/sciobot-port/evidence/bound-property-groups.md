@@ -28,8 +28,18 @@ The 103-case integration batch passes 1127 assertions across nine files. Its log
 
 The native core build passes. The private build verifies 321 modules with native core external. No collaboration bundle imports an editor runtime. Shared group limits live in a pure constants module to preserve this boundary.
 
+## Independent scopes and protection admission
+
+Canonical and shared-node traversal exclude independent Word property children. Paragraph properties exclude mark formatting and section state. Mark formatting excludes insertion, deletion, and move markers. Row and cell property scopes exclude their independent structural revision markers. Foreign elements with the same local names remain owned opaque metadata. Child-edge selection uses the same boundaries as subtree selection.
+
+Four two-session cases reject either paragraph or mark-format ownership in both client orders. They retain the other pending group, an existing break revision, section state, foreign metadata, peer italic formatting, and both histories. Complete native fingerprints match the native selected-site decision. Remote caret geometry and saved package convergence pass. The fixture places paragraph-mark revisions before formatting, as `CT_ParaRPr` requires in the pinned Word schema. No native rejection or fingerprint normalization changes.
+
+Experimental bound rejection now previews its exact selected inverse through a detached `TreePackageStore` transaction. This preserves native content-control and package protection gates before ownership cancellation. Two real-session regressions previously accepted a forbidden rejection after Bob locked the control. They now refuse without any Yjs update, package revision, group tombstone, cancellation record, or shared-state byte change. Bob can undo his lock and Alice can then reject normally. A separate regression proves that forms protection in `settings.xml` refuses an inverse that per-part application admits.
+
+The affected batch passes 58 cases and 1857 assertions across nine files. Its log is `/tmp/n08-independent-property-regression.log`. The private build verifies 323 modules with core external. The production attachment remains unchanged. Compatibility decision: `.collaboration/changes/sciobot-property-scope-admission.json`. No leaf closes.
+
 ## Remaining requirements
 
-The binding root exists only in the explicitly selected experimental attachment. The default field-1/flag-2 production factory remains unchanged. Pending DOCX import needs portable original property ownership and fresh-room seeding. Property container and child births need complete peer-bearing ancestry behavior. Complete production admission and remaining same-value and mixed property cases need verification. The default review path retains its original conflicting-format regressions.
+The binding root exists only in the explicitly selected experimental attachment. The default field-1/flag-2 production factory remains unchanged. Pending DOCX import needs portable original property ownership and fresh-room seeding. Property container and child births need complete peer-bearing ancestry behavior. Final production admission and remaining same-value and mixed property cases need verification. Native lock and forms-protection admission now pass the regressions above. The default review path retains its original conflicting-format regressions.
 
 Finish source checklist indentation, dormant checked state, sequence resets, sibling conversion, and polite restarts. Run complete N01 list parity and the required final browser/shared coverage before closing N08. No application file, migration, reference capture, or baseline changes. Backlog status remains 193 closed and 83 open across 276 leaves.

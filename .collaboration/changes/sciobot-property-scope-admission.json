@@ -1,0 +1,20 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Experimental property scopes include independent paragraph-mark properties, section state, and row or cell revision markers. Bound property rejection skips its native inverse and therefore can bypass content-control protection.",
+  "after": "Canonical and pinned shared-node traversal exclude independent Word property children and their sequence edges. Experimental bound rejection first runs the exact selected native inverse in a detached package transaction, including content-control and settings.xml protection. A refusal publishes no ownership cancellation or group tombstone.",
+  "reason": "These corrections affect only the explicitly selected unreleased field-2/flag-3 property-history prototype. Supported production attachment remains field-1/flag-2. No shared reader, schema, repair, protocol, or canonical model version changes. Existing intent records and binding records retain their representation and meaning. All numeric limits remain unchanged. No room migration or automatic reseeding occurs. A private empty Changeset records this adapter-only work. Portable pending DOCX ownership, peer-bearing births, and final production admission remain unfinished.",
+  "tests": [
+    "packages/sciobot/src/review/property-group-boundaries.test.ts",
+    "packages/sciobot/src/review/property-group-boundaries-collaboration.test.ts",
+    "packages/sciobot/src/review/property-decision-admission.test.ts",
+    "packages/sciobot/src/chrome/list-property-group-decisions.test.ts",
+    "packages/sciobot/src/chrome/list-property-withdrawal.test.ts",
+    "packages/sciobot/src/collaboration/property-group-bindings.test.ts",
+    "packages/sciobot/src/review/reject-group.test.ts",
+    "packages/sciobot/src/review/accept-group.test.ts",
+    "packages/sciobot/src/review/group-history-collaboration.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

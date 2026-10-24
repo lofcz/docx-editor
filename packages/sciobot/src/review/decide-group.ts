@@ -4,6 +4,7 @@ import {
   combinePropertyGroupReceipts,
 } from './property-history';
 import type { PropertyReviewReceipt } from '../collaboration/property-review-prototype';
+import { propertyDecisionRefusal } from './property-decision-admission';
 import { preparePresenceDecision } from './prepare-presence-decision';
 import { decodeBlockPresenceRecord } from './block-presence-schema';
 import type { DocxEditorInstance } from '@docx-editor.dev/core/editor';
@@ -140,6 +141,14 @@ function commitGroupDecision(
             withdrawnGroups.add(group.id);
           }
         }
+      }
+      const propertyRefusal = propertyDecisionRefusal(
+        pkg,
+        selected.filter((group) => withdrawnGroups.has(group.id))
+      );
+      if (propertyRefusal) {
+        result = fail(propertyRefusal, 'unsupported-operation');
+        return { committed: false, reason: result.error };
       }
       const selectedSites = new Map<string, Set<string>>();
       for (const member of selected

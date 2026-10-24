@@ -1,4 +1,10 @@
-import { parentNodeOf, type OoxmlNode, type OoxmlPackage } from '@docx-editor.dev/core/store';
+import { independentPropertyChild } from './property-boundaries';
+import {
+  WML_NAMESPACE_URI,
+  parentNodeOf,
+  type OoxmlNode,
+  type OoxmlPackage,
+} from '@docx-editor.dev/core/store';
 import { readReviewGroups } from './groups';
 import { currentRevisionPropertyContent } from './revision-property-content';
 import { propertyGroupMembersKey, type PropertyGroupScope } from './property-history-contract';
@@ -38,7 +44,16 @@ export function freshPropertyGroupScopes(
       while (pending.length) {
         const item = pending.pop()!;
         ids.add(item.id);
-        if (item.kind !== 'textValue') pending.push(...item.children);
+        if (item.kind !== 'textValue')
+          pending.push(
+            ...item.children.filter(
+              (child) =>
+                child.kind === 'textValue' ||
+                item.namespaceUri !== WML_NAMESPACE_URI ||
+                child.namespaceUri !== WML_NAMESPACE_URI ||
+                !independentPropertyChild(item.localName, child.localName)
+            )
+          );
       }
     };
     let complete = true;

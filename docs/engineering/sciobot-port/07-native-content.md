@@ -198,6 +198,8 @@ All nine existing insertion Chromium cases pass with original deadlines (`/tmp/n
 
 Remaining before closure: fix conflict-safe native property rejection with exact proposal ownership, preserved peer histories, and cold reopening. Port the frozen checklist indentation action. Its captures call `indentTodo` and produce `disc`, `checked: false`, and increased indentation. Finish sequence removal/outdent resets, sibling style conversion, and polite restarts. Complete conflicting-format sequence coverage. Run complete N01 list capture parity and the corresponding browser/shared scenarios. N08 remains open. No unsupported branch establishes completion.
 
+The independent ownership checkpoint fixes mixed paragraph and mark-format scopes. It preserves existing break revisions, section state, foreign metadata, peer formatting, and histories. Experimental withdrawal now passes exact native content-control and package protection admission before cancellation. The affected batch passes 58 cases and 1857 assertions across nine files (`/tmp/n08-independent-property-regression.log`). The private build verifies 323 modules with core external. See [bound property group evidence](evidence/bound-property-groups.md#independent-scopes-and-protection-admission). N08 remains unchecked.
+
 ## N09
 
 - [x] Connect manual table insertion

@@ -1,3 +1,4 @@
+import { independentPropertyChild } from '../review/property-boundaries';
 import * as Y from 'yjs';
 import { decodeFieldIntent, decodeFieldTarget, REVIEW_FIELD_TARGETS } from './review-field-codec';
 import { decodeFlagTarget } from './review-flag-codec';
@@ -30,6 +31,20 @@ export function propertyScopedReceipt(
     : null;
   if (!nativeNodes || !nodeIds.size)
     throw new Error('Property ownership requires native node identities.');
+  const wordName = (record: unknown): string | null => {
+    if (!(record instanceof Y.Map)) return null;
+    const packed = record.get('s') ?? record.get('b');
+    if (typeof packed !== 'string') return null;
+    const parts = packed.split('\u001f');
+    return parts.length === 4 && parts[1] === 'w' ? parts[2]! : null;
+  };
+  const independent = (parent: unknown, childId: string | null) => {
+    const parentName = wordName(parent),
+      childName = childId === null ? null : wordName(nativeNodes.get(childId));
+    return (
+      parentName !== null && childName !== null && independentPropertyChild(parentName, childName)
+    );
+  };
   // The native publisher replaces temporary #new IDs with logical wire IDs.
   // Resolve the complete property subtree from its stable existing containers.
   const resolvedIds = new Set(nodeIds),
@@ -41,6 +56,7 @@ export function propertyScopedReceipt(
     if (!(children instanceof Y.Array)) continue;
     for (const child of children) {
       if (typeof child !== 'string') throw new Error('Invalid native property child identity.');
+      if (independent(record, child)) continue;
       if (!resolvedIds.has(child)) {
         resolvedIds.add(child);
         pending.push(child);
@@ -64,6 +80,7 @@ export function propertyScopedReceipt(
         item?.parentSub === 'children' &&
         item.parent instanceof Y.Map &&
         item.parent._item?.parent === nativeNodes &&
+        !independent(item.parent, target.baseline) &&
         (ownsMap(item.parent) || resolvedIds.has(target.baseline!))
       );
     }
