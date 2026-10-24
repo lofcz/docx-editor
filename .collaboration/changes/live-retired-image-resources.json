@@ -1,0 +1,14 @@
+{
+  "impact": "migration-required",
+  "fields": ["sharedSchemaVersion", "repairVersion"],
+  "before": "Removing the final observed image reference cleared its binary digest and relationship identity. A late offline drawing survived but its image bytes remained absent.",
+  "after": "Binary entries retain their original digest and MIME declaration mode; part entries retain their original root identity. Materialization recovers retired image relationships and bytes only through live canonical references, with matching MIME declarations and native relationships XML. The application ancestry normalizer recognizes the exact new profile.",
+  "reason": "Retained descriptor fields increase sharedSchemaVersion from 6 to 7. Reference-dependent interpretation increases repairVersion from 6 to 7. Journal operation kinds remain unchanged. No saved room is migrated by this change. The evaluated transport remains test-only under the EigenPal Pro License; production adapter code imports no transport implementation.",
+  "tests": [
+    "packages/sciobot/src/review/image-removal-late-reference.test.ts",
+    "packages/sciobot/src/review/recompose-image-removal-shared.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-format.test.ts"
+  ],
+  "changeset": "live-retired-image-resources",
+  "migration": "upgrade-rooms-to-format-1771"
+}

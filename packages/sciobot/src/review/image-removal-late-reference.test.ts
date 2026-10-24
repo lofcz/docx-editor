@@ -23,7 +23,7 @@ import {
 import { expectImageRelationships } from '../../test/support/image-relationships';
 import { buildBlockIndex } from '../blocks/block-index';
 import { blockTag, withPayloadRecord } from '../blocks/payload-opc-codec';
-import { materializeImageReservation } from '../native/inline-image-reservation';
+import { materializeImageReservation } from '../../test/support/copy-inline-image';
 import { readEditorRevision } from '../projection/revision-cache';
 import { readWorkingView } from './working-view';
 import { planTargetDocument } from '../diff/plan-target';
@@ -65,6 +65,13 @@ for (const clients of [
       if (!current.success) throw Error(current.error);
       const target = current.view.projection.text.replace('![Cat](asset:cat "Photo")', '');
       expect(target).not.toBe(current.view.projection.text);
+      const removalWithoutCopy = planTargetDocument(
+        { pkg: before, revision: token(bob!), projection: current.view.projection },
+        target
+      );
+      if (!removalWithoutCopy.success) throw Error(removalWithoutCopy.error);
+      const expectedWithoutCopy = previewDirectPlan(before, removalWithoutCopy.plan);
+      if (!expectedWithoutCopy.success) throw Error(expectedWithoutCopy.error);
       pair.pause();
       const staged = await recomposeOwnedProposals(
         alice!,
@@ -167,6 +174,17 @@ for (const clients of [
       expect(alice!.exec({ type: 'undo' }).ok).toBe(true);
       await pair.settle();
       expect(alice!.exec({ type: 'redo' }).ok).toBe(true);
+      await pair.settle();
+      check();
+      expect(bob!.exec({ type: 'undo' }).ok).toBe(true);
+      await pair.settle();
+      for (const editor of pair.editors) {
+        const pkg = editor.surface!.session.currentPackage();
+        expect(word(pkg)).toBe(word(expectedWithoutCopy.pkg));
+        expect(media(pkg)).toEqual(media(expectedWithoutCopy.pkg));
+        expectImageRelationships(pkg, buildBlockIndex(pkg).byId.values());
+      }
+      expect(bob!.exec({ type: 'redo' }).ok).toBe(true);
       await pair.settle();
       check();
       const saved = new Uint8Array(await bob!.save());

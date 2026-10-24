@@ -3,7 +3,12 @@ Copyright (c) 2026 EigenPal, Inc. All rights reserved.
 Licensed under the EigenPal Pro Evaluation License 1.0 — see packages/pro/LICENSE.md.
 Production use requires a commercial agreement: licensing@eigenpal.com
 */
-import type { OoxmlElement, OoxmlPackage, OoxmlTextNode } from '@docx-editor.dev/core/store';
+import {
+  partNameKey,
+  type OoxmlElement,
+  type OoxmlPackage,
+  type OoxmlTextNode,
+} from '@docx-editor.dev/core/store';
 import type {
   CanonicalBinaryDescriptor,
   CanonicalPrimitiveEffect,
@@ -352,7 +357,12 @@ export async function seedPackage(
         registry.putContentTypeOverride(partName, mediaType);
       }
       for (const descriptor of binaries.descriptors) {
-        registry.putBinary(descriptor);
+        registry.putBinary(
+          descriptor,
+          pkg.contentTypes.overrides.has(
+            partNameKey('/' + descriptor.storageKey.replace(/^\//, ''))
+          )
+        );
       }
       // Initialization is the LAST write. Yjs commits everything already written when a limit
       // refusal stops this callback, so marking the room initialized first left a FAILED seed

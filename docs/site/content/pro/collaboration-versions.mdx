@@ -306,6 +306,14 @@ These rules change interpretation of existing identity and revision marks. No ne
 
 Stop writes and recover offline edits before upgrading. Back up the room and export with its compatible deployment. Verify peer text placement, hyperlink targets, pending revisions, and inline controls before migration. Reconcile incorrect content in that deployment before export. Follow [Upgrade saved rooms](#upgrade-saved-rooms) to create fresh rooms and persistence keys. Deploy matching clients, servers, workers, and agents. Do not rewrite version metadata or replay old updates into replacement rooms. Keep original rooms as read-only backups.
 
+### Upgrade rooms to format 1.7.7.1
+
+Format `docx-collaboration:1.7.7.1` retains original binary digests and relationships part roots. A late offline drawing can reuse an image whose last known reference another participant removed. Readers recover retired resources only when live canonical references require them. Unreferenced retired assets remain absent from the materialized document.
+
+Binary records retain their original digest and image MIME declaration mode. Part records retain their original root identity. These fields increase the shared schema version from 6 to 7. Reference-dependent recovery changes the repair version from 6 to 7. Clients and workers using `docx-collaboration:1.6.6.1` must not join these rooms.
+
+Stop writes and collect offline edits before upgrading. Back up each room. Export with its compatible deployment and verify drawing relationships and image bytes. Recover any already missing assets from trusted source documents or compatible backups before export. Follow [Upgrade saved rooms](#upgrade-saved-rooms) to seed fresh rooms and persistence keys. Deploy matching clients, servers, workers, and agents. Do not rewrite version metadata or replay old updates into replacement rooms. Retain original rooms as read-only backups.
+
 ### Migrate rooms on a server
 
 `@docx-editor.dev/pro/collaboration` provides two functions for the new build. They take and return bytes, so they work with any storage:

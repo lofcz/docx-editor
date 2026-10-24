@@ -14,11 +14,11 @@ The built SDK and native core pass all 16 removal cases and 1,184 assertions. Ne
 
 Logs: `/home/lofcz/.cache/sciobot-docx-native/d30-image-removal-*`.
 
-## Critical remaining failure
+## Reproduced resource-loss baseline
 
 `image-removal-late-reference.test.ts` exposes data loss under both client orders. Alice proposes image removal and accepts while disconnected. Bob independently creates a new drawing referencing the original image's existing resource, without adding bytes. After reconnect, the canonical drawing survives and matches the independent native expected tree, but the image media part is absent.
 
-The fixture verifies the peer copy before reconnect and derives expected output through independent direct removal from that peer's package. Expected media remains referenced and must survive. Both cases fail the complete media comparison. The assertions remain unchanged. Native drawing relationships, decision history, and cold room reopening follow that assertion and remain unverified for this case.
+The fixture verifies the peer copy before reconnect and derives expected output through independent direct removal from that peer's package. Expected media remains referenced and must survive. At `e861d989`, both cases fail the complete media comparison. The assertions remain unchanged. Native drawing relationships, decision history, and cold room reopening follow that assertion and remain unverified for this case.
 
 The transport retires binary descriptors by clearing their digest. It also clears relationship identities. The retained node structure lets the late drawing survive, but does not retain enough readable resource information to restore its bytes. Fix resource lifetime using actual live references; do not keep every removed asset visible or weaken exact media checks. A format change, if required, needs its own compatibility decision, migration guide, and release note.
 
@@ -33,3 +33,18 @@ Cache reference evidence across unchanged immutable nodes. Ordinary text edits m
 Blindly republishing resources on every observed drawing edit can leave orphan bytes when a concurrent edit removes that drawing's owner. Such a write-only workaround does not prove the required lifetime semantics.
 
 A resource recovery pass must also restore the exact `.rels` XML projection and MIME override. Preserve original relationship-row extensions and relationships-root metadata, including when removing the final relationship removes its directory entry. Keep immutable initial resource descriptors at seeding/put time, rather than adding extra scalar writes to each retirement history step. Any additional shared descriptor fields require a schema upgrade and coordinated room migration.
+
+
+## Reference-dependent recovery checkpoint
+
+The evaluated transport retains immutable binary digests and original MIME declaration modes at resource creation. Relationship parts retain their original root identity after retirement. Materialization restores retired assets only when a live canonical relationship reference needs them. Removing the drawing owner releases the recovered resources. No new binary or relationship publication pins a deleted owner.
+
+Relationship XML recovery preserves original root and row extension attributes. The reader follows changes to retained XML records and invalidates only the affected recovery cache. Text-only edits reuse recovered bytes without new blob reads or relationship decodes. Full and incremental materialization, Word reopening, and cold room reopening retain the complete tested native package.
+
+The source batch passes 88 tests and 2,616 assertions across ten files. This includes image births, removals, both offline client orders, resource fidelity, invalid retained descriptors, missing blobs, format refusal, relationship journals, and image publication cost. The compiled SDK and core pass all 43 image cases and 2,367 assertions. An additional compiled run verifies both actors' histories, including resource release after undoing Bob's late drawing and restoration after redo: two cases and 142 assertions. Pro type checks pass 2,327 source files and 1,876 Vue-profile files.
+
+Logs: `/home/lofcz/.cache/sciobot-docx-native/d30-retained-resource-{batch,compiled,peer-history,types,policy}.log`.
+
+The evaluated format changes to `docx-collaboration:1.7.7.1`. Previous rooms refuse admission without writes. Upgrade instructions require verified old-client export and fresh room seeding. No saved room is migrated here. Pro changes remain evaluation-only under the EigenPal Pro License; production adapters import no Pro transport.
+
+D30 and R19 remain open. The broader composer baseline still has twelve unresolved failures. This checkpoint does not establish full composer or application parity.

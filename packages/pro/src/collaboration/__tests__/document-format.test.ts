@@ -223,6 +223,7 @@ test('release 2.32 repair semantics refuse admission without changing saved room
 test('terminal revision placement refuses rooms using the previous repair rules without writes', () => {
   const doc = savedRoom();
   try {
+    doc.getMap(PACKAGE_META_KEY).set('sharedSchemaVersion', 6);
     doc.getMap(PACKAGE_META_KEY).set('repairVersion', 3);
     const before = Y.encodeStateAsUpdate(doc);
     const version = readCollaborationFormatVersion(doc);
@@ -240,6 +241,7 @@ test('terminal revision placement refuses rooms using the previous repair rules 
 test('independent paragraph birth repair refuses the previous room format without writes', () => {
   const doc = savedRoom();
   try {
+    doc.getMap(PACKAGE_META_KEY).set('sharedSchemaVersion', 6);
     doc.getMap(PACKAGE_META_KEY).set('repairVersion', 4);
     const bytes = Y.encodeStateAsUpdate(doc);
     const version = readCollaborationFormatVersion(doc);
@@ -256,6 +258,7 @@ test('independent paragraph birth repair refuses the previous room format withou
 test('paired review copy repair refuses the previous room format without writes', () => {
   const doc = savedRoom();
   try {
+    doc.getMap(PACKAGE_META_KEY).set('sharedSchemaVersion', 6);
     doc.getMap(PACKAGE_META_KEY).set('repairVersion', 5);
     const bytes = Y.encodeStateAsUpdate(doc);
     const version = readCollaborationFormatVersion(doc);
@@ -263,6 +266,24 @@ test('paired review copy repair refuses the previous room format without writes'
     expect(() => assertCollaborationFormatCompatibility(version)).toThrow(
       'collaboration-format-mismatch'
     );
+    expect(Y.encodeStateAsUpdate(doc)).toEqual(bytes);
+  } finally {
+    doc.destroy();
+  }
+});
+
+test('retained resource recovery refuses the previous room format without writes', () => {
+  const doc = savedRoom();
+  try {
+    doc.getMap(PACKAGE_META_KEY).set('sharedSchemaVersion', 6);
+    doc.getMap(PACKAGE_META_KEY).set('repairVersion', 6);
+    const bytes = Y.encodeStateAsUpdate(doc);
+    const version = readCollaborationFormatVersion(doc);
+    expect(version).toBe('docx-collaboration:1.6.6.1');
+    expect(() => assertCollaborationFormatCompatibility(version)).toThrow(
+      'collaboration-format-mismatch'
+    );
+    expect(() => readCollaborationDocument(doc)).toThrow('schema-version-mismatch');
     expect(Y.encodeStateAsUpdate(doc)).toEqual(bytes);
   } finally {
     doc.destroy();

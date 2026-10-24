@@ -38,9 +38,10 @@ export function retireResourceRelationship(
 }
 export function putResourceBinary(
   schema: PackageSchema,
-  descriptor: CanonicalBinaryDescriptor
+  descriptor: CanonicalBinaryDescriptor,
+  retainedOverride = true
 ): void {
-  schema.binaries.set(descriptor.storageKey, makeBinaryEntry(descriptor));
+  schema.binaries.set(descriptor.storageKey, makeBinaryEntry(descriptor, retainedOverride));
 }
 export function retireResourceBinary(schema: PackageSchema, storageKey: string): void {
   // Map-deleting one shared entry collapses concurrent removals. Undoing either then revives

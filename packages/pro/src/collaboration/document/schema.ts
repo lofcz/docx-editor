@@ -442,6 +442,7 @@ export function makePartEntry(
   const rec = new Y.Map<unknown>();
   rec.set('id', id);
   rec.set('rootId', rootLogicalId);
+  rec.set('retainedRootId', rootLogicalId);
   rec.set('contentType', contentType);
   return rec;
 }
@@ -457,9 +458,14 @@ export function makeRelationshipEntry(record: EncodedRelationship): Y.Map<unknow
   return rec;
 }
 
-export function makeBinaryEntry(descriptor: CanonicalBinaryDescriptor): Y.Map<unknown> {
+export function makeBinaryEntry(
+  descriptor: CanonicalBinaryDescriptor,
+  retainedOverride = true
+): Y.Map<unknown> {
   const rec = new Y.Map<unknown>();
   rec.set('digest', descriptor.digest);
+  rec.set('retainedDigest', descriptor.digest);
+  rec.set('retainedOverride', retainedOverride);
   rec.set('size', descriptor.size);
   rec.set('mediaType', descriptor.mediaType);
   rec.set('storageKey', descriptor.storageKey);

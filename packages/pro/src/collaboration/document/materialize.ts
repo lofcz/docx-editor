@@ -3,6 +3,7 @@ Copyright (c) 2026 EigenPal, Inc. All rights reserved.
 Licensed under the EigenPal Pro Evaluation License 1.0 — see packages/pro/LICENSE.md.
 Production use requires a commercial agreement: licensing@eigenpal.com
 */
+import { RetiredImageResources } from './retired-image-resources.ts';
 import { BirthProjection } from './materialize-births.ts';
 import {
   relsPartNameFor,
@@ -158,6 +159,7 @@ export class PackageMaterializer {
    */
   private looseCandidates = new Set<LogicalId>();
   private readonly birthProjection: BirthProjection;
+  private readonly retiredImages: RetiredImageResources;
   private pkg: OoxmlPackage | null = null;
   private customXmlRels: readonly EncodedRelationship[] = [];
   private customXmlOverrides = new Map<string, string>();
@@ -169,10 +171,12 @@ export class PackageMaterializer {
     readonly blobs: BlobBytesStore
   ) {
     this.birthProjection = new BirthProjection(registry);
+    this.retiredImages = new RetiredImageResources(registry, blobs);
     this.packageCache = new PackageProjectionCache(registry);
     this.contests = new ListingContests(registry);
     this.stop = registry.observeDirty((paths) => {
       for (const id of paths.logicalIds) this.pendingDirty.add(id);
+      this.retiredImages.invalidateNodes(paths.logicalIds);
       if (paths.membershipChanged) this.pendingMembership = true;
       if (paths.packageChanged) this.pendingPackage = true;
     });
@@ -231,7 +235,10 @@ export class PackageMaterializer {
     if (unobserved) this.registry.rebuildDerivedIndexes();
     // An unobserved write can be a package write whose `packageChanged` flag has not been
     // delivered yet, so it disqualifies the package projections exactly as the flag does.
-    if (packageChanged || unobserved) this.packageCache.invalidate();
+    if (packageChanged || unobserved) {
+      this.packageCache.invalidate();
+      this.retiredImages.invalidate();
+    }
     for (const survivor of this.adoption.changes(this.registry)) rawDirty.add(survivor);
     // A paragraph shows other IDs, or hides other moved text, when another paragraph's text
     // changes what they share.
@@ -973,6 +980,8 @@ export class PackageMaterializer {
       defaults: this.packageCache.contentTypeDefaults(),
       overrides,
     };
+    const recovered = this.retiredImages.recover(parts, assembly.byOwner, partBytes, overrides);
+    if (!recovered) return { ok: false, code: 'missing-blob', issues: [...this.issues] };
     typeUntypedParts(parts, contentTypes, overrides);
     const mainDocumentPart =
       this.registry.mainDocumentPart() ||
@@ -983,8 +992,8 @@ export class PackageMaterializer {
       package: withNumberingTypeBytes(
         Object.freeze({
           parts,
-          partBytes,
-          relationships: assembly.byOwner,
+          partBytes: recovered.bytes,
+          relationships: recovered.relationships,
           externalTargets: assembly.externalTargets,
           contentTypes,
           mainDocumentPart,
