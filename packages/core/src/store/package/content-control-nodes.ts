@@ -22,6 +22,7 @@
 // is fetched, resolved, or evaluated. A projection that reached for a part would be a
 // zero-click load of a target an untrusted file chose.
 
+import { isOmmlEquationAtom } from './omml-display.ts';
 import { inlineCharacterTextOf } from './hyphen-text.ts';
 import { hardBreakKind } from './hard-break.ts';
 import { nextStripedDecimalId, resolveAllocationActor } from './actor-scoped-ids.ts';
@@ -568,7 +569,12 @@ export function contentControlLevelOf(control: OoxmlNode): ContentControlLevel {
       if (nested !== 'empty') return nested;
       continue;
     }
-    if (child.kind === 'run' || child.kind === 'fldSimple' || isInlineRunContainer(child)) {
+    if (
+      child.kind === 'run' ||
+      child.kind === 'fldSimple' ||
+      isInlineRunContainer(child) ||
+      isOmmlEquationAtom(child)
+    ) {
       sawInline = true;
       continue;
     }

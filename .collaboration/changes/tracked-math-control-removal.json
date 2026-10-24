@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Tracked removal refused inline controls that contained native equations, and equation-only controls were classified as blocks.",
+  "after": "Whole inline controls retain native equations inside their deletion. Equation-only controls have inline ownership, and equation spans retain native hyperlinks.",
+  "reason": "The writer uses existing OOXML elements and journal operations. Readers already understand whole-control revisions and native equations. No shared fields or deterministic materialization rules change. Nested revisions and content locks retain their existing refusal rules.",
+  "tests": [
+    "packages/core/src/store/__tests__/tracked-math-control-removal.test.ts",
+    "packages/sciobot/src/review/recompose-inline-removal.test.ts",
+    "packages/sciobot/src/review/tracked-native-atom-removal.test.ts"
+  ],
+  "changeset": "tracked-math-control-removal",
+  "migration": null
+}

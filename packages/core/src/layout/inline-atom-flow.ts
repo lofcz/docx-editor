@@ -22,6 +22,7 @@ export function appendEquationSpan(
     box: { x, y: 0, width, height },
     projected: true,
     equation,
+    ...(piece.link ? { link: piece.link } : {}),
     ...paragraphSpanMetadata(piece),
   });
   line.width += width;

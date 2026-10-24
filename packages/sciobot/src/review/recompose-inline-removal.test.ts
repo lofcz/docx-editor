@@ -10,6 +10,7 @@ import { docxFixture } from '../../test/support/document';
 import { createDocxEditor } from '@docx-editor.dev/core/editor';
 import { readEditorRevision } from '../projection/revision-cache';
 import { SCIOBOT_NATIVE_REVIEW_MODULE } from '../review/native-module';
+import { createMathPayload } from '../blocks/math-codec';
 import { createMentionPayload } from '../blocks/mention-codec';
 import { withPayloadRecord, readPayloadStore, blockTag } from '../blocks/payload-opc-codec';
 import { buildBlockIndex } from '../blocks/block-index';
@@ -39,10 +40,22 @@ const propertyToken = (editor: ReturnType<typeof propertyEditor>) =>
   readEditorRevision(editor, propertyContext.documentId, propertyContext.epoch)!;
 const sourceControl = (id: string, body: string) =>
   `<w:sdt><w:sdtPr><w:tag w:val="${blockTag(id)}"/></w:sdtPr><w:sdtContent>${body}</w:sdtContent></w:sdt>`;
-const payload = createMentionPayload('owned-mention', 'user', 'Ada', { privateData: { keep: 7 } });
+const mentionPayload = createMentionPayload('owned-mention', 'user', 'Ada', {
+  privateData: { keep: 7 },
+});
 const word = (pkg: OoxmlPackage) => canonicalOoxmlFingerprint(pkg.parts.get(pkg.mainDocumentPart)!);
-function fixture(linked: boolean, locked: boolean) {
-  let control = sourceControl(payload.id, '<w:r><w:t>Ada</w:t></w:r>');
+const payload = mentionPayload;
+function fixture(
+  linked: boolean,
+  locked: boolean,
+  payload: import('../blocks/payload-schema').BlockPayload = mentionPayload
+) {
+  let control = sourceControl(
+    payload.id,
+    payload.type === 'inline_equation'
+      ? '<m:oMath xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><m:sSup><m:e><m:r><m:t>x</m:t></m:r></m:e><m:sup><m:r><m:t>2</m:t></m:r></m:sup></m:sSup></m:oMath>'
+      : '<w:r><w:t>Ada</w:t></w:r>'
+  );
   if (locked)
     control = control.replace('</w:sdtPr>', '<w:lock w:val="sdtContentLocked"/></w:sdtPr>');
   const contents =
@@ -61,92 +74,93 @@ function fixture(linked: boolean, locked: boolean) {
   if (!stored.ok) throw Error(stored.reason);
   return stored.pkg;
 }
-for (const linked of [false, true])
-  for (const locked of [false, true])
-    for (const decision of ['accept', 'reject'] as const)
-      test(`AI recomposition removes whole inline controls through native review: ${linked}/${locked}/${decision}`, async () => {
-        const editor = propertyEditor(fixture(linked, locked));
-        try {
-          const surface = editor.surface!,
-            before = surface.session.currentPackage();
-          const initial = await readWorkingView(surface.session, propertyToken(editor));
-          if (!initial.success) throw Error(initial.error);
-          const target = initial.view.projection.text.replace(
-            /<scio-mention\b[^>]*\/>|\[Ada\]\(mention:user\)/g,
-            ''
-          );
-          expect(target).not.toBe(initial.view.projection.text);
-          const planned = planTargetDocument(
-            { pkg: before, revision: propertyToken(editor), projection: initial.view.projection },
-            target
-          );
-          if (!planned.success) throw Error(planned.error);
-          expect(planned.plan.operations.map((edit) => edit.kind)).toEqual(['inline-remove']);
-          const direct = previewDirectPlan(before, planned.plan);
-          if (!direct.success) throw Error(direct.error);
-          const result = await recomposeOwnedProposals(
-            editor,
-            { revision: propertyToken(editor), targetMarkdown: target, ownership: [] },
-            propertyContext,
-            { payloads: { presence: { proposalId: 'remove-mention' } } }
-          );
-          if (!result.success) throw Error(result.error);
-          expect(result.committed).toBe(true);
-          expect(result.ownership).toHaveLength(1);
-          expect(result.ownership[0]!.properties).toEqual([
-            { proposalId: 'remove-mention', blockId: payload.id },
-          ]);
-          const pending = surface.session.currentPackage(),
-            pendingWord = word(pending);
-          expect(buildBlockIndex(pending).byId.get(payload.id)?.payload).toEqual(payload);
-          const groups = readReviewGroups(pending);
-          expect(groups.success && groups.groups.length).toBe(1);
-          const committed = await readCommittedView(surface.session, propertyToken(editor));
-          const working = await readWorkingView(surface.session, propertyToken(editor));
-          expect(committed.success && committed.view.projection.text).toBe(
-            initial.view.projection.text
-          );
-          expect(working.success && working.view.projection.text).toBe(target);
-          expect(editor.exec({ type: 'undo' }).ok).toBe(true);
-          expect(word(surface.session.currentPackage())).toBe(word(before));
-          expect(editor.exec({ type: 'redo' }).ok).toBe(true);
-          expect(word(surface.session.currentPackage())).toBe(pendingWord);
-          const decided = (decision === 'accept' ? acceptAllReviewGroups : rejectAllReviewGroups)(
-            editor,
-            propertyToken(editor),
-            propertyContext
-          );
-          if (!decided.success) throw Error(decided.error);
-          const expected = decision === 'accept' ? direct.pkg : before;
-          expect(word(surface.session.currentPackage())).toBe(word(expected));
-          const payloads = readPayloadStore(surface.session.currentPackage());
-          expect(payloads.status === 'ready' && payloads.entries.has(payload.id)).toBe(
-            decision === 'reject'
-          );
-          if (decision === 'reject') {
-            const original = buildBlockIndex(before).byId.get(payload.id)!;
-            expect(findNode(surface.session.part(), original.controlId)).toEqual(
-              findNode(before.parts.get(before.mainDocumentPart)!, original.controlId)
-            );
-          }
-          expect(editor.exec({ type: 'undo' }).ok).toBe(true);
-          expect(word(surface.session.currentPackage())).toBe(pendingWord);
-          expect(editor.exec({ type: 'redo' }).ok).toBe(true);
-          expect(word(surface.session.currentPackage())).toBe(word(expected));
-          const saved = readOoxmlPackage(writeOoxmlPackage(surface.session.currentPackage()));
-          if (!saved.ok) throw Error(saved.reason);
-          const reopened = propertyEditor(saved.package);
+for (const payload of [mentionPayload, createMathPayload('owned-math', 'inline', 'x^2')])
+  for (const linked of [false, true])
+    for (const locked of [false, true])
+      for (const decision of ['accept', 'reject'] as const)
+        test(`AI recomposition removes whole inline controls through native review: ${payload.type}/${linked}/${locked}/${decision}`, async () => {
+          const editor = propertyEditor(fixture(linked, locked, payload));
           try {
-            expect(word(reopened.surface!.session.currentPackage())).toBe(word(expected));
-            const reopenedGroups = readReviewGroups(reopened.surface!.session.currentPackage());
-            expect(reopenedGroups.success && reopenedGroups.groups).toEqual([]);
+            const surface = editor.surface!,
+              before = surface.session.currentPackage();
+            const initial = await readWorkingView(surface.session, propertyToken(editor));
+            if (!initial.success) throw Error(initial.error);
+            const target = initial.view.projection.text.replace(
+              /<scio-mention\b[^>]*\/>|\[Ada\]\(mention:user\)|\$x\^2\$/g,
+              ''
+            );
+            expect(target).not.toBe(initial.view.projection.text);
+            const planned = planTargetDocument(
+              { pkg: before, revision: propertyToken(editor), projection: initial.view.projection },
+              target
+            );
+            if (!planned.success) throw Error(planned.error);
+            expect(planned.plan.operations.map((edit) => edit.kind)).toEqual(['inline-remove']);
+            const direct = previewDirectPlan(before, planned.plan);
+            if (!direct.success) throw Error(direct.error);
+            const result = await recomposeOwnedProposals(
+              editor,
+              { revision: propertyToken(editor), targetMarkdown: target, ownership: [] },
+              propertyContext,
+              { payloads: { presence: { proposalId: 'remove-mention' } } }
+            );
+            if (!result.success) throw Error(result.error);
+            expect(result.committed).toBe(true);
+            expect(result.ownership).toHaveLength(1);
+            expect(result.ownership[0]!.properties).toEqual([
+              { proposalId: 'remove-mention', blockId: payload.id },
+            ]);
+            const pending = surface.session.currentPackage(),
+              pendingWord = word(pending);
+            expect(buildBlockIndex(pending).byId.get(payload.id)?.payload).toEqual(payload);
+            const groups = readReviewGroups(pending);
+            expect(groups.success && groups.groups.length).toBe(1);
+            const committed = await readCommittedView(surface.session, propertyToken(editor));
+            const working = await readWorkingView(surface.session, propertyToken(editor));
+            expect(committed.success && committed.view.projection.text).toBe(
+              initial.view.projection.text
+            );
+            expect(working.success && working.view.projection.text).toBe(target);
+            expect(editor.exec({ type: 'undo' }).ok).toBe(true);
+            expect(word(surface.session.currentPackage())).toBe(word(before));
+            expect(editor.exec({ type: 'redo' }).ok).toBe(true);
+            expect(word(surface.session.currentPackage())).toBe(pendingWord);
+            const decided = (decision === 'accept' ? acceptAllReviewGroups : rejectAllReviewGroups)(
+              editor,
+              propertyToken(editor),
+              propertyContext
+            );
+            if (!decided.success) throw Error(decided.error);
+            const expected = decision === 'accept' ? direct.pkg : before;
+            expect(word(surface.session.currentPackage())).toBe(word(expected));
+            const payloads = readPayloadStore(surface.session.currentPackage());
+            expect(payloads.status === 'ready' && payloads.entries.has(payload.id)).toBe(
+              decision === 'reject'
+            );
+            if (decision === 'reject') {
+              const original = buildBlockIndex(before).byId.get(payload.id)!;
+              expect(findNode(surface.session.part(), original.controlId)).toEqual(
+                findNode(before.parts.get(before.mainDocumentPart)!, original.controlId)
+              );
+            }
+            expect(editor.exec({ type: 'undo' }).ok).toBe(true);
+            expect(word(surface.session.currentPackage())).toBe(pendingWord);
+            expect(editor.exec({ type: 'redo' }).ok).toBe(true);
+            expect(word(surface.session.currentPackage())).toBe(word(expected));
+            const saved = readOoxmlPackage(writeOoxmlPackage(surface.session.currentPackage()));
+            if (!saved.ok) throw Error(saved.reason);
+            const reopened = propertyEditor(saved.package);
+            try {
+              expect(word(reopened.surface!.session.currentPackage())).toBe(word(expected));
+              const reopenedGroups = readReviewGroups(reopened.surface!.session.currentPackage());
+              expect(reopenedGroups.success && reopenedGroups.groups).toEqual([]);
+            } finally {
+              reopened.destroy();
+            }
           } finally {
-            reopened.destroy();
+            editor.destroy();
           }
-        } finally {
-          editor.destroy();
-        }
-      });
+        });
 
 test('AI inline removal refuses missing ownership before publication', async () => {
   const editor = propertyEditor(fixture(true, true));

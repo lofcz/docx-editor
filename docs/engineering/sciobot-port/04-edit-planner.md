@@ -562,6 +562,8 @@ Additional WIP evidence: [tracked atoms in born paragraphs](evidence/tracked-bor
 
 [Committed insertion ownership](evidence/committed-insertion-ownership.md) resolves peer-text rejection with 352 source cases and 43 compiled cases passing. D30 remains open for the listed feature and integration work.
 
+[Native math control deletion](evidence/tracked-math-control-removal.md) preserves equations and hyperlinks through AI review, shared histories, and reopening. The source batch passes 98 cases; compiled packages pass 59 cases. D30 remains open for the remaining feature and integration work.
+
 ## D31
 
 - [x] Plan inline code marks through the native representation

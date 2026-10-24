@@ -130,8 +130,7 @@ export function applyDeleteTracked(
     node.kind !== 'textValue' && contentOf(node).some((child) => struck.has(child.id));
 
   let exceedsDepth = false;
-  // A wholly struck control that holds a revision (a `w:del` cannot hold a `w:ins`) or an
-  // equation (its runs have no deleted form).
+  // A wholly struck control cannot acquire a second owner over its pending revisions.
   let strikesRevisedControl = false;
   const strike = (nodes: readonly OoxmlNode[], depth: number): OoxmlNode => {
     // A JOINED deletion is this transaction's strike too, though it minted nothing — a
@@ -201,7 +200,7 @@ export function applyDeleteTracked(
           cursor.offset = to;
           // The author's own proposal is taken back, not struck.
           if (insertionAuthor(stack) === revision.author) continue;
-          if (holdsRevision(node) || holdsMath(node)) {
+          if (holdsRevision(node)) {
             strikesRevisedControl = true;
             continue;
           }
@@ -359,19 +358,9 @@ function holdsRevision(node: OoxmlNode): boolean {
   );
 }
 
-/** Whether an equation sits anywhere inside the node; its runs have no deleted form here. */
-function holdsMath(node: OoxmlNode): boolean {
-  return (
-    node.kind !== 'textValue' &&
-    node.children.some(
-      (child) => child.kind !== 'textValue' && (isOmmlEquationAtom(child) || holdsMath(child))
-    )
-  );
-}
-
-/** A whole subtree in its deleted form: every run inside it re-labelled by `toDeleted`. */
+/** Relabel Word runs while keeping each whole equation in its original native form. */
 function deletedWhole(mint: () => string, node: OoxmlNode): OoxmlNode {
-  if (node.kind === 'textValue') return node;
+  if (node.kind === 'textValue' || isOmmlEquationAtom(node)) return node;
   if (node.kind === 'run') return toDeleted(mint, node);
   return {
     ...node,

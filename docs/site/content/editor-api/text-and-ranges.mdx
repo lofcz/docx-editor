@@ -244,7 +244,7 @@ Some document elements behave differently inside a word range:
 | Element | Behavior |
 | --- | --- |
 | Field | Reads as one unit that never splits. It joins the word that it touches. Range text shows the field result, which can contain spaces, such as `Section 4.2`. |
-| Equation, picture, or note reference | Reads as one unit that never splits, shown as U+FFFC. It joins the word that it touches. A tracked deletion or replacement that covers an equation strikes the whole equation; accept removes it, and reject restores it. |
+| Equation, picture, or note reference | Reads as one unit that never splits, shown as U+FFFC. It joins the word that it touches. A tracked deletion or replacement that covers an equation strikes the whole equation; accept removes it, and reject restores it. A complete content-locked inline control can retain its equations in one deletion, with exact restoration on rejection. |
 | Tab | Ends a range only if you list `'\t'` as a mark. `trimSpacing` removes it from range edges. |
 | Inline content control | Adds no boundary. Its words join the ranges around it. |
 | Content-locked control | A replacement or deletion of part of it fails, and `error.debugInfo.innerError.code` is `edit.protected-content`. The outer code is `GeneralException` with `TrackMineOnly` and `InvalidArgument` without it, so branch on the inner code. With tracking on, a deletion or replacement that covers the whole control proposes removing the control as one deletion. |

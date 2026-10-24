@@ -6,6 +6,7 @@ import {
   type EditOptions,
 } from '../package/ooxml-edit.ts';
 import { WML_NAMESPACE_URI, type OoxmlNode, type OoxmlPart } from '../package/ooxml-tree.ts';
+import { isOmmlEquationAtom } from '../package/omml-display.ts';
 import { contentControlLevelOf } from '../package/content-control-nodes.ts';
 import { validateRemoveContentControl } from './tree-op-validate-controls.ts';
 import { contentControlEffect } from './tree-op-content-controls.ts';
@@ -70,8 +71,7 @@ export function trackedControlRemovalRefusal(part: OoxmlPart, op: Removal): Tree
     if (
       node.kind.startsWith('revision') ||
       (node.namespaceUri === WML_NAMESPACE_URI &&
-        (revisionNames.has(node.localName) || node.localName.endsWith('Change'))) ||
-      node.namespaceUri === 'http://schemas.openxmlformats.org/officeDocument/2006/math'
+        (revisionNames.has(node.localName) || node.localName.endsWith('Change')))
     )
       return 'indivisible-content';
     for (const child of node.children) pending.push({ node: child, depth: depth + 1 });
@@ -89,8 +89,9 @@ export function applyTrackedControlRemoval(
   const control = findNode(part, op.controlId)!,
     owner = parentNodeOf(part, control.id)!;
   const mint = createNodeIdAllocator(part);
+  // CT_SdtContentRun permits whole equations. Their math runs keep their original form.
   const markDeleted = (node: OoxmlNode): OoxmlNode => {
-    if (node.kind === 'textValue') return node;
+    if (node.kind === 'textValue' || isOmmlEquationAtom(node)) return node;
     const children = node.children.map(markDeleted);
     if (node.namespaceUri === WML_NAMESPACE_URI && node.localName === 'instrText')
       return { ...node, kind: 'generic', localName: 'delInstrText', children } as OoxmlNode;
