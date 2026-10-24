@@ -3,6 +3,12 @@ Copyright (c) 2026 EigenPal, Inc. All rights reserved.
 Licensed under the EigenPal Pro Evaluation License 1.0 — see packages/pro/LICENSE.md.
 Production use requires a commercial agreement: licensing@eigenpal.com
 */
+import {
+  putResourceBinary,
+  retireResourceBinary,
+  putResourceRelationship,
+  retireResourceRelationship,
+} from './registry-resource-records.ts';
 import { BirthUndoDependencies } from './birth-undo-dependencies.ts';
 import { subscribeTextReads } from './registry-text-reads.ts';
 import { TEXT_DELETIONS_KEY } from './paragraph-text-deletions.ts';
@@ -32,10 +38,8 @@ import {
   isElementRecord,
   isNodeMap,
   isTextNodeMap,
-  makeBinaryEntry,
   makeElementRecord,
   makePartEntry,
-  makeRelationshipEntry,
   makeTextRecord,
   nodeRecordReplacedBy,
   nodeRecordSplitFrom,
@@ -53,7 +57,7 @@ import {
   type SharedRecord,
   type TextRecord,
 } from './schema.ts';
-import { readRelationships, relationshipKey } from './relationship-store.ts';
+import { readRelationships } from './relationship-store.ts';
 import { observeRegistrySchema } from './registry-observers.ts';
 import {
   assignFirstReachableParents,
@@ -665,17 +669,13 @@ export class DocumentRegistry {
    * earlier build.
    */
   putRelationship(record: EncodedRelationship): void {
-    if (rejectDangerousKey(record.ownerPart) || rejectDangerousKey(record.id)) return;
     this.relationshipCountCache = -1;
-    const holder = new Y.Map<Y.Map<unknown>>();
-    holder.set(record.id, makeRelationshipEntry(record));
-    this.schema.relationships.set(relationshipKey(record.ownerPart, record.id), holder);
+    putResourceRelationship(this.schema, record);
   }
 
   deleteRelationship(ownerPart: string, relationshipId: string): void {
     this.relationshipCountCache = -1;
-    this.schema.relationships.delete(relationshipKey(ownerPart, relationshipId));
-    this.schema.relationships.get(ownerPart)?.delete(relationshipId);
+    retireResourceRelationship(this.schema, ownerPart, relationshipId);
   }
 
   putContentTypeOverride(partName: string, mediaType: string): void {
@@ -691,11 +691,11 @@ export class DocumentRegistry {
   }
 
   putBinary(descriptor: CanonicalBinaryDescriptor): void {
-    this.schema.binaries.set(descriptor.storageKey, makeBinaryEntry(descriptor));
+    putResourceBinary(this.schema, descriptor);
   }
 
   deleteBinary(storageKey: string): void {
-    this.schema.binaries.delete(storageKey);
+    retireResourceBinary(this.schema, storageKey);
   }
 
   relationships(): readonly EncodedRelationship[] {

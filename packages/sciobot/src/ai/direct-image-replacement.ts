@@ -121,7 +121,14 @@ export function completeImageReplacement(
   if (properties.lock === 'sdtContentLocked')
     apply({ op: 'setContentControlProperties', controlId: control.id, lock: 'unlocked' });
   let mediaPartName = edit.before.attributes.mediaPartName;
-  if (resource) {
+  const previousBytes =
+    next.partBytes.get(previous.partName) ?? next.partBytes.get(previous.partName.slice(1));
+  const replaceBitmap =
+    !!resource &&
+    (!previousBytes ||
+      previousBytes.length !== resource.bytes.length ||
+      previousBytes.some((byte, index) => byte !== resource.bytes[index]));
+  if (resource && replaceBitmap) {
     const embedded = embedInlineImage(next, part.name, crypto.randomUUID(), resource);
     next = embedded.pkg;
     mediaPartName = embedded.partName.startsWith('/') ? embedded.partName : '/' + embedded.partName;
@@ -168,7 +175,7 @@ export function completeImageReplacement(
   if (!stored.ok)
     refuseWrite(`Image provenance replacement refused: ${stored.reason}.`, 'apply-failed');
   next = stored.pkg;
-  return resource
+  return replaceBitmap
     ? cleanupOrphanImageMedia(next, part.name, previous.partName, previousRelationship)
     : next;
 }

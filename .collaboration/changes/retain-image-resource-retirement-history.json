@@ -1,0 +1,10 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Deleting shared binary and relationship entries collapsed concurrent image retirements, allowing one actor undo to revive another actor retired resource.",
+  "after": "Retirement keeps existing descriptor maps and clears the existing digest or relationship id scalar. Ordinary descriptor puts remain atomic. Application-owned history retains independent retirement intentions.",
+  "reason": "Every existing reader already omits empty digests and empty relationship identifiers. Reader implementations and version fields remain unchanged. This corrects writer history behavior without introducing shared fields or a new room format.",
+  "tests": ["packages/sciobot/src/diff/inline-image-replacement-collaboration.test.ts"],
+  "changeset": "retain-image-resource-retirement-history",
+  "migration": null
+}

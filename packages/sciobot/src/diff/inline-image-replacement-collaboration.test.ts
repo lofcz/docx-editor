@@ -50,7 +50,10 @@ function labeledPng(label: string) {
   return result;
 }
 const replacement = labeledPng('Alpha'),
-  betaPng = labeledPng('Beta');
+  betaPng = Uint8Array.from(
+    atob('R0lGODlhAQABAPAAAP///wAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=='),
+    (c) => c.charCodeAt(0)
+  );
 const decode: ImageDecodePort = {
   async decode() {
     return { pixelWidth: 1, pixelHeight: 1, dpiX: 96, dpiY: 96 };
@@ -92,7 +95,7 @@ async function apply(editor: DocxEditorInstance, target: string) {
       resolved.push(reference);
       return {
         bytes: reference === 'asset:cat' ? png : reference === 'asset:beta' ? betaPng : replacement,
-        mime: 'image/png',
+        mime: reference === 'asset:beta' ? 'image/gif' : 'image/png',
         widthPoints: reference === 'asset:cat' ? 12 : 40,
         heightPoints: reference === 'asset:cat' ? 8 : 30,
       };
@@ -136,267 +139,338 @@ function overlayMedia(
   }
   return [...result].sort(([a], [b]) => a.localeCompare(b));
 }
-for (const conflict of [false, true])
-  for (const clients of [
-    [41, 73],
-    [73, 41],
-  ] as const)
-    for (const writer of [0, 1] as const)
-      for (const receiver of [0, 1] as const)
-        test(`image replacements retain coherent native resources through both peer histories: conflict=${conflict}/${clients}/${writer}/${receiver}`, async () => {
-          const image = '[<code>![Cat](asset:cat "Photo")</code>](https://outer.test "Read")';
-          const seedTarget = `Lead. ${image} bridge ${image} Tail.`;
-          const alpha = '[<code>![Alpha](asset:alpha "Alpha")</code>](https://outer.test "Read")';
-          const beta = '[<code>![Beta](asset:beta "Beta")</code>](https://outer.test "Read")';
-          const seed = createDocxEditor({
-            container: document.createElement('div'),
-            imageDecodePort: decode,
-            document: docxFixture('<w:p><w:r><w:t>Keep.</w:t></w:r></w:p>'),
-          });
-          let bytes: Uint8Array;
-          try {
-            await apply(seed, seedTarget);
-            bytes = new Uint8Array(await seed.save());
-          } finally {
-            seed.destroy();
-          }
-          const fixture = {
-            document: bytes,
-            clientIds: clients,
-            editor: { imageDecodePort: decode },
-          };
-          const pair = await createTwoEditorFixture(fixture);
-          try {
-            const actor = pair.editors[writer]!,
-              peer = pair.editors[1 - writer]!;
-            const original = snapshot(actor),
-              paragraphId = actor.surface!.session.paragraphIds()[0]!;
-            const controls = descendants(original.part.root).filter(
-              (node) => node.kind === 'contentControl'
-            );
-            const first = controls[0]!,
-              second = conflict ? first : controls[1]!;
-            const firstBlock = [...buildBlockIndex(original.pkg).byId.values()].find(
-              (block) => block.controlId === first.id
-            )!;
-            const secondBlock = [...buildBlockIndex(original.pkg).byId.values()].find(
-              (block) => block.controlId === second.id
-            )!;
-            const drawA = descendants(first).find((node) => node.kind === 'drawing')!,
-              drawB = descendants(second).find((node) => node.kind === 'drawing')!;
-            const targetA = `Lead. ${alpha} bridge ${image} Tail.`,
-              targetB = conflict
-                ? `Lead. ${beta} bridge ${image} Tail.`
-                : `Lead. ${image} bridge ${beta} Tail.`;
-            pair.pause();
-            expect((await apply(actor, targetA)).resolved).toEqual(['asset:alpha']);
-            const a = snapshot(actor);
-            expect((await apply(peer, targetB)).resolved).toEqual(['asset:beta']);
-            const b = snapshot(peer);
-            const relation = (part: OoxmlPart, id: string) =>
-              descendants(findNode(part, id)!).flatMap((node) =>
-                node.kind === 'textValue'
-                  ? []
-                  : node.attributes
-                      .filter((attr) => attr.localName === 'embed')
-                      .map((attr) => attr.value)
-              )[0]!;
-            const change = (
-              part: OoxmlPart,
-              controlId: string,
-              drawingNodeId: string,
-              relationshipId: string,
-              name: string
-            ) => {
-              let result = op(part, {
-                op: 'setContentControlProperties',
-                controlId,
-                lock: 'unlocked',
-              });
-              result = op(result, { op: 'replaceDrawingResource', drawingNodeId, relationshipId });
-              result = op(result, {
-                op: 'setDrawingMetadata',
-                drawingNodeId,
-                title: name,
-                description: name,
-              });
-              return op(result, {
-                op: 'setContentControlProperties',
-                controlId,
-                lock: 'sdtContentLocked',
-              });
-            };
-            const wordA = change(
-              original.part,
-              first.id,
-              drawA.id,
-              relation(a.part, drawA.id),
-              'Alpha'
-            );
-            const wordB = change(
-              original.part,
-              second.id,
-              drawB.id,
-              relation(b.part, drawB.id),
-              'Beta'
-            );
-            expect(canonicalOoxmlFingerprint(a.part)).toBe(canonicalOoxmlFingerprint(wordA));
-            expect(canonicalOoxmlFingerprint(b.part)).toBe(canonicalOoxmlFingerprint(wordB));
-            expect(
-              peer.surface!.applyAutomationOps(
-                () => [{ op: 'insertText', paragraphId, offset: 1, text: ' peer' }],
-                { kind: 'body' },
-                [],
-                false,
-                true
-              ).rejected
-            ).toBe(false);
-            pair.reconnect(receiver);
-            await pair.settle();
-            const check = async (activeA: boolean, activeB: boolean, typed: boolean) => {
-              for (const editor of pair.editors) {
-                const current = snapshot(editor),
-                  index = buildBlockIndex(current.pkg);
-                let expected = original.part;
-                let selected: 'a' | 'b' | null = null;
-                if (conflict && activeA && activeB) {
-                  const rel = relation(current.part, drawA.id);
-                  expect([relation(a.part, drawA.id), relation(b.part, drawB.id)]).toContain(rel);
-                  selected = rel === relation(a.part, drawA.id) ? 'a' : 'b';
-                  expected = selected === 'a' ? wordA : wordB;
-                } else {
-                  if (activeA) expected = wordA;
-                  if (activeB)
-                    expected = change(
-                      expected,
-                      second.id,
-                      drawB.id,
-                      relation(b.part, drawB.id),
-                      'Beta'
-                    );
-                  selected = activeB ? 'b' : activeA ? 'a' : null;
-                }
-                if (typed)
-                  expected = op(expected, {
-                    op: 'insertText',
-                    paragraphId,
-                    offset: 1,
-                    text: ' peer',
-                  });
-                expect(canonicalOoxmlFingerprint(current.part)).toBe(
-                  canonicalOoxmlFingerprint(expected)
-                );
-                const payloads = new Map(original.payloads);
-                if (conflict) {
-                  if (selected)
-                    payloads.set(
-                      firstBlock.id,
-                      (selected === 'a' ? a : b).payloads.get(firstBlock.id)!
-                    );
-                } else {
-                  if (activeA) payloads.set(firstBlock.id, a.payloads.get(firstBlock.id)!);
-                  if (activeB) payloads.set(secondBlock.id, b.payloads.get(secondBlock.id)!);
-                }
-                expect([...current.payloads].sort(([x], [y]) => x.localeCompare(y))).toEqual(
-                  [...payloads].sort(([x], [y]) => x.localeCompare(y))
-                );
-                expect(current.media).toEqual(
-                  overlayMedia(original.media, [...(activeA ? [a] : []), ...(activeB ? [b] : [])])
-                );
-                for (const block of index.byId.values()) {
-                  const rel = relation(
-                    current.part,
-                    descendants(findNode(current.part, block.controlId)!).find(
-                      (node) => node.kind === 'drawing'
-                    )!.id
-                  );
-                  const resource = resolveImageRelationship(
-                    current.pkg.relationships.get(current.pkg.mainDocumentPart),
-                    current.pkg.mainDocumentPart,
-                    rel
-                  );
-                  expect(resource.mode).toBe('internal');
-                  if (resource.mode !== 'internal') throw Error('Image lost its native media');
-                  expect(resource.partName).toBe(block.payload.attributes.mediaPartName);
-                  const expectedBytes =
-                    block.payload.attributes.reference === 'asset:cat'
-                      ? png
-                      : block.payload.attributes.reference === 'asset:alpha'
-                        ? replacement
-                        : betaPng;
-                  expect(
-                    current.pkg.partBytes.get(resource.partName) ??
-                      current.pkg.partBytes.get(resource.partName.slice(1))
-                  ).toEqual(expectedBytes);
-                }
-              }
-            };
-            await check(true, true, true);
-            expect(actor.exec({ type: 'undo' }).ok).toBe(true);
-            await pair.settle();
-            await check(false, true, true);
-            expect(actor.exec({ type: 'redo' }).ok).toBe(true);
-            await pair.settle();
-            await check(true, true, true);
-            expect(peer.exec({ type: 'undo' }).ok).toBe(true);
-            await pair.settle();
-            await check(true, true, false);
-            expect(peer.exec({ type: 'undo' }).ok).toBe(true);
-            await pair.settle();
-            await check(true, false, false);
-            expect(actor.exec({ type: 'undo' }).ok).toBe(true);
-            await pair.settle();
-            await check(false, false, false);
-            expect(peer.exec({ type: 'redo' }).ok).toBe(true);
-            await pair.settle();
-            await check(false, true, false);
-            expect(actor.exec({ type: 'redo' }).ok).toBe(true);
-            await pair.settle();
-            await check(true, true, false);
-            expect(peer.exec({ type: 'redo' }).ok).toBe(true);
-            await pair.settle();
-            await check(true, true, true);
-            const selectionOffset = 1;
-            peer.surface!.setSelection({
-              anchor: { paragraphId, offset: selectionOffset },
-              head: { paragraphId, offset: selectionOffset },
+for (const mode of ['resource', 'metadata', 'both'] as const)
+  for (const conflict of [false, true])
+    for (const clients of [
+      [41, 73],
+      [73, 41],
+    ] as const)
+      for (const writer of [0, 1] as const)
+        for (const receiver of [0, 1] as const)
+          test(`image replacements retain coherent native resources through both peer histories: ${mode}/conflict=${conflict}/${clients}/${writer}/${receiver}`, async () => {
+            const image = '[<code>![Cat](asset:cat "Photo")</code>](https://outer.test "Read")';
+            const seedTarget = `Lead. ${image} bridge ${image} Tail.`;
+            const changedImage = (name: string) =>
+              `[<code>![${mode === 'resource' ? 'Cat' : name}](${mode === 'metadata' ? 'asset:cat' : 'asset:' + name.toLowerCase()} "${mode === 'resource' ? 'Photo' : name}")</code>](https://outer.test "Read")`;
+            const alpha = changedImage('Alpha');
+            const beta = changedImage('Beta');
+            const seed = createDocxEditor({
+              container: document.createElement('div'),
+              imageDecodePort: decode,
+              document: docxFixture('<w:p><w:r><w:t>Keep.</w:t></w:r></w:p>'),
             });
-            await pair.settle();
-            const geometry = pair.editors.map((editor) =>
-              caretAt(editor.surface!.layout(), { paragraphId, offset: selectionOffset })
-            );
-            expect(geometry[0]).not.toBeNull();
-            expect(geometry[1]).not.toBeNull();
-            expect({ x: geometry[0]!.x, y: geometry[0]!.y }).toEqual({
-              x: geometry[1]!.x,
-              y: geometry[1]!.y,
-            });
-            const final = snapshot(actor),
-              updates = pair.documents.map((doc) => Y.encodeStateAsUpdate(doc));
-            for (const shared of [false, true]) {
-              const reopened = await createTwoEditorFixture({
-                ...fixture,
-                clientIds: undefined,
-                document: new Uint8Array(await actor.save()),
-                ...(shared ? { roomSnapshot: updates[writer] } : {}),
-              });
-              try {
-                await reopened.settle();
-                for (const editor of reopened.editors) {
-                  const current = snapshot(editor);
-                  expect(canonicalOoxmlFingerprint(current.part)).toBe(
-                    canonicalOoxmlFingerprint(final.part)
-                  );
-                  expect(current.media).toEqual(final.media);
-                  expect([...current.payloads].sort(([x], [y]) => x.localeCompare(y))).toEqual(
-                    [...final.payloads].sort(([x], [y]) => x.localeCompare(y))
-                  );
-                }
-              } finally {
-                reopened.destroy();
-              }
+            let bytes: Uint8Array;
+            try {
+              await apply(seed, seedTarget);
+              bytes = new Uint8Array(await seed.save());
+            } finally {
+              seed.destroy();
             }
-          } finally {
-            pair.destroy();
-          }
-        });
+            const fixture = {
+              ownedAttributes: true,
+              document: bytes,
+              clientIds: clients,
+              editor: { imageDecodePort: decode },
+            };
+            const pair = await createTwoEditorFixture(fixture);
+            try {
+              const actor = pair.editors[writer]!,
+                peer = pair.editors[1 - writer]!;
+              const original = snapshot(actor),
+                paragraphId = actor.surface!.session.paragraphIds()[0]!;
+              const controls = descendants(original.part.root).filter(
+                (node) => node.kind === 'contentControl'
+              );
+              const first = controls[0]!,
+                second = conflict ? first : controls[1]!;
+              const firstBlock = [...buildBlockIndex(original.pkg).byId.values()].find(
+                (block) => block.controlId === first.id
+              )!;
+              const secondBlock = [...buildBlockIndex(original.pkg).byId.values()].find(
+                (block) => block.controlId === second.id
+              )!;
+              const drawA = descendants(first).find((node) => node.kind === 'drawing')!,
+                drawB = descendants(second).find((node) => node.kind === 'drawing')!;
+              const targetA = `Lead. ${alpha} bridge ${image} Tail.`,
+                targetB = conflict
+                  ? `Lead. ${beta} bridge ${image} Tail.`
+                  : `Lead. ${image} bridge ${beta} Tail.`;
+              pair.pause();
+              expect((await apply(actor, targetA)).resolved).toEqual(
+                mode === 'metadata' ? [] : ['asset:alpha']
+              );
+              const a = snapshot(actor);
+              expect((await apply(peer, targetB)).resolved).toEqual(
+                mode === 'metadata' ? [] : ['asset:beta']
+              );
+              const b = snapshot(peer);
+              const relation = (part: OoxmlPart, id: string) =>
+                descendants(findNode(part, id)!).flatMap((node) =>
+                  node.kind === 'textValue'
+                    ? []
+                    : node.attributes
+                        .filter((attr) => attr.localName === 'embed')
+                        .map((attr) => attr.value)
+                )[0]!;
+              const change = (
+                part: OoxmlPart,
+                controlId: string,
+                drawingNodeId: string,
+                relationshipId: string,
+                name: string
+              ) => {
+                let result = op(part, {
+                  op: 'setContentControlProperties',
+                  controlId,
+                  lock: 'unlocked',
+                });
+                if (mode !== 'metadata')
+                  result = op(result, {
+                    op: 'replaceDrawingResource',
+                    drawingNodeId,
+                    relationshipId,
+                  });
+                if (mode !== 'resource')
+                  result = op(result, {
+                    op: 'setDrawingMetadata',
+                    drawingNodeId,
+                    title: name,
+                    description: name,
+                  });
+                return op(result, {
+                  op: 'setContentControlProperties',
+                  controlId,
+                  lock: 'sdtContentLocked',
+                });
+              };
+              const wordA = change(
+                original.part,
+                first.id,
+                drawA.id,
+                relation(a.part, drawA.id),
+                'Alpha'
+              );
+              const wordB = change(
+                original.part,
+                second.id,
+                drawB.id,
+                relation(b.part, drawB.id),
+                'Beta'
+              );
+              expect(canonicalOoxmlFingerprint(a.part)).toBe(canonicalOoxmlFingerprint(wordA));
+              expect(canonicalOoxmlFingerprint(b.part)).toBe(canonicalOoxmlFingerprint(wordB));
+              expect(
+                peer.surface!.applyAutomationOps(
+                  () => [{ op: 'insertText', paragraphId, offset: 1, text: ' peer' }],
+                  { kind: 'body' },
+                  [],
+                  false,
+                  true
+                ).rejected
+              ).toBe(false);
+              pair.reconnect(receiver);
+              await pair.settle();
+              const check = async (activeA: boolean, activeB: boolean, typed: boolean) => {
+                for (const editor of pair.editors) {
+                  const current = snapshot(editor),
+                    index = buildBlockIndex(current.pkg);
+                  let expected = original.part;
+                  let selected: 'a' | 'b' | null = null;
+                  if (conflict && activeA && activeB) {
+                    const rel = relation(current.part, drawA.id);
+                    expect([relation(a.part, drawA.id), relation(b.part, drawB.id)]).toContain(rel);
+                    selected =
+                      mode === 'metadata'
+                        ? (
+                            descendants(findNode(current.part, drawA.id)!).find(
+                              (node) => node.kind === 'drawingDocPr'
+                            ) as Exclude<OoxmlNode, { kind: 'textValue' }>
+                          ).attributes.find((attribute) => attribute.localName === 'title')
+                            ?.value === 'Alpha'
+                          ? 'a'
+                          : 'b'
+                        : rel === relation(a.part, drawA.id)
+                          ? 'a'
+                          : 'b';
+                    expected = selected === 'a' ? wordA : wordB;
+                  } else {
+                    if (activeA) expected = wordA;
+                    if (activeB)
+                      expected = change(
+                        expected,
+                        second.id,
+                        drawB.id,
+                        relation(b.part, drawB.id),
+                        'Beta'
+                      );
+                    selected = activeB ? 'b' : activeA ? 'a' : null;
+                  }
+                  if (typed)
+                    expected = op(expected, {
+                      op: 'insertText',
+                      paragraphId,
+                      offset: 1,
+                      text: ' peer',
+                    });
+                  expect(canonicalOoxmlFingerprint(current.part)).toBe(
+                    canonicalOoxmlFingerprint(expected)
+                  );
+                  const payloads = new Map(original.payloads);
+                  if (conflict) {
+                    if (selected)
+                      payloads.set(
+                        firstBlock.id,
+                        (selected === 'a' ? a : b).payloads.get(firstBlock.id)!
+                      );
+                  } else {
+                    if (activeA) payloads.set(firstBlock.id, a.payloads.get(firstBlock.id)!);
+                    if (activeB) payloads.set(secondBlock.id, b.payloads.get(secondBlock.id)!);
+                  }
+                  expect([...current.payloads].sort(([x], [y]) => x.localeCompare(y))).toEqual(
+                    [...payloads].sort(([x], [y]) => x.localeCompare(y))
+                  );
+                  expect(current.media).toEqual(
+                    overlayMedia(original.media, [...(activeA ? [a] : []), ...(activeB ? [b] : [])])
+                  );
+                  for (const block of index.byId.values()) {
+                    const rel = relation(
+                      current.part,
+                      descendants(findNode(current.part, block.controlId)!).find(
+                        (node) => node.kind === 'drawing'
+                      )!.id
+                    );
+                    const resource = resolveImageRelationship(
+                      current.pkg.relationships.get(current.pkg.mainDocumentPart),
+                      current.pkg.mainDocumentPart,
+                      rel
+                    );
+                    expect(resource.mode).toBe('internal');
+                    if (resource.mode !== 'internal') throw Error('Image lost its native media');
+                    const mediaPartName = block.payload.attributes.mediaPartName;
+                    if (typeof mediaPartName !== 'string') throw Error('Missing image media path');
+                    expect(resource.partName).toBe(mediaPartName);
+                    const expectedBytes =
+                      block.payload.attributes.reference === 'asset:cat'
+                        ? png
+                        : block.payload.attributes.reference === 'asset:alpha'
+                          ? replacement
+                          : betaPng;
+                    expect(
+                      current.pkg.partBytes.get(mediaPartName) ??
+                        current.pkg.partBytes.get(mediaPartName.slice(1))
+                    ).toEqual(expectedBytes);
+                  }
+                }
+              };
+              await check(true, true, true);
+              expect(actor.exec({ type: 'undo' }).ok).toBe(true);
+              await pair.settle();
+              await check(false, true, true);
+              expect(actor.exec({ type: 'redo' }).ok).toBe(true);
+              await pair.settle();
+              await check(true, true, true);
+              expect(peer.exec({ type: 'undo' }).ok).toBe(true);
+              await pair.settle();
+              await check(true, true, false);
+              expect(peer.exec({ type: 'undo' }).ok).toBe(true);
+              await pair.settle();
+              await check(true, false, false);
+              expect(actor.exec({ type: 'undo' }).ok).toBe(true);
+              await pair.settle();
+              await check(false, false, false);
+              expect(peer.exec({ type: 'redo' }).ok).toBe(true);
+              await pair.settle();
+              await check(false, true, false);
+              expect(actor.exec({ type: 'redo' }).ok).toBe(true);
+              await pair.settle();
+              await check(true, true, false);
+              expect(peer.exec({ type: 'redo' }).ok).toBe(true);
+              await pair.settle();
+              await check(true, true, true);
+              const selectionOffset = 1;
+              peer.surface!.setSelection({
+                anchor: { paragraphId, offset: selectionOffset },
+                head: { paragraphId, offset: selectionOffset },
+              });
+              await pair.settle();
+              const geometry = pair.editors.map((editor) =>
+                caretAt(editor.surface!.layout(), { paragraphId, offset: selectionOffset })
+              );
+              expect(geometry[0]).not.toBeNull();
+              expect(geometry[1]).not.toBeNull();
+              expect({ x: geometry[0]!.x, y: geometry[0]!.y }).toEqual({
+                x: geometry[1]!.x,
+                y: geometry[1]!.y,
+              });
+              const remote = pair.rooms[writer]!.session.remoteSelections().find(
+                (selection) => selection.actorId === (writer === 0 ? 'bob' : 'alice')
+              );
+              expect(remote?.head.nodeId).toBe(paragraphId);
+              expect(remote?.head.offset).toBe(selectionOffset);
+              const final = snapshot(actor),
+                updates = pair.documents.map((doc) => Y.encodeStateAsUpdate(doc));
+              for (const shared of [false, true]) {
+                const reopened = await createTwoEditorFixture({
+                  ...fixture,
+                  clientIds: undefined,
+                  document: new Uint8Array(await actor.save()),
+                  ...(shared ? { roomSnapshot: updates[writer] } : {}),
+                });
+                try {
+                  await reopened.settle();
+                  for (const editor of reopened.editors) {
+                    const current = snapshot(editor);
+                    expect(canonicalOoxmlFingerprint(current.part)).toBe(
+                      canonicalOoxmlFingerprint(final.part)
+                    );
+                    expect(current.media).toEqual(final.media);
+                    expect([...current.payloads].sort(([x], [y]) => x.localeCompare(y))).toEqual(
+                      [...final.payloads].sort(([x], [y]) => x.localeCompare(y))
+                    );
+                  }
+                } finally {
+                  reopened.destroy();
+                }
+              }
+            } finally {
+              pair.destroy();
+            }
+          });
+
+test('shared image replacement requires owned history and refuses before native or room writes', async () => {
+  const seed = createDocxEditor({
+    container: document.createElement('div'),
+    imageDecodePort: decode,
+    document: docxFixture('<w:p><w:r><w:t>Keep.</w:t></w:r></w:p>'),
+  });
+  let documentBytes: Uint8Array;
+  try {
+    await apply(seed, 'Keep. ![Cat](asset:cat "Photo") End.');
+    documentBytes = new Uint8Array(await seed.save());
+  } finally {
+    seed.destroy();
+  }
+  const pair = await createTwoEditorFixture({
+    document: documentBytes,
+    editor: { imageDecodePort: decode },
+  });
+  try {
+    const actor = pair.editors[0]!;
+    const planned = await plan(actor, 'Keep. ![Dog](asset:cat "Changed") End.');
+    const before = actor.surface!.session.currentPackage();
+    const rooms = pair.documents.map((doc) => Y.encodeStateAsUpdate(doc));
+    const result = applyDirectPlan(actor, planned, context);
+    expect(result.success).toBe(false);
+    expect(actor.surface!.session.currentPackage()).toBe(before);
+    await pair.settle();
+    expect(pair.documents.map((doc) => Y.encodeStateAsUpdate(doc))).toEqual(rooms);
+    for (const editor of pair.editors) {
+      expect(canonicalOoxmlFingerprint(editor.surface!.session.part())).toBe(
+        canonicalOoxmlFingerprint(before.parts.get(before.mainDocumentPart)!)
+      );
+      expect(media(editor.surface!.session.currentPackage())).toEqual(media(before));
+    }
+  } finally {
+    pair.destroy();
+  }
+});

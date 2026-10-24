@@ -259,3 +259,135 @@ for (const mode of ['resource', 'metadata', 'both'] as const)
             editor.destroy();
           }
         });
+
+test('byte-identical replacement updates provenance without replacing native media or geometry', async () => {
+  const editor = createDocxEditor({
+    container: document.createElement('div'),
+    imageDecodePort: decode,
+    document: docxFixture('<w:p><w:r><w:t>Keep.</w:t></w:r></w:p>'),
+  });
+  try {
+    await apply(editor, 'Keep. ![Cat](asset:cat "Photo") End.');
+    const before = editor.surface!.session.currentPackage();
+    const word = canonicalOoxmlFingerprint(editor.surface!.session.part());
+    const block = [...buildBlockIndex(before).byId.values()][0]!;
+    const target = 'Keep. ![Cat](asset:alias "Photo") End.';
+    const planned = await plan(editor, target);
+    const prepared = await prepareInlineImageResources(
+      planned,
+      async () => ({
+        bytes: png,
+        mime: 'image/png',
+        widthPoints: 400,
+        heightPoints: 300,
+      }),
+      decode
+    );
+    if (!prepared.success) throw Error(prepared.error);
+    expect(applyDirectPlan(editor, planned, { ...context, images: prepared.images }).success).toBe(
+      true
+    );
+    const after = editor.surface!.session.currentPackage();
+    const updated = buildBlockIndex(after).byId.get(block.id)!;
+    expect(canonicalOoxmlFingerprint(editor.surface!.session.part())).toBe(word);
+    expect(after.relationships).toEqual(before.relationships);
+    expect(media(after)).toEqual(media(before));
+    expect(updated.payload.attributes).toEqual({
+      ...block.payload.attributes,
+      reference: 'asset:alias',
+    });
+    expect((await plan(editor, target)).operations).toEqual([]);
+    expect(editor.exec({ type: 'undo' }).ok).toBe(true);
+    expect(
+      buildBlockIndex(editor.surface!.session.currentPackage()).byId.get(block.id)?.payload
+    ).toEqual(block.payload);
+    expect(editor.exec({ type: 'redo' }).ok).toBe(true);
+    const loaded = readOoxmlPackage(new Uint8Array(await editor.save()));
+    if (!loaded.ok) throw Error(loaded.reason);
+    expect(media(loaded.package)).toEqual(media(before));
+    expect(buildBlockIndex(loaded.package).byId.get(block.id)?.payload).toEqual(updated.payload);
+    expect(
+      canonicalOoxmlFingerprint(loaded.package.parts.get(loaded.package.mainDocumentPart)!)
+    ).toBe(word);
+  } finally {
+    editor.destroy();
+  }
+});
+
+test('image replacement refuses missing preparation, another plan handle, and stale native revisions atomically', async () => {
+  const editor = createDocxEditor({
+    container: document.createElement('div'),
+    imageDecodePort: decode,
+    document: docxFixture('<w:p><w:r><w:t>Keep.</w:t></w:r></w:p>'),
+  });
+  try {
+    await apply(editor, 'Keep. ![Cat](asset:cat "Photo") End.');
+    const target = 'Keep. ![Dog](asset:dog "Changed") End.';
+    const planned = await plan(editor, target);
+    const other = await plan(editor, target.replace('Changed', 'Other'));
+    const prepared = await prepareInlineImageResources(
+      other,
+      async () => ({ bytes: replacement, mime: 'image/png' }),
+      decode
+    );
+    if (!prepared.success) throw Error(prepared.error);
+    const before = editor.surface!.session.currentPackage();
+    for (const images of [undefined, prepared.images]) {
+      const result = applyDirectPlan(editor, planned, { ...context, images });
+      expect(result.success).toBe(false);
+      expect(editor.surface!.session.currentPackage()).toBe(before);
+    }
+    const paragraphId = editor.surface!.session.paragraphIds()[0]!;
+    expect(
+      editor.surface!.applyAutomationOps(
+        () => [{ op: 'insertText', paragraphId, offset: 0, text: 'Peer ' }],
+        { kind: 'body' },
+        [],
+        false,
+        true
+      ).rejected
+    ).toBe(false);
+    const changed = editor.surface!.session.currentPackage();
+    expect(applyDirectPlan(editor, planned, context).success).toBe(false);
+    expect(editor.surface!.session.currentPackage()).toBe(changed);
+  } finally {
+    editor.destroy();
+  }
+});
+
+test('image plan codec rejects malformed resource intentions and removes exact no-ops', async () => {
+  const editor = createDocxEditor({
+    container: document.createElement('div'),
+    imageDecodePort: decode,
+    document: docxFixture('<w:p><w:r><w:t>Keep.</w:t></w:r></w:p>'),
+  });
+  try {
+    await apply(editor, 'Keep. ![Cat](asset:cat "Photo") End.');
+    const planned = await plan(editor, 'Keep. ![Dog](asset:dog "Changed") End.');
+    const raw = serializeEditPlan(planned);
+    for (const patch of [
+      { resource: { reference: '', alt: 'Dog', title: null } },
+      { resource: { reference: 'asset:dog', alt: '\u0000', title: null } },
+      { resource: { reference: 'asset:dog', alt: 'Dog', title: '\ud800' } },
+      { resource: { reference: 'asset:dog', alt: 'Dog', title: null, widthPoints: 99 } },
+      { blockId: 'wrong-owner' },
+      { drawingNodeId: '' },
+    ]) {
+      const value = JSON.parse(raw);
+      Object.assign(
+        value.operations.find((op: { kind: string }) => op.kind === 'inline-image'),
+        patch
+      );
+      expect(decodeEditPlan(JSON.stringify(value)).success).toBe(false);
+    }
+    const value = JSON.parse(raw);
+    const image = value.operations.find((op: { kind: string }) => op.kind === 'inline-image');
+    const { reference, alt, title } = image.before.attributes;
+    image.resource = { reference, alt, title };
+    const decoded = decodeEditPlan(JSON.stringify(value));
+    expect(decoded.success).toBe(true);
+    if (decoded.success) expect(decoded.plan.operations).toEqual([]);
+  } finally {
+    editor.destroy();
+  }
+});

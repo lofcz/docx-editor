@@ -410,6 +410,9 @@ export function childElements(node: Extract<XmlNode, {
 }>[];
 
 // @public
+export function cleanupOrphanImageMedia(pkg: OoxmlPackage, ownerPart: string, previousMediaPart: string | null, previousRelationshipId: string | null): OoxmlPackage;
+
+// @public
 export interface ClockPort {
     // (undocumented)
     now(): number;

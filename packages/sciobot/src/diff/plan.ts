@@ -501,7 +501,15 @@ function withoutNoop(edit: CanonicalEdit): CanonicalEdit | null {
     }
     case 'siblings':
       return edit.removedIds.length || edit.inserted.length ? edit : null;
-    case 'inline-image':
+    case 'inline-image': {
+      const before = edit.before.attributes,
+        after = edit.resource;
+      return before.reference === after.reference &&
+        before.alt === after.alt &&
+        before.title === after.title
+        ? null
+        : edit;
+    }
     case 'inline-atoms':
     case 'table':
     case 'insert-row':

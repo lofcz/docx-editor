@@ -77,6 +77,9 @@ export function groupReviewFieldBudget(before: OoxmlPackage, after: OoxmlPackage
     for (const records of before.relationships.values()) count += 8 * records.length;
     for (const records of after.relationships.values()) count += 8 * records.length;
   }
+  if (before.partBytes !== after.partBytes)
+    for (const name of new Set([...before.partBytes.keys(), ...after.partBytes.keys()]))
+      if (before.partBytes.get(name) !== after.partBytes.get(name)) count += 8;
   if (before.contentTypes !== after.contentTypes)
     count +=
       8 *

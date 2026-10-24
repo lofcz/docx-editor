@@ -1,3 +1,4 @@
+import { directImageHistory } from './direct-image-history';
 import { completeImageReplacement } from './direct-image-replacement';
 import { cellAtomBindings, insertedAtomsOfEdit } from '../diff/inserted-cell-atoms';
 import { completeInlineAtomPayloads } from '../native/inline-atom-payloads';
@@ -934,10 +935,10 @@ export function applyDirectPlan(
       code: 'unsupported-operation',
       error: 'Prepare native payload storage before sharing inline atom births.',
     };
-  let lowering: Lowering;
+  let lowering: Lowering, candidate: OoxmlPackage;
   try {
     lowering = lowerDirectPlan(pkg, plan, context.images, context.contentLockPolicy);
-    previewLowering(pkg, lowering, context.contentLockPolicy);
+    candidate = previewLowering(pkg, lowering, context.contentLockPolicy);
   } catch (error) {
     return failure(error);
   }
@@ -955,13 +956,16 @@ export function applyDirectPlan(
         ]
       : undefined;
   try {
-    const result = surface.applyAutomationOps(
-      (relate) => stagedOps(lowering.staged, relate),
-      { kind: 'body' },
-      complete,
-      false,
-      true,
-      'after'
+    const commit = directImageHistory(editor, plan, pkg, candidate);
+    const result = commit(() =>
+      surface.applyAutomationOps(
+        (relate) => stagedOps(lowering.staged, relate),
+        { kind: 'body' },
+        complete,
+        false,
+        true,
+        'after'
+      )
     );
     if (result.rejected || !result.committed)
       return {
