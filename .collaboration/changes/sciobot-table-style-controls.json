@@ -1,0 +1,15 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Private manual merge, existing-grid unmerge and table appearance controls were not connected.",
+  "after": "Private controls validate native operations and execute one native surface table transaction per gesture. Original-grid unmerge retains unequal slots and moved paragraph owners. Appearance controls retain native selection and unrelated content.",
+  "reason": "Existing native operations, editing gates, selection, history, Word properties and shared formats remain authoritative. No published API or protocol fields change. Real-session verification uses test-only transport under the EigenPal Pro License.",
+  "tests": [
+    "packages/sciobot/src/chrome/table-merges.test.ts",
+    "packages/sciobot/src/chrome/table-appearance.test.ts",
+    "packages/sciobot/src/chrome/table-style-collaboration.test.ts",
+    "e2e/sciobot-table-style.spec.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

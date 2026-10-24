@@ -135,3 +135,6 @@ export * from './chrome/tables';
 export * from './chrome/table-rows';
 
 export * from './chrome/table-columns';
+
+export * from './chrome/table-merges';
+export * from './chrome/table-appearance';

@@ -1,3 +1,6 @@
+import { createTableMergeToolbar } from '../../src/chrome/table-merges';
+import { createTableAppearanceToolbar } from '../../src/chrome/table-appearance';
+import { selectTableCells } from '../support/manual-table-controls';
 // Browser-only verification. The transport uses the EigenPal Pro License.
 import { manualColumnDocument, columnShape } from '../support/manual-table-columns';
 import { createTableColumnToolbar } from '../../src/chrome/table-columns';
@@ -25,6 +28,7 @@ const fonts = await loadDefaultFonts({ families: ['Calibri'] });
 if (fonts.failures.length) throw new Error('Packaged fonts failed.');
 const parameters = new URL(globalThis.location.href).searchParams;
 const rowMode = parameters.has('rows');
+const styleMode = parameters.has('styles');
 const columnMode = parameters.has('columns');
 const columnMerge =
   parameters.get('merge') === 'none'
@@ -34,13 +38,21 @@ const columnMerge =
       : 'horizontal';
 const pair = await createTwoEditorFixture({
   editor: { fonts, modules: rowMode ? [SCIOBOT_NATIVE_REVIEW_MODULE] : [] },
-  document: columnMode
-    ? manualColumnDocument(columnMerge, parameters.get('grid') !== '0')
-    : rowMode
-      ? manualTableDocument()
-      : docxFixture(
-          '<w:p><w:r><w:t>Alpha beta</w:t></w:r></w:p><w:p><w:r><w:t>Tail</w:t></w:r></w:p>'
-        ),
+  document: styleMode
+    ? manualColumnDocument(
+        parameters.get('merge') === 'vertical'
+          ? 'vertical'
+          : parameters.get('merge') === 'horizontal'
+            ? 'horizontal'
+            : 'none'
+      )
+    : columnMode
+      ? manualColumnDocument(columnMerge, parameters.get('grid') !== '0')
+      : rowMode
+        ? manualTableDocument()
+        : docxFixture(
+            '<w:p><w:r><w:t>Alpha beta</w:t></w:r></w:p><w:p><w:r><w:t>Tail</w:t></w:r></w:p>'
+          ),
 });
 const recovered = parameters.has('recovered') ? await recoverFirstTableCellSource(pair) : null;
 const controls = pair.editors.map((editor, peer) => {
@@ -49,19 +61,29 @@ const controls = pair.editors.map((editor, peer) => {
   const grid = createTableInsertionGrid(editor),
     stop = installTableNavigation(editor);
   const columns = columnMode ? createTableColumnToolbar(editor) : null;
+  const mergeControls = styleMode ? createTableMergeToolbar(editor) : null;
+  const appearance = styleMode ? createTableAppearanceToolbar(editor) : null;
   const rows = rowMode ? createTableRowToolbar(editor) : null;
   pane.append(grid.element, pair.containers[peer]!);
   if (rows) pane.prepend(rows.element);
+  if (mergeControls) pane.prepend(mergeControls.element);
+  if (appearance) pane.prepend(appearance.element);
   if (columns) pane.prepend(columns.element);
   document.body.append(pane);
   return () => {
     grid.dispose();
     rows?.dispose();
+    mergeControls?.dispose();
+    appearance?.dispose();
     columns?.dispose();
     stop();
   };
 });
 const api = {
+  selectCells(rows: [number, number], columns: [number, number]) {
+    selectTableCells(pair.editors[0]!, rows, columns);
+    pair.editors[0]!.surface!.focus();
+  },
   columns(peer = 0) {
     return columnShape(pair.editors[peer]!.surface!.session.part());
   },
@@ -102,6 +124,7 @@ const api = {
       tables: tables.map((id) => ({ id, cells: nativeTableCellIds(editor, id) })),
       anchor: nativeTableAnchor(editor),
       selection: s.state().selection,
+      cellSelection: s.state().cellSelection,
       paragraphs: s.session
         .paragraphIds()
         .map((id) => ({ id, text: paragraphTextOf(s.session.part(), id) })),

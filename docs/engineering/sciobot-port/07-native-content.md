@@ -254,7 +254,7 @@ The final integration command `bun test --timeout 30000 --preload ./scripts/test
 
 ## N13
 
-- [ ] Connect manual table merge and split controls
+- [x] Connect manual table merge and split controls
 
 **Depends:** [N09](07-native-content.md#n09), [N15](07-native-content.md#n15), [N16](07-native-content.md#n16), [V01](11-verification.md#v01)
 
@@ -268,11 +268,13 @@ The final integration command `bun test --timeout 30000 --preload ./scripts/test
 
 **Check:** Add a focused Chromium case with real input and native selection where applicable. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** codex solo, branch `codex/react-block-proof`. **Evidence:** Baseline `e479455c`, completed with N14 in one private table-controls batch. `table-merges.ts` connects native rectangle merging and existing-grid unmerge. Unmerge derives the complete visual cell extent through the native selection model and executes the existing native split operation. Unequal original columns keep their boundaries and widths. Moved paragraph identities and content remain in the first restored cell, matching the captured application unmerge semantics. Explicit partial overlaps across an existing merged cell refuse atomically with `cells-not-rectangle`. The toolbar exposes native refusal reasons. Viewing refuses a valid unmerge. Suggesting refuses structural changes without changing the mode.
+
+The shared validator uses native validation without allocating a last-operation preview. Execution uses `surface.applyTableCommandPlan`, which retains native mode/lock gates, story scope, selection and one gesture per undo step. No published API or shared operation changes. Local cases cover horizontal, vertical and rectangle merges, unequal-grid unmerge, exact full-document undo/redo and save/reopen, invalid overlaps, and a viewing editor. Six real-session cases cover both client orders, offline edits in moved paragraphs, native node identity, independent own/peer history, reconnect, changed-grid remote carets/selections, existing-grid split, deletion while a peer edits the moved text, and exact restoration/export. The final combined command `bun test --timeout 30000 --preload ./scripts/test/preload-dom.ts packages/sciobot/src/chrome/table-merges.test.ts packages/sciobot/src/chrome/table-appearance.test.ts packages/sciobot/src/chrome/table-style-collaboration.test.ts packages/sciobot/src/diff/table-grid-split-collaboration.test.ts packages/sciobot/src/diff/table-merge-index-collaboration.test.ts packages/sciobot/src/diff/table-format-collaboration.test.ts packages/sciobot/src/review/owned-presence-shared.test.ts` passes 36 cases and 7596 assertions across seven files (`/tmp/sciobot-table-style-integration.log`). It includes earlier payload/index/property and owned AI presence regressions. `bunx playwright test --config e2e/sciobot-table-style.config.ts` passes seven cases (`/tmp/sciobot-table-style-browser-final.log`): three merge/split actions, three appearance cases, and a real native rectangle drag consumed by the merge control. Real typing, exact history and canonical Word output remain required, with original deadlines unchanged. Private types pass 2336 files; browser types pass 1907 files. The private build verifies 303 modules and the external-core/production-import boundary. Compatibility: `.collaboration/changes/sciobot-table-style-controls.json`. This private adapter change requires no new published API snapshot or package release. Evaluation transport remains test-only under the EigenPal Pro License. The backlog audit retains its external application-source drift; no capture command runs.
 
 ## N14
 
-- [ ] Connect manual table appearance controls
+- [x] Connect manual table appearance controls
 
 **Depends:** [N09](07-native-content.md#n09), [N17](07-native-content.md#n17), [V01](11-verification.md#v01)
 
@@ -286,7 +288,9 @@ The final integration command `bun test --timeout 30000 --preload ./scripts/test
 
 **Check:** Add a focused Chromium case with real input and native selection where applicable. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** codex solo, branch `codex/react-block-proof`. **Evidence:** Baseline `e479455c`, completed with N13. `table-appearance.ts` connects selected-cell RGB background/clear, selected-column widths, exact row heights, all/clear borders and header-row count. Native points convert explicitly to twips in the toolbar. Width changes retain other columns and recalculate merged cell widths through the existing native operation. Native transactions retain selection, neighboring paragraph subtrees, imported properties and one-step history. Invalid values and a viewing editor refuse before writes. No public API, shared fields, codecs or document tuple changes.
+
+Local cases cover unmerged, horizontal-merged and vertical-merged tables with nonuniform imported widths. Independent native-property assertions require widths `1200/2100/2400`, background `1A2B3C`, exact row height `720`, four single borders with size `8` and color `123456`, and two header rows. Every original paragraph subtree stays exact. Full canonical fingerprints verify each undo and redo, followed by exact Word save/reopen. Six real-session cases cover both client orders, offline peer text during all five actions, independent own/peer history, changed-layout remote caret/range geometry, reconnect, deletion of the affected row during peer typing, exact restoration and native export. The shared integration command and browser command recorded in N13 pass 36 native cases/7596 assertions and seven Chromium cases. Three Chromium appearance cases use actual color/number inputs, pointer actions, native typing, exact per-gesture history, and Word output for all three merge fixtures. Private/browser types pass 2336/1907 files. The private build verifies 303 modules, external core, and production imports. Compatibility: `.collaboration/changes/sciobot-table-style-controls.json`. Existing native property operations and N17 supply the engine behavior; this private chrome needs no new published API snapshot or package release. Evaluation transport remains test-only under the EigenPal Pro License. The backlog audit retains external application-source drift; no capture command runs.
 
 ## N15
 
