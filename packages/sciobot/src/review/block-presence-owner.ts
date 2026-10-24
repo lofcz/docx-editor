@@ -1,3 +1,5 @@
+import { inlinePresenceSource } from './inline-presence-native';
+import { removableInlinePayload } from '../diff/inline-removal';
 import { sha256FontBytes } from '@docx-editor.dev/core/layout';
 import {
   canonicalOoxmlFingerprint,
@@ -26,7 +28,7 @@ const fail = (
   error: string,
   code: NativeEditFailure['code'] = 'invalid-document'
 ): NativeEditFailure => ({ success: false, error, code });
-function fingerprint(node: OoxmlNode): string | null {
+function fingerprint(node: OoxmlNode, inline = false): string | null {
   const pending = [{ node, depth: 0 }];
   let nodes = 0,
     bytes = 0;
@@ -44,13 +46,16 @@ function fingerprint(node: OoxmlNode): string | null {
     }
     if (bytes > BLOCK_PRESENCE_LIMITS.maxBytes) return null;
   }
-  const encoded = new TextEncoder().encode(canonicalOoxmlFingerprint(node));
+  const encoded = new TextEncoder().encode(
+    canonicalOoxmlFingerprint(inline ? inlinePresenceSource(node) : node)
+  );
   return encoded.length <= BLOCK_PRESENCE_LIMITS.maxBytes ? sha256FontBytes(encoded) : null;
 }
 /** Bind stable block IDs to this load's exact controls and bounded semantic ownership proofs. */
 export function readPresenceOwners(
   pkg: OoxmlPackage,
-  roots: readonly string[]
+  roots: readonly string[],
+  allowInline = false
 ):
   | { readonly success: true; readonly owners: ReadonlyMap<string, PresenceOwner> }
   | NativeEditFailure {
@@ -72,8 +77,13 @@ export function readPresenceOwners(
         'Presence ownership cannot absorb pending native revisions.',
         'unsupported-operation'
       );
-    if (contentControlLevelOf(root) !== 'block')
-      return fail('Presence proposals require a block content control.', 'unsupported-operation');
+    const level = contentControlLevelOf(root);
+    const inline = level === 'inline' || level === 'empty';
+    if (level !== 'block' && !(allowInline && inline && removableInlinePayload(owner.payload)))
+      return fail(
+        'Presence proposals require a supported native content control.',
+        'unsupported-operation'
+      );
     const members: BlockPresenceMember[] = [];
     for (const node of [
       root,
@@ -107,7 +117,9 @@ export function readPresenceOwners(
     }
     if (!members.some((member) => member.payload.id === blockId))
       return fail('The presence root payload is missing.');
-    const nativeFingerprint = fingerprint(root);
+    const nativeFingerprint = fingerprint(
+      inline && allowInline ? inlinePresenceSource(root) : root
+    );
     if (!nativeFingerprint)
       return fail('The presence subtree exceeds its native proof limits.', 'unsupported-operation');
     owners.set(blockId, {

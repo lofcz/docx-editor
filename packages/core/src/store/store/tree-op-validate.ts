@@ -828,9 +828,9 @@ export function validateTreeOp(
         return 'invalid-property-value';
       }
       if (typeof op.text !== 'string' || op.text.length === 0) return 'invalid-property-value';
-      // Inside another control's content the wrapper nests; inside a LINK it is
-      // not a shape Word writes — reuse the link-nesting refusal.
-      if (rangeTouchesHyperlink(paragraph, op.offset, op.offset)) {
+      // Tracked insertion retains the native link as its parent. Untracked insertion
+      // retains the existing explicit link-ownership contract.
+      if (!op.revision && rangeTouchesHyperlink(paragraph, op.offset, op.offset)) {
         return 'invalid-property-value';
       }
       if (op.dataBinding !== undefined && !isAuthorableDataBinding(op.dataBinding)) {

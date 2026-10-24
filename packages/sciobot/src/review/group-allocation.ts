@@ -1,4 +1,5 @@
 import { decodeBlockPresenceRecord } from './block-presence-schema';
+import { readInlinePresenceExtension } from './inline-presence-native';
 import {
   runWithRevisionIdReservations,
   type OoxmlPackage,
@@ -30,8 +31,15 @@ export function reviewGroupRevisionReservations(
   if (properties.status === 'ready')
     for (const entry of properties.retainedRecords.values()) {
       if (entry.decoded.status !== 'supported') {
-        // Presence records own block existence and carry no native Word revision addresses.
-        if (decodeBlockPresenceRecord(entry.raw).status === 'supported') continue;
+        const presence = decodeBlockPresenceRecord(entry.raw);
+        if (presence.status === 'supported') {
+          for (const owner of readInlinePresenceExtension(presence.value)?.values() ?? []) {
+            const part = ids.get(owner.partName) ?? new Set<string>();
+            ids.set(owner.partName, part);
+            part.add(owner.revision.id);
+          }
+          continue;
+        }
         throw new Error('Unsupported property proposal version.');
       }
       for (const address of entry.decoded.value.nativeRevisions) {

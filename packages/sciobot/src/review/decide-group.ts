@@ -166,9 +166,14 @@ function commitGroupDecision(
               result = presence;
               return { committed: false, reason: result.error };
             }
-            if (group.native.length) {
+            if (group.native.length && !presence.nativeSiteNodeIds) {
               result = fail('Presence ownership cannot absorb native revisions.');
               return { committed: false, reason: result.error };
+            }
+            if (presence.nativeSiteNodeIds) {
+              const expected = expectedPropertySites.get(presence.partName) ?? new Set<string>();
+              for (const id of presence.nativeSiteNodeIds) expected.add(id);
+              expectedPropertySites.set(presence.partName, expected);
             }
             partOps.set(presence.partName, [
               ...(partOps.get(presence.partName) ?? []),

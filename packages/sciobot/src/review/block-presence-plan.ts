@@ -1,4 +1,11 @@
 import {
+  bindInlinePresenceNative,
+  inlinePresenceExtension,
+  readInlinePresenceExtension,
+  type BoundInlinePresenceNative,
+} from './inline-presence-native';
+import { contentControlLevelOf, findNode } from '@docx-editor.dev/core/store';
+import {
   contentControlsIn,
   contentControlPropertiesOf,
   isStoryPart,
@@ -40,13 +47,15 @@ export function createBlockPresenceRecord(
   before: OoxmlPackage,
   canonical: OoxmlPackage,
   intents: readonly BlockPresenceIntent[],
-  attribution: BlockPresenceAttribution
+  attribution: BlockPresenceAttribution,
+  options: { readonly nativeInline?: true } = {}
 ): { readonly success: true; readonly record: BlockPresenceRecord } | NativeEditFailure {
-  const copied = copyBoundedJson({ intents, attribution }, BLOCK_PRESENCE_LIMITS);
+  const copied = copyBoundedJson({ intents, attribution, options }, BLOCK_PRESENCE_LIMITS);
   if (!copied.ok) return fail(copied.reason);
   const data = copied.value as unknown as {
     intents: BlockPresenceIntent[];
     attribution: BlockPresenceAttribution;
+    options: { readonly nativeInline?: true };
   };
   if (
     !Array.isArray(data.intents) ||
@@ -79,9 +88,18 @@ export function createBlockPresenceRecord(
       intent.before.present === intent.after.present
     )
       return fail('Invalid presence intention.');
+  if (
+    !data.options ||
+    typeof data.options !== 'object' ||
+    Array.isArray(data.options) ||
+    Object.keys(data.options).some((key) => key !== 'nativeInline') ||
+    (data.options.nativeInline !== undefined && data.options.nativeInline !== true)
+  )
+    return fail('Invalid native presence options.');
   const current = readPresenceOwners(
     canonical,
-    data.intents.map((intent) => intent.blockId)
+    data.intents.map((intent) => intent.blockId),
+    data.options.nativeInline === true
   );
   if (!current.success) return current;
   const store = readPropertyReviewStore(before),
@@ -161,7 +179,11 @@ export function createBlockPresenceRecord(
         )
           return fail('An inserted block or payload identity already existed.', 'stale-revision');
     } else if (intent.before?.present === true && intent.after?.present === false) {
-      const original = readPresenceOwners(before, [intent.blockId]);
+      const original = readPresenceOwners(
+        before,
+        [intent.blockId],
+        data.options.nativeInline === true
+      );
       if (!original.success) return original;
       const source = original.owners.get(intent.blockId)!;
       if (
@@ -180,12 +202,32 @@ export function createBlockPresenceRecord(
       nativeFingerprint: owner.nativeFingerprint,
     });
   }
+  const native: BoundInlinePresenceNative[] = [];
+  try {
+    for (const block of blocks) {
+      const owner = current.owners.get(block.blockId)!;
+      const control = findNode(canonical.parts.get(owner.partName)!, owner.controlId)!;
+      if (contentControlLevelOf(control) !== 'block')
+        native.push(
+          bindInlinePresenceNative(
+            canonical,
+            block.blockId,
+            block.partName,
+            owner.controlId,
+            block.after.present ? 'ins' : 'del'
+          )
+        );
+    }
+  } catch (error) {
+    return fail(error instanceof Error ? error.message : String(error), 'unsupported-operation');
+  }
   const record: BlockPresenceRecord = {
-    schemaVersion: 2,
+    schemaVersion: native.length ? 3 : 2,
     executor: BLOCK_PRESENCE_EXECUTOR,
     ...data.attribution,
     predecessors: store.status === 'ready' ? [...store.records.keys()].sort() : [],
     blocks,
+    ...(native.length ? { extension: inlinePresenceExtension(native) } : {}),
   };
   try {
     const decoded = decodeBlockPresenceRecord(encodeBlockPresenceRecord(record));
@@ -205,6 +247,7 @@ export function bindBlockPresenceRecord(
       readonly success: true;
       readonly record: BlockPresenceRecord;
       readonly controlIds: ReadonlyMap<string, string>;
+      readonly nativeSites: ReadonlyMap<string, BoundInlinePresenceNative>;
     }
   | NativeEditFailure {
   let record: BlockPresenceRecord;
@@ -216,12 +259,20 @@ export function bindBlockPresenceRecord(
   } catch (error) {
     return fail(error instanceof Error ? error.message : String(error));
   }
+  let inline: ReturnType<typeof readInlinePresenceExtension>;
+  try {
+    inline = readInlinePresenceExtension(record);
+  } catch (error) {
+    return fail(error instanceof Error ? error.message : String(error));
+  }
   const current = readPresenceOwners(
     pkg,
-    record.blocks.map((block) => block.blockId)
+    record.blocks.map((block) => block.blockId),
+    inline !== null
   );
   if (!current.success) return current;
   const controlIds = new Map<string, string>();
+  const nativeSites = new Map<string, BoundInlinePresenceNative>();
   for (const block of record.blocks) {
     const owner = current.owners.get(block.blockId)!;
     if (
@@ -230,7 +281,28 @@ export function bindBlockPresenceRecord(
       jsonDataKey(owner.members) !== jsonDataKey(block.members)
     )
       return fail('A pending presence owner changed.', 'stale-revision');
+    const control = findNode(pkg.parts.get(owner.partName)!, owner.controlId)!;
+    if (contentControlLevelOf(control) !== 'block') {
+      const expected = inline?.get(block.blockId);
+      if (!expected) return fail('The inline presence native proof is missing.');
+      try {
+        nativeSites.set(
+          block.blockId,
+          bindInlinePresenceNative(
+            pkg,
+            block.blockId,
+            block.partName,
+            owner.controlId,
+            block.after.present ? 'ins' : 'del',
+            expected
+          )
+        );
+      } catch (error) {
+        return fail(error instanceof Error ? error.message : String(error), 'stale-revision');
+      }
+    } else if (inline?.has(block.blockId))
+      return fail('Inline native ownership cannot claim a block root.');
     controlIds.set(block.blockId, owner.controlId);
   }
-  return { success: true, record, controlIds };
+  return { success: true, record, controlIds, nativeSites };
 }

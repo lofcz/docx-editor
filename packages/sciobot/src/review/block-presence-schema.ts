@@ -23,9 +23,9 @@ export interface BlockPresenceChange {
   /** Native ownership proof, without copied Word content or canonical node IDs. */
   readonly nativeFingerprint: `sha256:${string}`;
 }
-/** Version two stays opaque to readers that only implement attribute/atomic proposals. */
+/** Version two owns blocks. Version three couples inline presence to native Word revisions. */
 export interface BlockPresenceRecord {
-  readonly schemaVersion: 2;
+  readonly schemaVersion: 2 | 3;
   readonly executor: typeof BLOCK_PRESENCE_EXECUTOR;
   readonly id: string;
   readonly author: string;
@@ -76,7 +76,7 @@ export function blockPresenceAttributionProblem(
 function problem(value: JsonValue): string | null {
   if (
     !object(value) ||
-    value.schemaVersion !== 2 ||
+    (value.schemaVersion !== 2 && value.schemaVersion !== 3) ||
     value.executor !== BLOCK_PRESENCE_EXECUTOR ||
     !keys(value, [
       'schemaVersion',
@@ -90,6 +90,8 @@ function problem(value: JsonValue): string | null {
     ])
   )
     return 'invalid-presence-schema';
+  const inline = object(value.extension) && Object.hasOwn(value.extension, 'nativeInline');
+  if ((value.schemaVersion === 3) !== inline) return 'invalid-inline-presence-version';
   const attribution = blockPresenceAttributionProblem(value.id, value.author, value.date);
   if (attribution) return attribution;
   if (
@@ -195,7 +197,14 @@ export function decodeBlockPresenceRecord(raw: string): BlockPresenceDecode {
     Number(value.schemaVersion) < 1
   )
     return { status: 'invalid', reason: 'invalid-presence-version-or-id' };
-  if (value.schemaVersion !== 2)
+  if (
+    value.schemaVersion !== 2 &&
+    !(
+      value.schemaVersion === 3 &&
+      object(value.extension) &&
+      Object.hasOwn(value.extension, 'nativeInline')
+    )
+  )
     return {
       status: 'unsupported-version',
       id: value.id,

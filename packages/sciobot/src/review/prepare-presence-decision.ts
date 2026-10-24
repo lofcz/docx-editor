@@ -23,6 +23,7 @@ export function preparePresenceDecision(
       readonly success: true;
       readonly partName: string;
       readonly ops: readonly TreeDocOp[];
+      readonly nativeSiteNodeIds?: readonly string[];
       readonly apply: (pkg: OoxmlPackage) => OoxmlPackage;
     }
   | NativeEditFailure {
@@ -44,20 +45,23 @@ export function preparePresenceDecision(
   const bound = bindBlockPresenceRecord(pkg, { ...decoded.value, blocks: [block] });
   if (!bound.success) return bound;
   const present = (decision === 'accept' ? block.after : block.before).present;
+  const inlineNative = bound.nativeSites.get(blockId);
   const payloads = readPayloadStore(pkg);
   if (payloads.status !== 'ready') return fail('The presence payload store is missing.');
   return {
     success: true,
     partName: block.partName,
-    ops: present
-      ? []
-      : [
-          {
-            op: 'removeContentControl',
-            controlId: bound.controlIds.get(blockId)!,
-            keepContent: false,
-          },
-        ],
+    ...(inlineNative ? { nativeSiteNodeIds: [inlineNative.siteNodeId] } : {}),
+    ops:
+      present || inlineNative
+        ? []
+        : [
+            {
+              op: 'removeContentControl',
+              controlId: bound.controlIds.get(blockId)!,
+              keepContent: false,
+            },
+          ],
     apply(working) {
       if (present) return working;
       const index = buildBlockIndex(working);

@@ -1,3 +1,7 @@
+import {
+  trackedControlLinkPlacement,
+  type InlineControlRoot,
+} from './tracked-inline-control-link.ts';
 import { nativeTextSpliced } from '../package/canonical-primitive-capture.ts';
 import { pieceIndexOf } from './tree-op-piece-index.ts';
 import { contains, findTextParent } from './tree-op-text-node-lookup.ts';
@@ -589,7 +593,7 @@ function applyValidatedTreeOp(part: OoxmlPart, op: TreeDocOp, options?: EditOpti
     case 'insertHyperlink':
       return applyInsertHyperlink(part, paragraph, op, options);
     case 'insertInlineContentControl':
-      return applyInsertInlineContentControl(part, paragraph, op, options);
+      return insertInlineControl(part, paragraph, op, options);
     case 'setParagraphMarkRevision': {
       // Taking your own proposed break back is a real join, not a second proposal.
       if (op.kind === 'del' && retractsOwnParagraphMark(paragraph, op.revision.author)) {
@@ -1676,18 +1680,14 @@ function applyInsertHyperlink(
 }
 
 /**
- * Insert a NEW run-level `w:sdt` at a collapsed text offset.
- *
- * The paragraph's children divide at the offset exactly the way
- * `applyInsertHyperlink` divides a range — the same distribute machinery, with
- * an empty middle — and the freshly built control lands between the halves.
- * A run-level SDT is a SIBLING of runs, never inside one, which is why this
- * does not go through `applyInsertContent` (that path splices into a run's
- * children, where a `w:sdt` is invalid structure).
+ * Insert a fresh run-level SDT beside runs at one collapsed offset.
+ * Tracked interior insertions retain the existing hyperlink.
+ * Other insertions divide the paragraph's children around the offset.
+ * The control remains outside run children.
  */
-function applyInsertInlineContentControl(
+function insertInlineControl(
   part: OoxmlPart,
-  paragraph: OoxmlParagraphNode,
+  paragraph: InlineControlRoot,
   op: {
     readonly offset: number;
     readonly tag: string;
@@ -1703,8 +1703,10 @@ function applyInsertInlineContentControl(
   },
   options?: EditOptions
 ): TreeOpResult {
+  const linked = trackedControlLinkPlacement(part, paragraph, op, options, insertInlineControl);
+  if (linked) return linked;
   const nextId = createNodeIdAllocator(part);
-  const segments = segmentsOf(paragraph);
+  const segments = segmentsOf(paragraph as OoxmlParagraphNode);
   const before: OoxmlNode[] = [];
   const after: OoxmlNode[] = [];
   const effect: TreeOpEffect = {
@@ -1762,11 +1764,13 @@ function applyInsertInlineContentControl(
   );
   // A proposed control is one tracked insertion: the whole `w:sdt` inside a `w:ins`, so a
   // reject takes the control with its text and an accept keeps it.
-  const revisionId = op.revision ? nextRevisionId(part)() : '';
+  const revisionId = op.revision
+    ? (options?.trackedRevisionIds?.mint() ?? nextRevisionId(part)())
+    : '';
   const control = op.revision
     ? build(nextId(), 'revisionInsert', 'ins', revisionAttributes(revisionId, op.revision), [built])
     : built;
-  const pPr = paragraphPropertiesNodeOf(paragraph);
+  const pPr = paragraph.kind === 'paragraph' ? paragraphPropertiesNodeOf(paragraph) : null;
   const children = [...(pPr ? [pPr] : []), ...before, control, ...after];
   return fromEdit(replaceChildren(part, paragraph.id, children, options), effect);
 }

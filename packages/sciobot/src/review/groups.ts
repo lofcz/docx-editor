@@ -277,6 +277,20 @@ function derive(
           bucket.properties.push({ proposalId: entry.id, blockId: block.blockId });
           const native = index.byId.get(block.blockId),
             path = native && paths.get(keyOf(native.partName, native.controlId));
+          const boundPresence = bindBlockPresenceRecord(pkg, {
+            ...presence.value,
+            blocks: [block],
+          });
+          const inlineNative = boundPresence.success
+            ? boundPresence.nativeSites.get(block.blockId)
+            : undefined;
+          if (inlineNative) {
+            const members = addressedSites(
+              new Set([propertyAddressKey(inlineNative.partName, inlineNative.revision)])
+            );
+            for (const site of members)
+              if (site.node.id === inlineNative.siteNodeId) attach(bucket, site);
+          }
           bucket.readOnly =
             !!disposition ||
             block.members.some(
@@ -284,7 +298,7 @@ function derive(
                 propertyOwners.has(member.payload.id) ||
                 (presenceOwners.get(member.payload.id) ?? 0) > 1
             ) ||
-            !bindBlockPresenceRecord(pkg, { ...presence.value, blocks: [block] }).success;
+            !boundPresence.success;
           if (!native || !path) {
             bucket.readOnly = true;
             continue;
@@ -300,6 +314,10 @@ function derive(
             paragraphId: fallback?.id ?? null,
             offset: 0,
           };
+          if (inlineNative) {
+            const site = bucket.sites.find((site) => site.node.id === inlineNative.siteNodeId);
+            if (site) bucket.anchor = anchorOf(site);
+          }
           marked.set(bucket.id!, bucket);
         }
         continue;

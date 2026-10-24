@@ -158,6 +158,11 @@ export function planOwnedProposalRemoval(
             'reject'
           );
           if (!prepared.success) return prepared;
+          if (prepared.nativeSiteNodeIds) {
+            const expected = expectedPropertySites.get(prepared.partName) ?? new Set<string>();
+            for (const id of prepared.nativeSiteNodeIds) expected.add(id);
+            expectedPropertySites.set(prepared.partName, expected);
+          }
           const ops = presenceByPart.get(prepared.partName) ?? [];
           for (const op of prepared.ops) {
             if (op.op !== 'removeContentControl')

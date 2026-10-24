@@ -1,0 +1,15 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Application presence records admitted only block controls and could not share a review group with native revisions. A tracked inline insertion could split a source hyperlink permanently on rejection.",
+  "after": "Application proposal schema 3 binds a managed inline control to one exact native insertion or deletion wrapper. Its complete payload, normalized source fingerprint, and native address share review membership, decisions, and owned inverses. Native IDs remain reserved after resolution and tombstoning. Tracked interior insertion retains the source hyperlink and original run boundaries.",
+  "reason": "No native transport field or version changes. Inline ownership requires private application proposal schema 3; older readers refuse it while pending, resolved, or tombstoned. Block-only presence retains schema 2. Upgrade application readers before using inline ownership. Complete target coordinator and resource executors remain separately gated while integration is unfinished.",
+  "tests": [
+    "packages/sciobot/src/review/inline-presence.test.ts",
+    "packages/sciobot/src/review/inline-presence-collaboration.test.ts",
+    "packages/sciobot/src/review/inline-presence-guards.test.ts",
+    "packages/core/src/store/__tests__/tracked-inline-content-control.test.ts"
+  ],
+  "changeset": "track-whole-inline-control-removal",
+  "migration": null
+}
