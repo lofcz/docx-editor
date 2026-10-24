@@ -5084,6 +5084,7 @@ export type TreeDocOp = SetFieldCodeOp | {
     readonly controlId: string;
     readonly keepContent?: boolean;
     readonly op: 'removeContentControl';
+    readonly revision?: RevisionAttributionInput;
 } | {
     readonly alias?: string;
     readonly end: number;

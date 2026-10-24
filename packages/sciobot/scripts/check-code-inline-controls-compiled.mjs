@@ -55,8 +55,8 @@ try {
   writeFileSync(collaboration, support);
 
   const selected = process.argv.slice(2);
-  if (selected.some((name) => !/^[a-z0-9-]+\.test\.ts$/.test(name)))
-    throw Error('Pass fixture basenames from src/diff.');
+  if (selected.some((name) => !/^(?:review\/)?[a-z0-9-]+\.test\.ts$/.test(name)))
+    throw Error('Pass fixture basenames from src/diff or review/name.test.ts.');
   const fixtures = selected.length
     ? selected
     : [
@@ -65,7 +65,10 @@ try {
         'code-atom-middle-peer-undo.test.ts',
       ];
   for (const filename of fixtures) {
-    let source = readFileSync(join(packageRoot, 'src/diff', filename), 'utf8');
+    let source = readFileSync(
+      join(packageRoot, filename.startsWith('review/') ? 'src' : 'src/diff', filename),
+      'utf8'
+    );
     source = source.replace(
       /from '(?:\.\.\/(?:review|projection|blocks|ai|native)\/[^']+|\.\/(?:plan-target|plan|target-key))'/g,
       "from '@sciobot/docx'"
@@ -80,7 +83,7 @@ try {
     );
     // Runtime product imports must use the compiled package. Keep every test body unchanged.
     if (/from ['"]\.{1,2}\//.test(source)) throw Error(`Unmapped product import in ${filename}`);
-    writeFileSync(join(directory, filename), source);
+    writeFileSync(join(directory, filename.replace('/', '--')), source);
   }
   const result = spawnSync(
     'bun',
@@ -88,7 +91,7 @@ try {
       'test',
       '--tsconfig-override',
       join(directory, 'tsconfig.json'),
-      ...fixtures.map((filename) => join(directory, filename)),
+      ...fixtures.map((filename) => join(directory, filename.replace('/', '--'))),
     ],
     { cwd: directory, stdio: 'inherit' }
   );
