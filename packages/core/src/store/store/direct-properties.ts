@@ -166,14 +166,14 @@ export function mergedProperties(
     : [incoming as OoxmlProperty];
   const names = new Set(additions.map((property) => property.localName));
   const kept = existing.filter((entry) => !names.has(entry.localName));
-  // An absent color value restores inheritance; boolean properties still use their
+  // An absent scalar run value restores inheritance; boolean properties still use their
   // normal empty-element ON spelling. Keep removal markers out of authored XML.
-  return [...kept, ...additions.filter((property) => !clearsRunColor(property))];
+  return [...kept, ...additions.filter((property) => !clearsRunValue(property))];
 }
 
-export function clearsRunColor(property: OoxmlProperty): boolean {
+export function clearsRunValue(property: OoxmlProperty): boolean {
   return (
-    ['color', 'highlight', 'shd'].includes(property.localName) &&
+    ['color', 'highlight', 'shd', 'rFonts', 'sz', 'szCs'].includes(property.localName) &&
     (!property.attributes || Object.keys(property.attributes).length === 0)
   );
 }
@@ -209,6 +209,7 @@ export function mergedFontProperty(
   authored: readonly OoxmlProperty[],
   incoming: OoxmlProperty
 ): OoxmlProperty {
+  if (clearsRunValue(incoming)) return incoming;
   const existing = authored.find((entry) => entry.localName === 'rFonts')?.attributes;
   if (!existing) return incoming;
   const merged: Record<string, string> = { ...existing, ...(incoming.attributes ?? {}) };
@@ -436,7 +437,7 @@ function withMultiSettingsKept(
     !Array.isArray(incoming) && additions.find((property) => property.localName === 'shd');
   if (shading && !additions.some((property) => property.localName === 'highlight'))
     mapped.push(
-      clearsRunColor(shading)
+      clearsRunValue(shading)
         ? { localName: 'highlight' }
         : { localName: 'highlight', attributes: { val: 'none' } }
     );

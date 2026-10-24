@@ -20,6 +20,7 @@ import { markRestoredText } from './document/paragraph-text-restore.ts';
 import { awaitingUpdates } from './document/yjs-items.ts';
 import { viewRenamesPlan } from './document/paragraph-text-drift.ts';
 import { stepHistory } from './document/history-undone.ts';
+import { withoutPersistentHyperlinkUndo } from './document/persistent-hyperlink-history.ts';
 import { HistoryGroupCapture } from './document/history-group-capture.ts';
 import * as Y from 'yjs';
 import type { Awareness } from 'y-protocols/awareness';
@@ -584,27 +585,34 @@ class DocumentSession implements DocumentCollaborationSession {
     if (!this.canWriteSharedState()) return;
     let transient = false;
     this.historySelections.noteBefore();
-    const refusal = this.historyGroups.capture(historyGroupOfJournal(journal), () =>
-      this.ydoc.transact((): CollaborationFailure | null => {
-        if (blobs !== null) {
-          const published = putJournalBlobs(this.blobs, blobs.payloads);
-          if (published !== null) return published;
-        }
-        const result = applyPrimitiveJournal(
-          this.registry,
-          shared,
-          projected.plan,
-          projected.typed
-        );
-        if (!result.ok) {
-          transient = result.transient === true;
-          return {
-            code: result.code as CollaborationFailureCode,
-            ...(result.detail ? { detail: result.detail } : {}),
-          };
-        }
-        return null;
-      }, this.localOrigin)
+    const refusal = withoutPersistentHyperlinkUndo(
+      this.undoManager,
+      this.localOrigin,
+      this.registry,
+      shared,
+      () =>
+        this.historyGroups.capture(historyGroupOfJournal(journal), () =>
+          this.ydoc.transact((): CollaborationFailure | null => {
+            if (blobs !== null) {
+              const published = putJournalBlobs(this.blobs, blobs.payloads);
+              if (published !== null) return published;
+            }
+            const result = applyPrimitiveJournal(
+              this.registry,
+              shared,
+              projected.plan,
+              projected.typed
+            );
+            if (!result.ok) {
+              transient = result.transient === true;
+              return {
+                code: result.code as CollaborationFailureCode,
+                ...(result.detail ? { detail: result.detail } : {}),
+              };
+            }
+            return null;
+          }, this.localOrigin)
+        )
     );
     if (refusal === null) {
       this.refusals.published();

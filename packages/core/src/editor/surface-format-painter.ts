@@ -1,3 +1,4 @@
+import { fontSizeAttribute } from '../store/package/font-size.ts';
 import { createContextualRunFormatting } from '../layout/complex-script-formatting.ts';
 
 // Word's Format Painter over the selection (paginated-surface seam).
@@ -121,7 +122,7 @@ export interface SurfaceFormatPainterDeps {
  */
 function runPropertiesOf(style: ResolvedRunStyle): readonly SurfaceProperty[] {
   const onOff = (on: boolean): { val: string } => ({ val: on ? '1' : '0' });
-  const halfPointsOf = (pt: number) => String(Math.max(2, Math.min(3276, Math.round(pt * 2))));
+  const halfPointsOf = (pt: number) => fontSizeAttribute(Math.max(1, Math.min(1638, pt)));
   // Word's painter copies each lane into its own properties. A `w:rtl` or `w:cs` source
   // shows its complex-script lane and keeps its Latin one in `latinLane`; every source
   // carries its complex-script lane in `complexLane`, so an LTR source run from an Arabic

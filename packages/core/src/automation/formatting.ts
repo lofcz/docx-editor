@@ -1,3 +1,4 @@
+import { fontSizeAttribute } from '../store/package/font-size.ts';
 // Formatting the protocol can answer, and formatting an op may author.
 //
 // INTERNAL. Two directions that are deliberately not symmetrical.
@@ -427,13 +428,13 @@ export function fontProperties(request: AutomationFontWrite): FormattingPlan<Oox
     const size = request.size;
     if (typeof size !== 'number' || !Number.isFinite(size) || size <= 0)
       return { ok: false, detail: 'size: not a positive number of points' };
-    const halfPoints = Math.round(size * 2);
+    const halfPoints = size * 2;
     if (halfPoints < 1 || halfPoints > MAX_HALF_POINTS)
       return { ok: false, detail: 'size: out of range' };
-    properties.push({ localName: 'sz', attributes: { val: String(halfPoints) } });
+    properties.push({ localName: 'sz', attributes: { val: fontSizeAttribute(size) } });
     // `w:szCs` keeps complex-script runs the same size, which is what Word writes; leaving it
     // behind sizes Latin text and leaves Arabic or Hebrew in the same run at the old size.
-    properties.push({ localName: 'szCs', attributes: { val: String(halfPoints) } });
+    properties.push({ localName: 'szCs', attributes: { val: fontSizeAttribute(size) } });
   }
   if (request.color !== undefined) {
     const colour = request.color;

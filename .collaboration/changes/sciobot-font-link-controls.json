@@ -1,0 +1,17 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Private font and link controls were not connected. Odd CSS-pixel font sizes rounded or failed to resolve. Empty family resets retained the old family. Persistent URL allocation could add a separate shared undo step.",
+  "after": "Private controls use native font/URL gates, selection pins, packaged font resolution, exact Word point-unit attributes and native gesture history. Pure allocation of new external hyperlink relationships stays persistent; existing relationship writes and unrelated content transactions keep their history.",
+  "reason": "Native OOXML already permits positive universal measures for font sizes. Shared attribute codecs, field schemas, relationship records, and document tuples are unchanged. Undo capture policy is local. The evaluated transport remains test-only under the EigenPal Pro License.",
+  "tests": [
+    "packages/sciobot/src/chrome/fonts.test.ts",
+    "packages/sciobot/src/chrome/links.test.ts",
+    "packages/sciobot/src/chrome/font-link-collaboration.test.ts",
+    "packages/pro/src/collaboration/__tests__/persistent-hyperlink-history.test.ts",
+    "packages/core/src/layout/__tests__/shaped-measurer.test.ts",
+    "e2e/sciobot-font-link.spec.ts"
+  ],
+  "changeset": "exact-native-font-size-values",
+  "migration": null
+}

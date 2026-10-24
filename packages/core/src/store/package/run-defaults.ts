@@ -1,3 +1,4 @@
+import { fontSizePoints } from './font-size.ts';
 // Effective run defaults: what a run inherits when it carries no direct `w:rFonts`/`w:sz`.
 //
 // The layout resolves DIRECT run formatting only, so a span whose font or size comes from
@@ -155,7 +156,8 @@ function rPrDefaults(
   const rFonts = childElement(rPr, 'rFonts');
   const sz = childElement(rPr, 'sz');
   const rawSize = sz ? attributeValue(sz, 'val') : undefined;
-  const size = rawSize !== undefined && /^\d{1,4}$/.test(rawSize) ? Number(rawSize) : null;
+  const points = fontSizePoints(rawSize);
+  const size = points === null ? null : points * 2;
   return {
     fontFamily: rFonts ? familyFromRFonts(rFonts, themeFonts) : null,
     hasLatinFontReference: hasLatinReference(rFonts),
@@ -205,13 +207,13 @@ export function createRunDefaultsResolver(
   }
 
   const memo = new Map<string, RunDefaultsEntry>();
-  const chainOf = (styleId: string | null): RunDefaultsEntry => {
-    const key = styleId ?? '';
+  const chainOf = (styleId: string | null, defaults = true): RunDefaultsEntry => {
+    const key = `${defaults ? 'paragraph' : 'character'}:${styleId ?? ''}`;
     const cached = memo.get(key);
     if (cached) return cached;
     let fontFamily: string | null = null;
     let fontSizeHalfPoints: number | null = null;
-    let hasLatinFontReference = docDefaults.hasLatinFontReference;
+    let hasLatinFontReference = defaults && docDefaults.hasLatinFontReference;
     const seen = new Set<string>();
     let at = styleId;
     for (let depth = 0; at !== null && depth < CHAIN_CAP && !seen.has(at); depth += 1) {
@@ -225,8 +227,8 @@ export function createRunDefaultsResolver(
     }
     const resolved: RunDefaultsEntry = {
       hasLatinFontReference,
-      fontFamily: fontFamily ?? docDefaults.fontFamily,
-      fontSizeHalfPoints: fontSizeHalfPoints ?? docDefaults.fontSizeHalfPoints,
+      fontFamily: fontFamily ?? (defaults ? docDefaults.fontFamily : null),
+      fontSizeHalfPoints: fontSizeHalfPoints ?? (defaults ? docDefaults.fontSizeHalfPoints : null),
     };
     memo.set(key, resolved);
     return resolved;
@@ -234,6 +236,8 @@ export function createRunDefaultsResolver(
 
   return (styleId, runProperties) => {
     const chain = chainOf(styleId);
+    const characterId = runProperties?.find((p) => p.localName === 'rStyle')?.attributes?.val;
+    const character = characterId ? chainOf(characterId, false) : null;
     // A run-level `w:rFonts` naming a THEME slot outranks the whole style chain, the same
     // precedence `familyFromRFonts` applies within one element.
     const rFonts = runProperties?.find((property) => property.localName === 'rFonts');
@@ -249,9 +253,10 @@ export function createRunDefaultsResolver(
     return {
       fontFamily:
         runTheme ??
+        character?.fontFamily ??
         chain.fontFamily ??
         (!chain.hasLatinFontReference && !hasRunReference ? themeFonts.minor : null),
-      fontSizeHalfPoints: chain.fontSizeHalfPoints,
+      fontSizeHalfPoints: character?.fontSizeHalfPoints ?? chain.fontSizeHalfPoints,
     };
   };
 }

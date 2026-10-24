@@ -682,7 +682,7 @@ export function selectionFormattingHalfPoints(formatting: RunFormatting | null):
     ...(formatting.underline !== undefined ? { underline: formatting.underline } : {}),
     ...(formatting.fontFamily ? { fontFamily: formatting.fontFamily } : {}),
     ...(formatting.fontSizePt !== undefined
-      ? { fontSizeHalfPoints: Math.round(formatting.fontSizePt * 2) }
+      ? { fontSizeHalfPoints: formatting.fontSizePt * 2 }
       : {}),
     ...(formatting.styleId ? { styleId: formatting.styleId } : {}),
     ...(formatting.alignment ? { alignment: formatting.alignment } : {}),

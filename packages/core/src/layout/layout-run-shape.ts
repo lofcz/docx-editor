@@ -3,6 +3,7 @@ import { runLigatureFeatureKey, runLigatureFeatures } from './run-ligatures.ts';
 // Shared HarfBuzz call used by shaped measurement and non-DOM exporters.
 
 import type { ResolvedFont } from './font-resource.ts';
+import { glyphSizeFactorOf } from './run-style.ts';
 import type { ResolvedRunStyle } from './run-style.ts';
 import {
   createShapingEnvironment,
@@ -195,4 +196,9 @@ export function layoutFaceHasSmallCaps(
   }
   cache.set(font, supported);
   return supported;
+}
+
+/** Scale integer-size shaping to the exact authored size, then apply script scaling. */
+export function layoutRunSizeFactorOf(style: ResolvedRunStyle): number {
+  return glyphSizeFactorOf(style) * ((style.fontSizePt * 2) / layoutRunHalfPointsOf(style));
 }

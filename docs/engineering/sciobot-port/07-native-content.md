@@ -70,7 +70,7 @@ The backlog validator runs but reports external application-source drift. Captur
 
 ## N04
 
-- [ ] Connect font family and size controls
+- [x] Connect font family and size controls
 
 **Depends:** [C03](01-contracts.md#c03), [N01](07-native-content.md#n01), [V01](11-verification.md#v01)
 
@@ -84,7 +84,7 @@ The backlog validator runs but reports external application-source drift. Captur
 
 **Check:** Add a focused Chromium case with real input and native selection where applicable. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** codex solo, branch `codex/react-block-proof`. **Evidence:** `chrome/fonts.ts` connects packaged font families, exact CSS-pixel sizes, mixed values, and native clears. `fonts.test.ts` verifies all fourteen captured sizes, full history, Word reopen, caret typing, and character-style inheritance. `font-link-collaboration.test.ts` verifies concurrent edits, font resets, independent history, reconnect, deletion recovery, native selection geometry, and canonical saved convergence in both client orders. Chromium verifies actual packaged font requests, native paint, real typing, mixed values, and clears. The completed batch passes 296 native cases and three Chromium cases. Private and browser type checks pass.
 
 ## N05
 
@@ -194,7 +194,7 @@ The focused native/history batch passes 18 cases and 218 assertions across four 
 
 ## N10
 
-- [ ] Connect hyperlink editing and activation
+- [x] Connect hyperlink editing and activation
 
 **Depends:** [C03](01-contracts.md#c03), [N01](07-native-content.md#n01), [V01](11-verification.md#v01)
 
@@ -208,7 +208,7 @@ The focused native/history batch passes 18 cases and 218 assertions across four 
 
 **Check:** Add a focused Chromium case with real input and native selection where applicable. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** codex solo, branch `codex/react-block-proof`. **Evidence:** `chrome/links.ts` connects native insertion, retargeting, removal, safe activation, selection pins, Ctrl+K, and native link-click chrome. `links.test.ts` verifies unchanged labels, exact undo/redo, Word reopen, unsafe-target refusal, no-op targets, view-mode refusal, and document replacement guards. `font-link-collaboration.test.ts` verifies concurrent edits, independent history, reconnect, peer-preserving deletion recovery, native geometry, and canonical saved convergence in both client orders. The persistent relationship allocation fix preserves reentrant local content history. The completed batch passes 296 native cases and three Chromium cases. Private and browser type checks pass.
 
 ## N11
 

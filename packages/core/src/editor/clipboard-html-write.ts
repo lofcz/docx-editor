@@ -1,3 +1,4 @@
+import { fontSizePoints } from '../store/package/font-size.ts';
 // Serializes a clipboard fragment package — the miniature WordprocessingML OPC zip the copy
 // lane produces — into the visible half of the `text/html` flavour. Structure comes from the
 // canonical tree (headings, real lists, tables, anchors); formatting comes from a small
@@ -151,12 +152,12 @@ function runCssOf(layers: RunPropertyLayers): RunCss {
     const family = wordCssFontFamily(font);
     if (family) rules.push(`font-family:${family}`);
   }
-  const sz = parseIntValue(
+  const sz = fontSizePoints(
     (rtl ? foldAttribute(sources, 'szCs', 'val') : undefined) ??
       foldAttribute(sources, 'sz', 'val') ??
       (!rtl ? foldAttribute(sources, 'szCs', 'val') : undefined)
   );
-  if (sz !== null && sz > 0) rules.push(`font-size:${Math.round((sz / 2) * 100) / 100}pt`);
+  if (sz !== null && sz > 0) rules.push(`font-size:${sz}pt`);
   // An OFF that overrides a style must be EXPLICIT in the CSS: the emitted
   // paragraph class maps back to w:pStyle on paste, and a silent off would let
   // the style re-bold what the author deliberately un-bolded.

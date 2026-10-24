@@ -1,9 +1,10 @@
 import { legacyCjkLineMetrics } from './legacy-cjk-line-metrics.ts';
 import type { ResolvedFont } from './font-resource.ts';
 import type { TextMeasurer } from './semantic-records.ts';
-import { glyphSizeFactorOf, type ResolvedRunStyle } from './run-style.ts';
+import { type ResolvedRunStyle } from './run-style.ts';
 import {
   layoutRunHalfPointsOf,
+  layoutRunSizeFactorOf,
   shapeLayoutStyleRun,
   type LayoutShapingEnvironment,
 } from './layout-run-shape.ts';
@@ -22,7 +23,7 @@ export function createShapedLineMetrics(
     Map<number, { height: number; baseline: number }>
   >();
   return (font, style) => {
-    const factor = glyphSizeFactorOf(style);
+    const factor = layoutRunSizeFactorOf(style);
     let bySize = linesByFont.get(font);
     if (!bySize) {
       bySize = new Map();

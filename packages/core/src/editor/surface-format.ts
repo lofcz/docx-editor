@@ -32,7 +32,9 @@ import {
 import { formattableRanges } from '@docx-editor.dev/core/store';
 import { findNode } from '../store/package/ooxml-edit.ts';
 import { formattingRangeBesideRestrictedControl } from '../store/store/direct-properties.ts';
-import { clearsRunColor } from '../store/store/direct-properties.ts';
+import { wmlChildNamed, wmlAttributeValue } from '../store/store/tree-op-table-shared.ts';
+import { formattingRunAt, propertyContainer } from '../store/store/direct-properties.ts';
+import { clearsRunValue } from '../store/store/direct-properties.ts';
 import type {
   FormattingDisplayMode,
   FormattingRevisionAuthorFilter,
@@ -363,11 +365,11 @@ export function createSurfaceFormat(deps: SurfaceFormatDeps): FormatMethods {
     // replaceable property vocabulary. A caret can still arm that explicit identity.
     if (!isAuthorableRunProperty(incoming.localName) && incoming.localName !== 'rStyle') return;
     const pending = deps.pendingFormats() ?? [];
-    let next = clearsRunColor(incoming)
+    let next = clearsRunValue(incoming)
       ? [...pending.filter((p) => p.localName !== incoming.localName), incoming]
       : mergedProperties(pending, incoming);
     if (incoming.localName === 'shd') {
-      const highlight: SurfaceProperty = clearsRunColor(incoming)
+      const highlight: SurfaceProperty = clearsRunValue(incoming)
         ? { localName: 'highlight' }
         : { localName: 'highlight', attributes: { val: 'none' } };
       next = [...next.filter((p) => p.localName !== 'highlight'), highlight];
@@ -491,6 +493,26 @@ export function createSurfaceFormat(deps: SurfaceFormatDeps): FormatMethods {
 
     formatting: () => {
       const read = formattingSelection(selectionNow.value);
+      const pending = deps.pendingFormats();
+      const resetFonts = pending?.some(
+        (p) => ['rFonts', 'sz', 'szCs'].includes(p.localName) && clearsRunValue(p)
+      );
+      const inheritedFonts = (() => {
+        if (!resetFonts) return undefined;
+        const point = read.selection.head;
+        const paragraph = findNode(storyPart(), point.paragraphId);
+        const run = paragraph
+          ? formattingRunAt(paragraph, point.offset, displayMode(), authorFilter())
+          : null;
+        const properties = propertyContainer(run ?? paragraph, 'runProperties', 'rPr');
+        const character =
+          properties && properties.kind !== 'textValue' && wmlChildNamed(properties, 'rStyle');
+        const styleId = character && wmlAttributeValue(character, 'val');
+        return session.effectiveRunDefaults(
+          point.paragraphId,
+          styleId ? [{ localName: 'rStyle', attributes: { val: styleId } }] : []
+        );
+      })();
       // Pending caret formatting overlays the document's answer, so the toolbar shows what
       // the next character typed will look like while a stored format is armed.
       return withPendingFormatting(
@@ -515,7 +537,13 @@ export function createSurfaceFormat(deps: SurfaceFormatDeps): FormatMethods {
           deps.defaultFontFamily?.() ?? null,
           read.caretSpan
         ),
-        deps.pendingFormats()
+        pending,
+        inheritedFonts
+          ? {
+              ...inheritedFonts,
+              fontFamily: inheritedFonts.fontFamily ?? deps.defaultFontFamily?.() ?? null,
+            }
+          : undefined
       );
     },
 

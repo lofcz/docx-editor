@@ -33,6 +33,8 @@
     "../../e2e/sciobot-table-columns.spec.ts",
     "../../e2e/sciobot-table-columns.config.ts",
     "../../e2e/sciobot-table-style.spec.ts",
-    "../../e2e/sciobot-table-style.config.ts"
+    "../../e2e/sciobot-table-style.config.ts",
+    "../../e2e/sciobot-font-link.spec.ts",
+    "../../e2e/sciobot-font-link.config.ts"
   ]
 }

@@ -138,3 +138,6 @@ export * from './chrome/table-columns';
 
 export * from './chrome/table-merges';
 export * from './chrome/table-appearance';
+
+export * from './chrome/fonts';
+export * from './chrome/links';

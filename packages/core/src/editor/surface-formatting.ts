@@ -1,3 +1,4 @@
+import { fontSizePoints } from '../store/package/font-size.ts';
 import { revisionMarkupStyleForEditing } from '../layout/revision-markup-style.ts';
 import { layoutDerivedSpacingStyleForEditing } from '../layout/layout-derived-spacing.ts';
 import {
@@ -264,7 +265,8 @@ export function pendingPropertyState(
  */
 export function withPendingFormatting(
   formatting: SurfaceFormatting,
-  pending: readonly SurfaceProperty[] | null
+  pending: readonly SurfaceProperty[] | null,
+  inheritedFonts?: Pick<SurfaceFormatting, 'fontFamily' | 'fontSizeHalfPoints'>
 ): SurfaceFormatting {
   if (!pending || pending.length === 0) return formatting;
   let next = formatting;
@@ -291,11 +293,22 @@ export function withPendingFormatting(
         };
         break;
       case 'rFonts':
-        next = { ...next, fontFamily: property.attributes?.ascii ?? next.fontFamily };
+        next = {
+          ...next,
+          fontFamily:
+            property.attributes?.ascii ??
+            property.attributes?.hAnsi ??
+            inheritedFonts?.fontFamily ??
+            null,
+        };
         break;
       case 'sz': {
-        const halfPoints = Number(val);
-        if (Number.isFinite(halfPoints)) next = { ...next, fontSizeHalfPoints: halfPoints };
+        const points = fontSizePoints(val);
+        if (points !== null || inheritedFonts)
+          next = {
+            ...next,
+            fontSizeHalfPoints: points !== null ? points * 2 : inheritedFonts!.fontSizeHalfPoints,
+          };
         break;
       }
       case 'color':
@@ -513,14 +526,14 @@ export function formattingAt(
     span.style.fontFamily ?? inherited?.(span.range.paragraphId, span.props).fontFamily ?? null;
   const sizeOf = (span: (typeof spans)[number]): number =>
     hasDirect(span, 'sz')
-      ? Math.round(span.style.fontSizePt * 2)
+      ? span.style.fontSizePt * 2
       : (inherited?.(span.range.paragraphId, span.props).fontSizeHalfPoints ??
-        Math.round(span.style.fontSizePt * 2));
+        span.style.fontSizePt * 2);
   const caretInherited =
     emptyStyles.length > 0
       ? {
           fontFamily: agreed((style) => style.fontFamily ?? fallbackFontFamily ?? null),
-          fontSizeHalfPoints: agreed((style) => Math.round(style.fontSizePt * 2)),
+          fontSizeHalfPoints: agreed((style) => style.fontSizePt * 2),
         }
       : spans.length === 0
         ? inherited?.(selection.head.paragraphId, [])

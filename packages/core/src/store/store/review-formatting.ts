@@ -1,3 +1,4 @@
+import { fontSizePoints } from '../package/font-size.ts';
 import type { ReviewRevisionItem } from './review-items.ts';
 // Formatting details for the review queue; language names belong to localized chrome.
 import { WML_NAMESPACE_URI, type OoxmlElement } from '../package/ooxml-tree.ts';
@@ -92,7 +93,10 @@ export function changedFormatting(site: RevisionSite): ReviewFormattingChange[] 
         return raw === undefined || raw === '1' || raw === 'true' || raw === 'on' ? 'rtl' : 'ltr';
       if (raw === undefined) return null;
       if (spec.kind === 'halfPoints' || spec.kind === 'twips') {
-        const numeric = spec.kind === 'twips' ? (readTwipsMeasure(raw) ?? Number.NaN) : Number(raw);
+        const numeric =
+          spec.kind === 'twips'
+            ? (readTwipsMeasure(raw) ?? Number.NaN)
+            : (fontSizePoints(raw) ?? Number.NaN) * 2;
         return Number.isFinite(numeric)
           ? String(numeric / (spec.kind === 'halfPoints' ? 2 : 20))
           : raw;

@@ -31,12 +31,13 @@ import type { TextMeasurer } from './semantic-records.ts';
 import { shapedRunOutline } from './text-outline.ts';
 import { shapedClusterInkBounds } from './glyph-ink-bounds.ts';
 import { segmentGraphemes } from './grapheme.ts';
-import { glyphSizeFactorOf, type ResolvedRunStyle } from './run-style.ts';
+import { type ResolvedRunStyle } from './run-style.ts';
 import { sfntStrikeoutStrokeEm, type StrikeoutStrokeEm } from './sfnt-strikeout-metrics.ts';
 import type { OperationSnapshot } from './resolved-cache.ts';
 import {
   layoutFaceHasSmallCaps,
   layoutRunHalfPointsOf,
+  layoutRunSizeFactorOf,
   shapeLayoutStyleRun,
   type LayoutShapingEnvironment,
 } from './layout-run-shape.ts';
@@ -301,7 +302,7 @@ export function createShapedMeasurer(
         strikeoutByFont.set(font, stroke);
       }
       if (!stroke) return undefined;
-      const sizePt = (layoutRunHalfPointsOf(style) / 2) * glyphSizeFactorOf(style);
+      const sizePt = (layoutRunHalfPointsOf(style) / 2) * layoutRunSizeFactorOf(style);
       return {
         offsetPt: stroke.offsetEm * sizePt,
         thicknessPt: stroke.thicknessEm * sizePt,
@@ -348,7 +349,7 @@ export function createShapedMeasurer(
       // Base-size advance scaled to the drawn size; the cache stays keyed on the base size,
       // so baseline and super/subscript runs of one face share entries.
       return (
-        advance * glyphSizeFactorOf(style) * (style.horizontalScalePercent / 100) +
+        advance * layoutRunSizeFactorOf(style) * (style.horizontalScalePercent / 100) +
         text.length * style.characterSpacingPt +
         wordSpacingAdvance(text, style)
       );
@@ -375,7 +376,7 @@ export function createShapedMeasurer(
           run,
           layoutRunHalfPointsOf(style) / 2,
           baseEnvironment.fixedPointScale,
-          (glyphSizeFactorOf(style) * style.horizontalScalePercent) / 100
+          (layoutRunSizeFactorOf(style) * style.horizontalScalePercent) / 100
         );
       } catch {
         return undefined;
@@ -413,7 +414,7 @@ export function createShapedMeasurer(
           shapedCaretAdvances(
             text,
             run,
-            (glyphSizeFactorOf(style) * (style.horizontalScalePercent / 100)) /
+            (layoutRunSizeFactorOf(style) * (style.horizontalScalePercent / 100)) /
               baseEnvironment.fixedPointScale,
             style.characterSpacingPt,
             style.shaping?.wordSpacingPt ?? 0
@@ -421,7 +422,7 @@ export function createShapedMeasurer(
           fallbackCaretAdvances(
             text,
             (run.glyphs.reduce((sum, glyph) => sum + glyph.advanceX, 0) *
-              glyphSizeFactorOf(style) *
+              layoutRunSizeFactorOf(style) *
               (style.horizontalScalePercent / 100)) /
               baseEnvironment.fixedPointScale +
               text.length * style.characterSpacingPt +

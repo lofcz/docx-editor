@@ -808,3 +808,12 @@ describe('interopHtmlFromFragment', () => {
     expect(html).toContain('<sup>note</sup>');
   });
 });
+
+test('Word universal font measures retain exact fractional points in clipboard HTML', () => {
+  const html = interopHtmlFromFragment(
+    fragment({
+      body: '<w:p><w:r><w:rPr><w:sz w:val="6.75pt"/></w:rPr><w:t>Exact</w:t></w:r></w:p>',
+    })
+  );
+  expect(html).toContain('font-size:6.75pt');
+});

@@ -905,3 +905,15 @@ test('kerning follows the run threshold and cannot reuse unkerned width-cache en
   expect(m.measure('AV', style({ fontSizePt: 12, kerningEnabled: true }))).toBe(unkerned);
   expect(m.caretAdvances!('AV', atThreshold)!.at(-1)).toBeCloseTo(m.measure('AV', atThreshold), 6);
 });
+
+test('fractional native point sizes scale shaped width, caret advances and line metrics to their painted size', () => {
+  const m = measurer(),
+    small = style({ fontSizePt: 6.75 }),
+    double = style({ fontSizePt: 13.5 }),
+    text = 'Fractional';
+  expect(m.measure(text, small) * 2).toBeCloseTo(m.measure(text, double), 1);
+  expect(m.caretAdvances!(text, small)!.at(-1)).toBeCloseTo(m.measure(text, small), 6);
+  expect(m.lineMetrics(small).height * 2).toBeCloseTo(m.lineMetrics(double).height, 1);
+  const script = style({ fontSizePt: 6.75, verticalAlign: 'superscript' });
+  expect(m.measure(text, script)).toBeCloseTo(m.measure(text, small) * 0.65, 6);
+});

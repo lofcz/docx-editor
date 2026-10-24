@@ -1,3 +1,4 @@
+import { fontSizePoints } from '../store/package/font-size.ts';
 import { revisionMarkupSourcesEqual } from './revision-markup-style.ts';
 import { layoutDerivedSpacingSourcesEqual } from './layout-derived-spacing.ts';
 // The accepted run property boundary, resolved for layout (task 7.2).
@@ -333,13 +334,13 @@ export function resolveRunStyle(
         break;
       }
       case 'sz': {
-        const halfPoints = integer(property.attributes?.val);
-        if (halfPoints !== null && halfPoints > 0) style.fontSizePt = halfPoints / 2;
+        const points = fontSizePoints(property.attributes?.val);
+        if (points !== null) style.fontSizePt = points;
         break;
       }
       case 'szCs': {
-        const halfPoints = integer(property.attributes?.val);
-        if (halfPoints !== null && halfPoints > 0) complex.fontSizePt = halfPoints / 2;
+        const points = fontSizePoints(property.attributes?.val);
+        if (points !== null) complex.fontSizePt = points;
         break;
       }
       case 'bCs':
