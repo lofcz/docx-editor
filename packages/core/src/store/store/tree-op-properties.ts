@@ -138,14 +138,19 @@ export const RUN_VOCABULARY: PropertyVocabulary = {
  * when its attributes changed, the children still come across.
  */
 export function propertyElement(property: OoxmlProperty, id: string, prior?: OoxmlNode): OoxmlNode {
-  const attributes = Object.entries(property.attributes ?? {}).map(([localName, value]) => ({
-    kind: 'genericExtension' as const,
-    namespaceUri: WML_NAMESPACE_URI,
-    localName,
-    prefix: 'w',
-    value,
-  }));
   const priorElement = prior && prior.kind !== 'textValue' ? prior : undefined;
+  const attributes = [
+    ...(priorElement?.attributes.filter(
+      (attribute) => attribute.namespaceUri !== WML_NAMESPACE_URI
+    ) ?? []),
+    ...Object.entries(property.attributes ?? {}).map(([localName, value]) => ({
+      kind: 'genericExtension' as const,
+      namespaceUri: WML_NAMESPACE_URI,
+      localName,
+      prefix: 'w',
+      value,
+    })),
+  ];
   if (priorElement && sameAttributes(priorElement, attributes)) return prior!;
   return {
     id,
@@ -153,7 +158,7 @@ export function propertyElement(property: OoxmlProperty, id: string, prior?: Oox
     namespaceUri: WML_NAMESPACE_URI,
     localName: property.localName,
     prefix: 'w',
-    namespaceBindings: [],
+    namespaceBindings: priorElement?.namespaceBindings ?? [],
     attributes,
     children: priorElement?.children ?? [],
   } as unknown as OoxmlNode;
@@ -161,12 +166,19 @@ export function propertyElement(property: OoxmlProperty, id: string, prior?: Oox
 
 function sameAttributes(
   node: Exclude<OoxmlNode, { kind: 'textValue' }>,
-  attributes: readonly { readonly localName: string; readonly value: string }[]
+  attributes: readonly {
+    readonly namespaceUri: string | null;
+    readonly localName: string;
+    readonly value: string;
+  }[]
 ): boolean {
   const existing = node.attributes ?? [];
   if (existing.length !== attributes.length) return false;
   for (const attribute of attributes) {
-    const match = existing.find((entry) => entry.localName === attribute.localName);
+    const match = existing.find(
+      (entry) =>
+        entry.localName === attribute.localName && entry.namespaceUri === attribute.namespaceUri
+    );
     if (!match || match.value !== attribute.value) return false;
   }
   return true;

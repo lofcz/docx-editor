@@ -1,0 +1,16 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Native run property commands could not author arbitrary shading, and private color controls were not connected.",
+  "after": "Existing run property commands accept shd. Empty foreground/highlight/shading properties restore inheritance. Native color controls use these operations for ranges, carets, and rectangular selections. Property rewrites retain foreign attributes and bindings.",
+  "reason": "The authorable capability inventory adds one existing Word property. Command inputs lower to the existing canonical property nodes and existing native formatting revisions. No shared operation codec, journal field, node metadata shape, or document version changes.",
+  "tests": [
+    "packages/core/src/store/__tests__/run-background.test.ts",
+    "packages/sciobot/src/chrome/colors.test.ts",
+    "packages/sciobot/src/chrome/colors-collaboration.test.ts",
+    "packages/sciobot/src/chrome/colors-review.test.ts",
+    "e2e/sciobot-colors.spec.ts"
+  ],
+  "changeset": "native-run-backgrounds",
+  "migration": null
+}

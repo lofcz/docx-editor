@@ -91,6 +91,7 @@ export const ACCEPTED_RUN_PROPERTIES = [
   'strike',
   'dstrike', // double strike
   'highlight',
+  'shd', // arbitrary RGB character background
   'vertAlign', // superscript / subscript
   'position', // baseline offset
   'caps',

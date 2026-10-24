@@ -32,6 +32,7 @@ import {
 import { formattableRanges } from '@docx-editor.dev/core/store';
 import { findNode } from '../store/package/ooxml-edit.ts';
 import { formattingRangeBesideRestrictedControl } from '../store/store/direct-properties.ts';
+import { clearsRunColor } from '../store/store/direct-properties.ts';
 import type {
   FormattingDisplayMode,
   FormattingRevisionAuthorFilter,
@@ -361,7 +362,17 @@ export function createSurfaceFormat(deps: SurfaceFormatDeps): FormatMethods {
     // Character styles use the operation's separate characterStyle field, never the
     // replaceable property vocabulary. A caret can still arm that explicit identity.
     if (!isAuthorableRunProperty(incoming.localName) && incoming.localName !== 'rStyle') return;
-    deps.setPendingFormats(mergedProperties(deps.pendingFormats() ?? [], incoming));
+    const pending = deps.pendingFormats() ?? [];
+    let next = clearsRunColor(incoming)
+      ? [...pending.filter((p) => p.localName !== incoming.localName), incoming]
+      : mergedProperties(pending, incoming);
+    if (incoming.localName === 'shd') {
+      const highlight: SurfaceProperty = clearsRunColor(incoming)
+        ? { localName: 'highlight' }
+        : { localName: 'highlight', attributes: { val: 'none' } };
+      next = [...next.filter((p) => p.localName !== 'highlight'), highlight];
+    }
+    deps.setPendingFormats(next);
   };
 
   /**

@@ -130,3 +130,4 @@ export {
 
 export * from './chrome/line-height';
 export * from './chrome/paragraph-position';
+export * from './chrome/colors';

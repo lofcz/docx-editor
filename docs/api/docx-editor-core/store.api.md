@@ -8,7 +8,7 @@
 export const ACCEPTED_PARAGRAPH_PROPERTIES: readonly ['pStyle', 'jc', 'spacing', 'ind', 'tabs', 'numPr', 'keepNext', 'keepLines', 'widowControl', 'pageBreakBefore', 'contextualSpacing', 'shd', 'bidi'];
 
 // @public
-export const ACCEPTED_RUN_PROPERTIES: readonly ['rFonts', 'sz', 'szCs', 'color', 'b', 'bCs', 'i', 'iCs', 'u', 'strike', 'dstrike', 'highlight', 'vertAlign', 'position', 'caps', 'smallCaps', 'spacing', 'w', 'kern'];
+export const ACCEPTED_RUN_PROPERTIES: readonly ['rFonts', 'sz', 'szCs', 'color', 'b', 'bCs', 'i', 'iCs', 'u', 'strike', 'dstrike', 'highlight', 'shd', 'vertAlign', 'position', 'caps', 'smallCaps', 'spacing', 'w', 'kern'];
 
 // @public
 export function addComment(store: TreeDocumentStore, request: AddCommentRequest): AddCommentResult;

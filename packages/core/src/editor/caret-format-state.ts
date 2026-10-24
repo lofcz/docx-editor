@@ -20,12 +20,9 @@ export function pendingCharacterStyle(properties: readonly SurfaceProperty[]): {
   return style ? { characterStyle: style.attributes?.val || null } : {};
 }
 
-/** Style identity changes need local history even when their visible formatting agrees. */
+/** Pending identity/removal changes need history even when visible formatting agrees. */
 export function pendingCharacterStyleChanged(before: PendingFormat, after: PendingFormat): boolean {
-  return (
-    JSON.stringify(pendingCharacterStyle(before?.properties ?? [])) !==
-    JSON.stringify(pendingCharacterStyle(after?.properties ?? []))
-  );
+  return JSON.stringify(before?.properties ?? []) !== JSON.stringify(after?.properties ?? []);
 }
 
 /** One insertion writes its captured face and explicit character style in the same transaction. */

@@ -166,7 +166,16 @@ export function mergedProperties(
     : [incoming as OoxmlProperty];
   const names = new Set(additions.map((property) => property.localName));
   const kept = existing.filter((entry) => !names.has(entry.localName));
-  return [...kept, ...additions];
+  // An absent color value restores inheritance; boolean properties still use their
+  // normal empty-element ON spelling. Keep removal markers out of authored XML.
+  return [...kept, ...additions.filter((property) => !clearsRunColor(property))];
+}
+
+export function clearsRunColor(property: OoxmlProperty): boolean {
+  return (
+    ['color', 'highlight', 'shd'].includes(property.localName) &&
+    (!property.attributes || Object.keys(property.attributes).length === 0)
+  );
 }
 
 /**
@@ -420,7 +429,18 @@ function withMultiSettingsKept(
     complex,
     Array.isArray(incoming) ? (incoming as readonly OoxmlProperty[]) : [incoming as OoxmlProperty]
   );
-  return additions.map((property) => mergedMultiSettingProperty(authored, property));
+  const mapped = additions.map((property) => mergedMultiSettingProperty(authored, property));
+  // A background picker must override Word's higher-priority fixed highlight too.
+  // Clearing the picker removes both direct background representations.
+  const shading =
+    !Array.isArray(incoming) && additions.find((property) => property.localName === 'shd');
+  if (shading && !additions.some((property) => property.localName === 'highlight'))
+    mapped.push(
+      clearsRunColor(shading)
+        ? { localName: 'highlight' }
+        : { localName: 'highlight', attributes: { val: 'none' } }
+    );
+  return mapped;
 }
 
 /**

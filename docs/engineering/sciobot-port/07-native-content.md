@@ -88,7 +88,7 @@ The backlog validator runs but reports external application-source drift. Captur
 
 ## N05
 
-- [ ] Connect text color and highlight controls
+- [x] Connect text color and highlight controls
 
 **Depends:** [C03](01-contracts.md#c03), [N01](07-native-content.md#n01), [V01](11-verification.md#v01)
 
@@ -102,7 +102,13 @@ The backlog validator runs but reports external application-source drift. Captur
 
 **Check:** Add a focused Chromium case with real input and native selection where applicable. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** codex solo, branch `codex/react-block-proof`. **Evidence:** Baseline `260fd5f7`, completed solo source on `codex/react-block-proof`. `colors.ts` connects literal RGB foreground and arbitrary RGB backgrounds, clear/inherit/transparent values, mixed values, native caret preferences, and a host-supplied palette. Backgrounds use native character shading, rather than approximating the application palette with Word's limited fixed highlights. An explicit background overrides a fixed highlight; clearing removes direct shading/highlight and restores inheritance. Foreground and background actions remain independent. Native color removal emits no empty color elements. Property rewrites retain foreign attributes, bindings, children, and unchanged theme references. The new `shd` capability receives one explicit manifest entry and its matching API tuple item; no capture or baseline-generation command ran.
+
+`bun test --timeout 30000 --preload ./scripts/test/preload-dom.ts packages/sciobot/src/chrome/colors.test.ts packages/sciobot/src/chrome/colors-collaboration.test.ts packages/core/src/store/__tests__/run-background.test.ts packages/core/src/store/__tests__/tree-ops.test.ts packages/core/src/store/__tests__/authorable-mutation-manifest.test.ts packages/core/src/editor/__tests__/pending-caret-formatting.test.ts packages/core/src/editor/__tests__/pending-character-style.test.ts` passes 137 cases and 876 assertions (`/tmp/sciobot-n05-batch.log`). The final combined batch includes those files, native formatting-review cases, the oracle regression, and inherited-highlight Enter coverage; all 143 cases and 965 assertions pass across nine files (`/tmp/sciobot-n05-final-tests.log`). Explicit picker actions override a fixed highlight; carrying imported shading through Enter does not override inherited highlight styling. It covers apply/clear, arbitrary RGB values, imported themes, foreign metadata, caret typing/history, fixed-highlight override, malformed input refusal, native property vocabulary, and eight real-session cases. Those sessions cover both client orders, concurrent peer text, independent undo/redo, deletion during peer edits, reconnect, remote geometry, and canonical save/reopen convergence.
+
+Four additional real-session native formatting-review cases and one oracle regression pass five cases and 83 assertions (`/tmp/sciobot-n05-review-final.log`). Accept/reject preserve collaborator text and complete independent native formatting semantics. Rejection can retain equivalent text-run splits, as existing Word formatting does. The test-only oracle permits only adjacent text-only runs with identical complete attributes and property subtrees to share a text token. It retains theme references, unknown properties, wrapper boundaries, and all other structure. Separate raw canonical fingerprints still match each editor exactly after save/reopen; no production normalization or peer-identity coalescing was added. The oracle regression rejects changed theme references, colors, language, run attributes, wrappers, breaks, and text. Manual suggestion-mode application routing remains R23.
+
+`bunx playwright test --config e2e/sciobot-colors.config.ts` passes four Chromium cases (`/tmp/sciobot-n05-browser-final.log`). Pointer apply/clear preserves native selection and one-step undo; actual foreground/background paint is RGB(23,162,184). Independent colors, imported neighbor properties, real typing, and both sessions' saved native fingerprints pass. Core builds. Private typecheck passes 2317 files; private build passes 297 modules with external core. Scoped lint/formatting and file-size guards pass. Compatibility decision: `.collaboration/changes/sciobot-native-colors.json`; published minor change: `.changeset/native-run-backgrounds.md`. Transport remains test-only under the EigenPal Pro License. N03 records the unrelated application export-source drift that still fails the backlog audit.
 
 ## N06
 
