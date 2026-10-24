@@ -157,3 +157,97 @@ test('image replacements and fresh atoms choose minimum edits without replacing 
     }
   expect(cases).toBeGreaterThan(500);
 });
+
+test('explicit removal preserves surviving atom ordinals while replacement and births remain separate', () => {
+  expect(
+    alignRetainedAtoms(compiled(['a', 'x', 'b', 'y']), compiled(['a', 'b', 'y']), true, true)
+  ).toEqual([-1, 0]);
+  expect(
+    alignRetainedAtoms(
+      compiled(['x', 'a', 'i', 'b', 'y']),
+      compiled(['a', 'j', 'b', 'y']),
+      true,
+      true
+    )
+  ).toEqual([-1, 0, 1]);
+  expect(
+    alignRetainedAtoms(
+      compiled(['x', 'a', 'i', 'b', 'y']),
+      compiled(['x', 'a', 'b', 'i', 'y']),
+      true,
+      true
+    )
+  ).toEqual([0, 1, 2]);
+  expect(alignRetainedAtoms(compiled(['x', 'y']), compiled(['a']), true, true)).toEqual([-1, -1]);
+  // Callers that do not request explicit removal retain the original refusal contract.
+  expect(alignRetainedAtoms(compiled(['x', 'y']), compiled(['a']), true)).toBeNull();
+});
+
+test('explicit removal alignment matches an independent edit-distance oracle with identity tie breaks', () => {
+  const values: Symbol[][] = [[]];
+  let level: Symbol[][] = [[]];
+  for (let depth = 0; depth < 3; depth++) {
+    level = level.flatMap((prefix) =>
+      (['a', 'i', 'j', 'x'] as const).map((value) => [...prefix, value])
+    );
+    values.push(...level);
+  }
+  for (const a of values)
+    for (const b of values) {
+      const old = a.flatMap((value, index) => (atom(value) ? [index] : []));
+      if (!old.length) continue;
+      const next = b.flatMap((value, index) => (atom(value) ? [index] : [])),
+        weight = old.length + 1;
+      // Independent full matrix: a native removal adds one secondary identity cost.
+      const matrix = Array.from({ length: a.length + 1 }, () => Array(b.length + 1).fill(Infinity));
+      matrix[0]![0] = 0;
+      for (let i = 0; i <= a.length; i++)
+        for (let j = 0; j <= b.length; j++) {
+          const current = matrix[i]![j]!;
+          if (i < a.length)
+            matrix[i + 1]![j] = Math.min(
+              matrix[i + 1]![j]!,
+              current + weight + Number(atom(a[i]!))
+            );
+          if (j < b.length) matrix[i]![j + 1] = Math.min(matrix[i]![j + 1]!, current + weight);
+          if (i < a.length && j < b.length && (a[i] === b[j] || (image(a[i]!) && image(b[j]!))))
+            matrix[i + 1]![j + 1] = Math.min(
+              matrix[i + 1]![j + 1]!,
+              current + (a[i] === b[j] ? 0 : weight)
+            );
+        }
+      const matches = alignRetainedAtoms(compiled(a), compiled(b), true, true);
+      expect(matches).not.toBeNull();
+      let ai = 0,
+        bi = 0,
+        cost = 0,
+        removed = 0;
+      const gap = (endA: number, endB: number) => {
+        const source = a.slice(ai, endA),
+          target = b.slice(bi, endB);
+        const deletions = source.filter(atom).length;
+        removed += deletions;
+        cost +=
+          deletions +
+          target.filter(atom).length +
+          distance(
+            source.filter((value) => !atom(value)),
+            target.filter((value) => !atom(value))
+          );
+      };
+      for (let index = 0; index < old.length; index++) {
+        const target = matches![index]!;
+        if (target < 0) continue;
+        gap(old[index]!, next[target]!);
+        expect(
+          a[old[index]!] === b[next[target]!] ||
+            (image(a[old[index]!]!) && image(b[next[target]!]!))
+        ).toBe(true);
+        cost += Number(a[old[index]!] !== b[next[target]!]);
+        ai = old[index]! + 1;
+        bi = next[target]! + 1;
+      }
+      gap(a.length, b.length);
+      expect(cost * weight + removed).toBe(matrix[a.length]![b.length]!);
+    }
+});

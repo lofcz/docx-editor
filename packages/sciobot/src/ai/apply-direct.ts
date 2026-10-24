@@ -4,7 +4,7 @@ import { cellAtomBindings, insertedAtomsOfEdit } from '../diff/inserted-cell-ato
 import { completeInlineAtomPayloads } from '../native/inline-atom-payloads';
 import { createInlineImageRuntime, type InlineImageRuntime } from '../native/inline-image-runtime';
 import type { PreparedInlineImages } from '../native/inline-image-resources';
-import { lowerRetainedAtoms } from './direct-inline-atoms';
+import { lowerInlineChange } from './direct-inline-change';
 import { cellPropertiesAt } from '../diff/new-cell-properties';
 import { cellListBindings } from '../diff/inserted-cell-lists';
 import { resolveTableGeometry, geometrySplitCells } from '../diff/table-geometry';
@@ -372,8 +372,9 @@ function lowerDirectPlan(
       case 'inline-image':
         deferred.push((working) => completeImageReplacement(working, edit, plan, preparedImages));
         break;
+      case 'inline-remove':
       case 'inline-atoms': {
-        const lowered = lowerRetainedAtoms(pkg, preview, edit, images, stagedCodeStyles(staged));
+        const lowered = lowerInlineChange(pkg, preview, edit, images, stagedCodeStyles(staged));
         for (const op of lowered.ops) apply(op);
         deferred.push((working) => lowered.complete(working));
         break;
@@ -979,7 +980,7 @@ export function applyDirectPlan(
     const changed = session.packageRevision() !== actual.revision;
     return {
       success: false,
-      code: 'apply-failed',
+      code: !changed && error instanceof NativeWriteRefusal ? error.code : 'apply-failed',
       error: `${changed ? 'The document changed during a failed native call. Re-read before retrying. ' : ''}${error instanceof Error ? error.message : String(error)}`,
       expectedRevision: actual,
       actualRevision: { ...actual, revision: session.packageRevision() },

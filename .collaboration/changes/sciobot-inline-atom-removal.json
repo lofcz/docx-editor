@@ -1,0 +1,13 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "The private target planner required each source inline atom to survive. AI targets that removed a native picture, math, mention, or source atom refused.",
+  "after": "The private plan carries explicit atom removals with exact payload and native-subtree checks. Native removal precedes other paragraph edits, retires payload records by identity, and releases only unreferenced image resources. Shared execution requires the complete owned history scope.",
+  "reason": "The application-owned operation changes no public transport field or format version. Native content protection remains authoritative. Generic text editing cannot unlock managed atoms. Tracked execution remains separately gated.",
+  "tests": [
+    "packages/sciobot/src/diff/inline-removals.test.ts",
+    "packages/sciobot/src/diff/retained-atom-alignment.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

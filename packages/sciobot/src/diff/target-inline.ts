@@ -1,3 +1,5 @@
+import { planInlineSourceUpdates } from './inline-source-updates';
+import { planInlineRemovals } from './inline-removals';
 import { planImageReplacements } from './image-replacements';
 import { mixedInlineAtoms } from './mixed-inline-atoms';
 import { linkAwareBias } from './link-aware-text';
@@ -119,6 +121,22 @@ export function planTargetParagraph(context: TargetParagraphSource): EditPlanRes
     return fail('Changed logical paragraphs need one resolved native paragraph.');
   const paragraphId = ids[0]!,
     owner = source.index.owners.find((entry) => entry.id === paragraphId)!;
+  const sourceUpdates = planInlineSourceUpdates({ ...context, before }, a, b);
+  if (sourceUpdates) {
+    if ('success' in sourceUpdates) return sourceUpdates;
+    const rest = planTargetParagraph(sourceUpdates.context);
+    return rest.success
+      ? createEditPlan(revision, [...sourceUpdates.edits, ...rest.plan.operations])
+      : rest;
+  }
+  const removals = planInlineRemovals({ ...context, before }, part, paragraphId, a, b);
+  if (removals) {
+    if ('success' in removals) return removals;
+    const rest = planTargetParagraph(removals.context);
+    return rest.success
+      ? createEditPlan(revision, [...removals.edits, ...rest.plan.operations])
+      : rest;
+  }
   const operations: CanonicalEdit[] = [];
   if (before.ast.type !== after.ast.type || before.ast.depth !== after.ast.depth) {
     const depth = after.ast.type === 'heading' ? Number(after.ast.depth) : 0;

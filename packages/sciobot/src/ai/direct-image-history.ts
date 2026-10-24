@@ -14,7 +14,10 @@ export function directImageHistory(
   after: OoxmlPackage
 ): <T>(run: () => T) => T {
   const session = editor.surface?.collaborationSession() ?? null;
-  if (!session || !plan.operations.some((edit) => edit.kind === 'inline-image'))
+  if (
+    !session ||
+    !plan.operations.some((edit) => edit.kind === 'inline-image' || edit.kind === 'inline-remove')
+  )
     return (run) => run();
   const refusal = reviewGroupHistoryRefusal(session);
   if (refusal) refuseWrite(refusal, 'unsupported-operation');
