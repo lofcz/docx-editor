@@ -14,7 +14,7 @@ Production use requires a commercial agreement: licensing@eigenpal.com
  * - `r`: the run element without children.
  * - `rp`: the run's `w:rPr` without children, and the order of its properties.
  * - `p:<namespace>|<local name>`: one property element of that `w:rPr`, with its subtree.
- * - `t`: the text element without children, and the ID of its text value.
+ * - `t`: text shell identity and the ID of its text value; `ts` holds the authored shape.
  * - `w`: the wrappers around the item other than revisions, outer to inner, each with its
  *   fixed children and the revisions nested inside it.
  * - `v:<wrapper ID>`: one tracked insertion, deletion or move around the item, and `b`, the
@@ -65,6 +65,11 @@ import {
 
 /** The record field that holds a paragraph's shared inline text. */
 export const INLINE_FIELD = 'inline';
+
+/** A nonprinting paragraph boundary is not a visible empty element or registry node. */
+export function isParagraphBoundary(value: unknown): boolean {
+  return isRecord(value) && Object.keys(value).length === 1 && value.p === 1;
+}
 
 const KEY_RUN = 'r';
 const KEY_RUN_PROPERTIES = 'rp';

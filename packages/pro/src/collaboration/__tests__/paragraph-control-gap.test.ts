@@ -69,51 +69,60 @@ const tracked = {
 };
 for (const causal of [true, false])
   for (const gc of [true, false])
-    test(`terminal revision ordering respects observed right boundaries: causal=${causal}, gc=${gc}`, () => {
-      const alice = new Y.Doc({ gc }),
-        bob = new Y.Doc({ gc }),
-        cold = new Y.Doc({ gc });
-      alice.clientID = 73;
-      bob.clientID = 41;
-      const stops = [
-        keepFormattingMarkers(alice),
-        keepFormattingMarkers(bob),
-        keepFormattingMarkers(cold),
-      ];
-      try {
-        const left = alice.getText('paragraph');
-        left.insert(0, 'A ');
-        if (causal) left.insert(2, 'Paper', tracked);
-        Y.applyUpdate(bob, Y.encodeStateAsUpdate(alice));
-        if (!causal) left.insert(2, 'Paper', tracked);
-        bob.getText('paragraph').insert(2, 'Peer', {});
-        Y.applyUpdate(alice, Y.encodeStateAsUpdate(bob));
-        Y.applyUpdate(bob, Y.encodeStateAsUpdate(alice));
-        Y.applyUpdate(cold, Y.encodeStateAsUpdate(alice));
-        for (const doc of [alice, bob, cold]) {
-          const text = doc.getText('paragraph');
-          expect(text.toString()).toBe('A PeerPaper');
-          const shown = {
-            identities: textIdentities(text),
-            hidden: new Set<number>(),
-            incoming: [],
-          };
-          const result = concurrentRevisionTail(
-            text,
-            shown,
-            asLogicalId('paragraph'),
-            DEFAULT_DOCUMENT_LIMITS
-          );
-          expect(result.incoming).toHaveLength(causal ? 0 : 1);
-          expect([...result.hidden]).toEqual(causal ? [] : [6, 7, 8, 9, 10]);
+    for (const boundary of [false, true])
+      test(`terminal revision ordering respects observed right boundaries: causal=${causal}, gc=${gc}, boundary=${boundary}`, () => {
+        const alice = new Y.Doc({ gc }),
+          bob = new Y.Doc({ gc }),
+          cold = new Y.Doc({ gc });
+        alice.clientID = 73;
+        bob.clientID = 41;
+        const stops = [
+          keepFormattingMarkers(alice),
+          keepFormattingMarkers(bob),
+          keepFormattingMarkers(cold),
+        ];
+        try {
+          const left = alice.getText('paragraph');
+          const base = boundary ? 1 : 0;
+          if (boundary) left.insertEmbed(0, { p: 1 });
+          left.insert(base, 'A ');
+          if (causal) left.insert(base + 2, 'Paper', tracked);
+          Y.applyUpdate(bob, Y.encodeStateAsUpdate(alice));
+          if (!causal) left.insert(base + 2, 'Paper', tracked);
+          bob.getText('paragraph').insert(base + 2, 'Peer', {});
+          Y.applyUpdate(alice, Y.encodeStateAsUpdate(bob));
+          Y.applyUpdate(bob, Y.encodeStateAsUpdate(alice));
+          Y.applyUpdate(cold, Y.encodeStateAsUpdate(alice));
+          for (const doc of [alice, bob, cold]) {
+            const text = doc.getText('paragraph');
+            expect(text.toString()).toBe('A PeerPaper');
+            const shown = {
+              identities: textIdentities(text),
+              hidden: new Set<number>(),
+              incoming: [],
+            };
+            const result = concurrentRevisionTail(text, shown, asLogicalId('paragraph'), {
+              ...DEFAULT_DOCUMENT_LIMITS,
+              maxTextLength: 11,
+            });
+            expect(result.incoming).toHaveLength(causal ? 0 : 1);
+            expect(
+              concurrentRevisionTail(text, shown, asLogicalId('paragraph'), {
+                ...DEFAULT_DOCUMENT_LIMITS,
+                maxTextLength: 10,
+              }).incoming
+            ).toEqual([]);
+            expect([...result.hidden]).toEqual(
+              causal ? [] : [6, 7, 8, 9, 10].map((offset) => offset + base)
+            );
+          }
+        } finally {
+          stops.forEach((stop) => stop());
+          alice.destroy();
+          bob.destroy();
+          cold.destroy();
         }
-      } finally {
-        stops.forEach((stop) => stop());
-        alice.destroy();
-        bob.destroy();
-        cold.destroy();
-      }
-    });
+      });
 
 test('collected formatting clocks cannot change terminal append ordering', () => {
   const alice = new Y.Doc({ gc: false }),

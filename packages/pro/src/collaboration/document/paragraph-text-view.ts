@@ -224,7 +224,10 @@ export function inlineChildren(
 export function writeInlineText(record: Y.Map<unknown>, ops: readonly InlineDeltaOp[]): Y.Text {
   const text = new Y.Text();
   record.set(INLINE_FIELD, text);
-  let at = 0;
+  // A permanent, nonprinting boundary separates paragraph prefixes from ordinary typing.
+  // It survives removal of all visible content, so concurrent first edits have distinct sides.
+  text.insertEmbed(0, { p: 1 });
+  let at = 1;
   for (const op of ops) {
     if (typeof op.insert === 'string') {
       text.insert(at, op.insert, { ...op.attributes });

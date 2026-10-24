@@ -34,7 +34,7 @@ export function nativeBirthFieldCreation(
   if (
     !meta ||
     meta.get('protocolVersion') !== 1 ||
-    meta.get('sharedSchemaVersion') !== 8 ||
+    meta.get('sharedSchemaVersion') !== 9 ||
     meta.get('repairVersion') !== 14 ||
     meta.get('canonicalModelVersion') !== 1
   )

@@ -428,3 +428,16 @@ test('authored text shape refuses schema 7 without changing the room', () => {
     doc.destroy();
   }
 });
+
+test('paragraph boundaries refuse schema 8 without changing the room', () => {
+  const doc = savedRoom();
+  try {
+    doc.getMap(PACKAGE_META_KEY).set('sharedSchemaVersion', 8);
+    const bytes = Y.encodeStateAsUpdate(doc);
+    expect(readCollaborationFormatVersion(doc)).toBe('docx-collaboration:1.8.14.1');
+    expect(() => readCollaborationDocument(doc)).toThrow('schema-version-mismatch');
+    expect(Y.encodeStateAsUpdate(doc)).toEqual(bytes);
+  } finally {
+    doc.destroy();
+  }
+});

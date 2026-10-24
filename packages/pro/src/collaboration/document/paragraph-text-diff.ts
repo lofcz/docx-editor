@@ -13,6 +13,7 @@ import { linearizeParagraph } from './paragraph-linear.ts';
 import type { DocumentLimits } from './limits.ts';
 import {
   attributeSignature,
+  isParagraphBoundary,
   embedContent,
   encodeAttributes,
   type InlineAttributes,
@@ -69,6 +70,7 @@ export function tokensOfText(
     } else {
       position += 1;
       if (hidden?.has(position - 1)) continue;
+      if (isParagraphBoundary(op.insert)) continue;
       const embed = op.insert as { n?: string; r?: 1; a?: 1 };
       const key =
         typeof embed.n === 'string'

@@ -12,7 +12,7 @@ import type { ShownText } from './paragraph-text-follow.ts';
 import { itemIdentity, type TextIdentities } from './paragraph-text-identity.ts';
 import { structAt } from './yjs-items.ts';
 import { textDeletionsOf } from './paragraph-text-deletions.ts';
-import { decodeAttributes } from './paragraph-text.ts';
+import { decodeAttributes, isParagraphBoundary } from './paragraph-text.ts';
 
 /**
  * Read the original typing boundary through formatting clocks, including deleted clocks.
@@ -66,7 +66,16 @@ export function concurrentRevisionTail(
   if (shown.hidden.size || shown.incoming.length) return shown;
   const ids = shown.identities;
   const length = ids.ids.length;
-  if (length < 3 || length > limits.maxTextLength) return shown;
+  if (length < 3) return shown;
+  if (length > limits.maxTextLength) {
+    // Exactly one protocol boundary is transport structure, not document content.
+    // Check the excess before reading deltas, retaining the bounded document-content limit.
+    if (
+      length - 1 > limits.maxTextLength ||
+      !text.toDelta().some((op: { insert: unknown }) => isParagraphBoundary(op.insert))
+    )
+      return shown;
+  }
   let start = length - 1;
   while (start > 0 && isNextClock(ids.ids[start - 1]!, ids.ids[start]!)) start -= 1;
   if (!ids.starts[start] || ids.moved[start] || start === 0) return shown;

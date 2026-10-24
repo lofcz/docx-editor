@@ -1,0 +1,29 @@
+{
+  "impact": "migration-required",
+  "fields": ["sharedSchemaVersion"],
+  "before": "Shared paragraph text had no stable boundary when all visible content was absent. A new leading inline control and disconnected first typing occupied the same Yjs insertion seam, so client order could put text before the control. Private list insertion also reused same-kind empty blocks and reset compatible counters.",
+  "after": "Every shared paragraph has one nonprinting p boundary embed. Visible token diffs exclude the exact boundary shape but retain shared offsets. Newly inserted leading controls precede the boundary; ordinary first typing follows it. Observed content retains explicit positions, including typing before an existing control. The boundary survives full visible deletion. Private insertion appends after a same-kind empty block, replaces a different kind, preserves check state, and continues a compatible counter without changing its definition.",
+  "reason": "Shared schema changes from 8 to 9. Repair version 14, canonical model 1, native journal kinds, and owned protocol 2 remain unchanged. The boundary exists only in shared text and adds no DOCX character or element. Old clients cannot join these rooms. Verified export with the previous compatible deployment and fresh room seeding are required. No room or database is migrated here. The transport remains evaluated under the EigenPal Pro License; production controls import Apache core and private modules only. Existing document-content limits exclude one protocol boundary; exact-limit regression cases retain acceptance at the limit and refusal above it. No numeric resource limits or test deadlines change.",
+  "tests": [
+    "packages/pro/src/collaboration/__tests__/paragraph-start-boundary.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-format.test.ts",
+    "packages/pro/src/collaboration/__tests__/paragraph-text-typing.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-control-edge-typing.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-empty-line-composition.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-typing-after-move.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-split-boundary.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-batched-control-insert.test.ts",
+    "packages/sciobot/src/chrome/insert-list-empty.test.ts",
+    "packages/sciobot/src/chrome/insert-list-empty-collaboration.test.ts",
+    "packages/sciobot/src/chrome/insert-list-collaboration.test.ts",
+    "packages/sciobot/src/chrome/native-split-peer.test.ts",
+    "e2e/sciobot-lists.spec.ts",
+    "packages/pro/src/collaboration/__tests__/paragraph-control-gap.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-replacement-times.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-hostile-text-attributes.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-incremental-save.test.ts",
+    "packages/pro/src/collaboration/__tests__/paragraph-text-source-diff.test.ts"
+  ],
+  "changeset": "empty-list-insertion-boundary",
+  "migration": "upgrade-rooms-to-format-19141"
+}

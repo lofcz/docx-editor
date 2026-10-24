@@ -19,7 +19,7 @@ function fixture(repair = 14) {
     attrs = doc.getMap<string>(ATTRS);
   for (const [name, value] of Object.entries({
     protocolVersion: 1,
-    sharedSchemaVersion: 8,
+    sharedSchemaVersion: 9,
     repairVersion: repair,
     canonicalModelVersion: 1,
   }))

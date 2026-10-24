@@ -221,3 +221,77 @@ for (const [style, label] of [
         );
       }
     });
+
+for (const [style, label] of [
+  ['decimal', 'Insert numbers'],
+  ['todo', 'Insert checklist'],
+] as const)
+  for (const decision of ['direct', 'accept', 'reject'] as const)
+    test(`empty list insertion retains the previous ${style} item and one-step history: ${decision}`, async ({
+      page,
+    }) => {
+      await page.goto('/lists.html');
+      await page.waitForFunction(() => !!window.listControls);
+      const toolbar = page.locator('[data-pane="0"]').getByRole('toolbar', { name: 'Lists' });
+      await page.evaluate(() => window.listControls.select(0, 0, 5));
+      await page.keyboard.press('Backspace');
+      await toolbar.getByRole('combobox', { name: 'List style' }).selectOption(style);
+      await toolbar.getByRole('button', { name: 'Apply list', exact: true }).click();
+      if (style === 'todo')
+        await toolbar.getByRole('button', { name: 'Check item', exact: true }).click();
+      await page.evaluate(
+        (offset) => window.listControls.select(0, offset),
+        style === 'todo' ? 1 : 0
+      );
+      if (decision !== 'direct')
+        expect(await page.evaluate(() => window.listControls.suggest())).toBe(true);
+      const before = await page.evaluate(() => window.listControls.state());
+      await toolbar.getByRole('button', { name: label, exact: true }).click();
+      await page.evaluate(() => window.listControls.settle());
+      const after = await page.evaluate(() => window.listControls.state());
+      expect(after.paragraphs).toHaveLength(before.paragraphs.length + 1);
+      expect(after.paragraphs[0]!.membership).toEqual(before.paragraphs[0]!.membership);
+      expect(
+        style === 'todo'
+          ? after.paragraphs[0]!.membership?.checkbox?.checked
+          : after.paragraphs[0]!.marker?.text
+      ).toBe(style === 'todo' ? true : '1.');
+      expect(
+        style === 'todo'
+          ? after.paragraphs[1]!.membership?.checkbox?.checked
+          : after.paragraphs[1]!.marker?.text
+      ).toBe(style === 'todo' ? false : '2.');
+      expect(await page.evaluate(() => window.listControls.undo())).toBe(true);
+      expect((await page.evaluate(() => window.listControls.state())).fingerprint).toEqual(
+        before.fingerprint
+      );
+      expect(await page.evaluate(() => window.listControls.redo())).toBe(true);
+      expect((await page.evaluate(() => window.listControls.state())).selection).toEqual(
+        after.selection
+      );
+      if (decision !== 'direct') {
+        const groups = await page.evaluate(() => window.listControls.groups());
+        expect(groups).toHaveLength(1);
+        expect(
+          await page.evaluate(
+            ({ id, action }) =>
+              action === 'accept' ? window.listControls.accept(id) : window.listControls.reject(id),
+            { id: groups[0]!.id, action: decision }
+          )
+        ).toBe(true);
+        await page.evaluate(() => window.listControls.settle());
+      }
+      const saved = await page.evaluate(() => window.listControls.saved());
+      expect(saved[0]).toEqual(saved[1]);
+      if (decision === 'reject') expect(saved[0]!.fingerprint).toEqual(before.fingerprint);
+      else {
+        await page.evaluate(
+          (offset) => window.listControls.select(1, offset),
+          style === 'todo' ? 1 : 0
+        );
+        await page.keyboard.type('Next');
+        expect((await page.evaluate(() => window.listControls.state())).paragraphs[1]!.text).toBe(
+          style === 'todo' ? '☐Next' : 'Next'
+        );
+      }
+    });

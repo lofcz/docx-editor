@@ -12,7 +12,10 @@ Production use requires a commercial agreement: licensing@eigenpal.com
  * so a hidden position keeps its place between two shown ones.
  */
 import * as Y from 'yjs';
-import { controlReplacementPosition } from './paragraph-control-replacement.ts';
+import {
+  controlReplacementPosition,
+  paragraphInsertionPosition,
+} from './paragraph-control-replacement.ts';
 import { persistRevisionCopyMembership } from './revision-copy-peers.ts';
 import { pairedRevisionSources } from './revision-text-copies.ts';
 import {
@@ -276,7 +279,8 @@ function writeParagraphText(
     const inserted = block.steps
       .filter((step): step is Extract<Step, { op: 'ins' }> => step.op === 'ins')
       .map((step) => after[step.after]!);
-    const insertion = controlReplacementPosition(before, after, block.steps, block.after);
+    const fallback = paragraphInsertionPosition(text, before, inserted, block.after);
+    const insertion = controlReplacementPosition(before, after, block.steps, fallback);
     let position = insertion;
     // Typing next to a copy names it, in case an undo of the move takes the copy's markers.
     let follow = followAnchorAt(identities, position);

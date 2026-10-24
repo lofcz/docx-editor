@@ -16,7 +16,7 @@ import {
 } from '@docx-editor.dev/core/store';
 import { nativeNumberingInfrastructureReady } from '../native/numbering-infrastructure';
 import { applyDirectListAssignments } from '../ai/direct-lists';
-import { planListMembership } from '../diff/lists';
+import { listInstanceLevel, planListMembership } from '../diff/lists';
 import { readEditorRevision } from '../projection/revision-cache';
 import { stageTrackedChecklist } from '../review/tracked-stage-checklists';
 import { captureReviewGroupHistory } from '../review/group-history';
@@ -130,8 +130,47 @@ export function insertManualList(
       text = paragraphTextOf(part, point.paragraphId);
     if (paragraph?.kind !== 'paragraph' || !parent || text === null || point.offset > text.length)
       throw new Error('The native insertion landing disappeared.');
+    const inspected = planListMembership({ pkg: working, partName: source.name, revision }, [
+      { paragraphId: paragraph.id, target: { kind: 'none' } },
+    ]);
+    if (!inspected.success) throw new Error(inspected.error);
+    const membership = inspected.plan.operations.find((edit) => edit.kind === 'list')?.before;
+    const numbering = membership?.numbering;
+    const sourceDefinition = numbering
+      ? listInstanceLevel(working, numbering.numId, numbering.level)?.level
+      : undefined;
+    const rootDefinition =
+      numbering?.level === 0
+        ? sourceDefinition
+        : numbering
+          ? listInstanceLevel(working, numbering.numId, 0)?.level
+          : undefined;
+    const compatibleRoot =
+      !membership?.checkbox &&
+      style !== 'todo' &&
+      (style === 'decimal'
+        ? rootDefinition?.numFmt === 'decimal'
+        : rootDefinition?.numFmt === 'bullet' && rootDefinition.lvlText === '•');
+    const sourceFormat = sourceDefinition?.numFmt;
+    // The captured insertion dispatcher classifies every non-decimal marker as a bullet block.
+    const sameStyle =
+      style === 'todo'
+        ? !!membership?.checkbox
+        : !membership?.checkbox &&
+          !!sourceFormat &&
+          sourceFormat !== 'none' &&
+          (style === 'decimal' ? sourceFormat === 'decimal' : sourceFormat !== 'decimal');
+    const empty =
+      !text.length ||
+      (!!membership?.checkbox && text.length === 1) ||
+      (suggesting && removesHead && point.offset === text.length);
+    const appendEmpty = empty && sameStyle;
+    const membershipTarget: ListTarget =
+      target.kind !== 'checklist' && compatibleRoot
+        ? { kind: target.kind, level: 0, instance: { kind: 'existing', numId: numbering!.numId } }
+        : target;
     // A wholly replaced head becomes the inserted block. Its old content remains struck until review.
-    const reuse = !text.length || (suggesting && removesHead && point.offset > 0);
+    const reuse = !appendEmpty && (empty || (suggesting && removesHead && point.offset > 0));
     if (reuse) {
       if (suggesting && point.offset > 0 && point.offset < text.length) {
         writer.apply(source.name, {
@@ -157,9 +196,9 @@ export function insertManualList(
         });
     } else {
       let beforeId: string | null;
-      if (point.offset === 0) beforeId = paragraph.id;
+      if (point.offset === 0 && !appendEmpty) beforeId = paragraph.id;
       else {
-        if (point.offset < text.length) {
+        if (point.offset < text.length && !appendEmpty) {
           writer.apply(source.name, {
             op: 'splitParagraph',
             paragraphId: paragraph.id,
@@ -200,7 +239,7 @@ export function insertManualList(
       if (!inserted) throw new Error('The list paragraph was not allocated.');
     }
     const list = planListMembership({ pkg: working, partName: source.name, revision }, [
-      { paragraphId: inserted!, target },
+      { paragraphId: inserted!, target: membershipTarget },
     ]);
     if (!list.success) throw new Error(list.error);
     for (const edit of list.plan.operations) {

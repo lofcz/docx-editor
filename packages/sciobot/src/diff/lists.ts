@@ -110,8 +110,13 @@ function listContext(pkg: OoxmlPackage) {
 
 /** Read a native level's start before assigning a new nested group to an existing instance. */
 export function listInstanceStart(pkg: OoxmlPackage, numId: string, level: number): number | null {
-  const resolved = resolveNumberingLevel(listContext(pkg).numbering, numId, level);
+  const resolved = listInstanceLevel(pkg, numId, level);
   return resolved ? (resolved.startOverride ?? resolved.level.start ?? 1) : null;
+}
+
+/** Resolve imported numbering through its relationship and linked styles. */
+export function listInstanceLevel(pkg: OoxmlPackage, numId: string, level: number) {
+  return resolveNumberingLevel(listContext(pkg).numbering, numId, level);
 }
 
 /**
