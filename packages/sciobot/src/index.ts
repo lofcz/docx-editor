@@ -129,3 +129,4 @@ export {
 } from './native/inline-image-resources';
 
 export * from './chrome/line-height';
+export * from './chrome/paragraph-position';

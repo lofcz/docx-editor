@@ -1,0 +1,14 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The private application adapter lacked logical and physical alignment controls and paragraph indentation controls.",
+  "after": "Private paragraph controls plan native jc and ind property changes with existing gated canonical operations, without changing list membership or unrelated paragraph properties.",
+  "reason": "No shared operation, journal, document format, or codec fields change. Existing canonical paragraph property operations replicate all actual edits.",
+  "tests": [
+    "packages/sciobot/src/chrome/paragraph-position.test.ts",
+    "packages/sciobot/src/chrome/paragraph-position-collaboration.test.ts",
+    "e2e/sciobot-paragraph-position.spec.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

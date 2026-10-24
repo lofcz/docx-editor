@@ -106,7 +106,7 @@ The backlog validator runs but reports external application-source drift. Captur
 
 ## N06
 
-- [ ] Connect alignment and indentation controls
+- [x] Connect alignment and indentation controls
 
 **Depends:** [C03](01-contracts.md#c03), [N01](07-native-content.md#n01), [V01](11-verification.md#v01)
 
@@ -120,7 +120,11 @@ The backlog validator runs but reports external application-source drift. Captur
 
 **Check:** Add a focused Chromium case with real input and native selection where applicable. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** codex solo, branch `codex/react-block-proof`. **Evidence:** Baseline `cdbcd919`, completed solo source on `codex/react-block-proof`. `paragraph-position.ts` connects all six captured alignments and both indentation actions. Physical left/right resolve independently for each paragraph direction; logical start/end retain native Word values. The application IndentKit step is 24 CSS pixels, mapped to 360 twips. Relative indentation uses each paragraph's native resolved indent. Canonical property plans preserve list membership, right and hanging indents, independent spacing, unknown properties, neighboring paragraphs, and selection. A toolbar action creates one native undo unit.
+
+`bun test --timeout 30000 --preload ./scripts/test/preload-dom.ts packages/sciobot/src/chrome/paragraph-position.test.ts packages/sciobot/src/chrome/paragraph-position-collaboration.test.ts` passes 32 cases and 604 assertions (`/tmp/sciobot-n06-final.log`). Local cases cover all six alignments in both directions, plain/list indentation, mixed paragraph indents, canonical save/reopen, and exact original undo. Sixteen real-session cases cover both client orders, concurrent peer text, independent undo/redo, deletion during peer editing, reconnect, remote caret/selection geometry, imported exact-spacing retention, and saved canonical convergence.
+
+`bunx playwright test --config e2e/sciobot-paragraph-position.config.ts` verifies all eight controls through pointer actions, native range selection, one-step undo, real typing, and both sessions' saved/reopened fingerprints. Seven cases pass in `/tmp/sciobot-n06-browser.log`; a source reload interrupted right alignment. Its unchanged assertions pass in the isolated rerun `--grep 'right preserves'` (`/tmp/sciobot-n06-browser-right.log`). Private typecheck passes 2312 files. Private build passes 296 modules with external core. Scoped lint and formatting pass. Decision: `.collaboration/changes/sciobot-paragraph-position.json`; existing native operations need no published changeset. The evaluated transport uses the EigenPal Pro License. N03 records the external application export-source drift that still fails the backlog audit; no reference baseline was recaptured. Manual suggestion-mode routing remains R23.
 
 ## N07
 
