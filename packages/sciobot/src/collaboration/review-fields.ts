@@ -1,3 +1,4 @@
+import { nativeBirthFieldCreation } from './review-birth-field-retention';
 // Application-owned review string fields over pinned MIT Yjs.
 // Pinned retained-birth interoperability stays in review-sequence-retention.ts.
 import * as Y from 'yjs';
@@ -117,6 +118,9 @@ function eligible(
     return null;
   const target = location(state, map, key);
   if (!target) return null;
+  // The native birth delete filter owns initial geometry and Word identities. Layering
+  // an absent scalar baseline over them would erase retained peer-bearing cell structure.
+  if (transaction && nativeBirthFieldCreation(state.doc, transaction, target)) return null;
   if (
     map._item &&
     transaction &&

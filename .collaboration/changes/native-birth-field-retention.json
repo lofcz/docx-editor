@@ -1,0 +1,15 @@
+{
+  "impact": "migration-required",
+  "fields": ["repairVersion"],
+  "before": "Creation undo could lose row layout and paragraph Word identities when another participant kept a new row alive. Detached constructor placeholders were absent from the dependency walk, and private scalar ownership could erase retained constructor attributes.",
+  "after": "Native birth retention follows original child edges for generated placeholders and preserves row layout. The private adapter leaves initial geometry and Word identity attributes with native birth ownership. Later scalar edits keep conditional ownership.",
+  "reason": "Deterministic repair changes from 9 to 10. Shared schema and journal kinds stay unchanged. Transport changes remain evaluation-only under the EigenPal Pro License. No saved room is migrated; upgraded deployment requires verified export and fresh room seeding.",
+  "tests": [
+    "packages/sciobot/src/collaboration/review-birth-field-retention.test.ts",
+    "packages/sciobot/src/review/recompose-cell-atom-peer.test.ts",
+    "packages/sciobot/src/review/recompose-cell-atom-waves.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-format.test.ts"
+  ],
+  "changeset": "native-birth-field-retention",
+  "migration": "upgrade-rooms-to-format-17101"
+}

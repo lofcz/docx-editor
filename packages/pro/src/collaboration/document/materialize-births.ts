@@ -442,6 +442,11 @@ export class BirthProjection {
           'tblW',
           'gridBefore',
           'gridAfter',
+          'cantSplit',
+          'trHeight',
+          'tblHeader',
+          'wBefore',
+          'wAfter',
         ].includes(record.localName) &&
         this.geometry(child))
     );

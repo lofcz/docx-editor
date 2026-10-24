@@ -1,6 +1,11 @@
+import { docxFixture } from './document';
+import { withInitializedPayloadStore } from '../../src/blocks/payload-opc-codec';
+import { withInitializedReviewGroupStore } from '../../src/review/group-record-store';
 import { expect } from 'bun:test';
 import {
   canonicalOoxmlFingerprint,
+  readOoxmlPackage,
+  writeOoxmlPackage,
   findNode,
   replaceNode,
   withPart,
@@ -125,3 +130,15 @@ export const cases = [
   },
   { name: 'split', body: merged, target: `| A | ${atoms} |\n| - | - |\n| Keep | Peer |` },
 ];
+
+/** Shared hosts initialize these independent metadata stores before their first edit. */
+export function preparedCellDocument(body: string): Uint8Array {
+  const opened = readOoxmlPackage(docxFixture(body));
+  if (!opened.ok) throw Error(opened.reason);
+  const payloads = withInitializedPayloadStore(opened.package);
+  if (!payloads.ok) throw Error(payloads.reason);
+  const groups = withInitializedReviewGroupStore(payloads.pkg);
+  if (!groups.ok) throw Error(groups.reason);
+  expect(native(groups.pkg)).toBe(native(opened.package));
+  return writeOoxmlPackage(groups.pkg);
+}

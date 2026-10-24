@@ -306,6 +306,14 @@ These rules change interpretation of existing identity and revision marks. No ne
 
 Stop writes and recover offline edits before upgrading. Back up the room and export with its compatible deployment. Verify peer text placement, hyperlink targets, pending revisions, and inline controls before migration. Reconcile incorrect content in that deployment before export. Follow [Upgrade saved rooms](#upgrade-saved-rooms) to create fresh rooms and persistence keys. Deploy matching clients, servers, workers, and agents. Do not rewrite version metadata or replay old updates into replacement rooms. Keep original rooms as read-only backups.
 
+### Upgrade rooms to format 1.7.10.1
+
+Format `docx-collaboration:1.7.10.1` retains native row layout and paragraph Word identities when another participant keeps a new row alive. Undo includes generated placeholder dependencies from the original birth. Private scalar ownership leaves constructor geometry and Word identity fields with the native birth lifecycle. Later field edits retain conditional ownership.
+
+This changes deterministic repair. The shared schema and journal kinds stay unchanged. Clients and workers using `docx-collaboration:1.7.9.1` must not join these rooms. This transport remains evaluated under the EigenPal Pro License.
+
+Export verified documents with the previous compatible deployment. Follow [Reseed rooms](#reseed-rooms) to create fresh rooms. Do not edit the saved version fields or replay old histories into the new rooms.
+
 ### Upgrade rooms to format 1.7.9.1
 
 Format `docx-collaboration:1.7.9.1` projects restored native cell properties before cell content. Undo can retain paragraph edges while restoring a property-holder edge later in the shared sequence. The reader preserves the required Word `tcPr` position without writing another operation. The shared schema and journal kinds stay unchanged.

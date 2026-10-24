@@ -28,6 +28,11 @@ export const BIRTH_GEOMETRY_NAMES = new Set([
   'tblW',
   'gridBefore',
   'gridAfter',
+  'cantSplit',
+  'trHeight',
+  'tblHeader',
+  'wBefore',
+  'wAfter',
 ]);
 
 /** Keep the ancestry of a birth available for foreign content that can arrive after undo. */
@@ -76,10 +81,31 @@ export class BirthUndoDependencies {
         changed.push(item);
         if (item.parent === this.registry.schema.nodes && item.parentSub) {
           const node = this.registry.schema.nodes.get(item.parentSub);
-          if (isNodeMap(node) && holderItem(node) === item && inBody(asLogicalId(item.parentSub)))
+          if (isNodeMap(node) && holderItem(node) === item)
             this.born.add(asLogicalId(item.parentSub));
         }
       }
+    }
+    // A generated placeholder can be created and removed within the same admitted birth.
+    // Its history edge still supplies ancestry when undo restores that native cell shape.
+    const birthParents = new Map<LogicalId, LogicalId>();
+    for (const item of changed) {
+      if (!(item.parent instanceof Y.Array)) continue;
+      const field = holderItem(item.parent),
+        parent = holderItem(field?.parent);
+      if (
+        field?.parentSub !== NODE_CHILDREN_FIELD ||
+        parent?.parent !== this.registry.schema.nodes ||
+        !parent.parentSub
+      )
+        continue;
+      for (const value of item.content.getContent())
+        if (
+          typeof value === 'string' &&
+          this.born.has(asLogicalId(value)) &&
+          !birthParents.has(asLogicalId(value))
+        )
+          birthParents.set(asLogicalId(value), asLogicalId(parent.parentSub));
     }
     // Independent paragraphs keep only foreign content after undo. Splits continue to
     // use their original text relocation history instead of retaining another paragraph.
@@ -90,6 +116,7 @@ export class BirthUndoDependencies {
         return (
           record &&
           isElementRecord(record) &&
+          inBody(id) &&
           (paragraphs.has(id) || ['table', 'tableRow', 'tableCell'].includes(record.kind))
         );
       })
@@ -109,7 +136,7 @@ export class BirthUndoDependencies {
       for (
         let at: LogicalId | null = id;
         at && seen.size < this.registry.limits.maxTreeDepth;
-        at = this.registry.parentOf(at)
+        at = this.registry.parentOf(at) ?? birthParents.get(at) ?? null
       ) {
         if (anchors.has(at)) return true;
         if (seen.has(at)) return false;

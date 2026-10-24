@@ -580,6 +580,8 @@ Additional WIP evidence: [tracked atoms in born paragraphs](evidence/tracked-bor
 
 [Tracked new-cell atoms](evidence/tracked-cell-inline-atoms.md) adds row, column, and split atom execution with persistent native topology ownership. Eighteen compiled cases pass both decisions and shared histories. Native history recovery uses evaluated format `1.7.9.1`. D30 stays open.
 
+[Repeated cell waves and new-row peer retention](evidence/tracked-cell-atom-peer-retention.md) verifies both decisions and creation histories. The evaluated transport repair advances to `1.7.10.1`. D30 stays open.
+
 ## D31
 
 - [x] Plan inline code marks through the native representation
