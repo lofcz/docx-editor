@@ -82,3 +82,80 @@ test('real checklist prefix, typing, nested Enter, empty-item outdent and Backsp
   expect(saved[0]).toEqual(saved[1]);
   expect(saved[0]!.fingerprint).toEqual(state.fingerprint);
 });
+
+test('adjacent counters and mixed indentation keep one-step history through real controls', async ({
+  page,
+}) => {
+  await page.goto('/lists.html');
+  await page.waitForFunction(() => !!window.listControls);
+  const toolbar = page.locator('[data-pane="0"]').getByRole('toolbar', { name: 'Lists' });
+  await toolbar.getByRole('combobox', { name: 'List style' }).selectOption('decimal');
+  for (const index of [0, 1]) {
+    await page.evaluate((index) => window.listControls.select(index, 2), index);
+    await toolbar.getByRole('button', { name: 'Apply list', exact: true }).click();
+  }
+  let state = await page.evaluate(() => window.listControls.state());
+  expect(state.paragraphs[0]!.membership!.numbering!.numId).toBe(
+    state.paragraphs[1]!.membership!.numbering!.numId
+  );
+  expect(state.paragraphs[1]!.marker!.text).toBe('2.');
+  await page.evaluate(() => window.listControls.selectRange(1, 1, 3, 4));
+  const before = await page.evaluate(() => window.listControls.state());
+  await toolbar.getByRole('button', { name: 'Indent list', exact: true }).click();
+  await page.evaluate(() => window.listControls.settle());
+  state = await page.evaluate(() => window.listControls.state());
+  expect(state.paragraphs[1]!.membership!.numbering!.level).toBe(1);
+  expect(state.paragraphs[2]!.membership!.numbering!.level).toBe(1);
+  expect(state.paragraphs[3]!.properties.find((p) => p.localName === 'ind')!.attributes!.left).toBe(
+    '360'
+  );
+  expect(state.selection).toEqual(before.selection);
+  expect(await page.evaluate(() => window.listControls.undo())).toBe(true);
+  expect((await page.evaluate(() => window.listControls.state())).fingerprint).toEqual(
+    before.fingerprint
+  );
+  expect(await page.evaluate(() => window.listControls.redo())).toBe(true);
+  expect((await page.evaluate(() => window.listControls.state())).fingerprint).toEqual(
+    state.fingerprint
+  );
+  const saved = await page.evaluate(() => window.listControls.saved());
+  expect(saved[0]).toEqual(saved[1]);
+  expect(saved[0]!.fingerprint).toEqual(state.fingerprint);
+});
+test('tracked checklist Enter creates one review group and restores native history and caret', async ({
+  page,
+}) => {
+  await page.goto('/lists.html');
+  await page.waitForFunction(() => !!window.listControls);
+  const toolbar = page.locator('[data-pane="0"]').getByRole('toolbar', { name: 'Lists' });
+  await page.evaluate(() => window.listControls.select(0, 5));
+  await toolbar.getByRole('combobox', { name: 'List style' }).selectOption('todo');
+  await toolbar.getByRole('button', { name: 'Apply list', exact: true }).click();
+  await toolbar.getByRole('button', { name: 'Check item', exact: true }).click();
+  await toolbar.getByRole('button', { name: 'Indent list', exact: true }).click();
+  expect(await page.evaluate(() => window.listControls.suggest())).toBe(true);
+  const before = await page.evaluate(() => window.listControls.state());
+  await page.keyboard.press('Enter');
+  await page.evaluate(() => window.listControls.settle());
+  const after = await page.evaluate(() => window.listControls.state());
+  expect(after.paragraphs[1]!.membership!.checkbox).toMatchObject({ checked: false, level: 1 });
+  expect(after.selection.head.offset).toBe(1);
+  const groups = await page.evaluate(() => window.listControls.groups());
+  expect(groups).toHaveLength(1);
+  expect(await page.evaluate(() => window.listControls.undo())).toBe(true);
+  expect((await page.evaluate(() => window.listControls.state())).fingerprint).toEqual(
+    before.fingerprint
+  );
+  expect(await page.evaluate(() => window.listControls.redo())).toBe(true);
+  expect((await page.evaluate(() => window.listControls.state())).selection).toEqual(
+    after.selection
+  );
+  expect(await page.evaluate((id) => window.listControls.reject(id), groups[0]!.id)).toBe(true);
+  await page.evaluate(() => window.listControls.settle());
+  const saved = await page.evaluate(() => window.listControls.saved());
+  expect(saved[0]).toEqual(saved[1]);
+  expect(await page.evaluate(() => window.listControls.undo())).toBe(true);
+  expect((await page.evaluate(() => window.listControls.state())).fingerprint).toEqual(
+    after.fingerprint
+  );
+});

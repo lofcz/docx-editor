@@ -2,6 +2,7 @@
 import { loadDefaultFonts } from '@docx-editor.dev/fonts';
 import {
   canonicalOoxmlFingerprint,
+  directParagraphProperties,
   paragraphTextOf,
   readOoxmlPackage,
   semanticDigest,
@@ -9,6 +10,10 @@ import {
 import { createTwoEditorFixture } from '../support/collaboration';
 import { listDocument, listParagraph } from '../support/list-document';
 import { createListToolbar, manualListState, manualListMarker } from '../../src/chrome/lists';
+import { SCIOBOT_NATIVE_REVIEW_MODULE } from '../../src/review/native-module';
+import { readReviewGroups } from '../../src/review/groups';
+import { rejectReviewGroup } from '../../src/review/reject-group';
+import { readEditorRevision } from '../../src/projection/revision-cache';
 import { installListEditing } from '../../src/chrome/list-input';
 import '@docx-editor.dev/core/styles/editor.css';
 import './style.css';
@@ -24,7 +29,7 @@ const pair = await createTwoEditorFixture({
   ),
   documentId: context.documentId,
   ownedAttributes: true,
-  editor: { fonts },
+  editor: { fonts, modules: [SCIOBOT_NATIVE_REVIEW_MODULE] },
 });
 while (!pair.editors.every((e) => !!e.surface))
   await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
@@ -50,6 +55,32 @@ const api = {
     });
     s.focus();
   },
+  selectRange(first: number, start: number, last: number, end: number) {
+    const s = pair.editors[0]!.surface!,
+      ids = s.session.paragraphIds();
+    s.setSelection({
+      anchor: { paragraphId: ids[first]!, offset: start },
+      head: { paragraphId: ids[last]!, offset: end },
+    });
+    s.focus();
+  },
+  suggest() {
+    return pair.editors[0]!.exec({ type: 'setEditingMode', mode: 'suggesting' }).ok;
+  },
+  groups() {
+    const result = readReviewGroups(pair.editors[0]!.surface!.session.currentPackage());
+    if (!result.success) throw new Error(result.error);
+    return result.groups;
+  },
+  reject(id: string) {
+    const editor = pair.editors[0]!;
+    return rejectReviewGroup(
+      editor,
+      id,
+      readEditorRevision(editor, context.documentId, context.epoch)!,
+      context
+    ).success;
+  },
   state(peer = 0) {
     const e = pair.editors[peer]!,
       s = e.surface!;
@@ -61,6 +92,7 @@ const api = {
         text: paragraphTextOf(s.session.part(), id),
         membership: manualListState(e, context, id),
         marker: manualListMarker(e, id),
+        properties: directParagraphProperties(s.session.part(), id),
       })),
       fingerprint: canonicalOoxmlFingerprint(s.session.part()),
     };

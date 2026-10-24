@@ -1,10 +1,13 @@
-import { beginHistoryGroupFrames, type DocxEditorInstance } from '@docx-editor.dev/core/editor';
+import type { DocxEditorInstance } from '@docx-editor.dev/core/editor';
 import {
   paragraphTextOf,
   parentNodeOf,
   findNode,
   type TreeDocOp,
 } from '@docx-editor.dev/core/store';
+import { captureReviewGroupHistory } from '../review/group-history';
+import { checklistSplitBudget, completeTrackedChecklistSplit } from './list-split-tracking';
+import { withReviewGroupRevisionReservations } from '../review/group-allocation';
 import { applyDirectListAssignments } from '../ai/direct-lists';
 import { planParagraphText } from '../diff/paragraph-text';
 import { planListMembership } from '../diff/lists';
@@ -12,12 +15,7 @@ import { createEditPlan } from '../diff/plan';
 import { readEditorRevision } from '../projection/revision-cache';
 import type { ListTarget } from '../diff/list-types';
 import type { BlockCommandContext } from './block-type';
-import {
-  applyManualListPlan,
-  manualListState,
-  adjustManualListLevel,
-  setManualChecklist,
-} from './lists';
+import { applyManualListPlan, manualListState, adjustManualListLevel } from './lists';
 
 /** Consume exactly one captured prefix and apply membership in the same canonical transaction. */
 export function applyManualListInput(
@@ -92,7 +90,11 @@ export function handleManualListKey(
   if (collapsed && text!.length === marker)
     return adjustManualListLevel(editor, 'decrease', context).success;
   if (!state.checkbox) return false;
-  if (s.editingMode() === 'edit') {
+  if (s.editingMode() === 'edit' || s.editingMode() === 'suggest') {
+    const suggesting = s.editingMode() === 'suggest',
+      original = s.session.currentPackage(),
+      revision = readEditorRevision(editor, context.documentId, context.epoch);
+    if (!revision) return false;
     const source = s.session.part(),
       parent = parentNodeOf(source, head.paragraphId);
     if (!parent) return false;
@@ -109,61 +111,112 @@ export function handleManualListKey(
         throw new Error('The native checklist split did not allocate a paragraph.');
       return paragraph.id;
     };
-    let committed = false;
-    s.commitReviewOps(
-      () => {
-        const ops: TreeDocOp[] = [
-          ...(!collapsed
-            ? [{ op: 'deleteText' as const, paragraphId: head.paragraphId, start, end }]
-            : []),
-          { op: 'splitParagraph', paragraphId: head.paragraphId, offset: start },
-        ];
-        const result = s.applyAutomationOps(
-          () => ops,
-          { kind: 'body' },
-          [
-            (pkg) =>
-              applyDirectListAssignments(pkg, source.name, [
-                {
-                  paragraphId: next(pkg.parts.get(source.name)!),
-                  before: null,
-                  target: { kind: 'checklist', checked, level: state.checkbox!.level },
-                },
-              ]),
-          ],
-          false,
-          true,
-          'after'
-        );
-        committed = result.committed && !result.rejected;
-        return result;
+    const attribution = {
+      author: s.author() ?? '',
+      date: `${new Date().toISOString().slice(0, 19)}Z`,
+    };
+    const ops: TreeDocOp[] = [
+      ...(!collapsed
+        ? [{ op: 'deleteText' as const, paragraphId: head.paragraphId, start, end }]
+        : []),
+      {
+        op: 'splitParagraph',
+        paragraphId: head.paragraphId,
+        offset: s.replacementLanding(head.paragraphId, start, end) ?? start,
       },
-      'revision-resolve',
-      () => {
-        if (!committed) return null;
-        const point = { paragraphId: next(s.session.part()), offset: 1 };
-        return { anchor: point, head: point };
+    ];
+    const complete = (
+      pkg: typeof original,
+      measure?: (before: typeof original, after: typeof original) => void
+    ) =>
+      completeTrackedChecklistSplit(
+        original,
+        pkg,
+        source.name,
+        next(pkg.parts.get(source.name)!),
+        checked,
+        state.checkbox!.level,
+        revision,
+        attribution,
+        editor.snapshot().collaborationStatus === 'inactive',
+        measure
+      );
+    const refuse = (reason: string) => {
+      s.commitReviewOps(() => ({ committed: false, reason }), 'revision-resolve');
+      return true; // Consume the recognized key; native fallback would split without checklist metadata.
+    };
+    let budget = { flags: 0, fields: 0 };
+    if (suggesting) {
+      const attributed: TreeDocOp[] = ops.flatMap((op) =>
+        op.op === 'splitParagraph'
+          ? [
+              op,
+              {
+                op: 'setParagraphMarkRevision' as const,
+                paragraphId: op.paragraphId,
+                kind: 'ins' as const,
+                revision: attribution,
+              },
+            ]
+          : [{ ...op, revision: attribution } as TreeDocOp]
+      );
+      try {
+        const prepared = withReviewGroupRevisionReservations(original, () =>
+          checklistSplitBudget(original, source.name, attributed, complete)
+        );
+        if ('success' in prepared) return refuse(prepared.error);
+        budget = prepared;
+      } catch (cause) {
+        return refuse(cause instanceof Error ? cause.message : String(cause));
       }
+    }
+    let committed = false;
+    const result = withReviewGroupRevisionReservations(original, () =>
+      s.commitReviewOps(
+        () => {
+          const execute = () =>
+            s.applyAutomationOps(
+              () => ops,
+              { kind: 'body' },
+              [
+                (pkg) =>
+                  suggesting
+                    ? complete(pkg)
+                    : applyDirectListAssignments(pkg, source.name, [
+                        {
+                          paragraphId: next(pkg.parts.get(source.name)!),
+                          before: null,
+                          target: { kind: 'checklist', checked, level: state.checkbox!.level },
+                        },
+                      ]),
+              ],
+              false,
+              true,
+              'after'
+            );
+          const result = suggesting
+            ? captureReviewGroupHistory(
+                s.collaborationSession(),
+                execute,
+                budget.flags,
+                budget.fields
+              )
+            : execute();
+          committed = result.committed && !result.rejected;
+          return result;
+        },
+        'revision-resolve',
+        () => {
+          if (!committed) return null;
+          const point = { paragraphId: next(s.session.part()), offset: 1 };
+          return { anchor: point, head: point };
+        }
+      )
     );
-    return committed;
-  }
-  const group = editor.beginHistoryGroup(),
-    frames = beginHistoryGroupFrames(editor, group);
-  if (!frames) {
-    group.end();
-    return false;
-  }
-  try {
-    frames.run(() => s.splitParagraph());
-    if (editor.surface !== s || s.state().selection.head.paragraphId === head.paragraphId)
-      return true;
-    const checked = collapsed && head.offset === text!.length ? false : state.checkbox.checked;
-    frames.run(() => setManualChecklist(editor, checked, state.checkbox!.level, context));
+    if (result !== null && typeof result === 'object') return refuse(result.error);
     return true;
-  } finally {
-    frames.finish();
-    group.end();
   }
+  return false;
 }
 
 export function installListEditing(editor: DocxEditorInstance, context: BlockCommandContext) {

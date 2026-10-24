@@ -87,30 +87,39 @@ export function changeParagraphIndent(
   if (direction !== 'increase' && direction !== 'decrease')
     return fail('Choose an indentation direction.');
   return positionChange(editor, context, (id) => {
-    const s = editor.surface!;
-    const fragment = s
-      .layout()
-      .pages.flatMap((p) => paragraphFragmentsOf(p))
-      .find((p) => p.range.paragraphId === id);
-    if (!fragment) return fail('The selected paragraph has no native layout.');
-    const current = Math.round(fragment.indent.left * 20);
-    const left = Math.max(
-      0,
-      current + (direction === 'increase' ? 1 : -1) * PARAGRAPH_INDENT_STEP_TWIPS
-    );
-    const authored = directParagraphProperties(s.session.part(), id).find(
-      (p) => p.localName === 'ind'
-    );
-    // A character-based leading indent would override the new twip value in Word.
-    return {
-      localName: 'ind',
-      attributes: {
-        left: String(left),
-        leftChars: null,
-        ...(authored?.attributes?.start !== undefined ? { start: null, startChars: null } : {}),
-      },
-    };
+    return paragraphIndentPatch(editor, id, direction);
   });
+}
+
+/** Resolve each paragraph independently from its effective native indentation. */
+export function paragraphIndentPatch(
+  editor: DocxEditorInstance,
+  id: string,
+  direction: 'increase' | 'decrease'
+): ParagraphPropertyPatch | NativeEditFailure {
+  const s = editor.surface!;
+  const fragment = s
+    .layout()
+    .pages.flatMap((p) => paragraphFragmentsOf(p))
+    .find((p) => p.range.paragraphId === id);
+  if (!fragment) return fail('The selected paragraph has no native layout.');
+  const current = Math.round(fragment.indent.left * 20);
+  const left = Math.max(
+    0,
+    current + (direction === 'increase' ? 1 : -1) * PARAGRAPH_INDENT_STEP_TWIPS
+  );
+  const authored = directParagraphProperties(s.session.part(), id).find(
+    (p) => p.localName === 'ind'
+  );
+  // A character-based leading indent would override the new twip value in Word.
+  return {
+    localName: 'ind',
+    attributes: {
+      left: String(left),
+      leftChars: null,
+      ...(authored?.attributes?.start !== undefined ? { start: null, startChars: null } : {}),
+    },
+  };
 }
 
 export function createParagraphPositionToolbar(

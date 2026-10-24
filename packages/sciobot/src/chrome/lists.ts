@@ -1,7 +1,20 @@
-import { paragraphTextOf, paragraphOffsetIndex, findNode } from '@docx-editor.dev/core/store';
+import {
+  paragraphTextOf,
+  paragraphOffsetIndex,
+  findNode,
+  parentNodeOf,
+} from '@docx-editor.dev/core/store';
 import type { DocxEditorInstance } from '@docx-editor.dev/core/editor';
-import { paragraphsInCells, paragraphFragmentsOf } from '@docx-editor.dev/core/layout';
+import {
+  paragraphsInCells,
+  paragraphFragmentsOf,
+  buildNumberingIndex,
+  resolveNumberingLevel,
+} from '@docx-editor.dev/core/layout';
 import { planListMembership } from '../diff/lists';
+import { planParagraphFormat } from '../diff/paragraph-format';
+import { createEditPlan, type CanonicalEdit } from '../diff/plan';
+import { paragraphIndentPatch } from './paragraph-position';
 import {
   LIST_STYLES,
   type ListStyle,
@@ -146,7 +159,10 @@ export function setManualList(
 ) {
   if (![...LIST_STYLES, 'todo', 'none'].includes(style))
     return fail('Choose an application list style.');
+  editor.surface?.flushPendingInput();
   const key = `manual:${editor.surface?.session.packageRevision() ?? 0}`;
+  const adjacent =
+    style !== 'todo' && style !== 'none' ? compatibleCounter(editor, style, context) : null;
   return change(editor, context, (state) => {
     if (style === 'none') return { kind: 'none' };
     const level = state.checkbox?.level ?? state.numbering?.level ?? 0;
@@ -154,11 +170,65 @@ export function setManualList(
       ? { kind: 'checklist', level, checked: state.checkbox?.checked ?? false }
       : {
           kind: ['disc', 'circle', 'square'].includes(style) ? 'bullet' : 'ordered',
-          style,
           level,
-          instance: { kind: 'new', key },
+          ...(adjacent
+            ? { instance: { kind: 'existing' as const, numId: adjacent } }
+            : { instance: { kind: 'new' as const, key }, style }),
         };
   });
+}
+/** Reuse a compatible contiguous counter without changing imported definitions. */
+function compatibleCounter(
+  editor: DocxEditorInstance,
+  style: ListStyle,
+  context: BlockCommandContext
+) {
+  const surface = editor.surface;
+  if (!surface) return null;
+  const ids = selection(editor),
+    part = surface.session.part(),
+    parent = ids[0] ? parentNodeOf(part, ids[0]) : null;
+  if (!parent) return null;
+  if (ids.some((id) => parentNodeOf(part, id)?.id !== parent.id)) return null;
+  const first = parent.children.findIndex((node) => node.id === ids[0]),
+    last = parent.children.findIndex((node) => node.id === ids.at(-1));
+  const candidates = [
+    parent.children[first - 1],
+    parent.children[first],
+    parent.children[last + 1],
+  ];
+  const index = buildNumberingIndex(
+    surface.session.currentPackage().parts.get('/word/numbering.xml')?.root
+  );
+  const format = {
+    disc: 'bullet',
+    circle: 'bullet',
+    square: 'bullet',
+    decimal: 'decimal',
+    'lower-alpha': 'lowerLetter',
+    'upper-alpha': 'upperLetter',
+    'lower-roman': 'lowerRoman',
+    'upper-roman': 'upperRoman',
+  }[style];
+  const glyph = { disc: '•', circle: '○', square: '■' }[style as 'disc' | 'circle' | 'square'];
+  const levels = ids.map((id) => {
+    const state = manualListState(editor, context, id);
+    return state?.checkbox?.level ?? state?.numbering?.level ?? 0;
+  });
+  for (const candidate of candidates) {
+    if (candidate?.kind !== 'paragraph') continue;
+    const state = manualListState(editor, context, candidate.id);
+    if (!state?.numbering || state.checkbox) continue;
+    const numId = state.numbering.numId;
+    if (
+      levels.every((level) => {
+        const resolved = resolveNumberingLevel(index, numId, level)?.level;
+        return resolved?.numFmt === format && resolved.lvlText === (glyph ?? `%${level + 1}.`);
+      })
+    )
+      return numId;
+  }
+  return null;
 }
 /** Toggle the captured style; explicit turn-into actions use setManualList instead. */
 export function toggleManualList(
@@ -225,26 +295,52 @@ export function adjustManualListLevel(
     state: manualListState(editor, context, id),
   }));
   if (selected.some((item) => !item.state)) return fail('The selected list source is unavailable.');
-  if (selected.every((item) => !item.state!.checkbox && !item.state!.numbering)) {
-    const result = editor.exec({ type: 'adjustIndent', direction });
-    return result.ok ? { success: true as const } : fail(result.reason);
+  const surface = editor.surface,
+    revision = readEditorRevision(editor, context.documentId, context.epoch);
+  if (!revision) return fail('The native document is not ready.');
+  const pkg = surface.session.currentPackage(),
+    part = surface.session.partFor(surface.storyScope()) ?? surface.session.part();
+  if (part.name !== pkg.mainDocumentPart) return fail('List controls require the body story.');
+  const operations: CanonicalEdit[] = [];
+  for (const { id, state } of selected) {
+    const current = state!;
+    if (!current.checkbox && !current.numbering) {
+      const patch = paragraphIndentPatch(editor, id, direction);
+      if ('success' in patch) return patch;
+      const planned = planParagraphFormat(
+        { part, paragraphId: id, revision },
+        { properties: [patch] }
+      );
+      if (!planned.success) return planned;
+      operations.push(...planned.plan.operations);
+      continue;
+    }
+    const old = current.checkbox?.level ?? current.numbering!.level,
+      next = old + (direction === 'increase' ? 1 : -1),
+      level = Math.min(8, next);
+    let target: ListTarget;
+    if (next < 0) target = { kind: 'none' };
+    else if (current.checkbox)
+      target = { kind: 'checklist', checked: current.checkbox.checked, level };
+    else {
+      const marker = manualListMarker(editor, id);
+      if (!marker) return fail('The native list marker is unavailable.');
+      target = {
+        kind: marker.numFmt === 'bullet' ? 'bullet' : 'ordered',
+        level,
+        instance: { kind: 'existing', numId: current.numbering!.numId },
+      };
+    }
+    const planned = planListMembership({ pkg, partName: part.name, revision }, [
+      { paragraphId: id, target },
+    ]);
+    if (!planned.success) return planned;
+    operations.push(...planned.plan.operations);
   }
-  if (selected.some((item) => !item.state!.checkbox && !item.state!.numbering))
-    return fail('Select only list items or only plain paragraphs.');
-  return change(editor, context, (current, id) => {
-    const old = current.checkbox?.level ?? current.numbering!.level;
-    const next = old + (direction === 'increase' ? 1 : -1);
-    if (next < 0) return { kind: 'none' };
-    const level = Math.min(8, next);
-    if (current.checkbox) return { kind: 'checklist', checked: current.checkbox.checked, level };
-    const marker = manualListMarker(editor, id);
-    if (!marker) return fail('The native list marker is unavailable.');
-    return {
-      kind: marker.numFmt === 'bullet' ? 'bullet' : 'ordered',
-      level,
-      instance: { kind: 'existing', numId: current.numbering!.numId },
-    };
-  });
+  const planned = createEditPlan(revision, operations);
+  if (!planned.success) return planned;
+  if (!operations.length) return { success: true as const, committed: false, revision };
+  return applyManualListPlan(editor, planned.plan, context);
 }
 export function manualListMarker(editor: DocxEditorInstance, paragraphId: string) {
   return editor.surface
