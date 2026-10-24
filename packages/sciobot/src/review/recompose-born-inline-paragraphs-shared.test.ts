@@ -23,7 +23,7 @@ import { readWorkingView } from './working-view';
 import { readReviewGroups } from './groups';
 import { acceptAllReviewGroups } from './accept-all';
 import { rejectAllReviewGroups } from './reject-all';
-import { readPayloadStore } from '../blocks/payload-opc-codec';
+import { readPayloadStore, withInitializedPayloadStore } from '../blocks/payload-opc-codec';
 
 const native = (pkg: OoxmlPackage) =>
   canonicalOoxmlFingerprint(pkg.parts.get(pkg.mainDocumentPart)!);
@@ -196,8 +196,13 @@ for (const clients of [
   [73, 41],
 ] as const)
   test(`peer text inside a born atom paragraph ${clients} survives birth undo and native rejection`, async () => {
+    const source = readOoxmlPackage(docxFixture('<w:p><w:r><w:t>Start</w:t></w:r></w:p>'));
+    if (!source.ok) throw Error(source.reason);
+    // Shared application hosts initialize payload storage before room bootstrap.
+    const prepared = withInitializedPayloadStore(source.package);
+    if (!prepared.ok) throw Error(prepared.reason);
     const pair = await createTwoEditorFixture({
-      document: docxFixture('<w:p><w:r><w:t>Start</w:t></w:r></w:p>'),
+      document: writeOoxmlPackage(prepared.pkg),
       documentId: propertyContext.documentId,
       ownedAttributes: true,
       clientIds: clients,

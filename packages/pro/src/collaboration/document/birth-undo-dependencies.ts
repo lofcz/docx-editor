@@ -4,6 +4,7 @@ Licensed under the EigenPal Pro Evaluation License 1.0 — see packages/pro/LICE
 Production use requires a commercial agreement: licensing@eigenpal.com
 */
 import * as Y from 'yjs';
+import { independentParagraphBirths } from './birth-undo-paragraphs.ts';
 import type { DocumentRegistry } from './registry.ts';
 import { asLogicalId, type LogicalId } from './identity.ts';
 import { deleteSetRuns, holderItem } from './yjs-items.ts';
@@ -80,15 +81,16 @@ export class BirthUndoDependencies {
         }
       }
     }
-    // Paragraph splitting and run formatting already own their relocation history.
-    // This hook retains newly allocated table structures and their descendants only.
+    // Independent paragraphs keep only foreign content after undo. Splits continue to
+    // use their original text relocation history instead of retaining another paragraph.
+    const paragraphs = independentParagraphBirths(this.registry, this.born, changed);
     const anchors = new Set(
       [...this.born].filter((id) => {
         const record = this.registry.record(id);
         return (
           record &&
           isElementRecord(record) &&
-          ['table', 'tableRow', 'tableCell'].includes(record.kind)
+          (paragraphs.has(id) || ['table', 'tableRow', 'tableCell'].includes(record.kind))
         );
       })
     );

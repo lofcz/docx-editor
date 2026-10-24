@@ -290,6 +290,14 @@ This changes deterministic repair of existing shared text. No shared fields are 
 
 Stop writes and recover offline edits before upgrading. Back up the original room and export with its compatible build. Verify the export, including pending revisions and text order. Reconcile incorrect text order in that deployment before export. Follow [Upgrade saved rooms](#upgrade-saved-rooms) to seed a new generation. Use fresh persistence keys and matching clients, servers, workers, and agents. Do not rewrite version metadata or replay old updates into the replacement room. Retain the original room as a read-only backup.
 
+### Upgrade rooms to format 1.6.5.1
+
+Format `docx-collaboration:1.6.5.1` retains the ancestry of independent paragraph births when their creator undoes. Surviving peer text keeps the paragraph visible. Without surviving content, that paragraph stays hidden. Paragraph splits keep their existing relocation history.
+
+These rules change interpretation of existing shared records and the existing undo marker. No new shared fields are added. The application ownership normalizer must also preserve retained ancestry under this format. Clients and workers using format `docx-collaboration:1.6.4.1` must not join these rooms.
+
+Stop writes and recover offline edits before upgrading. Back up the room and export with its compatible deployment. Verify paragraph order, peer text, and pending revisions before migration. Reconcile content hidden by earlier undo behavior in that deployment. Follow [Upgrade saved rooms](#upgrade-saved-rooms) to create a fresh generation and persistence keys. Deploy matching clients, servers, workers, and agents. Do not rewrite metadata or replay old updates into the new room. Keep the original room as a read-only backup.
+
 ### Migrate rooms on a server
 
 `@docx-editor.dev/pro/collaboration` provides two functions for the new build. They take and return bytes, so they work with any storage:

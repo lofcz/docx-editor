@@ -1,4 +1,5 @@
-// Application-owned review string fields over pinned MIT Yjs. No provider schema is read.
+// Application-owned review string fields over pinned MIT Yjs.
+// Pinned retained-birth interoperability stays in review-sequence-retention.ts.
 import * as Y from 'yjs';
 import { OWNED_TEXT_OPERATIONS, OWNED_TEXT_LINEAGE } from './ownership-codec';
 import { REVIEW_FLAG_TARGETS, REVIEW_FLAG_INTENTS } from './review-flag-codec';

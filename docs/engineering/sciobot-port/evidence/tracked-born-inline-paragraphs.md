@@ -22,3 +22,5 @@ Verification:
 The transport's `BirthUndoDependencies` currently retains table birth ancestry only. Its `BirthProjection.shown` also bypasses ordinary paragraphs outside tables. The next repair must distinguish independent paragraph births from paragraph splits and retain only foreign surviving content. Existing split relocation, table geometry, native identity, history, and reopen oracles must remain exact. A changed interpretation requires a separate compatibility decision.
 
 No baseline recapture or timeout increase occurs. The application remains read-only. Full C01/composer and compiled SDK integration remain pending. No leaf closes from these partial results.
+
+Follow-up: [independent paragraph birth history](independent-paragraph-peer-history.md) repairs creation undo/redo and cold reopening. The two peer cases now reach native rejection, which still removes peer text inherited by the AI insertion wrapper.

@@ -1,0 +1,16 @@
+{
+  "impact": "migration-required",
+  "fields": ["repairVersion"],
+  "before": "Creation undo unlisted independent paragraphs holding surviving peer text. Application sequence normalization also withdrew retained native birth ancestry.",
+  "after": "Independent paragraph ancestry remains available after creation undo, showing only surviving foreign content. The pinned application sequence adapter preserves existing retained native listings.",
+  "reason": "This changes deterministic interpretation of existing node listings and undo markers, increasing repairVersion from 4 to 5 without new shared fields. Classification inspects the history step own content and relocation marks, preserving paragraph split behavior. Application normalization recognizes only format 1.6.5.1 and never invents a missing birth listing. The native transport remains an evaluation dependency under the EigenPal Pro License; production adapter code reads the pinned wire profile without importing transport implementation. Native rejection of a birth containing peer text remains a separate failing regression.",
+  "tests": [
+    "packages/sciobot/src/diff/independent-paragraph-history.test.ts",
+    "packages/sciobot/src/review/recompose-born-inline-paragraphs-shared.test.ts",
+    "packages/sciobot/src/collaboration/review-sequences.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-split-boundary.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-format.test.ts"
+  ],
+  "changeset": "independent-paragraph-peer-history",
+  "migration": "upgrade-rooms-to-format-1651"
+}

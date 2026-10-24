@@ -359,9 +359,14 @@ export class BirthProjection {
     );
   }
   shown(parent: LogicalId, child: LogicalId): boolean {
-    // Ordinary projected journals need only registry shape reads. Table birth repair
-    // must not require shared record maps for unrelated paragraphs or split runs.
-    if (this.registry.kindOf(child) !== 'table' && this.tableOf(parent) === null) return true;
+    // Projected journals can omit shared record maps. Ordinary live nodes need only
+    // shape reads; retained undone paragraphs also use the foreign-content projection.
+    if (
+      this.registry.kindOf(child) !== 'table' &&
+      this.tableOf(parent) === null &&
+      !nodeRecordUndone(this.registry.schema?.nodes.get(child))
+    )
+      return true;
     const record = this.element(child);
     const ownerProps =
       record?.namespaceUri === W && record.localName === 'tcW' ? this.element(parent) : null;

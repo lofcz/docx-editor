@@ -558,6 +558,8 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 Additional WIP evidence: [tracked atoms in born paragraphs](evidence/tracked-born-inline-paragraphs.md) records native materialization and the remaining creation-undo peer-text failures.
 
+[Independent paragraph history](evidence/independent-paragraph-peer-history.md) records retained peer text through creation undo/redo and the remaining native rejection ownership failure.
+
 ## D31
 
 - [x] Plan inline code marks through the native representation

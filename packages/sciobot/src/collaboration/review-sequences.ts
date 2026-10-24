@@ -1,3 +1,4 @@
+import { retainedBirthSequenceEntry } from './review-sequence-retention';
 // Generic string sequence removals over pinned MIT Yjs item identities.
 import * as Y from 'yjs';
 import { ownershipCheck } from './ownership-positions';
@@ -121,14 +122,15 @@ export function normalizeReviewArray(
       throw new ReviewFieldError('Review sequence visibility does not match its shared length.');
     const base = rightAt ?? (right === null ? at : (leftAt ?? (left === null ? 0 : position))),
       desired = base === null ? null : base - visible.filter((entry) => entry.index < base).length,
-      keep = !present
-        ? null
-        : visible
-            .filter(
-              (entry, index) =>
-                !target.initiallyPresent || !restoreOrder || entry.index - index === desired
-            )
-            .sort((a, b) => a.client - b.client || a.clock - b.clock)[0];
+      keep =
+        !present && !retainedBirthSequenceEntry(doc, array, target.baseline)
+          ? null
+          : visible
+              .filter(
+                (entry, index) =>
+                  !target.initiallyPresent || !restoreOrder || entry.index - index === desired
+              )
+              .sort((a, b) => a.client - b.client || a.clock - b.clock)[0];
     // Undo restores new items. Their later normalization is outside the original redo
     // frame, so its final owner must also restore this single original list entry.
     if (array._searchMarker) array._searchMarker.length = 0;
