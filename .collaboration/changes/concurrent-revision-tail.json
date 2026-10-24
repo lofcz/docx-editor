@@ -1,0 +1,14 @@
+{
+  "impact": "migration-required",
+  "fields": ["repairVersion"],
+  "before": "Concurrent terminal tracked insertion could appear after offline peer text and drift again after review decision undo.",
+  "after": "A derived shared view places the tracked terminal append before concurrent text at its original boundary, including restored characters.",
+  "reason": "Stable authored character identities determine the same placement after local history and review decision history. This changes interpretation of existing shared text, so repairVersion increases from 3 to 4. No shared fields or journal operations change. The transport remains an evaluation dependency under the EigenPal Pro License; production private adapter modules do not import it.",
+  "tests": [
+    "packages/sciobot/src/review/owned-presence-shared.test.ts",
+    "packages/sciobot/src/review/terminal-revision-boundary.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-format.test.ts"
+  ],
+  "changeset": "concurrent-revision-tail",
+  "migration": "upgrade-rooms-to-format-1641"
+}

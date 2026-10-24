@@ -219,3 +219,20 @@ test('release 2.32 repair semantics refuse admission without changing saved room
     doc.destroy();
   }
 });
+
+test('terminal revision placement refuses rooms using the previous repair rules without writes', () => {
+  const doc = savedRoom();
+  try {
+    doc.getMap(PACKAGE_META_KEY).set('repairVersion', 3);
+    const before = Y.encodeStateAsUpdate(doc);
+    const version = readCollaborationFormatVersion(doc);
+    expect(version).toBe('docx-collaboration:1.6.3.1');
+    expect(() => assertCollaborationFormatCompatibility(version)).toThrow(
+      'collaboration-format-mismatch'
+    );
+    expect(Y.encodeStateAsUpdate(doc)).toEqual(before);
+    expect(() => assertCollaborationFormatCompatibility('docx-collaboration:1.6.3.1')).toThrow();
+  } finally {
+    doc.destroy();
+  }
+});

@@ -15,6 +15,7 @@ Production use requires a commercial agreement: licensing@eigenpal.com
  * that another peer's split moved to a new paragraph. The ID shows bare in the first holder
  * by ID and tagged in the others, so every replica shows the same unique IDs.
  */
+import { concurrentRevisionTail } from './concurrent-revision-tail.ts';
 import { rejectDangerousKey } from './limits.ts';
 import { fieldOf, holderItem, structAt } from './yjs-items.ts';
 import * as Y from 'yjs';
@@ -262,7 +263,13 @@ export class InlineIndex {
         const holders = this.holders.get(id);
         return !holders || holders.size < 2 || firstHolder(holders) === paragraphId;
       },
-      shown: (text) => this.follow.shown(paragraphId, text),
+      shown: (text) =>
+        concurrentRevisionTail(
+          text,
+          this.follow.shown(paragraphId, text),
+          paragraphId,
+          this.limits
+        ),
       textOf: (id) => this.textOf(id),
       lineageOf: (id) => relocatedMarkerLineage(this.nodes.get(id)),
       listed: (id) => !this.isDeleted(asLogicalId(id)),
