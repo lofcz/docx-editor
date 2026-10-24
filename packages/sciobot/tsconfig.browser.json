@@ -16,6 +16,19 @@
     "../../e2e/sciobot-block-overflow.spec.ts",
     "../../e2e/sciobot-native-slots.spec.ts",
     "../../e2e/sciobot-block-controls.config.ts",
-    "../../e2e/sciobot-block-controls.spec.ts"
+    "../../e2e/sciobot-block-controls.spec.ts",
+    "../../e2e/sciobot-marks.config.ts",
+    "../../e2e/sciobot-marks.spec.ts",
+    "../../e2e/sciobot-colors.config.ts",
+    "../../e2e/sciobot-colors.spec.ts",
+    "../../e2e/sciobot-paragraph-position.config.ts",
+    "../../e2e/sciobot-paragraph-position.spec.ts",
+    "../../e2e/sciobot-line-height.config.ts",
+    "../../e2e/sciobot-line-height.spec.ts",
+    "../../e2e/sciobot-tables.config.ts",
+    "../../e2e/sciobot-tables.spec.ts",
+    "../../e2e/sciobot-table-rows.config.ts",
+    "../../e2e/sciobot-table-rows.spec.ts",
+    "../../e2e/sciobot-table-controls.config.ts"
   ]
 }

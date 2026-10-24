@@ -1,0 +1,15 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Only pinned host undo groups marked their local stack item as an atomic step. Ordinary explicit native command groups could skip into older typing when retained birth marks changed visibility without a reversed Yjs item.",
+  "after": "Every captured explicit history group marks its existing local stack item as one step. Undo isolates that step, including ordinary native table-row gestures.",
+  "reason": "The existing undo-stack metadata stays local. Shared birth-retention marks, document tuples, journal codecs, and protocol fields are unchanged. This transport change remains evaluation-only under the EigenPal Pro License.",
+  "tests": [
+    "packages/sciobot/src/chrome/tables-collaboration.test.ts",
+    "packages/pro/src/collaboration/__tests__/history-group-capture.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-history-groups-editor.test.ts",
+    "e2e/sciobot-tables.spec.ts"
+  ],
+  "changeset": "native-gesture-undo-boundaries",
+  "migration": null
+}

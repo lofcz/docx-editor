@@ -1,0 +1,14 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Private native row toolbar controls were not connected. A shared row insertion could leave a provisional paragraph ID in the local caret.",
+  "after": "Row controls execute existing native commands with native selection. Canonical row sibling addresses recover the new cell caret after shared identity replacement. Recovered peer source in cell one remains editable through row operations.",
+  "reason": "No shared operation, document format, journal field, or codec changes. Selection correction stays local. Existing native row operations and the existing local explicit-gesture history boundary provide structural edits and independent undo.",
+  "tests": [
+    "packages/sciobot/src/chrome/table-rows.test.ts",
+    "packages/sciobot/src/chrome/table-rows-collaboration.test.ts",
+    "e2e/sciobot-table-rows.spec.ts"
+  ],
+  "changeset": "shared-table-insertion-caret",
+  "migration": null
+}

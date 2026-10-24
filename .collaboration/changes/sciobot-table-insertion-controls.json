@@ -1,0 +1,14 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The private application adapter lacked a native table insertion grid and application table-cell Tab navigation.",
+  "after": "An eight-by-eight picker executes existing native table insertion. Shared-session caret adoption resolves the inserted table from the exact following-paragraph address when no local caret hint arrives. Model selections drive Tab navigation, and a final-cell Tab executes native row insertion.",
+  "reason": "Local selection resolution and undo-stack gesture boundaries change. No shared operation, document format, journal field, or codec changes. Existing native birth-retention marks change row visibility during undo; each explicit gesture now stops before older history. The transport remains evaluation-only under the EigenPal Pro License.",
+  "tests": [
+    "packages/sciobot/src/chrome/tables.test.ts",
+    "packages/sciobot/src/chrome/tables-collaboration.test.ts",
+    "e2e/sciobot-tables.spec.ts"
+  ],
+  "changeset": "shared-table-insertion-caret",
+  "migration": null
+}

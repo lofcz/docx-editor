@@ -20,6 +20,11 @@ import {
 } from './caret-format-state.ts';
 import { CaretFormatHistory } from './caret-format-history.ts';
 import {
+  captureTableCaret,
+  tableCommandSelection,
+  tableInsertionSelection,
+} from './table-insertion-selection.ts';
+import {
   createSurfaceRevisionMarkup,
   revisionFacingPages,
   revisionParagraphMarkVisible,
@@ -4129,10 +4134,7 @@ export function mountPaginatedSurface(
     // committed-caret subscription, the same way a table command plan does: without it the
     // pre-edit selection mark is restored and the caret stays in the anchor paragraph
     // BELOW the new table.
-    let committedCaret: { readonly paragraphId: string; readonly start: number } | null = null;
-    const unsubscribe = session.subscribe((change) => {
-      if (change.caret) committedCaret = change.caret;
-    });
+    const caretCapture = captureTableCaret(session);
     let committed = false;
     try {
       commit(
@@ -4147,15 +4149,16 @@ export function mountPaginatedSurface(
           committed = applied.committed;
           return applied;
         },
-        () => {
-          const caret = committedCaret;
-          return caret
-            ? collapsedAt({ paragraphId: caret.paragraphId, offset: caret.start })
-            : null;
-        }
+        () =>
+          tableInsertionSelection(
+            caretCapture.read(),
+            session.partFor(storyScope()) ?? session.part(),
+            op.beforeParagraphId,
+            committed
+          )
       );
     } finally {
-      unsubscribe();
+      caretCapture.dispose();
     }
     return committed;
   }
@@ -5693,35 +5696,24 @@ export function mountPaginatedSurface(
       if (!plan.ok) {
         return { ok: false, code: plan.code, reason: plan.reason };
       }
-      let committedCaret: {
-        readonly paragraphId: string;
-        readonly start: number;
-        readonly end: number;
-      } | null = null;
-      const unsub = session.subscribe((change) => {
-        if (change.caret) {
-          committedCaret = change.caret;
-        }
-      });
+      const caretCapture = captureTableCaret(session);
       try {
         const selectionBefore = selectionMark();
         const adoptCaret = plan.selection.kind === 'adoptCommittedCaret';
         commit(
           () => applyOps(plan.ops, selectionBefore),
           adoptCaret
-            ? () => {
-                const caret = committedCaret;
-                if (!caret) return null;
-                return collapsedAt({
-                  paragraphId: caret.paragraphId,
-                  offset: caret.start,
-                });
-              }
+            ? () =>
+                tableCommandSelection(
+                  caretCapture.read(),
+                  session.partFor(storyScope()) ?? session.part(),
+                  plan.ops
+                )
             : undefined,
           plan.selection.kind === 'preserveSelection' ? { keepCellSelection: true } : undefined
         );
       } finally {
-        unsub();
+        caretCapture.dispose();
       }
       if (lastRejection) {
         return { ok: false, code: 'invalidArgs', reason: lastRejection };

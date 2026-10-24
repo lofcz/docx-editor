@@ -174,7 +174,7 @@ Four additional real-session native formatting-review cases and one oracle regre
 
 ## N09
 
-- [ ] Connect manual table insertion
+- [x] Connect manual table insertion
 
 **Depends:** [C03](01-contracts.md#c03), [N01](07-native-content.md#n01), [V01](11-verification.md#v01)
 
@@ -188,7 +188,9 @@ Four additional real-session native formatting-review cases and one oracle regre
 
 **Check:** Add a focused Chromium case with real input and native selection where applicable. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** codex solo, branch `codex/react-block-proof`. **Evidence:** Baseline `51c2d4ce`, completed source in the current native-table batch. `tables.ts` connects the production eight-by-eight insertion picker and native model selection. Inserting a 2x3 table retains source text and adopts the first native cell. Tab/Shift+Tab navigate cells; final-cell Tab inserts one native row. The engine now rejects stale provisional caret hints and resolves the inserted table from the operation's exact canonical following-paragraph address. Explicit native history groups stop at their own step, so a retained row birth cannot skip into earlier cell typing. No document or journal schema changes.
+
+The focused native/history batch passes 18 cases and 218 assertions across four files (`/tmp/sciobot-n09-history-tests.log`). Cases cover six real-session insertion/history/deletion/reconnect scenarios across both client orders, remote geometry, peer-preserving undo/redo, exact canonical save/reopen, and retained-row-birth undo after typing. Existing history-group capture and Editor.exec gesture tests pass. `bunx playwright test --config e2e/sciobot-tables.config.ts` passes both Chromium cases (`/tmp/sciobot-n09-browser-verified.log`), including pointer grid selection, actual cell typing, Tab/Shift+Tab, final-cell row growth, and exact undo/redo/save oracles. The shared integration batch passes 115 cases and 1396 assertions across eleven files (`/tmp/sciobot-table-batch-tests.log`), covering table plans, explicit history groups, typing history, and owned AI presence. All six combined Chromium cases pass (`/tmp/sciobot-table-batch-browser-final.log`). Browser fixture types pass 1897 files. Core and Pro builds pass; the private SDK build verifies 299 modules with core external. Decisions: `.collaboration/changes/sciobot-table-insertion-controls.json`, `.collaboration/changes/native-gesture-undo-boundaries.json`. Changesets: `.changeset/shared-table-insertion-caret.md`, `.changeset/native-gesture-undo-boundaries.md`. The transport change remains evaluation-only under the EigenPal Pro License. N11 completes manual row toolbar and recovered-source coverage; The backlog audit remains blocked by external application-source drift. At verification, application HEAD is `3e11da39332e846269141bc779b6e521fdb17ef3`; the captured revision remains `5650bdf550b7987174d1b61fe2a925b86fb24f15`. Changed captured files are `WorkspaceExportModal.tsx`, `workspace-lesson-serialize.tsx`, and `workspaceExportArchive.ts`. No capture command ran.
 
 ## N10
 
@@ -210,7 +212,7 @@ Four additional real-session native formatting-review cases and one oracle regre
 
 ## N11
 
-- [ ] Connect manual table row controls
+- [x] Connect manual table row controls
 
 **Depends:** [N09](07-native-content.md#n09), [V01](11-verification.md#v01)
 
@@ -224,7 +226,9 @@ Four additional real-session native formatting-review cases and one oracle regre
 
 **Check:** Include a caret in recovered source text displayed inside the first table cell. Add a focused Chromium case with real input and native selection where applicable. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** codex solo, branch `codex/react-block-proof`. **Evidence:** Baseline `51c2d4ce`, completed with N09 in the shared table-controls batch. `table-rows.ts` connects native insert-above, insert-below, and delete-row commands through selection-preserving controls. Shared row insertion resolves its live first-cell caret from the exact source row and insertion side when the operation hint contains a provisional identity. Neighboring rows retain complete native properties, header behavior, unknown attributes, and cell text.
+
+Eleven focused cases pass with 201 assertions (`/tmp/sciobot-n11-tests.log`). Six real-session cases cover all three actions and both client orders, concurrent peer edits inside the affected row, independent own/peer history, deletion, reconnect, remote caret/selection geometry, and exact canonical save/reopen. Two further real-session cases reject an AI insertion in cell one while a peer edits it. They preserve recovered peer text through row insertion, independent typing, and exact full-document undo/redo. The shared integration batch passes 115 cases and 1396 assertions across eleven files (`/tmp/sciobot-table-batch-tests.log`). All six combined Chromium cases pass (`/tmp/sciobot-table-batch-browser-final.log`), including four row cases with pointer actions, real typing, exact undo/redo, and Word save/reopen. The recovered-source export oracle permits only removal of its one exact internal retired-paragraph marker; every other value remains exact, and save leaves the live tree unchanged. Browser fixture types pass 1897 files. Core and Pro builds pass; the private SDK build verifies 299 modules with core external. Compatibility: `.collaboration/changes/sciobot-table-row-controls.json` and the N09 history decision. Published fixes have patch changesets; transport changes remain evaluation-only under the EigenPal Pro License. N12 and later table leaves retain their own requirements. The backlog audit remains blocked by external application-source drift. At verification, application HEAD is `3e11da39332e846269141bc779b6e521fdb17ef3`; the captured revision remains `5650bdf550b7987174d1b61fe2a925b86fb24f15`. Changed captured files are `WorkspaceExportModal.tsx`, `workspace-lesson-serialize.tsx`, and `workspaceExportArchive.ts`. No capture command ran.
 
 ## N12
 

@@ -51,7 +51,10 @@ export class HistoryGroupCapture {
       if (this.capturing && event.type === 'undo') {
         this.gestureItem = event.stackItem;
         this.captured = true;
-        if (this.pinned !== undefined) markGroupStep(event.stackItem);
+        // Every explicit gesture is one step, including native command and typing
+        // groups. Retained births can change the document through undo marks while
+        // Yjs reports no reversed item; it must not then pop an older gesture.
+        markGroupStep(event.stackItem);
       }
     };
     undoManager.on('stack-item-added', noteItem);
