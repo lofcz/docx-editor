@@ -566,6 +566,8 @@ Additional WIP evidence: [tracked atoms in born paragraphs](evidence/tracked-bor
 
 [Tracked atom link placement](evidence/tracked-atom-link-placement.md) adds new links, bookmarks, and retained link boundaries without replacing source link identities. The source batch passes 120 cases; compiled packages pass 80 cases. D30 remains open for tracked images, new-cell ownership, mixed ownership, and integration gates.
 
+[Interior peer typing regression](evidence/linked-source-peer-regression.md) exposes misplaced text during concurrent link proposals. Source and compiled checks each pass the four outside-range cases and fail the four interior cases. The verified writer remains unchanged; preserving source leaf identity alone hides peer text in a deleted branch and is not a fix.
+
 ## D31
 
 - [x] Plan inline code marks through the native representation

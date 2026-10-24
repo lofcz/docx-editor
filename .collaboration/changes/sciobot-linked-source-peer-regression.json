@@ -1,0 +1,10 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Shared tracked atom hyperlink fixtures covered concurrent typing outside the proposed link.",
+  "after": "The same fixtures also cover typing inside the source text. Four source cases and four compiled cases expose misplaced peer text after reconnect.",
+  "reason": "Only tests and evidence change. The unsafe source-identity experiment is preserved separately and is absent from runtime source. No public API or shared format changes.",
+  "tests": ["packages/sciobot/src/review/recompose-linked-inline-births-shared.test.ts"],
+  "changeset": null,
+  "migration": null
+}

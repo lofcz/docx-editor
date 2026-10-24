@@ -15,3 +15,5 @@ The source batch passes 120 cases across six files with 2418 assertions, includi
 This change affects only the private adapter. The build keeps core external. Test-only transport uses the EigenPal Pro License. No production adapter module imports Pro code. No public API, shared format field, audit baseline, or application source changes.
 
 D30 still needs tracked image/resource ownership, new-cell atom ownership, further mixed ownership coverage, and complete integration gates. This checkpoint does not establish concurrent editing inside the source text that a new link replaces. No TODO closes from these checks alone.
+
+[Concurrent typing inside a proposed link](linked-source-peer-regression.md) reproduces misplaced peer text in both source and compiled packages. The outside-range checks above do not establish this interior case.

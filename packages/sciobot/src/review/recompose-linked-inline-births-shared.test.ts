@@ -80,144 +80,152 @@ function bindWordIdentity(expected: OoxmlPackage, actual: OoxmlPackage) {
   if (!replaced.ok) throw Error('Cannot bind fresh Word identity.');
   return withPart(expected, replaced.part);
 }
-for (const clients of [
-  [41, 73],
-  [73, 41],
-] as const)
-  for (const decision of ['accept', 'reject'] as const)
-    test(`linked atom birth ${clients}/${decision} preserves offline peer text, exact native decisions, and both histories`, async () => {
-      const loaded = readOoxmlPackage(
-        docxFixture('<w:p><w:r><w:t>Before. Lead.  Tail. After.</w:t></w:r></w:p>')
-      );
-      if (!loaded.ok) throw Error(loaded.reason);
-      const prepared = withInitializedPayloadStore(loaded.package);
-      if (!prepared.ok) throw Error(prepared.reason);
-      const pair = await createTwoEditorFixture({
-        document: writeOoxmlPackage(prepared.pkg),
-        documentId: propertyContext.documentId,
-        ownedAttributes: true,
-        clientIds: clients,
-        editor: { modules: [SCIOBOT_NATIVE_REVIEW_MODULE] },
-      });
-      try {
-        const [alice, bob] = pair.editors;
-        const before = alice!.surface!.session.currentPackage(),
-          paragraphId = alice!.surface!.session.paragraphIds()[0]!;
-        const target =
-          'Before. [Lead. <scio-mention key="user" value="Ada" /> Tail.](https://target.test "Keep") After.';
-        const initial = await readWorkingView(alice!.surface!.session, propertyToken(alice!));
-        if (!initial.success) throw Error(initial.error);
-        const options = { allocateBlockId: () => 'linked-atom' };
-        const plan = planTargetDocument(
-          { pkg: before, revision: propertyToken(alice!), projection: initial.view.projection },
-          target,
-          options
+for (const peerOffset of [1, 10])
+  for (const clients of [
+    [41, 73],
+    [73, 41],
+  ] as const)
+    for (const decision of ['accept', 'reject'] as const)
+      test(`linked atom birth ${peerOffset}/${clients}/${decision} preserves offline peer text, exact native decisions, and both histories`, async () => {
+        const loaded = readOoxmlPackage(
+          docxFixture('<w:p><w:r><w:t>Before. Lead.  Tail. After.</w:t></w:r></w:p>')
         );
-        if (!plan.success) throw Error(plan.error);
-        const direct = actorDirect(before, plan.plan);
-        const peerOp = { op: 'insertText', paragraphId, offset: 1, text: ' peer' } as const;
-        const addPeer = (pkg: OoxmlPackage) => {
-          const edited = applyTreeOp(pkg.parts.get(pkg.mainDocumentPart)!, peerOp);
-          if (!edited.ok) throw Error(edited.reason);
-          return withPart(pkg, edited.part);
-        };
-        pair.pause();
-        expect(bob!.surface!.applyAutomationOps(() => [peerOp]).rejected).toBe(false);
-        const staged = await recomposeOwnedProposals(
-          alice!,
-          { revision: propertyToken(alice!), targetMarkdown: target, ownership: [] },
-          propertyContext,
-          { target: options, payloads: { presence: { proposalId: 'linked-presence' } } }
-        );
-        if (!staged.success) throw Error(staged.error);
-        const acceptedExpected = addPeer(
-          bindWordIdentity(direct, alice!.surface!.session.currentPackage())
-        );
-        const rejectedExpected = addPeer(before);
-        pair.reconnect(clients[0] === 41 ? 0 : 1);
-        await pair.settle();
-        const check = async () => {
-          const states = pair.editors.map((editor) =>
+        if (!loaded.ok) throw Error(loaded.reason);
+        const prepared = withInitializedPayloadStore(loaded.package);
+        if (!prepared.ok) throw Error(prepared.reason);
+        const pair = await createTwoEditorFixture({
+          document: writeOoxmlPackage(prepared.pkg),
+          documentId: propertyContext.documentId,
+          ownedAttributes: true,
+          clientIds: clients,
+          editor: { modules: [SCIOBOT_NATIVE_REVIEW_MODULE] },
+        });
+        try {
+          const [alice, bob] = pair.editors;
+          const before = alice!.surface!.session.currentPackage(),
+            paragraphId = alice!.surface!.session.paragraphIds()[0]!;
+          const target =
+            'Before. [Lead. <scio-mention key="user" value="Ada" /> Tail.](https://target.test "Keep") After.';
+          const initial = await readWorkingView(alice!.surface!.session, propertyToken(alice!));
+          if (!initial.success) throw Error(initial.error);
+          const options = { allocateBlockId: () => 'linked-atom' };
+          const plan = planTargetDocument(
+            { pkg: before, revision: propertyToken(alice!), projection: initial.view.projection },
+            target,
+            options
+          );
+          if (!plan.success) throw Error(plan.error);
+          const direct = actorDirect(before, plan.plan);
+          const peerOp = {
+            op: 'insertText',
+            paragraphId,
+            offset: peerOffset,
+            text: ' peer',
+          } as const;
+          const addPeer = (pkg: OoxmlPackage) => {
+            const edited = applyTreeOp(pkg.parts.get(pkg.mainDocumentPart)!, peerOp);
+            if (!edited.ok) throw Error(edited.reason);
+            return withPart(pkg, edited.part);
+          };
+          pair.pause();
+          expect(bob!.surface!.applyAutomationOps(() => [peerOp]).rejected).toBe(false);
+          const staged = await recomposeOwnedProposals(
+            alice!,
+            { revision: propertyToken(alice!), targetMarkdown: target, ownership: [] },
+            propertyContext,
+            { target: options, payloads: { presence: { proposalId: 'linked-presence' } } }
+          );
+          if (!staged.success) throw Error(staged.error);
+          const acceptedExpected = addPeer(
+            bindWordIdentity(direct, alice!.surface!.session.currentPackage())
+          );
+          const rejectedExpected = addPeer(before);
+          pair.reconnect(clients[0] === 41 ? 0 : 1);
+          await pair.settle();
+          const check = async () => {
+            const states = pair.editors.map((editor) =>
+              native(editor.surface!.session.currentPackage())
+            );
+            expect(states[0]).toBe(states[1]);
+            for (const editor of pair.editors) {
+              const view = await readWorkingView(editor.surface!.session, propertyToken(editor));
+              expect(view.success && view.view.projection.text).toBe(
+                peerOffset === 1
+                  ? 'B peerefore\\. [Lead\\. <scio-mention key="user" value="Ada" /> Tail\\.](https://target.test "Keep") After\\.'
+                  : 'Before\\. [Le peerad\\. <scio-mention key="user" value="Ada" /> Tail\\.](https://target.test "Keep") After\\.'
+              );
+              const groups = readReviewGroups(editor.surface!.session.currentPackage());
+              expect(groups.success && groups.groups.length).toBe(2);
+              expect(groups.success && groups.groups.every((group) => !group.readOnly)).toBe(true);
+            }
+          };
+          await check();
+          expect(alice!.exec({ type: 'undo' }).ok).toBe(true);
+          await pair.settle();
+          for (const editor of pair.editors)
+            expect(word(editor.surface!.session.currentPackage())).toBe(word(rejectedExpected));
+          expect(alice!.exec({ type: 'redo' }).ok).toBe(true);
+          await pair.settle();
+          await check();
+          expect(bob!.exec({ type: 'undo' }).ok).toBe(true);
+          await pair.settle();
+          expect(bob!.exec({ type: 'redo' }).ok).toBe(true);
+          await pair.settle();
+          await check();
+          const pending = pair.editors.map((editor) =>
             native(editor.surface!.session.currentPackage())
           );
-          expect(states[0]).toBe(states[1]);
-          for (const editor of pair.editors) {
-            const view = await readWorkingView(editor.surface!.session, propertyToken(editor));
-            expect(view.success && view.view.projection.text).toBe(
-              'B peerefore\\. [Lead\\. <scio-mention key="user" value="Ada" /> Tail\\.](https://target.test "Keep") After\\.'
-            );
-            const groups = readReviewGroups(editor.surface!.session.currentPackage());
-            expect(groups.success && groups.groups.length).toBe(2);
-            expect(groups.success && groups.groups.every((group) => !group.readOnly)).toBe(true);
-          }
-        };
-        await check();
-        expect(alice!.exec({ type: 'undo' }).ok).toBe(true);
-        await pair.settle();
-        for (const editor of pair.editors)
-          expect(word(editor.surface!.session.currentPackage())).toBe(word(rejectedExpected));
-        expect(alice!.exec({ type: 'redo' }).ok).toBe(true);
-        await pair.settle();
-        await check();
-        expect(bob!.exec({ type: 'undo' }).ok).toBe(true);
-        await pair.settle();
-        expect(bob!.exec({ type: 'redo' }).ok).toBe(true);
-        await pair.settle();
-        await check();
-        const pending = pair.editors.map((editor) =>
-          native(editor.surface!.session.currentPackage())
-        );
-        const decided = (decision === 'accept' ? acceptAllReviewGroups : rejectAllReviewGroups)(
-          alice!,
-          propertyToken(alice!),
-          propertyContext
-        );
-        if (!decided.success) throw Error(decided.error);
-        await pair.settle();
-        const expected = decision === 'accept' ? acceptedExpected : rejectedExpected;
-        for (const editor of pair.editors) {
-          expect(word(editor.surface!.session.currentPackage())).toBe(word(expected));
-          const payloads = readPayloadStore(editor.surface!.session.currentPackage());
-          expect(payloads.status === 'ready' && [...payloads.entries.keys()]).toEqual(
-            decision === 'accept' ? ['linked-atom'] : []
+          const decided = (decision === 'accept' ? acceptAllReviewGroups : rejectAllReviewGroups)(
+            alice!,
+            propertyToken(alice!),
+            propertyContext
           );
-        }
-        expect(alice!.exec({ type: 'undo' }).ok).toBe(true);
-        await pair.settle();
-        pair.editors.forEach((editor, i) =>
-          expect(native(editor.surface!.session.currentPackage())).toBe(pending[i]!)
-        );
-        expect(alice!.exec({ type: 'redo' }).ok).toBe(true);
-        await pair.settle();
-        bob!.surface!.setSelection({
-          anchor: { paragraphId, offset: 1 },
-          head: { paragraphId, offset: 1 },
-        });
-        await pair.settle();
-        const geometry = pair.editors.map((editor) =>
-          caretAt(editor.surface!.layout(), { paragraphId, offset: 1 })
-        );
-        expect(geometry[0]).not.toBeNull();
-        expect(geometry[0]).toEqual(geometry[1]);
-        const saved = new Uint8Array(await bob!.save());
-        for (const room of [false, true]) {
-          const reopened = await createTwoEditorFixture({
-            document: saved,
-            documentId: propertyContext.documentId,
-            ownedAttributes: true,
-            editor: { modules: [SCIOBOT_NATIVE_REVIEW_MODULE] },
-            ...(room ? { roomSnapshot: Y.encodeStateAsUpdate(pair.documents[0]!) } : {}),
-          });
-          try {
-            for (const editor of reopened.editors)
-              expect(word(editor.surface!.session.currentPackage())).toBe(word(expected));
-            reopened.ownership.forEach((handle) => handle.assertHealthy());
-          } finally {
-            reopened.destroy();
+          if (!decided.success) throw Error(decided.error);
+          await pair.settle();
+          const expected = decision === 'accept' ? acceptedExpected : rejectedExpected;
+          for (const editor of pair.editors) {
+            expect(word(editor.surface!.session.currentPackage())).toBe(word(expected));
+            const payloads = readPayloadStore(editor.surface!.session.currentPackage());
+            expect(payloads.status === 'ready' && [...payloads.entries.keys()]).toEqual(
+              decision === 'accept' ? ['linked-atom'] : []
+            );
           }
+          expect(alice!.exec({ type: 'undo' }).ok).toBe(true);
+          await pair.settle();
+          pair.editors.forEach((editor, i) =>
+            expect(native(editor.surface!.session.currentPackage())).toBe(pending[i]!)
+          );
+          expect(alice!.exec({ type: 'redo' }).ok).toBe(true);
+          await pair.settle();
+          bob!.surface!.setSelection({
+            anchor: { paragraphId, offset: 1 },
+            head: { paragraphId, offset: 1 },
+          });
+          await pair.settle();
+          const geometry = pair.editors.map((editor) =>
+            caretAt(editor.surface!.layout(), { paragraphId, offset: 1 })
+          );
+          expect(geometry[0]).not.toBeNull();
+          expect(geometry[0]).toEqual(geometry[1]);
+          const saved = new Uint8Array(await bob!.save());
+          for (const room of [false, true]) {
+            const reopened = await createTwoEditorFixture({
+              document: saved,
+              documentId: propertyContext.documentId,
+              ownedAttributes: true,
+              editor: { modules: [SCIOBOT_NATIVE_REVIEW_MODULE] },
+              ...(room ? { roomSnapshot: Y.encodeStateAsUpdate(pair.documents[0]!) } : {}),
+            });
+            try {
+              for (const editor of reopened.editors)
+                expect(word(editor.surface!.session.currentPackage())).toBe(word(expected));
+              reopened.ownership.forEach((handle) => handle.assertHealthy());
+            } finally {
+              reopened.destroy();
+            }
+          }
+          pair.ownership.forEach((handle) => handle.assertHealthy());
+        } finally {
+          pair.destroy();
         }
-        pair.ownership.forEach((handle) => handle.assertHealthy());
-      } finally {
-        pair.destroy();
-      }
-    });
+      });
