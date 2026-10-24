@@ -5004,6 +5004,7 @@ export type TreeDocOp = SetFieldCodeOp | {
 } | {
     readonly columnWidthsTwips?: readonly number[];
     readonly headerRowCount?: number;
+    readonly indentTwips?: number;
     readonly op: 'setTableProperties';
     readonly revision?: RevisionAttributionInput;
     readonly styleId?: string;

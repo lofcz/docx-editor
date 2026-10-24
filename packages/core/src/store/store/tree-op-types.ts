@@ -779,6 +779,8 @@ export type TreeDocOp =
       /** Lossless direct table properties; widths are one value per rectangular grid column. */
       readonly op: 'setTableProperties';
       readonly tableId: string;
+      /** Signed table indentation in twips; zero resets the direct indent. */
+      readonly indentTwips?: number;
       readonly styleId?: string;
       readonly headerRowCount?: number;
       readonly columnWidthsTwips?: readonly number[];

@@ -420,7 +420,7 @@ Local cases cover unmerged, horizontal-merged and vertical-merged tables with no
 
 ## N22
 
-- [ ] Connect manual table indentation
+- [x] Connect manual table indentation
 
 **Depends:** [N09](07-native-content.md#n09), [N17](07-native-content.md#n17), [V01](11-verification.md#v01)
 
@@ -434,7 +434,11 @@ Local cases cover unmerged, horizontal-merged and vertical-merged tables with no
 
 **Check:** Add a focused native regression and Chromium control test. Verify two-session concurrent cell edits, reconnect, peer-preserving history, table deletion, remote selection geometry, and saved convergence. Reuse the native table property writer where it supports `w:tblInd`.
 
-**Claim:** unclaimed. **Evidence:** N01 found the production `setTableMarginLeft` action. Existing N14 scope covers cell appearance and dimensions; it does not cover this table placement control.
+**Claim:** codex solo, branch `codex/react-block-proof`. **Evidence:** Implemented from `fef530df` on `codex/react-block-proof`. `chrome/table-indent.ts` maps captured 24 CSS pixels to 360 Word twips through native table-property transactions. Reset writes zero. The core writer preserves imported attributes, extension children, table widths, merged cells, and content identities. `test/support/table-indent.ts` supplies independent complete Word source oracles. Native suggesting now attributes all supported table-property operations and honors the formatting-tracking setting.
+
+`bun test --preload ./scripts/test/preload-dom.ts` with the eight focused files in `/tmp/sciobot-n22-final-verified-native.log` passes 118 cases and 1589 assertions. `table-indent.test.ts` verifies exact source fingerprints, positive/negative indentation, 18-point movement, reset, canonical Word reopen, unchanged selection, complete history, refusal, and tracked decisions. `table-indent-collaboration.test.ts` covers both client orders, plain/merged tables, offline peer edits, independent history, reconnect, table deletion recovery, presence geometry, tracked accept/reject, decision history, and saved convergence.
+
+`bunx playwright test --config e2e/sciobot-table-indent.config.ts` passes two Chromium cases (`/tmp/sciobot-n22-final-browser.log`). Real controls move painted paragraphs by 24 pixels, preserve native selection, support typing, reset, undo/redo, and reopen equal Word documents. Core, private, and browser type checks pass 1613, 2348, and 1920 files. Core/private builds pass; the private package keeps core external across 306 modules. Scoped lint and formatting pass. The public store API snapshot adds only `indentTwips`. Compatibility decision: `.collaboration/changes/native-table-indentation.json`; changeset: `.changeset/native-table-indentation.md`. Transport remains test-only under the EigenPal Pro License.
 
 ## N23
 

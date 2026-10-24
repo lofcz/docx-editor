@@ -25,7 +25,9 @@ type Op = Extract<TreeDocOp, { op: 'setTableProperties' }>;
 export function validateTableProperties(part: OoxmlPart, op: Op): TreeOpRejection | null {
   if (
     !Object.keys(op).every((key) =>
-      ['op', 'tableId', 'styleId', 'headerRowCount', 'columnWidthsTwips'].includes(key)
+      ['op', 'tableId', 'styleId', 'headerRowCount', 'columnWidthsTwips', 'indentTwips'].includes(
+        key
+      )
     )
   )
     return 'invalidArgs';
@@ -40,6 +42,11 @@ export function validateTableProperties(part: OoxmlPart, op: Op): TreeOpRejectio
     (!Number.isInteger(op.headerRowCount) ||
       op.headerRowCount < 0 ||
       op.headerRowCount > rows.length)
+  )
+    return 'invalidArgs';
+  if (
+    op.indentTwips !== undefined &&
+    (!Number.isInteger(op.indentTwips) || Math.abs(op.indentTwips) > 31680)
   )
     return 'invalidArgs';
   if (op.columnWidthsTwips !== undefined) {
@@ -139,6 +146,15 @@ export function applyTableProperties(part: OoxmlPart, op: Op, options?: EditOpti
       updated,
       'tblPr',
       leaf(wmlChildNamed(updated, 'tblPr') ?? fresh('tblPr'), 'tblStyle', { val: op.styleId })
+    );
+  if (op.indentTwips !== undefined)
+    updated = patch(
+      updated,
+      'tblPr',
+      leaf(wmlChildNamed(updated, 'tblPr') ?? fresh('tblPr'), 'tblInd', {
+        w: String(op.indentTwips),
+        type: 'dxa',
+      })
     );
   const replacements = new Map<string, OoxmlNode>();
   const cellWidths = new Map<string, number>();

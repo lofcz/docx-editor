@@ -35,6 +35,8 @@
     "../../e2e/sciobot-table-style.spec.ts",
     "../../e2e/sciobot-table-style.config.ts",
     "../../e2e/sciobot-font-link.spec.ts",
-    "../../e2e/sciobot-font-link.config.ts"
+    "../../e2e/sciobot-font-link.config.ts",
+    "../../e2e/sciobot-table-indent.spec.ts",
+    "../../e2e/sciobot-table-indent.config.ts"
   ]
 }

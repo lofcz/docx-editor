@@ -141,3 +141,9 @@ export * from './chrome/table-appearance';
 
 export * from './chrome/fonts';
 export * from './chrome/links';
+
+export {
+  setManualTableIndent,
+  manualTableIndent,
+  createTableIndentToolbar,
+} from './chrome/table-indent';

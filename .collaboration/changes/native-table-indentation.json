@@ -1,0 +1,15 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Table indentation rendered and round-tripped, but canonical table-property operations could not author it.",
+  "after": "An optional indentTwips input lowers to ordinary w:tblInd attributes through the existing property writer and primitive journal. Private controls convert CSS pixels into exact signed twips. Native suggesting attributes supported table property operations and obeys doNotTrackFormatting.",
+  "reason": "Existing readers already preserve and render w:tblInd. No operation argument is stored or sent to peers. Existing generic attribute and element frames, tracked property snapshots, and history retain their meaning. Test transport uses the EigenPal Pro License.",
+  "tests": [
+    "packages/core/src/editor/__tests__/tracked-table-property-attribution.test.ts",
+    "packages/sciobot/src/chrome/table-indent.test.ts",
+    "packages/sciobot/src/chrome/table-indent-collaboration.test.ts",
+    "e2e/sciobot-table-indent.spec.ts"
+  ],
+  "changeset": "native-table-indentation",
+  "migration": null
+}

@@ -2,31 +2,37 @@
 import type { TreeDocOp } from '../store/store/tree-ops.ts';
 import type { RevisionAttributionInput } from '../store/store/tree-op-types.ts';
 import { PROPERTY_CHANGE_WRAPPER_OF_OP } from '../store/store/tree-op-tracked-properties.ts';
+import {
+  TRACKED_TABLE_PROPERTY_OPS,
+  type TablePropertyOp,
+} from '../store/store/tree-op-tracked-table-properties.ts';
 
-type RevisionCapableOp = Extract<
-  TreeDocOp,
-  {
-    op:
-      | 'insertText'
-      | 'insertParagraphs'
-      | 'deleteText'
-      | 'insertTab'
-      | 'insertHardBreak'
-      | 'insertPageBreak'
-      | 'insertPageField'
-      | 'insertComplexField'
-      | 'insertEquation'
-      | 'setFieldResult'
-      | 'insertInlineContentControl'
-      | 'insertNote'
-      | 'insertTable'
-      | 'insertTableRow'
-      | 'deleteTableRow'
-      | 'setRunProperties'
-      | 'setParagraphProperties'
-      | 'setParagraphMarkProperties';
-  }
->;
+type RevisionCapableOp =
+  | TablePropertyOp
+  | Extract<
+      TreeDocOp,
+      {
+        op:
+          | 'insertText'
+          | 'insertParagraphs'
+          | 'deleteText'
+          | 'insertTab'
+          | 'insertHardBreak'
+          | 'insertPageBreak'
+          | 'insertPageField'
+          | 'insertComplexField'
+          | 'insertEquation'
+          | 'setFieldResult'
+          | 'insertInlineContentControl'
+          | 'insertNote'
+          | 'insertTable'
+          | 'insertTableRow'
+          | 'deleteTableRow'
+          | 'setRunProperties'
+          | 'setParagraphProperties'
+          | 'setParagraphMarkProperties';
+      }
+    >;
 const REVISION_CAPABLE_OPS: ReadonlySet<TreeDocOp['op']> = new Set<RevisionCapableOp['op']>([
   'insertText',
   'insertParagraphs',
@@ -46,6 +52,7 @@ const REVISION_CAPABLE_OPS: ReadonlySet<TreeDocOp['op']> = new Set<RevisionCapab
   'setRunProperties',
   'setParagraphProperties',
   'setParagraphMarkProperties',
+  ...TRACKED_TABLE_PROPERTY_OPS,
 ]);
 
 export function isRevisionCapable(op: TreeDocOp): op is RevisionCapableOp {
@@ -67,13 +74,6 @@ export function isTrackedEdit(op: TreeDocOp): boolean {
     case 'mergeTableCells':
     case 'splitTableCell':
     case 'setHyperlinkTarget':
-    case 'setTableProperties':
-    case 'setTableColumnWidths':
-    case 'setTableRightEdgeWidth':
-    case 'setTableRowHeight':
-    case 'setTableCellBorders':
-    case 'setTableCellFill':
-    case 'setTableCellVerticalAlignment':
     case 'setListNumbering':
     case 'setListLevel':
     case 'splitParagraphMany':
@@ -94,7 +94,9 @@ export function isTrackedEdit(op: TreeDocOp): boolean {
  * Read from the STORE's own table rather than restated here — the store shares one `@w:id`
  * per wrapper name for the same set, and two lists of it would drift.
  */
-const isPropertyChangeOp = (op: TreeDocOp['op']): boolean => PROPERTY_CHANGE_WRAPPER_OF_OP.has(op);
+const isPropertyChangeOp = (op: TreeDocOp['op']): boolean =>
+  PROPERTY_CHANGE_WRAPPER_OF_OP.has(op) ||
+  TRACKED_TABLE_PROPERTY_OPS.has(op as TablePropertyOp['op']);
 
 /**
  * Attribute ops the way suggesting mode does: revision-capable ops gain `revision` unless they
