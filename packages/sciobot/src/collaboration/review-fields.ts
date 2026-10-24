@@ -16,8 +16,10 @@ import type { OwnedTextOptions } from './owned-text';
 import {
   REVIEW_FIELD_TARGETS,
   REVIEW_FIELD_INTENTS,
+  REVIEW_FIELD_RETRACTIONS,
   MAX_REVIEW_FIELD_TARGETS,
   MAX_REVIEW_FIELD_INTENTS,
+  MAX_REVIEW_FIELD_BYTES,
   ReviewFieldError,
   fieldAddress,
   encodeFieldRecord,
@@ -30,17 +32,28 @@ import {
 } from './review-field-codec';
 export { REVIEW_FIELD_TARGETS, REVIEW_FIELD_INTENTS } from './review-field-codec';
 export interface OwnedReviewFieldOptions extends OwnedTextOptions {
+  /** Experimental protocol 2 requires explicit attachment; existing hosts keep protocol 1. */
+  readonly protocol?: '1' | '2';
   /** Hosts may lower the fixed record limits. Raising them is refused. */
   readonly limits?: { readonly targets?: number; readonly intents?: number };
 }
 interface Reservation {
   remaining: number;
+  extraRemaining: number;
   readonly captured: Map<string, string>;
+  readonly retracted?: ReadonlySet<string>;
+}
+/** Exact local publication evidence. Persisting or binding this evidence needs a separate protocol. */
+export interface ReviewFieldReceipt {
+  readonly id: string;
+  readonly record: string;
 }
 interface State {
+  readonly protocol: '1' | '2';
   readonly doc: Y.Doc;
   readonly targets: Y.Map<string>;
   readonly intents: Y.Map<string>;
+  readonly retractions: Y.Map<string> | null;
   readonly origins: Set<unknown>;
   readonly known: WeakMap<Y.Map<unknown>, Map<string, string>>;
   readonly transactions: WeakMap<Y.Transaction, Map<string, string>>;
@@ -55,11 +68,32 @@ interface State {
   disposed: boolean;
   error: Error | null;
 }
+function retainedIntentCount(state: State): number {
+  return state.intents._map.size + (state.retractions?._map.size ?? 0);
+}
+function decodeFieldRetraction(id: string, raw: unknown): ReviewFieldReceipt {
+  if (typeof raw !== 'string' || new TextEncoder().encode(raw).length > MAX_REVIEW_FIELD_BYTES)
+    throw new ReviewFieldError('Invalid bounded field retraction.');
+  const item = JSON.parse(raw);
+  if (
+    !item ||
+    typeof item !== 'object' ||
+    Array.isArray(item) ||
+    Object.keys(item).length !== 2 ||
+    typeof item.id !== 'string' ||
+    typeof item.record !== 'string'
+  )
+    throw new ReviewFieldError('Invalid field retraction receipt.');
+  decodeFieldIntent(id, item.record);
+  decodeFieldIntent(item.id, item.record);
+  return item;
+}
 const NORMALIZE = Symbol('sciobot-review-field-normalization');
 const attached = new WeakMap<Y.Doc, State>();
 const excluded = new Set([
   REVIEW_FIELD_TARGETS,
   REVIEW_FIELD_INTENTS,
+  REVIEW_FIELD_RETRACTIONS,
   REVIEW_FLAG_TARGETS,
   REVIEW_FLAG_INTENTS,
   OWNED_TEXT_OPERATIONS,
@@ -170,12 +204,15 @@ function record(
     captured = captureMap(state),
     previousIntent = captured.get(key),
     reservation = state.reservations.at(-1);
+  // A rejection withdraws its own intent. Recording the native snapshot restoration
+  // as another write would overwrite the peer whose intent must now win.
+  if (state.reservations.some((scope) => scope.retracted?.has(key))) return;
   if (!previousIntent && reservation && !reservation.remaining)
     throw new ReviewFieldError('The review command exceeded its planned field count.');
   if (
     (!state.targets.has(key) &&
       state.targets.size - Number(state.targets.has('protocol')) >= state.limits.targets) ||
-    (!previousIntent && state.intents._map.size >= state.limits.intents)
+    (!previousIntent && retainedIntentCount(state) >= state.limits.intents)
   )
     throw new ReviewFieldError('Review field ownership exceeds its record limit.');
   const previous = map?.get(target.key),
@@ -209,7 +246,7 @@ function record(
   if (!previousIntent && state.intents.has(id))
     throw new ReviewFieldError('Review field intent identity was reused.');
   if (!previousIntent && reservation) reservation.remaining--;
-  if (!state.targets.has('protocol')) set.call(state.targets, 'protocol', '1');
+  if (!state.targets.has('protocol')) set.call(state.targets, 'protocol', state.protocol);
   if (targetData !== null) set.call(state.targets, key, targetData);
   state.origins.add(state.doc._transaction?.origin);
   set.call(state.intents, id, intentData);
@@ -351,7 +388,7 @@ function install() {
       reservation = state.reservations.at(-1);
     if (
       state.targets.size - Number(state.targets.has('protocol')) + count > state.limits.targets ||
-      state.intents._map.size + count > state.limits.intents ||
+      retainedIntentCount(state) + count > state.limits.intents ||
       (reservation && count > reservation.remaining)
     )
       throw new ReviewFieldError('Review field ownership exceeds its complete insertion budget.');
@@ -392,16 +429,22 @@ function mapFor(state: State, target: ReviewFieldTarget): Y.Map<unknown> | null 
 function records(state: State) {
   if (
     state.targets.size > state.limits.targets + 1 ||
-    state.intents._map.size > state.limits.intents
+    retainedIntentCount(state) > state.limits.intents
   )
     throw new ReviewFieldError('Review field ownership exceeds its record limit.');
   const version = state.targets.get('protocol');
-  if (version === undefined && !state.targets.size && !state.intents.size)
+  if (
+    version === undefined &&
+    !state.targets.size &&
+    !state.intents.size &&
+    !state.retractions?.size
+  )
     return {
       targets: new Map<string, ReviewFieldTarget>(),
       winners: new Map<string, ReviewFieldIntent>(),
     };
-  if (version !== '1') throw new ReviewFieldError('Unsupported owned review field protocol.');
+  if (version !== state.protocol)
+    throw new ReviewFieldError('Unsupported owned review field protocol.');
   const targets = new Map<string, ReviewFieldTarget>();
   for (const [key, raw] of state.targets)
     if (key !== 'protocol') {
@@ -414,6 +457,16 @@ function records(state: State) {
         throw new ReviewFieldError('Review fields cannot target ownership metadata.');
       targets.set(key, target);
     }
+  const withdrawn = new Set<string>();
+  for (const [id, raw] of state.retractions ?? []) {
+    const receipt = decodeFieldRetraction(id, raw);
+    if (state.intents.has(receipt.id) && state.intents.get(receipt.id) !== receipt.record)
+      throw new ReviewFieldError('Field retraction does not match its original intent.');
+    const intent = decodeFieldIntent(receipt.id, receipt.record);
+    if (!targets.has(intent.target) || targets.get(intent.target)!.sequence)
+      throw new ReviewFieldError('Field retraction must target a known scalar intent.');
+    withdrawn.add(receipt.id);
+  }
   const winners = new Map<string, ReviewFieldIntent>();
   for (const [key, raw] of state.intents) {
     const intent = decodeFieldIntent(key, raw);
@@ -421,6 +474,7 @@ function records(state: State) {
       throw new ReviewFieldError('Review field intent has no target.');
     if (targets.get(intent.target)?.sequence && !['removed', 'present'].includes(intent.value!))
       throw new ReviewFieldError('Invalid review sequence intent.');
+    if (withdrawn.has(key)) continue;
     const old = winners.get(intent.target);
     if (!old || newerFieldIntent(intent, old)) winners.set(intent.target, intent);
   }
@@ -493,10 +547,15 @@ function limits(options: OwnedReviewFieldOptions) {
 }
 export function attachOwnedReviewFields(doc: Y.Doc, options: OwnedReviewFieldOptions = {}) {
   if (attached.has(doc)) throw new ReviewFieldError('Review fields are already attached.');
+  if (options.protocol !== undefined && !['1', '2'].includes(options.protocol))
+    throw new ReviewFieldError('Unsupported owned review field protocol.');
+  const protocol = options.protocol ?? '1';
   const state: State = {
+    protocol,
     doc,
     targets: doc.getMap(REVIEW_FIELD_TARGETS),
     intents: doc.getMap(REVIEW_FIELD_INTENTS),
+    retractions: protocol === '2' ? doc.getMap(REVIEW_FIELD_RETRACTIONS) : null,
     origins: new Set(),
     known: new WeakMap(),
     transactions: new WeakMap(),
@@ -526,8 +585,10 @@ export function attachOwnedReviewFields(doc: Y.Doc, options: OwnedReviewFieldOpt
     if (
       manager instanceof Y.UndoManager &&
       [...state.origins].some((origin) => manager.trackedOrigins.has(origin))
-    )
+    ) {
       manager.addToScope(state.intents);
+      if (state.retractions) manager.addToScope(state.retractions);
+    }
   };
   const beforeObservers = (transaction: Y.Transaction) => {
     if (state.normalizing || transaction.origin === NORMALIZE) return;
@@ -538,15 +599,21 @@ export function attachOwnedReviewFields(doc: Y.Doc, options: OwnedReviewFieldOpt
         return;
       }
       const changed = new Set<unknown>(transaction.changed.keys());
+      // Protocol 2 waits for ownership metadata before correcting remote physical writes.
+      // Otherwise disconnected replicas can exchange opposing corrections before their intents arrive.
       if (
         !state.deferred &&
         !changed.has(state.targets) &&
         !changed.has(state.intents) &&
+        !changed.has(state.retractions) &&
         !(transaction.origin instanceof Y.UndoManager) &&
-        ![...transaction.changed].some(
-          ([type, keys]) =>
-            type instanceof Y.Map &&
-            [...keys].some((key) => key !== null && state.known.get(type)?.has(key))
+        !(
+          (state.protocol === '1' || transaction.local) &&
+          [...transaction.changed].some(
+            ([type, keys]) =>
+              type instanceof Y.Map &&
+              [...keys].some((key) => key !== null && state.known.get(type)?.has(key))
+          )
         )
       )
         return;
@@ -562,6 +629,59 @@ export function attachOwnedReviewFields(doc: Y.Doc, options: OwnedReviewFieldOpt
   };
   doc.on('beforeTransaction', beforeTransaction);
   doc.on('beforeObserverCalls', beforeObservers);
+  const capture = <T>(
+    run: () => T,
+    fieldWrites: number,
+    receipt?: (items: readonly ReviewFieldReceipt[]) => void,
+    retracted?: ReadonlySet<string>,
+    extraIntents = 0
+  ): T => {
+    healthy(state);
+    if (doc.store.pendingStructs || doc.store.pendingDs)
+      throw new ReviewFieldError('Review fields must wait for complete room updates.');
+    if (!Number.isSafeInteger(fieldWrites) || fieldWrites < 0)
+      throw new ReviewFieldError('Review ownership needs a complete bounded field count.');
+    records(state);
+    const reserved = state.reservations.reduce((sum, item) => sum + item.remaining, 0),
+      reservedIntents = state.reservations.reduce(
+        (sum, item) => sum + item.remaining + item.extraRemaining,
+        0
+      ),
+      targets = state.targets.size - Number(state.targets.has('protocol'));
+    if (
+      targets + reserved + fieldWrites > state.limits.targets ||
+      retainedIntentCount(state) + reservedIntents + fieldWrites + extraIntents >
+        state.limits.intents
+    )
+      throw new ReviewFieldError('Review field ownership exceeds its record limit.');
+    const reservation: Reservation = {
+      remaining: fieldWrites,
+      extraRemaining: extraIntents,
+      captured: new Map(),
+      retracted,
+    };
+    state.reservations.push(reservation);
+    const previous = state.capturing,
+      origin = state.captureOrigin;
+    state.capturing = true;
+    state.captureOrigin = null;
+    try {
+      const result = run();
+      if (receipt)
+        receipt(
+          Object.freeze(
+            [...reservation.captured.values()].map((id) =>
+              Object.freeze({ id, record: state.intents.get(id)! })
+            )
+          )
+        );
+      return result;
+    } finally {
+      state.reservations.pop();
+      state.capturing = previous;
+      state.captureOrigin = origin;
+    }
+  };
   return Object.freeze({
     enable() {
       healthy(state);
@@ -570,32 +690,69 @@ export function attachOwnedReviewFields(doc: Y.Doc, options: OwnedReviewFieldOpt
     assertHealthy() {
       healthy(state);
     },
-    capture<T>(run: () => T, fieldWrites: number): T {
+    capture<T>(
+      run: () => T,
+      fieldWrites: number,
+      receipt?: (items: readonly ReviewFieldReceipt[]) => void
+    ): T {
+      return capture(run, fieldWrites, receipt);
+    },
+    /** Internal scalar primitive. The caller must own the active native transaction. */
+    retractInTransaction<T>(
+      items: readonly ReviewFieldReceipt[],
+      run: () => T,
+      fieldWrites = 0
+    ): T {
       healthy(state);
-      if (doc.store.pendingStructs || doc.store.pendingDs)
-        throw new ReviewFieldError('Review fields must wait for complete room updates.');
+      if (!state.retractions)
+        throw new ReviewFieldError('Field retraction requires explicit protocol 2 attachment.');
+      if (!doc._transaction?.local || doc._transaction.origin instanceof Y.UndoManager)
+        throw new ReviewFieldError('Field retraction requires an active local native transaction.');
+      if (!Array.isArray(items) || items.length > state.limits.intents)
+        throw new ReviewFieldError('Invalid bounded field retraction receipt.');
       if (!Number.isSafeInteger(fieldWrites) || fieldWrites < 0)
         throw new ReviewFieldError('Review ownership needs a complete bounded field count.');
       records(state);
-      const reserved = state.reservations.reduce((sum, item) => sum + item.remaining, 0),
-        targets = state.targets.size - Number(state.targets.has('protocol'));
-      if (
-        targets + reserved + fieldWrites > state.limits.targets ||
-        state.intents._map.size + reserved + fieldWrites > state.limits.intents
-      )
-        throw new ReviewFieldError('Review field ownership exceeds its record limit.');
-      state.reservations.push({ remaining: fieldWrites, captured: new Map() });
-      const previous = state.capturing,
-        origin = state.captureOrigin;
-      state.capturing = true;
-      state.captureOrigin = null;
-      try {
-        return run();
-      } finally {
-        state.reservations.pop();
-        state.capturing = previous;
-        state.captureOrigin = origin;
+      const withdrawn = new Set(
+        [...state.retractions].map(([id, raw]) => decodeFieldRetraction(id, raw).id)
+      );
+      const ids = new Set<string>(),
+        targets = new Set<string>(),
+        encoded: string[] = [];
+      for (const item of items) {
+        if (
+          !item ||
+          typeof item.id !== 'string' ||
+          typeof item.record !== 'string' ||
+          Object.keys(item).length !== 2 ||
+          ids.has(item.id) ||
+          withdrawn.has(item.id) ||
+          state.intents.get(item.id) !== item.record
+        )
+          throw new ReviewFieldError('Field retraction receipt is stale or invalid.');
+        const intent = decodeFieldIntent(item.id, item.record);
+        const target = decodeFieldTarget(intent.target, state.targets.get(intent.target));
+        if (target.sequence)
+          throw new ReviewFieldError('Scalar retraction cannot restore native child sequences.');
+        ids.add(item.id);
+        targets.add(intent.target);
+        encoded.push(encodeFieldRecord(item));
       }
+      return capture(
+        () => {
+          state.origins.add(doc._transaction!.origin);
+          for (const raw of encoded) {
+            const id = `${doc.clientID}:${Y.getState(doc.store, doc.clientID)}`;
+            state.reservations.at(-1)!.extraRemaining--;
+            set.call(state.retractions!, id, raw);
+          }
+          return run();
+        },
+        fieldWrites,
+        undefined,
+        targets,
+        items.length
+      );
     },
     dispose() {
       if (state.disposed) return;

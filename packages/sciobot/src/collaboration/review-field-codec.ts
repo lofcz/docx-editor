@@ -1,5 +1,6 @@
 export const REVIEW_FIELD_TARGETS = 'sciobot-review-field-targets-v1';
 export const REVIEW_FIELD_INTENTS = 'sciobot-review-field-intents-v1';
+export const REVIEW_FIELD_RETRACTIONS = 'sciobot-review-field-retractions-v1';
 export const MAX_REVIEW_FIELD_TARGETS = 50000;
 export const MAX_REVIEW_FIELD_INTENTS = 100000;
 export const MAX_REVIEW_FIELD_BYTES = 8 * 1024 * 1024;

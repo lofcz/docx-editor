@@ -23,10 +23,13 @@ import './style.css';
 const context = { documentId: 'manual-lists', epoch: 'mount' };
 const fonts = await loadDefaultFonts({ families: ['Calibri'] });
 if (fonts.failures.length) throw new Error('Packaged fonts failed.');
+const headingFixture = new URL(globalThis.location.href).searchParams.get('heading') === '1';
 const pair = await createTwoEditorFixture({
   document: listDocument(
     listParagraph('Alpha') +
-      listParagraph('Beta') +
+      (headingFixture
+        ? '<w:p><w:pPr><w:outlineLvl w:val="0"/></w:pPr><w:r><w:t>Beta</w:t></w:r></w:p>'
+        : listParagraph('Beta')) +
       listParagraph('Imported', '3') +
       listParagraph('Tail')
   ),

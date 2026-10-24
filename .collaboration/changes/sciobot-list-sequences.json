@@ -1,0 +1,21 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Private list controls reused only an adjacent compatible counter. Filling a gap did not reconnect the following sequence, heading classification did not constrain lookup, and dependent numbering changes produced separate review groups.",
+  "after": "Canonical list reads share immutable native style and numbering resolution. Manual controls scan past nested items and other marker styles, stop at plain or lower-level paragraphs, and respect matching numbered heading boundaries. A bridge joins following counters only when their full native templates and overrides match, excluding standard restart values. Explicit restart heads retain their counters. Dependent changes share one review decision per story while existing AI groups remain separate. Other tracked callers keep their existing grouping unless the host explicitly requests coupling.",
+  "reason": "The private adapter authors existing list membership, native property revisions, and review group receipts. Shared schema 9, repair version 14, document storage, journal kinds, and ownership protocols remain unchanged. The optional host grouping flag stays local. No published package source changes, room migrations, reference captures, or application writes occur. The empty changeset records private adapter work without a published-package bump. Shared readers already accept multi-address groups; the local flag changes construction of existing groups, not their representation or interpretation. Transport tests use the EigenPal Pro License; production code imports Apache core and private modules only. N08 remains open for its remaining checklist and sequence-reset behavior. Two added native rejection regressions fail because rejecting a bridge restores old numbering over a disconnected peer's circle format. This checkpoint does not claim conflict-safe property rejection. The private scalar retraction prototype has separate evidence and remains disconnected from production review decisions.",
+  "tests": [
+    "packages/sciobot/src/chrome/list-sequences.test.ts",
+    "packages/sciobot/src/chrome/list-sequences-collaboration.test.ts",
+    "packages/sciobot/src/chrome/list-continuity.test.ts",
+    "packages/sciobot/src/chrome/list-indent.test.ts",
+    "packages/sciobot/src/chrome/list-input.test.ts",
+    "packages/sciobot/src/chrome/insert-list-empty.test.ts",
+    "packages/sciobot/src/diff/lists.test.ts",
+    "packages/sciobot/src/review/replace-owned-proposals.test.ts",
+    "packages/sciobot/src/review/replace-owned-proposals-collaboration.test.ts",
+    "e2e/sciobot-lists.spec.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

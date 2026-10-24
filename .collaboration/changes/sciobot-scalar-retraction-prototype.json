@@ -1,0 +1,15 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Native property rejection restores old snapshots unconditionally. Private scalar ownership has no explicit proposal retraction primitive.",
+  "after": "An internal experimental protocol 2 scope captures exact scalar intent receipts and appends bounded cancellation evidence. Tests verify independent authors and reviewer histories, equal-value writes, peer removals, cold snapshots, and refusal before writes. The supported production history factory continues to attach protocol 1, whose representation and observer behavior remain unchanged. Native rejection integration is unfinished and two complete native bridge regressions remain failing.",
+  "reason": "The new experimental attachment is internal and absent from the package entry exports. The production history factory does not select it or call retraction. Protocol 1 readers refuse protocol 2 snapshots through the existing exact protocol check. The prototype therefore changes no supported shared room, published native format, production decision path, or admitted update interpretation. Production integration must add explicit admission and compatibility evidence before enabling protocol 2. No existing room is migrated. Default scalar limits remain 50000 targets and 100000 combined retained intents and cancellations; cancellations reserve no new scalar targets. The private empty changeset records this work without changing a published package.",
+  "tests": [
+    "packages/sciobot/src/collaboration/review-field-retraction.test.ts",
+    "packages/sciobot/src/collaboration/review-fields.test.ts",
+    "packages/sciobot/src/collaboration/review-sequences.test.ts",
+    "packages/sciobot/src/chrome/list-sequences-collaboration.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

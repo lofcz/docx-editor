@@ -1,17 +1,8 @@
-import {
-  paragraphTextOf,
-  paragraphOffsetIndex,
-  findNode,
-  parentNodeOf,
-} from '@docx-editor.dev/core/store';
+import { paragraphTextOf, paragraphOffsetIndex, findNode } from '@docx-editor.dev/core/store';
 import type { DocxEditorInstance } from '@docx-editor.dev/core/editor';
-import {
-  paragraphsInCells,
-  paragraphFragmentsOf,
-  buildNumberingIndex,
-  resolveNumberingLevel,
-} from '@docx-editor.dev/core/layout';
-import { planListMembership } from '../diff/lists';
+import { paragraphsInCells, paragraphFragmentsOf } from '@docx-editor.dev/core/layout';
+import { createListSourceReader, planListMembership } from '../diff/lists';
+import { planManualListSequences } from './list-sequences';
 import { planParagraphFormat } from '../diff/paragraph-format';
 import { createEditPlan, type CanonicalEdit } from '../diff/plan';
 import { insertManualList } from './insert-list';
@@ -53,22 +44,16 @@ export function manualListState(
   const s = editor.surface,
     revision = readEditorRevision(editor, context.documentId, context.epoch);
   if (!s || !revision || !paragraphId) return null;
-  const source = { pkg: s.session.currentPackage(), partName: s.session.part().name, revision };
-  for (const target of [
-    { kind: 'none' },
-    { kind: 'checklist', level: 0, checked: false },
-  ] as const) {
-    const planned = planListMembership(source, [{ paragraphId, target }]);
-    if (!planned.success) return null;
-    const edit = planned.plan.operations[0];
-    if (edit?.kind === 'list') return edit.before;
-  }
-  return null;
+  const reader = createListSourceReader(s.session.currentPackage(), s.session.part());
+  const inspected = reader.read(paragraphId);
+  return inspected.success ? inspected.state : null;
 }
+
 function change(
   editor: DocxEditorInstance,
   context: BlockCommandContext,
-  target: (state: ListSourceState, id: string) => ListTarget | ReturnType<typeof fail>
+  target: (state: ListSourceState, id: string) => ListTarget | ReturnType<typeof fail>,
+  sequences = false
 ) {
   const s = editor.surface;
   if (!s) return fail('The native editor is not attached.');
@@ -79,32 +64,46 @@ function change(
     part = s.session.partFor(s.storyScope()) ?? s.session.part();
   if (part.name !== pkg.mainDocumentPart) return fail('List controls require the body story.');
   const patches = [];
+  const reader = createListSourceReader(pkg, part);
   for (const id of selection(editor)) {
-    const state = manualListState(editor, context, id);
-    if (!state) return fail('The selected list source is unavailable.');
+    const inspected = reader.read(id);
+    if (!inspected.success) return inspected;
+    const state = inspected.state;
     const next = target(state, id);
     if ('success' in next) return next;
     patches.push({ paragraphId: id, target: next });
   }
-  const planned = planListMembership({ pkg, partName: part.name, revision }, patches);
+  const planned = (sequences ? planManualListSequences : planListMembership)(
+    { pkg, partName: part.name, revision },
+    patches
+  );
   if (!planned.success) return planned;
   if (!planned.plan.operations.length)
     return { success: true as const, committed: false, revision };
-  return applyManualListPlan(editor, planned.plan, context);
+  return applyManualListPlan(editor, planned.plan, context, sequences);
 }
 export function applyManualListPlan(
   editor: DocxEditorInstance,
   plan: Parameters<typeof applyDirectPlan>[1],
-  context: BlockCommandContext
+  context: BlockCommandContext,
+  groupNativeChanges = false
 ) {
   const s = editor.surface;
   if (!s) return fail('The native editor is not attached.');
   return s.editingMode() === 'suggest'
-    ? replaceOwnedProposals(editor, [], plan, {
-        ...context,
-        author: editor.getConfiguredAuthor() ?? '',
-        date: new Date().toISOString(),
-      })
+    ? replaceOwnedProposals(
+        editor,
+        [],
+        plan,
+        {
+          ...context,
+          author: editor.getConfiguredAuthor() ?? '',
+          date: new Date().toISOString(),
+        },
+        {},
+        undefined,
+        groupNativeChanges
+      )
     : commitDirectMembership(editor, plan, context);
 }
 /** The native guarded boundary maps the caret across an owned checkbox atom and captures history. */
@@ -162,74 +161,23 @@ export function setManualList(
     return fail('Choose an application list style.');
   editor.surface?.flushPendingInput();
   const key = `manual:${editor.surface?.session.packageRevision() ?? 0}`;
-  const adjacent =
-    style !== 'todo' && style !== 'none' ? compatibleCounter(editor, style, context) : null;
-  return change(editor, context, (state) => {
-    if (style === 'none') return { kind: 'none' };
-    const level = state.checkbox?.level ?? state.numbering?.level ?? 0;
-    return style === 'todo'
-      ? { kind: 'checklist', level, checked: state.checkbox?.checked ?? false }
-      : {
-          kind: ['disc', 'circle', 'square'].includes(style) ? 'bullet' : 'ordered',
-          level,
-          ...(adjacent
-            ? { instance: { kind: 'existing' as const, numId: adjacent } }
-            : { instance: { kind: 'new' as const, key }, style }),
-        };
-  });
-}
-/** Reuse a compatible contiguous counter without changing imported definitions. */
-function compatibleCounter(
-  editor: DocxEditorInstance,
-  style: ListStyle,
-  context: BlockCommandContext
-) {
-  const surface = editor.surface;
-  if (!surface) return null;
-  const ids = selection(editor),
-    part = surface.session.part(),
-    parent = ids[0] ? parentNodeOf(part, ids[0]) : null;
-  if (!parent) return null;
-  if (ids.some((id) => parentNodeOf(part, id)?.id !== parent.id)) return null;
-  const first = parent.children.findIndex((node) => node.id === ids[0]),
-    last = parent.children.findIndex((node) => node.id === ids.at(-1));
-  const candidates = [
-    parent.children[first - 1],
-    parent.children[first],
-    parent.children[last + 1],
-  ];
-  const index = buildNumberingIndex(
-    surface.session.currentPackage().parts.get('/word/numbering.xml')?.root
+  return change(
+    editor,
+    context,
+    (state) => {
+      if (style === 'none') return { kind: 'none' };
+      const level = state.checkbox?.level ?? state.numbering?.level ?? 0;
+      return style === 'todo'
+        ? { kind: 'checklist', level, checked: state.checkbox?.checked ?? false }
+        : {
+            kind: ['disc', 'circle', 'square'].includes(style) ? 'bullet' : 'ordered',
+            level,
+            instance: { kind: 'new', key },
+            style,
+          };
+    },
+    true
   );
-  const format = {
-    disc: 'bullet',
-    circle: 'bullet',
-    square: 'bullet',
-    decimal: 'decimal',
-    'lower-alpha': 'lowerLetter',
-    'upper-alpha': 'upperLetter',
-    'lower-roman': 'lowerRoman',
-    'upper-roman': 'upperRoman',
-  }[style];
-  const glyph = { disc: '•', circle: '○', square: '■' }[style as 'disc' | 'circle' | 'square'];
-  const levels = ids.map((id) => {
-    const state = manualListState(editor, context, id);
-    return state?.checkbox?.level ?? state?.numbering?.level ?? 0;
-  });
-  for (const candidate of candidates) {
-    if (candidate?.kind !== 'paragraph') continue;
-    const state = manualListState(editor, context, candidate.id);
-    if (!state?.numbering || state.checkbox) continue;
-    const numId = state.numbering.numId;
-    if (
-      levels.every((level) => {
-        const resolved = resolveNumberingLevel(index, numId, level)?.level;
-        return resolved?.numFmt === format && resolved.lvlText === (glyph ?? `%${level + 1}.`);
-      })
-    )
-      return numId;
-  }
-  return null;
 }
 /** Toggle native membership; captured checklist indentation has a separate dispatch contract. */
 export function toggleManualList(

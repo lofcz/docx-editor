@@ -4,6 +4,7 @@ import {
   cascadeParagraphFormatting,
   readNumPr,
   resolveNumberingLevel,
+  resolveParagraphLayoutInputs,
   sha256FontBytes,
   withNumberingStyleLinks,
 } from '@docx-editor.dev/core/layout';
@@ -17,6 +18,7 @@ import {
   stylesPartOf,
   type OoxmlNode,
   type OoxmlPackage,
+  type OoxmlPart,
 } from '@docx-editor.dev/core/store';
 import type { NativeEditFailure, RevisionToken } from '../contracts/document';
 import { jsonDataProblem } from '../data/json';
@@ -105,7 +107,11 @@ function listContext(pkg: OoxmlPackage) {
         ? pkg.parts.get(resolved.target.partName)
         : undefined) ?? pkg.parts.get('/word/numbering.xml'),
     styles = buildStyleCascadeTable(styleRoot);
-  return { styles, numbering: withNumberingStyleLinks(buildNumberingIndex(part?.root), styles) };
+  return {
+    styles,
+    part,
+    numbering: withNumberingStyleLinks(buildNumberingIndex(part?.root), styles),
+  };
 }
 
 /** Read a native level's start before assigning a new nested group to an existing instance. */
@@ -117,6 +123,184 @@ export function listInstanceStart(pkg: OoxmlPackage, numId: string, level: numbe
 /** Resolve imported numbering through its relationship and linked styles. */
 export function listInstanceLevel(pkg: OoxmlPackage, numId: string, level: number) {
   return resolveNumberingLevel(listContext(pkg).numbering, numId, level);
+}
+
+/** Cache canonical list reads and native style resolution for one immutable package. */
+export function createListSourceReader(pkg: OoxmlPackage, part: OoxmlPart) {
+  const context = listContext(pkg);
+  const indexed = (name: string, key: string) => {
+    const values = new Map<string, OoxmlNode>();
+    const duplicates = new Set<string>();
+    for (const node of context.part?.root.children ?? []) {
+      if (node.kind === 'textValue' || node.namespaceUri !== W || node.localName !== name) continue;
+      const value = node.attributes.find((a) => a.namespaceUri === W && a.localName === key)?.value;
+      if (!value || duplicates.has(value)) continue;
+      if (values.has(value)) {
+        values.delete(value);
+        duplicates.add(value);
+      } else values.set(value, node);
+    }
+    return values;
+  };
+  let numbers: ReturnType<typeof indexed> | undefined,
+    abstracts: ReturnType<typeof indexed> | undefined;
+  const levelShapes = new Map<string, string | null>();
+  const attr = (node: OoxmlNode | undefined, name: string) =>
+    node && node.kind !== 'textValue'
+      ? node.attributes.find((a) => a.namespaceUri === W && a.localName === name)?.value
+      : undefined;
+  const levelIn = (node: OoxmlNode | undefined, name: string, level: number) =>
+    node && node.kind !== 'textValue'
+      ? node.children.find(
+          (child) =>
+            child.kind !== 'textValue' &&
+            child.namespaceUri === W &&
+            child.localName === name &&
+            attr(child, 'ilvl') === String(level)
+        )
+      : undefined;
+  const cache = new Map<string, ReturnType<typeof inspectListSource>>();
+  const paragraphs = new Map<string, ReturnType<typeof resolveParagraphLayoutInputs>>();
+  return {
+    numbering: context.numbering,
+    read(paragraphId: string) {
+      let value = cache.get(paragraphId);
+      if (!value) {
+        value = inspectListSource(part, paragraphId, context.styles);
+        cache.set(paragraphId, value);
+      }
+      return value;
+    },
+    levelShape(numId: string, level: number) {
+      const key = `${numId}:${level}`;
+      if (levelShapes.has(key)) return levelShapes.get(key)!;
+      numbers ??= indexed('num', 'numId');
+      abstracts ??= indexed('abstractNum', 'abstractNumId');
+      const num = numbers.get(numId);
+      const abstract = abstracts.get(attr(named(num, 'abstractNumId'), 'val') ?? '');
+      const node =
+        named(levelIn(num, 'lvlOverride', level), 'lvl') ?? levelIn(abstract, 'lvl', level);
+      let shape: string | null = null;
+      if (node && num && num.kind !== 'textValue' && abstract && abstract.kind !== 'textValue') {
+        const template = {
+          ...abstract,
+          kind: 'generic' as const,
+          attributes: abstract.attributes.filter(
+            (a) => !(a.namespaceUri === W && a.localName === 'abstractNumId')
+          ),
+        };
+        const concrete = {
+          ...num,
+          kind: 'generic' as const,
+          attributes: num.attributes.filter(
+            (a) => !(a.namespaceUri === W && a.localName === 'numId')
+          ),
+          children: num.children.flatMap((child): OoxmlNode[] => {
+            if (child.kind === 'textValue' || child.namespaceUri !== W) return [child];
+            if (child.localName === 'abstractNumId') return [];
+            if (child.localName !== 'lvlOverride') return [child];
+            const children = child.children.filter(
+              (field) =>
+                !(
+                  field.kind !== 'textValue' &&
+                  field.namespaceUri === W &&
+                  field.localName === 'startOverride' &&
+                  field.children.length === 0 &&
+                  field.attributes.every((a) => a.namespaceUri === W && a.localName === 'val')
+                )
+            );
+            return children.length ||
+              child.attributes.some((a) => a.namespaceUri !== W || a.localName !== 'ilvl')
+              ? [{ ...child, children }]
+              : [];
+          }),
+        };
+        shape = JSON.stringify([
+          canonicalOoxmlFingerprint(template),
+          canonicalOoxmlFingerprint(concrete),
+        ]);
+      }
+      levelShapes.set(key, shape);
+      return shape;
+    },
+    level(numId: string, level: number) {
+      return resolveNumberingLevel(context.numbering, numId, level);
+    },
+    paragraph(paragraphId: string) {
+      let value = paragraphs.get(paragraphId);
+      if (!value) {
+        const node = findNode(part, paragraphId);
+        if (node?.kind !== 'paragraph') return null;
+        value = resolveParagraphLayoutInputs(node, 1, context.styles);
+        paragraphs.set(paragraphId, value);
+      }
+      return value;
+    },
+  };
+}
+
+function inspectListSource(
+  part: OoxmlPart,
+  paragraphId: string,
+  styles: ReturnType<typeof listContext>['styles']
+): NativeEditFailure | { readonly success: true; readonly state: ListSourceState } {
+  const paragraph = findNode(part, paragraphId);
+  if (paragraph?.kind !== 'paragraph')
+    return fail('The native list paragraph does not exist.', 'invalid-document');
+  const pPr = propertyContainer(paragraph, 'paragraphProperties', 'pPr');
+  const native = readNumPr(cascadeParagraphFormatting(styles, pPr).paragraphPropertyNodes);
+  const membership =
+    native && native.numId !== '0' ? { numId: native.numId, level: native.ilvl } : null;
+  const owned = ownedMarkers(paragraph);
+  if (!owned) return fail('The checklist marker scan exceeds its limit.', 'invalid-document');
+  if (owned.length > 1)
+    return fail('The paragraph has multiple owned checklist markers.', 'ambiguous-target');
+  const marker = owned[0],
+    markerProperties = marker && contentControlPropertiesOf(marker);
+  if (markerProperties && (!markerProperties.checkbox || markerProperties.dataBinding))
+    return fail('The owned checklist marker is invalid or data-bound.', 'unsupported-operation');
+  const indentation = named(pPr, 'ind');
+  let checkboxLevel = 0;
+  if (marker && indentation?.kind !== 'textValue') {
+    const value = (name: string) =>
+      indentation?.attributes.find(
+        (attribute) => attribute.namespaceUri === W && attribute.localName === name
+      )?.value;
+    const left = value('start') ?? value('left');
+    const twips = left === undefined ? 720 : readTwipsMeasure(left);
+    if (
+      twips === null ||
+      twips === undefined ||
+      !Number.isInteger(twips / 720) ||
+      twips < 720 ||
+      twips > 6480
+    )
+      return fail(
+        'The owned checklist indentation is not a supported list level.',
+        'unsupported-operation'
+      );
+    checkboxLevel = twips / 720 - 1;
+  }
+  const state: ListSourceState = {
+    numbering: membership,
+    checkbox: marker
+      ? {
+          controlId: marker.id,
+          checked: markerProperties!.checkbox!.checked,
+          level: checkboxLevel,
+        }
+      : null,
+    fingerprint: sha256FontBytes(
+      new TextEncoder().encode(
+        JSON.stringify([
+          named(pPr, 'numPr') ? canonicalOoxmlFingerprint(named(pPr, 'numPr')!) : null,
+          indentation ? canonicalOoxmlFingerprint(indentation) : null,
+          marker ? canonicalOoxmlFingerprint(marker) : null,
+        ])
+      )
+    ),
+  };
+  return { success: true, state };
 }
 
 /**
@@ -142,7 +326,8 @@ export function planListMembership(
   if (!token.success) return token;
   const part = source.pkg?.parts.get(source.partName);
   if (!part) return fail('The native list part does not exist.', 'invalid-document');
-  const { styles, numbering } = listContext(source.pkg);
+  const reader = createListSourceReader(source.pkg, part);
+  const numbering = reader.numbering;
   const seen = new Set<string>(),
     newInstances = new Map<string, string>(),
     newStyles = new Map<string, string | null>(),
@@ -160,62 +345,11 @@ export function planListMembership(
     if (seen.has(patch.paragraphId))
       return fail('A paragraph has duplicate list patches.', 'ambiguous-target');
     seen.add(patch.paragraphId);
-    const paragraph = findNode(part, patch.paragraphId);
-    if (paragraph?.kind !== 'paragraph')
-      return fail('The native list paragraph does not exist.', 'invalid-document');
-    const pPr = propertyContainer(paragraph, 'paragraphProperties', 'pPr');
-    const native = readNumPr(cascadeParagraphFormatting(styles, pPr).paragraphPropertyNodes);
-    const membership =
-      native && native.numId !== '0' ? { numId: native.numId, level: native.ilvl } : null;
-    const owned = ownedMarkers(paragraph);
-    if (!owned) return fail('The checklist marker scan exceeds its limit.', 'invalid-document');
-    if (owned.length > 1)
-      return fail('The paragraph has multiple owned checklist markers.', 'ambiguous-target');
-    const marker = owned[0],
-      markerProperties = marker && contentControlPropertiesOf(marker);
-    if (markerProperties && (!markerProperties.checkbox || markerProperties.dataBinding))
-      return fail('The owned checklist marker is invalid or data-bound.', 'unsupported-operation');
-    const indentation = named(pPr, 'ind');
-    let checkboxLevel = 0;
-    if (marker && indentation?.kind !== 'textValue') {
-      const value = (name: string) =>
-        indentation?.attributes.find(
-          (attribute) => attribute.namespaceUri === W && attribute.localName === name
-        )?.value;
-      const left = value('start') ?? value('left');
-      const twips = left === undefined ? 720 : readTwipsMeasure(left);
-      if (
-        twips === null ||
-        twips === undefined ||
-        !Number.isInteger(twips / 720) ||
-        twips < 720 ||
-        twips > 6480
-      )
-        return fail(
-          'The owned checklist indentation is not a supported list level.',
-          'unsupported-operation'
-        );
-      checkboxLevel = twips / 720 - 1;
-    }
-    const state: ListSourceState = {
-      numbering: membership,
-      checkbox: marker
-        ? {
-            controlId: marker.id,
-            checked: markerProperties!.checkbox!.checked,
-            level: checkboxLevel,
-          }
-        : null,
-      fingerprint: sha256FontBytes(
-        new TextEncoder().encode(
-          JSON.stringify([
-            named(pPr, 'numPr') ? canonicalOoxmlFingerprint(named(pPr, 'numPr')!) : null,
-            indentation ? canonicalOoxmlFingerprint(indentation) : null,
-            marker ? canonicalOoxmlFingerprint(marker) : null,
-          ])
-        )
-      ),
-    };
+    const inspected = reader.read(patch.paragraphId);
+    if (!inspected.success) return inspected;
+    const state = inspected.state;
+    const membership = state.numbering,
+      marker = state.checkbox;
     const target = patch.target;
     if (target.kind === 'none' && !membership && !marker) continue;
     if (target.kind === 'checklist') {
@@ -266,7 +400,7 @@ export function planListMembership(
     operations.push({
       kind: 'list',
       partName: part.name,
-      paragraphId: paragraph.id,
+      paragraphId: patch.paragraphId,
       before: state,
       after: target,
     });

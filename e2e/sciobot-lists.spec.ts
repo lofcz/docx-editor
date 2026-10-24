@@ -1,5 +1,59 @@
 import { expect, test } from '@playwright/test';
 import type {} from '../packages/sciobot/test/browser/lists';
+for (const heading of [false, true])
+  for (const decision of ['direct', 'accept', 'reject'] as const)
+    test(`list sequence bridge respects native heading boundaries and coupled review: ${heading}/${decision}`, async ({
+      page,
+    }) => {
+      await page.goto(heading ? '/lists.html?heading=1' : '/lists.html');
+      await page.waitForFunction(() => !!window.listControls);
+      const toolbar = page.locator('[data-pane="0"]').getByRole('toolbar', { name: 'Lists' });
+      await toolbar.getByRole('combobox', { name: 'List style' }).selectOption('decimal');
+      for (const index of heading ? [1, 0, 3] : [0, 3]) {
+        await page.evaluate((index) => window.listControls.select(index, 1), index);
+        await toolbar.getByRole('button', { name: 'Apply list', exact: true }).click();
+      }
+      await page.evaluate((index) => window.listControls.select(index, 1), heading ? 2 : 1);
+      if (decision !== 'direct')
+        expect(await page.evaluate(() => window.listControls.suggest())).toBe(true);
+      const before = await page.evaluate(() => window.listControls.state());
+      await toolbar.getByRole('button', { name: 'Apply list', exact: true }).click();
+      await page.evaluate(() => window.listControls.settle());
+      const after = await page.evaluate(() => window.listControls.state());
+      expect(after.paragraphs.map((p) => p.marker?.text ?? null)).toEqual(
+        heading ? ['1.', '1.', '1.', '2.'] : ['1.', '2.', 'i.', '3.']
+      );
+      expect(after.selection).toEqual(before.selection);
+      expect(await page.evaluate(() => window.listControls.undo())).toBe(true);
+      expect((await page.evaluate(() => window.listControls.state())).fingerprint).toEqual(
+        before.fingerprint
+      );
+      expect(await page.evaluate(() => window.listControls.redo())).toBe(true);
+      expect((await page.evaluate(() => window.listControls.state())).fingerprint).toEqual(
+        after.fingerprint
+      );
+      if (decision !== 'direct') {
+        const groups = await page.evaluate(() => window.listControls.groups());
+        expect(groups).toHaveLength(1);
+        expect(
+          await page.evaluate(
+            ({ id, action }) =>
+              action === 'accept' ? window.listControls.accept(id) : window.listControls.reject(id),
+            { id: groups[0]!.id, action: decision }
+          )
+        ).toBe(true);
+        await page.evaluate(() => window.listControls.settle());
+      }
+      const saved = await page.evaluate(() => window.listControls.saved());
+      expect(saved[0]).toEqual(saved[1]);
+      if (decision === 'reject') expect(saved[0]!.fingerprint).toEqual(before.fingerprint);
+      else {
+        await page.keyboard.type('!');
+        expect(
+          (await page.evaluate(() => window.listControls.state())).paragraphs[heading ? 2 : 1]!.text
+        ).toContain('!');
+      }
+    });
 for (const [style, glyph] of [
   ['circle', '○'],
   ['upper-roman', 'I.'],

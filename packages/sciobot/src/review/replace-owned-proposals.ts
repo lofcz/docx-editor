@@ -25,7 +25,7 @@ import {
 import { captureReviewGroupHistory, reviewGroupHistoryRefusal } from './group-history';
 import { groupRemovalBudget } from './group-removal-budget';
 import { groupReviewFieldBudget } from './group-field-budget';
-import { persistReviewGroups, readReviewGroups } from './groups';
+import { persistReviewGroups, readReviewGroups, type ReviewGroupReceipt } from './groups';
 import { planOwnedProposalRemoval, type OwnedProposalGroup } from './owned-proposal-plan';
 import { stageOwnedProposalRemoval } from './owned-proposal-stage';
 import {
@@ -127,10 +127,13 @@ export function replaceOwnedProposals(
   replacement: CanonicalEditPlan,
   context: TrackTextContext,
   payloads: TrackedPayloadOptions = {},
-  images?: PreparedInlineImages
+  images?: PreparedInlineImages,
+  /** Host gestures can couple dependent native changes into one review decision per story. */
+  groupNativeChanges = false
 ): OwnedProposalReplacementResult {
+  if (typeof groupNativeChanges !== 'boolean') return fail('Invalid native review grouping.');
   return withReviewDecisionGuard(editor, () =>
-    commit(editor, selection, replacement, context, payloads, images)
+    commit(editor, selection, replacement, context, payloads, images, groupNativeChanges)
   );
 }
 
@@ -140,7 +143,8 @@ function commit(
   replacement: CanonicalEditPlan,
   context: TrackTextContext,
   payloads: TrackedPayloadOptions,
-  images?: PreparedInlineImages
+  images: PreparedInlineImages | undefined,
+  groupNativeChanges: boolean
 ): OwnedProposalReplacementResult {
   const copied = copyBoundedJson({ selection, replacement, context, payloads }, EDIT_PLAN_LIMITS);
   if (!copied.ok) return fail(copied.reason);
@@ -323,6 +327,15 @@ function commit(
             preparedImages.runtime
           );
           preserveRemainingRevisions(middle, ctx.currentPackage());
+          if (groupNativeChanges) {
+            const grouped = new Map<string, ReviewGroupReceipt['addresses'][number][]>();
+            for (const receipt of receipts) {
+              const addresses = grouped.get(receipt.partName) ?? [];
+              addresses.push(...receipt.addresses);
+              grouped.set(receipt.partName, addresses);
+            }
+            receipts = [...grouped].map(([partName, addresses]) => ({ partName, addresses }));
+          }
           edit((working) => persistReviewGroups(middle, working, receipts, allowInitialization));
           preserveRemainingGroups(middle, ctx.currentPackage());
           return { success: true as const };
