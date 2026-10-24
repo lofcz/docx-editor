@@ -1039,3 +1039,6 @@ Immutable runtime `refs/backup/codex-r53-api-runtime` is commit `d3606be25437238
 
 
 **Tracked removal coordinator checkpoint:** Runtime `3b388abc` applies removal-only AI targets through the actual native transaction writer and captures schema 3 payload ownership. Eleven built-SDK cases pass, including locked controls, both decisions, exact rejection, history, reopening, and repeated AI waves. Four shared coordinator cases pass both client orders and peer histories. Dependent mixed coordinates, births, image resources, OMML, and final application verification remain open. See [checkpoint evidence](evidence/tracked-inline-ownership.md#ai-coordinator-removal-checkpoint). D30 and R19 remain unchecked.
+
+
+**Mixed tracked removal checkpoint:** Runtime `7e93de92` reconciles text and format coordinates around native atom deletions. Native source scopes restore exact original run boundaries. Independent decisions and shared histories pass the recorded checks. Guard `cb97baea` rejects proposed grapheme splits before publication; all 22 built-SDK cases pass. See [evidence and verification status](evidence/mixed-inline-review.md). D30 and R19 remain unchecked.

@@ -1,0 +1,10 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Tracked lowering staged every inline removal before preceding canonical operations, potentially shifting a caller-authored text range onto repeated neighboring text.",
+  "after": "Inline removals execute in canonical plan order. Coordinate maps exclude only earlier deletions. Pure-link provenance preparation occurs when the corresponding ordered stage is reached.",
+  "reason": "This preserves serialized operation semantics without changing native fields or private proposal formats.",
+  "tests": ["packages/sciobot/src/review/recompose-inline-graphemes.test.ts", "packages/sciobot/src/review/recompose-links.test.ts"],
+  "changeset": null,
+  "migration": null
+}

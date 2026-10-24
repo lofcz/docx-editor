@@ -1,3 +1,6 @@
+import { previewDirectPlan } from '../ai/apply-direct';
+import { acceptAllReviewGroups } from '../review/accept-all';
+import { rejectAllReviewGroups } from '../review/reject-all';
 import { expect, test } from 'bun:test';
 import { createDocxEditor } from '@docx-editor.dev/core/editor';
 import {
@@ -76,6 +79,78 @@ for (const insertion of [false, true])
       expect(surface.session.currentPackage()).toBe(before);
       expect(readEditorRevision(editor, context.documentId, context.epoch)).toEqual(token);
       expect(surface.session.canUndo()).toBe(false);
+    } finally {
+      editor.destroy();
+    }
+  });
+
+for (const decision of ['accept', 'reject'] as const)
+  test(`canonical text edits retain their order before atom removal: ${decision}`, () => {
+    const control =
+      '<w:sdt><w:sdtPr><w:tag w:val="scio:1:mention"/></w:sdtPr><w:sdtContent><w:r><w:t>Ada</w:t></w:r></w:sdtContent></w:sdt>';
+    const loaded = readOoxmlPackage(
+      docxFixture('<w:p><w:r><w:t>Ada</w:t></w:r>' + control + '<w:r><w:t>Ada</w:t></w:r></w:p>')
+    );
+    if (!loaded.ok) throw Error(loaded.reason);
+    const payload = createMentionPayload('mention', 'user', 'Ada');
+    const stored = withPayloadRecord(loaded.package, payload, 'Mention');
+    if (!stored.ok) throw Error(stored.reason);
+    const editor = createDocxEditor({
+      container: document.createElement('div'),
+      document: writeOoxmlPackage(stored.pkg),
+      modules: [SCIOBOT_NATIVE_REVIEW_MODULE],
+    });
+    const context = {
+      documentId: 'inline-order',
+      epoch: 'load',
+      author: 'AI',
+      date: '2026-10-24T12:00:00.000Z',
+    };
+    const token = () => readEditorRevision(editor, context.documentId, context.epoch)!;
+    try {
+      const surface = editor.surface!,
+        before = surface.session.currentPackage();
+      const block = buildBlockIndex(before).byId.get(payload.id)!;
+      const paragraphId = surface.session.paragraphIds()[0]!;
+      const plan = createEditPlan(token(), [
+        {
+          kind: 'text',
+          partName: before.mainDocumentPart,
+          paragraphId,
+          start: 6,
+          end: 9,
+          before: 'Ada',
+          after: 'Right',
+        },
+        {
+          kind: 'inline-remove',
+          partName: before.mainDocumentPart,
+          paragraphId,
+          blockId: payload.id,
+          controlId: block.controlId,
+          before: payload,
+          fingerprint: canonicalOoxmlFingerprint(
+            findNode(surface.session.part(), block.controlId)!
+          ),
+        },
+      ]);
+      if (!plan.success) throw Error(plan.error);
+      const direct = previewDirectPlan(before, plan.plan);
+      if (!direct.success) throw Error(direct.error);
+      const result = replaceOwnedProposals(editor, [], plan.plan, context, {
+        presence: { proposalId: 'ordered-removal' },
+      });
+      if (!result.success) throw Error(result.error);
+      const decided = (decision === 'accept' ? acceptAllReviewGroups : rejectAllReviewGroups)(
+        editor,
+        token(),
+        context
+      );
+      if (!decided.success) throw Error(decided.error);
+      const expected = decision === 'accept' ? direct.pkg : before;
+      expect(canonicalOoxmlFingerprint(surface.session.part())).toBe(
+        canonicalOoxmlFingerprint(expected.parts.get(expected.mainDocumentPart)!)
+      );
     } finally {
       editor.destroy();
     }

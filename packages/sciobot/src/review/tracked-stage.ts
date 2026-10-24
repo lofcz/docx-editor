@@ -61,25 +61,6 @@ export function stageTrackedPlan(
     values.add(mapping.runOriginScope);
     scopes.set(identity, values);
   };
-  // Canonical dependent edits use the source after physical atom removal.
-  // Native review keeps those atoms as tombstones, so exclude their exact fresh sites.
-  for (const edit of plan.operations) {
-    if (edit.kind !== 'inline-remove') continue;
-    if (edit.partName !== initial.mainDocumentPart)
-      refuseWrite(
-        'Replacement plans must belong to the native body story.',
-        'unsupported-operation'
-      );
-    stageTrackedInlineRemoval(writer, edit, revision);
-    coordinates.set(
-      key(edit.partName, edit.paragraphId),
-      stagedParagraphCoordinates(writer, edit.partName, edit.paragraphId, unselectedSites)
-    );
-  }
-  for (const site of collectRevisionSites(
-    writer.currentPackage().parts.get(initial.mainDocumentPart)!
-  ))
-    if (!unselectedSites.has(site.node.id)) atomSites.add(site.node.id);
   const linkParagraphs = new Set<string>();
   const deferredFormats: Extract<CanonicalEdit, { kind: 'format' }>[] = [];
   for (const edit of plan.operations) {
@@ -121,16 +102,19 @@ export function stageTrackedPlan(
     ranges.push(edit);
     pureLinks.set(identity, ranges);
   }
-  for (const [identity, edits] of pureLinks) {
+  const preparePureLinks = (identity: string) => {
+    const edits = pureLinks.get(identity);
+    if (!edits) return;
     const first = edits[0]!;
+    const mapping =
+      coordinates.get(identity) ??
+      stagedParagraphCoordinates(writer, first.partName, first.paragraphId, unselectedSites);
     let scope: string | null = null;
     writer.edit((pkg) => {
       const prepared = prepareTrackedRunOrigins(
         pkg.parts.get(first.partName)!,
         first.paragraphId,
-        coordinates.has(identity)
-          ? edits.flatMap((edit) => coordinates.get(identity)!.slices(edit.start, edit.end))
-          : edits
+        edits.flatMap((edit) => mapping.slices(edit.start, edit.end))
       );
       scope = prepared.scope;
       return withPart(pkg, prepared.part);
@@ -140,7 +124,8 @@ export function stageTrackedPlan(
       ...(scope ? { runOriginScope: scope } : {}),
     });
     rememberScope(identity, coordinates.get(identity)!);
-  }
+    pureLinks.delete(identity);
+  };
   const format = (edit: Extract<CanonicalEdit, { kind: 'format' }>) => {
     if (edit.target.kind === 'hyperlink') {
       const paragraphId = existingLinkStageParagraph(
@@ -217,6 +202,17 @@ export function stageTrackedPlan(
       continue;
     }
     if (edit.kind === 'inline-remove') {
+      const beforeSites = new Set(
+        collectRevisionSites(currentStagePart(writer, edit.partName)).map((site) => site.node.id)
+      );
+      stageTrackedInlineRemoval(writer, edit, revision);
+      for (const site of collectRevisionSites(currentStagePart(writer, edit.partName)))
+        if (!beforeSites.has(site.node.id)) atomSites.add(site.node.id);
+      // Only earlier native deletions are absent from this operation's proposed coordinates.
+      coordinates.set(
+        key(edit.partName, edit.paragraphId),
+        stagedParagraphCoordinates(writer, edit.partName, edit.paragraphId, unselectedSites)
+      );
       at++;
       continue;
     } else if (edit.kind === 'format') {
@@ -234,6 +230,7 @@ export function stageTrackedPlan(
     } else if (edit.kind === 'link' || edit.kind === 'unlink') {
       const paragraphId = linkStageParagraph(currentStagePart(writer, edit.partName), edit);
       const identity = key(edit.partName, paragraphId);
+      preparePureLinks(identity);
       let mapping = coordinates.get(identity);
       if (!mapping) {
         mapping = stagedParagraphCoordinates(writer, edit.partName, paragraphId, unselectedSites);
