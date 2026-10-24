@@ -3,6 +3,7 @@ import {
   inlinePresenceExtension,
   readInlinePresenceExtension,
   type BoundInlinePresenceNative,
+  type InlinePresenceNative,
 } from './inline-presence-native';
 import { contentControlLevelOf, findNode } from '@docx-editor.dev/core/store';
 import {
@@ -48,14 +49,20 @@ export function createBlockPresenceRecord(
   canonical: OoxmlPackage,
   intents: readonly BlockPresenceIntent[],
   attribution: BlockPresenceAttribution,
-  options: { readonly nativeInline?: true } = {}
+  options: {
+    readonly nativeInline?: true;
+    readonly bornInline?: readonly InlinePresenceNative[];
+  } = {}
 ): { readonly success: true; readonly record: BlockPresenceRecord } | NativeEditFailure {
   const copied = copyBoundedJson({ intents, attribution, options }, BLOCK_PRESENCE_LIMITS);
   if (!copied.ok) return fail(copied.reason);
   const data = copied.value as unknown as {
     intents: BlockPresenceIntent[];
     attribution: BlockPresenceAttribution;
-    options: { readonly nativeInline?: true };
+    options: {
+      readonly nativeInline?: true;
+      readonly bornInline?: readonly InlinePresenceNative[];
+    };
   };
   if (
     !Array.isArray(data.intents) ||
@@ -92,10 +99,23 @@ export function createBlockPresenceRecord(
     !data.options ||
     typeof data.options !== 'object' ||
     Array.isArray(data.options) ||
-    Object.keys(data.options).some((key) => key !== 'nativeInline') ||
+    Object.keys(data.options).some((key) => !['nativeInline', 'bornInline'].includes(key)) ||
+    (data.options.bornInline !== undefined &&
+      (!Array.isArray(data.options.bornInline) || data.options.nativeInline !== true)) ||
     (data.options.nativeInline !== undefined && data.options.nativeInline !== true)
   )
     return fail('Invalid native presence options.');
+  if (
+    data.options.bornInline?.some(
+      (owner) =>
+        !owner ||
+        typeof owner !== 'object' ||
+        Array.isArray(owner) ||
+        !isBlockId(owner.blockId) ||
+        typeof owner.partName !== 'string'
+    )
+  )
+    return fail('Invalid paragraph birth ownership options.');
   const current = readPresenceOwners(
     canonical,
     data.intents.map((intent) => intent.blockId),
@@ -214,15 +234,24 @@ export function createBlockPresenceRecord(
             block.blockId,
             block.partName,
             owner.controlId,
-            block.after.present ? 'ins' : 'del'
+            block.after.present ? 'ins' : 'del',
+            data.options.bornInline?.find((owner) => owner.blockId === block.blockId)
           )
         );
     }
   } catch (error) {
     return fail(error instanceof Error ? error.message : String(error), 'unsupported-operation');
   }
+  if (
+    data.options.bornInline?.some(
+      (owner, at, entries) =>
+        !native.some((bound) => bound.blockId === owner.blockId && bound.gap) ||
+        entries.findIndex((candidate) => candidate.blockId === owner.blockId) !== at
+    )
+  )
+    return fail('Paragraph birth ownership contains unmatched or duplicate roots.');
   const record: BlockPresenceRecord = {
-    schemaVersion: native.length ? 3 : 2,
+    schemaVersion: native.some((owner) => owner.gap) ? 4 : native.length ? 3 : 2,
     executor: BLOCK_PRESENCE_EXECUTOR,
     ...data.attribution,
     predecessors: store.status === 'ready' ? [...store.records.keys()].sort() : [],

@@ -22,6 +22,9 @@ export function stageSiblingApplicationBlock(
   const blockEdit = {
     ...edit,
     blocks: (edit.blocks ?? []).filter((binding) => within(binding.path)),
+    atoms: (edit.atoms ?? []).filter(
+      (atom) => atom.location.kind === 'new-paragraph' && within(atom.location.path)
+    ),
   };
   writer.edit((pkg) => {
     const completed = completeSiblingFragments(

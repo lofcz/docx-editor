@@ -1,3 +1,4 @@
+import { bindBornInlinePresenceNative } from './born-inline-presence-native';
 import {
   collectRevisionSites,
   parentNodeOf,
@@ -14,9 +15,12 @@ export interface InlinePresenceNative {
   readonly partName: string;
   readonly kind: 'ins' | 'del';
   readonly revision: RevisionAddress;
+  /** Version four: the complete paragraph birth/replacement receipt. */
+  readonly gap?: readonly RevisionAddress[];
 }
 export interface BoundInlinePresenceNative extends InlinePresenceNative {
   readonly siteNodeId: string;
+  readonly siteNodeIds?: readonly string[];
 }
 const object = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -47,6 +51,10 @@ export function bindInlinePresenceNative(
   kind: 'ins' | 'del',
   expected?: InlinePresenceNative
 ): BoundInlinePresenceNative {
+  if (expected?.gap) {
+    if (kind !== 'ins') throw Error('Paragraph birth ownership cannot own an inline deletion.');
+    return bindBornInlinePresenceNative(pkg, blockId, partName, controlId, expected);
+  }
   const part = pkg.parts.get(partName),
     parent = part && parentNodeOf(part, controlId);
   if (
@@ -81,12 +89,13 @@ export function bindInlinePresenceNative(
 export function inlinePresenceExtension(owners: readonly InlinePresenceNative[]): JsonObject {
   return {
     nativeInline: {
-      schemaVersion: 1,
-      owners: owners.map(({ blockId, partName, kind, revision }) => ({
+      schemaVersion: owners.some((owner) => owner.gap) ? 2 : 1,
+      owners: owners.map(({ blockId, partName, kind, revision, gap }) => ({
         blockId,
         partName,
         kind,
         revision: { ...revision },
+        ...(gap ? { gap: gap.map((address) => ({ ...address })) } : {}),
       })),
     },
   };
@@ -98,12 +107,12 @@ export function readInlinePresenceExtension(
 ): ReadonlyMap<string, InlinePresenceNative> | null {
   const data = record.extension?.nativeInline;
   if (data === undefined) return null;
-  if (record.schemaVersion !== 3)
-    throw Error('Inline presence requires private proposal schema 3.');
+  if (record.schemaVersion !== 3 && record.schemaVersion !== 4)
+    throw Error('Inline presence requires a supported private proposal schema.');
   if (
     !object(data) ||
     !exact(data, ['schemaVersion', 'owners']) ||
-    data.schemaVersion !== 1 ||
+    data.schemaVersion !== (record.schemaVersion === 4 ? 2 : 1) ||
     !Array.isArray(data.owners) ||
     !data.owners.length ||
     data.owners.length > 1024
@@ -113,7 +122,13 @@ export function readInlinePresenceExtension(
   for (const entry of data.owners) {
     if (
       !object(entry) ||
-      !exact(entry, ['blockId', 'partName', 'kind', 'revision']) ||
+      !exact(entry, [
+        'blockId',
+        'partName',
+        'kind',
+        'revision',
+        ...(object(entry) && Object.hasOwn(entry, 'gap') ? ['gap'] : []),
+      ]) ||
       typeof entry.blockId !== 'string' ||
       !entry.blockId ||
       typeof entry.partName !== 'string' ||
@@ -128,7 +143,30 @@ export function readInlinePresenceExtension(
       owners.has(entry.blockId)
     )
       throw Error('Invalid inline presence native ownership.');
+    if (Object.hasOwn(entry, 'gap')) {
+      if (
+        record.schemaVersion !== 4 ||
+        entry.kind !== 'ins' ||
+        !Array.isArray(entry.gap) ||
+        !entry.gap.length ||
+        entry.gap.length > 1024
+      )
+        throw Error('Invalid paragraph birth native membership.');
+      for (const address of entry.gap)
+        if (
+          !object(address) ||
+          typeof address.id !== 'string' ||
+          !address.id ||
+          typeof address.author !== 'string' ||
+          !address.author ||
+          (address.date !== undefined && typeof address.date !== 'string') ||
+          !Object.keys(address).every((key) => ['id', 'author', 'date'].includes(key))
+        )
+          throw Error('Invalid paragraph birth native address.');
+    }
     owners.set(entry.blockId, entry as unknown as InlinePresenceNative);
   }
+  if (record.schemaVersion === 4 && ![...owners.values()].some((owner) => owner.gap))
+    throw Error('Paragraph birth profile has no structural owner.');
   return owners;
 }

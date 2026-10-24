@@ -40,9 +40,19 @@ export function stageTrackedPlan(
   trackFormatting: boolean
 ): readonly ReviewGroupReceipt[] {
   if (
-    plan.operations.some(
-      (edit) => edit.kind !== 'inline-atoms' && insertedAtomsOfEdit(edit).length > 0
-    )
+    plan.operations.some((edit) => {
+      const atoms = insertedAtomsOfEdit(edit);
+      if (!atoms.length || edit.kind === 'inline-atoms') return false;
+      if (edit.kind !== 'siblings') return true;
+      return atoms.some(
+        (atom) =>
+          atom.kind !== 'inline-control' ||
+          atom.location.kind !== 'new-paragraph' ||
+          !['paragraph', 'heading', 'blockquote'].includes(
+            edit.inserted[atom.location.path[0]!]?.type ?? ''
+          )
+      );
+    })
   )
     refuseWrite(
       'Inserted inline atoms need native asset and payload reconciliation.',

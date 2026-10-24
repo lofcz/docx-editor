@@ -54,7 +54,9 @@ export function preparePresenceDecision(
   return {
     success: true,
     partName: block.partName,
-    ...(inlineNative ? { nativeSiteNodeIds: [inlineNative.siteNodeId] } : {}),
+    ...(inlineNative
+      ? { nativeSiteNodeIds: inlineNative.siteNodeIds ?? [inlineNative.siteNodeId] }
+      : {}),
     ...(inlineNative &&
     !present &&
     contentControlPropertiesOf(

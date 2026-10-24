@@ -269,7 +269,8 @@ function commit(
             middle,
             plan,
             { author: attribution.author, date },
-            input.payloads.presence
+            input.payloads.presence,
+            receipts
           );
           preserveRemainingRevisions(middle, ctx.currentPackage());
           edit((working) => persistReviewGroups(middle, working, receipts, allowInitialization));

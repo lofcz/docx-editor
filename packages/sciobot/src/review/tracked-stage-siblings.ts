@@ -1,3 +1,4 @@
+import { stageBornAtoms } from './tracked-born-atoms';
 import {
   collectRevisionSites,
   contentControlsIn,
@@ -103,11 +104,6 @@ export function stageTrackedSiblings(
         'unsupported-operation'
       );
   }
-  if (edit.atoms?.length)
-    refuseWrite(
-      'Inserted inline atoms need native asset and payload reconciliation.',
-      'unsupported-operation'
-    );
   const seeded = siblingFragmentSeeds(
     edit,
     !!edit.afterId && findNode(before, edit.afterId)?.kind === 'paragraph'
@@ -179,6 +175,7 @@ export function stageTrackedSiblings(
     });
   }
   stageSiblingTables(writer, edit, seeds, inserted, revision, listContext);
+  stageBornAtoms(writer, before.name, inserted, edit.atoms ?? []);
   current = currentStagePart(writer, before.name);
   const finalGap = gap(current, edit);
   if (!finalGap) refuseWrite('The completed rich sibling gap disappeared.', 'apply-failed');

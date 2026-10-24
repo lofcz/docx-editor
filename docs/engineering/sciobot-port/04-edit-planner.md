@@ -556,6 +556,8 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Inline removal checkpoint:** Runtime `72c1e85c` adds explicit native removals for images, inline math, mentions, and sources. Compound edits retain source updates and surviving controls. Payload retirement and image cleanup share owned history. All 27 built removal cases pass, including both client orders, both histories, and DOCX/room reopening. The [removal evidence](evidence/inline-atom-removal.md) records corrected C01 and compound regressions, source timing limits, and remaining scope. D30 remains open.
 
+Additional WIP evidence: [tracked atoms in born paragraphs](evidence/tracked-born-inline-paragraphs.md) records native materialization and the remaining creation-undo peer-text failures.
+
 ## D31
 
 - [x] Plan inline code marks through the native representation

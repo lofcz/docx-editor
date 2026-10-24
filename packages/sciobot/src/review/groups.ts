@@ -268,30 +268,60 @@ function derive(
         const presence = decodeBlockPresenceRecord(entry.raw);
         if (presence.status !== 'supported')
           throw new Error('Unsupported application proposal version in review groups.');
+        const pendingBirths = presence.value.blocks.filter((block) => {
+          const disposition = decisions.decisions.get(
+            payloadGroupDecisionKey(entry.id, block.blockId)
+          );
+          return !disposition || disposition.status === 'conflict';
+        });
+        if (!pendingBirths.length) continue;
+        const completeBirth =
+          presence.value.schemaVersion === 4
+            ? bindBlockPresenceRecord(pkg, { ...presence.value, blocks: pendingBirths })
+            : null;
+        if (completeBirth && !completeBirth.success)
+          throw Error('Paragraph birth ownership needs reconciliation: ' + completeBirth.error);
+        const bornBuckets = new Map<string, Bucket>();
         for (const block of presence.value.blocks) {
           const disposition = decisions.decisions.get(
             payloadGroupDecisionKey(entry.id, block.blockId)
           );
           if (disposition && disposition.status !== 'conflict') continue;
-          const bucket = newBucket(payloadGroupId(entry.id, block.blockId));
-          bucket.properties.push({ proposalId: entry.id, blockId: block.blockId });
           const native = index.byId.get(block.blockId),
             path = native && paths.get(keyOf(native.partName, native.controlId));
-          const boundPresence = bindBlockPresenceRecord(pkg, {
-            ...presence.value,
-            blocks: [block],
-          });
+          const boundPresence =
+            completeBirth ??
+            bindBlockPresenceRecord(pkg, {
+              ...presence.value,
+              blocks: [block],
+            });
           const inlineNative = boundPresence.success
             ? boundPresence.nativeSites.get(block.blockId)
             : undefined;
+          const bornKey = inlineNative?.gap
+            ? JSON.stringify(
+                inlineNative.gap
+                  .map((address) => propertyAddressKey(inlineNative.partName, address))
+                  .sort()
+              )
+            : null;
+          const bucket =
+            (bornKey && bornBuckets.get(bornKey)) ||
+            newBucket(payloadGroupId(entry.id, block.blockId));
+          if (bornKey) bornBuckets.set(bornKey, bucket);
+          bucket.properties.push({ proposalId: entry.id, blockId: block.blockId });
           if (inlineNative) {
             const members = addressedSites(
-              new Set([propertyAddressKey(inlineNative.partName, inlineNative.revision)])
+              new Set(
+                (inlineNative.gap ?? [inlineNative.revision]).map((address) =>
+                  propertyAddressKey(inlineNative.partName, address)
+                )
+              )
             );
-            for (const site of members)
-              if (site.node.id === inlineNative.siteNodeId) attach(bucket, site);
+            const owned = new Set(inlineNative.siteNodeIds ?? [inlineNative.siteNodeId]);
+            for (const site of members) if (owned.has(site.node.id)) attach(bucket, site);
           }
-          bucket.readOnly =
+          bucket.readOnly ||=
             !!disposition ||
             block.members.some(
               (member) =>

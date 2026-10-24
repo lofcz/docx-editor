@@ -1,0 +1,16 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "The AI coordinator refused inline atom controls in inserted paragraphs and could not bind their payload decisions to the complete structural insertion receipt.",
+  "after": "New body and quoted paragraph seeds materialize math, mention, and source controls, including native code and hyperlinks. Application presence schema 4 binds the complete paragraph insertion or replacement receipt to all atom payloads sharing that receipt. Full native membership, exact owned inverses, later-wave replacement, and retained ID reservations use the same bounded profile.",
+  "reason": "Native transport fields and format versions remain unchanged by this private checkpoint. Application schema 4 requires upgraded readers; earlier presence readers refuse it, including retained history records. Schema 3 remains unchanged for retained inline controls. This is WIP: two real-session regressions prove that creation undo still hides peer text typed inside the new paragraph. The transport repair and final compiled integration remain required before D30 closure. The transport fixtures use the EigenPal Pro License; no production private adapter import is added.",
+  "tests": [
+    "packages/sciobot/src/review/recompose-born-inline-paragraphs.test.ts",
+    "packages/sciobot/src/review/recompose-born-inline-paragraphs-shared.test.ts",
+    "packages/sciobot/src/review/recompose-inline-births.test.ts",
+    "packages/sciobot/src/review/inline-presence-guards.test.ts",
+    "packages/sciobot/src/review/recompose-application-fragments.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

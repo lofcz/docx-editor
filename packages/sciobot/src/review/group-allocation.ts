@@ -36,7 +36,7 @@ export function reviewGroupRevisionReservations(
           for (const owner of readInlinePresenceExtension(presence.value)?.values() ?? []) {
             const part = ids.get(owner.partName) ?? new Set<string>();
             ids.set(owner.partName, part);
-            part.add(owner.revision.id);
+            for (const address of owner.gap ?? [owner.revision]) part.add(address.id);
           }
           continue;
         }
