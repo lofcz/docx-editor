@@ -55,7 +55,7 @@ export function inlineCodeStyleId(base: string | undefined): string {
   return base === undefined ? SCIOBOT_CODE_STYLE_ID : DERIVED_PREFIX + encodeURIComponent(base);
 }
 
-function codeStyleBase(id: string): string | undefined {
+export function codeStyleBase(id: string): string | undefined {
   if (!id.startsWith(DERIVED_PREFIX)) return undefined;
   try {
     const base = decodeURIComponent(id.slice(DERIVED_PREFIX.length));

@@ -11,6 +11,8 @@ import { timedLayout, timedPress } from './surface-timing.ts';
 import {
   armedFormatAt,
   armCaretFormat,
+  pendingFormatOperation,
+  pendingCharacterStyleChanged,
   type ArmedFormat,
   type CaretFormatSnapshot,
   restoreCaretFormatSnapshot,
@@ -799,20 +801,13 @@ export function mountPaginatedSurface(
         : positionPastDeletion(editingLayout(), anchor);
     if (at.paragraphId !== paragraphId || at.offset !== offset) return [];
     return [
-      {
-        op: 'setRunProperties',
+      pendingFormatOperation(
+        armed,
         paragraphId,
-        start: offset,
-        end: offset + length,
-        // Merged per attribute for the multi-setting properties, exactly as the selection
-        // path does: a font armed at a caret and then typed must keep the run's other font
-        // slots, or the two halves of one feature disagree.
-        properties: mergedRunWrite(
-          armed.base,
-          armed.properties,
-          complexScriptAtCaret(paragraphId, offset)
-        ),
-      },
+        offset,
+        length,
+        complexScriptAtCaret(paragraphId, offset)
+      ),
     ];
   }
 
@@ -1183,7 +1178,10 @@ export function mountPaginatedSurface(
     );
     if (nextFormat === undefined) return;
     pendingFormats = nextFormat;
-    if (beforeStyle !== JSON.stringify(format.formatting())) {
+    if (
+      beforeStyle !== JSON.stringify(format.formatting()) ||
+      pendingCharacterStyleChanged(before.format, pendingFormats)
+    ) {
       caretFormatHistory.record(
         before,
         { selection, format: pendingFormats },
@@ -4688,7 +4686,7 @@ export function mountPaginatedSurface(
       // Only direct properties are copied, leaving the follower style free to inherit.
       const markProperties = mergedRunWrite(
         armed.base,
-        armed.properties,
+        armed.properties.filter((property) => property.localName !== 'rStyle'),
         complexScriptAtCaret(position.paragraphId, position.offset)
       );
       const markOps: TreeDocOp[] =

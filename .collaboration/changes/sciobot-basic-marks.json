@@ -1,0 +1,15 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The private application adapter lacked text mark controls and application shortcuts. Native caret formatting could not arm a character style.",
+  "after": "Seven private mark controls use existing commands and explicit characterStyle writes. A caret character style lowers to the existing setRunProperties characterStyle field when typing commits.",
+  "reason": "No shared operation schema, journal field, payload format, or native document version changes. Caret preferences remain local. Native operations replicate actual text and formatting writes through existing transport paths.",
+  "tests": [
+    "packages/core/src/editor/__tests__/pending-character-style.test.ts",
+    "packages/sciobot/src/chrome/marks.test.ts",
+    "packages/sciobot/src/chrome/marks-collaboration.test.ts",
+    "e2e/sciobot-marks.spec.ts"
+  ],
+  "changeset": "caret-character-style",
+  "migration": null
+}

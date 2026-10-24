@@ -1,0 +1,14 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The private application adapter had no line-height controls.",
+  "after": "The five application choices execute the existing native setLineSpacing command. Imported exact and minimum rules remain visible and unchanged until an explicit choice.",
+  "reason": "No shared operations, document format, codecs, or journal fields change. Existing paragraph property operations retain independent line spacing attributes and replicate through the existing transport.",
+  "tests": [
+    "packages/sciobot/src/chrome/line-height.test.ts",
+    "packages/sciobot/src/chrome/line-height-collaboration.test.ts",
+    "e2e/sciobot-line-height.spec.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

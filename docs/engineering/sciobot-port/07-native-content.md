@@ -46,7 +46,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 ## N03
 
-- [ ] Connect all basic text marks
+- [x] Connect all basic text marks
 
 **Depends:** [C03](01-contracts.md#c03), [N01](07-native-content.md#n01), [V01](11-verification.md#v01), [N18](07-native-content.md#n18)
 
@@ -60,7 +60,13 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused Chromium case with real input and native selection where applicable. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** codex solo, branch `codex/react-block-proof`. **Evidence:** Baseline `adc99b2c`, completed solo source on the same branch. `marks.ts` connects all seven captured marks. Native commands handle six marks; code uses the explicit Word character-style identity from N18. `marks-toolbar.ts` preserves native selection and reports on/off/mixed states. Application shortcuts retain the production key bindings. Native caret character styles lower through the existing `characterStyle` operation field, retain imported character styles, and participate in local undo/redo. Character styles remain outside replaceable run and paragraph-mark property bags. Rectangular cell selections affect only selected cells.
+
+`bun test --timeout 30000 --preload ./scripts/test/preload-dom.ts packages/sciobot/src/chrome/marks.test.ts packages/sciobot/src/chrome/marks-collaboration.test.ts` passes 25 cases and 566 assertions (`/tmp/sciobot-n03-controls-final.log`). Seven captured on/off/caret fixtures, mixed selection, reversed and multi-paragraph selection, imported-style restoration, toolbar state, disposal, and rectangular cells pass. Fourteen real-session cases cover both client orders, concurrent text, independent undo/redo, deletion during peer editing, reconnect, remote selection geometry, canonical convergence, and saved reopening. The affected 142-case integration batch found one imported-style guard defect; the corrected 25-case control batch passes without changing its expected output. All other 131 integration cases passed. The final native caret/history batch passes 29 cases and 131 assertions, including the added Enter regression (`/tmp/sciobot-n03-core-final.log`).
+
+`bunx playwright test --config e2e/sciobot-marks.config.ts` passes seven Chromium cases (`/tmp/sciobot-n03-browser-verified.log`). Each checks a real toolbar click, retained native selection, one-step undo, the application shortcut, mixed state, caret typing, and both sessions saved native XML. Private typecheck passes 2306 files; private build passes 294 modules with external core. Core builds and scoped lint/formatting pass. Compatibility decision: `.collaboration/changes/sciobot-basic-marks.json`; published core patch: `.changeset/caret-character-style.md`. Transport remains test-only under the EigenPal Pro License. Manual suggestion-mode routing remains R23.
+
+The backlog validator runs but reports external application-source drift. Captured application revision `5650bdf550b7987174d1b61fe2a925b86fb24f15` differs from current `416fbad785716b5b16cfcc522ea1f06765227340`. Only `WorkspaceExportModal.tsx` and `workspaceExportArchive.ts` differ among its 198 captured source hashes. Basic mark sources remain unchanged. No source reference, fixture, API snapshot, or coverage baseline was recaptured. This is the validator's only reported error; application export integration remains open in its existing leaves.
 
 ## N04
 
@@ -118,7 +124,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 ## N07
 
-- [ ] Connect line height controls
+- [x] Connect line height controls
 
 **Depends:** [C03](01-contracts.md#c03), [N01](07-native-content.md#n01), [V01](11-verification.md#v01)
 
@@ -132,7 +138,11 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused Chromium case with real input and native selection where applicable. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** codex solo, branch `codex/react-block-proof`. **Evidence:** Baseline `adc99b2c`, completed solo source on `codex/react-block-proof`. `line-height.ts` connects production choices 1, 1.2, 1.5, 2, and 3 through native `setLineSpacing`. The toolbar reads native multiple, exact, minimum, and mixed states without writing. Pointer actions retain selection. Native paragraph spacing merges preserve before/after settings, indentation, unknown properties, and nearby exact line heights. Plate omits its default 1.5 property; Word receives an explicit 1.5 multiple to preserve the same effective value.
+
+`bun test --timeout 30000 --preload ./scripts/test/preload-dom.ts packages/sciobot/src/chrome/line-height.test.ts packages/sciobot/src/chrome/line-height-collaboration.test.ts` passes 16 cases and 372 assertions (`/tmp/sciobot-n07-final.log`). Five captured choices survive canonical save/reopen with exact original undo. Imported 12.55-point spacing remains unchanged. Ten real-session cases cover both client orders, concurrent text, independent undo/redo, deletion during peer editing, reconnect, remote geometry, saved native fingerprints, and convergence. Native defaults come from the actual room document; undo must restore its exact original properties and effective spacing.
+
+`bunx playwright test --config e2e/sciobot-line-height.config.ts` passes five Chromium cases (`/tmp/sciobot-n07-browser-final.log`). Each uses a pointer toolbar action, native range selection, real typing, one-step undo, both sessions, and canonical saved/reopened output. Private typecheck passes 2309 files; build passes 295 modules with external native core. Scoped lint and formatting pass. Compatibility decision: `.collaboration/changes/sciobot-line-height.json`; existing native commands require no publishable change. The test transport uses the EigenPal Pro License. The external application source drift recorded under N03 also affects the backlog audit; no reference baseline was recaptured. Manual suggestion-mode routing remains R23.
 
 ## N08
 

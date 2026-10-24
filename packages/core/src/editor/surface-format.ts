@@ -358,7 +358,9 @@ export function createSurfaceFormat(deps: SurfaceFormatDeps): FormatMethods {
    * surfaces its own refusal; this one has to be checked before it can be stored.
    */
   const armPending = (incoming: SurfaceProperty): void => {
-    if (!isAuthorableRunProperty(incoming.localName)) return;
+    // Character styles use the operation's separate characterStyle field, never the
+    // replaceable property vocabulary. A caret can still arm that explicit identity.
+    if (!isAuthorableRunProperty(incoming.localName) && incoming.localName !== 'rStyle') return;
     deps.setPendingFormats(mergedProperties(deps.pendingFormats() ?? [], incoming));
   };
 
@@ -448,7 +450,14 @@ export function createSurfaceFormat(deps: SurfaceFormatDeps): FormatMethods {
       const refused = refuseRunFormat();
       if (refused) return refused;
       const incoming = { localName, ...(attributes ? { attributes } : {}) };
+      if (
+        localName === 'rStyle' &&
+        (typeof attributes?.val !== 'string' || attributes.val.length > 512)
+      )
+        return 'A character style needs a bounded style identity.';
       const cells = deps.selectedCells?.();
+      if (localName === 'rStyle' && cells && cells.length > 0)
+        return 'Use an explicit characterStyle operation for a range.';
       if (cells && cells.length > 0) return writeRunPropertyOverCells(cells, incoming);
       const { from, to } = orderedRange();
       if (from.paragraphId === to.paragraphId && from.offset === to.offset) {
@@ -457,6 +466,7 @@ export function createSurfaceFormat(deps: SurfaceFormatDeps): FormatMethods {
         armPending(incoming);
         return null;
       }
+      if (localName === 'rStyle') return 'Use an explicit characterStyle operation for a range.';
       return writeRunProperty(from, to, incoming);
     },
 

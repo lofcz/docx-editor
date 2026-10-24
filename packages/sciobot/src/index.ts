@@ -114,6 +114,8 @@ export * from './chrome/block-styles';
 export { insertBlock as insertTextBlock, type InsertBlockType } from './chrome/insert-block';
 export * from './chrome/block-input';
 export * from './chrome/block-toolbar';
+export * from './chrome/marks';
+export * from './chrome/marks-toolbar';
 
 export * from './review/group-allocation';
 
@@ -125,3 +127,5 @@ export {
   type InlineImageSource,
   type InlineImageResolver,
 } from './native/inline-image-resources';
+
+export * from './chrome/line-height';

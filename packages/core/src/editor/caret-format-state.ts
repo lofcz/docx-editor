@@ -2,6 +2,8 @@ import { clampedToDocument } from './surface-selection-ops.ts';
 import type { SemanticLayout } from '../layout/index.ts';
 import type { SemanticPosition, SemanticSelection } from '../layout/semantic-interaction.ts';
 import type { SurfaceProperty } from './surface-formatting.ts';
+import { mergedRunWrite } from '../store/store/direct-properties.ts';
+import type { TreeDocOp } from '../store/index.ts';
 
 /** Capture the original face once, so later edits cannot change the armed typing style. */
 export interface ArmedFormat {
@@ -9,6 +11,44 @@ export interface ArmedFormat {
   readonly base: readonly SurfaceProperty[];
 }
 export type PendingFormat = ({ readonly position: SemanticPosition } & ArmedFormat) | null;
+
+/** Character styles use the explicit operation field, outside replaceable run properties. */
+export function pendingCharacterStyle(properties: readonly SurfaceProperty[]): {
+  readonly characterStyle?: string | null;
+} {
+  const style = properties.find((property) => property.localName === 'rStyle');
+  return style ? { characterStyle: style.attributes?.val || null } : {};
+}
+
+/** Style identity changes need local history even when their visible formatting agrees. */
+export function pendingCharacterStyleChanged(before: PendingFormat, after: PendingFormat): boolean {
+  return (
+    JSON.stringify(pendingCharacterStyle(before?.properties ?? [])) !==
+    JSON.stringify(pendingCharacterStyle(after?.properties ?? []))
+  );
+}
+
+/** One insertion writes its captured face and explicit character style in the same transaction. */
+export function pendingFormatOperation(
+  armed: ArmedFormat,
+  paragraphId: string,
+  offset: number,
+  length: number,
+  complex: boolean
+): TreeDocOp {
+  return {
+    op: 'setRunProperties',
+    paragraphId,
+    start: offset,
+    end: offset + length,
+    properties: mergedRunWrite(
+      armed.base,
+      armed.properties.filter((p) => p.localName !== 'rStyle'),
+      complex
+    ),
+    ...pendingCharacterStyle(armed.properties),
+  };
+}
 
 /** Only the caret that armed a format can consume it. */
 export function armedFormatAt(
