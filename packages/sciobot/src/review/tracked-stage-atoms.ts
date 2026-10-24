@@ -1,14 +1,17 @@
 import {
+  atomSourceLink,
+  stageAtomLink,
+  atomLinkSkeletons,
+  stageAtomLinkSkeletons,
+} from './tracked-atom-links';
+import {
   AUTHORABLE_RUN_PROPERTIES,
   authoredProperties,
-  collectRevisionSites,
   contentControlPropertiesOf,
   contentControlsIn,
-  hyperlinkTargetOf,
   parentNodeOf,
   prepareTrackedRunOrigins,
   propertyContainer,
-  relationshipTargetIn,
   runsCovering,
   withPart,
 } from '@docx-editor.dev/core/store';
@@ -64,6 +67,7 @@ export function stageTrackedAtoms(
     width += atom.fallback.length;
     return { start: at, end: at };
   });
+  for (const { start, end } of atomLinkSkeletons(edit)) ranges.push(...mapping.slices(start, end));
   writer.edit((working) => {
     const prepared = prepareTrackedRunOrigins(
       working.parts.get(edit.partName)!,
@@ -73,14 +77,11 @@ export function stageTrackedAtoms(
     if (prepared.scope) rememberScope(prepared.scope);
     return withPart(working, prepared.part);
   });
-  let current = mapping;
+  let current = stageAtomLinkSkeletons(writer, edit, revision, initialSites, mapping);
+  const inserted = new Set<string>();
   for (const atom of controls) {
+    const sourceLinkId = atomSourceLink(writer, edit, atom, inserted, current);
     const offset = current.point(atom.offset, 'right');
-    const old = new Set(
-      collectRevisionSites(writer.currentPackage().parts.get(edit.partName)!).map(
-        (site) => site.node.id
-      )
-    );
     writer.apply(edit.partName, {
       op: 'insertInlineContentControl',
       paragraphId: edit.paragraphId,
@@ -100,31 +101,9 @@ export function stageTrackedAtoms(
       wrapper = parentNodeOf(part, native.id);
     if (wrapper?.kind !== 'revisionInsert' || wrapper.children.length !== 1)
       refuseWrite('The tracked atom needs independent native ownership.', 'unsupported-operation');
-    const parent = parentNodeOf(part, wrapper.id);
-    const actualLink =
-      parent?.kind === 'hyperlink'
-        ? hyperlinkTargetOf(parent, (id) =>
-            relationshipTargetIn(writer.currentPackage(), part.name, id)
-          )
-        : null;
-    if (atom.hyperlink) {
-      const expected = atom.hyperlink.target;
-      const matches =
-        expected.kind === 'external'
-          ? actualLink?.kind === 'external' && actualLink.authored === expected.url
-          : actualLink?.kind === 'internal' && actualLink.anchor === expected.anchor;
-      if (!matches || (actualLink?.tooltip ?? null) !== atom.hyperlink.title)
-        refuseWrite(
-          'Tracked atom hyperlink placement needs native reconciliation.',
-          'unsupported-operation'
-        );
-    } else if (actualLink)
-      refuseWrite(
-        'The tracked atom would inherit an unrequested hyperlink.',
-        'unsupported-operation'
-      );
-    for (const site of collectRevisionSites(part))
-      if (!old.has(site.node.id)) independentSites.add(site.node.id);
+    stageAtomLink(writer, edit, atom, native.id, sourceLinkId, offset);
+    part = writer.currentPackage().parts.get(edit.partName)!;
+    independentSites.add(wrapper.id);
     if (atom.fallback.length) {
       const run = runsCovering(part, edit.paragraphId, offset, offset + atom.fallback.length)[0];
       const inherited = authoredProperties(
@@ -190,6 +169,7 @@ export function stageTrackedAtoms(
       controlId: native.id,
       lock: 'sdtContentLocked',
     });
+    inserted.add(atom.payload.id);
     current = stagedParagraphCoordinates(writer, edit.partName, edit.paragraphId, initialSites);
   }
   return current;

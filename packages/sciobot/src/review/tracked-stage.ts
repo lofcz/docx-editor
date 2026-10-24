@@ -232,6 +232,7 @@ export function stageTrackedPlan(
       continue;
     } else if (edit.kind === 'inline-atoms') {
       const identity = key(edit.partName, edit.paragraphId);
+      if (edit.atoms.some((atom) => atom.hyperlink)) linkParagraphs.add(identity);
       const mapping =
         coordinates.get(identity) ??
         stagedParagraphCoordinates(writer, edit.partName, edit.paragraphId, unselectedSites);

@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Tracked atom births only retained an existing hyperlink at an interior insertion point. New links and boundary atom links refused.",
+  "after": "Atom births use native hyperlink revisions for adjacent source text and retain independent control insertion ownership. Boundary placement preserves the exact source hyperlink, and atom-only links use native envelopes.",
+  "reason": "Only existing OOXML operations, revision receipts, and payload presence records are emitted. No shared field or materialization rule changes. Production adapter code imports no Pro implementation. Test-only transport uses the EigenPal Pro License.",
+  "tests": [
+    "packages/sciobot/src/review/recompose-inline-births.test.ts",
+    "packages/sciobot/src/review/recompose-linked-inline-births-shared.test.ts",
+    "packages/sciobot/src/review/recompose-links.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

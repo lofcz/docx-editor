@@ -564,6 +564,8 @@ Additional WIP evidence: [tracked atoms in born paragraphs](evidence/tracked-bor
 
 [Native math control deletion](evidence/tracked-math-control-removal.md) preserves equations and hyperlinks through AI review, shared histories, and reopening. The source batch passes 98 cases; compiled packages pass 59 cases. D30 remains open for the remaining feature and integration work.
 
+[Tracked atom link placement](evidence/tracked-atom-link-placement.md) adds new links, bookmarks, and retained link boundaries without replacing source link identities. The source batch passes 120 cases; compiled packages pass 80 cases. D30 remains open for tracked images, new-cell ownership, mixed ownership, and integration gates.
+
 ## D31
 
 - [x] Plan inline code marks through the native representation
