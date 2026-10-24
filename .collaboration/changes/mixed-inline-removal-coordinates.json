@@ -1,0 +1,15 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "The AI coordinator refused atom removals combined with text or format changes. Native revision resolution captured only the last recognized run provenance scope on each site.",
+  "after": "Dependent text ranges and insertion boundaries map around exact fresh native deletions. Distinct paragraph text stages preserve their individual source scopes, and ordinary format splits capture source provenance. Native decisions settle every recognized scope. Managed atom deletion receipts remain independent from paragraph hyperlink coupling.",
+  "reason": "This changes coordinate lowering and completion of existing recognized native metadata, adding no transport field or format version. Existing foreign sites stay outside the selected coordinate model. Upgrade native readers for complete cleanup of documents carrying multiple source scopes; older readers may retain earlier provenance and split source runs. Inline births, image resources, and explicit tracked hyperlink-owned boundary insertion remain separate work.",
+  "tests": [
+    "packages/sciobot/src/review/recompose-inline-removal.test.ts",
+    "packages/sciobot/src/review/inline-presence-collaboration.test.ts",
+    "packages/core/src/store/__tests__/run-origins-multiple-stages.test.ts",
+    "packages/core/src/store/__tests__/run-origins-versioned-metadata.test.ts"
+  ],
+  "changeset": "settle-layered-run-provenance",
+  "migration": null
+}

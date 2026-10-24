@@ -23,6 +23,10 @@ import { withPayloadRecord } from '../blocks/payload-opc-codec';
 import { createBlockPresenceRecord } from './block-presence-plan';
 import { withBlockPresenceRecord } from './block-presence-store';
 import { stageTrackedInlineControl } from './tracked-stage-inline-control';
+import { planTargetDocument } from '../diff/plan-target';
+import { previewDirectPlan } from '../ai/apply-direct';
+import { acceptAllReviewGroups } from './accept-all';
+import { rejectAllReviewGroups } from './reject-all';
 import { recomposeOwnedProposals } from './recompose';
 import { readWorkingView } from './working-view';
 import { readReviewGroups } from './groups';
@@ -34,7 +38,7 @@ const attribution = { id: 'inline-proposal', author: 'AI', date: '2026-10-24T12:
 const payload = createMentionPayload('inline-chip', 'user-7', 'Ada', { privateData: { keep: 7 } });
 const run = (value: string) => `<w:r><w:t xml:space="preserve">${value}</w:t></w:r>`;
 const word = (part: OoxmlPart) => canonicalOoxmlFingerprint(part);
-function fixture(present: boolean, locked = false) {
+function fixture(present: boolean, locked = false, extraParagraph = false) {
   const control = sourceControl(payload.id, run('Ada'));
   const nativeControl = locked
     ? control.replace('</w:sdtPr>', '<w:lock w:val="sdtContentLocked"/></w:sdtPr>')
@@ -44,7 +48,7 @@ function fixture(present: boolean, locked = false) {
     : run('Lead.  Tail.');
   const read = readOoxmlPackage(
     docxFixture(
-      `<w:p><w:hyperlink w:anchor="target" w:tooltip="Keep">${content}</w:hyperlink></w:p>`
+      `<w:p><w:hyperlink w:anchor="target" w:tooltip="Keep">${content}</w:hyperlink></w:p>${extraParagraph ? `<w:p>${run('Peer paragraph')}</w:p>` : ''}`
     )
   );
   if (!read.ok) throw Error(read.reason);
@@ -65,7 +69,7 @@ const payloads = (pkg: OoxmlPackage) => {
     .map(([id, block]) => [id, block.payload])
     .sort(([a], [b]) => String(a).localeCompare(String(b)));
 };
-for (const mode of ['birth', 'remove', 'recompose-remove'] as const)
+for (const mode of ['birth', 'remove', 'recompose-remove', 'mixed-recompose-remove'] as const)
   for (const clients of [
     [41, 73],
     [73, 41],
@@ -74,7 +78,9 @@ for (const mode of ['birth', 'remove', 'recompose-remove'] as const)
       test(`inline native and payload ownership preserve both actor histories: ${mode}/${clients}/${decision}`, async () => {
         const remove = mode !== 'birth';
         const options = {
-          document: writeOoxmlPackage(fixture(remove, mode === 'recompose-remove')),
+          document: writeOoxmlPackage(
+            fixture(remove, mode.includes('recompose-remove'), mode === 'mixed-recompose-remove')
+          ),
           documentId: identity.documentId,
           ownedAttributes: true,
           clientIds: clients,
@@ -87,17 +93,33 @@ for (const mode of ['birth', 'remove', 'recompose-remove'] as const)
           const before = actor.surface!.session.currentPackage(),
             original = actor.surface!.session.part();
           const paragraphId = actor.surface!.session.paragraphIds()[0]!;
+          const peerParagraphId =
+            mode === 'mixed-recompose-remove'
+              ? actor.surface!.session.paragraphIds()[1]!
+              : paragraphId;
+          let acceptedPart: OoxmlPart | null = null;
           const controlId = remove ? buildBlockIndex(before).byId.get(payload.id)!.controlId : null;
           const oldPayloads = payloads(before);
           pair.pause();
-          if (mode === 'recompose-remove') {
+          if (mode.includes('recompose-remove')) {
             const revision = readEditorRevision(actor, identity.documentId, identity.epoch)!;
             const initial = await readWorkingView(actor.surface!.session, revision);
             if (!initial.success) throw Error(initial.error);
-            const target = initial.view.projection.text.replace(
+            let target = initial.view.projection.text.replace(
               /<scio-mention\b[^>]*\/>|\[Ada\]\(mention:user-7\)/g,
               ''
             );
+            if (mode === 'mixed-recompose-remove') {
+              target = target.replace('Lead', 'Changed').replace('Tail', '**Finish**');
+              const planned = planTargetDocument(
+                { pkg: before, revision, projection: initial.view.projection },
+                target
+              );
+              if (!planned.success) throw Error(planned.error);
+              const direct = previewDirectPlan(before, planned.plan);
+              if (!direct.success) throw Error(direct.error);
+              acceptedPart = direct.pkg.parts.get(direct.pkg.mainDocumentPart)!;
+            }
             expect(target).not.toBe(initial.view.projection.text);
             const recomposed = await recomposeOwnedProposals(
               actor,
@@ -107,7 +129,9 @@ for (const mode of ['birth', 'remove', 'recompose-remove'] as const)
             );
             if (!recomposed.success) throw Error(recomposed.error);
             expect(recomposed.committed).toBe(true);
-            expect(recomposed.ownership).toHaveLength(1);
+            if (mode === 'mixed-recompose-remove')
+              expect(recomposed.ownership.length).toBeGreaterThan(1);
+            else expect(recomposed.ownership).toHaveLength(1);
           } else {
             const installed = actor.surface!.applyAutomationOps(
               () =>
@@ -180,13 +204,15 @@ for (const mode of ['birth', 'remove', 'recompose-remove'] as const)
             proposedPayloads = payloads(actor.surface!.session.currentPackage());
           const groups = readReviewGroups(actor.surface!.session.currentPackage());
           if (!groups.success) throw Error(groups.error);
-          expect(groups.groups).toHaveLength(1);
-          expect(groups.groups[0]!.readOnly).toBe(false);
-          expect(groups.groups[0]!.native).toHaveLength(1);
-          expect(groups.groups[0]!.properties).toHaveLength(1);
+          if (mode === 'mixed-recompose-remove') expect(groups.groups.length).toBeGreaterThan(1);
+          else expect(groups.groups).toHaveLength(1);
+          const ownedPresence = groups.groups.find((group) => group.properties.length > 0)!;
+          expect(ownedPresence.readOnly).toBe(false);
+          expect(ownedPresence.native).toHaveLength(1);
+          expect(ownedPresence.properties).toHaveLength(1);
           expect(
             peer.surface!.applyAutomationOps(
-              () => [{ op: 'insertText', paragraphId, offset: 1, text: ' peer' }],
+              () => [{ op: 'insertText', paragraphId: peerParagraphId, offset: 1, text: ' peer' }],
               { kind: 'body' },
               [],
               false,
@@ -198,7 +224,12 @@ for (const mode of ['birth', 'remove', 'recompose-remove'] as const)
           const check = (pending: boolean, typed: boolean) => {
             const source = pending ? proposed : original;
             const expected = typed
-              ? native(source, { op: 'insertText', paragraphId, offset: 1, text: ' peer' })
+              ? native(source, {
+                  op: 'insertText',
+                  paragraphId: peerParagraphId,
+                  offset: 1,
+                  text: ' peer',
+                })
               : source;
             for (const editor of pair.editors) {
               expect(word(editor.surface!.session.part())).toBe(word(expected));
@@ -207,7 +238,7 @@ for (const mode of ['birth', 'remove', 'recompose-remove'] as const)
               );
               const read = readReviewGroups(editor.surface!.session.currentPackage());
               if (!read.success) throw Error(read.error);
-              expect(read.groups).toHaveLength(Number(pending));
+              expect(read.groups).toHaveLength(pending ? groups.groups.length : 0);
             }
           };
           check(true, true);
@@ -231,23 +262,48 @@ for (const mode of ['birth', 'remove', 'recompose-remove'] as const)
           check(true, true);
           const pending = actor.surface!.session.part();
           const revision = readEditorRevision(actor, identity.documentId, identity.epoch)!;
-          const result = (decision === 'accept' ? acceptReviewGroup : rejectReviewGroup)(
-            actor,
-            groups.groups[0]!.id,
-            revision,
-            identity
-          );
+          const result =
+            mode === 'mixed-recompose-remove'
+              ? (decision === 'accept' ? acceptAllReviewGroups : rejectAllReviewGroups)(
+                  actor,
+                  revision,
+                  identity
+                )
+              : (decision === 'accept' ? acceptReviewGroup : rejectReviewGroup)(
+                  actor,
+                  groups.groups[0]!.id,
+                  revision,
+                  identity
+                );
           if (!result.success) throw Error(result.error);
           await pair.settle();
           const decided = actor.surface!.session.part();
           const decidedPayloads = payloads(actor.surface!.session.currentPackage());
           expect(collectRevisionSites(decided)).toEqual([]);
+          if (decision === 'accept' && acceptedPart)
+            expect(word(decided)).toBe(
+              word(
+                native(acceptedPart, {
+                  op: 'insertText',
+                  paragraphId: peerParagraphId,
+                  offset: 1,
+                  text: ' peer',
+                })
+              )
+            );
           expect(
             buildBlockIndex(actor.surface!.session.currentPackage()).byId.has(payload.id)
           ).toBe(decision === 'accept' ? !remove : remove);
           if (decision === 'reject')
             expect(word(decided)).toBe(
-              word(native(original, { op: 'insertText', paragraphId, offset: 1, text: ' peer' }))
+              word(
+                native(original, {
+                  op: 'insertText',
+                  paragraphId: peerParagraphId,
+                  offset: 1,
+                  text: ' peer',
+                })
+              )
             );
           expect(actor.exec({ type: 'undo' }).ok).toBe(true);
           await pair.settle();

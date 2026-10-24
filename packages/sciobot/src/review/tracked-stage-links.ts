@@ -82,13 +82,14 @@ export function coupleLinkStageReceipts(
   writer: TrackedStageWriter,
   receipts: readonly ReviewGroupReceipt[],
   paragraphs: ReadonlySet<string>,
-  initial: ReadonlySet<string>
+  initial: ReadonlySet<string>,
+  independentSites: ReadonlySet<string> = new Set()
 ): readonly ReviewGroupReceipt[] {
   const grouped = new Map<string, { partName: string; addresses: Map<string, RevisionAddress> }>();
   const claimed = new Set<string>();
   for (const [partName, part] of writer.currentPackage().parts)
     for (const site of collectRevisionSites(part)) {
-      if (initial.has(site.node.id)) continue;
+      if (initial.has(site.node.id) || independentSites.has(site.node.id)) continue;
       if (
         site.node.kind !== 'revisionInsert' &&
         site.node.kind !== 'revisionDelete' &&

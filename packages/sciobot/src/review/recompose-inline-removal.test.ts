@@ -148,33 +148,31 @@ for (const linked of [false, true])
         }
       });
 
-for (const mixed of [false, true])
-  test(`AI inline removal refuses missing ownership or dependent coordinates before publication: ${mixed}`, async () => {
-    const editor = propertyEditor(fixture(true, true));
-    try {
-      const surface = editor.surface!,
-        before = surface.session.currentPackage();
-      const initial = await readWorkingView(surface.session, propertyToken(editor));
-      if (!initial.success) throw Error(initial.error);
-      let target = initial.view.projection.text.replace(
-        /<scio-mention\b[^>]*\/>|\[Ada\]\(mention:user\)/g,
-        ''
-      );
-      if (mixed) target = target.replace('Lead', 'Changed');
-      const result = await recomposeOwnedProposals(
-        editor,
-        { revision: propertyToken(editor), targetMarkdown: target, ownership: [] },
-        propertyContext,
-        mixed ? { payloads: { presence: { proposalId: 'mixed-removal' } } } : {}
-      );
-      expect(result.success).toBe(false);
-      if (!result.success) expect(result.code).toBe('unsupported-operation');
-      expect(surface.session.currentPackage()).toBe(before);
-      expect(surface.session.canUndo()).toBe(false);
-    } finally {
-      editor.destroy();
-    }
-  });
+test('AI inline removal refuses missing ownership before publication', async () => {
+  const editor = propertyEditor(fixture(true, true));
+  try {
+    const surface = editor.surface!,
+      before = surface.session.currentPackage();
+    const initial = await readWorkingView(surface.session, propertyToken(editor));
+    if (!initial.success) throw Error(initial.error);
+    const target = initial.view.projection.text.replace(
+      /<scio-mention\b[^>]*\/>|\[Ada\]\(mention:user\)/g,
+      ''
+    );
+    const result = await recomposeOwnedProposals(
+      editor,
+      { revision: propertyToken(editor), targetMarkdown: target, ownership: [] },
+      propertyContext,
+      {}
+    );
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.code).toBe('unsupported-operation');
+    expect(surface.session.currentPackage()).toBe(before);
+    expect(surface.session.canUndo()).toBe(false);
+  } finally {
+    editor.destroy();
+  }
+});
 
 test('AI replaces an owned deletion twice without reusing native ownership or losing the original control', async () => {
   const editor = propertyEditor(fixture(true, true));
@@ -247,3 +245,101 @@ test('AI replaces an owned deletion twice without reusing native ownership or lo
     editor.destroy();
   }
 });
+
+for (const linked of [false, true])
+  for (const rich of [false, true])
+    for (const decision of ['accept', 'reject'] as const)
+      test(`AI mixes atom removal with separate text gaps and retained payloads: ${linked}/${rich}/${decision}`, async () => {
+        const retained = createMentionPayload('retained-mention', 'other', 'Bob', {
+          privateData: { keep: 'peer' },
+        });
+        const originalXml = docxFixture(
+          '<w:p>' +
+            (linked ? '<w:hyperlink w:anchor="target">' : '') +
+            '<w:r><w:t xml:space="preserve">Lead. </w:t></w:r>' +
+            sourceControl(payload.id, '<w:r><w:t>Ada</w:t></w:r>').replace(
+              '</w:sdtPr>',
+              '<w:lock w:val="sdtContentLocked"/></w:sdtPr>'
+            ) +
+            '<w:r><w:t xml:space="preserve"> bridge </w:t></w:r>' +
+            sourceControl(retained.id, '<w:r><w:t>Bob</w:t></w:r>') +
+            '<w:r><w:t xml:space="preserve"> Tail.</w:t></w:r>' +
+            (linked ? '</w:hyperlink>' : '') +
+            '</w:p>'
+        );
+        const loaded = readOoxmlPackage(originalXml);
+        if (!loaded.ok) throw Error(loaded.reason);
+        let input = loaded.package;
+        for (const value of [payload, retained]) {
+          const stored = withPayloadRecord(input, value, 'Mention');
+          if (!stored.ok) throw Error(stored.reason);
+          input = stored.pkg;
+        }
+        const editor = propertyEditor(input);
+        try {
+          const surface = editor.surface!,
+            before = surface.session.currentPackage();
+          const oldRetained = buildBlockIndex(before).byId.get(retained.id)!;
+          const retainedWord = canonicalOoxmlFingerprint(
+            findNode(surface.session.part(), oldRetained.controlId)!
+          );
+          const initial = await readWorkingView(surface.session, propertyToken(editor));
+          if (!initial.success) throw Error(initial.error);
+          let target = initial.view.projection.text
+            .replace(/<scio-mention\b(?=[^>]*key="user")[^>]*\/>|\[Ada\]\(mention:user\)/g, '')
+            .replace('Lead', 'Changed')
+            .replace('Tail', 'Finish');
+          if (rich) target = target.replace('bridge', '**bridge**');
+          const planned = planTargetDocument(
+            { pkg: before, revision: propertyToken(editor), projection: initial.view.projection },
+            target
+          );
+          if (!planned.success) throw Error(planned.error);
+          expect(planned.plan.operations.some((edit) => edit.kind === 'inline-remove')).toBe(true);
+          expect(
+            planned.plan.operations.filter((edit) => edit.kind === 'text').length
+          ).toBeGreaterThanOrEqual(2);
+          const direct = previewDirectPlan(before, planned.plan);
+          if (!direct.success) throw Error(direct.error);
+          const result = await recomposeOwnedProposals(
+            editor,
+            { revision: propertyToken(editor), targetMarkdown: target, ownership: [] },
+            propertyContext,
+            { payloads: { presence: { proposalId: 'mixed-removal' } } }
+          );
+          if (!result.success) throw Error(result.error);
+          const pending = word(surface.session.currentPackage());
+          const actual = buildBlockIndex(surface.session.currentPackage()).byId.get(retained.id)!;
+          expect(actual.controlId).toBe(oldRetained.controlId);
+          expect(actual.payload).toEqual(retained);
+          expect(
+            canonicalOoxmlFingerprint(findNode(surface.session.part(), actual.controlId)!)
+          ).toBe(retainedWord);
+          const original = await readCommittedView(surface.session, propertyToken(editor));
+          expect(original.success && original.view.projection.text).toBe(
+            initial.view.projection.text
+          );
+          const decided = (decision === 'accept' ? acceptAllReviewGroups : rejectAllReviewGroups)(
+            editor,
+            propertyToken(editor),
+            propertyContext
+          );
+          if (!decided.success) throw Error(decided.error);
+          expect(word(surface.session.currentPackage())).toBe(
+            word(decision === 'accept' ? direct.pkg : before)
+          );
+          const groups = readReviewGroups(surface.session.currentPackage());
+          expect(groups.success && groups.groups).toEqual([]);
+          expect(
+            buildBlockIndex(surface.session.currentPackage()).byId.get(retained.id)?.payload
+          ).toEqual(retained);
+          expect(editor.exec({ type: 'undo' }).ok).toBe(true);
+          expect(word(surface.session.currentPackage())).toBe(pending);
+          expect(editor.exec({ type: 'redo' }).ok).toBe(true);
+          const saved = readOoxmlPackage(writeOoxmlPackage(surface.session.currentPackage()));
+          if (!saved.ok) throw Error(saved.reason);
+          expect(word(saved.package)).toBe(word(decision === 'accept' ? direct.pkg : before));
+        } finally {
+          editor.destroy();
+        }
+      });

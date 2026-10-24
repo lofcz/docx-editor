@@ -43,14 +43,6 @@ export function stageTrackedPlan(
       'Inserted inline atoms need native asset and payload reconciliation.',
       'unsupported-operation'
     );
-  if (
-    plan.operations.some((edit) => edit.kind === 'inline-remove') &&
-    plan.operations.some((edit) => edit.kind !== 'inline-remove')
-  )
-    refuseWrite(
-      'Combined inline removals need dependent tracked coordinate reconciliation.',
-      'unsupported-operation'
-    );
   const listContext = createDirectListContext();
   const receipts: ReviewGroupReceipt[] = [];
   const formatReceipts = new Map<string, ReviewGroupReceipt[]>();
@@ -61,6 +53,33 @@ export function stageTrackedPlan(
     collectRevisionSites(initial.parts.get(initial.mainDocumentPart)!).map((site) => site.node.id)
   );
   const coordinates = new Map<string, StagedTextCoordinates>();
+  const scopes = new Map<string, Set<string>>();
+  const atomSites = new Set<string>();
+  const rememberScope = (identity: string, mapping: StagedTextCoordinates) => {
+    if (!mapping.runOriginScope) return;
+    const values = scopes.get(identity) ?? new Set<string>();
+    values.add(mapping.runOriginScope);
+    scopes.set(identity, values);
+  };
+  // Canonical dependent edits use the source after physical atom removal.
+  // Native review keeps those atoms as tombstones, so exclude their exact fresh sites.
+  for (const edit of plan.operations) {
+    if (edit.kind !== 'inline-remove') continue;
+    if (edit.partName !== initial.mainDocumentPart)
+      refuseWrite(
+        'Replacement plans must belong to the native body story.',
+        'unsupported-operation'
+      );
+    stageTrackedInlineRemoval(writer, edit, revision);
+    coordinates.set(
+      key(edit.partName, edit.paragraphId),
+      stagedParagraphCoordinates(writer, edit.partName, edit.paragraphId, unselectedSites)
+    );
+  }
+  for (const site of collectRevisionSites(
+    writer.currentPackage().parts.get(initial.mainDocumentPart)!
+  ))
+    if (!unselectedSites.has(site.node.id)) atomSites.add(site.node.id);
   const linkParagraphs = new Set<string>();
   const deferredFormats: Extract<CanonicalEdit, { kind: 'format' }>[] = [];
   for (const edit of plan.operations) {
@@ -109,7 +128,9 @@ export function stageTrackedPlan(
       const prepared = prepareTrackedRunOrigins(
         pkg.parts.get(first.partName)!,
         first.paragraphId,
-        edits
+        coordinates.has(identity)
+          ? edits.flatMap((edit) => coordinates.get(identity)!.slices(edit.start, edit.end))
+          : edits
       );
       scope = prepared.scope;
       return withPart(pkg, prepared.part);
@@ -118,6 +139,7 @@ export function stageTrackedPlan(
       ...stagedParagraphCoordinates(writer, first.partName, first.paragraphId, unselectedSites),
       ...(scope ? { runOriginScope: scope } : {}),
     });
+    rememberScope(identity, coordinates.get(identity)!);
   }
   const format = (edit: Extract<CanonicalEdit, { kind: 'format' }>) => {
     if (edit.target.kind === 'hyperlink') {
@@ -146,7 +168,14 @@ export function stageTrackedPlan(
         edit.target.kind === 'run'
           ? coordinates.get(key(edit.partName, edit.target.paragraphId))
           : undefined,
-        unselectedSites
+        unselectedSites,
+        (scope) => {
+          if (edit.target.kind !== 'run') return;
+          const identity = key(edit.partName, edit.target.paragraphId);
+          const values = scopes.get(identity) ?? new Set<string>();
+          values.add(scope);
+          scopes.set(identity, values);
+        }
       )
     );
     formatReceipts.set(identity, entries);
@@ -173,13 +202,24 @@ export function stageTrackedPlan(
         at++;
       }
       const paragraph = key(edit.partName, edit.paragraphId);
-      if (coordinates.has(paragraph))
-        refuseWrite('A paragraph needs one ordered text stage.', 'ambiguous-target');
-      coordinates.set(paragraph, stageTrackedText(writer, plan, entries, revision));
+      const mapping = coordinates.get(paragraph);
+      coordinates.set(
+        paragraph,
+        stageTrackedText(
+          writer,
+          plan,
+          entries,
+          revision,
+          mapping ? { coordinates: mapping, initialSites: unselectedSites } : undefined
+        )
+      );
+      rememberScope(paragraph, coordinates.get(paragraph)!);
       continue;
     }
-    if (edit.kind === 'inline-remove') stageTrackedInlineRemoval(writer, edit, revision);
-    else if (edit.kind === 'format') {
+    if (edit.kind === 'inline-remove') {
+      at++;
+      continue;
+    } else if (edit.kind === 'format') {
       if (!trackFormatting)
         refuseWrite(
           'Formatting tracking is disabled for this document or editor.',
@@ -236,22 +276,27 @@ export function stageTrackedPlan(
       addresses: entries.flatMap((entry) => entry.addresses),
     });
   }
-  for (const [identity, mapping] of coordinates) {
-    if (!mapping.runOriginScope) continue;
+  for (const [identity, values] of scopes) {
     const [partName, paragraphId] = JSON.parse(identity) as [string, string];
-    const scope = mapping.runOriginScope;
-    writer.edit((pkg) =>
-      withPart(
-        pkg,
-        sealTrackedRunOrigins(
-          pkg.parts.get(partName)!,
-          paragraphId,
-          scope,
-          initial.parts.get(partName)!
+    for (const scope of values)
+      writer.edit((pkg) =>
+        withPart(
+          pkg,
+          sealTrackedRunOrigins(
+            pkg.parts.get(partName)!,
+            paragraphId,
+            scope,
+            initial.parts.get(partName)!
+          )
         )
-      )
-    );
+      );
   }
-  const linkedReceipts = coupleLinkStageReceipts(writer, receipts, linkParagraphs, unselectedSites);
+  const linkedReceipts = coupleLinkStageReceipts(
+    writer,
+    receipts,
+    linkParagraphs,
+    unselectedSites,
+    atomSites
+  );
   return coupleTableStageReceipts(writer, linkedReceipts, structuralTables, unselectedSites);
 }

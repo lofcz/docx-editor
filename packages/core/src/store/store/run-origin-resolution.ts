@@ -17,7 +17,7 @@ import { pruneRunOriginNamespaces } from './run-origin-namespaces.ts';
 import {
   mapOriginNodes,
   originNodes,
-  readRevisionOrigin,
+  readRevisionOrigins,
   withoutOriginMetadata,
   isRunOriginNamespace,
   readRunOrigins,
@@ -49,9 +49,8 @@ export function captureRunOriginResolution(
       for (const attr of site.attributes)
         if (attr.namespaceUri === INSERTED_PARAGRAPH_PROPERTY_NS && attr.prefix)
           paragraphPropertyPrefixes.add(attr.prefix);
-    const origin = readRevisionOrigin(site);
-    if (!origin) continue;
-    const { scope } = origin;
+    const origins = readRevisionOrigins(site);
+    if (!origins.length) continue;
     let owner = parentNodeOf(part, site.id);
     if (site.kind !== 'textValue' && site.localName === 'rPrChange') {
       if (owner?.kind !== 'runProperties') continue;
@@ -62,9 +61,11 @@ export function captureRunOriginResolution(
     for (let depth = 0; owner && depth <= 256; depth++) {
       if (owner.kind === 'paragraph') {
         const scopes = paragraphs.get(owner.id) ?? new Set<string>();
-        scopes.add(scope);
+        for (const origin of origins) {
+          scopes.add(origin.scope);
+          for (const prefix of origin.retainedPrefixes) retained.add(prefix);
+        }
         paragraphs.set(owner.id, scopes);
-        for (const prefix of origin.retainedPrefixes) retained.add(prefix);
         for (const attr of site.attributes)
           if (isRunOriginNamespace(attr.namespaceUri) && attr.prefix) prefixes.add(attr.prefix);
         break;
@@ -152,6 +153,19 @@ export function normalizedRunOriginParagraph(
   let changed = false;
   const lexical = mapOriginNodes(nodes, (node) => {
     if (!accessible.has(node.id) || node.kind === 'textValue') return node;
+    if (
+      node.kind === 'run' &&
+      readRunOrigins(node).some((origin) => scopes.has(origin.scope) && origin.absent)
+    ) {
+      const children = node.children.filter(
+        (child) =>
+          !(child.kind === 'runProperties' && !child.children.length && !child.attributes.length)
+      );
+      if (children.length !== node.children.length) {
+        changed = true;
+        return { ...node, children } as OoxmlNode;
+      }
+    }
     const textOrigin = readTextOrigins(node).find((origin) => scopes.has(origin.scope));
     if (!textOrigin || !scopes.has(textOrigin.scope)) return node;
     const attributes = node.attributes.filter(

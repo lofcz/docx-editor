@@ -135,24 +135,55 @@ export function prepareTrackedRunOrigins(
     .flatMap(readRevisionOrigins);
   const active = new Set(activeOrigins.map((origin) => origin.scope));
   const activeNamespaces = new Set(activeOrigins.map((origin) => origin.namespaceUri));
+  const preparedBindings = readTrackedSourceBindings(paragraph);
   for (const run of nodes) {
     if (!ids.has(run.id)) continue;
     const origins = readRunOrigins(run);
+    const properties = runProperties(run);
+    const provisional = origins.length ? [] : readRunOrigins(properties);
+    // Repeated ordered stages may touch an already prepared source fragment.
+    // Only registered, unsealed proofs may be layered; active and opaque proofs still refuse.
+    const reusable =
+      provisional.length > 0 &&
+      provisional.every((origin) =>
+        preparedBindings.some(
+          (binding) =>
+            binding.scope === origin.scope &&
+            binding.token === origin.token &&
+            origin.identity === 'source' &&
+            !origin.resolved &&
+            origin.absent === binding.absent &&
+            JSON.stringify(origin.retainedPrefixes) === JSON.stringify(binding.retained)
+        )
+      );
+    const proofs = reusable ? provisional : origins;
     for (const node of originNodes(run)) {
       const namespaces = originNamespaces(node);
       if (!namespaces.length) continue;
       const valid =
         node === run
           ? origins
-          : children(run).some((child) => child === node) &&
-              (node.kind === 'text' || node.kind === 'deletedText')
-            ? readTextOrigins(node).filter((text) =>
-                origins.some(
-                  (origin) =>
-                    origin.scope === text.scope && origin.namespaceUri === text.namespaceUri
+          : reusable && node === properties
+            ? provisional
+            : children(run).some((child) => child === node) &&
+                (node.kind === 'text' || node.kind === 'deletedText')
+              ? readTextOrigins(node).filter(
+                  (text) =>
+                    proofs.some(
+                      (origin) =>
+                        origin.scope === text.scope && origin.namespaceUri === text.namespaceUri
+                    ) &&
+                    (!reusable ||
+                      preparedBindings.some(
+                        (binding) =>
+                          binding.scope === text.scope &&
+                          binding.texts.some(
+                            (original) =>
+                              original.token === text.token && original.space === text.space
+                          )
+                      ))
                 )
-              )
-            : [];
+              : [];
       if (valid.length !== namespaces.length || valid.some((origin) => active.has(origin.scope)))
         throw new PackageEditRefusal(
           'Selected source already carries active or opaque run-origin metadata.',

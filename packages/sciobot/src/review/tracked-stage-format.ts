@@ -21,6 +21,7 @@ import {
 import { trackedRunFormatOps } from './tracked-run-format';
 import type { StagedTextCoordinates } from './tracked-stage-text';
 import { currentStagePart } from './tracked-stage-text';
+import { stageSourceRunOrigins } from './tracked-stage-source-origins';
 import type { TrackedStageAttribution, TrackedStageWriter } from './tracked-stage-writer';
 
 type Format = Extract<CanonicalEdit, { kind: 'format' }>;
@@ -69,7 +70,8 @@ export function stageTrackedFormat(
   edit: Format,
   revision: TrackedStageAttribution,
   coordinates?: StagedTextCoordinates,
-  unselectedSites: ReadonlySet<string> = new Set()
+  unselectedSites: ReadonlySet<string> = new Set(),
+  sourceScope?: (scope: string) => void
 ): readonly ReviewGroupReceipt[] {
   let part = currentStagePart(writer, edit.partName);
   const target = edit.target;
@@ -122,6 +124,8 @@ export function stageTrackedFormat(
             'ambiguous-target'
           );
       }
+    const scope = stageSourceRunOrigins(writer, edit.partName, target.paragraphId, slices);
+    if (scope) sourceScope?.(scope);
     // A code delta can create the shared style definition. This package edit stays in this unit.
     const codeStyles = edit.changes
       .flatMap((change) =>

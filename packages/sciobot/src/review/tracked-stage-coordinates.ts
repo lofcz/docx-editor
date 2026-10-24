@@ -9,6 +9,9 @@ import type { TrackedStageWriter } from './tracked-stage-writer';
 
 export interface StagedTextCoordinates {
   readonly runOriginScope?: string;
+  text(): string;
+  /** Map an insertion boundary without entering a fresh native deletion. */
+  point(offset: number, bias?: 'left' | 'right'): number;
   /** Re-read native slices after each dependent replacement; exclude only fresh deletions. */
   slices(start: number, end: number): readonly { start: number; end: number }[];
 }
@@ -47,7 +50,11 @@ export function stagedParagraphCoordinates(
     }
     if (cursor < offsets.length) ranges.push({ start: cursor, end: offsets.length });
     const raw = paragraphTextOf(part, paragraphId)!;
-    return { ranges, text: ranges.map((range) => raw.slice(range.start, range.end)).join('') };
+    return {
+      ranges,
+      length: offsets.length,
+      text: ranges.map((range) => raw.slice(range.start, range.end)).join(''),
+    };
   }
   const expected = expectedText ?? read().text;
   const checked = () => {
@@ -58,6 +65,25 @@ export function stagedParagraphCoordinates(
   };
   checked();
   return {
+    text() {
+      checked();
+      return expected;
+    },
+    point(offset, bias = 'left') {
+      if (!Number.isSafeInteger(offset) || offset < 0 || offset > expected.length)
+        refuseWrite('A dependent insertion is outside the proposed paragraph.');
+      const ranges = checked();
+      let visible = 0,
+        left = 0;
+      for (const range of ranges) {
+        if (offset === visible) return bias === 'left' ? left : range.start;
+        const next = visible + range.end - range.start;
+        if (offset < next) return range.start + offset - visible;
+        visible = next;
+        left = range.end;
+      }
+      return bias === 'left' ? left : read().length;
+    },
     slices(start, end) {
       if (
         !Number.isSafeInteger(start) ||
