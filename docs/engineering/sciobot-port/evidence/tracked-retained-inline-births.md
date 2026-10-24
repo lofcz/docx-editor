@@ -46,3 +46,10 @@ The preceding full integration boundary passed all 496 cases across 40 files in 
 That result precedes this birth checkpoint and does not erase the newly exercised inherited failure.
 
 No leaf is closed. Installed application verification remains pending and its pinned revision audit still reports drift.
+
+A subsequent isolated experiment extended the terminal append to replace its preceding source grapheme.
+It was rejected: `/tmp/d30-terminal-append-anchor.log` passes 36 cases but all four existing suffix cases still fail.
+The suffix becomes hidden inside the native deletion in client order 73/41.
+The experiment was discarded from the parent worktree after the process completed.
+It is absent from both committed checkpoints.
+The next correction must preserve the peer's live source boundary without absorbing unseen text into a deletion.
