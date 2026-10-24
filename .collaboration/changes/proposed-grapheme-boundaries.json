@@ -1,0 +1,10 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Dependent text edits checked grapheme boundaries only after mapping back to raw native text. Removing an inline atom can join source code points into one proposed grapheme.",
+  "after": "The private coordinator validates both proposed and native grapheme boundaries before publishing mapped text operations. An atom-removal plan cannot introduce an insertion or deletion inside the joined proposed grapheme.",
+  "reason": "This adds a refusal guard to private coordinate lowering. It adds no native operation, transport field, persisted format, or public API.",
+  "tests": ["packages/sciobot/src/review/recompose-inline-graphemes.test.ts"],
+  "changeset": null,
+  "migration": null
+}

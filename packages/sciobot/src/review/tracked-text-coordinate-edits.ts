@@ -10,7 +10,14 @@ export function trackedTextCoordinateEdits(
   coordinates: StagedTextCoordinates
 ): readonly TextEdit[] {
   const original = coordinates.text();
+  const boundaries = new Set([
+    0,
+    original.length,
+    ...segmentGraphemes(original).flatMap((segment) => [segment.utf16From, segment.utf16To]),
+  ]);
   return edits.flatMap((edit) => {
+    if (!boundaries.has(edit.start) || !boundaries.has(edit.end))
+      refuseWrite('A tracked edit splits a proposed grapheme boundary.', 'ambiguous-target');
     if (original.slice(edit.start, edit.end) !== edit.before)
       refuseWrite('Planned before-text does not match the proposed paragraph.', 'stale-revision');
     if (edit.start === edit.end) {
@@ -26,3 +33,4 @@ export function trackedTextCoordinateEdits(
     });
   });
 }
+import { segmentGraphemes } from '@docx-editor.dev/core/layout';
