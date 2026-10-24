@@ -1,0 +1,15 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "The private owned-text profile treated native run and text identities as authored formatting. Concurrent typing retained retired native identities after structural inline splits. Image replacement also refused mixed replacement and atom births.",
+  "after": "Providers advertise structural text keys through the core session contract. Complete private review history uses owned-text protocol 2, binds a persisted provider policy, and leaves structural reconciliation to the native provider. Existing source atom ownership is carried through image replacement and fresh atom planning.",
+  "reason": "The public transport format and version fields stay unchanged. The private application profile explicitly refuses protocol 1 rooms and conflicting structural policies; older application profiles refuse protocol 2. Adoption requires stopped writers, DOCX export, and fresh room bootstrap. No room migration or application baseline recapture is performed. Production private modules import no Pro runtime.",
+  "tests": [
+    "packages/sciobot/src/collaboration/owned-structure.test.ts",
+    "packages/sciobot/src/collaboration/review-history.test.ts",
+    "packages/sciobot/src/diff/retained-atom-alignment.test.ts",
+    "packages/sciobot/src/diff/image-replacement-births.test.ts"
+  ],
+  "changeset": "advertise-structural-text-attributes",
+  "migration": null
+}

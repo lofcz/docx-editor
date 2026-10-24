@@ -32,6 +32,16 @@ Fixtures include source revisions and content hashes. Tests read committed fixtu
 
 Tool capture executes the original schema factory, read/search helpers, and executor closure. It uses an identity SDK wrapper and immediate review delegate. Mounted hook routing and streaming have separate backlog leaves.
 
+## Collaborative ownership
+
+Attach `attachOwnedReviewHistory(doc, { documentId })` from `@sciobot/docx/collaboration` before room bootstrap or snapshot loading. Bind the provider session through `scope.bindSession(session)` before attaching the editor. Dispose the scope after the session stops.
+
+Complete review history uses private owned-text protocol 2. The provider must advertise `structuralTextAttributeKeys` through the core session contract. The adapter stores this policy and refuses missing or conflicting policies. Native run and text identity attributes follow the provider's structural reconciliation. Authored formatting retains per-character ownership. The adapter reads no provider codec and imports no Pro runtime.
+
+Protocol 1 application rooms require an explicit upgrade. Stop every writer, export the DOCX with the previous compatible application, retain the old room snapshot, and bootstrap a fresh room with protocol 2. Do not rewrite an existing room's protocol header or combine protocol 1 and protocol 2 clients. Conflicting headers remain refused after reopening. Export/reseed does not preserve the old room's undo history.
+
+The generic `attachOwnedTextAttributes` helper keeps protocol 1 as its default for standalone use. It does not supply the complete native review scope required by shared suggestions or image replacement.
+
 ## Native data and writes
 
 Call `prepareNativeDocument(bytes)` before opening imported bytes in the native workspace and before creating a collaboration room. The application prepares raw imports in `prepareWorkspaceDocument`; the room creator prepares the initial shared bytes before any peer joins. Pass live room handles through unchanged. Do not initialize each peer independently after joining a room.

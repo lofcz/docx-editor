@@ -4,6 +4,7 @@ export {
   OwnedTextError,
   type OwnedTextHandle,
   type OwnedTextOptions,
+  type OwnedTextAttributesOptions,
 } from './owned-text';
 export {
   attachOwnedReviewHistory,

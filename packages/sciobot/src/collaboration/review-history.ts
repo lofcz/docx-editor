@@ -9,7 +9,7 @@ import {
 import { attachOwnedReviewFlags, type OwnedReviewFlags } from './review-flags';
 import { attachOwnedReviewFields } from './review-fields';
 
-export interface OwnedReviewHistory extends OwnedTextHandle {
+export interface OwnedReviewHistory extends Omit<OwnedTextHandle, 'setStructuralAttributes'> {
   /** Bind the session created over this scope's document. All native methods keep their receiver. */
   bindSession(session: EditorCollaborationSession): EditorCollaborationSession;
 }
@@ -31,7 +31,7 @@ export function attachOwnedReviewHistory(
   )
     throw new TypeError('Owned review history needs the current room document ID.');
   const documentId = options.documentId,
-    owned = attachOwnedTextAttributes(doc, { onError: options.onError }),
+    owned = attachOwnedTextAttributes(doc, { onError: options.onError, protocol: 2 }),
     sessions = new WeakMap<EditorCollaborationSession, EditorCollaborationSession>();
   let flags: OwnedReviewFlags;
   try {
@@ -71,12 +71,15 @@ export function attachOwnedReviewHistory(
       assertHealthy();
       if (session.documentId !== documentId)
         throw new TypeError('Review history document identity does not match the session.');
-      fields.enable();
       const previous = sessions.get(session);
       if (previous) return previous;
       const attached = (session as unknown as Record<symbol, unknown>)[REVIEW_HISTORY_CAPABILITY];
       if (attached !== undefined && attached !== assertHealthy)
         throw new TypeError('The session already belongs to another review history scope.');
+      if (!Array.isArray(session.structuralTextAttributeKeys))
+        throw new TypeError('Owned history requires a provider structural text attribute policy.');
+      owned.setStructuralAttributes(session.structuralTextAttributeKeys);
+      fields.enable();
       const methods = new Map<PropertyKey, { value: unknown; bound: unknown }>();
       // A separate extensible facade also supports frozen transport objects and private receivers.
       const bound = new Proxy(

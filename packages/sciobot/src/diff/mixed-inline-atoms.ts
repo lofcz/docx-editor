@@ -39,8 +39,9 @@ export function mixedInlineAtoms(
     nextCounts = counts(keys);
   if ([...oldCounts].some(([key, count]) => (nextCounts.get(key) ?? 0) < count)) return null;
   const repeated = [...oldCounts].some(([key, count]) => nextCounts.get(key) !== count);
-  const alignment = repeated ? alignRetainedAtoms(before, after) : null;
-  if (repeated && (!alignment || alignment.length !== oldAtoms.length)) return null;
+  const alignment =
+    context.retainedAtomAlignment ?? (repeated ? alignRetainedAtoms(before, after) : null);
+  if ((repeated && !alignment) || (alignment && alignment.length !== oldAtoms.length)) return null;
   const candidates = new Map<string, number[]>();
   keys.forEach((key, index) => {
     const entries = candidates.get(key) ?? [];

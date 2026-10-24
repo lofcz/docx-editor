@@ -140,6 +140,7 @@ export interface EditorCollaborationSession {
     setLocalSelection(selection: CollaborationLocalSelection | null): void;
     status(): CollaborationStatus;
     statusSnapshot(): CollaborationStatusSnapshot;
+    readonly structuralTextAttributeKeys?: readonly string[];
     subscribeParticipants(listener: (participants: readonly CollaborationParticipant[]) => void): () => void;
     subscribeRemoteSelections(listener: (selections: readonly CollaborationRemoteSelection[]) => void): () => void;
     subscribeStatus(listener: (status: CollaborationStatus, reason?: CollaborationFailureCode, detail?: string) => void): () => void;

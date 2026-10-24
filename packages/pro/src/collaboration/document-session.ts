@@ -12,6 +12,7 @@ Production use requires a commercial agreement: licensing@eigenpal.com
  * other, because a remote publication deliberately emits no journal.
  */
 
+import { STRUCTURAL_TEXT_ATTRIBUTE_KEYS } from './document/paragraph-text.ts';
 import { projectTypingOrJournal } from './document/projected-journal.ts';
 import { editWaits } from './document/journal.ts';
 import { markRestoredText } from './document/paragraph-text-restore.ts';
@@ -100,6 +101,7 @@ export const ATTACH_WATCHDOG_MS_FOR_TESTS: unique symbol = Symbol(
 class DocumentSession implements DocumentCollaborationSession {
   readonly documentId: string;
   readonly sessionId: string;
+  readonly structuralTextAttributeKeys = STRUCTURAL_TEXT_ATTRIBUTE_KEYS;
   private currentIdentity: CollaborationIdentity;
   private currentSelection: EncodedSelection | undefined;
   private attachWatchdog: ReturnType<typeof setTimeout> | null = null;

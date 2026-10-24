@@ -69,6 +69,12 @@ export const INLINE_FIELD = 'inline';
 const KEY_RUN = 'r';
 const KEY_RUN_PROPERTIES = 'rp';
 const KEY_TEXT = 't';
+/** Native run/text shells follow structural splits; visible properties keep independent ownership. */
+export const STRUCTURAL_TEXT_ATTRIBUTE_KEYS: readonly string[] = Object.freeze([
+  KEY_RUN,
+  KEY_RUN_PROPERTIES,
+  KEY_TEXT,
+]);
 const KEY_WRAP = 'w';
 const PROPERTY_PREFIX = 'p:';
 

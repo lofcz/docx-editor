@@ -1,7 +1,7 @@
 import type { EditorCollaborationSession } from '@docx-editor.dev/core/collaboration';
 
 // Both private entry bundles use this runtime capability. A module-local WeakMap would split it.
-export const REVIEW_HISTORY_CAPABILITY = Symbol.for('sciobot.docx.review-history.4');
+export const REVIEW_HISTORY_CAPABILITY = Symbol.for('sciobot.docx.review-history.5');
 
 export interface ReviewHistoryGuard {
   (): void;

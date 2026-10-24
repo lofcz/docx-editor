@@ -1,3 +1,4 @@
+import { alignRetainedAtoms } from './retained-atom-alignment';
 import { findNode, type OoxmlNode, type OoxmlPart } from '@docx-editor.dev/core/store';
 import { decodeInlineImagePayload } from '../blocks/inline-image-codec';
 import { encodeBlockPayload } from '../blocks/payload-schema';
@@ -16,12 +17,33 @@ export function planImageReplacements(
   paragraphId: string,
   before: CompiledInlineTarget,
   after: CompiledInlineTarget
-): { ast: TargetAstNode; edits: readonly CanonicalEdit[] } | EditPlanResult | null {
+):
+  | { ast: TargetAstNode; edits: readonly CanonicalEdit[]; alignment: readonly number[] }
+  | EditPlanResult
+  | null {
   const oldAtoms = before.tokens.filter((token) => token.kind === 'atom');
   const newAtoms = after.tokens.filter((token) => token.kind === 'atom');
-  if (oldAtoms.length !== newAtoms.length || !oldAtoms.length) return null;
+  if (oldAtoms.length > newAtoms.length || !oldAtoms.some((atom) => atom.ast.type === 'image'))
+    return null;
+  const alignment =
+    context.retainedAtomAlignment ??
+    (oldAtoms.length === newAtoms.length
+      ? oldAtoms.map((_, index) => index)
+      : alignRetainedAtoms(before, after, true));
+  if (
+    !alignment ||
+    alignment.length !== oldAtoms.length ||
+    alignment.some(
+      (index, ordinal) =>
+        !Number.isInteger(index) ||
+        index < 0 ||
+        index >= newAtoms.length ||
+        (ordinal > 0 && index <= alignment[ordinal - 1]!)
+    )
+  )
+    return null;
   const changes = oldAtoms.flatMap((old, index) => {
-    const next = newAtoms[index]!;
+    const next = newAtoms[alignment[index]!]!;
     return old.ast.type === 'image' &&
       next.ast.type === 'image' &&
       targetAstKey(old.ast) !== targetAstKey(next.ast)
@@ -105,5 +127,7 @@ export function planImageReplacements(
         }
       : node);
   const checked = createEditPlan(context.source.index.revision, edits);
-  return checked.success ? { ast: visit(before.ast, []), edits: checked.plan.operations } : checked;
+  return checked.success
+    ? { ast: visit(before.ast, []), edits: checked.plan.operations, alignment }
+    : checked;
 }

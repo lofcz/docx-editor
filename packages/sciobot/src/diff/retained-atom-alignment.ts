@@ -7,6 +7,7 @@ import { retainedAtomKey } from './retained-atom-gaps';
 interface Unit {
   readonly key: string;
   readonly atom?: number;
+  readonly image?: boolean;
 }
 interface Trace {
   readonly old: number;
@@ -26,7 +27,13 @@ function units(target: CompiledInlineTarget): Unit[] {
   return target.tokens.flatMap((token): Unit[] =>
     token.kind === 'text'
       ? segmentGraphemes(token.value).map(({ text }) => ({ key: 'text:' + text }))
-      : [{ key: 'atom:' + retainedAtomKey(token.ast), atom: atom++ }]
+      : [
+          {
+            key: 'atom:' + retainedAtomKey(token.ast),
+            atom: atom++,
+            image: token.ast.type === 'image',
+          },
+        ]
   );
 }
 const precedes = (a: State, b: State) =>
@@ -37,11 +44,13 @@ const precedes = (a: State, b: State) =>
 /**
  * Minimum text-edit alignment with mandatory source atoms. New equal atoms have fresh identities;
  * surrounding text chooses where old identities stay. No path can delete an old atom.
+ * Optional image replacement costs one edit; every other atom must keep its exact source key.
  * Search shares the existing paragraph diff deadline and target node bound.
  */
 export function alignRetainedAtoms(
   before: CompiledInlineTarget,
-  after: CompiledInlineTarget
+  after: CompiledInlineTarget,
+  replaceImages = false
 ): readonly number[] | null {
   const deadline = performance.now() + PARAGRAPH_TEXT_LIMITS.diffTimeoutMs;
   const a = units(before),
@@ -115,8 +124,12 @@ export function alignRetainedAtoms(
     }
     const old = a[i],
       next = b[j];
-    if (old?.atom !== undefined && next?.atom !== undefined && old.key === next.key)
-      push(i + 1, j + 1, cost, { old: old.atom, next: next.atom, previous: trace });
+    if (old?.atom !== undefined && next?.atom !== undefined) {
+      const replacement =
+        old.key === next.key ? 0 : replaceImages && old.image && next.image ? 1 : null;
+      if (replacement !== null)
+        push(i + 1, j + 1, cost + replacement, { old: old.atom, next: next.atom, previous: trace });
+    }
     if (next) push(i, j + 1, cost + 1, trace);
     if (old && old.atom === undefined) push(i + 1, j, cost + 1, trace);
   }

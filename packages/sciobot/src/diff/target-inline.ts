@@ -45,6 +45,8 @@ export interface TargetParagraphSource {
   readonly headingStyle?: (depth: number) => string | null;
   /** Internal anchored diff, computed before retained controls become synthetic text. */
   readonly anchoredText?: EditPlanResult;
+  /** Internal source-to-target ownership, selected before image replacement changes keys. */
+  readonly retainedAtomAlignment?: readonly number[];
   readonly textAnchors?: readonly { start: number; end: number }[];
 }
 const fail = (error: string): EditPlanResult => ({
@@ -198,7 +200,11 @@ export function planTargetParagraph(context: TargetParagraphSource): EditPlanRes
     const images = planImageReplacements(context, part, paragraphId, a, b);
     if (images) {
       if ('success' in images) return images;
-      const rest = planTargetParagraph({ ...context, before: { ...before, ast: images.ast } });
+      const rest = planTargetParagraph({
+        ...context,
+        before: { ...before, ast: images.ast },
+        retainedAtomAlignment: images.alignment,
+      });
       return rest.success
         ? createEditPlan(revision, [...images.edits, ...rest.plan.operations])
         : rest;

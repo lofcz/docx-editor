@@ -7,6 +7,7 @@ import { OWNED_TEXT_OPERATIONS } from './ownership-codec';
 import { REVIEW_FLAG_TARGETS } from './review-flag-codec';
 
 class Transport {
+  readonly structuralTextAttributeKeys = Object.freeze([]);
   #ready = true;
   constructor(readonly documentId = 'room') {}
   get attached() {
@@ -46,6 +47,7 @@ test('owned review sessions retain native method receivers, stable functions, fr
     expect(bound.attached).toBe(false);
     const frozen = Object.freeze({
       documentId: 'room',
+      structuralTextAttributeKeys: Object.freeze([]),
       status() {
         return this.documentId === 'room' ? 'ready' : 'error';
       },
@@ -109,7 +111,7 @@ test('poisoned ownership data refuses future review operations without replacing
     }),
     bound = scope.bindSession(session());
   try {
-    expect(() => doc.getMap(OWNED_TEXT_OPERATIONS).set('protocol', '2')).toThrow(
+    expect(() => doc.getMap(OWNED_TEXT_OPERATIONS).set('protocol', 'unsupported')).toThrow(
       'Unsupported owned-text protocol'
     );
     expect(errors).toHaveLength(1);
@@ -124,7 +126,7 @@ test('poisoned ownership data refuses future review operations without replacing
 test('review flag protocol failures release partial attachment and refuse stale scope capabilities', () => {
   const doc = new Y.Doc();
   try {
-    doc.getMap(OWNED_TEXT_OPERATIONS).set('protocol', '1');
+    doc.getMap(OWNED_TEXT_OPERATIONS).set('protocol', '2');
     doc.getMap(REVIEW_FLAG_TARGETS).set('protocol', '1');
     expect(() => attachOwnedReviewHistory(doc, { documentId: 'room' })).toThrow(
       'Unsupported review flag protocol'
@@ -133,7 +135,7 @@ test('review flag protocol failures release partial attachment and refuse stale 
     const scope = attachOwnedReviewHistory(doc, { documentId: 'room' });
     try {
       expect(reviewGroupHistoryRefusal(scope.bindSession(session()))).toBeNull();
-      for (const version of [1, 2, 3]) {
+      for (const version of [1, 2, 3, 4]) {
         const old = Object.assign(new Transport(), {
           [Symbol.for(`sciobot.docx.review-history.${version}`)]: () => {},
         });

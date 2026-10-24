@@ -170,6 +170,12 @@ export interface EditorCollaborationSession {
   readonly documentId: string;
   /** Unique identity for this attachment lifetime. It prevents operation ID reuse after reconnect. */
   readonly sessionId: string;
+  /**
+   * Shared text attributes that carry native node structure rather than authored formatting.
+   * Attribute ownership adapters leave these keys to the provider's structural reconciliation.
+   * The provider must keep this complete set stable for the room's format version.
+   */
+  readonly structuralTextAttributeKeys?: readonly string[];
   /** The validated local identity. */
   readonly identity: CollaborationIdentity;
   /** Current lifecycle state. */
