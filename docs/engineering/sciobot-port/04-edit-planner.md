@@ -574,6 +574,8 @@ Additional WIP evidence: [tracked atoms in born paragraphs](evidence/tracked-bor
 
 [Tracked image staging](evidence/tracked-inline-image-staging.md) adds revision-bound media preparation and native image presence ownership. Verification remains in progress; the checkbox stays open.
 
+[Tracked image removal](evidence/tracked-image-removal.md) passes 67 affected source cases and 16 compiled cases. A stronger offline reference test loses referenced media under both client orders. This critical resource lifetime failure remains open.
+
 ## D31
 
 - [x] Plan inline code marks through the native representation

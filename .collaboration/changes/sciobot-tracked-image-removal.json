@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Private tracked removal refused managed images. Unlinking a link containing only this stage's deleted inline control attempted a second proposal over opaque content.",
+  "after": "Managed images use native whole-control deletion with existing presence ownership and media cleanup. A link containing only exact deletion sites created by this stage remains for rejection and disappears when native acceptance empties it.",
+  "reason": "Private staging consumes existing native deletion ownership. Foreign sites, other link children, and protected content retain native refusal rules. Published package source and shared format fields do not change. A separate late offline media-reference regression remains failing and prevents D30 closure.",
+  "tests": [
+    "packages/sciobot/src/review/recompose-image-removal.test.ts",
+    "packages/sciobot/src/review/recompose-image-removal-shared.test.ts",
+    "packages/sciobot/src/review/image-removal-late-reference.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

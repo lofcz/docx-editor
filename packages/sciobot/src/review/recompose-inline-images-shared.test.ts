@@ -105,10 +105,7 @@ function bindWordIdentity(direct: OoxmlPackage, pending: OoxmlPackage): OoxmlPac
         .children.find((child) => child.localName === name)!;
     const source = property(a),
       target = property(e);
-    if (!source || !target) {
-      expect(Boolean(source)).toBe(Boolean(target));
-      continue;
-    }
+    if (!source || !target) throw Error('The image control needs its Word identity and tag.');
     if (source.kind !== 'generic' || target.kind !== 'generic')
       throw Error('Missing image control identity.');
     const value = source.attributes.find(

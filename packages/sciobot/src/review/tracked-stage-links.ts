@@ -20,6 +20,10 @@ import { currentStagePart } from './tracked-stage-text';
 import type { TrackedStageAttribution, TrackedStageWriter } from './tracked-stage-writer';
 
 type LinkEdit = Extract<CanonicalEdit, { kind: 'link' | 'unlink' }>;
+const holdsOnlyInlineControl = (node: OoxmlNode): boolean =>
+  node.kind !== 'textValue' &&
+  node.children.length === 1 &&
+  node.children[0]!.kind === 'contentControl';
 export const stageParagraphKey = (partName: string, paragraphId: string) =>
   JSON.stringify([partName, paragraphId]);
 function paragraphOwner(part: OoxmlPart, node: OoxmlNode): string | null {
@@ -45,13 +49,28 @@ export function stageTrackedLink(
   writer: TrackedStageWriter,
   edit: LinkEdit,
   revision: TrackedStageAttribution,
-  coordinates: StagedTextCoordinates
+  coordinates: StagedTextCoordinates,
+  removedInlineSites: ReadonlySet<string> = new Set()
 ): void {
   const part = currentStagePart(writer, edit.partName),
     id = linkStageParagraph(part, edit);
   const protectedContent = propertyControlRefusal(part, id);
   if (protectedContent) refuseWrite(protectedContent, 'unsupported-operation');
   if (edit.kind === 'unlink') {
+    const link = findNode(part, edit.hyperlinkId);
+    // Resolving our exact inline deletion also removes its empty link. Keep the original
+    // wrapper for rejection instead of creating a second proposal over opaque deleted content.
+    if (
+      link?.kind === 'hyperlink' &&
+      link.children.length &&
+      link.children.every(
+        (child) =>
+          child.kind === 'revisionDelete' &&
+          removedInlineSites.has(child.id) &&
+          holdsOnlyInlineControl(child)
+      )
+    )
+      return;
     writer.apply(edit.partName, { op: 'removeHyperlink', linkId: edit.hyperlinkId, revision });
     return;
   }

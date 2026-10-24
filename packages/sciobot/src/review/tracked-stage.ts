@@ -276,7 +276,7 @@ export function stageTrackedPlan(
         mapping = stagedParagraphCoordinates(writer, edit.partName, paragraphId, unselectedSites);
         coordinates.set(identity, mapping);
       }
-      stageTrackedLink(writer, edit, revision, mapping);
+      stageTrackedLink(writer, edit, revision, mapping, atomSites);
     } else if (edit.kind === 'list') {
       if (!trackFormatting)
         refuseWrite(

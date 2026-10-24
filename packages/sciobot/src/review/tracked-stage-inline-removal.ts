@@ -20,8 +20,6 @@ export function stageTrackedInlineRemoval(
     part = pkg.parts.get(edit.partName);
   if (!part) refuseWrite('The removed atom story is missing.', 'invalid-document');
   const { control } = validateInlineRemovalSource(pkg, part, edit);
-  if (edit.before.type === 'inline_image')
-    refuseWrite('Tracked image removal needs resource ownership.', 'unsupported-operation');
   const locked = contentControlPropertiesOf(control).lock === 'sdtContentLocked';
   if (locked)
     writer.apply(edit.partName, {
