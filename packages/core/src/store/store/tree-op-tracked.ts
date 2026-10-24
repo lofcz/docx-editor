@@ -1,3 +1,7 @@
+import {
+  insertionPayloadRuns,
+  type InsertionPayload as TrackedInsertionPayload,
+} from './insertion-payload-runs.ts';
 import { recordNativeFreshText } from '../package/canonical-primitive-capture.ts';
 import { copy, insertedRunProperties } from './tracked-run-inheritance.ts';
 import { inheritOriginPayload, inheritOriginRun } from './run-origin-payload.ts';
@@ -169,30 +173,6 @@ function holdsAtomBegin(node: OoxmlNode, atoms: AtomNodes): boolean {
 }
 
 /**
- * What a tracked insertion places: run text, run-level elements, or one complete run.
- *
- * `length` is the payload's size in MODEL units, on `segmentsOf`'s terms — `text.length`
- * for characters, one for a tab or a break — so the extend-own-insertion path can step the
- * cursor past what it just placed without re-measuring the rebuilt run.
- */
-interface TrackedInsertionPayload {
-  readonly length: number;
-  /**
-   * Run CHILDREN — text, a tab, a field's nodes — that inherit the host run's `w:rPr`:
-   * placed in one run under the wrapper, or spliced into the author's own run when
-   * extending. Null for a payload that is a complete run of its own.
-   */
-  readonly nodes: ((mint: () => string) => readonly OoxmlNode[]) | null;
-  /**
-   * Complete runs carrying their OWN `w:rPr` — a note citation, whose reference style must
-   * not be replaced by the formatting at the caret, or a complex field's marker runs. Placed
-   * as sibling runs: alone under the wrapper, or beside the split halves when extending the
-   * author's own `w:ins`.
-   */
-  readonly runs?: (mint: () => string) => readonly OoxmlNode[];
-}
-
-/**
  * Insert `text` at `offset` as a tracked insertion.
  *
  * Returns the paragraph's new children, or null when the offset was never reached — which
@@ -307,15 +287,30 @@ export function applyInsertTrackedRun(
   );
 }
 
+/** Commit a run-child payload independently of every surrounding pending insertion. */
+export function applyInsertCommittedPayload(
+  part: OoxmlPart,
+  paragraph: OoxmlParagraphNode,
+  offset: number,
+  payload: TrackedInsertionPayload,
+  options?: EditOptions,
+  bias: 'left' | 'right' = 'left',
+  owner?: OoxmlNode | null
+): TreeOpResult {
+  return applyTrackedInsertion(part, paragraph, offset, payload, null, options, bias, owner);
+}
+
 function applyTrackedInsertion(
   part: OoxmlPart,
   paragraph: OoxmlParagraphNode,
   aim: number,
   payload: TrackedInsertionPayload,
-  revision: RevisionAttributionInput,
+  revision: RevisionAttributionInput | null,
   options?: EditOptions,
-  bias: 'left' | 'right' = 'left'
+  bias: 'left' | 'right' = 'left',
+  owner?: OoxmlNode | null
 ): TreeOpResult {
+  const author = revision?.author ?? '';
   const mint = createNodeIdAllocator(part);
   const offsets = paragraphOffsetIndex(paragraph);
   const effect: TreeOpEffect = {
@@ -342,10 +337,12 @@ function applyTrackedInsertion(
   // Only a deletion from THIS edit joins: `adjacentDeletion` matches on author alone, and a
   // deletion the same author made last month is also adjacent. Adopting its date would
   // backdate today's edit into last month's revision and make rejecting one reject both.
-  const replaced = adjacentDeletion(paragraph, offsets, aim, aim, revision.author, revision.date);
-  const attribution: RevisionAttributionInput = replaced
+  const replaced = revision
+    ? adjacentDeletion(paragraph, offsets, aim, aim, author, revision?.date)
+    : null;
+  const attribution = replaced
     ? {
-        author: revision.author,
+        author: author,
         ...(replaced.date === undefined ? {} : { date: replaced.date }),
       }
     : revision;
@@ -373,17 +370,17 @@ function applyTrackedInsertion(
   // transaction has to: the keyboard's two gestures are two transactions.
   const replacesThisEdit =
     replaced !== null &&
-    (options?.trackedRevisionIds?.wroteUnder(
-      revisionKey(replaced.id, revision.author, replaced.date)
-    ) ??
+    (options?.trackedRevisionIds?.wroteUnder(revisionKey(replaced.id, author, replaced.date)) ??
       true);
   const offset = replacesThisEdit
-    ? Math.max(aim, replacedEnd(paragraph, offsets, replaced!, revision.author, aim))
+    ? Math.max(aim, replacedEnd(paragraph, offsets, replaced!, author, aim))
     : aim;
   const trailingDestination = trailingInsertionDestination(paragraph, offset);
-  const fieldDestination = fieldInsertionEndAt(paragraph, offset)
-    ? insertionDestination(paragraph, offset, null)
-    : null;
+  const fieldDestination = owner
+    ? insertionDestination(paragraph, offset, owner, bias)
+    : fieldInsertionEndAt(paragraph, offset)
+      ? insertionDestination(paragraph, offset, null)
+      : null;
   const fieldSite = fieldDestination?.site;
   const fieldLeftRunId = fieldDestination
     ? [...offsets.segments].reverse().find((segment) => segment.end === offset)?.runId
@@ -396,8 +393,11 @@ function applyTrackedInsertion(
     const run = formattingRunBesideRestrictedControl(paragraph, offset, offsets);
     return run === undefined ? null : run ? insertedRunProperties(mint, run) : [];
   };
-  const rightBiasedDestination =
-    bias === 'right' ? insertionDestination(paragraph, offset, null, bias) : null;
+  const rightBiasedDestination = owner
+    ? insertionDestination(paragraph, offset, owner, bias)
+    : bias === 'right'
+      ? insertionDestination(paragraph, offset, null, bias)
+      : null;
   // Minted LAZILY, on the first wrapper actually built: `nextRevisionId` walks the whole
   // part, and typing on inside your own `w:ins` — every keystroke after the first — extends
   // the existing wrapper and builds none, so it must not pay that walk. A transaction lends
@@ -444,7 +444,7 @@ function applyTrackedInsertion(
           (attribute) =>
             attribute.namespaceUri === WML_NAMESPACE_URI &&
             attribute.localName === 'author' &&
-            attribute.value === revision.author
+            attribute.value === author
         ) &&
         revisionDateOf(node) === replaced?.date
       ) {
@@ -474,31 +474,23 @@ function applyTrackedInsertion(
     source?: OoxmlNode,
     local = 0
   ): OoxmlNode => {
-    const wrapper = build(
-      mint(),
-      'revisionInsert',
-      'ins',
-      revisionAttributes(mintedInsertionId(), attribution),
-      payload.nodes
-        ? [
-            runOf(
-              mint,
-              [
-                ...(replacementRun
-                  ? insertedRunProperties(mint, replacementRun)
-                  : (markStyled() ?? besideProperties() ?? properties)),
-                ...inheritOriginPayload(
-                  payload.nodes(mint),
-                  replacementRun ?? source,
-                  replacementRun ? 0 : local,
-                  offsets
-                ),
-              ],
-              replacementRun ?? source
-            ),
-          ]
-        : payload.runs!(mint)
+    // Keep tracked allocation order exact. Committed payloads mint no revision ID.
+    const id = revision ? mint() : null;
+    const attributes = revision ? revisionAttributes(mintedInsertionId(), attribution!) : null;
+    const runs = insertionPayloadRuns(
+      mint,
+      payload,
+      () =>
+        replacementRun
+          ? insertedRunProperties(mint, replacementRun)
+          : (markStyled() ?? besideProperties() ?? properties),
+      replacementRun ?? source,
+      replacementRun ? 0 : local,
+      offsets
     );
+    if (!revision && runs.length !== 1)
+      throw Error('Committed run-child insertion requires one run.');
+    const wrapper = revision ? build(id!, 'revisionInsert', 'ins', attributes!, runs) : runs[0]!;
     if (nextInlineContainerDepth(wrapper, depth) >= MAX_INLINE_CONTAINER_DEPTH) exceedsDepth = true;
     wrappers.add(wrapper.id);
     return wrapper;
@@ -555,7 +547,7 @@ function applyTrackedInsertion(
             fieldSite.holder.children[fieldSite.index ?? fieldSite.holder.children.length]?.id
         ) {
           const inserted =
-            insertionAuthor(stack) === revision.author
+            revision !== null && insertionAuthor(stack) === author
               ? payload.nodes
                 ? [runOf(mint, [...fieldProperties(), ...payload.nodes(mint)])]
                 : payload.runs!(mint)
@@ -577,7 +569,7 @@ function applyTrackedInsertion(
             ...children.filter(isRunProperties).map((child) => copy(mint, child)),
             ...children.slice(fieldSite.index),
           ]);
-          const own = insertionAuthor([...stack, node]) === revision.author;
+          const own = revision !== null && insertionAuthor([...stack, node]) === author;
           const inserted = own
             ? payload.nodes
               ? [runOf(mint, [...properties(), ...payload.nodes(mint)])]
@@ -621,8 +613,9 @@ function applyTrackedInsertion(
       // revision, and rejecting one then rejected both.
       const ownInsertion =
         container &&
-        insertionAuthor([node]) === revision.author &&
-        sameEditingMoment(revisionDateOf(node), revision.date);
+        revision !== null &&
+        insertionAuthor([node]) === author &&
+        sameEditingMoment(revisionDateOf(node), revision?.date);
       const sharedTrailingOwner = trailingDestination?.path.has(node.id) === true;
       const rightBiasedOwner = rightBiasedDestination?.path.has(node.id) === true;
       // THE REPLACEMENT FOLLOWS THE DELETION IT REPLACES — into a link or a control, and
@@ -767,7 +760,7 @@ function applyTrackedInsertion(
         const own = insertionAuthor([...stack, node]);
         // Inside our OWN pending insertion: extend it. A second `w:ins` nested in the first
         // says two people proposed the same words, which is not what happened.
-        if (own === revision.author) {
+        if (revision !== null && own === author) {
           out.push(...splitRunAndInsert(mint, offsets, node, offset - start, payload));
           placed = true;
           cursor.offset = end + payload.length;
@@ -795,10 +788,10 @@ function applyTrackedInsertion(
 
   const rebuilt = rebuild(paragraph.children, []);
   const lifted = wrappers.size
-    ? liftedOutOfForeignInsertions(rebuilt, wrappers, revision.author, mint)
+    ? liftedOutOfForeignInsertions(rebuilt, wrappers, revision?.author ?? null, mint)
     : rebuilt;
   if (!lifted) return { ok: false, reason: 'unsupported-revision:foreign-insertion' };
-  let children = mergedRevisions(mint, lifted);
+  let children = revision ? mergedRevisions(mint, lifted) : lifted;
   if (!placed) {
     // An empty paragraph, or an offset at the very end with no run to hang it on.
     if (offset !== cursor.offset) {

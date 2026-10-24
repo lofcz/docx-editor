@@ -133,6 +133,8 @@ An insertion lands exactly at the range end that you name, so you choose the spa
 - With `TrackMineOnly`, content that you insert right after your own pending text joins that insertion. For example, a field after your own pending space becomes part of that proposal. One **Reject** then removes both. Text after a field that ends its paragraph starts a new insertion after the field.
 - A range that a write returns has no address until that write syncs. Sync before you insert next to it. Otherwise the call fails with `InvalidObjectPath`.
 
+With tracking `Off`, inserted text stays committed beside a pending insertion. Rejecting that insertion keeps the new text. The operation retains supported hyperlink formatting and metadata.
+
 This example proposes a field after an existing space:
 
 ```ts

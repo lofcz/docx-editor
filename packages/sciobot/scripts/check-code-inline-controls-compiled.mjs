@@ -55,8 +55,8 @@ try {
   writeFileSync(collaboration, support);
 
   const selected = process.argv.slice(2);
-  if (selected.some((name) => !/^(?:review\/)?[a-z0-9-]+\.test\.ts$/.test(name)))
-    throw Error('Pass fixture basenames from src/diff or review/name.test.ts.');
+  if (selected.some((name) => !/^(?:review\/|core\/)?[a-z0-9-]+\.test\.ts$/.test(name)))
+    throw Error('Pass diff fixture basenames, review/name.test.ts, or core/name.test.ts.');
   const fixtures = selected.length
     ? selected
     : [
@@ -66,13 +66,25 @@ try {
       ];
   for (const filename of fixtures) {
     let source = readFileSync(
-      join(packageRoot, filename.startsWith('review/') ? 'src' : 'src/diff', filename),
+      filename.startsWith('core/')
+        ? join(packages, 'core/src/store/__tests__', filename.slice(5))
+        : join(packageRoot, filename.startsWith('review/') ? 'src' : 'src/diff', filename),
       'utf8'
     );
+    if (filename.startsWith('core/'))
+      source = source.replace(
+        /from '(?:\.\.\/package\/[^']+|\.\.\/store\/(?:tree-ops|tree-op-types)\.ts)'/g,
+        "from '@docx-editor.dev/core/store'"
+      );
     source = source.replace(
       /from '(?:\.\.\/(?:review|projection|blocks|ai|native)\/[^']+|\.\.\/diff\/(?:plan-target|plan|target-key)|\.\/(?:plan-target|plan|target-key))'/g,
       "from '@sciobot/docx'"
     );
+    if (filename.startsWith('review/'))
+      source = source.replace(
+        /from '\.\/(?:native-module|recompose|working-view|committed-view|groups|accept-all|reject-all)'/g,
+        "from '@sciobot/docx'"
+      );
     source = source.replaceAll(
       "from '../../test/support/collaboration'",
       `from '${collaboration}'`

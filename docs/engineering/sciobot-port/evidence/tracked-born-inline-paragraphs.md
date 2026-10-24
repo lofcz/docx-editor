@@ -24,3 +24,5 @@ The transport's `BirthUndoDependencies` currently retains table birth ancestry o
 No baseline recapture or timeout increase occurs. The application remains read-only. Full C01/composer and compiled SDK integration remain pending. No leaf closes from these partial results.
 
 Follow-up: [independent paragraph birth history](independent-paragraph-peer-history.md) repairs creation undo/redo and cold reopening. The two peer cases now reach native rejection, which still removes peer text inherited by the AI insertion wrapper.
+
+Resolved follow-up: [committed insertion ownership](committed-insertion-ownership.md) preserves peer text through native rejection, concurrent offline delivery, exact decision history, and room reopening.

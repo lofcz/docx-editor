@@ -9,7 +9,10 @@ export function isInlineContainerProperty(wrapper: OoxmlNode, child: OoxmlNode):
   if (child.namespaceUri !== WML_NAMESPACE_URI) return false;
   if (wrapper.kind === 'contentControl') {
     return (
-      child.kind === 'contentControlProperties' || child.kind === 'contentControlEndProperties'
+      child.kind === 'contentControlProperties' ||
+      child.kind === 'contentControlEndProperties' ||
+      child.localName === 'sdtPr' ||
+      child.localName === 'sdtEndPr'
     );
   }
   if (wrapper.kind !== 'generic' || wrapper.namespaceUri !== WML_NAMESPACE_URI) return false;

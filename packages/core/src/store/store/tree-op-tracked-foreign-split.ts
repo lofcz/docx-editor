@@ -1,3 +1,4 @@
+import { liftedCommittedInsertions } from './tree-op-committed-ownership.ts';
 // A tracked insertion that lands inside another author's pending insertion.
 //
 // Nested, the new `w:ins` would belong to their proposal: rejecting theirs removes the new
@@ -11,16 +12,18 @@ import { insertionAuthor } from './tree-op-retraction.ts';
  * `nodes` with every wrapper in `wrapperIds` lifted out of each enclosing insertion by
  * another author that is its direct parent, or null when a wrapper stays inside one.
  *
- * Only a direct parent splits. A link, a content control, or another container inside their
+ * For attributed changes, only a direct parent splits. A link, a content control, or another container inside their
  * insertion cannot split without duplicating its identity, so new words inside one would
  * stay part of their proposal. The caller refuses that edit instead.
+ * A null author commits new content, promoting its stable containers through the insertion.
  */
 export function liftedOutOfForeignInsertions(
   nodes: readonly OoxmlNode[],
   wrapperIds: ReadonlySet<string>,
-  author: string,
+  author: string | null,
   mint: () => string
 ): OoxmlNode[] | null {
+  if (author === null) return liftedCommittedInsertions(nodes, wrapperIds, mint);
   const lifted = lift(nodes, wrapperIds, author, mint);
   return holdsNested(lifted, wrapperIds, author, false) ? null : lifted;
 }

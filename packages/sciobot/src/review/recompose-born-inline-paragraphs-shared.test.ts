@@ -260,8 +260,115 @@ for (const clients of [
       if (!rejected.success) throw Error(rejected.error);
       await pair.settle();
       peerOnly();
+      const decided = pair.editors.map((editor) =>
+        native(editor.surface!.session.currentPackage())
+      );
+      expect(alice!.exec({ type: 'undo' }).ok).toBe(true);
+      await pair.settle();
+      pair.editors.forEach((editor, index) =>
+        expect(native(editor.surface!.session.currentPackage())).toBe(pending[index]!)
+      );
+      expect(alice!.exec({ type: 'redo' }).ok).toBe(true);
+      await pair.settle();
+      peerOnly();
+      pair.editors.forEach((editor, index) =>
+        expect(native(editor.surface!.session.currentPackage())).toBe(decided[index]!)
+      );
       const saved = await pair.savedDigests();
       expect(saved[0]).toEqual(saved[1]);
+      pair.ownership.forEach((handle) => handle.assertHealthy());
+    } finally {
+      pair.destroy();
+    }
+  });
+
+for (const clients of [
+  [41, 73],
+  [73, 41],
+] as const)
+  test(`offline peer typing survives concurrent rejection of a born atom paragraph ${clients}`, async () => {
+    const source = readOoxmlPackage(docxFixture('<w:p><w:r><w:t>Start</w:t></w:r></w:p>'));
+    if (!source.ok) throw Error(source.reason);
+    const prepared = withInitializedPayloadStore(source.package);
+    if (!prepared.ok) throw Error(prepared.reason);
+    const pair = await createTwoEditorFixture({
+      document: writeOoxmlPackage(prepared.pkg),
+      documentId: propertyContext.documentId,
+      ownedAttributes: true,
+      clientIds: clients,
+      editor: { modules: [SCIOBOT_NATIVE_REVIEW_MODULE] },
+    });
+    try {
+      const [alice, bob] = pair.editors;
+      const staged = await recomposeOwnedProposals(
+        alice!,
+        {
+          revision: propertyToken(alice!),
+          targetMarkdown: 'Start\n\nBorn ' + atom + ' tail.',
+          ownership: [],
+        },
+        propertyContext,
+        {
+          target: { allocateBlockId: () => 'born-atom' },
+          payloads: { presence: { proposalId: 'born-presence' } },
+        }
+      );
+      if (!staged.success) throw Error(staged.error);
+      await pair.settle();
+      const born = bob!
+        .surface!.session.paragraphIds()
+        .find((id) => paragraphTextOf(bob!.surface!.session.part(), id)!.startsWith('Born '))!;
+      pair.pause();
+      expect(
+        bob!.surface!.applyAutomationOps(() => [
+          { op: 'insertText', paragraphId: born, offset: 5, text: ' Peer ' },
+        ]).rejected
+      ).toBe(false);
+      const pendingPeer = native(bob!.surface!.session.currentPackage());
+      const rejected = rejectAllReviewGroups(alice!, propertyToken(alice!), propertyContext);
+      if (!rejected.success) throw Error(rejected.error);
+      pair.reconnect(clients[0] === 41 ? 0 : 1);
+      await pair.settle();
+      const check = (editors: typeof pair.editors) => {
+        for (const editor of editors) {
+          const session = editor.surface!.session;
+          expect(session.paragraphIds().map((id) => paragraphTextOf(session.part(), id))).toEqual([
+            'Start',
+            ' Peer ',
+          ]);
+          const payloads = readPayloadStore(session.currentPackage());
+          expect(payloads.status === 'ready' && [...payloads.entries.keys()]).toEqual([]);
+        }
+      };
+      check(pair.editors);
+      const decided = pair.editors.map((editor) =>
+        native(editor.surface!.session.currentPackage())
+      );
+      expect(alice!.exec({ type: 'undo' }).ok).toBe(true);
+      await pair.settle();
+      for (const editor of pair.editors)
+        expect(native(editor.surface!.session.currentPackage())).toBe(pendingPeer);
+      expect(alice!.exec({ type: 'redo' }).ok).toBe(true);
+      await pair.settle();
+      check(pair.editors);
+      pair.editors.forEach((editor, index) =>
+        expect(native(editor.surface!.session.currentPackage())).toBe(decided[index]!)
+      );
+      const saved = await pair.savedDigests();
+      expect(saved[0]).toEqual(saved[1]);
+      const reopened = await createTwoEditorFixture({
+        document: new Uint8Array(await bob!.save()),
+        documentId: propertyContext.documentId,
+        ownedAttributes: true,
+        editor: { modules: [SCIOBOT_NATIVE_REVIEW_MODULE] },
+        roomSnapshot: Y.encodeStateAsUpdate(pair.documents[0]!),
+      });
+      try {
+        await reopened.settle();
+        check(reopened.editors);
+      } finally {
+        reopened.destroy();
+      }
       pair.ownership.forEach((handle) => handle.assertHealthy());
     } finally {
       pair.destroy();

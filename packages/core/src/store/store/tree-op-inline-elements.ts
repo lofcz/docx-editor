@@ -186,3 +186,26 @@ export function textWithHyphenBuilders(text: string): RunChildBuilder[] {
 export function textWithHyphens(nextId: () => string, text: string): OoxmlNode[] {
   return textWithHyphenBuilders(text).map((build) => build(nextId));
 }
+
+/** A plain native run over already allocated children. */
+export function runElement(nextId: () => string, children: readonly OoxmlNode[]): OoxmlNode {
+  return {
+    id: nextId(),
+    kind: 'run',
+    namespaceUri: WML_NAMESPACE_URI,
+    localName: 'r',
+    prefix: 'w',
+    namespaceBindings: [],
+    attributes: [],
+    children,
+  } as unknown as OoxmlNode;
+}
+
+/** The one run-level element each insert op places, shared by its tracked and untracked arms. */
+export const RUN_ELEMENT_INSERTS: Readonly<
+  Record<'insertTab' | 'insertHardBreak' | 'insertPageBreak', (nextId: () => string) => OoxmlNode>
+> = {
+  insertTab: (nextId) => simpleElement(nextId, 'tab'),
+  insertHardBreak: (nextId) => simpleElement(nextId, 'br', 'line'),
+  insertPageBreak: (nextId) => simpleElement(nextId, 'br', 'page'),
+};

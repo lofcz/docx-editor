@@ -1,3 +1,4 @@
+import { committedInsertionWithinRevision } from './tree-op-committed-insert.ts';
 import {
   trackedControlLinkPlacement,
   type InlineControlRoot,
@@ -32,9 +33,10 @@ import { removeCoveredTextFormDefinitions } from './text-form-field-deletion.ts'
 /* eslint-disable max-lines -- pre-existing size; furniture lifecycle only adds union narrowing */
 
 import {
-  simpleElement,
+  RUN_ELEMENT_INSERTS,
   textElement,
   textWithHyphenBuilders,
+  runElement,
   textWithHyphens,
 } from './tree-op-inline-elements.ts';
 import { characterStyleElement, emptyParagraphRunProperties } from './mark-character-style-run.ts';
@@ -232,28 +234,6 @@ import {
   promptInsertionOffset,
   restoreEmptiedPlaceholder,
 } from './content-control-prompt-restore.ts';
-
-/** The one run-level element each insert op places, shared by its tracked and untracked arms. */
-const RUN_ELEMENT_INSERTS: Readonly<
-  Record<'insertTab' | 'insertHardBreak' | 'insertPageBreak', (nextId: () => string) => OoxmlNode>
-> = {
-  insertTab: (nextId) => simpleElement(nextId, 'tab'),
-  insertHardBreak: (nextId) => simpleElement(nextId, 'br', 'line'),
-  insertPageBreak: (nextId) => simpleElement(nextId, 'br', 'page'),
-};
-
-function runElement(nextId: () => string, children: readonly OoxmlNode[]): OoxmlNode {
-  return {
-    id: nextId(),
-    kind: 'run',
-    namespaceUri: WML_NAMESPACE_URI,
-    localName: 'r',
-    prefix: 'w',
-    namespaceBindings: [],
-    attributes: [],
-    children,
-  } as unknown as OoxmlNode;
-}
 
 /**
  * Apply one validated op to a part.
@@ -520,6 +500,7 @@ function applyValidatedTreeOp(part: OoxmlPart, op: TreeDocOp, options?: EditOpti
         paragraph,
         op.offset,
         textWithHyphenBuilders(op.text),
+        op.text.length,
         options,
         op.inside,
         op.bias
@@ -533,7 +514,7 @@ function applyValidatedTreeOp(part: OoxmlPart, op: TreeDocOp, options?: EditOpti
       if (op.revision) {
         return applyInsertTrackedElement(part, paragraph, op.offset, element, op.revision, options);
       }
-      return applyInsertContent(part, paragraph, op.offset, [element], options);
+      return applyInsertContent(part, paragraph, op.offset, [element], 1, options);
     }
     case 'setListLevel':
       return applySetListLevel(part, paragraph, op.level, options, nextId, op.revision);
@@ -583,7 +564,14 @@ function applyValidatedTreeOp(part: OoxmlPart, op: TreeDocOp, options?: EditOpti
           options
         );
       }
-      return applyInsertContent(part, paragraph, op.offset, builders, options);
+      return applyInsertContent(
+        part,
+        paragraph,
+        op.offset,
+        builders,
+        pageFieldModelLength(op.field),
+        options
+      );
     }
     case 'deleteText':
       if (op.revision) {
@@ -736,6 +724,7 @@ function applyInsertContent(
   paragraph: OoxmlParagraphNode,
   offset: number,
   builders: readonly ((mint: () => string) => OoxmlNode)[],
+  length: number,
   options?: EditOptions,
   /** The content control the caller says this content belongs to, if it named one. */
   inside?: string,
@@ -751,7 +740,6 @@ function applyInsertContent(
   }
 
   const nextId = createNodeIdAllocator(part);
-  const nodes = builders.map((build) => build(nextId));
   const segments = segmentsOf(paragraph);
   const effect: TreeOpEffect = {
     dirty: [paragraph.id],
@@ -770,6 +758,19 @@ function applyInsertContent(
   // ONE resolution of where this lands, shared with the validation that refuses it. Two copies
   // of this rule is how a lock came to be resolved against a different place than the write.
   const site = insertionDestination(paragraph, offset, owner, bias).site;
+  const committed = committedInsertionWithinRevision(
+    part,
+    paragraph,
+    offset,
+    builders,
+    length,
+    site,
+    options,
+    owner,
+    bias
+  );
+  if (committed) return finishContentEdit(committed, control, options);
+  const nodes = builders.map((build) => build(nextId));
 
   // Plain typing changes the existing leaf, rather than copying its text into newly
   // minted containers. Shared split ranges address that leaf, including after formatting

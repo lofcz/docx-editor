@@ -1,0 +1,16 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Untracked text typed inside a pending insertion inherited its native review wrapper and disappeared when that insertion was rejected.",
+  "after": "Committed text and run content split pending insertion ownership around the insertion point. Supported links and controls retain one stable owner, including imported metadata and nested container properties. Attributed typing keeps its existing author rules.",
+  "reason": "The canonical writer emits existing native elements and existing journal operations. No shared field or deterministic reader rule changes, so existing transport versions remain compatible. The change fixes ownership at authoring time; it does not disable tracking or invent temporary revisions. Public method signatures remain unchanged. Test-only collaboration uses the EigenPal Pro License and the production private adapter imports no Pro implementation.",
+  "tests": [
+    "packages/core/src/store/__tests__/committed-insertion-ownership.test.ts",
+    "packages/core/src/store/__tests__/tracked-edits.test.ts",
+    "packages/core/src/store/__tests__/inline-run-wrappers.test.ts",
+    "packages/sciobot/src/review/recompose-born-inline-paragraphs-shared.test.ts",
+    "packages/sciobot/src/diff/target-c01-matrix.test.ts"
+  ],
+  "changeset": "committed-insertion-ownership",
+  "migration": null
+}
