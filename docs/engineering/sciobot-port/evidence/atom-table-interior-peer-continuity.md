@@ -34,6 +34,10 @@ The actual built private SDK, core, and evaluation transport pass all 28 peer/ce
 
 Private types pass across 2,295 files. Pro types pass across 2,332 files. Builds retain 289 private modules with core external and 115 evaluation transport modules. Compatibility policy passes with 222 decisions and two changed format fields. Root lint and line caps pass. No original expectation or timeout changes.
 
+The final workspace format, lint, parity, license-header, and compatibility gates pass. Whole-workspace types fail in ten examples and benchmarks with missing dependencies, including `yjs`, Hocuspocus, OpenTelemetry, and Node types. The affected private and Pro projects pass their source type checks, including Pro's Vue program in the workspace run. No dependency installation or shared dependency change is attempted.
+
+The API snapshot check remains incomplete. Font and PDF declaration builds pass after the first missing-artifact refusal. The next check refuses missing React declarations; Vue, Pro, and editor-api declarations are also absent in this isolated checkout. No API snapshot or forgotten-export baseline is recaptured. The native runtime and compiled private checks above do not establish a complete public API gate.
+
 Logs use `/home/lofcz/.cache/sciobot-docx-native/d30-cell-interior-` with `composer-final`, `source-final`, `sdk-types-final2`, `pro-types-final2`, `sdk-build`, `pro-build-final`, `compiled-final`, `native-cost-final`, `lint`, and `policy` suffixes. The first collected-formatting failure uses `d30-cell-gap-collected-proof.log`.
 
 ## Remaining scope
