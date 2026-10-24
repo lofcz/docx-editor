@@ -69,14 +69,20 @@ const payloads = (pkg: OoxmlPackage) => {
     .map(([id, block]) => [id, block.payload])
     .sort(([a], [b]) => String(a).localeCompare(String(b)));
 };
-for (const mode of ['birth', 'remove', 'recompose-remove', 'mixed-recompose-remove'] as const)
+for (const mode of [
+  'birth',
+  'remove',
+  'recompose-remove',
+  'mixed-recompose-remove',
+  'recompose-birth',
+] as const)
   for (const clients of [
     [41, 73],
     [73, 41],
   ] as const)
     for (const decision of ['accept', 'reject'] as const)
       test(`inline native and payload ownership preserve both actor histories: ${mode}/${clients}/${decision}`, async () => {
-        const remove = mode !== 'birth';
+        const remove = mode !== 'birth' && mode !== 'recompose-birth';
         const options = {
           document: writeOoxmlPackage(
             fixture(remove, mode.includes('recompose-remove'), mode === 'mixed-recompose-remove')
@@ -101,7 +107,7 @@ for (const mode of ['birth', 'remove', 'recompose-remove', 'mixed-recompose-remo
           const controlId = remove ? buildBlockIndex(before).byId.get(payload.id)!.controlId : null;
           const oldPayloads = payloads(before);
           pair.pause();
-          if (mode.includes('recompose-remove')) {
+          if (mode.includes('recompose-remove') || mode === 'recompose-birth') {
             const revision = readEditorRevision(actor, identity.documentId, identity.epoch)!;
             const initial = await readWorkingView(actor.surface!.session, revision);
             if (!initial.success) throw Error(initial.error);
@@ -109,6 +115,11 @@ for (const mode of ['birth', 'remove', 'recompose-remove', 'mixed-recompose-remo
               /<scio-mention\b[^>]*\/>|\[Ada\]\(mention:user-7\)/g,
               ''
             );
+            if (mode === 'recompose-birth')
+              target = initial.view.projection.text.replace(
+                '  ',
+                ' <scio-mention key="user-7" value="Ada" /> '
+              );
             if (mode === 'mixed-recompose-remove') {
               target = target.replace('Lead', 'Changed').replace('Tail', '**Finish**');
               const planned = planTargetDocument(
@@ -125,7 +136,10 @@ for (const mode of ['birth', 'remove', 'recompose-remove', 'mixed-recompose-remo
               actor,
               { revision, targetMarkdown: target, ownership: [] },
               { ...identity, ...attribution },
-              { payloads: { presence: { proposalId: attribution.id } } }
+              {
+                target: { allocateBlockId: () => payload.id },
+                payloads: { presence: { proposalId: attribution.id } },
+              }
             );
             if (!recomposed.success) throw Error(recomposed.error);
             expect(recomposed.committed).toBe(true);

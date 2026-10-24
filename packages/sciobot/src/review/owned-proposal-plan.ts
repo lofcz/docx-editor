@@ -37,7 +37,7 @@ export interface OwnedProposalGroup {
 
 export type OwnedProposalInverse = Extract<
   TreeDocOp,
-  { op: 'rejectAllRevisions' | 'removeContentControl' }
+  { op: 'rejectAllRevisions' | 'removeContentControl' | 'setContentControlProperties' }
 >;
 
 /** A revision-bound inverse plan. It contains addresses and intents, never canonical snapshots. */
@@ -137,6 +137,7 @@ export function planOwnedProposalRemoval(
     if (selected.some((group) => !matchesOwnership(group, owned.get(group.id)!)))
       return fail('Owned receipts do not match the complete current group.', 'ambiguous-target');
 
+    const beforeByPart = new Map<string, OwnedProposalInverse[]>();
     const presenceByPart = new Map<string, OwnedProposalInverse[]>();
     const sitesByPart = new Map<string, Set<string>>(),
       propertyDecisions: OwnedProposalRemovalPlan['propertyDecisions'][number][] = [],
@@ -158,6 +159,20 @@ export function planOwnedProposalRemoval(
             'reject'
           );
           if (!prepared.success) return prepared;
+          if (prepared.beforeOps?.length) {
+            const prefix = beforeByPart.get(prepared.partName) ?? [];
+            for (const op of prepared.beforeOps) {
+              if (
+                op.op !== 'setContentControlProperties' ||
+                op.lock !== 'unlocked' ||
+                op.tag !== undefined ||
+                op.alias !== undefined
+              )
+                return fail('An owned inline lock release is invalid.');
+              prefix.push(op);
+            }
+            beforeByPart.set(prepared.partName, prefix);
+          }
           if (prepared.nativeSiteNodeIds) {
             const expected = expectedPropertySites.get(prepared.partName) ?? new Set<string>();
             for (const id of prepared.nativeSiteNodeIds) expected.add(id);
@@ -228,7 +243,14 @@ export function planOwnedProposalRemoval(
       const part = source.pkg.parts.get(name);
       if (!part) return fail('An owned revision part is missing.', 'invalid-document');
       const op: OwnedProposalInverse = { op: 'rejectAllRevisions', siteNodeIds: [...ids] };
-      const preview = applyTreeOp(part, op);
+      const prefix = beforeByPart.get(name) ?? [];
+      let unlocked = part;
+      for (const release of prefix) {
+        const next = applyTreeOp(unlocked, release);
+        if (!next.ok) return fail('Owned inline lock release refused.', 'unsupported-operation');
+        unlocked = next.part;
+      }
+      const preview = applyTreeOp(unlocked, op);
       if (!preview.ok)
         return fail(`Owned revision inverse refused: ${preview.reason}.`, 'unsupported-operation');
       const before = collectRevisionSites(part),
@@ -255,7 +277,7 @@ export function planOwnedProposalRemoval(
       }
       if ([...after.keys()].some((nodeId) => !beforeIds.has(nodeId)))
         return fail('Owned removal would introduce an unrelated revision.', 'ambiguous-target');
-      partOps.push({ partName: name, ops: [op] });
+      partOps.push({ partName: name, ops: [...prefix, op] });
     }
     for (const [partName, ops] of presenceByPart) {
       let part = source.pkg.parts.get(partName);

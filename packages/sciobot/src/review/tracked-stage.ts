@@ -1,3 +1,4 @@
+import { stageTrackedAtoms } from './tracked-stage-atoms';
 import { stageTrackedInlineRemoval } from './tracked-stage-inline-removal';
 import { insertedAtomsOfEdit } from '../diff/inserted-cell-atoms';
 import { createDirectListContext } from '../ai/direct-lists';
@@ -38,7 +39,11 @@ export function stageTrackedPlan(
   revision: TrackedStageAttribution,
   trackFormatting: boolean
 ): readonly ReviewGroupReceipt[] {
-  if (plan.operations.some((edit) => insertedAtomsOfEdit(edit).length > 0))
+  if (
+    plan.operations.some(
+      (edit) => edit.kind !== 'inline-atoms' && insertedAtomsOfEdit(edit).length > 0
+    )
+  )
     refuseWrite(
       'Inserted inline atoms need native asset and payload reconciliation.',
       'unsupported-operation'
@@ -215,6 +220,19 @@ export function stageTrackedPlan(
       );
       at++;
       continue;
+    } else if (edit.kind === 'inline-atoms') {
+      const identity = key(edit.partName, edit.paragraphId);
+      const mapping =
+        coordinates.get(identity) ??
+        stagedParagraphCoordinates(writer, edit.partName, edit.paragraphId, unselectedSites);
+      coordinates.set(
+        identity,
+        stageTrackedAtoms(writer, edit, revision, unselectedSites, atomSites, mapping, (scope) => {
+          const values = scopes.get(identity) ?? new Set<string>();
+          values.add(scope);
+          scopes.set(identity, values);
+        })
+      );
     } else if (edit.kind === 'format') {
       if (!trackFormatting)
         refuseWrite(

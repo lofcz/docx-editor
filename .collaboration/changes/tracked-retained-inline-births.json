@@ -1,0 +1,15 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "The AI target coordinator refused inline births in retained paragraphs. Its owned inverse did not release a managed birth's host content lock before native rejection.",
+  "after": "Retained inline math, mention, and source births use explicit native insertion wrappers and complete payload presence ownership. Target marks are authored inside the born control. Existing matching interior hyperlink ownership is retained. Exact owned inverses release the host content lock before removing a birth during later AI waves.",
+  "reason": "The private stage uses actual native operations and the established schema 3 presence profile. No candidate lowerer runs inside observed transactions. Existing native wire fields and application record versions remain unchanged. New-paragraph births, image resources, arbitrary link placement, and an inherited offline suffix placement regression remain open.",
+  "tests": [
+    "packages/sciobot/src/review/recompose-inline-births.test.ts",
+    "packages/sciobot/src/review/inline-presence-collaboration.test.ts",
+    "packages/sciobot/src/review/owned-proposal-plan.test.ts",
+    "packages/sciobot/src/review/owned-presence-shared.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}
