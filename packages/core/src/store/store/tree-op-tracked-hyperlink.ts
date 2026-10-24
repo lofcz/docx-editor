@@ -1,3 +1,4 @@
+import { copyTrackedText } from './tracked-text-copy.ts';
 // Tracked hyperlink RETARGETING, in Word's content revision markup.
 //
 // Word has no property-change record for a link's target or tooltip: re-aiming a link while
@@ -24,7 +25,7 @@ import {
 import { runWithoutJournalCapture } from '../package/canonical-primitive-capture.ts';
 import { WML_NAMESPACE_URI, type OoxmlNode, type OoxmlPart } from '../package/ooxml-tree.ts';
 import { build, revisionAttributes } from './tree-op-tracked-builders.ts';
-import { cloneWithNewIds, fromEdit, ok, parentOf, TEXT_DEPS } from './tree-op-nodes.ts';
+import { fromEdit, ok, parentOf, TEXT_DEPS } from './tree-op-nodes.ts';
 import { invalidRevisionAttribution } from './tree-op-revision-attribution.ts';
 import { nextRevisionId } from './tree-op-revision-ids.ts';
 import { paragraphOffsetIndex } from './tree-op-segments.ts';
@@ -127,7 +128,7 @@ export function applyTrackedHyperlinkTarget(
         'revisionInsert',
         'ins',
         revisionAttributes(insertionId, revision),
-        copied.map((child) => cloneWithNewIds(child, mint))
+        copyTrackedText(copied, copied, mint)
       ),
     ],
   }) as OoxmlNode;

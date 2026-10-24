@@ -568,6 +568,8 @@ Additional WIP evidence: [tracked atoms in born paragraphs](evidence/tracked-bor
 
 [Interior peer typing regression](evidence/linked-source-peer-regression.md) exposes misplaced text during concurrent link proposals. Source and compiled checks each pass the four outside-range cases and fail the four interior cases. The verified writer remains unchanged; preserving source leaf identity alone hides peer text in a deleted branch and is not a fix.
 
+[Native copy provenance WIP](evidence/tracked-text-copy-recipes.md) records exact source recipes for both hyperlink review copies. All 77 native cases pass. The isolated transport still fails the four interior peer cases; paired review copies and causal revision membership remain required.
+
 ## D31
 
 - [x] Plan inline code marks through the native representation

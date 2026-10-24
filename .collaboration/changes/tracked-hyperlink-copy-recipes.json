@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Tracked hyperlink copies discarded native source-slice provenance while copying historical and proposed text.",
+  "after": "Both native review copies carry exact existing journal sourceText recipes. Native text snapshots keep independent node identities and preserve their actual source positions.",
+  "reason": "This isolated WIP uses the existing transaction-local sourceText recipe shape. It changes no public API or shared format field. Shared interior peer cases remain failing; no room or application cutover is claimed. The paired-copy reader remains future work.",
+  "tests": [
+    "packages/core/src/store/__tests__/tracked-text-copy.test.ts",
+    "packages/core/src/store/__tests__/tracked-hyperlink-structure.test.ts",
+    "packages/sciobot/src/review/recompose-linked-inline-births-shared.test.ts"
+  ],
+  "changeset": "tracked-hyperlink-copy-recipes",
+  "migration": null
+}

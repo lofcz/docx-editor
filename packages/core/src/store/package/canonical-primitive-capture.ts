@@ -282,6 +282,32 @@ export function recordNativeTextSlice(source: TextLeaf, target: TextLeaf, start:
   rememberPieces(target, sourcePieces(source, start, target.value.length));
 }
 
+/** Record a position-proven concatenation without lending suppressed preview objects to a live journal. */
+export function recordNativeTextSlices(
+  slices: readonly { readonly source: TextLeaf; readonly start: number; readonly length: number }[],
+  target: TextLeaf
+): void {
+  if (!isCanonicalPrimitiveCaptureActive()) return;
+  let offset = 0;
+  const pieces: NonNullable<CanonicalTextNodeDescriptor['sourceText']>[number][] = [];
+  for (const { source, start, length } of slices) {
+    if (
+      !Number.isSafeInteger(start) ||
+      !Number.isSafeInteger(length) ||
+      start < 0 ||
+      length < 0 ||
+      start + length > source.value.length ||
+      target.value.slice(offset, offset + length) !== source.value.slice(start, start + length)
+    )
+      throw Error('Native text copy does not match its actual source slices.');
+    for (const piece of sourcePieces(source, start, length)) pieces.push(piece);
+    offset += length;
+  }
+  if (offset !== target.value.length)
+    throw Error('Native text copy has an incomplete source recipe.');
+  rememberPieces(target, pieces);
+}
+
 /** Coalescing keeps every original character and every newly authored character distinct. */
 export function recordNativeTextMerge(left: TextLeaf, right: TextLeaf, target: TextLeaf): void {
   if (!isCanonicalPrimitiveCaptureActive()) return;

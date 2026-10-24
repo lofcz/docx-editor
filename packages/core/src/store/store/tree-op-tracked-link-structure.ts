@@ -1,3 +1,4 @@
+import { copyTrackedText } from './tracked-text-copy.ts';
 import { ownsInlineRevision } from './inline-transaction-state.ts';
 import {
   createNodeIdAllocator,
@@ -8,7 +9,7 @@ import {
 import { runWithoutJournalCapture } from '../package/canonical-primitive-capture.ts';
 import { WML_NAMESPACE_URI, type OoxmlNode, type OoxmlPart } from '../package/ooxml-tree.ts';
 import { build, revisionAttributes } from './tree-op-tracked-builders.ts';
-import { cloneWithNewIds, fromEdit, parentOf, TEXT_DEPS } from './tree-op-nodes.ts';
+import { fromEdit, parentOf, TEXT_DEPS } from './tree-op-nodes.ts';
 import { paragraphOffsetIndex, type Segment } from './tree-op-segments.ts';
 import { invalidRevisionAttribution } from './tree-op-revision-attribution.ts';
 import { nextRevisionId } from './tree-op-revision-ids.ts';
@@ -207,13 +208,13 @@ export function applyTrackedHyperlinkStructure(
   let insertionId: string | undefined, deletionId: string | undefined;
   const insertion = () => (insertionId ??= revisionId());
   const deletion = () => (deletionId ??= revisionId());
-  const inserted = (children: readonly OoxmlNode[]) =>
+  const inserted = (children: readonly OoxmlNode[], sources = children) =>
     build(
       mint(),
       'revisionInsert',
       'ins',
       revisionAttributes(insertion(), op.revision),
-      children.map((child) => cloneWithNewIds(child, mint))
+      copyTrackedText(children, sources, mint)
     );
   const strike = (nodes: readonly OoxmlNode[]): OoxmlNode[] => {
     const result: OoxmlNode[] = [];
@@ -232,7 +233,7 @@ export function applyTrackedHyperlinkStructure(
         continue;
       }
       if (node.kind === 'revisionInsert') continue;
-      const copied = cloneWithNewIds(node, mint);
+      const copied = copyTrackedText([node], [node], mint)[0]!;
       if (proof(copied)) {
         runs.push(copied);
         continue;
@@ -312,11 +313,6 @@ export function applyTrackedHyperlinkStructure(
     if (link?.kind !== 'hyperlink') return { ok: false, reason: 'tree-invariant' };
     const content = proposedHyperlinkContent(link.children);
     if (!content.some((child) => !proof(child))) return { ok: false, reason: 'unsupported' };
-    proposal = {
-      ...link,
-      id: mint(),
-      children: [inserted(content)],
-    } as OoxmlNode;
     const index = paragraphOffsetIndex(paragraph),
       before: OoxmlNode[] = [],
       selected: OoxmlNode[] = [],
@@ -350,6 +346,10 @@ export function applyTrackedHyperlinkStructure(
       for (const piece of pieces[1]!) selected.push(piece);
       for (const piece of pieces[2]!) after.push(piece);
     }
+    const sources = proposedHyperlinkContent(
+      selected.filter((node) => !deletedCurrentLink(node, options))
+    );
+    proposal = { ...link, id: mint(), children: [inserted(content, sources)] } as OoxmlNode;
     children = [...before, ...strike(selected), proposal, ...after];
   }
   const result = fromEdit(replaceChildren(part, paragraph.id, children, options), {
