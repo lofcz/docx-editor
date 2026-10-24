@@ -1,0 +1,35 @@
+# Bound native property groups
+
+N08 remains open. No leaf closes in this checkpoint.
+
+## Persisted ownership and native review
+
+The internal property history factory binds receipts during their proposal's original native transaction. The binding stores exact field and flag intent IDs and immutable Word group membership. It excludes unrelated group metadata and application records. It reserves retained group slots and complete record bytes before canonical edits. Deleted binding keys retain their undo capacity.
+
+Native publication replaces temporary canonical IDs with shared logical IDs. Receipt selection resolves new property descendants through their stable existing containers. It includes scalar attributes, namespace bindings, child edges, and removal flags. The attribute separator matches the pinned native format.
+
+The existing `rejectReviewGroup` API consumes a bound receipt when the internal capability exists. It withdraws the selected ownership and tombstones that exact group in one native transaction. The supported default factory still exposes no property ownership capability. The supported factory does not establish production closure.
+
+## Numbering identities
+
+Native list membership changes retain existing `numPr`, `ilvl`, and `numId` identities. Level changes retain the original `ilvl` identity. Both operations preserve unknown attributes, namespace bindings, and children. Foreign children named `ilvl` remain foreign metadata. Missing Word scalar nodes allocate only their new identities in schema order.
+
+This prevents observed peer edits from depending on replacement numbering subtrees. Existing readers already understand the emitted attribute and child primitives. The native format remains `docx-collaboration:1.9.14.1`. The published change has a patch Changeset and a separate compatible decision.
+
+## Evidence
+
+Eight real native cases cover both client orders, observed and disconnected peer edits, and cold pending-room reopening. A separate pending Bot text proposal remains exact through rejection. The expected main part comes from an independent Word operation over the original tree. No peer values are copied into historical property snapshots.
+
+The original proposal emits one native publication containing its binding and native field writes. One creation undo removes both proposal and binding. Redo restores their exact tree and binding bytes. Decision undo/redo restores exact pending and decided trees. Bob's independent undo restores original numbering after rejection. His redo restores his circle format. Cold pending-room rejection uses persisted intent IDs without the original attachment receipt. Saved DOCX packages converge.
+
+Six core cases use static XML oracles for direct and tracked list changes. They verify retained node identities, full unknown metadata, both decisions, and serialize/reopen. Binding tests cover schema, exact scalar and namespace selection, allocation mapping, read-only access, capacity, and history. Unknown native profiles refuse before binding or decision writes.
+
+The 103-case integration batch passes 1127 assertions across nine files. Its log is `/tmp/n08-bound-core-batch.log`. The affected native and shared regression batch passes 197 cases and 2561 assertions across ten files. Its log is `/tmp/n08-bound-numbering-regression.log`. The final publication/history batch passes 20 cases and 345 assertions across three files. Its log is `/tmp/n08-binding-publication-history.log`. The admission follow-up passes three binding cases. The final binding batch passes 26 cases and 411 assertions across five files. Its log is `/tmp/n08-binding-final-interception.log`. Two isolated processes verify both scalar/flag interceptor installation orders. Both retain complete capture and undo/redo. All shared case deadlines remain 30 seconds.
+
+The native core build passes. The private build verifies 321 modules with native core external. No collaboration bundle imports an editor runtime. Shared group limits live in a pure constants module to preserve this boundary.
+
+## Remaining requirements
+
+The binding root exists only in the explicitly selected experimental attachment. The default field-1/flag-2 production factory remains unchanged. Pending DOCX import needs portable original property ownership and fresh-room seeding. Property container and child births need complete peer-bearing ancestry behavior. Complete production admission and remaining same-value and mixed property cases need verification. The default review path retains its original conflicting-format regressions.
+
+Finish source checklist indentation, dormant checked state, sequence resets, sibling conversion, and polite restarts. Run complete N01 list parity and the required final browser/shared coverage before closing N08. No application file, migration, reference capture, or baseline changes. Backlog status remains 193 closed and 83 open across 276 leaves.

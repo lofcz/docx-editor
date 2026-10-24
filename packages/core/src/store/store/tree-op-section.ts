@@ -1,3 +1,4 @@
+import { withNumberingValue } from './tree-op-numbering-value.ts';
 // Section and list property ops (tree-ops seam).
 //
 // `w:sectPr` and `w:numPr` are the two `w:pPr` children that carry their meaning in
@@ -202,6 +203,7 @@ export function applySetSectionProperties(
  * states. A paragraph without `w:numPr` is not a list item, so there is no level to move
  * and the edit is refused — Increase Indent on a plain paragraph is a different op.
  */
+
 function applySetListLevelUntracked(
   part: OoxmlPart,
   paragraph: OoxmlParagraphNode,
@@ -221,15 +223,8 @@ function applySetListLevelUntracked(
     // own indents, so this reflows the paragraph rather than restyling it in place.
     impact: 'flow-structural',
   };
-  const ilvl = numPr.children.find(
-    (child) => child.kind !== 'textValue' && child.localName === 'ilvl'
-  );
-  const replacement = sectionElement(nextId(), 'ilvl', [wmlAttribute('val', String(level))], []);
-  if (ilvl) {
-    return fromEdit(replaceNode(part, ilvl.id, replacement, options), effect);
-  }
-  // Absent `w:ilvl` reads as level 0 (17.9.3); writing it makes the demotion explicit.
-  return fromEdit(insertChildren(part, numPr.id, 0, [replacement], options), effect);
+  const updated = withNumberingValue(numPr, 'ilvl', String(level), nextId);
+  return fromEdit(replaceNode(part, numPr.id, updated, options), effect);
 }
 
 /**
@@ -264,6 +259,15 @@ function applySetListNumberingUntracked(
     return fromEdit(removeNode(part, existing.id, options), effect);
   }
 
+  if (existing) {
+    const updated = withNumberingValue(
+      withNumberingValue(existing, 'ilvl', String(level), nextId),
+      'numId',
+      numId,
+      nextId
+    );
+    return fromEdit(replaceNode(part, existing.id, updated, options), effect);
+  }
   const numPr = sectionElement(
     nextId(),
     'numPr',
@@ -273,7 +277,6 @@ function applySetListNumberingUntracked(
       sectionElement(nextId(), 'numId', [wmlAttribute('val', numId)], []),
     ]
   );
-  if (existing) return fromEdit(replaceNode(part, existing.id, numPr, options), effect);
   if (pPr) {
     // After `w:pStyle` when there is one — the schema fixes this order.
     const afterStyle =

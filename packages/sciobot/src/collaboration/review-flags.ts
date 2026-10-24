@@ -51,6 +51,7 @@ export interface OwnedReviewFlags {
     flagWrites: number,
     receipt?: (items: readonly ReviewFlagReceipt[]) => void
   ): T;
+  currentReceipt(): readonly ReviewFlagReceipt[];
   assertRetraction(items: readonly ReviewFlagReceipt[], flagWrites?: number): void;
   retractInTransaction<T>(
     items: readonly ReviewFlagReceipt[],
@@ -123,6 +124,8 @@ function captureFlag(state: State, map: Y.Map<unknown>, key: string) {
 function install() {
   if (patched) return;
   patched = true;
+  // Another ownership scope can already wrap Map.set. Preserve that live chain.
+  const forward = Y.Map.prototype.set;
   Y.Map.prototype.set = function (key, value) {
     const state = this.doc ? attached.get(this.doc) : undefined;
     if (
@@ -133,7 +136,7 @@ function install() {
       (!state.captureOrigin || state.captureOrigin.value === state.doc._transaction?.origin)
     )
       captureFlag(state, this, key);
-    return set.call(this, key, value);
+    return forward.call(this, key, value);
   };
 }
 function normalize(state: State) {
@@ -390,6 +393,14 @@ export function attachOwnedReviewFlags(
       receipt?: (items: readonly ReviewFlagReceipt[]) => void
     ): T {
       return capture(run, flagWrites, receipt);
+    },
+    currentReceipt(): readonly ReviewFlagReceipt[] {
+      const reservation = state.reservations.at(-1);
+      return Object.freeze(
+        [...(reservation?.captured.values() ?? [])].map((id) =>
+          Object.freeze({ id, record: state.intents.get(id) as string })
+        )
+      );
     },
     assertRetraction(items: readonly ReviewFlagReceipt[], flagWrites = 0): void {
       const { targets } = prepareRetraction(items, flagWrites);

@@ -1,3 +1,6 @@
+import { freshPropertyGroupScopes } from './property-group-scopes';
+import { PROPERTY_REVIEW_PROTOTYPE } from './property-history-contract';
+import type { PropertyGroupScope } from './property-history-contract';
 import { propertyAddressKey } from './property-fallback';
 import { continueOwnedCellParagraphs } from './recompose-cell-continuity';
 import { createInlineImageRuntime } from '../native/inline-image-runtime';
@@ -230,6 +233,12 @@ function commit(
       const allowInitialization = editor.snapshot().collaborationStatus === 'inactive';
       let ownership: readonly OwnedProposalGroup[] = [];
       let contentProofs: readonly OwnedProposalContentProof[] = [];
+      const propertyOwnership =
+        surface.collaborationSession() &&
+        (surface.collaborationSession() as unknown as Record<symbol, unknown>)[
+          PROPERTY_REVIEW_PROTOTYPE
+        ];
+      let propertyScopes: readonly PropertyGroupScope[] = [];
       let flags = 0,
         fields = 0;
       const stage = (ctx: TreeTransactionContext, measure: boolean) => {
@@ -368,6 +377,13 @@ function commit(
         contentProofs = requireSuccess(
           captureOwnedProposalContentProofs(ctx.currentPackage(), current, ownership)
         ).contentProofs;
+        propertyScopes = propertyOwnership
+          ? freshPropertyGroupScopes(
+              before,
+              ctx.currentPackage(),
+              new Set(ownership.map((group) => group.groupId))
+            )
+          : [];
       };
       // A detached native coordinator also previews cleanup and package cascades. It has no live
       // subscriber, collaboration binding, or history. Only ordinary operations enter the live store.
@@ -387,8 +403,10 @@ function commit(
       preserveRemainingRevisions(last, preview.currentPackage());
       flags += groupRemovalBudget(last, preview.currentPackage());
       fields += groupReviewFieldBudget(last, preview.currentPackage());
+      const previewPropertyScopes = propertyScopes;
       ownership = [];
       contentProofs = [];
+      propertyScopes = [];
       const applied = captureReviewGroupHistory(
         surface.collaborationSession(),
         () =>
@@ -403,7 +421,8 @@ function commit(
             }
           ),
         flags,
-        fields
+        fields,
+        { preview: previewPropertyScopes, current: () => propertyScopes }
       );
       if (applied.rejected) {
         result = fail(

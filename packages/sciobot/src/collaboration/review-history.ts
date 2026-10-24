@@ -1,3 +1,4 @@
+import type { PropertyGroupPublication } from '../review/property-history-contract';
 import {
   createPropertyReviewPrototype,
   PROPERTY_REVIEW_PROTOTYPE,
@@ -106,23 +107,33 @@ function createReviewHistory(
       owned.assertHealthy();
       flags.assertHealthy();
       fields.assertHealthy();
+      properties?.assertHealthy();
     },
     {
-      capture: <T>(run: () => T, flagWrites: number, fieldWrites = 0): T => {
+      capture: <T>(
+        run: () => T,
+        flagWrites: number,
+        fieldWrites = 0,
+        publication?: PropertyGroupPublication
+      ): T => {
         assertHealthy();
         if (!properties) return flags.capture(() => fields.capture(run, fieldWrites), flagWrites);
         let fieldReceipt: readonly ReviewFieldReceipt[] = [],
           flagReceipt: readonly ReviewFlagReceipt[] = [];
-        const value = flags.capture(
-          () =>
-            fields.capture(run, fieldWrites, (items) => {
-              fieldReceipt = items;
-            }),
-          flagWrites,
-          (items) => {
-            flagReceipt = items;
-          }
-        );
+        const capture = () =>
+          flags.capture(
+            () =>
+              fields.capture(run, fieldWrites, (items) => {
+                fieldReceipt = items;
+              }),
+            flagWrites,
+            (items) => {
+              flagReceipt = items;
+            }
+          );
+        const value = publication
+          ? properties.captureGroups(capture, publication, fieldWrites, flagWrites)
+          : capture();
         properties.note({ fields: fieldReceipt, flags: flagReceipt });
         return value;
       },
@@ -171,6 +182,7 @@ function createReviewHistory(
     dispose() {
       if (disposed) return;
       disposed = true;
+      properties?.dispose();
       fields.dispose();
       flags.dispose();
       owned.dispose();

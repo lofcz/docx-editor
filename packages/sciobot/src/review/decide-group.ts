@@ -1,3 +1,9 @@
+import {
+  propertyHistoryOf,
+  readPropertyGroupReceipt,
+  combinePropertyGroupReceipts,
+} from './property-history';
+import type { PropertyReviewReceipt } from '../collaboration/property-review-prototype';
 import { preparePresenceDecision } from './prepare-presence-decision';
 import { decodeBlockPresenceRecord } from './block-presence-schema';
 import type { DocxEditorInstance } from '@docx-editor.dev/core/editor';
@@ -21,6 +27,7 @@ import { ATOMIC_REVIEW_EXECUTOR } from './property-record-schema';
 import { preparePayloadProposalDecision } from './prepare-payload-decision';
 import {
   withInitializedReviewGroupStore,
+  withoutReviewGroupRecord,
   withPayloadGroupDecisionRecord,
   withReviewGroupRecord,
 } from './group-record-store';
@@ -122,8 +129,22 @@ function commitGroupDecision(
         );
         return { committed: false, reason: result.error };
       }
+      const propertyHistory = propertyHistoryOf(surface.collaborationSession());
+      const propertyReceipts: PropertyReviewReceipt[] = [];
+      const withdrawnGroups = new Set<string>();
+      if (input.decision === 'reject' && propertyHistory) {
+        for (const group of selected) {
+          const receipt = readPropertyGroupReceipt(propertyHistory, group);
+          if (receipt) {
+            propertyReceipts.push(receipt);
+            withdrawnGroups.add(group.id);
+          }
+        }
+      }
       const selectedSites = new Map<string, Set<string>>();
-      for (const member of selected.flatMap((group) => group.native)) {
+      for (const member of selected
+        .filter((group) => !withdrawnGroups.has(group.id))
+        .flatMap((group) => group.native)) {
         const ids = selectedSites.get(member.partName) ?? new Set<string>();
         for (const id of member.siteNodeIds) ids.add(id);
         selectedSites.set(member.partName, ids);
@@ -141,6 +162,16 @@ function commitGroupDecision(
         ])
       );
       const edits: ((pkg: OoxmlPackage) => OoxmlPackage)[] = [];
+      for (const groupId of withdrawnGroups) {
+        if (!groupId.startsWith('g1:stored:'))
+          throw new Error('Property ownership needs a stored native group.');
+        const id = groupId.slice('g1:stored:'.length);
+        edits.push((working) => {
+          const removed = withoutReviewGroupRecord(working, id);
+          if (!removed.ok) throw new Error(removed.reason);
+          return removed.pkg;
+        });
+      }
       const proposals = readPropertyReviewStore(pkg);
       for (const group of selected) {
         const expectedPropertySites = new Map<string, Set<string>>();
@@ -289,23 +320,33 @@ function commitGroupDecision(
           fieldWrites += groupReviewFieldBudget(previewPackage, next);
           previewPackage = next;
         }
-      const applied = captureReviewGroupHistory(
-        collaboration,
-        () =>
-          surface.session.applyTreeOps(
-            [],
-            undefined,
-            undefined,
-            { kind: 'body' },
-            {
-              historyToken,
-              partOps: [...partOps].map(([partName, ops]) => ({ partName, ops })),
-              packageEditsAfterOps: edits,
-            }
-          ),
-        flagWrites,
-        fieldWrites
-      );
+      const commit = () =>
+        captureReviewGroupHistory(
+          collaboration,
+          () =>
+            surface.session.applyTreeOps(
+              [],
+              undefined,
+              undefined,
+              { kind: 'body' },
+              {
+                historyToken,
+                partOps: [...partOps].map(([partName, ops]) => ({ partName, ops })),
+                packageEditsAfterOps: edits,
+              }
+            ),
+          flagWrites,
+          fieldWrites
+        );
+      const applied =
+        propertyReceipts.length && propertyHistory
+          ? propertyHistory.withdrawDuringPublication(
+              combinePropertyGroupReceipts(propertyReceipts),
+              commit,
+              flagWrites,
+              fieldWrites
+            )
+          : commit();
       result = applied.committed
         ? { success: true, revision: { ...current, revision: surface.session.packageRevision() } }
         : fail(String(applied.reason ?? 'The group decision did not commit.'), 'apply-failed');

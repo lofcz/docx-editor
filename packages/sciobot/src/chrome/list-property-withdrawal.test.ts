@@ -63,11 +63,12 @@ for (const clients of [
         PROPERTY_REVIEW_PROTOTYPE
       ] as PropertyReviewPrototype;
       pair.pause();
-      expect(setManualList(alice!, 'decimal', context).success).toBe(true);
+      const proposed = setManualList(alice!, 'decimal', context);
+      if (!proposed.success) throw new Error(proposed.error);
       collect(a.session.part().root);
       const receipt = propertyScopedReceipt(pair.documents[0]!, properties.latest()!, propertyIds);
       expect(receipt.fields.length).toBeGreaterThan(0);
-      expect(receipt.flags.length).toBeGreaterThan(0);
+      expect(receipt.flags).toHaveLength(0);
       expect(setManualList(bob!, 'circle', context).success).toBe(true);
       const expected = canonicalOoxmlFingerprint(b.session.part());
 
@@ -85,7 +86,7 @@ for (const clients of [
       let invalidCalled = false;
       expect(() =>
         properties.withdrawDuringPublication(
-          { fields: receipt.fields, flags: [receipt.flags[0]!, receipt.flags[0]!] },
+          { flags: [], fields: [receipt.fields[0]!, receipt.fields[0]!] },
           () => {
             invalidCalled = true;
           }

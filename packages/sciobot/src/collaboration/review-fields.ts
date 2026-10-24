@@ -1,3 +1,4 @@
+import { PROPERTY_GROUP_RECEIPTS } from './property-group-codec';
 import { nativeBirthFieldCreation } from './review-birth-field-retention';
 // Application-owned review string fields over pinned MIT Yjs.
 // Pinned retained-birth interoperability stays in review-sequence-retention.ts.
@@ -95,6 +96,7 @@ function decodeFieldRetraction(id: string, raw: unknown): ReviewFieldReceipt {
 const NORMALIZE = Symbol('sciobot-review-field-normalization');
 const attached = new WeakMap<Y.Doc, State>();
 const excluded = new Set([
+  PROPERTY_GROUP_RECEIPTS,
   REVIEW_FIELD_TARGETS,
   REVIEW_FIELD_INTENTS,
   REVIEW_FIELD_RETRACTIONS,
@@ -746,6 +748,14 @@ export function attachOwnedReviewFields(doc: Y.Doc, options: OwnedReviewFieldOpt
       receipt?: (items: readonly ReviewFieldReceipt[]) => void
     ): T {
       return capture(run, fieldWrites, receipt);
+    },
+    currentReceipt(): readonly ReviewFieldReceipt[] {
+      const reservation = state.reservations.at(-1);
+      return Object.freeze(
+        [...(reservation?.captured.values() ?? [])].map((id) =>
+          Object.freeze({ id, record: state.intents.get(id)! })
+        )
+      );
     },
     assertRetraction(items: readonly ReviewFieldReceipt[], fieldWrites = 0): void {
       const { targets } = prepareRetraction(items, fieldWrites);

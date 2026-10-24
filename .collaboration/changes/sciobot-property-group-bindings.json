@@ -1,0 +1,20 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "The internal property withdrawal proof holds its latest receipt only for one attachment lifetime and drives a native group tombstone directly. The supported history factory does not enable conditional property withdrawal.",
+  "after": "The explicitly selected internal factory binds exact field and flag intent IDs to immutable native review group membership during the original native Yjs transaction. The ordinary rejectReviewGroup API consumes these bindings only when this internal capability exists. Cold pending-room sessions can reject a bound group while preserving a separate AI suggestion, peer formatting, and both histories. The supported history factory still selects field protocol 1 and flag protocol 2 and exposes no property ownership capability. Field and flag interceptors forward the existing setter chain when internal scopes attach in either order.",
+  "reason": "The new binding root and its interpretation are confined to the unreleased experimental field-2/flag-3 attachment. No package entry exports or default production attachment enables that factory. Default proposal and decision paths do not build or consume property scopes. The shared native format stays 1.9.14.1. The separate numbering writer correction has its own compatible decision and published patch Changeset. Binding records reuse the existing 10000 group-slot bound and 8 MiB bounded-record limit, and retain removed Yjs keys for undo capacity. Field and flag numeric limits stay unchanged. A private empty Changeset records this adapter work. No room is upgraded, migrated, or reseeded automatically. Pending DOCX import, peer-bearing property births, remaining source list behaviors, and production admission remain unfinished. The interception repair corrects writer capture using the existing field and flag representations. Existing readers retain the same meaning for these records; no reader repair or protocol interpretation changes. The default supported history factory already attaches flags before fields and keeps its established behavior.",
+  "tests": [
+    "packages/sciobot/src/chrome/list-property-group-decisions.test.ts",
+    "packages/sciobot/src/chrome/list-property-withdrawal.test.ts",
+    "packages/sciobot/src/collaboration/property-group-bindings.test.ts",
+    "packages/sciobot/src/review/group-record-store.test.ts",
+    "packages/sciobot/src/review/accept-group.test.ts",
+    "packages/sciobot/src/review/reject-group.test.ts",
+    "packages/sciobot/src/review/replace-owned-proposals.test.ts",
+    "packages/sciobot/src/review/replace-owned-proposals-collaboration.test.ts",
+    "packages/sciobot/src/collaboration/review-interception-order.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

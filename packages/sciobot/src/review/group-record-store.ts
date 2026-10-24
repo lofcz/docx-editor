@@ -1,3 +1,5 @@
+import { REVIEW_GROUP_STORE_LIMITS } from './group-record-limits';
+export { REVIEW_GROUP_STORE_LIMITS } from './group-record-limits';
 import {
   customXmlDataParts,
   customXmlNodes,
@@ -21,11 +23,7 @@ import {
 
 export const REVIEW_GROUP_STORE_NAMESPACE = 'urn:sciobot:docx:review-groups:1';
 export const REVIEW_GROUP_STORE_ROOT = 'groups';
-export const REVIEW_GROUP_STORE_LIMITS = Object.freeze({
-  maxRecords: 10_000,
-  maxNodeSlots: 50_000,
-  maxBytes: 8 * 1024 * 1024,
-});
+
 const REMOVED = 'removed';
 export interface StoredReviewGroupRecord {
   readonly id: string;

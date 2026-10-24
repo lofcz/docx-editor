@@ -1,0 +1,19 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Changing list membership replaces the complete numPr subtree, and changing list level replaces ilvl. These writes discard unknown numbering metadata and replace native identities that collaborative property ownership needs.",
+  "after": "Existing numPr, ilvl, and numId nodes retain their identities. Existing attributes, children, namespace bindings, and foreign same-name metadata survive. Missing numbering values allocate only their new scalar nodes in schema order. Tracked property snapshots retain their existing accept/reject behavior.",
+  "reason": "This corrects native writer construction using already-supported attribute updates and child insertion primitives. It changes no serialized schema, ownership protocol, journal kind, reader repair rule, or canonical model. Existing readers already interpret these native node and attribute writes. Older writers retain their existing replacement behavior; this correction does not require old writers to implement the fix. The Word membership and level values keep their existing meaning. Static full-tree oracles verify unknown metadata and both review decisions. Real sessions verify observed and disconnected peer formatting, creation and decision histories, cold pending rooms, unrelated AI groups, and saved convergence through the internal conditional ownership path. No format bump, room migration, reference capture, or application write occurs.",
+  "tests": [
+    "packages/core/src/store/__tests__/list-numbering-identity.test.ts",
+    "packages/core/src/store/__tests__/tree-ops.test.ts",
+    "packages/core/src/store/__tests__/revision-resolve.test.ts",
+    "packages/core/src/store/__tests__/revision-legacy-numbering.test.ts",
+    "packages/sciobot/src/chrome/list-property-group-decisions.test.ts",
+    "packages/sciobot/src/chrome/list-property-withdrawal.test.ts",
+    "packages/sciobot/src/chrome/list-sequences.test.ts",
+    "packages/sciobot/src/chrome/list-indent-collaboration.test.ts"
+  ],
+  "changeset": "preserve-numbering-property-identities",
+  "migration": null
+}
