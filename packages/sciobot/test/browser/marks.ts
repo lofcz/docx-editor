@@ -9,7 +9,7 @@ import { createMarksToolbar, installMarkShortcuts } from '../../src/chrome/marks
 import '@docx-editor.dev/core/styles/editor.css';
 import './style.css';
 
-const fonts = await loadDefaultFonts({ families: ['Calibri', 'Consolas'] });
+const fonts = await loadDefaultFonts({ families: ['Calibri'] });
 if (fonts.failures.length) throw new Error('Packaged fonts failed.');
 const prepared = prepareNativeDocument(docxFixture('<w:p><w:r><w:t>Alpha beta</w:t></w:r></w:p>'));
 if (!prepared.success) throw new Error(prepared.error);
