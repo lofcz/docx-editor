@@ -147,3 +147,9 @@ export {
   manualTableIndent,
   createTableIndentToolbar,
 } from './chrome/table-indent';
+
+export {
+  manualSuggestionState,
+  setManualSuggestionMode,
+  createManualSuggestionToggle,
+} from './review/manual-tracking';

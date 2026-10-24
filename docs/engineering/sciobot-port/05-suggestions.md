@@ -490,7 +490,7 @@ Runtime `refs/backup/codex-r21-runtime` is commit `0b7a45d22d786c9b0fdf00031da25
 
 ## R23
 
-- [ ] Route manual suggestion mode through native tracking
+- [x] Route manual suggestion mode through native tracking
 
 **Depends:** [R04](05-suggestions.md#r04), [R05](05-suggestions.md#r05), [R06](05-suggestions.md#r06), [R14](05-suggestions.md#r14), [V01](11-verification.md#v01)
 
@@ -504,7 +504,13 @@ Runtime `refs/backup/codex-r21-runtime` is commit `0b7a45d22d786c9b0fdf00031da25
 
 **Check:** Add a focused Chromium case with real input and native selection where applicable. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** codex solo, branch `codex/react-block-proof`. **Evidence:** Implemented from `127d6be6` on `codex/react-block-proof`. `review/manual-tracking.ts` connects a native suggestion toggle without replacing the configured user author. It checks mode gates before execution, prevents deferred author requests after refusal, flushes buffered typing under its original mode, and preserves native selection. AI executors retain explicit attribution and ownership. No shared schema or public document API changes.
+
+`bun test --preload ./scripts/test/preload-dom.ts` across `manual-tracking.test.ts`, `manual-tracking-collaboration.test.ts`, `recompose.test.ts`, `recompose-mixed.test.ts`, and `recompose-collaboration.test.ts` passes 52 cases and 1134 assertions (`/tmp/sciobot-r23-native.log`). The strengthened ten manual cases pass 240 assertions (`/tmp/sciobot-r23-native-verified.log`). Complete native paragraphs, proposed bold properties, exact revision records, and configured authors survive two AI waves and both AI decisions. Same-label user/AI authors never grant ownership. Mode transitions, missing author/module refusal, exact package history, and Word reopen pass.
+
+Four real-session cases cover both client orders, concurrent AI/user edits, both AI decisions, independent peer history, reconnect, deletion during peer editing, remote selection geometry, complete native recovery, and equal saved package digests. One strengthened run hit the original five-second deadline during parallel checks. The unchanged focused files pass in 7.60 seconds total after other checks finish; deadlines and oracles stay unchanged.
+
+`bunx playwright test --config e2e/sciobot-manual-tracking.config.ts` passes two Chromium cases in 30.1 seconds (`/tmp/sciobot-r23-final-browser.log`). Real toggle clicks, typing, Backspace, bold clicks, two AI waves, accept/reject, exact history, mode-off typing, complete paragraph preservation, and equal saved Word packages pass. Private/browser type checks pass 2352/1965 files. The private build verifies 307 modules with native core external. Scoped formatting and lint pass. Compatibility decision: `.collaboration/changes/sciobot-manual-tracking.json`. Only the private adapter changes; no published release bump is required. Transport remains test-only under the EigenPal Pro License.
 
 ## R24
 

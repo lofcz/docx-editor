@@ -1,0 +1,14 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The private application adapter did not expose its manual suggestion toggle.",
+  "after": "A selection-preserving toggle checks native mode gates and flushes pending input before switching modes. The configured user author stays unchanged. AI execution retains explicit per-session attribution and ownership.",
+  "reason": "The adapter only calls existing Apache editor mode, typing, formatting and review operations. It adds no shared fields, storage, operation kinds, transport code, or public document-model API. Existing canonical revision and ownership semantics stay unchanged. Transport tests use the EigenPal Pro License.",
+  "tests": [
+    "packages/sciobot/src/review/manual-tracking.test.ts",
+    "packages/sciobot/src/review/manual-tracking-collaboration.test.ts",
+    "e2e/sciobot-manual-tracking.spec.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}
