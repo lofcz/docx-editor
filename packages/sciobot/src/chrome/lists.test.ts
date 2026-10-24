@@ -118,7 +118,7 @@ test('manual checkbox creation, checked state, nesting and conversion retain nat
 });
 
 for (const style of [...LIST_STYLES, 'todo'] as const)
-  test(`${style} toggle removes only captured list membership`, () => {
+  test(`native ${style} toggle removes only native list membership`, () => {
     const editor = fixture();
     try {
       const s = editor.surface!,

@@ -12,14 +12,14 @@ const META = 'docx-package-meta-v1',
   NODES = 'docx-package-nodes-v1',
   ATTRS = 'docx-package-attributes-v1';
 const key = (id: string, ns: string, name: string) => [id, ns, name].join('\u001f');
-function fixture(repair = 13) {
+function fixture(repair = 14) {
   const doc = new Y.Doc();
   const meta = doc.getMap(META),
     nodes = doc.getMap<Y.Map<unknown>>(NODES),
     attrs = doc.getMap<string>(ATTRS);
   for (const [name, value] of Object.entries({
     protocolVersion: 1,
-    sharedSchemaVersion: 7,
+    sharedSchemaVersion: 8,
     repairVersion: repair,
     canonicalModelVersion: 1,
   }))
@@ -83,7 +83,7 @@ test('native birth constructor fields stay outside conditional scalar ownership;
   }
 });
 
-for (const repair of [12, 14])
+for (const repair of [13, 15])
   test(`constructor fields remain conditional outside exact repair ${repair}`, () => {
     const f = fixture(repair);
     try {

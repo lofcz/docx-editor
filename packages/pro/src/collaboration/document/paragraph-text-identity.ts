@@ -48,6 +48,8 @@ export interface TextIdentities {
   readonly moved: readonly boolean[];
   /** Whether the character at each position is a copy an undo or redo put back. */
   readonly restored: readonly boolean[];
+  /** Restored typing in its original shared text can still follow a later split. */
+  readonly followingOriginal?: readonly boolean[];
   /**
    * Whether a participant deleted the character at each position (`paragraph-text-deletions`):
    * a copy of it a peer made at the same time shows nowhere.
@@ -235,6 +237,7 @@ export function textIdentities(text: Y.Text): TextIdentities {
   const origins: (string | null)[] = [];
   const moved: boolean[] = [];
   const restored: boolean[] = [];
+  const followingOriginal: boolean[] = [];
   const deleted: boolean[] = [];
   const deletions = text.doc ? textDeletionsOf(text.doc) : null;
   const anchors: (readonly FollowAnchor[] | null)[] = [];
@@ -257,7 +260,15 @@ export function textIdentities(text: Y.Text): TextIdentities {
       isText && marks.origin('move', item.id.client, clock) !== null;
     const restoredAt = (clock: number): boolean =>
       isText && !movedAt(clock) && marks.origin('restore', item.id.client, clock) !== null;
-    const isCopy = movedAt(item.id.clock) || restoredAt(item.id.clock);
+    const restoredTypingAt = (clock: number): boolean => {
+      if (!doc || !restoredAt(clock)) return false;
+      const [client, origin] = identityParts(marks, item.id.client, clock);
+      const source = structAt(doc, { client, clock: origin });
+      // Collected strings and formatting clocks can merge. Only their retained parent is stable.
+      return source instanceof Y.Item && source.parent === text;
+    };
+    const isCopy =
+      movedAt(item.id.clock) || (restoredAt(item.id.clock) && !restoredTypingAt(item.id.clock));
     const stored = placed ? marks.follow(item.id.client, item.id.clock) : null;
     const follow =
       stored && stored.identity !== STAY
@@ -304,6 +315,10 @@ export function textIdentities(text: Y.Text): TextIdentities {
       moved.push(movedAt(item.id.clock + offset));
       const isRestored = restoredAt(item.id.clock + offset);
       restored.push(isRestored);
+      followingOriginal.push(
+        !movedAt(item.id.clock + offset) &&
+          (!isRestored || restoredTypingAt(item.id.clock + offset))
+      );
       deleted.push(
         isText &&
           deletions !== null &&
@@ -323,6 +338,7 @@ export function textIdentities(text: Y.Text): TextIdentities {
     origins,
     moved,
     restored,
+    followingOriginal,
     deleted,
     anchors,
     hasAnchors,

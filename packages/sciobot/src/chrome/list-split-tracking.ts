@@ -55,6 +55,17 @@ export function completeTrackedChecklistSplit(
   if (!edit || edit.kind !== 'list')
     throw new Error('The new checklist item has no membership change.');
   stageTrackedChecklist(writer, planned.plan, edit, attribution);
+  return persistListGestureGroups(before, working, partName, allowInitialization, measure);
+}
+
+/** Preserve old ownership while grouping only the revisions added by this gesture. */
+export function persistListGestureGroups(
+  before: OoxmlPackage,
+  working: OoxmlPackage,
+  partName: string,
+  allowInitialization: boolean,
+  measure?: (before: OoxmlPackage, after: OoxmlPackage) => void
+): OoxmlPackage {
   const prior = new Set(
     collectRevisionSites(before.parts.get(partName)!).flatMap((site) => {
       const address = nativePropertyAddress(site.node);

@@ -14,6 +14,7 @@ import {
 import { planListMembership } from '../diff/lists';
 import { planParagraphFormat } from '../diff/paragraph-format';
 import { createEditPlan, type CanonicalEdit } from '../diff/plan';
+import { insertManualList } from './insert-list';
 import { paragraphIndentPatch } from './paragraph-position';
 import {
   LIST_STYLES,
@@ -230,7 +231,7 @@ function compatibleCounter(
   }
   return null;
 }
-/** Toggle the captured style; explicit turn-into actions use setManualList instead. */
+/** Toggle native membership; captured checklist indentation has a separate dispatch contract. */
 export function toggleManualList(
   editor: DocxEditorInstance,
   style: ListStyle | 'todo',
@@ -371,6 +372,9 @@ export function createListToolbar(editor: DocxEditorInstance, context: BlockComm
       'Apply list',
       () => setManualList(editor, style.value as ListStyle | 'todo' | 'none', context),
     ],
+    ['Insert bullets', () => insertManualList(editor, 'disc', context)],
+    ['Insert numbers', () => insertManualList(editor, 'decimal', context)],
+    ['Insert checklist', () => insertManualList(editor, 'todo', context)],
     ['Check item', () => setManualListChecked(editor, true, context)],
     ['Uncheck item', () => setManualListChecked(editor, false, context)],
     ['Indent list', () => adjustManualListLevel(editor, 'increase', context)],

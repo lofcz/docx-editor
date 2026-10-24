@@ -642,3 +642,14 @@ export function createSurfaceRangeEditOps(deps: SurfaceRangeEditDeps): SurfaceRa
     replacementOffset,
   };
 }
+
+/** Compose native range reads with the live surface's ordinary attribution rules. */
+export function attributedRangePlanner(
+  plan: SurfaceRangeEditOps['deleteRangePlan'],
+  attribute: (ops: readonly TreeDocOp[]) => readonly TreeDocOp[]
+): SurfaceRangeEditOps['deleteRangePlan'] {
+  return (range) => {
+    const planned = plan(range);
+    return { ...planned, ops: attribute(planned.ops) };
+  };
+}

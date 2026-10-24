@@ -1,0 +1,23 @@
+{
+  "impact": "migration-required",
+  "fields": ["sharedSchemaVersion", "repairVersion"],
+  "before": "The private toolbar had no captured list insertion actions. Restored peer typing could move into the wrong paragraph after both participants undid and redid a split, including without the application adapter.",
+  "after": "Private insertion uses native range planning and one guarded native transaction. Dependent operations retain their native journal semantics. Restored typing in its original shared text follows later moves of its neighbors, including when the original character content was collected. Moved copies retain their separate identity rules. Text shell identity stays structural. A separate ts attribute retains authored text QName, namespace bindings, and XML attributes through concurrent revision edits.",
+  "reason": "Deterministic transport projection changes repairVersion from 13 to 14. Shared schema changes from 7 to 8 for the ts text-shape attribute. Canonical model 1, native journal kinds, and existing identity marks stay unchanged. Old clients must not interpret upgraded rooms. Verified export and fresh room seeding are required for deployment; no room is migrated here. Transport remains evaluated under the EigenPal Pro License. Production insertion imports Apache core and private modules only. Shared numbered insertion uses the existing prepareNativeDocument contract before room bootstrap. The optional native stage and range-planning APIs are host infrastructure, separate from the Office-shaped document automation model. Inserted paragraph handles retain their authored Word identity across canonical address remapping.",
+  "tests": [
+    "packages/core/src/editor/__tests__/range-gesture-plan.test.ts",
+    "packages/core/src/editor/__tests__/automation-post-ops.test.ts",
+    "packages/core/src/editor/__tests__/automation-history-boundary.test.ts",
+    "packages/sciobot/src/chrome/insert-list.test.ts",
+    "packages/sciobot/src/chrome/insert-list-capture.test.ts",
+    "packages/sciobot/src/chrome/insert-list-collaboration.test.ts",
+    "packages/sciobot/src/chrome/native-split-peer.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-format.test.ts",
+    "e2e/sciobot-lists.spec.ts",
+    "packages/pro/src/collaboration/__tests__/paragraph-text-revisions.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-hostile-text-attributes.test.ts",
+    "packages/sciobot/src/collaboration/review-birth-field-retention.test.ts"
+  ],
+  "changeset": "native-range-gesture-planning",
+  "migration": "upgrade-rooms-to-format-18141"
+}

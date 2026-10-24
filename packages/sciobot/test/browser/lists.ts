@@ -2,6 +2,8 @@
 import { loadDefaultFonts } from '@docx-editor.dev/fonts';
 import {
   canonicalOoxmlFingerprint,
+  bodyStoryRoot,
+  storyParagraphs,
   directParagraphProperties,
   paragraphTextOf,
   readOoxmlPackage,
@@ -12,6 +14,7 @@ import { listDocument, listParagraph } from '../support/list-document';
 import { createListToolbar, manualListState, manualListMarker } from '../../src/chrome/lists';
 import { SCIOBOT_NATIVE_REVIEW_MODULE } from '../../src/review/native-module';
 import { readReviewGroups } from '../../src/review/groups';
+import { acceptReviewGroup } from '../../src/review/accept-group';
 import { rejectReviewGroup } from '../../src/review/reject-group';
 import { readEditorRevision } from '../../src/projection/revision-cache';
 import { installListEditing } from '../../src/chrome/list-input';
@@ -72,6 +75,15 @@ const api = {
     if (!result.success) throw new Error(result.error);
     return result.groups;
   },
+  accept(id: string) {
+    const editor = pair.editors[0]!;
+    return acceptReviewGroup(
+      editor,
+      id,
+      readEditorRevision(editor, context.documentId, context.epoch)!,
+      context
+    ).success;
+  },
   reject(id: string) {
     const editor = pair.editors[0]!;
     return rejectReviewGroup(
@@ -115,11 +127,13 @@ const api = {
     for (const e of pair.editors) {
       const read = readOoxmlPackage(new Uint8Array(await e.save()));
       if (!read.ok) throw new Error(read.reason);
+      const main = read.package.parts.get(read.package.mainDocumentPart)!;
       values.push({
         fingerprint: canonicalOoxmlFingerprint(
           read.package.parts.get(read.package.mainDocumentPart)!
         ),
         digest: semanticDigest(read.package.parts.values()),
+        paragraphs: storyParagraphs(bodyStoryRoot(main)!).map((p) => paragraphTextOf(main, p.id)),
       });
     }
     return values;

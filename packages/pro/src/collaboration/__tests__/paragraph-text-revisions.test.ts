@@ -10,7 +10,11 @@ Production use requires a commercial agreement: licensing@eigenpal.com
 import { describe, expect, test } from 'bun:test';
 import { readOoxmlPackage, type OoxmlElement, type OoxmlNode } from '@docx-editor.dev/core/store';
 import { linearizeParagraph, type LinearAttributes } from '../document/paragraph-linear.ts';
-import { decodeAttributes, encodeAttributes } from '../document/paragraph-text.ts';
+import {
+  decodeAttributes,
+  encodeAttributes,
+  STRUCTURAL_TEXT_ATTRIBUTE_KEYS,
+} from '../document/paragraph-text.ts';
 import {
   rebaseRevisions,
   revisionTrail,
@@ -53,6 +57,37 @@ const chainOf = (attributes: LinearAttributes): string[] =>
     const author = wrapper.attributes.find((attribute) => attribute.localName === 'author');
     return author ? `${wrapper.localName}:${author.value}` : wrapper.localName;
   });
+
+for (const tag of ['t', 'delText', 'instrText'])
+  test(`authored ${tag} shape survives a foreign structural text shell`, () => {
+    const original = itemsOf(`<w:p><w:r><w:${tag} xml:space="preserve"> x </w:${tag}></w:r></w:p>`);
+    const foreign = itemsOf('<w:p><w:r><w:delText>foreign</w:delText></w:r></w:p>');
+    const authored = encodeAttributes(original.items[0]!, original.id, LIMITS);
+    const moved = encodeAttributes(foreign.items[0]!, original.id, LIMITS);
+    expect(STRUCTURAL_TEXT_ATTRIBUTE_KEYS).not.toContain('ts');
+    expect(Object.keys(JSON.parse(authored.t!))).toEqual(
+      ['i', 'v'].filter((k) => Object.hasOwn(JSON.parse(authored.t!), k))
+    );
+    const merged = { ...authored, t: moved.t! };
+    const read = decodeAttributes(merged, LIMITS, original.id);
+    expect(read.text?.localName).toBe(tag);
+    expect(read.text?.kind).toBe(original.items[0]!.text!.kind);
+    expect(read.text?.attributes).toEqual(original.items[0]!.text!.attributes);
+    expect(read.text?.namespaceBindings).toEqual(original.items[0]!.text!.namespaceBindings);
+    expect(read.text?.id).toBe(decodeAttributes(moved, LIMITS, original.id).text?.id);
+    expect(read.wrap).toEqual([]);
+  });
+
+test('malformed text shape cannot replace structural identity or create a default text shell', () => {
+  const { id, items } = itemsOf('<w:p><w:r><w:t>x</w:t></w:r></w:p>');
+  const encoded = encodeAttributes(items[0]!, id, LIMITS);
+  const plain = decodeAttributes(encoded, LIMITS, id);
+  expect(decodeAttributes({ ...encoded, ts: '{' }, LIMITS, id).text).toBeNull();
+  expect(decodeAttributes({ ...encoded, ts: '[]' }, LIMITS, id).text).toBeNull();
+  expect(
+    decodeAttributes({ ...encoded, ts: '{"i":"foreign","v":"foreign"}' }, LIMITS, id).text
+  ).toEqual(plain.text);
+});
 
 describe('the shared encoding of revisions', () => {
   test('keeps each revision apart from `w`, and reads the wrapper chain back in order', () => {

@@ -69,6 +69,8 @@ export const INLINE_FIELD = 'inline';
 const KEY_RUN = 'r';
 const KEY_RUN_PROPERTIES = 'rp';
 const KEY_TEXT = 't';
+// Text identity follows structural edits. QName and attributes belong to the authored text.
+const KEY_TEXT_SHAPE = 'ts';
 /** Native run/text shells follow structural splits; visible properties keep independent ownership. @public */
 export const STRUCTURAL_TEXT_ATTRIBUTE_KEYS: readonly string[] = Object.freeze([
   KEY_RUN,
@@ -153,7 +155,9 @@ export function encodeAttributes(
     const valueId = attributes.textValueId ?? `${textId}~v`;
     const extra: { [key: string]: JsonValue } =
       valueId === `${textId}~v` ? {} : { v: encodeId(valueId, textId) };
-    out[KEY_TEXT] = JSON.stringify(shellData(attributes.text, paragraphId, TEXT_SLOT, extra));
+    const { i, ...shape } = shellData(attributes.text, paragraphId, TEXT_SLOT);
+    out[KEY_TEXT] = JSON.stringify({ i, ...extra });
+    out[KEY_TEXT_SHAPE] = JSON.stringify(shape);
   }
   if (attributes.wrap.length > MAX_JSON_DEPTH) {
     throw new SharedTextValueRefused('tree-too-deep', `${attributes.wrap.length} nested wrappers`);
@@ -460,7 +464,17 @@ function decodeUncached(
     }
   }
   const textData = parseJson(attributes[KEY_TEXT]);
-  const text = readShell(textData, paragraphId, TEXT_SLOT, limits);
+  const textShape = parseJson(attributes[KEY_TEXT_SHAPE]);
+  const text = readShell(
+    isRecord(textData) && isRecord(textShape)
+      ? { ...textShape, i: textData.i, v: textData.v }
+      : attributes[KEY_TEXT_SHAPE] === undefined
+        ? textData
+        : null,
+    paragraphId,
+    TEXT_SLOT,
+    limits
+  );
   const textValueId = text
     ? ((isRecord(textData) && textData.v !== undefined
         ? decodeId(textData.v, text.shell.id, limits)

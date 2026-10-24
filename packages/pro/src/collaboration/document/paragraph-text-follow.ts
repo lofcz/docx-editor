@@ -717,9 +717,12 @@ export class TextFollow {
       // A character that already has a shown copy shows there, not as following text, and an
       // original goes nowhere when this paragraph holds a copy of it, which follows instead.
       const isCopy = isCopyAt(identities, position);
+      const canFollow = identities.followingOriginal?.[position] ?? !isCopy;
+      const copy = id === null ? null : this.shownCopy(id);
       if (
         identities.deleted[position] ||
-        (id !== null && (this.shownCopy(id) !== null || (!isCopy && ownCopies.has(id))))
+        (id !== null &&
+          ((copy !== null && !(canFollow && copy === source)) || (!isCopy && ownCopies.has(id))))
       ) {
         open = null;
         continue;
@@ -789,7 +792,12 @@ export class TextFollow {
     let anchors: readonly FollowAnchor[] | null = null;
     identities.ids.forEach((id, position) => {
       if (identities.starts[position]) anchors = identities.anchors[position] ?? null;
-      if (!id || isCopyAt(identities, position) || !anchors) return;
+      if (
+        !id ||
+        !(identities.followingOriginal?.[position] ?? !isCopyAt(identities, position)) ||
+        !anchors
+      )
+        return;
       const holders = this.typedAnchored.get(id) ?? [];
       holders.push({ source, anchors });
       this.typedAnchored.set(id, holders);

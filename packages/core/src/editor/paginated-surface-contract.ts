@@ -2,7 +2,11 @@ import type { UnsupportedElementRule } from '../layout/unsupported-content-types
 import type { ResolvedRevisionMarkup } from '../contracts/revision-markup.ts';
 // paginated-surface.ts implements and re-exports this public surface contract.
 import type { SurfaceParagraphFormat, ParagraphPropertyEdit } from './paragraph-format-contract.ts';
-import type { TreeApplyResult, TreeDocxSessionView } from '@docx-editor.dev/core/binding';
+import type {
+  TreeApplyOptions,
+  TreeApplyResult,
+  TreeDocxSessionView,
+} from '@docx-editor.dev/core/binding';
 import type { BookmarkIndex } from '@docx-editor.dev/core/store';
 import type { StoryScope } from '../store/store/tree-package-store.ts';
 import type { TreeDocOp } from '../store/store/tree-op-types.ts';
@@ -641,7 +645,9 @@ export interface PaginatedSurface extends SurfaceBlockReservations {
     /** Start a fresh undo unit for this call. Streaming callers retain default capture behavior. */
     separateHistory?: boolean,
     /** Run package hooks after native operations when they need newly allocated identities. */
-    packageEditPhase?: 'before' | 'after'
+    packageEditPhase?: 'before' | 'after',
+    /** Stage dependent native operations after initial ops, inside the same guarded transaction. */
+    stage?: TreeApplyOptions['stage']
   ): TreeApplyResult;
   /**
    * Which revision halves this surface is SHOWING.
@@ -664,6 +670,14 @@ export interface PaginatedSurface extends SurfaceBlockReservations {
    * model aims a scripted `Replace` where typing does and can answer the span it wrote.
    */
   replacementLanding(paragraphId: string, start: number, end: number): number | null;
+  /**
+   * Plan a composite host gesture with native deletion, attribution, and replacement landing.
+   * Settles pending input without moving selection or applying the planned operations.
+   */
+  planRangeDeletion(range: SemanticSelection): {
+    readonly ops: readonly TreeDocOp[];
+    readonly replaceAt: SemanticPosition;
+  };
   /**
    * Commit review ops — accept, reject, a new comment — through the SAME path a keystroke
    * takes: layout, paint, and a caret clamped to what the document now holds.

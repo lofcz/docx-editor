@@ -164,4 +164,5 @@ export {
   manualListMarker,
   LIST_STYLES,
 } from './chrome/lists';
+export { insertManualList } from './chrome/insert-list';
 export { installListEditing } from './chrome/list-input';

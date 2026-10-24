@@ -2486,7 +2486,8 @@ export interface PaginatedSurface extends SurfaceBlockReservations {
     adjustIndent(direction: 'increase' | 'decrease'): boolean;
     applyAutomationOps(staged: (relate: (url: string) => string | null) => readonly TreeDocOp[] | null, scope?: StoryScope, packageEdits?: readonly ((pkg: OoxmlPackage) => OoxmlPackage)[], requiresReview?: boolean,
     separateHistory?: boolean,
-    packageEditPhase?: 'before' | 'after'): TreeApplyResult;
+    packageEditPhase?: 'before' | 'after',
+    stage?: TreeApplyOptions['stage']): TreeApplyResult;
     // (undocumented)
     applyDrawingOps(ops: readonly DrawingTreeDocOp[]): TreeApplyResult;
     applyHeaderFooterLifecycle(op: {
@@ -2631,6 +2632,10 @@ export interface PaginatedSurface extends SurfaceBlockReservations {
     park(): void;
     parked(): boolean;
     pasteRich(text: string, html: string | null): boolean;
+    planRangeDeletion(range: SemanticSelection): {
+        readonly ops: readonly TreeDocOp[];
+        readonly replaceAt: SemanticPosition;
+    };
     proposeTextChange(kind: 'insertion' | 'deletion' | 'replacement', text: string, author?: string): boolean;
     publishedLayout(): SemanticLayout;
     // (undocumented)

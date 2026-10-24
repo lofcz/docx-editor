@@ -1,3 +1,4 @@
+import { createSurfaceAutomation } from './surface-automation.ts';
 import {
   SurfaceInlineWidgetMetrics,
   registerSurfaceInlineWidgetMetrics,
@@ -256,7 +257,7 @@ import {
   createKeyDownHandler,
 } from './surface-input.ts';
 import { createSurfaceClipboardOps } from './surface-clipboard-ops.ts';
-import { createSurfaceRangeEditOps } from './surface-range-edit.ts';
+import { attributedRangePlanner, createSurfaceRangeEditOps } from './surface-range-edit.ts';
 import {
   carriedSelectionOf,
   createRemoteCaret,
@@ -2904,12 +2905,16 @@ export function mountPaginatedSurface(
     scope: StoryScope = storyScope(),
     checkSelection = true,
     packageEdits?: TreeApplyOptions['packageEdits'],
-    packageEditsAfterOps?: TreeApplyOptions['packageEditsAfterOps']
+    packageEditsAfterOps?: TreeApplyOptions['packageEditsAfterOps'],
+    stage?: TreeApplyOptions['stage']
   ): ReturnType<TreeDocxSession['applyTreeOps']> {
     // Settle buffered typing defensively before operations use native offsets.
     flushTypeBuffer();
     const refusal = writeRefusal(
-      ops.some(isDocumentEdit) || !!packageEdits?.length || !!packageEditsAfterOps?.length,
+      ops.some(isDocumentEdit) ||
+        !!packageEdits?.length ||
+        !!packageEditsAfterOps?.length ||
+        !!stage,
       ops,
       checkSelection
     );
@@ -2924,7 +2929,8 @@ export function mountPaginatedSurface(
       selectionAfter,
       scope,
       packageEdits,
-      packageEditsAfterOps
+      packageEditsAfterOps,
+      stage
     );
     if (checkSelection) textFormInteraction?.afterApply(result.committed);
     if (result.committed && attributed.some(isTrackedEdit)) {
@@ -2941,7 +2947,8 @@ export function mountPaginatedSurface(
     selectionAfter?: Parameters<TreeDocxSession['applyTreeOps']>[2],
     scope: StoryScope = storyScope(),
     packageEdits?: TreeApplyOptions['packageEdits'],
-    packageEditsAfterOps?: TreeApplyOptions['packageEditsAfterOps']
+    packageEditsAfterOps?: TreeApplyOptions['packageEditsAfterOps'],
+    stage?: TreeApplyOptions['stage']
   ): ReturnType<TreeDocxSession['applyTreeOps']> {
     const collaborationRefusal = collaborationSession?.gateOperations(ops, scope);
     if (collaborationRefusal) {
@@ -2965,13 +2972,14 @@ export function mountPaginatedSurface(
         ? {
             packageEdits,
             packageEditsAfterOps,
+            stage,
             origin: ORIGIN_IDS.mutationHuman,
             actorId: collaborationSession.identity.actorId,
             operationId: `${collaborationSession.identity.actorId}:${collaborationSession.sessionId}:browser:${collaborationOperationCounter}`,
             recordsHistory: false,
             historyToken: historyGroup,
           }
-        : { packageEdits, packageEditsAfterOps, historyToken: historyGroup }
+        : { packageEdits, packageEditsAfterOps, stage, historyToken: historyGroup }
     );
   }
 
@@ -4411,6 +4419,7 @@ export function mountPaginatedSurface(
 
   let destroyed = false;
   const surface: ScaleMutableSurface = {
+    planRangeDeletion: attributedRangePlanner(deleteRangePlan, trackedOps),
     session,
     // The internal gated write — see the `ScaleMutableSurface` note. The content-control
     // commands wrote `session.applyTreeOps` directly, which skipped the collaboration gate
@@ -5247,88 +5256,21 @@ export function mountPaginatedSurface(
 
     revisionDisplayMode: reviewDisplayMode,
     replacementLanding,
-    applyAutomationOps: (
-      staged,
-      scope,
-      packageEdits,
-      requiresReview = false,
-      separateHistory = false,
-      packageEditPhase = 'before'
-    ) => {
-      // Automation shares edit gates and repainting. Its story and history boundaries remain explicit.
-      let result: ReturnType<TreeDocxSession['applyTreeOps']> | null = null;
-      const story = scope ?? BODY_STORY;
-      const refusal = commit(
-        () => {
-          // Check viewing before building ops can mint relationships outside the transaction and undo stack.
-          // `edits: false` also permits revision decisions. `applyOps` checks each resulting operation.
-          const viewing = writeRefusal(false);
-          if (viewing !== null) {
-            return (result = { committed: false, rejected: true, opCount: 0, reason: viewing });
-          }
-          // The mint carries the edit rule with it: it IS an edit, so a mode that would refuse one
-          // must refuse it, and refusing here means the relationship is never written.
-          let refused: string | null = null;
-          const ops = staged((url) => {
-            const refusal = writeRefusal(true, [], false);
-            // Bound to the collaboration actor for the same reason the mint is called out above:
-            // it lands on the package outside the transaction, so nothing else would bind one, and
-            // two peers linking at once would otherwise agree on `rId${max + 1}`.
-            if (refusal === null) {
-              return runWithTransactionActor(collaborationSession?.identity.actorId, () =>
-                session.ensureHyperlinkRelationship(url, story)
-              );
-            }
-            refused = refusal;
-            return null;
-          });
-          if (ops === null) {
-            return (result = {
-              committed: false,
-              rejected: true,
-              opCount: 0,
-              reason: refused ?? 'this engine will not author that hyperlink target',
-            });
-          }
-          if (!options.reviewModel && (requiresReview || ops.some(isTrackedEdit))) {
-            return (result = {
-              committed: false,
-              rejected: true,
-              opCount: 0,
-              reason: 'review-module-required',
-            });
-          }
-          return (result = applyOps(
-            ops,
-            undefined,
-            undefined,
-            story,
-            false,
-            packageEditPhase === 'before' ? packageEdits : undefined,
-            packageEditPhase === 'after' ? packageEdits : undefined
-          ));
-        },
-        () => {
-          // Flushed before the clamp for the same reason `commitReviewOps` does it: the clamp
-          // needs post-edit lengths, and this thunk runs before the repaint.
-          flushLayout();
-          selectionSync.noteModelMoved();
-          // Clamped within the story the READER is in, which is not necessarily the story that
-          // was just written. Clamping against the body's paragraphs while a header or a
-          // footnote was open moved the caret into the document while the scope stayed on the
-          // furniture, and the next keystroke — applied to the furniture story with a body
-          // paragraph id — was refused as `unknown-paragraph`: the reader typed and nothing
-          // happened. An empty order means the story is not painted yet; leaving the caret
-          // alone is right there, because a clamp with nothing to clamp to is a caret reset.
-          const order = paragraphOrder();
-          if (order.length === 0) return null;
-          return clampedToDocument(editingLayout(), order, selection);
-        },
-        { automation: !separateHistory }
-      );
-      const reason = refusal ?? UNEXPLAINED_WRITE_REFUSAL; // Null means the refresh guard skipped the thunk.
-      return result ?? { committed: false, rejected: true, opCount: 0, reason };
-    },
+    applyAutomationOps: createSurfaceAutomation({
+      commit,
+      writeRefusal,
+      reviewAvailable: () => !!options.reviewModel,
+      actor: () => collaborationSession?.identity.actorId,
+      mintHyperlink: (url, scope) => session.ensureHyperlinkRelationship(url, scope),
+      applyOps,
+      unexplainedReason: UNEXPLAINED_WRITE_REFUSAL,
+      selectionAfter: () => {
+        flushLayout();
+        selectionSync.noteModelMoved();
+        const order = paragraphOrder();
+        return order.length ? clampedToDocument(editingLayout(), order, selection) : null;
+      },
+    }),
 
     editingMode: () => editingMode,
     author: () => author,
