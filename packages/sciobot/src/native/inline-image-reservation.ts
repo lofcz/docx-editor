@@ -1,3 +1,4 @@
+import { withImageControlId } from './inline-image-control-id';
 import {
   applyTreeOp,
   validateTreeOp,
@@ -135,5 +136,5 @@ export function materializeImageReservation(
     alias: 'Image',
     lock: 'sdtContentLocked',
   });
-  return next;
+  return withImageControlId(next, partName, controlId);
 }

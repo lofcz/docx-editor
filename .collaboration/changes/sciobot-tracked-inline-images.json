@@ -1,0 +1,15 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Private tracked atom staging refused image reservations and could not capture their media lifetime in application presence ownership.",
+  "after": "Recomposition prepares revision-bound image resources before publication. One admitted image runtime supplies native reservations, payload identities, and media to detached admission and actual staging. Presence decisions capture exact image provenance and collect only orphan media after native removal. Born reservations receive native Word control identities. Native sealing clears only the newly prepared source scope inherited by freshly allocated opaque controls.",
+  "reason": "Private adapter changes use existing canonical operations, media primitives, payload records, and presence ownership schemas. The native writer uses existing provenance metadata and canonical primitives. Transport code and shared format fields do not change. Existing opaque controls and foreign scopes remain untouched. Images inside new cells and richer structural ownership remain separate work.",
+  "tests": [
+    "packages/sciobot/src/review/recompose-inline-images.test.ts",
+    "packages/sciobot/src/review/recompose-inline-images-shared.test.ts",
+    "packages/sciobot/src/diff/inline-images-materialization.test.ts",
+    "packages/core/src/store/__tests__/run-origins.test.ts"
+  ],
+  "changeset": "born-controls-source-provenance",
+  "migration": null
+}

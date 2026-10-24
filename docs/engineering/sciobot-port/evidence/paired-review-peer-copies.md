@@ -24,6 +24,8 @@ The wider composer batch exposes four committed-view expectations in `recompose-
 
 The built SDK, core, and evaluated transport pass 84 cases and 1,730 assertions across the linked, retained, and born-paragraph fixtures. The private build verifies 282 modules with core external. Scoped formatting, lint, and collaboration policy pass.
 
+The complete C01/composer command finishes with 466 passing cases and 12 failures across 32 files. Eight additional failures concern mixed table splits. The unchanged prior checkpoint reproduces all eight with the original assertions. Together with the four committed-view failures, all 12 failures precede this checkpoint. No composer gate closure is claimed.
+
 Logs: `/home/lofcz/.cache/sciobot-docx-native/d30-paired-*`.
 
 ## Format and limits

@@ -1,3 +1,4 @@
+import type { InlineImageRuntime } from '../native/inline-image-runtime';
 import { stageBornAtoms } from './tracked-born-atoms';
 import {
   collectRevisionSites,
@@ -65,7 +66,8 @@ export function stageTrackedSiblings(
   writer: TrackedStageWriter,
   edit: Siblings,
   revision: TrackedStageAttribution,
-  listContext: DirectListContext
+  listContext: DirectListContext,
+  images?: InlineImageRuntime
 ): readonly NativeSiblingProposal[] {
   const before = currentStagePart(writer, edit.partName);
   const ids = gap(before, edit);
@@ -106,7 +108,8 @@ export function stageTrackedSiblings(
   }
   const seeded = siblingFragmentSeeds(
     edit,
-    !!edit.afterId && findNode(before, edit.afterId)?.kind === 'paragraph'
+    !!edit.afterId && findNode(before, edit.afterId)?.kind === 'paragraph',
+    images
   );
   if (!seeded.success) refuseWrite(seeded.error, seeded.code);
   const seeds = seeded.seeds;
@@ -175,7 +178,7 @@ export function stageTrackedSiblings(
     });
   }
   stageSiblingTables(writer, edit, seeds, inserted, revision, listContext);
-  stageBornAtoms(writer, before.name, inserted, edit.atoms ?? []);
+  stageBornAtoms(writer, before.name, inserted, edit.atoms ?? [], images);
   current = currentStagePart(writer, before.name);
   const finalGap = gap(current, edit);
   if (!finalGap) refuseWrite('The completed rich sibling gap disappeared.', 'apply-failed');

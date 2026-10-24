@@ -1,3 +1,4 @@
+import type { InlineImageRuntime } from '../native/inline-image-runtime';
 import { buildBlockIndex } from '../blocks/block-index';
 import { nativePropertyAddress, propertyAddressKey } from './property-fallback';
 import type { InlinePresenceNative } from './inline-presence-native';
@@ -16,12 +17,13 @@ export function stageTrackedPresence(
   plan: CanonicalEditPlan,
   attribution: TrackedStageAttribution,
   supplied?: { readonly proposalId: string },
-  receipts: readonly ReviewGroupReceipt[] = []
+  receipts: readonly ReviewGroupReceipt[] = [],
+  images?: InlineImageRuntime
 ): void {
   const births = plan.operations.flatMap((edit) =>
     edit.kind === 'inline-atoms' || edit.kind === 'siblings'
       ? (edit.atoms ?? []).flatMap((atom) =>
-          atom.kind === 'inline-control' ? [atom.payload.id] : []
+          atom.kind === 'inline-control' ? [atom.payload.id] : images ? [images.blockId(atom)] : []
         )
       : []
   );
@@ -53,8 +55,10 @@ export function stageTrackedPresence(
   for (const edit of plan.operations) {
     if (edit.kind !== 'siblings') continue;
     for (const atom of edit.atoms ?? []) {
-      if (atom.kind !== 'inline-control') continue;
-      const control = index.byId.get(atom.payload.id);
+      const blockId = atom.kind === 'inline-control' ? atom.payload.id : images?.blockId(atom);
+      if (!blockId)
+        refuseWrite('The born image has no admitted resource identity.', 'apply-failed');
+      const control = index.byId.get(blockId);
       const part = control && writer.currentPackage().parts.get(control.partName);
       let parent = part && control ? parentNodeOf(part, control.controlId) : null;
       while (parent && parent.kind !== 'revisionInsert' && parent.kind !== 'paragraph')
@@ -74,7 +78,7 @@ export function stageTrackedPresence(
       if (matching.length !== 1)
         refuseWrite('The born atom has no unique structural receipt.', 'ambiguous-target');
       bornInline.push({
-        blockId: atom.payload.id,
+        blockId,
         partName: control.partName,
         kind: 'ins',
         revision: address,

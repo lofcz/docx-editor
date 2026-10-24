@@ -1,3 +1,4 @@
+import { presenceImageResources, retirePresenceImageResources } from './presence-image-resources';
 import { buildBlockIndex } from '../blocks/block-index';
 import { readPayloadStore } from '../blocks/payload-opc-codec';
 import {
@@ -49,6 +50,12 @@ export function preparePresenceDecision(
   if (!bound.success) return bound;
   const present = (decision === 'accept' ? block.after : block.before).present;
   const inlineNative = bound.nativeSites.get(blockId);
+  let imageResources: ReturnType<typeof presenceImageResources>;
+  try {
+    imageResources = present ? [] : presenceImageResources(pkg, block);
+  } catch (cause) {
+    return fail(cause instanceof Error ? cause.message : String(cause), 'stale-revision');
+  }
   const payloads = readPayloadStore(pkg);
   if (payloads.status !== 'ready') return fail('The presence payload store is missing.');
   return {
@@ -115,7 +122,7 @@ export function preparePresenceDecision(
         block.members.some((member) => read.entries.has(member.payload.id))
       )
         throw Error('Presence payload removal failed.');
-      return next;
+      return retirePresenceImageResources(next, imageResources);
     },
   };
 }

@@ -1,3 +1,4 @@
+import type { InlineImageRuntime } from '../native/inline-image-runtime';
 import {
   contentControlsIn,
   contentControlPropertiesOf,
@@ -13,11 +14,15 @@ export function stageBornAtoms(
   writer: TrackedStageWriter,
   partName: string,
   paragraphIds: readonly string[],
-  atoms: readonly InsertedInlineAtom[]
+  atoms: readonly InsertedInlineAtom[],
+  images?: InlineImageRuntime
 ): void {
   for (const atom of atoms) {
-    if (atom.kind !== 'inline-control')
-      refuseWrite('Tracked image births need resource ownership.', 'unsupported-operation');
+    if (atom.kind === 'drawing') {
+      if (!images)
+        refuseWrite('Tracked image births need resource ownership.', 'unsupported-operation');
+      continue; // The same admitted runtime finalizes the owned reservation before presence capture.
+    }
     const part = writer.currentPackage().parts.get(partName)!;
     const controls = contentControlsIn(part.root).filter(
       ({ node }) => contentControlPropertiesOf(node).tag === blockTag(atom.payload.id)

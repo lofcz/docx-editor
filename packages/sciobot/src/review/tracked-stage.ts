@@ -1,3 +1,4 @@
+import type { InlineImageRuntime } from '../native/inline-image-runtime';
 import { stageTrackedAtoms } from './tracked-stage-atoms';
 import { stageTrackedInlineRemoval } from './tracked-stage-inline-removal';
 import { insertedAtomsOfEdit } from '../diff/inserted-cell-atoms';
@@ -37,7 +38,8 @@ export function stageTrackedPlan(
   writer: TrackedStageWriter,
   plan: CanonicalEditPlan,
   revision: TrackedStageAttribution,
-  trackFormatting: boolean
+  trackFormatting: boolean,
+  images?: InlineImageRuntime
 ): readonly ReviewGroupReceipt[] {
   if (
     plan.operations.some((edit) => {
@@ -46,7 +48,7 @@ export function stageTrackedPlan(
       if (edit.kind !== 'siblings') return true;
       return atoms.some(
         (atom) =>
-          atom.kind !== 'inline-control' ||
+          (atom.kind === 'drawing' && !images) ||
           atom.location.kind !== 'new-paragraph' ||
           !['paragraph', 'heading', 'blockquote'].includes(
             edit.inserted[atom.location.path[0]!]?.type ?? ''
@@ -238,11 +240,20 @@ export function stageTrackedPlan(
         stagedParagraphCoordinates(writer, edit.partName, edit.paragraphId, unselectedSites);
       coordinates.set(
         identity,
-        stageTrackedAtoms(writer, edit, revision, unselectedSites, atomSites, mapping, (scope) => {
-          const values = scopes.get(identity) ?? new Set<string>();
-          values.add(scope);
-          scopes.set(identity, values);
-        })
+        stageTrackedAtoms(
+          writer,
+          edit,
+          revision,
+          unselectedSites,
+          atomSites,
+          mapping,
+          (scope) => {
+            const values = scopes.get(identity) ?? new Set<string>();
+            values.add(scope);
+            scopes.set(identity, values);
+          },
+          images
+        )
       );
     } else if (edit.kind === 'format') {
       if (!trackFormatting)
@@ -274,7 +285,7 @@ export function stageTrackedPlan(
         );
       receipts.push(...stageTrackedList(writer, plan, edit, revision, listContext));
     } else if (edit.kind === 'siblings')
-      receipts.push(...stageTrackedSiblings(writer, edit, revision, listContext));
+      receipts.push(...stageTrackedSiblings(writer, edit, revision, listContext, images));
     else if (
       ['table', 'insert-row', 'insert-column', 'split-cell', 'table-geometry'].includes(edit.kind)
     ) {
@@ -317,6 +328,7 @@ export function stageTrackedPlan(
         )
       );
   }
+  if (images) writer.edit((pkg) => images.complete(pkg));
   const linkedReceipts = coupleLinkStageReceipts(
     writer,
     receipts,

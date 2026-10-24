@@ -20,8 +20,12 @@ import {
 } from './inline-image-resources';
 type Drawing = Extract<InsertedInlineAtom, { kind: 'drawing' }>;
 export interface InlineImageRuntime {
+  blockId(atom: Drawing): string;
   render(atom: InsertedInlineAtom): { readonly xml: string; readonly length: number } | null;
-  reservation(atom: Drawing, paragraphId: string): TreeDocOp;
+  reservation(
+    atom: Drawing,
+    paragraphId: string
+  ): Extract<TreeDocOp, { op: 'insertInlineContentControl' }>;
   complete(pkg: OoxmlPackage): OoxmlPackage;
 }
 const PREFIX = 'scio:image-reservation:';
@@ -51,6 +55,9 @@ export function createInlineImageRuntime(
   return {
     success: true,
     runtime: {
+      blockId(atom) {
+        return bindingOf(atom).id;
+      },
       render(atom) {
         if (atom.kind !== 'drawing') return null;
         const binding = bindingOf(atom);

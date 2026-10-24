@@ -1,3 +1,8 @@
+import {
+  prepareInlineImageResources,
+  type InlineImageResolver,
+} from '../native/inline-image-resources';
+import type { ImageDecodePort } from '@docx-editor.dev/core/store';
 import type { TrackedPayloadOptions } from './tracked-stage-payloads';
 import type { DocxEditorInstance } from '@docx-editor.dev/core/editor';
 import {
@@ -41,6 +46,12 @@ export interface RecomposeRequest {
 }
 
 export interface RecomposeOptions {
+  /** Trusted executor services; resources resolve after planning and before the revision check. */
+  readonly images?: {
+    readonly resolve: InlineImageResolver;
+    readonly decodePort: ImageDecodePort;
+    readonly signal?: AbortSignal;
+  };
   /** Trusted host layout services. These never supply a replacement canonical document. */
   readonly view?: Omit<ReviewViewOptions, 'pendingProperties'>;
   readonly target?: TargetDocumentOptions;
@@ -200,6 +211,15 @@ export async function recomposeOwnedProposals(
       options.target
     );
     if (!planned.success) return planned;
+    const preparedImages = options.images
+      ? await prepareInlineImageResources(
+          planned.plan,
+          options.images.resolve,
+          options.images.decodePort,
+          options.images.signal
+        )
+      : undefined;
+    if (preparedImages && !preparedImages.success) return preparedImages;
     const changedByPlanner = fresh();
     if (changedByPlanner) return changedByPlanner;
     const changedContent = verifyOwnedProposalContentProofs(
@@ -214,7 +234,8 @@ export async function recomposeOwnedProposals(
       selected.selection,
       planned.plan,
       input.context,
-      input.payloads
+      input.payloads,
+      preparedImages?.images
     );
     if (!result.success) return result;
     const ledger = new Map(input.request.ownership.map((group) => [group.groupId, group]));

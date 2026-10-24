@@ -380,8 +380,38 @@ export function sealTrackedRunOrigins(
     if (node.kind !== 'revisionInsert' || !fresh.has(node.id)) continue;
     for (const child of originNodes(node)) if (child.kind === 'run') insertedRuns.add(child.id);
   }
-  const next = mapOriginNodes(nodes, (node) => {
+  // New opaque controls own their content independently. Their cloned run properties
+  // can inherit this preparation's source proof, which must never become control history.
+  // Existing controls and every foreign scope stay untouched.
+  const bornOpaque = new Set<string>();
+  for (const node of nodes) {
+    if (!bornOpaque.has(node.id) && (node.kind !== 'contentControl' || findNode(before, node.id)))
+      continue;
+    bornOpaque.add(node.id);
+    for (const child of children(node)) bornOpaque.add(child.id);
+  }
+  const next = mapOriginNodes(nodes, (node, original) => {
     if (node.kind === 'textValue') return node;
+    if (bornOpaque.has(node.id)) {
+      let clean = node.attributes.some((attr) => attr.namespaceUri === sourceOrigin.namespaceUri)
+        ? withoutOriginMetadata(node, sourceOrigin.namespaceUri)
+        : node;
+      const oldProperties = runProperties(original);
+      const inherited = oldProperties && readRunOrigin(oldProperties, sourceOrigin.namespaceUri);
+      if (node.kind === 'run' && inherited?.absent) {
+        clean = {
+          ...clean,
+          children: clean.children.filter(
+            (child) =>
+              child.id !== oldProperties!.id ||
+              child.kind === 'textValue' ||
+              child.attributes.length ||
+              child.children.length
+          ),
+        } as OoxmlElement;
+      }
+      return clean;
+    }
     const snapshotOrigin = snapshots.has(node.id) && readRunOrigin(node, sourceOrigin.namespaceUri);
     if (snapshotOrigin && snapshotOrigin.scope === scope)
       return withoutOriginMetadata(node, sourceOrigin.namespaceUri);

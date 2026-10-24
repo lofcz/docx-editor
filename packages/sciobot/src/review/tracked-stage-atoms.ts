@@ -1,11 +1,17 @@
+import type { InlineImageRuntime } from '../native/inline-image-runtime';
 import {
   atomSourceLink,
+  stagedAtomKey,
+  stagedAtomWidth,
   stageAtomLink,
   atomLinkSkeletons,
   stageAtomLinkSkeletons,
 } from './tracked-atom-links';
 import {
   AUTHORABLE_RUN_PROPERTIES,
+  collectRevisionSites,
+  findNode,
+  paragraphOffsetIndex,
   authoredProperties,
   contentControlPropertiesOf,
   contentControlsIn,
@@ -41,7 +47,8 @@ export function stageTrackedAtoms(
   initialSites: ReadonlySet<string>,
   independentSites: Set<string>,
   mapping: StagedTextCoordinates,
-  rememberScope: (scope: string) => void
+  rememberScope: (scope: string) => void,
+  images?: InlineImageRuntime
 ): StagedTextCoordinates {
   const pkg = writer.currentPackage(),
     index = buildBlockIndex(pkg),
@@ -51,8 +58,11 @@ export function stageTrackedAtoms(
   if (mapping.text().slice(edit.offset, edit.offset + edit.before.length) !== edit.before)
     refuseWrite('The retained atom insertion text no longer matches.', 'stale-revision');
   const controls = edit.atoms.map((atom) => {
-    if (atom.kind !== 'inline-control')
-      refuseWrite('Tracked inline images need resource ownership.', 'unsupported-operation');
+    if (atom.kind === 'drawing') {
+      if (!images)
+        refuseWrite('Tracked inline images need resource ownership.', 'unsupported-operation');
+      return atom;
+    }
     if (
       index.byId.has(atom.payload.id) ||
       (payloads.status === 'ready' && payloads.entries.has(atom.payload.id))
@@ -64,15 +74,31 @@ export function stageTrackedAtoms(
   let width = 0;
   const ranges = controls.map((atom) => {
     const at = mapping.point(atom.offset - width, 'right');
-    width += atom.fallback.length;
+    width += stagedAtomWidth(atom);
     return { start: at, end: at };
   });
   for (const { start, end } of atomLinkSkeletons(edit)) ranges.push(...mapping.slices(start, end));
+  const part = writer.currentPackage().parts.get(edit.partName)!;
+  const paragraph = findNode(part, edit.paragraphId);
+  if (paragraph?.kind !== 'paragraph')
+    refuseWrite('The atom paragraph is missing.', 'stale-revision');
+  const offsets = paragraphOffsetIndex(paragraph);
+  const bornRanges = collectRevisionSites(part).flatMap((site) => {
+    const span = offsets.spanOf(site.node);
+    return site.node.kind === 'revisionInsert' && !initialSites.has(site.node.id) && span
+      ? [span]
+      : [];
+  });
+  // New proposal text has no historical source run. Preserve provenance only for original
+  // text; imported and previously pending revisions retain the native refusal rules.
+  const originalRanges = ranges.filter(
+    (range) => !bornRanges.some((span) => range.start >= span.start && range.end <= span.end)
+  );
   writer.edit((working) => {
     const prepared = prepareTrackedRunOrigins(
       working.parts.get(edit.partName)!,
       edit.paragraphId,
-      ranges
+      originalRanges
     );
     if (prepared.scope) rememberScope(prepared.scope);
     return withPart(working, prepared.part);
@@ -82,18 +108,22 @@ export function stageTrackedAtoms(
   for (const atom of controls) {
     const sourceLinkId = atomSourceLink(writer, edit, atom, inserted, current);
     const offset = current.point(atom.offset, 'right');
-    writer.apply(edit.partName, {
-      op: 'insertInlineContentControl',
-      paragraphId: edit.paragraphId,
-      offset,
-      text: atom.fallback,
-      tag: blockTag(atom.payload.id),
-      alias: atom.label,
-      revision,
-    });
+    const reservation =
+      atom.kind === 'drawing'
+        ? images!.reservation(atom, edit.paragraphId)
+        : {
+            op: 'insertInlineContentControl' as const,
+            paragraphId: edit.paragraphId,
+            offset,
+            text: atom.fallback,
+            tag: blockTag(atom.payload.id),
+            alias: atom.label,
+          };
+    const tag = reservation.tag;
+    writer.apply(edit.partName, { ...reservation, offset, revision });
     let part = writer.currentPackage().parts.get(edit.partName)!;
     const control = contentControlsIn(part.root).filter(
-      ({ node }) => contentControlPropertiesOf(node).tag === blockTag(atom.payload.id)
+      ({ node }) => contentControlPropertiesOf(node).tag === tag
     );
     if (control.length !== 1)
       refuseWrite('The tracked atom needs one native control.', 'apply-failed');
@@ -104,7 +134,7 @@ export function stageTrackedAtoms(
     stageAtomLink(writer, edit, atom, native.id, sourceLinkId, offset);
     part = writer.currentPackage().parts.get(edit.partName)!;
     independentSites.add(wrapper.id);
-    if (atom.fallback.length) {
+    if (atom.kind === 'inline-control' && atom.fallback.length) {
       const run = runsCovering(part, edit.paragraphId, offset, offset + atom.fallback.length)[0];
       const inherited = authoredProperties(
         propertyContainer(run, 'runProperties', 'rPr'),
@@ -159,17 +189,20 @@ export function stageTrackedAtoms(
         });
       }
     }
-    writer.edit((working) => {
-      const stored = withPayloadRecord(working, atom.payload, atom.label);
-      if (!stored.ok) refuseWrite('The tracked atom payload could not be stored.', 'apply-failed');
-      return stored.pkg;
-    });
-    writer.apply(edit.partName, {
-      op: 'setContentControlProperties',
-      controlId: native.id,
-      lock: 'sdtContentLocked',
-    });
-    inserted.add(atom.payload.id);
+    if (atom.kind === 'inline-control')
+      writer.edit((working) => {
+        const stored = withPayloadRecord(working, atom.payload, atom.label);
+        if (!stored.ok)
+          refuseWrite('The tracked atom payload could not be stored.', 'apply-failed');
+        return stored.pkg;
+      });
+    if (atom.kind === 'inline-control')
+      writer.apply(edit.partName, {
+        op: 'setContentControlProperties',
+        controlId: native.id,
+        lock: 'sdtContentLocked',
+      });
+    inserted.add(stagedAtomKey(atom));
     current = stagedParagraphCoordinates(writer, edit.partName, edit.paragraphId, initialSites);
   }
   return current;

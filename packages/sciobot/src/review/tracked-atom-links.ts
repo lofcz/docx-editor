@@ -20,9 +20,13 @@ import { stageTrackedLink } from './tracked-stage-links';
 import { stagedParagraphCoordinates } from './tracked-stage-coordinates';
 import type { TrackedStageAttribution, TrackedStageWriter } from './tracked-stage-writer';
 
-type Control = Extract<InsertedInlineAtom, { kind: 'inline-control' }>;
+type Atom = InsertedInlineAtom;
+export const stagedAtomKey = (atom: InsertedInlineAtom): string =>
+  JSON.stringify([atom.location, atom.path]);
+export const stagedAtomWidth = (atom: InsertedInlineAtom): number =>
+  atom.kind === 'drawing' ? 1 : atom.fallback.length;
 type Atoms = Extract<CanonicalEdit, { kind: 'inline-atoms' }>;
-function matches(pkg: OoxmlPackage, part: OoxmlPart, node: OoxmlNode, atom: Control): boolean {
+function matches(pkg: OoxmlPackage, part: OoxmlPart, node: OoxmlNode, atom: Atom): boolean {
   if (!atom.hyperlink || node.kind !== 'hyperlink') return false;
   const actual = hyperlinkTargetOf(node, (id) => relationshipTargetIn(pkg, part.name, id));
   const target = atom.hyperlink.target;
@@ -38,7 +42,7 @@ function matches(pkg: OoxmlPackage, part: OoxmlPart, node: OoxmlNode, atom: Cont
 export function atomSourceLink(
   writer: TrackedStageWriter,
   edit: Atoms,
-  atom: Control,
+  atom: Atom,
   inserted: ReadonlySet<string>,
   coordinates: StagedTextCoordinates
 ): string | null {
@@ -56,8 +60,8 @@ export function atomSourceLink(
     const width =
       token.kind === 'text'
         ? token.value.length
-        : bound?.kind === 'inline-control' && inserted.has(bound.payload.id)
-          ? bound.fallback.length
+        : bound && inserted.has(stagedAtomKey(bound))
+          ? stagedAtomWidth(bound)
           : 0;
     if (token.hyperlink?.join('/') === atom.hyperlink.path.join('/')) {
       if (start < 0) start = offset;
@@ -91,7 +95,7 @@ export function atomSourceLink(
 export function stageAtomLink(
   writer: TrackedStageWriter,
   edit: Atoms,
-  atom: Control,
+  atom: Atom,
   controlId: string,
   sourceLinkId: string | null,
   offset: number
@@ -116,7 +120,7 @@ export function stageAtomLink(
       span = link && index.spanOf(link);
     if (!link || link.kind !== 'hyperlink' || !span || !matches(pkg, part, link, atom))
       refuseWrite('The original atom hyperlink changed.', 'stale-revision');
-    const leading = offset + atom.fallback.length === span.start;
+    const leading = offset + stagedAtomWidth(atom) === span.start;
     const trailing = offset === span.end;
     if (!leading && !trailing)
       refuseWrite('The atom is not beside its bound hyperlink.', 'unsupported-operation');
@@ -159,7 +163,7 @@ export function stageAtomLink(
     op: 'insertHyperlink',
     paragraphId: edit.paragraphId,
     start: offset,
-    end: offset + atom.fallback.length,
+    end: offset + stagedAtomWidth(atom),
     ...(target.kind === 'external' ? { relationshipId } : { anchor: target.anchor }),
     ...(atom.hyperlink.title !== null ? { tooltip: atom.hyperlink.title } : {}),
   });
@@ -201,8 +205,7 @@ export function stageAtomLinkSkeletons(
   let coordinates = mapping;
   for (const { link, start, end } of atomLinkSkeletons(edit)) {
     const atom = edit.atoms.find(
-      (atom): atom is Control =>
-        atom.kind === 'inline-control' && atom.hyperlink?.path.join('/') === link.path.join('/')
+      (atom): atom is Atom => atom.hyperlink?.path.join('/') === link.path.join('/')
     )!;
     if (atomSourceLink(writer, edit, atom, new Set(), coordinates)) continue;
     stageTrackedLink(

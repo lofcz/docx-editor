@@ -1,3 +1,5 @@
+import { createInlineImageRuntime } from '../native/inline-image-runtime';
+import type { PreparedInlineImages } from '../native/inline-image-resources';
 import { nativeNumberingInfrastructureReady } from '../native/numbering-infrastructure';
 import { stageTrackedPresence } from './tracked-stage-presence';
 import { stageTrackedPayloads, type TrackedPayloadOptions } from './tracked-stage-payloads';
@@ -122,10 +124,11 @@ export function replaceOwnedProposals(
   selection: readonly OwnedProposalGroup[],
   replacement: CanonicalEditPlan,
   context: TrackTextContext,
-  payloads: TrackedPayloadOptions = {}
+  payloads: TrackedPayloadOptions = {},
+  images?: PreparedInlineImages
 ): OwnedProposalReplacementResult {
   return withReviewDecisionGuard(editor, () =>
-    commit(editor, selection, replacement, context, payloads)
+    commit(editor, selection, replacement, context, payloads, images)
   );
 }
 
@@ -134,7 +137,8 @@ function commit(
   selection: readonly OwnedProposalGroup[],
   replacement: CanonicalEditPlan,
   context: TrackTextContext,
-  payloads: TrackedPayloadOptions
+  payloads: TrackedPayloadOptions,
+  images?: PreparedInlineImages
 ): OwnedProposalReplacementResult {
   const copied = copyBoundedJson({ selection, replacement, context, payloads }, EDIT_PLAN_LIMITS);
   if (!copied.ok) return fail(copied.reason);
@@ -166,6 +170,8 @@ function commit(
   const decoded = decodeEditPlan(JSON.stringify(input.replacement));
   if (!decoded.success) return decoded;
   const plan = decoded.plan;
+  const preparedImages = createInlineImageRuntime(plan, images);
+  if (!preparedImages.success) return preparedImages;
   const surface = editor.surface;
   if (!surface) return fail('The native editor is not attached.', 'document-not-ready');
   if (surface.editingMode() === 'view')
@@ -235,25 +241,48 @@ function commit(
           }
         };
         const edit = (apply: (pkg: OoxmlPackage) => OoxmlPackage) =>
-          step(() => ctx.applyPackage(apply));
+          step(() => {
+            let failure: unknown;
+            const applied = ctx.applyPackage((pkg) => {
+              try {
+                return apply(pkg);
+              } catch (cause) {
+                failure = cause;
+                throw cause;
+              }
+            });
+            if (!applied && failure instanceof Error) throw failure;
+            return applied;
+          });
         stageOwnedProposalRemoval(ctx, removal, allowInitialization, step);
         const middle = ctx.currentPackage();
         const reserved = withReviewGroupRevisionReservations(middle, () => {
           const receipts = stageTrackedPlan(
             {
               currentPackage: () => ctx.currentPackage(),
-              apply: (partName, op) => step(() => ctx.applyTo(partName, op)),
+              apply: (partName, op) =>
+                step(() => {
+                  const applied = ctx.applyTo(partName, op);
+                  if (!applied) throw Error(`Native ${op.op} refused.`);
+                  return applied;
+                }),
               edit,
             },
             { ...plan, operations: plan.operations.filter((edit) => edit.kind !== 'payload') },
             { author: attribution.author, date },
             !surface.session.trackingSettings().doNotTrackFormatting &&
-              editor.snapshot().revisionMarkup.trackFormatting
+              editor.snapshot().revisionMarkup.trackFormatting,
+            preparedImages.runtime
           );
           stageTrackedPayloads(
             {
               currentPackage: () => ctx.currentPackage(),
-              apply: (partName, op) => step(() => ctx.applyTo(partName, op)),
+              apply: (partName, op) =>
+                step(() => {
+                  const applied = ctx.applyTo(partName, op);
+                  if (!applied) throw Error(`Native ${op.op} refused.`);
+                  return applied;
+                }),
               edit,
             },
             plan,
@@ -263,14 +292,20 @@ function commit(
           stageTrackedPresence(
             {
               currentPackage: () => ctx.currentPackage(),
-              apply: (partName, op) => step(() => ctx.applyTo(partName, op)),
+              apply: (partName, op) =>
+                step(() => {
+                  const applied = ctx.applyTo(partName, op);
+                  if (!applied) throw Error(`Native ${op.op} refused.`);
+                  return applied;
+                }),
               edit,
             },
             middle,
             plan,
             { author: attribution.author, date },
             input.payloads.presence,
-            receipts
+            receipts,
+            preparedImages.runtime
           );
           preserveRemainingRevisions(middle, ctx.currentPackage());
           edit((working) => persistReviewGroups(middle, working, receipts, allowInitialization));

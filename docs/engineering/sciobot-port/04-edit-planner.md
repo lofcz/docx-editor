@@ -572,6 +572,8 @@ Additional WIP evidence: [tracked atoms in born paragraphs](evidence/tracked-bor
 
 [Paired review peer copies](evidence/paired-review-peer-copies.md) repairs the interior hyperlink regression through exact decisions, both histories, and reopening. The evaluated format changes to `1.6.6.1`. Four prior composer failures remain reproducible; D30 stays open.
 
+[Tracked image staging](evidence/tracked-inline-image-staging.md) adds revision-bound media preparation and native image presence ownership. Verification remains in progress; the checkbox stays open.
+
 ## D31
 
 - [x] Plan inline code marks through the native representation

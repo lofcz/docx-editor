@@ -175,3 +175,37 @@ test('copied prior revision addresses never acquire a new run-origin scope', () 
     )
   ).toBe(true);
 });
+
+for (const action of ['accept', 'reject'] as const)
+  test(`new opaque controls do not inherit source run provenance: ${action}`, () => {
+    const source = part('<w:p><w:r><w:t>Keep.</w:t></w:r></w:p>');
+    const id = paragraphId(source);
+    const prepared = prepareTrackedRunOrigins(source, id, [{ start: 5, end: 5 }]);
+    expect(prepared.scope).not.toBeNull();
+    const text = apply(prepared.part, {
+      op: 'insertText',
+      paragraphId: id,
+      offset: 5,
+      text: ' A  Z',
+      revision: ADA,
+    });
+    const inserted = apply(text, {
+      op: 'insertInlineContentControl',
+      paragraphId: id,
+      offset: 8,
+      text: '\uFFFC',
+      tag: 'new-reservation',
+      revision: ADA,
+    });
+    const pending = sealTrackedRunOrigins(inserted, id, prepared.scope!, source);
+    const control = originNodes(pending.root).find((node) => node.kind === 'contentControl')!;
+    expect(control).toBeDefined();
+    expect(originNodes(control).some(hasOriginMetadata)).toBe(false);
+    for (const current of [pending, reopen(pending)]) {
+      const decided = apply(current, {
+        op: action === 'accept' ? 'acceptAllRevisions' : 'rejectAllRevisions',
+      });
+      expect(serializeOoxmlPart(decided)).not.toContain(RUN_ORIGIN_NS);
+      if (action === 'reject') expect(fingerprint(decided)).toBe(fingerprint(source));
+    }
+  });
