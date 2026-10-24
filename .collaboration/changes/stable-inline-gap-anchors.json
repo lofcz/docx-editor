@@ -1,0 +1,15 @@
+{
+  "impact": "migration-required",
+  "fields": ["repairVersion"],
+  "before": "Replacing all inline controls could remove unchanged native text anchors, reorder peer text across a replacement, or misread existing terminal tracked content as a concurrent append.",
+  "after": "Complete unchanged native text elements keep their identities. Whole-control replacement uses an interior native boundary. Terminal append projection checks observed native shells and refuses to cross deleted content. Ordinary text replacement retains its established boundary.",
+  "reason": "Deterministic text writes and projection change repairVersion from 11 to 12. Shared schema 7 and journal kinds stay unchanged. Transport changes remain evaluation-only under the EigenPal Pro License. No saved room is migrated. Deployment requires verified export and fresh room seeding. D30 and R19 remain open.",
+  "tests": [
+    "packages/pro/src/collaboration/__tests__/paragraph-control-gap.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-format.test.ts",
+    "packages/sciobot/src/review/recompose-new-table-atom-peer-interior.test.ts",
+    "packages/sciobot/src/review/recompose-new-table-atom-peer-waves.test.ts"
+  ],
+  "changeset": "stable-inline-gap-anchors",
+  "migration": "upgrade-rooms-to-format-17121"
+}

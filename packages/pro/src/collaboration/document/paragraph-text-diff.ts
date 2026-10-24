@@ -272,7 +272,7 @@ function diffCodePoints(
       : changeCount(second) < changeCount(first)
         ? second
         : first;
-  return dropScatteredLetters(joinInserts(chosen, after), before);
+  return dropScatteredLetters(joinInserts(chosen, after), before, after);
 }
 
 /**
@@ -343,7 +343,31 @@ const MAX_CLEANUP_PASSES = 16;
  * plain letters are replaced: an embed, a surrogate pair, or an element the model holds as
  * a control character keeps its identity.
  */
-function dropScatteredLetters(steps: Step[], before: readonly Token[]): Step[] {
+function dropScatteredLetters(
+  steps: Step[],
+  before: readonly Token[],
+  after: readonly Token[]
+): Step[] {
+  // A complete unchanged native text element is an explicit identity boundary.
+  // Its characters retain peer anchors even when both neighboring elements change.
+  const contents = (tokens: readonly Token[]) => {
+    const result = new Map<string, string[]>();
+    for (const token of tokens) {
+      const holder = textIdOf(token.attributes);
+      if (!holder || !isLetter(token)) continue;
+      const values = result.get(holder) ?? [];
+      values.push(token.key);
+      result.set(holder, values);
+    }
+    return result;
+  };
+  const oldContents = contents(before),
+    newContents = contents(after);
+  const unchanged = new Set(
+    [...oldContents].flatMap(([holder, keys]) =>
+      JSON.stringify(keys) === JSON.stringify(newContents.get(holder)) ? [holder] : []
+    )
+  );
   for (let pass = 0; pass < MAX_CLEANUP_PASSES; pass += 1) {
     const groups: Step[][] = [];
     for (const step of steps) {
@@ -379,7 +403,12 @@ function dropScatteredLetters(steps: Step[], before: readonly Token[]): Step[] {
         group.length <= size(groups[index + 1]) &&
         // Only a replacement scatters letters: text typed in between deletes nothing.
         (deletes(groups[index - 1], kept) || deletes(groups[index + 1], kept)) &&
-        group.every((step) => step.op === 'eq' && isPlainLetter(before[step.before]!));
+        group.every(
+          (step) =>
+            step.op === 'eq' &&
+            isPlainLetter(before[step.before]!) &&
+            !unchanged.has(textIdOf(before[step.before]!.attributes))
+        );
       if (!scattered) {
         for (const step of group) out.push(step);
         return;

@@ -586,6 +586,8 @@ Additional WIP evidence: [tracked atoms in born paragraphs](evidence/tracked-bor
 
 [Peer continuity across atom-table rewrites](evidence/atom-table-peer-continuity.md) preserves offline peer suffixes through two AI waves, native histories, decisions, and caret updates. Native property repair uses evaluated format `1.7.11.1`. D30 stays open.
 
+[Interior atom-table peer continuity](evidence/atom-table-interior-peer-continuity.md) records unchanged native gap identities, whole-control replacement boundaries, and causal terminal ordering. Both leaves remain open.
+
 ## D31
 
 - [x] Plan inline code marks through the native representation

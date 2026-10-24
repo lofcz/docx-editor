@@ -3,7 +3,7 @@ Copyright (c) 2026 EigenPal, Inc. All rights reserved.
 Licensed under the EigenPal Pro Evaluation License 1.0 — see packages/pro/LICENSE.md.
 Production use requires a commercial agreement: licensing@eigenpal.com
 */
-import type * as Y from 'yjs';
+import * as Y from 'yjs';
 import { WML_NAMESPACE_URI } from '@docx-editor.dev/core/store';
 import { isNextClock, parseClientClock, type LogicalId } from './identity.ts';
 import type { DocumentLimits } from './limits.ts';
@@ -38,6 +38,9 @@ function authoredBoundary(
     if (!item) return null;
     const identity = itemIdentity(text, item, pointer.clock - item.id.clock);
     if (visible.has(identity)) return identity;
+    // A deleted clock cannot prove an append boundary. Collected formatting
+    // loses its content type, so all replicas must stop at the deletion itself.
+    if (item.deleted || !(item.content instanceof Y.ContentFormat)) return null;
     pointer =
       pointer.clock === item.id.clock
         ? item.origin
@@ -64,6 +67,26 @@ export function concurrentRevisionTail(
   while (peer > 0 && isNextClock(ids.ids[peer - 1]!, ids.ids[peer]!)) peer -= 1;
   if (!ids.starts[peer] || ids.clients[peer] === ids.clients[start]) return shown;
   const visible = new Set(ids.ids);
+  // A right-hand native shell observed by the peer proves existing content.
+  // Its text must keep its authored position before that shell.
+  const peerClock = parseClientClock(ids.ids[peer] ?? '');
+  let pointer = peerClock && text.doc ? structAt(text.doc, peerClock)?.rightOrigin : null;
+  let offset = 0;
+  const delta = text.toDelta() as { insert: unknown; attributes?: Record<string, unknown> }[];
+  const suffix = delta.find((op) => {
+    const end = offset + (typeof op.insert === 'string' ? op.insert.length : 1);
+    const contains = offset <= start && start < end;
+    offset = end;
+    return contains;
+  })?.attributes;
+  for (let depth = 0; pointer && text.doc && depth < 64; depth += 1) {
+    const item = structAt(text.doc, pointer);
+    if (!item || !(item.content instanceof Y.ContentFormat)) break;
+    const { key, value } = item.content;
+    if (['r', 't', 'w'].includes(key) && typeof value === 'string' && suffix?.[key] === value)
+      return shown;
+    pointer = item.rightOrigin;
+  }
   const origin = authoredBoundary(text, ids, start, visible);
   if (!origin || authoredBoundary(text, ids, peer, visible) !== origin) return shown;
   if (ids.ids.indexOf(origin) + 1 !== peer) return shown;

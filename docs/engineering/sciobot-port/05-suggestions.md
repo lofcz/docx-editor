@@ -432,6 +432,8 @@ The born-table Original recovery checkpoint makes Original retain the independen
 
 **Shared history repair checkpoint:** Runtime `827f0820` publishes evaluation transport state after synchronous Yjs cleanup. Runtime `8d967ee7` and follow-up `9c8a08c8` preserve structural peer-text reconciliation and exact compound typing origins. These repairs resolve all 64 recorded later-wave table/list regressions. Every composer fixture remains byte-identical to `14a60030`. The complete gate passes 333 cases and 16,071 assertions. The collaboration gate passes 235 cases, and the compiled atom/code gates pass 159 cases. Seventy-two exact earlier-reader snapshots retain edits and both histories. No oracle, timeout, shared format or production import boundary changes. See [repair evidence](evidence/composer-shared-history-repairs.md) and its exact commands. R19 remains open for its remaining insertion, reconciliation, resource and installed application requirements.
 
+[Interior atom-table peer continuity](evidence/atom-table-interior-peer-continuity.md) records unchanged native gap identities, whole-control replacement boundaries, and causal terminal ordering. Both leaves remain open.
+
 ## R20
 
 - [ ] Keep imported and foreign revisions separate

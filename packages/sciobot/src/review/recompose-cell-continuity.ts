@@ -1,3 +1,4 @@
+import { continueOwnedAtomGapText } from './recompose-atom-text-continuity';
 import {
   contentControlsIn,
   contentControlPropertiesOf,
@@ -16,7 +17,7 @@ import {
 } from '@docx-editor.dev/core/store';
 import type { OwnedProposalRemovalPlan } from './owned-proposal-plan';
 import { refuseWrite } from '../diff/fragment-seeds';
-import { blockIdFromTag } from '../blocks/payload-opc-codec';
+import { readPayloadStore, blockIdFromTag } from '../blocks/payload-opc-codec';
 
 const children = (node: OoxmlNode): readonly OoxmlNode[] =>
   node.kind === 'textValue' ? [] : node.children;
@@ -201,6 +202,10 @@ export function continueOwnedCellParagraphs(
       }
     }
     if (!replacements.size) continue;
+    const sourcePayloads = readPayloadStore(before),
+      targetPayloads = readPayloadStore(after);
+    if (sourcePayloads.status !== 'ready' || targetPayloads.status !== 'ready')
+      refuseWrite('Atom continuity needs complete native payload stores.', 'invalid-document');
     let part: OoxmlPart = current;
     // Explicit moves preserve native parent ownership. Rebuilding parent lists in a
     // different order can unlink a source after the destination already lists it.
@@ -244,6 +249,23 @@ export function continueOwnedCellParagraphs(
         .entries())
         apply(moveNode(part, child.id, sourceId, index + 1, deferred));
       apply(removeNode(part, targetId, deferred));
+      const source = findNode(original, sourceId);
+      if (source?.kind !== 'paragraph')
+        refuseWrite('The original atom paragraph disappeared.', 'apply-failed');
+      part = continueOwnedAtomGapText(
+        part,
+        source,
+        sourceId,
+        (id) => {
+          const decoded = sourcePayloads.entries.get(id)?.decoded;
+          return decoded?.status === 'supported' ? decoded.value.type : undefined;
+        },
+        (id) => {
+          const decoded = targetPayloads.entries.get(id)?.decoded;
+          return decoded?.status === 'supported' ? decoded.value.type : undefined;
+        },
+        selectedBlocks
+      );
     }
     apply(replaceChildren(part, part.root.id, part.root.children));
     result = withPart(result, part);

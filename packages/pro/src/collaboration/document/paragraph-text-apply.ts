@@ -12,10 +12,10 @@ Production use requires a commercial agreement: licensing@eigenpal.com
  * so a hidden position keeps its place between two shown ones.
  */
 import * as Y from 'yjs';
+import { controlReplacementPosition } from './paragraph-control-replacement.ts';
 import { persistRevisionCopyMembership } from './revision-copy-peers.ts';
 import { pairedRevisionSources } from './revision-text-copies.ts';
 import {
-  deleteContent,
   deleteItem,
   deleteItemIds,
   deletePositions,
@@ -276,7 +276,8 @@ function writeParagraphText(
     const inserted = block.steps
       .filter((step): step is Extract<Step, { op: 'ins' }> => step.op === 'ins')
       .map((step) => after[step.after]!);
-    let position = deleted.length > 0 ? deleted[0]! : block.after;
+    const insertion = controlReplacementPosition(before, after, block.steps, block.after);
+    let position = insertion;
     // Typing next to a copy names it, in case an undo of the move takes the copy's markers.
     let follow = followAnchorAt(identities, position);
     // Characters with equal attributes are one insert; each embed is its own.
@@ -288,10 +289,7 @@ function writeParagraphText(
       const first = { ...group[0]!, attributes: rebase(left, group[0]!.attributes, true) };
       left = first.attributes;
       if (typeof first.insert !== 'string') {
-        const typed =
-          identities && position === (deleted.length > 0 ? deleted[0]! : block.after)
-            ? { identities, hasShownCopy }
-            : null;
+        const typed = identities && position === insertion ? { identities, hasShownCopy } : null;
         insertEmbedMarked(text, position, first.insert, first.attributes, follow, typed);
         follow = null;
         position += 1;
@@ -302,19 +300,17 @@ function writeParagraphText(
       const source = first.attributes[ORIGIN_KEY];
       if (source) insertCopy(text, position, value, first.attributes, source);
       else if (follow) insertFollowing(text, position, value, first.attributes, follow);
-      else if (position === (deleted.length > 0 ? deleted[0]! : block.after)) {
+      else if (position === insertion) {
         insertTyped(text, position, value, first.attributes, identities, hasShownCopy);
       } else text.insert(position, value, { ...first.attributes });
       follow = null;
       position += value.length;
     }
-    const shift = position - (deleted.length > 0 ? deleted[0]! : block.after);
-    for (let at = deleted.length - 1; at >= 0; ) {
-      let start = at;
-      while (start > 0 && deleted[start - 1]! + 1 === deleted[start]!) start -= 1;
-      deleteContent(text, deleted[start]! + shift, at - start + 1);
-      at = start - 1;
-    }
+    const shift = position - insertion;
+    deletePositions(
+      text,
+      deleted.map((at) => (at >= insertion ? at + shift : at))
+    );
   }
 }
 
