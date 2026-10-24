@@ -728,3 +728,6 @@ Coordinator integration: private types pass 1972 files; the private build verifi
 
 
 **Mixed tracked removal checkpoint:** Runtime `7e93de92` reconciles text and format coordinates around native atom deletions. Native source scopes restore exact original run boundaries. Independent decisions and shared histories pass the recorded checks. Guard `cb97baea` rejects proposed grapheme splits before publication; all 22 built-SDK cases pass. See [evidence and verification status](evidence/mixed-inline-review.md). D30 and R19 remain unchecked.
+
+
+**Tracked retained birth checkpoint:** Runtime `a7a2f968` stages inline math, mentions, and source births through native review with complete payload ownership. Nineteen local cases and four shared coordinator cases pass. All 43 built-SDK cases pass, including mixed removal and independent decisions. A broader owned-presence run exposed an inherited offline suffix placement failure, reproduced before the birth change. See [evidence and remaining work](evidence/tracked-retained-inline-births.md). D30 and R19 remain open.
