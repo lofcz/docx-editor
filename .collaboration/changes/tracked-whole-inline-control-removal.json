@@ -1,0 +1,13 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Tracked deletion could strike complete contentLocked controls through text ranges, but identity-addressed removal could only delete immediately or unwrap. The old text-range path allocated replacement identities.",
+  "after": "Identity-addressed whole inline-control removal accepts native revision attribution with keepContent false. The control and descendant identities stay stable inside one native deletion wrapper. Rejection restores exact native content and field instructions. Tracked unwrapping, block controls, protected controls, and pending ownership refuse.",
+  "reason": "The provider already transports native deletion wrappers and controls through canonical primitives. This additive authoring option introduces no wire field or transport version. Old peers can represent and decide the resulting existing Word structures.",
+  "tests": [
+    "packages/core/src/store/__tests__/tracked-control-removal.test.ts",
+    "packages/sciobot/src/review/tracked-native-atom-removal.test.ts"
+  ],
+  "changeset": "track-whole-inline-control-removal",
+  "migration": null
+}

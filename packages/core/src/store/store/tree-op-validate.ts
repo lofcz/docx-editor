@@ -5,6 +5,7 @@ import { validateTrackedHyperlinkStructure } from './tree-op-tracked-link-struct
 import { isInsertableText } from './tree-op-inline-elements.ts';
 import { validateSetLegacyDropdown } from './legacy-dropdown-fields.ts';
 import { validateBookmarkOp } from './tree-op-bookmarks.ts';
+import { trackedControlRemovalRefusal } from './tracked-content-control-remove.ts';
 import {
   MAX_HYPERLINK_ATTRIBUTE_LENGTH,
   validateHyperlinkRange,
@@ -245,6 +246,8 @@ export function validateTreeOp(
   const bindingRefusal = contentControlBindingRefusal(part, op);
   if (bindingRefusal) return bindingRefusal;
   if (isDrawingTreeDocOp(op)) return null;
+  if (op.op === 'removeContentControl' && op.revision !== undefined)
+    return trackedControlRemovalRefusal(part, op);
 
   if (
     op.op === 'setContentControlProperties' ||

@@ -64,6 +64,7 @@ import {
 import { wmlFreshNamespaceContextAt } from '../package/wml-namespace.ts';
 import { contentControlLevelOf } from '../package/content-control-nodes.ts';
 import { resolveRevisionOperation } from './tree-op-revisions.ts';
+import { applyTrackedControlRemoval } from './tracked-content-control-remove.ts';
 import { applySetRevisionAttribution } from './revision-author-change.ts';
 import { applyInsertCommentMarker } from './tree-op-comments.ts';
 import { applyDeleteTracked } from './tree-op-tracked-delete.ts';
@@ -278,6 +279,8 @@ function applyValidatedTreeOp(part: OoxmlPart, op: TreeDocOp, options?: EditOpti
   if (op.op === 'setContentControlProperties') {
     return applyAutomationSetContentControlProperties(part, op, options);
   }
+  if (op.op === 'removeContentControl' && op.revision !== undefined)
+    return applyTrackedControlRemoval(part, op, options);
   if (op.op === 'removeContentControl' && op.keepContent !== undefined) {
     return applyAutomationRemoveContentControl(part, op, options);
   }

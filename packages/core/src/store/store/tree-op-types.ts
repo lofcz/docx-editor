@@ -930,6 +930,8 @@ export type TreeDocOp =
       readonly controlId: string;
       /** Defaults to true for the editor-facing v2 operation. */
       readonly keepContent?: boolean;
+      /** Propose whole inline-control deletion. Requires `keepContent: false`; unwrapping and block controls refuse. */
+      readonly revision?: RevisionAttributionInput;
     }
   | {
       /**
