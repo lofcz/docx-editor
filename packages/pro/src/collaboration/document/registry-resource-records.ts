@@ -4,6 +4,8 @@ Licensed under the EigenPal Pro Evaluation License 1.0 — see packages/pro/LICE
 Production use requires a commercial agreement: licensing@eigenpal.com
 */
 import * as Y from 'yjs';
+import { partNameKey } from '@docx-editor.dev/core/store';
+import { isRelsPartName } from './materialize-rels.ts';
 import type { CanonicalBinaryDescriptor } from '@docx-editor.dev/core/collaboration/replication';
 import {
   isNodeMap,
@@ -49,4 +51,29 @@ export function retireResourceBinary(schema: PackageSchema, storageKey: string):
   // assigning that scalar retains both authors' independently reversible writes.
   const entry = schema.binaries.get(storageKey);
   if (isNodeMap(entry)) entry.set('digest', '');
+}
+
+export function retireResourcePart(schema: PackageSchema, name: string): void {
+  const entry = schema.parts.get(name);
+  // Retain the original relationship shell for an offline drawing that still needs it.
+  if (isRelsPartName(name) && isNodeMap(entry)) entry.set('rootId', '');
+  else schema.parts.delete(name);
+}
+export function putResourceContentTypeOverride(
+  schema: PackageSchema,
+  partName: string,
+  mediaType: string
+): void {
+  schema.overrides.set(partNameKey(partName), mediaType);
+  if (!mediaType.startsWith('image/')) return;
+  const wanted = partNameKey('/' + partName.replace(/^\//, ''));
+  for (const [key, entry] of schema.binaries) {
+    if (
+      partNameKey('/' + key.replace(/^\//, '')) === wanted &&
+      isNodeMap(entry) &&
+      entry.get('digest') &&
+      entry.get('retainedOverride') !== true
+    )
+      entry.set('retainedOverride', true);
+  }
 }

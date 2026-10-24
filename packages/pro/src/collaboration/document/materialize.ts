@@ -8,7 +8,6 @@ import { BirthProjection } from './materialize-births.ts';
 import {
   relsPartNameFor,
   CUSTOM_XML_PROPS_TYPE,
-  type ContentTypeIndex,
   type OoxmlElement,
   type OoxmlNode,
   type OoxmlPackage,
@@ -49,9 +48,9 @@ import {
 } from './materialize-custom-xml.ts';
 import { partMemberSpecFor, shownMemberChildren } from './materialize-part-members.ts';
 import { adoptLooseMembers } from './materialize-orphans.ts';
-import { rescuedPartEntries, typeUntypedParts } from './materialize-rescued-parts.ts';
+import { rescuedPartEntries } from './materialize-rescued-parts.ts';
 import { PackageProjectionCache } from './materialize-package-cache.ts';
-import { withNumberingTypeBytes } from './materialize-numbering-types.ts';
+import { assembleMaterializedPackage } from './materialize-package.ts';
 import { MaterializeSplitProjection } from './materialize-split-projection.ts';
 import { hasSingletonRules, partitionWithMerges, sharedChildShell } from './singleton-children.ts';
 import { spineChildren } from './materialize-spine.ts';
@@ -970,36 +969,17 @@ export class PackageMaterializer {
   }
 
   private assemblePackage(parts: Map<string, OoxmlPart>): MaterializeResult {
-    const assembly = this.packageCache.relationshipAssembly(this.customXmlRels);
-    if (!assembly) return { ok: false, code: 'invalid-relationships', issues: [...this.issues] };
-    const partBytes = this.packageCache.resolvePartBytes(this.blobs);
-    if (!partBytes) return { ok: false, code: 'missing-blob', issues: [...this.issues] };
-    const overrides = new Map(this.packageCache.contentTypeOverrides());
-    for (const [name, mediaType] of this.customXmlOverrides) overrides.set(name, mediaType);
-    const contentTypes: ContentTypeIndex = {
-      defaults: this.packageCache.contentTypeDefaults(),
-      overrides,
-    };
-    const recovered = this.retiredImages.recover(parts, assembly.byOwner, partBytes, overrides);
-    if (!recovered) return { ok: false, code: 'missing-blob', issues: [...this.issues] };
-    typeUntypedParts(parts, contentTypes, overrides);
-    const mainDocumentPart =
-      this.registry.mainDocumentPart() ||
-      [...parts.keys()].find((name) => name.endsWith('document.xml')) ||
-      '';
-    return {
-      ok: true,
-      package: withNumberingTypeBytes(
-        Object.freeze({
-          parts,
-          partBytes: recovered.bytes,
-          relationships: recovered.relationships,
-          externalTargets: assembly.externalTargets,
-          contentTypes,
-          mainDocumentPart,
-        })
-      ),
-      issues: [...this.issues],
-    };
+    return assembleMaterializedPackage(
+      {
+        registry: this.registry,
+        blobs: this.blobs,
+        packageCache: this.packageCache,
+        retiredImages: this.retiredImages,
+        customXmlRels: this.customXmlRels,
+        customXmlOverrides: this.customXmlOverrides,
+        issues: this.issues,
+      },
+      parts
+    );
   }
 }

@@ -5,6 +5,8 @@ Production use requires a commercial agreement: licensing@eigenpal.com
 */
 import {
   putResourceBinary,
+  putResourceContentTypeOverride,
+  retireResourcePart,
   retireResourceBinary,
   putResourceRelationship,
   retireResourceRelationship,
@@ -21,7 +23,6 @@ import { SplitTextSources, type SplitTextRange } from './split-text-sources.ts';
 import * as Y from 'yjs';
 import type { CanonicalBinaryDescriptor } from '@docx-editor.dev/core/collaboration/replication';
 import { partNameKey } from '@docx-editor.dev/core/store';
-import { isRelsPartName } from './materialize-rels.ts';
 import { type LogicalId, type NodeIdentityMeta, wordFacingIdsOf } from './identity.ts';
 import { SplitDedupIndex, type SplitTextOverlays } from './split-dedup.ts';
 import { runIsPresent } from './run-text-reads.ts';
@@ -653,10 +654,7 @@ export class DocumentRegistry {
 
   deleteXmlPart(name: string): void {
     this.partCountCache = -1;
-    const entry = this.schema.parts.get(name);
-    // Retain the original relationship shell for an offline drawing that still needs it.
-    if (isRelsPartName(name) && isNodeMap(entry)) entry.set('rootId', '');
-    else this.schema.parts.delete(name);
+    retireResourcePart(this.schema, name);
   }
 
   /**
@@ -683,19 +681,7 @@ export class DocumentRegistry {
   }
 
   putContentTypeOverride(partName: string, mediaType: string): void {
-    this.schema.overrides.set(partNameKey(partName), mediaType);
-    if (mediaType.startsWith('image/')) {
-      const wanted = partNameKey('/' + partName.replace(/^\//, ''));
-      for (const [key, entry] of this.schema.binaries) {
-        if (
-          partNameKey('/' + key.replace(/^\//, '')) === wanted &&
-          isNodeMap(entry) &&
-          entry.get('digest') &&
-          entry.get('retainedOverride') !== true
-        )
-          entry.set('retainedOverride', true);
-      }
-    }
+    putResourceContentTypeOverride(this.schema, partName, mediaType);
   }
 
   deleteContentTypeOverride(partName: string): void {

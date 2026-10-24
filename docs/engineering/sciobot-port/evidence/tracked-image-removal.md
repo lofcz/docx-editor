@@ -48,3 +48,6 @@ Logs: `/home/lofcz/.cache/sciobot-docx-native/d30-retained-resource-{batch,compi
 The evaluated format changes to `docx-collaboration:1.7.7.1`. Previous rooms refuse admission without writes. Upgrade instructions require verified old-client export and fresh room seeding. No saved room is migrated here. Pro changes remain evaluation-only under the EigenPal Pro License; production adapters import no Pro transport.
 
 D30 and R19 remain open. The broader composer baseline still has twelve unresolved failures. This checkpoint does not establish full composer or application parity.
+
+
+The unchanged resource and receive-cost batch passes all 16 cases across six files. It retains cache eviction, source round trips, text-local receive bounds, and wholesale image receive bounds. Follow-up helper extraction keeps both large transport files below their existing 1,000-line limits. All eleven affected source cases and 184 assertions pass after extraction; Pro source typechecking passes 2,328 files. No line, history, timing, or resource limit increases.
