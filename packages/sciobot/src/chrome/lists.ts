@@ -333,6 +333,7 @@ export function adjustManualListLevel(
     part = surface.session.partFor(surface.storyScope()) ?? surface.session.part();
   if (part.name !== pkg.mainDocumentPart) return fail('List controls require the body story.');
   const operations: CanonicalEdit[] = [];
+  const listPatches: { paragraphId: string; target: ListTarget }[] = [];
   for (const { id, state } of selected) {
     const current = state!;
     if (!current.checkbox && !current.numbering) {
@@ -362,9 +363,10 @@ export function adjustManualListLevel(
         instance: { kind: 'existing', numId: current.numbering!.numId },
       };
     }
-    const planned = planListMembership({ pkg, partName: part.name, revision }, [
-      { paragraphId: id, target },
-    ]);
+    listPatches.push({ paragraphId: id, target });
+  }
+  if (listPatches.length) {
+    const planned = planManualListSequences({ pkg, partName: part.name, revision }, listPatches);
     if (!planned.success) return planned;
     operations.push(...planned.plan.operations);
   }

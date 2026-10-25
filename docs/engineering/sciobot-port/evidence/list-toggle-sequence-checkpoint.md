@@ -25,3 +25,5 @@ The initial Chromium run times out during `page.goto`, before list actions. A re
 The final private build verifies 329 modules with core external (`/tmp/n08-ancestor-private-build.log`). Native core build, including compiled editor styles, also passes (`/tmp/n08-indent-core-build.log`).
 
 Typed ordered prefixes now follow Plate’s polite restart rule. A prefix such as `1. ` reuses the compatible preceding decimal sequence and continues its native counter. It creates a new counter with the typed start only when no compatible predecessor exists. Heading boundaries and different marker styles stop the scan. The focused input batch passes nine cases and 83 assertions (`/tmp/n08-politerestart-proof3.log`).
+
+Outdent operations now use the sequence planner when they remove a root list membership. This keeps tail counters independent after a middle item becomes plain. Existing nested outdent retains list membership at the lower level. The affected indentation and list collaboration batch passes 35 cases and 511 assertions (`/tmp/n08-outdent-batch.log`).
