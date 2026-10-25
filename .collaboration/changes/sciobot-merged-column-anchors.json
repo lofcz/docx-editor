@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Merged tables with a short first row could plan a reference-cell column anchor that the native merged-column operation could not resolve.",
+  "after": "Merged-column plans use declared grid anchors, and reference-cell anchors remain limited to incomplete grids; invalid complete-grid reference anchors refuse atomically.",
+  "reason": "Planner-only correction; no collaboration codec, journal, provider, or public document model fields changed.",
+  "tests": [
+    "packages/sciobot/src/diff/table-columns.test.ts",
+    "packages/sciobot/src/diff/concurrent-born-column-geometry.test.ts",
+    "packages/sciobot/src/diff/merged-born-cell-geometry-collaboration.test.ts"
+  ],
+  "changeset": "merged-reference-column-anchors",
+  "migration": null
+}

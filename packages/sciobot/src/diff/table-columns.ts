@@ -1,6 +1,8 @@
 import { applyTreeOp, findNode, type OoxmlPart } from '@docx-editor.dev/core/store';
 import type { NativeEditFailure, RevisionToken } from '../contracts/document';
 import { jsonDataProblem } from '../data/json';
+import { nativeGridColumns } from './inserted-column-native';
+import { rowCellIds } from './fragment-seeds';
 import {
   createEditPlan,
   EDIT_PLAN_LIMITS,
@@ -57,8 +59,8 @@ export function planTableColumn(
   if (problem) return fail(problem);
   const raw = JSON.stringify(input);
   if (
-    raw.length > EDIT_PLAN_LIMITS.maxBytes ||
-    new TextEncoder().encode(raw).byteLength > EDIT_PLAN_LIMITS.maxBytes
+    raw.length >= EDIT_PLAN_LIMITS.maxBytes ||
+    new TextEncoder().encode(raw).byteLength >= EDIT_PLAN_LIMITS.maxBytes
   )
     return fail('Table column input exceeds its byte limit.');
   if (!target || typeof target !== 'object' || Array.isArray(target) || !id(source.tableId))
@@ -84,6 +86,15 @@ export function planTableColumn(
     return fail('Invalid native table column anchor or side.');
   const table = findNode(source.part, source.tableId);
   if (table?.kind !== 'table') return fail('The native table does not exist.', 'invalid-document');
+  if (cell && table.kind === 'table') {
+    const firstRow = table.children.find((child) => child.kind === 'tableRow');
+    if (
+      firstRow &&
+      nativeGridColumns(source.part, table.id).length ===
+        rowCellIds(source.part, firstRow.id).length
+    )
+      return fail('Reference-cell anchors require an incomplete native table grid.');
+  }
   const operation: PlannedTableOperation =
     target.kind === 'delete'
       ? {

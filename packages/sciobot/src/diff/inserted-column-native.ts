@@ -17,6 +17,14 @@ const wordChild = (node: OoxmlNode, name: string) =>
       child.namespaceUri === WML_NAMESPACE_URI &&
       child.localName === name
   );
+const hasColumnMerge = (node: OoxmlNode): boolean => {
+  const properties = wordChild(node, 'tcPr');
+  return (
+    !!properties &&
+    (wordChild(properties, 'gridSpan') !== undefined ||
+      wordChild(properties, 'vMerge') !== undefined)
+  );
+};
 export function nativeGridColumns(part: OoxmlPart, tableId: string): readonly OoxmlNode[] {
   const table = findNode(part, tableId),
     grid = table && wordChild(table, 'tblGrid');
@@ -37,6 +45,10 @@ export function nativeColumnAnchors(
     grid = nativeGridColumns(part, tableId),
     firstRow = table && children(table).find((node) => node.kind === 'tableRow'),
     cells = firstRow ? children(firstRow).filter((node) => node.kind === 'tableCell') : [];
+  // The merged-column core operation addresses the declared grid even when a spanning
+  // first-row cell makes its physical cell count shorter than the grid.
+  if (grid.length > 0 && cells.some(hasColumnMerge))
+    return grid.map((node) => ({ kind: 'grid-column', id: node.id }));
   return grid.length === cells.length
     ? grid.map((node) => ({ kind: 'grid-column', id: node.id }))
     : cells.map((node) => ({ kind: 'reference-cell', id: node.id }));
