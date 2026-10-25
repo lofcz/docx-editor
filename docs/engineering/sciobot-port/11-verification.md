@@ -26,7 +26,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 ## V02
 
-- [ ] Compare both AI modes against the seven Plate fixtures
+- [x] Compare both AI modes against the seven Plate fixtures
 
 **Depends:** [C01](01-contracts.md#c01), [D15](04-edit-planner.md#d15), [A01](06-direct-ai.md#a01), [R17](05-suggestions.md#r17), [R18](05-suggestions.md#r18), [V01](11-verification.md#v01)
 
@@ -40,7 +40,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused native document regression. Include save/reopen and undo/redo. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** codex solo, branch `codex/react-block-proof`. **Evidence:** The seven C01 pairs run through the native target planner in `target-c01-matrix.test.ts`, preserving independent non-body parts and exact empty replanning. The recomposition path then executes accepted suggestion waves, replaces earlier owned proposals, preserves accepted/rejected/manual content, and reopens saved documents without nested revisions. The focused batch passes 37 cases and 547 assertions (`/tmp/v02-c01-ai-batch.log`). The final unchanged C01/composer shared gate passes 333 cases and 16,071 assertions with two-session histories, peer edits, deletion, reconnect, remote geometry, decisions, undo/redo, and saved convergence (`docs/engineering/sciobot-port/evidence/composer-shared-history-repairs.md`). Direct execution is covered by A01’s seven captured pairs and its shared matrix. No fixture or oracle was recaptured.
 
 ## V03
 
