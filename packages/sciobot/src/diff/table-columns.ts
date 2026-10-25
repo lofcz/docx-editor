@@ -26,7 +26,11 @@ export type TableColumnTarget =
       /** An existing first-row cell, only for a native table without grid columns. */
       readonly referenceCellId: string;
     }
-  | { readonly kind: 'delete'; readonly gridColumnId: string };
+  | {
+      readonly kind: 'delete';
+      readonly gridColumnId?: string;
+      readonly referenceCellId?: string;
+    };
 
 const fail = (
   error: string,
@@ -68,21 +72,27 @@ export function planTableColumn(
         !(
           target.kind === 'insert'
             ? ['kind', 'where', 'gridColumnId', 'referenceCellId']
-            : ['kind', 'gridColumnId']
+            : ['kind', 'gridColumnId', 'referenceCellId']
         ).includes(key)
     ) ||
     (target.kind === 'insert' &&
       ((target.where !== 'left' && target.where !== 'right') || grid === cell)) ||
     (grid && !id((target as { gridColumnId?: unknown }).gridColumnId)) ||
     (cell && !id((target as { referenceCellId?: unknown }).referenceCellId)) ||
-    (target.kind === 'delete' && !grid)
+    (target.kind === 'delete' && grid === cell)
   )
     return fail('Invalid native table column anchor or side.');
   const table = findNode(source.part, source.tableId);
   if (table?.kind !== 'table') return fail('The native table does not exist.', 'invalid-document');
   const operation: PlannedTableOperation =
     target.kind === 'delete'
-      ? { op: 'deleteTableColumn', tableId: table.id, gridColumnId: target.gridColumnId }
+      ? {
+          op: 'deleteTableColumn',
+          tableId: table.id,
+          ...(grid
+            ? { gridColumnId: target.gridColumnId }
+            : { referenceCellId: target.referenceCellId }),
+        }
       : 'gridColumnId' in target
         ? {
             op: 'insertTableColumn',

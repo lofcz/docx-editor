@@ -29,6 +29,18 @@ export function nativeGridColumns(part: OoxmlPart, tableId: string): readonly Oo
       )
     : [];
 }
+export function nativeColumnAnchors(
+  part: OoxmlPart,
+  tableId: string
+): readonly { readonly kind: 'grid-column' | 'reference-cell'; readonly id: string }[] {
+  const table = findNode(part, tableId),
+    grid = nativeGridColumns(part, tableId),
+    firstRow = table && children(table).find((node) => node.kind === 'tableRow'),
+    cells = firstRow ? children(firstRow).filter((node) => node.kind === 'tableCell') : [];
+  return grid.length === cells.length
+    ? grid.map((node) => ({ kind: 'grid-column', id: node.id }))
+    : cells.map((node) => ({ kind: 'reference-cell', id: node.id }));
+}
 
 export function insertedColumnOperation(
   intent: InsertedTableColumnIntent

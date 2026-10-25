@@ -1,0 +1,10 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Target column planning refused tables without complete declared native grid anchors.",
+  "after": "Target column planning uses original first-row reference-cell anchors when grids are absent or incomplete, preserving surviving cell identities through native grid repair.",
+  "reason": "The change is private planning logic over the existing N19 core reference-cell operation. No collaboration codec, journal field, public API, or migration changes.",
+  "tests": ["packages/sciobot/src/diff/target-table-columns.test.ts"],
+  "changeset": null,
+  "migration": null
+}

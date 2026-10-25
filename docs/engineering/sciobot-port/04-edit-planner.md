@@ -682,7 +682,7 @@ Additional WIP evidence: [tracked atoms in born paragraphs](evidence/tracked-bor
 
 ## D36
 
-- [ ] Compose column changes in tables without complete declared grid anchors
+- [x] Compose column changes in tables without complete declared grid anchors
 
 **Depends:** [D24](04-edit-planner.md#d24), [N19](07-native-content.md#n19)
 
@@ -696,7 +696,7 @@ Additional WIP evidence: [tracked atoms in born paragraphs](evidence/tracked-bor
 
 **Check:** Add a focused Bun test with explicit expected results.
 
-**Claim:** unclaimed. **Evidence:** pending. Native `insertTableColumn` accepts a reference cell only while the grid is absent, and `deleteTableColumn` requires a grid column ID, so a second change in the same plan would need preview-allocated grid IDs.
+**Claim:** codex solo, branch `codex/react-block-proof`. **Evidence:** `target-table-columns.ts` now derives stable original column anchors from a complete grid or the first-row reference cells. It carries those anchors through multi-column insertions and deletions, while N19 repairs the native grid only inside the immutable preview. Serialized operations retain original cell identities and never expose preview-allocated grid IDs. The focused target-column suite passes 17 cases and 194 assertions (`/tmp/d36-final.log`), including absent and incomplete grids, multiple gaps, save/reopen, surviving IDs, foreign metadata, rich inserted cells, and atomic refusal. Private typecheck passes 2,423 files (`/tmp/d36-types.log`). No new shared format field or migration is required.
 
 ## D37
 

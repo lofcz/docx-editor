@@ -273,7 +273,7 @@ test('multiple column deletions and changed retained text preserve surviving non
   expect(nativeGridColumns(part(applied), nativeTable(input).id)[1]).toBe(grid[4]);
 });
 
-test('a table without complete native grid anchors refuses structural target edits without a partial plan or source writes', async () => {
+test('a table without complete native grid anchors uses reference-cell operations without partial writes', async () => {
   const input = await targetDocumentInput(
       table([
         ['A', 'B'],
@@ -283,8 +283,10 @@ test('a table without complete native grid anchors refuses structural target edi
     bytes = writeOoxmlPackage(input.pkg),
     fingerprint = canonicalOoxmlFingerprint(part(input)),
     result = planTargetDocument(input, '| A | X | B |\n| --- | --- | --- |\n| One | New | Two |');
-  expect(result.success).toBe(false);
-  expect('plan' in result).toBe(false);
+  expect(result.success).toBe(true);
+  if (!result.success) return;
+  expect(result.plan.operations).toHaveLength(1);
+  expect(result.plan.operations[0]!.kind).toBe('insert-column');
   expect(writeOoxmlPackage(input.pkg)).toEqual(bytes);
   expect(canonicalOoxmlFingerprint(part(input))).toBe(fingerprint);
 });

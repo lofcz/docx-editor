@@ -12,7 +12,7 @@ import {
   targetKeyCounts,
   type TargetSequenceAlignment,
 } from './target-sequence';
-import { nativeGridColumns } from './inserted-column-native';
+import { nativeColumnAnchors } from './inserted-column-native';
 import { planTableColumn } from './table-columns';
 import { planInsertedTableColumn } from './inserted-table-columns';
 import { insertedTargetCellFragments } from './target-table-fragments';
@@ -125,23 +125,26 @@ export function planTargetColumns(
       }[];
     }
   | NativeEditFailure {
-  const { input, source, before, after } = context,
+  const { input, source, after } = context,
     original = input.pkg.parts.get(source.index.partName)!,
     tableId = context.binding.table!.tableId,
-    grid = nativeGridColumns(original, tableId),
+    anchors = nativeColumnAnchors(original, tableId),
     operations: CanonicalEdit[] = [],
     allocated: { cellId: string; operation: CanonicalEdit; cellIndex: number }[] = [],
     targetRows = new Map(
       rows.map((pair) => [rowIds[pair.before]!, after.children[pair.after] as LogicalGroup])
     );
   let part = original;
-  if (alignment.gaps.length && grid.length !== (before.children[0] as LogicalGroup).children.length)
-    return fail('Target column changes need complete original native grid anchors.');
   for (const gap of [...alignment.gaps].reverse()) {
     for (let index = gap.beforeEnd - 1; index >= gap.beforeStart; index--) {
       const planned = planTableColumn(
         { revision: source.index.revision, part, tableId },
-        { kind: 'delete', gridColumnId: grid[index]!.id }
+        {
+          kind: 'delete',
+          ...(anchors[index]!.kind === 'grid-column'
+            ? { gridColumnId: anchors[index]!.id }
+            : { referenceCellId: anchors[index]!.id }),
+        }
       );
       if (!planned.success) return planned;
       for (const edit of planned.plan.operations) {
@@ -152,8 +155,8 @@ export function planTargetColumns(
         operations.push(edit);
       }
     }
-    const anchor = grid[gap.beforeStart] ?? grid[gap.beforeStart - 1],
-      where = grid[gap.beforeStart] ? 'left' : 'right',
+    const anchor = anchors[gap.beforeStart] ?? anchors[gap.beforeStart - 1],
+      where = anchors[gap.beforeStart] ? 'left' : 'right',
       inserted = Array.from(
         { length: gap.afterEnd - gap.afterStart },
         (_, index) => gap.afterStart + index
@@ -163,7 +166,9 @@ export function planTargetColumns(
       const candidate = applyTreeOp(part, {
         op: 'insertTableColumn',
         tableId,
-        gridColumnId: anchor!.id,
+        ...(anchor!.kind === 'grid-column'
+          ? { gridColumnId: anchor!.id }
+          : { referenceCellId: anchor!.id }),
         where,
       });
       if (!candidate.ok) return fail(`Combined column insertion refused: ${candidate.reason}.`);
@@ -215,7 +220,7 @@ export function planTargetColumns(
           allocateBlockId: context.allocateBlockId,
         },
         {
-          anchor: { kind: 'grid-column', id: anchor!.id },
+          anchor: anchor!,
           where,
           cells,
           ...(lists.length ? { lists } : {}),
