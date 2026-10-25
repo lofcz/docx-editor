@@ -36,9 +36,9 @@ export function attachOwnedReviewHistory(
   doc: Y.Doc,
   options: OwnedReviewHistoryOptions
 ): OwnedReviewHistory {
-  return createReviewHistory(doc, options, false);
+  return createReviewHistory(doc, options, true);
 }
-/** Internal proof entry. It is absent from package exports and production attachment. */
+/** Compatibility alias for callers that used the former proof-only entry point. */
 export function attachPropertyReviewHistoryPrototype(
   doc: Y.Doc,
   options: OwnedReviewHistoryOptions

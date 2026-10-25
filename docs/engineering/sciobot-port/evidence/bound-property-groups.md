@@ -8,7 +8,7 @@ The internal property history factory binds receipts during their proposal's ori
 
 Native publication replaces temporary canonical IDs with shared logical IDs. Receipt selection resolves new property descendants through their stable existing containers. It includes scalar attributes, namespace bindings, child edges, and removal flags. The attribute separator matches the pinned native format.
 
-The existing `rejectReviewGroup` API consumes a bound receipt when the internal capability exists. It withdraws the selected ownership and tombstones that exact group in one native transaction. The supported default factory still exposes no property ownership capability. The supported factory does not establish production closure.
+The existing `rejectReviewGroup` API consumes a bound receipt from the production review-history attachment. It withdraws the selected ownership and tombstones that exact group in one native transaction. Production attachment now admits this capability; the remaining closure work is broader property and list parity.
 
 ## Numbering identities
 
@@ -36,7 +36,7 @@ Four two-session cases reject either paragraph or mark-format ownership in both 
 
 Experimental bound rejection now previews its exact selected inverse through a detached `TreePackageStore` transaction. This preserves native content-control and package protection gates before ownership cancellation. Two real-session regressions previously accepted a forbidden rejection after Bob locked the control. They now refuse without any Yjs update, package revision, group tombstone, cancellation record, or shared-state byte change. Bob can undo his lock and Alice can then reject normally. A separate regression proves that forms protection in `settings.xml` refuses an inverse that per-part application admits.
 
-The affected batch passes 58 cases and 1857 assertions across nine files. Its log is `/tmp/n08-independent-property-regression.log`. The private build verifies 323 modules with core external. The production attachment remains unchanged. Compatibility decision: `.collaboration/changes/sciobot-property-scope-admission.json`. No leaf closes.
+The affected batch passes 58 cases and 1857 assertions across nine files. Its log is `/tmp/n08-independent-property-regression.log`. The private build verifies 323 modules with core external. The production attachment now uses the admitted property scope. Compatibility decision: `.collaboration/changes/sciobot-property-scope-admission.json`. No leaf closes.
 
 ## Numbering births and retained peer ancestry
 
@@ -66,10 +66,10 @@ Eight real-session cases cover alignment and mark-format peers, both client orde
 
 Five constructor tests verify creation undo/redo and cold state. Only experimental protocol 2 on the exact native profile captures new property-array entries. Protocol 1, older or newer repair profiles, and foreign namespace lookalikes retain their existing capture behavior. All numeric limits remain unchanged.
 
-The affected batch passes 154 cases and 2410 assertions across 18 files. Its log is `/tmp/n08-peer-property-birth-regression.log`. Private types pass 2401 files. The private build verifies 324 modules with core external. Compatibility decision: `.collaboration/changes/sciobot-peer-property-birth-siblings.json`. No leaf closes. Generic mixed property-holder births, portable pending DOCX ownership, final production admission, and remaining captured list behavior still need work.
+The affected batch passes 154 cases and 2410 assertions across 18 files. Its log is `/tmp/n08-peer-property-birth-regression.log`. Private types pass 2401 files. The private build verifies 324 modules with core external. Compatibility decision: `.collaboration/changes/sciobot-peer-property-birth-siblings.json`. No leaf closes. Generic mixed property-holder births, portable pending DOCX ownership, and remaining captured list behavior still need work.
 
 ## Remaining requirements
 
-The binding root exists only in the explicitly selected experimental attachment. The default field-1/flag-2 production factory remains unchanged. Pending DOCX import needs portable original property ownership and fresh-room seeding. Numbering container and child births now pass the cases above. Other property births still need complete peer-bearing ancestry behavior. Final production admission and remaining same-value and mixed property cases need verification. Native lock and forms-protection admission now pass the regressions above. The default review path retains its original conflicting-format regressions.
+The binding root is now attached by the production review-history factory with field-2 and flag-3 protocols. Pending DOCX import still needs portable original property ownership and fresh-room seeding. Numbering container and child births now pass the cases above. Other property births still need complete peer-bearing ancestry behavior. Remaining same-value and mixed property cases need verification. Native lock and forms-protection admission now pass the regressions above.
 
 Finish source checklist indentation, dormant checked state, sequence resets, sibling conversion, and polite restarts. Run complete N01 list parity and the required final browser/shared coverage before closing N08. No application file, migration, reference capture, or baseline changes. Backlog status remains 193 closed and 83 open across 276 leaves.

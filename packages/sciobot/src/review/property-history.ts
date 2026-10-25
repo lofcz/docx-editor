@@ -6,7 +6,7 @@ import type {
 import { PROPERTY_REVIEW_PROTOTYPE, propertyGroupMembersKey } from './property-history-contract';
 import type { NativeReviewGroup } from './groups';
 
-/** Internal capability only. Default production attachment returns no property ownership scope. */
+/** Read the production property ownership capability attached to a collaboration session. */
 export function propertyHistoryOf(
   session: EditorCollaborationSession | null
 ): PropertyReviewPrototype | null {
