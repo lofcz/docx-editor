@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Tracked new-column image fragments could not materialize through the shared rich-cell executor.",
+  "after": "Tracked new-column image fragments use prepared resources, structural ownership, and locked-control-safe rejection.",
+  "reason": "Core lock admission and private tracked column execution change; no collaboration codec, journal, provider, or public document model fields changed.",
+  "tests": [
+    "packages/sciobot/src/review/track-table-columns.test.ts",
+    "packages/core/src/store/__tests__/revision-batch.test.ts",
+    "packages/core/src/store/__tests__/content-control-lock.test.ts"
+  ],
+  "changeset": "tracked-image-column-ownership",
+  "migration": null
+}

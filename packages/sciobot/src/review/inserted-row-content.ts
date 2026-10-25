@@ -114,19 +114,43 @@ export function newCellSeeds(
   properties?: NewCellProperties,
   fragments?: NewCellSeeds['fragments']
 ): { success: true; seeds: NewCellSeeds } | NativeEditFailure {
-  const seeds = newParagraphSeeds(stream);
-  return seeds.success
-    ? {
-        success: true,
-        seeds: {
-          paragraphs: seeds.paragraphs,
-          links: seeds.links,
-          ...(lists ? { lists } : {}),
-          ...(properties ? { properties } : {}),
-          ...(fragments ? { fragments } : {}),
-        },
-      }
-    : seeds;
+  const rich = stream.some((node) =>
+    node.type !== 'paragraph' && node.type !== 'heading'
+      ? true
+      : Array.isArray(node.children) &&
+        (node.children as TargetAstNode[]).some((child) =>
+          ['image', 'inlineMath', 'mdxJsxTextElement', 'mdxJsxFlowElement'].includes(child.type)
+        )
+  );
+  const seeds = rich ? null : newParagraphSeeds(stream);
+  if (rich && !fragments)
+    return {
+      success: false,
+      code: 'unsupported-operation',
+      error: 'Rich new cell fragments need their shared materializer.',
+    };
+  if (seeds === null)
+    return {
+      success: true,
+      seeds: {
+        paragraphs: [],
+        links: [],
+        ...(lists ? { lists } : {}),
+        ...(properties ? { properties } : {}),
+        fragments: fragments!,
+      },
+    };
+  if (!seeds.success) return seeds;
+  return {
+    success: true,
+    seeds: {
+      paragraphs: seeds.paragraphs,
+      links: seeds.links,
+      ...(lists ? { lists } : {}),
+      ...(properties ? { properties } : {}),
+      ...(fragments ? { fragments } : {}),
+    },
+  };
 }
 
 /**

@@ -85,7 +85,7 @@ const rowCells = (part: OoxmlPart, rowId: string): string[] => {
 /** The nearest table, without crossing into an enclosing table. */
 const ownerTable = (part: OoxmlPart, node: OoxmlNode): string | null => {
   let current: OoxmlNode | null = node;
-  for (let depth = 0; current && depth < 6; depth++) {
+  for (let depth = 0; current && depth < 64; depth++) {
     if (current.kind === 'table') return current.id;
     current = parentNodeOf(part, current.id);
   }
@@ -104,9 +104,14 @@ function columnStep(
         .filter((binding) => binding.path[0] === index)
         .map((binding) => ({ ...binding, path: binding.path.slice(1) }));
       const atoms = cellAtomBindings(intent.atoms, index);
-      const rich = entry.blocks.some(
-        (node) => node.type !== 'paragraph' && node.type !== 'heading'
-      );
+      const hasRich = (node: (typeof entry.blocks)[number]): boolean =>
+        node.type !== 'paragraph' && node.type !== 'heading'
+          ? true
+          : Array.isArray(node.children) &&
+            (node.children as (typeof entry.blocks)[number][]).some((child) =>
+              ['image', 'inlineMath', 'mdxJsxTextElement', 'mdxJsxFlowElement'].includes(child.type)
+            );
+      const rich = entry.blocks.some(hasRich);
       if (rich && (intent.lists ?? []).some((binding) => binding.path[0] === index))
         return fail('Lists inside rich new cells need nested fragment list placement.');
       const seeded = newCellSeeds(

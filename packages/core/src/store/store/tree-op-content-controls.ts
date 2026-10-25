@@ -644,43 +644,31 @@ interface ControlTouch {
   readonly locks: readonly ContentControlLock[];
   /** The control itself would be removed, not merely edited — and the caller ASKED for that. */
   readonly removed: boolean;
-  /**
-   * The control would be destroyed by an op addressed at something else.
-   *
-   * The difference from {@link removed} is consent, and only `w:dataBinding` cares. Deleting a
-   * bound control the caller NAMED is allowed, because it takes the claim to mirror a custom XML
-   * part away with it. Deleting one the caller never mentioned, as the collateral of setting some
-   * enclosing control's value, is not that decision being made — it is the projection being
-   * thrown away by an op that was about something else.
-   */
   readonly discarded: boolean;
-  /**
-   * For a {@link removed} control: the locks of the controls that SURVIVE around it.
-   *
-   * Removing a control edits the content of whatever encloses it, never its own: its own
-   * `contentLocked` protects what it holds and lets the control go, and the controls nested in
-   * it go with it. So the edit half of the lock is asked of the survivors only, and the removal
-   * half of the whole chain.
-   */
   readonly survivingLocks?: readonly ContentControlLock[];
-  /** A revision decision that keeps the content as it reads: no content lock refuses it. */
   readonly keepsContent?: boolean;
-  /** A removed control locked only against removal stays as an empty shell. */
   readonly shellKept?: boolean;
 }
-function structuralRowOwnsControl(part: OoxmlPart, control: OoxmlNode): boolean {
+function structuralImageOwnsControl(part: OoxmlPart, control: OoxmlNode, row: boolean): boolean {
   const content = contentControlContentNodeOf(control);
-  const hasDrawing = (node: OoxmlNode | undefined): boolean =>
+  const drawing = (node: OoxmlNode | undefined): boolean =>
     !!node &&
     node.kind !== 'textValue' &&
-    (node.localName === 'drawing' || node.children.some((child) => hasDrawing(child)));
-  if (!hasDrawing(content)) return false;
+    (node.localName === 'drawing' || node.children.some(drawing));
+  if (!drawing(content)) return false;
   for (let node: OoxmlNode | null = control; node; node = parentNodeOf(part, node.id)) {
-    if (node.kind !== 'tableRow') continue;
-    const properties = node.children.find((child) => child.localName === 'trPr');
-    return !!properties?.children.some(
-      (child) => child.kind !== 'textValue' && child.localName === 'ins'
-    );
+    if ((row && node.kind === 'tableRow') || (!row && node.kind === 'table')) {
+      const marked = (candidate: OoxmlNode): boolean =>
+        candidate.kind !== 'textValue' &&
+        (row
+          ? candidate.localName === 'trPr' &&
+            candidate.children.some(
+              (child) => child.kind !== 'textValue' && child.localName === 'ins'
+            )
+          : ['cellIns', 'cellDel', 'tblGridChange'].includes(candidate.localName) ||
+            candidate.children.some(marked));
+      return marked(node);
+    }
   }
   return false;
 }
@@ -1116,7 +1104,12 @@ export function contentControlLockRefusal(part: OoxmlPart, op: TreeDocOp): TreeO
   const removingNamedControl = reach.kind === 'control' && reach.intent === 'removal';
   for (const touch of resolveReach(part, reach).touches) {
     if ((namedControlAnswersForItself && !touch.discarded) || touch.keepsContent) continue;
-    if (revisionDecision && structuralRowOwnsControl(part, touch.control)) continue;
+    if (
+      revisionDecision &&
+      (structuralImageOwnsControl(part, touch.control, true) ||
+        structuralImageOwnsControl(part, touch.control, false))
+    )
+      continue;
     const resolved = resolveContentControlLock(touch.locks);
     if (touch.discarded && removingNamedControl) {
       if (lockForbidsRemoval(resolved)) return 'locked';

@@ -19,8 +19,20 @@ import { readEditorRevision } from '../projection/revision-cache';
 import { SCIOBOT_NATIVE_REVIEW_MODULE } from './native-module';
 import { trackTableColumnPlan } from './track-table-columns';
 import type { TrackTextContext } from './tracked-inline';
+import { prepareInlineImageResources } from '../native/inline-image-resources';
 
 const p = (text: string) => `<w:p><w:r><w:t>${text}</w:t></w:r></w:p>`;
+const imagePng = Uint8Array.from(
+  atob(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='
+  ),
+  (c) => c.charCodeAt(0)
+);
+const imageDecode = {
+  async decode() {
+    return { pixelWidth: 1, pixelHeight: 1, dpiX: 96, dpiY: 96 };
+  },
+};
 const cell = (text: string, width: number, extra = '') =>
   `<w:tc><w:tcPr><w:tcW w:w="${width}" w:type="dxa"/>${extra}</w:tcPr>${p(text)}</w:tc>`;
 /** Four columns with merged neighbours: a horizontal span left and a vertical merge right. */
@@ -75,6 +87,29 @@ function richColumnPlan(editor: DocxEditorInstance, widthTwips?: number) {
         { rowId: second!.id, blocks: blocks('Two  \nlines') },
       ],
       ...(widthTwips === undefined ? {} : { properties: { widthTwips } }),
+    }
+  );
+  if (!result.success) throw new Error(`${result.code}: ${result.error}`);
+  return result.plan;
+}
+function imageColumnPlan(editor: DocxEditorInstance) {
+  const session = editor.surface!.session,
+    part = session.part(),
+    [first, second] = rowsOf(part);
+  const result = planInsertedTableColumn(
+    {
+      revision: revisionOf(editor),
+      pkg: session.currentPackage(),
+      partName: part.name,
+      tableId: tableOf(part).id,
+    },
+    {
+      anchor: { kind: 'grid-column', id: gridOf(part)[1]!.id },
+      where: 'right',
+      cells: [
+        { rowId: first!.id, blocks: blocks('A ![Cat](asset:cat "Picture")') },
+        { rowId: second!.id, blocks: blocks('Tail') },
+      ],
     }
   );
   if (!result.success) throw new Error(`${result.code}: ${result.error}`);
@@ -178,6 +213,31 @@ for (const action of ['accept', 'reject'] as const)
       editor.destroy();
     }
   });
+
+test('tracked new column image fragments use prepared resources and reject with the column', async () => {
+  const editor = mount();
+  try {
+    const plan = imageColumnPlan(editor);
+    const prepared = await prepareInlineImageResources(
+      plan,
+      async () => ({ bytes: imagePng, mime: 'image/png' as const }),
+      imageDecode
+    );
+    if (!prepared.success) throw new Error(prepared.error);
+    const result = trackTableColumnPlan(editor, plan, { ...CELL_CONTEXT, images: prepared.images });
+    if (!result.success) throw new Error(result.error);
+    expect(
+      [...editor.surface!.session.currentPackage().partBytes.values()].some(
+        (bytes) =>
+          bytes.length === imagePng.length &&
+          bytes.every((value, index) => value === imagePng[index])
+      )
+    ).toBe(true);
+    expect(editor.exec({ type: 'resolveAllReviewChanges', action: 'reject' }).ok).toBe(true);
+  } finally {
+    editor.destroy();
+  }
+});
 
 for (const action of ['accept', 'reject'] as const)
   test(`a middle column between merged neighbours deletes through ${action} to a valid grid`, async () => {
