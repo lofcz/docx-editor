@@ -260,7 +260,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 ## I15
 
-- [ ] Export Markdown and plain text from the correct view
+- [x] Export Markdown and plain text from the correct view
 
 **Depends:** [P02](03-agent-projection.md#p02), [P04](03-agent-projection.md#p04), [P05](03-agent-projection.md#p05), [R01](05-suggestions.md#r01), [R02](05-suggestions.md#r02), [I07](10-app-integration.md#i07)
 
@@ -274,7 +274,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add or extend a focused Bun test with explicit expected results.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** codex, isolated `sciobot-next` worktree at detached commit `f16d43f25`. **Evidence:** `src/lib/docx/export-text.ts` reads either the committed or working native review projection explicitly, returns the immutable revision with Markdown, and derives plain text after removing Markdown and native-only markers. `src/lib/documentTextExport.ts` routes the existing workspace Markdown/plain-text/clipboard export through that native path whenever the active material is a native DOCX, while preserving the legacy Plate path for other materials. Focused command `bun x rstest src/lib/documentTextExport.test.ts src/lib/docx/export-text.test.ts` passes 5 tests, including Markdown/plain-text output, hidden marker removal, and explicit committed/working selection.
 
 ## I16
 
