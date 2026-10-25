@@ -58,7 +58,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** codex solo, branch `codex/react-block-proof`. **Evidence:** The repeatable native benchmark `scripts/sciobot-port/measure-v05.ts` generates a 100-page, 1,300-paragraph DOCX and measures open, typing, review application, page movement, and retained paragraph roots. Raw samples, p50/p95 summaries, environment, revision, and script hash are stored in [performance.json](evidence/performance.json). The current run uses `bun scripts/sciobot-port/measure-v05.ts`: open p50 2,933 ms; typing p50/p95 82/165 ms; review p50/p95 61/103 ms; movement p50/p95 0.049/0.547 ms; 1,300 paragraph roots retained. V05 remains open because a matched native baseline and RSS memory observation are still required before readiness can turn green.
 
 ## V04
 
