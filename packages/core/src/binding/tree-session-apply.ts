@@ -145,6 +145,11 @@ export function commitSessionTreeOps(
       if (partName) {
         ctx.applyPackage((pkg) => normalizeCollaborationTextPackage(pkg, partName, ops));
       }
+      for (const group of partOps) {
+        ctx.applyPackage((pkg) =>
+          normalizeCollaborationTextPackage(pkg, group.partName, group.ops)
+        );
+      }
       for (const edit of options.packageEditsAfterOps ?? []) if (!ctx.applyPackage(edit)) return;
     },
     { ...options, historyGroup: historyTokenOf(options) }

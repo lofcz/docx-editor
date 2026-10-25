@@ -85,7 +85,8 @@ export function typedInsertOf(
   if (!text || registry.inline.sharesIds(paragraphId)) return null;
   const view = registry.inline.viewOf(paragraphId);
   const shown = view.shown(text);
-  if (shown.hidden.size > 0 || shown.incoming.length > 0) return null;
+  if (shown.hidden.size > 0 || shown.incoming.length > 0 || shown.attributeOverrides?.size)
+    return null;
 
   // The typed value's characters, and the tokens beside the place the insert goes.
   const delta = text.toDelta() as { insert: unknown; attributes?: InlineAttributes }[];
