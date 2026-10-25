@@ -116,7 +116,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 ## V07
 
-- [ ] Check native runtime package boundaries
+- [x] Check native runtime package boundaries
 
 **Depends:** [C03](01-contracts.md#c03), [I21](10-app-integration.md#i21)
 
@@ -130,7 +130,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Run scoped build and typecheck checks. Save the inspected dependency or bundle evidence.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** codex solo, branch `codex/react-block-proof`. **Evidence:** The private adapter manifest keeps `@docx-editor.dev/core` as a peer dependency and has no Pro, editor-api, Plate, or core runtime dependency. `packages/sciobot/src/__tests__/package-boundary.test.ts` passes its one boundary case. The private build bundles 331 adapter modules with native core external and passes `packages/sciobot/scripts/check-build.mjs` (`/tmp/v07-private-build.log`). Private typecheck passes 2,423 files (`/tmp/v07-private-types.log`). The generated graph contains document, React-block, and collaboration entries; the document entry excludes React and Yjs, and all entries exclude Pro, editor-api, and Plate runtimes. The test-only collaboration transport remains outside the shipped route. `check:lane-boundaries` still reports the repository’s existing store project DOM-library configuration errors; it is separate from the adapter boundary build and does not identify a shipped-route dependency. No published runtime dependency or shared format changes.
 
 ## V08
 
