@@ -10,12 +10,45 @@ import { checklistSplitBudget, completeTrackedChecklistSplit } from './list-spli
 import { withReviewGroupRevisionReservations } from '../review/group-allocation';
 import { applyDirectListAssignments } from '../ai/direct-lists';
 import { planParagraphText } from '../diff/paragraph-text';
-import { planListMembership } from '../diff/lists';
+import { createListSourceReader, planListMembership } from '../diff/lists';
 import { createEditPlan } from '../diff/plan';
 import { readEditorRevision } from '../projection/revision-cache';
 import type { ListTarget } from '../diff/list-types';
 import type { BlockCommandContext } from './block-type';
 import { applyManualListPlan, manualListState, adjustManualListLevel } from './lists';
+
+function hasPriorCompatibleOrderedList(
+  editor: DocxEditorInstance,
+  paragraphId: string,
+  _context: BlockCommandContext
+): string | null {
+  const surface = editor.surface!;
+  const pkg = surface.session.currentPackage(),
+    part = surface.session.part();
+  const reader = createListSourceReader(pkg, part),
+    parent = parentNodeOf(part, paragraphId);
+  if (!parent) return null;
+  const currentLayout = reader.paragraph(paragraphId),
+    currentHeading = currentLayout?.outlineLevel != null;
+  const index = parent.children.findIndex((node) => node.id === paragraphId);
+  for (let i = index - 1; i >= 0; i--) {
+    const node = parent.children[i]!;
+    if (node.kind !== 'paragraph') break;
+    const state = reader.read(node.id);
+    if (!state.success) continue;
+    const member = state.state.numbering;
+    if (!member) continue;
+    const level = reader.level(member.numId, member.level)?.level;
+    const layout = reader.paragraph(node.id);
+    const heading = layout?.outlineLevel != null;
+    if (member.level === 0 && level?.numFmt === 'decimal') {
+      if (heading !== currentHeading) return null;
+      return member.numId;
+    }
+    if (member.level === 0 && level?.numFmt !== 'decimal') return null;
+  }
+  return null;
+}
 
 /** Consume exactly one captured prefix and apply membership in the same canonical transaction. */
 export function applyManualListInput(
@@ -35,6 +68,9 @@ export function applyManualListInput(
   if (!current || current.numbering || current.checkbox) return false;
   let target: ListTarget;
   const ordered = /^(\d{1,9})[.)]$/.exec(text);
+  const priorOrderedNumId = ordered
+    ? hasPriorCompatibleOrderedList(editor, head.paragraphId, context)
+    : null;
   if (text === '-' || text === '*')
     target = {
       kind: 'bullet',
@@ -43,12 +79,14 @@ export function applyManualListInput(
       instance: { kind: 'new', key: `input:${revision.revision}` },
     };
   else if (ordered)
-    target = {
-      kind: 'ordered',
-      style: 'decimal',
-      level: 0,
-      instance: { kind: 'new', key: `input:${revision.revision}`, start: Number(ordered[1]) },
-    };
+    target = priorOrderedNumId
+      ? { kind: 'ordered', level: 0, instance: { kind: 'existing', numId: priorOrderedNumId } }
+      : {
+          kind: 'ordered',
+          style: 'decimal',
+          level: 0,
+          instance: { kind: 'new', key: `input:${revision.revision}`, start: Number(ordered[1]) },
+        };
   else if (['[]', '[ ]', '[x]', '[X]'].includes(text))
     target = { kind: 'checklist', level: 0, checked: /x/i.test(text) };
   else return false;
