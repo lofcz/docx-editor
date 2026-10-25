@@ -2,9 +2,24 @@
 
 Port the production workspace editor to the DOCX fork. Keep AI editing, suggestions, and React blocks as required capabilities.
 
-This backlog contains 276 leaves across 11 workstreams. Each leaf has its own status and evidence.
+The detailed inventory below is traceability, not the cutover gate. The initial replacement is viable when the six active gates below pass in `sciobot-next`; the remaining leaves are deferred product parity work and must not block wiring in the replacement.
 
 The React block proof supplies a tested starting point. It does not establish full application parity.
+
+## Active cutover gates
+
+Keep this list small and reviewable. Close a gate only with a command, fixture, or application commit recorded in the linked leaf evidence.
+
+| Gate | Done when | Existing leaves |
+| --- | --- | --- |
+| **CUT-01 Integration shell** | `sciobot-next` can load, create, save, reopen, and export a DOCX through one private adapter; Plate is no longer on the DOCX path. | C03, C08, B01, B04, I01, I02, I03 |
+| **CUT-02 Word-first editing** | Native paragraphs, lists, tables, images, links, breaks, equations, and tracked changes round-trip through the adapter with undo/redo. | N01, N02, N03, N04, N05, N06, N07, N08, D34 |
+| **CUT-03 AI direct edits** | The existing AI tool contract can target a selection or block, stream progress, commit atomically, and survive save/reopen. | C01, C02, C07, D01, D02, D03, D04, D05, D06, D07, D08, D09, D10 |
+| **CUT-04 Suggestions and review** | AI suggestions preserve user edits, support accept/reject/undo, property changes, and reload without losing pending state. | C05, S01, S02, S03, S04, S05, S06, S07, S08, S09, S10, S11, S12, S13, S14, S15, R19 |
+| **CUT-05 Arbitrary React blocks** | A production React block can be inserted, edited, moved, persisted, restored, and collaborated on without Plate serializers. | C03, B01, B02, B03, B04, B05, B06, B07, B08, B09, B10, B11, B12, B13, B14, B15, B16, B17, B18, B19, B20, B21, B22, B23 |
+| **CUT-06 Collaboration and release evidence** | Two real sessions converge for concurrent edits and review waves; runtime dependencies and production coverage are verified. | V01, V02, V03, V04, V05, V06, V07, V08 |
+
+Everything else in the workstream tables is deferred until one of these gates requires it. Do not create a new leaf for a cosmetic or domain-specific port unless it blocks a gate.
 
 Read the [implementation notes](docs/engineering/sciobot-port/evidence/implementation-notes.md) before extending the native adapter.
 
