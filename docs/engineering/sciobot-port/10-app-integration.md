@@ -116,7 +116,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 ## I07
 
-- [ ] Define versioned document snapshot storage
+- [x] Define versioned document snapshot storage
 
 **Depends:** [B02](02-react-blocks.md#b02), [R21](05-suggestions.md#r21)
 
@@ -130,7 +130,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add or extend a focused Bun test with explicit expected results.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** codex, isolated `sciobot-next` worktree at detached commit `697ef03ad`. **Evidence:** `src/lib/docx/snapshot.ts` defines a version-1 JSON envelope with native document identity, monotonic revision, immutable DOCX asset reference, derived Markdown, and optional local-draft bytes. `decodeDocxSnapshot` distinguishes native envelopes from opaque legacy Slate children, preserves unknown versions and malformed data as typed raw failures, and never treats Markdown as canonical DOCX content. `src/lib/docx/snapshot.test.ts` passes 4 focused cases covering native round-trip/base64 bytes, legacy preservation, unknown-version retention, and malformed-envelope refusal.
 
 ## I08
 
