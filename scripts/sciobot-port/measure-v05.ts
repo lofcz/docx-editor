@@ -43,6 +43,7 @@ const samples = {
   review: [] as number[],
   movement: [] as number[],
 };
+const rssStart = process.memoryUsage().rss;
 const start = performance.now();
 const container = document.createElement('div');
 document.body.append(container);
@@ -88,6 +89,11 @@ const output = {
     ])
   ),
   retainedParagraphs: ids.length,
+  memory: {
+    rssStartBytes: rssStart,
+    rssEndBytes: process.memoryUsage().rss,
+    rssDeltaBytes: process.memoryUsage().rss - rssStart,
+  },
 };
 console.log(JSON.stringify(output));
 surface.destroy();

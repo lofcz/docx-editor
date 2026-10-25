@@ -58,7 +58,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** codex solo, branch `codex/react-block-proof`. **Evidence:** The repeatable native benchmark `scripts/sciobot-port/measure-v05.ts` generates a 100-page, 1,300-paragraph DOCX and measures open, typing, review application, page movement, and retained paragraph roots. Raw samples, p50/p95 summaries, environment, revision, and script hash are stored in [performance.json](evidence/performance.json). The current run uses `bun scripts/sciobot-port/measure-v05.ts`: open p50 2,933 ms; typing p50/p95 82/165 ms; review p50/p95 61/103 ms; movement p50/p95 0.049/0.547 ms; 1,300 paragraph roots retained. V05 remains open because a matched native baseline and RSS memory observation are still required before readiness can turn green.
+**Claim:** unclaimed. **Evidence:** pending.
 
 ## V04
 
@@ -80,7 +80,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 ## V05
 
-- [ ] Measure large-document interaction and retention
+- [x] Measure large-document interaction and retention
 
 **Depends:** [B16](02-react-blocks.md#b16), [I01](10-app-integration.md#i01), [U10](09-editor-ui.md#u10)
 
@@ -94,7 +94,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Save the repeatable command, environment, fixture hash, raw samples, and regression decision.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** codex solo, branch `codex/react-block-proof`. **Evidence:** The repeatable native benchmark `scripts/sciobot-port/measure-v05.ts` generates a 100-page, 1,300-paragraph DOCX and measures open, typing, review application, page movement, retained roots, and process RSS. Two matched runs use the same fixture and revision. The baseline reports open p95 4,417 ms, typing p50/p95 117/283 ms, review p50/p95 98/130 ms, movement p50/p95 0.116/0.786 ms, and 1,300 retained paragraphs. RSS rises 423 MiB in the baseline and 430 MiB in the repeat. Raw samples, summaries, environment, comparison, revision, and script hash are stored in [performance.json](evidence/performance.json). No regression threshold is weakened; deployment hardware remains a release-readiness follow-up.
 
 ## V06
 
