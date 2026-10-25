@@ -283,7 +283,7 @@
     }
   },
   "snapshot": {
-    "applicationRevision": "5650bdf550b7987174d1b61fe2a925b86fb24f15",
+    "applicationRevision": "9a93e6b74435f760c4e3d2afa0aead47ce8e38bc",
     "workspace": [
       {
         "name": "AIKit",
@@ -2154,7 +2154,7 @@
       "src/components/callout-base-kit.tsx": "7e3df66701fa92cfdad15cb6b293ca4180a4a5b18c0190be6cb24b431ae45831",
       "src/components/callout-kit.tsx": "22e5a451888859d1b818ab0f32e6196c7fda9fad2a601c9ff7d8a9cbb1f7ded1",
       "src/components/callout-md-rules.ts": "87e8eecd33aa2a303137d760a66810c11d357d14253a59fedb6a31aeb5817051",
-      "src/components/chat/chat-input/EdixTextarea.tsx": "c2d54c3335db4370b169bd3adfc1e3a0995574ab76e3a79ddea3e59ede83c6e0",
+      "src/components/chat/chat-input/EdixTextarea.tsx": "8a123f316e3d74de8228458ead900dd1e2adf6fb263163582e478b364e584fd8",
       "src/components/chat/mdx-tags.ts": "00b03405797d4c125734449b717eea05f2766008e3829e3359380d2c4e03467c",
       "src/components/chat/MessageContent.tsx": "f7941936953a3d121f15df2b217c2c100500e56dd384eb0b9a7f367295447937",
       "src/components/chat/renderer/UserMessageWithInlineMarkers.tsx": "9d5e38ce44bd8825b69c8e997b28726e479185a64bd6d6297d402688c1a72e89",
@@ -2181,7 +2181,7 @@
       "src/components/indent-kit.tsx": "89c2520815290b369fb983fe985b3e526bcdb83b0151234588ed9e94c3c4cd47",
       "src/components/lesson-plan/lesson-plan-base-kit.tsx": "0511fd7f568ae7758b158b8267161bce249a85782676527d943f73d016292a53",
       "src/components/lesson-plan/lesson-plan-export-kit.tsx": "51671f590f0b63828f158bc1eb02717fc2ada109ba73f1288160da9cc7ab0c0c",
-      "src/components/lesson-plan/lesson-plan-export-static.tsx": "9e3bfbe64cd325e1077522e3744068bd7c23f15b31647fee8b123c5723643477",
+      "src/components/lesson-plan/lesson-plan-export-static.tsx": "39747e4ba0210c27825fb8745e742adbe12a4fbae401f24a581b65c6b2fedb07",
       "src/components/lesson-plan/lesson-plan-kit.tsx": "f44da14d226628c01785b5c937c50e47311c2e321981da910ce0176ca370f875",
       "src/components/lesson-plan/md-rules.ts": "62cb5ac18e0ba83e0be143a723fca69226487cd460938b8a4dabc6b2603d21a3",
       "src/components/lesson-plan/media-export-static.tsx": "08499fc5214ed39e4aaa2fffe1dd4f2d091c4c4b024c91bb064219fdad4447fe",
@@ -2207,7 +2207,7 @@
       "src/components/mention-base-kit.tsx": "69406e9ae52e38ce2e6a72ea4eab4bc91908d0d78ea737e2354a91b46bd9b697",
       "src/components/mention-kit.tsx": "a63cd570217286970361e460b1be7171fa3aced753bed6e24064c7ae83780596",
       "src/components/plate-types.ts": "b3f70b4fb6c1e0321d7de798dcbccc13cfa79ead540518866ea87692f14e63a4",
-      "src/components/shared-material/SharedLessonDocView.tsx": "86c56e0138bac273e693c98f3b04bba688fbb5a062af986f29a8b65f36003d21",
+      "src/components/shared-material/SharedLessonDocView.tsx": "598bea0d0c5b54d53b1b1f6bb010f86a14f51ed73ac91ceb4760c221b5ea012a",
       "src/components/slash-kit.tsx": "7bb09badc177818ef4329c29336ad0693686c044e7f3ff13fb5927865384e76c",
       "src/components/smiles-base-kit.tsx": "9e9efe5c54d38fbcd4c47457a5d60afdf59f0dd7169fcc27fa207277a04a7ada",
       "src/components/smiles-kit.tsx": "b3d3cfdfb1daa672d02a70aea1ecba3055dabccc809f5d56e8cb83dbef8846b8",
@@ -2242,7 +2242,7 @@
       "src/components/ui/block-selection.tsx": "afb8bdf04c931f4310ef913cd2bb8c1769b3f3ffb2556420f88581bb6117953b",
       "src/components/ui/blockquote-node-static.tsx": "b72c866385705e11253b0e1900cdea92e5c65ca4471f42ecb4a10d5a1fe2f9f5",
       "src/components/ui/blockquote-node.tsx": "73c04a4100f35e935ca32aebd6e5360ee58975120072d9521549432541cd5d2a",
-      "src/components/ui/callout-node-static.tsx": "6f99d264edb5de62ee9d6d3e067d9e2a0be500eb4f77e30428ccc4236b7f6a4d",
+      "src/components/ui/callout-node-static.tsx": "9c65d38fb834d0bba5ab4ee44afae7e20d424dacbd45982a57daedb119399802",
       "src/components/ui/callout-node.tsx": "2472d464272f0d51c7a90d107a514b47d3e38aff3fccba39c3cff5a29c2170d1",
       "src/components/ui/code-block-node-static.tsx": "b7454b5119cfffe65207c274bdd21291dcb731fe8ae20e89d7517cb57a9dc6ca",
       "src/components/ui/code-block-node.tsx": "acfb9e8b03d0f350e900f096560ff28a0fb7d152c5141b88b750b87e884c0b8b",
@@ -2320,23 +2320,23 @@
       "src/components/workspace/ExportMaterialPicker.tsx": "c3a6bab3442c90dd2dc8c8dbfbd0336f05c5fc806cf5d38360b268667774fdcf",
       "src/components/workspace/LinkedLessonEditor.tsx": "d367ddfb7d8dee2610e67821075296468f217094a58b17facd53e6b92c50a130",
       "src/components/workspace/WorkspaceEditorKit.ts": "5ba8b90acdf39bd700a83d5eaf4aca024f5e7efcc71569f79a116f55a6a7aa8c",
-      "src/components/workspace/WorkspaceExportModal.tsx": "64b93a70524411c622b8eead8eabbc81f94e9d0e18f1d8d155c8c73d4b058884",
+      "src/components/workspace/WorkspaceExportModal.tsx": "7e3c2cab950073c5478fef50afae4ed7b2b6e7f9e14266fba4fafb0d19f2886e",
       "src/components/workspace/WorkspacePanel.tsx": "eb873d254b8af19d1301142f0d45e462b7b45ddd9d478526dd84cb3654100acb",
-      "src/hooks/chat/useWorkspaceEditBridge.ts": "ec0a0563c6aefa8e72e20edc3d400f0742226f3f3be48d5c9f21e6a73e934fa5",
+      "src/hooks/chat/useWorkspaceEditBridge.ts": "cbfec4099d903d776667d56afa433a2dcfc64b9100efc2e7828b2f7d36ed5152",
       "src/lib/ai-review-diff.ts": "5233a070f764270172fdc03ca7df564e16483aac958acfce42748ebf1fa7d701",
       "src/lib/attemptAddToChat.ts": "48bba3c1edd55149746e1b93c71a5618b754d31e62d6c14fbfc3632f58976e41",
       "src/lib/documentTextExport.ts": "98c44374699e571801c10c5c276af0916ba790c2699d3a8c18da797b0cefcb9a",
       "src/lib/lesson-plan-deserialize.ts": "6293cee4ca05d2c8a43fdf7f1cc7407aed3792623fe1571d1c959a7376107700",
-      "src/lib/quote-focus.ts": "be81cb44458580d6fa7fbb38c0bf6577ebbd65f64bafcb79410cf4bb60950e58",
+      "src/lib/quote-focus.ts": "36adb76ec6510af621758673865f72887b1281ece77747533ad6760fdb615cb9",
       "src/lib/suggestion-groups.ts": "36a044d291c18da1e54aa7d6ed4391de59839143808191ef38e2a758a1392912",
       "src/lib/suggestion-views.ts": "671fb63d75f06d7264f4ba3a309f131e1a7e1d0d0fbe4fe48722028dced63c31",
-      "src/lib/workspace-lesson-serialize.tsx": "01b40f632521f73a86a3e22239a5aeef4e0cb95615a99c35a32e9babb53bf5d1",
+      "src/lib/workspace-lesson-serialize.tsx": "3c02595852688022a22e9f643c4b7181f47cecf037b5e520da6c4d6822aedb45",
       "src/lib/workspaceClientTools.ts": "4b8345af57f72655e5d356c1344bf895ae84a94b8f5f00650c3e24ce5b49f3f0",
-      "src/lib/workspaceExportArchive.ts": "2a7974da5d6800a12e4bd2887063b4585fae661981f0d5d1d7fb6ca49fd82332",
+      "src/lib/workspaceExportArchive.ts": "86105d64ee9255fa2f952c0e0819f7eb371e97eb8d8426170aa932af7b47e485",
       "src/lib/workspaceExportSnapshot.ts": "5988c1d6f5179c86c24364aa1d45239ca5112e2d89465a4c8c3123d5aa370462",
       "src/stores/quoteStore.ts": "52d35560af0897e60552db15b34705151bb2c2537b91300c113671d32482e1a8",
       "src/stores/workspaceStore.ts": "ad2c0955ae935801a606c55c95c67381a5fad4da97cd7a0d9e758c4e942739a6",
-      "src/types/chat.ts": "a45a4a32f8f656e9b6bd782695c2b80b82845770c65f005537855f736d0f8f4d"
+      "src/types/chat.ts": "c2de409d23c0cb80d9464ce0f2d35fc74ffe0b871618cf865ca04a7453231f46"
     }
   }
 }
