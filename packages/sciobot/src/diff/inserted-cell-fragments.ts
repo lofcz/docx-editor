@@ -162,7 +162,11 @@ export function isInsertedCellFragments(
           DOMAIN_BLOCK_TAGS.get(binding.payload.type)?.kind === 'atomic'
         )
           return true;
-      } else if (binding) return false;
+      } else if (binding) {
+        if (node.type !== 'code' || !payloadMatches(node, binding.payload)) return false;
+        matched++;
+        return true;
+      }
       return (
         !Array.isArray(node.children) ||
         (node.children as TargetAstNode[]).every((child, index) => visit(child, [...path, index]))

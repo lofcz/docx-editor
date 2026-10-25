@@ -1,4 +1,5 @@
 import { cellPropertiesAt } from '../diff/new-cell-properties';
+import { cellAtomBindings } from '../diff/inserted-cell-atoms';
 import { createDirectListContext } from '../ai/direct-lists';
 import { cellListBindings } from '../diff/inserted-cell-lists';
 import type { DocxEditorInstance } from '@docx-editor.dev/core/editor';
@@ -96,17 +97,28 @@ function columnStep(
 ): ColumnStep | NativeEditFailure {
   if (edit.kind === 'insert-column') {
     const intent = edit.intent;
-    if (intent.payloads.length)
-      return fail(
-        'Application blocks in a new column need the shared fragment materializer.',
-        'unsupported-operation'
-      );
     const seeds = new Map<string, NewCellSeeds>();
     for (const [index, entry] of intent.cells.entries()) {
+      const payloads = intent.payloads
+        .filter((binding) => binding.path[0] === index)
+        .map((binding) => ({ ...binding, path: binding.path.slice(1) }));
+      const atoms = cellAtomBindings(intent.atoms, index);
+      const rich = entry.blocks.some(
+        (node) => node.type !== 'paragraph' && node.type !== 'heading'
+      );
+      if (rich && (intent.lists ?? []).some((binding) => binding.path[0] === index))
+        return fail('Lists inside rich new cells need nested fragment list placement.');
       const seeded = newCellSeeds(
         entry.blocks,
         cellListBindings(intent.lists, index),
-        cellPropertiesAt(intent.cellProperties, index)
+        cellPropertiesAt(intent.cellProperties, index),
+        rich
+          ? {
+              inserted: entry.blocks,
+              blocks: payloads,
+              atoms,
+            }
+          : undefined
       );
       if (!seeded.success) return seeded;
       seeds.set(entry.rowId, seeded.seeds);

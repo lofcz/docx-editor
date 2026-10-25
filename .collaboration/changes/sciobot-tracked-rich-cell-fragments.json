@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Tracked new row and column cells rejected payload-backed and rich fragments even though direct materialization supported them.",
+  "after": "Tracked row and column cell insertions reuse the shared fragment materializer for code, nested table, and registered application payloads under the structural review revision.",
+  "reason": "No collaboration codec, journal, provider, or public document model fields changed.",
+  "tests": [
+    "packages/sciobot/src/review/track-table-rows.test.ts",
+    "packages/sciobot/src/review/track-table-columns.test.ts",
+    "packages/sciobot/src/review/track-table-rows-collaboration.test.ts"
+  ],
+  "changeset": "tracked-rich-cell-fragments",
+  "migration": null
+}

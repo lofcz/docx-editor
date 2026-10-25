@@ -15,6 +15,9 @@ import { CELL_CONTEXT, CELL_ORIGINAL, cellViews } from '../../test/support/table
 import { parseTargetMarkdown, type TargetAstNode } from '../projection/parse-target';
 import { readEditorRevision } from '../projection/revision-cache';
 import { planInsertedTableRow } from '../diff/inserted-table-rows';
+import { insertedPayload } from '../diff/inserted-blocks';
+import { MDX_BLOCK } from '../projection/mdx';
+import type { InsertedRowPayloadBinding } from '../diff/inserted-row-types';
 import { createEditPlan, type CanonicalEditPlan } from '../diff/plan';
 import { planTableRow, type TableRowTarget } from '../diff/table-rows';
 import { applyDirectPlan } from '../ai/apply-direct';
@@ -63,7 +66,8 @@ function rowPlan(
   cells: readonly (readonly TargetAstNode[])[],
   where: 'above' | 'below' = 'below',
   anchor = 1,
-  heightTwips?: number
+  heightTwips?: number,
+  extra: { readonly payloads?: readonly InsertedRowPayloadBinding[] } = {}
 ): CanonicalEditPlan {
   const session = editor.surface!.session,
     part = session.part();
@@ -78,6 +82,7 @@ function rowPlan(
       rowId: rowsOf(part)[anchor]!.id,
       where,
       cells,
+      ...extra,
       ...(heightTwips === undefined ? {} : { properties: { heightTwips } }),
     }
   );
@@ -357,8 +362,6 @@ test('unsupported, stale, and invalid row plans refuse atomically', () => {
       expect(canonicalOoxmlFingerprint(session.part())).toBe(print);
     };
     const plain = rowPlan(editor, [paragraphs(['A']), paragraphs(['B'])]);
-    refuse(rowPlan(editor, [paragraphs(['`code`']), []]), 'unsupported-operation');
-    refuse(rowPlan(editor, [paragraphs(['| a |\n| - |\n| b |']), []]), 'unsupported-operation');
     refuse(plain, 'invalid-input', { ...CELL_CONTEXT, date: 'yesterday' });
     refuse(plain, 'invalid-input', { ...CELL_CONTEXT, author: ' ' });
     const twice = createEditPlan(revisionOf(editor), [...plain.operations, ...plain.operations]);
@@ -420,3 +423,47 @@ for (const mode of ['editing', 'suggesting'] as const)
       editor.destroy();
     }
   });
+
+test('tracked rich row fragments keep code, nested tables, and application payloads under the row revision', () => {
+  const editor = mount();
+  try {
+    const codeParsed = parseTargetMarkdown('```ts\nconst value = 1;\n```');
+    const tableParsed = parseTargetMarkdown('| Nested |\n| --- |\n| cell |');
+    const widgetParsed = parseTargetMarkdown('<Widget state={{ mode: "safe" }} />');
+    if (!codeParsed.success || !tableParsed.success || !widgetParsed.success)
+      throw new Error('Rich row fixture did not parse.');
+    const code = codeParsed.target.ast.children[0]!;
+    const nested = tableParsed.target.ast.children[0]!;
+    const widget = widgetParsed.target.ast.children[0]!;
+    const codePayload = insertedPayload(code, 'tracked-code');
+    if (!codePayload) throw new Error('Code payload did not compile.');
+    const payloads: InsertedRowPayloadBinding[] = [
+      { path: [0, 0], label: 'Code', payload: codePayload },
+      {
+        path: [1, 0],
+        label: 'Widget',
+        payload: {
+          id: 'tracked-widget',
+          type: MDX_BLOCK,
+          version: 1,
+          attributes: { host: 'react' },
+          mdast: widget,
+        },
+      },
+    ];
+    const plan = rowPlan(editor, [[code, nested], [widget]], 'below', 1, undefined, { payloads });
+    const original = canonicalOoxmlFingerprint(editor.surface!.session.part());
+    const result = trackTableRowPlan(editor, plan, CELL_CONTEXT);
+    if (!result.success) throw new Error(result.error);
+    expect(result.proposals).toHaveLength(1);
+    expect(editor.getReviewItems()).toHaveLength(1);
+    const pending = serializeOoxmlPart(editor.surface!.session.part());
+    expect(pending).toContain('tracked-code');
+    expect(pending).toContain('tracked-widget');
+    expect(pending).toContain('const value = 1;');
+    expect(editor.exec({ type: 'resolveAllReviewChanges', action: 'reject' }).ok).toBe(true);
+    expect(canonicalOoxmlFingerprint(editor.surface!.session.part())).toBe(original);
+  } finally {
+    editor.destroy();
+  }
+});

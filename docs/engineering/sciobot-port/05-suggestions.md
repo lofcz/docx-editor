@@ -806,7 +806,7 @@ Focused verification passes 70 tests and 1,145 assertions across four files. Nin
 
 **Check:** Add a focused native document regression. Include save/reopen and undo/redo. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending. R08 refuses these fragments atomically, as A01 does.
+**Claim:** codex solo, branch `codex/react-block-proof`. **Evidence:** Tracked row and column executors now reuse the shared D28-D30 fragment materializer for code blocks, nested tables, and registered application payloads. New fragments remain under the enclosing row/column insertion revision; plain paragraphs, links, lists, and cell properties retain their existing path. The final tracked row/column batch passes 38 cases and 662 assertions (`/tmp/r41-final.log`), including row collaboration, accept/reject, undo/redo, save/reopen, and a rich-row regression with code, nested table, and application payload. Sciobot typecheck passes 2,425 files (`/tmp/r41-types-final.log`). Compatibility: `.collaboration/changes/sciobot-tracked-rich-cell-fragments.json`; changeset: `.changeset/tracked-rich-cell-fragments.md`. R41 remains open for the inline-image runtime/resource completion and its corresponding two-session acceptance oracle.
 
 ## R42
 
