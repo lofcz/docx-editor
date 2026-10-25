@@ -76,7 +76,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** codex, isolated `sciobot-next` worktree at detached commit `aef918a2e`. **Evidence:** `src/hooks/chat/docxSuggestionExecutor.ts` now reads the native working projection, applies the existing exact replacement matcher, checks document identity/revision before commit, and calls `recomposeOwnedProposals` with a fresh `ScioBot` proposal context. `docxEditExecutor` routes only `isSuggestion=true` into this tracked path; direct edits remain on `applyDirectPlan`. Focused command `bun x rstest src/hooks/chat/docxEditExecutor.test.ts` passes 11 tests. Full app typecheck remains noisy in this isolated checkout because generated i18n declarations are absent; no errors were isolated to the changed files. I04 remains open until R19 and the required browser/two-session suggestion cases pass.
 
 ## I05
 
