@@ -1,0 +1,15 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Native table column deletion required a complete w:tblGrid and could only address gridCol identities.",
+  "after": "Native column insertion and deletion accept first-row reference cells across absent, incomplete, and complete grids. Operations synthesize or repair the canonical grid while retaining surviving cell identities.",
+  "reason": "The core operation adds an optional referenceCellId target and keeps existing gridColumnId behavior. No journal, provider, or serialized collaboration format changes. Existing merge and protection gates remain authoritative.",
+  "tests": [
+    "packages/core/src/store/__tests__/table-column-ops.test.ts",
+    "packages/core/src/store/__tests__/table-ops-history.test.ts",
+    "packages/core/src/store/__tests__/table-ops-lossless.test.ts",
+    "packages/sciobot/src/review/compound-tables-collaboration.test.ts"
+  ],
+  "changeset": "reference-cell-table-columns",
+  "migration": null
+}

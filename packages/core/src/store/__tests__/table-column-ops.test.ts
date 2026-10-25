@@ -427,7 +427,7 @@ describe('insertTableColumn', () => {
     ).toBe('invalidArgs');
   });
 
-  test('rejects referenceCellId when tblGrid exists', () => {
+  test('accepts referenceCellId when tblGrid exists', () => {
     const part = load(TABLE(ROW(CELL('a1'), CELL('a2'))));
     const table = firstTable(part);
     const cell = collectByKind(part.root, 'tableCell')[0]!;
@@ -438,7 +438,25 @@ describe('insertTableColumn', () => {
         referenceCellId: cell.id,
         where: 'left',
       })
-    ).toBe('invalidArgs');
+    ).toBeNull();
+  });
+
+  test('repairs an incomplete grid for reference-cell insertion', () => {
+    const part = load(
+      `<w:tbl><w:tblGrid><w:gridCol w:w="2400"/></w:tblGrid>${ROW(CELL('a1', '2400'), CELL('a2', '3600'))}</w:tbl>`
+    );
+    const table = firstTable(part);
+    const referenceCell = collectByKind(part.root, 'tableCell')[1]!;
+    const result = applyTreeOp(part, {
+      op: 'insertTableColumn',
+      tableId: table.id,
+      referenceCellId: referenceCell.id,
+      where: 'right',
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(gridColIds(result.part, table.id)).toHaveLength(3);
+    expect(collectByKind(result.part.root, 'tableCell')).toHaveLength(3);
   });
 
   test('preserves unknown table and row children outside changed cells', () => {
@@ -564,7 +582,7 @@ describe('insertTableColumn', () => {
     ).toBeNull();
   });
 
-  test('refuses irregular rows and grid/cell count mismatch', () => {
+  test('refuses irregular rows and repairs grid/cell count mismatch', () => {
     const irregular = load(
       `<w:tbl><w:tblGrid><w:gridCol w:w="2400"/><w:gridCol w:w="3600"/><w:gridCol w:w="1200"/></w:tblGrid>` +
         `${ROW(CELL('a1'), CELL('a2'))}${ROW(CELL('b1'), CELL('b2'), CELL('b3'))}</w:tbl>`
@@ -593,7 +611,7 @@ describe('insertTableColumn', () => {
         gridColumnId: colM!,
         where: 'left',
       })
-    ).toBe('tree-invariant');
+    ).toBeNull();
   });
 
   test('refuses when max columns would be exceeded', () => {
@@ -719,17 +737,24 @@ describe('deleteTableColumn', () => {
     ).toBe('block-required');
   });
 
-  test('refuses deletion without tblGrid', () => {
-    const part = load(`<w:tbl>${ROW(CELL('a'), CELL('b'))}</w:tbl>`);
-    const table = firstTable(part);
-    const cell = collectByKind(part.root, 'tableCell')[0]!;
-    expect(
-      validateTableColumnOp(part, {
+  test('deletes by reference cell and repairs absent or incomplete grids', () => {
+    for (const body of [
+      `<w:tbl>${ROW(CELL('a', '1800'), CELL('b', '2200'))}</w:tbl>`,
+      `<w:tbl><w:tblGrid><w:gridCol w:w="1800"/></w:tblGrid>${ROW(CELL('a'), CELL('b'))}</w:tbl>`,
+    ]) {
+      const part = load(body),
+        table = firstTable(part),
+        cell = collectByKind(part.root, 'tableCell')[0]!;
+      const result = applyTreeOp(part, {
         op: 'deleteTableColumn',
         tableId: table.id,
-        gridColumnId: cell.id,
-      })
-    ).toBe('unknown-grid-column');
+        referenceCellId: cell.id,
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(gridColIds(result.part, table.id)).toHaveLength(1);
+      expect(collectByKind(result.part.root, 'tableCell')).toHaveLength(1);
+    }
   });
 
   test('refuses merged tables and irregular rows', () => {

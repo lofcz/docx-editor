@@ -60,6 +60,7 @@ import { paragraphIdsWithin } from './tree-op-blocks.ts';
 import { fromEdit, TEXT_DEPS } from './tree-op-nodes.ts';
 import { isWmlElement, wmlAttributeValue, wmlChildNamed } from './tree-op-table-shared.ts';
 import { readEditableTableTopology, type EditableTableTopology } from './tree-op-table-topology.ts';
+import { applyResolvedDeleteColumn } from './tree-op-table-column-delete.ts';
 import {
   rowHasVerticalMerge,
   rowHidesCellInWrapper,
@@ -141,7 +142,8 @@ export type TableColumnDocOp =
   | {
       readonly op: 'deleteTableColumn';
       readonly tableId: string;
-      readonly gridColumnId: string;
+      readonly gridColumnId?: string;
+      readonly referenceCellId?: string;
       readonly revision?: RevisionAttributionInput;
     };
 
@@ -981,7 +983,6 @@ export function validateRegularColumnTable(
       return 'tree-invariant';
     }
   }
-  if (topology.grid && topology.gridColumns.length !== cellCount) return 'tree-invariant';
   return null;
 }
 
@@ -1048,16 +1049,20 @@ function synthesizeTblGrid(
   nextId: () => string,
   wml: WmlFreshNamespaceContext,
   insertedIndex: number,
-  insertedWidth: string | undefined
+  insertedWidth: string | undefined,
+  deletedIndex?: number
 ): OoxmlElement {
-  const columnCount = topology.rows[0]!.cells.length + 1;
+  const columnCount = topology.rows[0]!.cells.length + (deletedIndex === undefined ? 1 : -1);
   const cols: OoxmlNode[] = [];
   for (let index = 0; index < columnCount; index += 1) {
-    if (index === insertedIndex) {
+    if (deletedIndex === undefined && index === insertedIndex) {
       cols.push(freshGridCol(nextId, wml, insertedWidth));
       continue;
     }
-    const sourceIndex = index > insertedIndex ? index - 1 : index;
+    const sourceIndex =
+      deletedIndex === undefined
+        ? index - Number(index > insertedIndex)
+        : index + Number(index >= deletedIndex);
     cols.push(freshGridCol(nextId, wml, referenceGridWidthTwips(topology, sourceIndex)));
   }
   return {
@@ -1134,7 +1139,8 @@ function planColumnInsertion(
     referenceWidth: referenceGridWidthTwips(topology, referenceIndex),
     structureBudget,
     referenceCells,
-    synthesizeGrid: !topology.grid || topology.gridColumns.length === 0,
+    synthesizeGrid:
+      !topology.grid || topology.gridColumns.length !== topology.rows[0]!.cells.length,
     targetGridColumnId: topology.gridColumns[referenceIndex]?.id ?? null,
   };
 }
@@ -1173,9 +1179,22 @@ function validateInsertColumnShape(
     if (resolveGridColumnIndex(topology, target.id) === null) return 'unknown-grid-column';
     return null;
   }
-  if (hasGrid) return 'invalidArgs';
   if (resolveReferenceCellColumnIndex(topology, target.id) === null) return 'unknown-grid-column';
   return null;
+}
+
+function parseDeleteColumnTarget(
+  op: Extract<TableColumnDocOp, { op: 'deleteTableColumn' }>
+):
+  | { readonly kind: 'gridColumn'; readonly id: string }
+  | { readonly kind: 'referenceCell'; readonly id: string }
+  | null {
+  const hasGridColumnKey = hasOwnOpKey(op, 'gridColumnId');
+  const hasReferenceCellKey = hasOwnOpKey(op, 'referenceCellId');
+  if (hasGridColumnKey === hasReferenceCellKey) return null;
+  const key = hasGridColumnKey ? 'gridColumnId' : 'referenceCellId';
+  const id = ownNonEmptyString(op, key);
+  return id ? { kind: hasGridColumnKey ? 'gridColumn' : 'referenceCell', id } : null;
 }
 
 export function validateTableColumnOp(
@@ -1194,11 +1213,17 @@ export function validateTableColumnOp(
   if (regular) return regular;
 
   if (op.op === 'deleteTableColumn') {
-    if (!ownNonEmptyString(op, 'gridColumnId')) return 'invalidArgs';
-    if (!topology.grid || topology.gridColumns.length === 0) return 'unknown-grid-column';
-    const columnIndex = resolveGridColumnIndex(topology, op.gridColumnId);
+    const target = parseDeleteColumnTarget(op);
+    if (!target) return 'invalidArgs';
+    const completeGrid =
+      topology.grid !== undefined && topology.gridColumns.length === topology.rows[0]!.cells.length;
+    if (target.kind === 'gridColumn' && !completeGrid) return 'unknown-grid-column';
+    const columnIndex =
+      target.kind === 'gridColumn'
+        ? resolveGridColumnIndex(topology, target.id)
+        : resolveReferenceCellColumnIndex(topology, target.id);
     if (columnIndex === null) return 'unknown-grid-column';
-    if (topology.gridColumns.length === 1) return 'block-required';
+    if (topology.rows[0]!.cells.length === 1) return 'block-required';
     return null;
   }
 
@@ -1308,13 +1333,15 @@ export function applyInsertTableColumn(
 
   if (plan.synthesizeGrid) {
     edits.push((current) =>
-      insertChildren(
-        current,
-        topology.table.id,
-        tblGridChildInsertIndex(topology.table),
-        [newGrid],
-        options
-      )
+      topology.grid
+        ? replaceNode(current, topology.grid.id, newGrid, options)
+        : insertChildren(
+            current,
+            topology.table.id,
+            tblGridChildInsertIndex(topology.table),
+            [newGrid],
+            options
+          )
     );
   } else {
     edits.push((current) => replaceNode(current, topology.grid!.id, newGrid, options));
@@ -1340,57 +1367,24 @@ export function applyInsertTableColumn(
   return fromEdit(applyEdits(part, edits, options), effect);
 }
 
-export function applyDeleteTableColumn(
-  part: OoxmlPart,
-  op: Extract<TableColumnDocOp, { op: 'deleteTableColumn' }>,
-  options?: EditOptions,
-  limits: TableTopologyLimits = DEFAULT_TABLE_TOPOLOGY_LIMITS
-): TreeOpResult {
-  const rejection = validateTableColumnOp(part, op, limits);
-  if (rejection) return { ok: false, reason: rejection };
-
-  const topologyResult = readEditableTableTopology(
-    part.root,
-    op.tableId,
-    resolveTableTopologyLimits(limits)
-  );
-  if (!topologyResult.ok) return { ok: false, reason: mapTopologyRejection(topologyResult.reason) };
-
-  const { topology } = topologyResult;
-  const columnIndex = resolveGridColumnIndex(topology, op.gridColumnId);
-  if (columnIndex === null || !topology.grid) return { ok: false, reason: 'unknown-grid-column' };
-
-  const deletedCells = topology.rows.map((entry) => entry.cells[columnIndex]!);
-  const deletedParagraphs = deletedCells.flatMap((cell) => paragraphIdsWithin(cell));
-  const caretSourceIndex =
-    columnIndex < topology.gridColumns.length - 1 ? columnIndex + 1 : columnIndex - 1;
-  const caretParagraphId = firstParagraphId(topology.rows[0]!.cells[caretSourceIndex]!);
-  if (!caretParagraphId) return { ok: false, reason: 'tree-invariant' };
-
-  const gridPatch = patchTblGridColumn(topology.grid, op.gridColumnId, null);
-  if (!gridPatch.ok) {
-    return {
-      ok: false,
-      reason: gridPatch.reason === 'unknown-grid-column' ? 'unknown-grid-column' : 'tree-invariant',
-    };
-  }
-
-  const edits: ((current: OoxmlPart) => ReturnType<typeof removeNode>)[] = [];
-  for (const cell of deletedCells) {
-    edits.push((current) => removeNode(current, cell.id, options));
-  }
-  edits.push((current) => replaceNode(current, topology.grid!.id, gridPatch.grid, options));
-
-  const effect: TreeOpEffect = {
-    dirty: [topology.table.id, topology.grid.id, ...topology.rows.map((entry) => entry.row.id)],
-    created: [],
-    deleted: [op.gridColumnId, ...deletedCells.map((cell) => cell.id), ...deletedParagraphs],
-    dependencyKeys: TEXT_DEPS,
-    impact: 'flow-structural',
-    caret: { paragraphId: caretParagraphId },
-  };
-
-  return fromEdit(applyEdits(part, edits, options), effect);
+// prettier-ignore
+export function applyDeleteTableColumn(part: OoxmlPart, op: Extract<TableColumnDocOp, { op: 'deleteTableColumn' }>, options?: EditOptions, limits: TableTopologyLimits = DEFAULT_TABLE_TOPOLOGY_LIMITS): TreeOpResult {
+  const refusal = validateTableColumnOp(part, op, limits);
+  if (refusal) return { ok: false, reason: refusal };
+  const read = readEditableTableTopology(part.root, op.tableId, resolveTableTopologyLimits(limits));
+  if (!read.ok) return { ok: false, reason: mapTopologyRejection(read.reason) };
+  const target = parseDeleteColumnTarget(op);
+  if (!target) return { ok: false, reason: 'invalidArgs' };
+  const { topology } = read;
+  const complete = topology.grid !== undefined && topology.gridColumns.length === topology.rows[0]!.cells.length;
+  const index = target.kind === 'gridColumn' ? complete ? resolveGridColumnIndex(topology, target.id) : null : resolveReferenceCellColumnIndex(topology, target.id);
+  if (index === null) return { ok: false, reason: 'unknown-grid-column' };
+  return applyResolvedDeleteColumn(part, topology, target, index, options, {
+    firstParagraphId,
+    patchGridColumn: (grid, id) => { const result = patchTblGridColumn(grid, id, null); return result.ok ? result : { ok: false as const }; },
+    synthesizeGrid: (source, nextId, column) => synthesizeTblGrid(source, nextId, wmlFreshNamespaceContextAt(part, source.table), column, undefined, column),
+    gridChildIndex: tblGridChildInsertIndex,
+  });
 }
 
 export function applyTableColumnOp(

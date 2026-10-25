@@ -702,10 +702,13 @@ export type TreeDocOp =
       readonly widthTwips?: number;
     }
   | {
-      /** Delete one canonical grid column; refuses the final column. */
+      /** Delete one table column; refuses the final column. */
       readonly op: 'deleteTableColumn';
       readonly tableId: string;
-      readonly gridColumnId: string;
+      /** Address a complete grid column directly. */
+      readonly gridColumnId?: string;
+      /** Address through a first-row cell when the grid is absent or incomplete. */
+      readonly referenceCellId?: string;
       /** Mark the column's cells with `w:cellDel` and keep them until the decision. */
       readonly revision?: RevisionAttributionInput;
     }

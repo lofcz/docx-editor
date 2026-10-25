@@ -402,7 +402,7 @@ Local cases cover unmerged, horizontal-merged and vertical-merged tables with no
 
 ## N19
 
-- [ ] Address native table columns by reference cell in any grid state
+- [x] Address native table columns by reference cell in any grid state
 
 **Depends:** [C03](01-contracts.md#c03), [V01](11-verification.md#v01)
 
@@ -416,7 +416,9 @@ Local cases cover unmerged, horizontal-merged and vertical-merged tables with no
 
 **Check:** Add core operation tests, two real sessions for concurrent peer edits and reconnect, a core changeset, API snapshot updates, and a compatibility decision for the shared operation change.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** codex solo, branch `codex/react-block-proof`. **Evidence:** Core column operations now accept first-row `referenceCellId` targets for insertion and deletion when `w:tblGrid` is absent, incomplete, or complete. Complete grids retain the existing `gridColumnId` path. Absent and incomplete grids are synthesized or repaired from surviving cell widths before the structural edit. Surviving cells retain their native identities, and malformed or ambiguous targets still refuse.
+
+The focused core table batch passes 75 cases and 261 assertions (`/tmp/n19-core-table-batch.log`). It covers repeated insertion/deletion, absent and incomplete grids, save/reopen, exact effects, history, malformed inputs, and lossless table structure. Core typecheck passes 1,616 files. The shared native table batch passes 16 cases and 1,088 assertions (`/tmp/n19-shared-table.log`) across both client orders and reconnect receivers, with peer edits, histories, geometry, and saved reopening. API checks pass. Compatibility decision: `.collaboration/changes/native-reference-cell-columns.json`; Changeset: `.changeset/reference-cell-table-columns.md`. No migration or collaboration format field changes.
 
 ## N20
 
