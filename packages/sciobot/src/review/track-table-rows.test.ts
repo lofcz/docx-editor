@@ -25,6 +25,7 @@ import { SCIOBOT_NATIVE_REVIEW_MODULE } from './native-module';
 import { trackTableRowPlan } from './track-table-rows';
 import type { TrackTextContext } from './tracked-inline';
 import type { NativeEditFailure } from '../contracts/document';
+import { prepareInlineImageResources } from '../native/inline-image-resources';
 
 const p = (text: string) =>
   `<w:p><w:r><w:rPr><w:color w:val="123456"/></w:rPr><w:t>${text}</w:t></w:r></w:p>`;
@@ -41,6 +42,17 @@ const rowDocument = (bare = false) =>
       '</w:tbl>' +
       p('Tail')
   );
+const imagePng = Uint8Array.from(
+  atob(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='
+  ),
+  (c) => c.charCodeAt(0)
+);
+const imageDecode = {
+  async decode() {
+    return { pixelWidth: 1, pixelHeight: 1, dpiX: 96, dpiY: 96 };
+  },
+};
 const mount = (bytes = rowDocument(), review = true): DocxEditorInstance =>
   createDocxEditor({
     container: document.createElement('div'),
@@ -463,6 +475,34 @@ test('tracked rich row fragments keep code, nested tables, and application paylo
     expect(pending).toContain('const value = 1;');
     expect(editor.exec({ type: 'resolveAllReviewChanges', action: 'reject' }).ok).toBe(true);
     expect(canonicalOoxmlFingerprint(editor.surface!.session.part())).toBe(original);
+  } finally {
+    editor.destroy();
+  }
+});
+
+test('tracked row image fragments use prepared resources and reject with the row', async () => {
+  const editor = mount();
+  try {
+    const plan = rowPlan(editor, [
+      paragraphs(['A ![Cat](asset:cat "Picture")']),
+      paragraphs(['Tail']),
+    ]);
+    const prepared = await prepareInlineImageResources(
+      plan,
+      async () => ({ bytes: imagePng, mime: 'image/png' as const }),
+      imageDecode
+    );
+    if (!prepared.success) throw new Error(prepared.error);
+    const result = trackTableRowPlan(editor, plan, { ...CELL_CONTEXT, images: prepared.images });
+    if (!result.success) throw new Error(result.error);
+    expect(
+      [...editor.surface!.session.currentPackage().partBytes.values()].some(
+        (bytes) =>
+          bytes.length === imagePng.length &&
+          bytes.every((value, index) => value === imagePng[index])
+      )
+    ).toBe(true);
+    expect(editor.exec({ type: 'resolveAllReviewChanges', action: 'reject' }).ok).toBe(true);
   } finally {
     editor.destroy();
   }

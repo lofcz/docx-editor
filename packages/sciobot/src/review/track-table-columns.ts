@@ -1,5 +1,6 @@
 import { cellPropertiesAt } from '../diff/new-cell-properties';
 import { cellAtomBindings } from '../diff/inserted-cell-atoms';
+import { createInlineImageRuntime, type InlineImageRuntime } from '../native/inline-image-runtime';
 import { createDirectListContext } from '../ai/direct-lists';
 import { cellListBindings } from '../diff/inserted-cell-lists';
 import type { DocxEditorInstance } from '@docx-editor.dev/core/editor';
@@ -183,6 +184,9 @@ export function trackTableColumnPlan(
     collectRevisionSites(part).map((site) => [site.node.id, JSON.stringify(site.node)])
   );
   let proposals: readonly NativeColumnProposal[] = [];
+  const imagePreparation = createInlineImageRuntime(plan, context.images);
+  if (!imagePreparation.success) return imagePreparation;
+  const imageRuntime: InlineImageRuntime | undefined = imagePreparation.runtime;
   const complete = (pkg: OoxmlPackage): OoxmlPackage => {
     const listContext = createDirectListContext();
     let working = pkg;
@@ -206,9 +210,17 @@ export function trackTableColumnPlan(
           throw new Error('The new native column cell is ambiguous.');
         return fresh.length ? [{ cellId: fresh[0]!, seeds: step.seeds!.get(entry.rowId)! }] : [];
       });
-      working = materializeNewCells(withPart(working, next), part.name, created, listContext);
+      working = materializeNewCells(
+        withPart(working, next),
+        part.name,
+        created,
+        listContext,
+        imageRuntime,
+        [...step.seeds!.values()].some((seed) => seed.fragments) ? revision : undefined
+      );
       return created.map((entry) => entry.cellId);
     });
+    if (imageRuntime) working = imageRuntime.complete(working);
     const current = working.parts.get(part.name)!;
     const addresses = steps.map(() => new Map<string, RevisionAddress>());
     for (const site of collectRevisionSites(current)) {

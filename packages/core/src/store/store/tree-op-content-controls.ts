@@ -668,7 +668,22 @@ interface ControlTouch {
   /** A removed control locked only against removal stays as an empty shell. */
   readonly shellKept?: boolean;
 }
-
+function structuralRowOwnsControl(part: OoxmlPart, control: OoxmlNode): boolean {
+  const content = contentControlContentNodeOf(control);
+  const hasDrawing = (node: OoxmlNode | undefined): boolean =>
+    !!node &&
+    node.kind !== 'textValue' &&
+    (node.localName === 'drawing' || node.children.some((child) => hasDrawing(child)));
+  if (!hasDrawing(content)) return false;
+  for (let node: OoxmlNode | null = control; node; node = parentNodeOf(part, node.id)) {
+    if (node.kind !== 'tableRow') continue;
+    const properties = node.children.find((child) => child.localName === 'trPr');
+    return !!properties?.children.some(
+      (child) => child.kind !== 'textValue' && child.localName === 'ins'
+    );
+  }
+  return false;
+}
 /** What an op reaches, resolved against the part: the controls, and the nodes it named. */
 interface ResolvedReach {
   readonly touches: readonly ControlTouch[];
@@ -1087,6 +1102,7 @@ const MAX_REVISION_NODES = 50_000;
  */
 export function contentControlLockRefusal(part: OoxmlPart, op: TreeDocOp): TreeOpRejection | null {
   const reach = treeOpReach(op);
+  const revisionDecision = op.op === 'acceptAllRevisions' || op.op === 'rejectAllRevisions';
   // Changing a control's METADATA and REMOVING it are refused by different halves of `ST_Lock`
   // than an edit is — `contentLocked` protects the contents and lets the control go, `sdtLocked`
   // the reverse — and each is resolved in the applier that already holds the control. A write
@@ -1100,6 +1116,7 @@ export function contentControlLockRefusal(part: OoxmlPart, op: TreeDocOp): TreeO
   const removingNamedControl = reach.kind === 'control' && reach.intent === 'removal';
   for (const touch of resolveReach(part, reach).touches) {
     if ((namedControlAnswersForItself && !touch.discarded) || touch.keepsContent) continue;
+    if (revisionDecision && structuralRowOwnsControl(part, touch.control)) continue;
     const resolved = resolveContentControlLock(touch.locks);
     if (touch.discarded && removingNamedControl) {
       if (lockForbidsRemoval(resolved)) return 'locked';

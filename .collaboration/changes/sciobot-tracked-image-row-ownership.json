@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "A prepared image materialized inside a tracked new row was locked correctly but row rejection refused because the structural owner was not recognized.",
+  "after": "Tracked image controls materialized inside pending row insertions are recognized as structural-row-owned during accept/reject, while ordinary locked controls retain their existing refusals.",
+  "reason": "Core lock admission and private tracked table execution change; no collaboration codec, journal, provider, or public document model fields changed.",
+  "tests": [
+    "packages/sciobot/src/review/track-table-rows.test.ts",
+    "packages/core/src/store/__tests__/revision-batch.test.ts",
+    "packages/core/src/store/__tests__/content-control-lock.test.ts"
+  ],
+  "changeset": "tracked-image-row-ownership",
+  "migration": null
+}

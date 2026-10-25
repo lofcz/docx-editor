@@ -1,4 +1,5 @@
 import { createDirectListContext } from '../ai/direct-lists';
+import { createInlineImageRuntime, type InlineImageRuntime } from '../native/inline-image-runtime';
 import type { DocxEditorInstance } from '@docx-editor.dev/core/editor';
 import {
   collectRevisionSites,
@@ -68,7 +69,7 @@ const rows = (part: OoxmlPart, tableId: string): readonly OoxmlNode[] => {
 };
 const ownerRow = (part: OoxmlPart, node: OoxmlNode): OoxmlNode | null => {
   let current: OoxmlNode | null = node;
-  for (let depth = 0; current && depth < 4; depth++) {
+  for (let depth = 0; current && depth < 64; depth++) {
     if (current.kind === 'tableRow') return current;
     current = parentNodeOf(part, current.id);
   }
@@ -192,6 +193,9 @@ export function trackTableRowPlan(
     collectRevisionSites(part).map((site) => [site.node.id, JSON.stringify(site.node)])
   );
   let proposals: readonly NativeRowProposal[] = [];
+  const imagePreparation = createInlineImageRuntime(plan, context.images);
+  if (!imagePreparation.success) return imagePreparation;
+  const imageRuntime: InlineImageRuntime | undefined = imagePreparation.runtime;
   /** Locate rows this transaction created, fill them, and collect native row receipts. */
   const complete = (pkg: OoxmlPackage): OoxmlPackage => {
     const listContext = createDirectListContext();
@@ -217,9 +221,12 @@ export function trackTableRowPlan(
           step.tableId,
           insertedRows[index]![0]!,
           step.seeds,
-          listContext
+          listContext,
+          imageRuntime,
+          step.seeds.cells.some((cell) => cell.fragments) ? revision : undefined
         );
     });
+    if (imageRuntime) working = imageRuntime.complete(working);
     const current = working.parts.get(part.name)!;
     const owners = new Map<string, number>();
     insertedRows.forEach((ids, index) => ids.forEach((id) => owners.set(id, index)));

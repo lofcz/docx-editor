@@ -27,6 +27,7 @@ import { newParagraphSeeds, type NewParagraphLink } from './new-paragraphs';
 import { completeSiblingFragments, siblingFragmentSeeds } from '../diff/fragment-seeds';
 import type { InsertedBlockBinding } from '../diff/inserted-blocks';
 import type { TargetAstNode } from '../projection/parse-target';
+import type { InlineImageRuntime } from '../native/inline-image-runtime';
 
 export interface InsertedRowSeeds {
   readonly cells: readonly {
@@ -34,6 +35,7 @@ export interface InsertedRowSeeds {
     readonly links: readonly NewParagraphLink[];
     readonly lists?: readonly InsertedListBinding[];
     readonly properties?: NewCellProperties;
+    readonly fragments?: NewCellSeeds['fragments'];
   }[];
   readonly heightTwips?: number;
 }
@@ -45,9 +47,16 @@ export interface InsertedRowSeeds {
 export function insertedRowSeeds(
   intent: InsertedTableRowIntent
 ): { success: true; seeds: InsertedRowSeeds } | NativeEditFailure {
+  const hasRichFragment = (node: TargetAstNode): boolean =>
+    node.type !== 'paragraph' && node.type !== 'heading'
+      ? true
+      : Array.isArray(node.children) &&
+        (node.children as TargetAstNode[]).some((child) =>
+          ['image', 'inlineMath', 'mdxJsxTextElement', 'mdxJsxFlowElement'].includes(child.type)
+        );
   const cells: InsertedRowSeeds['cells'][number][] = [];
   for (const [index, stream] of intent.cells.entries()) {
-    const rich = stream.some((node) => node.type !== 'paragraph' && node.type !== 'heading');
+    const rich = stream.some(hasRichFragment);
     const seeds = rich ? null : newParagraphSeeds(stream);
     if (seeds && !seeds.success) return seeds;
     const payloads = intent.payloads
@@ -128,7 +137,9 @@ export function materializeNewCells(
   input: OoxmlPackage,
   partName: string,
   cells: readonly { readonly cellId: string; readonly seeds: NewCellSeeds }[],
-  listContext?: DirectListContext
+  listContext?: DirectListContext,
+  images?: InlineImageRuntime,
+  revision?: { readonly author: string; readonly date: string }
 ): OoxmlPackage {
   let pkg = input,
     part = input.parts.get(partName);
@@ -162,7 +173,7 @@ export function materializeNewCells(
         ...(seeds.fragments.blocks.length ? { blocks: seeds.fragments.blocks } : {}),
         ...(seeds.fragments.atoms.length ? { atoms: seeds.fragments.atoms } : {}),
       };
-      const fragmentSeeds = siblingFragmentSeeds(edit, true);
+      const fragmentSeeds = siblingFragmentSeeds(edit, true, images);
       if (!fragmentSeeds.success)
         throw new Error(`New cell fragments refused: ${fragmentSeeds.error}.`);
       if (fragmentSeeds.seeds.paragraphs.length)
@@ -171,13 +182,15 @@ export function materializeNewCells(
           parentId: cellId,
           beforeId: placeholder.id,
           paragraphs: fragmentSeeds.seeds.paragraphs,
+          ...(revision ? { revision } : {}),
         });
       const completed = completeSiblingFragments(
         withPart(pkg, part),
         partName,
         edit,
         fragmentSeeds.seeds,
-        fragmentSeeds.seeds.paragraphs.map((paragraph) => paragraph.id)
+        fragmentSeeds.seeds.paragraphs.map((paragraph) => paragraph.id),
+        images
       );
       pkg = completed.pkg;
       part = pkg.parts.get(partName)!;
@@ -185,7 +198,13 @@ export function materializeNewCells(
     }
     if (!paragraphs.length) continue;
     // New paragraphs replace the generated seed paragraph.
-    apply({ op: 'insertParagraphs', parentId: cellId, beforeId: placeholders[0]!.id, paragraphs });
+    apply({
+      op: 'insertParagraphs',
+      parentId: cellId,
+      beforeId: placeholders[0]!.id,
+      paragraphs,
+      ...(revision ? { revision } : {}),
+    });
     apply({ op: 'deleteBlock', blockId: placeholders[0]!.id });
     const landed = findNode(part, cellId);
     const ids =
@@ -230,7 +249,9 @@ export function materializeInsertedRow(
   tableId: string,
   rowId: string,
   seeds: InsertedRowSeeds,
-  listContext?: DirectListContext
+  listContext?: DirectListContext,
+  images?: InlineImageRuntime,
+  revision?: { readonly author: string; readonly date: string }
 ): OoxmlPackage {
   let part = input.parts.get(partName);
   if (!part) throw new Error('The inserted row part is missing.');
@@ -253,6 +274,8 @@ export function materializeInsertedRow(
     withPart(input, part),
     partName,
     cells.map((cell, index) => ({ cellId: cell.id, seeds: seeds.cells[index]! })),
-    listContext
+    listContext,
+    images,
+    revision
   );
 }

@@ -24,6 +24,7 @@ import {
 import { trackedRunFormatOps } from './tracked-run-format';
 import { leadingReplacementEdit } from './leading-replacements';
 import { persistReviewGroups } from './groups';
+import type { PreparedInlineImages } from '../native/inline-image-resources';
 
 export interface TrackTextContext {
   /** The current mount supplies these values independently of the plan. */
@@ -32,6 +33,7 @@ export interface TrackTextContext {
   readonly author: string;
   /** One UTC ISO-8601 timestamp for this proposal batch. */
   readonly date: string;
+  readonly images?: PreparedInlineImages;
 }
 
 /** Native addresses survive save/reopen; live queue keys remain editor-instance data. */
