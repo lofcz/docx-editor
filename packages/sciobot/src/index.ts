@@ -81,6 +81,8 @@ export * from './review/track-table-cells';
 export * from './ai/apply-direct';
 export * from './ai/stream-insert';
 export * from './ai/markdown-stream';
+export * from './ai/review-stream';
+export * from './ai/session-lifecycle';
 export * from './ai/change-ledger';
 export * from './ai/direct-baseline';
 export * from './ai/playback';

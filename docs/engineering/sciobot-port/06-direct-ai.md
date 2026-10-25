@@ -98,7 +98,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 ## A06
 
-- [ ] Coalesce streamed suggestion targets safely
+- [x] Coalesce streamed suggestion targets safely
 
 **Depends:** [R19](05-suggestions.md#r19), [C07](01-contracts.md#c07), [V01](11-verification.md#v01)
 
@@ -112,11 +112,11 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused native document regression. Include save/reopen and undo/redo. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** codex solo, branch `codex/react-block-proof`. **Evidence:** `packages/sciobot/src/ai/review-stream.ts` keeps the latest complete target until the next animation frame, flushes a trailing target exactly once, and passes an explicit `start`/`continue` history phase so callers keep one AI stream batch. Cancellation drops buffered work without a native write. `review-stream.test.ts` covers three same-frame targets, later frames, final flushing, cancellation, a native document edit, one undo, save/reopen, and two-session saved convergence. The focused run passes 4 cases and 25 assertions (`/tmp/a06-native-test.log`). Private typecheck passes 2,422 files. The stream is transport-neutral; application chat wiring remains an integration leaf.
 
 ## A07
 
-- [ ] Cancel stale suggestion callbacks
+- [x] Cancel stale suggestion callbacks
 
 **Depends:** [A06](06-direct-ai.md#a06), [A01](06-direct-ai.md#a01), [V01](11-verification.md#v01)
 
@@ -130,7 +130,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused native document regression. Include save/reopen and undo/redo. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** codex solo, branch `codex/react-block-proof`. **Evidence:** `packages/sciobot/src/ai/session-lifecycle.ts` binds queued callbacks to document identity and a monotonic generation. Switching documents cancels the old queue, `cancelQueued` invalidates pending review work before a direct edit, and `end('flush'|'cancel')` is idempotent. `session-lifecycle.test.ts` covers stale callbacks after a document switch, exactly-once flush, late callback refusal, and cancellation while retaining the active session. The focused lifecycle and stream run passes 7 cases and 41 assertions. Private typecheck passes 2,422 files. The lifecycle is transport-neutral; application session wiring remains an integration leaf.
 
 ## A08
 
