@@ -11,6 +11,19 @@ import { parseTargetMarkdown, type TargetAstNode } from '../projection/parse-tar
 import { readEditorRevision } from '../projection/revision-cache';
 import { SCIOBOT_NATIVE_REVIEW_MODULE } from './native-module';
 import { trackTableColumnPlan } from './track-table-columns';
+import { prepareInlineImageResources } from '../native/inline-image-resources';
+
+const imagePng = Uint8Array.from(
+  atob(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='
+  ),
+  (c) => c.charCodeAt(0)
+);
+const imageDecode = {
+  async decode() {
+    return { pixelWidth: 1, pixelHeight: 1, dpiX: 96, dpiY: 96 };
+  },
+};
 
 const p = (text: string) => `<w:p><w:r><w:t>${text}</w:t></w:r></w:p>`;
 const cell = (text: string, width: number, extra = '') =>
@@ -75,6 +88,40 @@ function proposeColumn(editor: DocxEditorInstance) {
   );
   if (!plan.success) throw new Error(plan.error);
   const result = trackTableColumnPlan(editor, plan.plan, CELL_CONTEXT);
+  if (!result.success) throw new Error(`${result.code}: ${result.error}`);
+}
+async function proposeImageColumn(editor: DocxEditorInstance) {
+  const session = editor.surface!.session,
+    part = session.part(),
+    [first, second] = rowsOf(part);
+  const plan = planInsertedTableColumn(
+    {
+      revision: revisionOf(editor),
+      pkg: session.currentPackage(),
+      partName: part.name,
+      tableId: tableOf(part).id,
+    },
+    {
+      anchor: { kind: 'grid-column', id: gridOf(part)[1]!.id },
+      where: 'right',
+      cells: [
+        { rowId: first!.id, blocks: blocks('A ![Cat](asset:cat "Picture")') },
+        { rowId: second!.id, blocks: blocks('Fresh') },
+      ],
+      properties: { widthTwips: 1800 },
+    }
+  );
+  if (!plan.success) throw new Error(plan.error);
+  const prepared = await prepareInlineImageResources(
+    plan.plan,
+    async () => ({ bytes: imagePng, mime: 'image/png' as const }),
+    imageDecode
+  );
+  if (!prepared.success) throw new Error(prepared.error);
+  const result = trackTableColumnPlan(editor, plan.plan, {
+    ...CELL_CONTEXT,
+    images: prepared.images,
+  });
   if (!result.success) throw new Error(`${result.code}: ${result.error}`);
 }
 function proposeDeletion(editor: DocxEditorInstance) {
@@ -178,6 +225,48 @@ for (const clientIds of [
           pair.destroy();
         }
       }, 60_000);
+
+for (const clientIds of [
+  [41, 73],
+  [73, 41],
+] as const)
+  test(`tracked image column converges across sessions through accept; clients ${clientIds.join('/')}`, async () => {
+    const pair = await fixture(clientIds);
+    try {
+      const [alice, bob] = pair.editors;
+      pair.pause();
+      await proposeImageColumn(alice!);
+      append(bob!, 'E', ' Bob');
+      pair.reconnect(0);
+      await pair.settle();
+      const original = ORIGINAL.replace('| E |', '| E Bob |');
+      const [committed, working] = await same(pair);
+      expect(committed).toBe(original);
+      expect(working).toContain('![Cat](asset:cat "Picture")');
+      expect(working).toContain('Fresh');
+      expect(working).toContain('E Bob');
+      expect(bob!.exec({ type: 'resolveAllReviewChanges', action: 'accept' }).ok).toBe(true);
+      await pair.settle();
+      const resolved = working;
+      expect(await same(pair)).toEqual([resolved, resolved]);
+      for (const editor of pair.editors) expect(editor.getReviewItems()).toHaveLength(0);
+      const [savedAlice, savedBob] = await pair.savedDigests();
+      expect(savedAlice).toEqual(savedBob);
+      const reopened = await createTwoEditorFixture({
+        document: new Uint8Array(await alice!.save()),
+        editor: { modules: [SCIOBOT_NATIVE_REVIEW_MODULE] },
+        ownedAttributes: true,
+      });
+      try {
+        expect(await same(reopened)).toEqual([resolved, resolved]);
+      } finally {
+        reopened.destroy();
+      }
+      pair.ownership.forEach((handle) => handle.assertHealthy());
+    } finally {
+      pair.destroy();
+    }
+  }, 60_000);
 
 for (const clientIds of [
   [41, 73],
