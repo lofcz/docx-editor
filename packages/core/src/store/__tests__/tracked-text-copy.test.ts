@@ -140,6 +140,12 @@ test('copied native text records positional concatenation across distinct source
   }
 });
 
+test('tracked hyperlink copies can opt out of source lineage for concurrent source deletion', () => {
+  const source = part('<w:p><w:r><w:t>site</w:t></w:r></w:p>');
+  const copied = copyTrackedText([source.root], [source.root], () => 'copy', false);
+  expect(nativeTextSliceOf(leaves(copied[0]!)[0]!)).toBeUndefined();
+});
+
 for (const target of ['changed', 'same extra'])
   test(`native text copy refuses an inexact source projection: ${target}`, () => {
     const source = part('<w:p><w:r><w:t>same</w:t></w:r></w:p>');

@@ -24,10 +24,11 @@ function textLeaves(nodes: readonly OoxmlNode[]): Leaf[] {
 export function copyTrackedText(
   nodes: readonly OoxmlNode[],
   sources: readonly OoxmlNode[],
-  mint: () => string
+  mint: () => string,
+  captureSources = true
 ): OoxmlNode[] {
   const copies = nodes.map((node) => cloneWithNewIds(node, mint));
-  if (!isCanonicalPrimitiveCaptureActive()) return copies;
+  if (!captureSources || !isCanonicalPrimitiveCaptureActive()) return copies;
   const input = textLeaves(sources);
   let index = 0,
     offset = 0;

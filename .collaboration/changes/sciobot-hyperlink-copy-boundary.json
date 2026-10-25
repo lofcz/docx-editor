@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Tracked hyperlink retarget copies inherited source text lineage, so concurrent deletion of the original link could remove the pending copy.",
+  "after": "Tracked hyperlink retarget copies use fresh native text identities without source lineage capture. Original and pending copies remain separate through peer deletion and review decisions.",
+  "reason": "Only the native copy provenance for hyperlink retargets changes. No shared codec, journal field, provider, or public document API changes. Other tracked text copies retain source recipes.",
+  "tests": [
+    "packages/core/src/store/__tests__/tracked-text-copy.test.ts",
+    "packages/core/src/store/__tests__/tracked-hyperlink-structure.test.ts",
+    "packages/sciobot/src/review/track-hyperlinks-collaboration.test.ts"
+  ],
+  "changeset": "hyperlink-copy-ownership",
+  "migration": null
+}

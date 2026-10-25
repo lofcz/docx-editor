@@ -128,7 +128,7 @@ export function applyTrackedHyperlinkTarget(
         'revisionInsert',
         'ins',
         revisionAttributes(insertionId, revision),
-        copyTrackedText(copied, copied, mint)
+        copyTrackedText(copied, copied, mint, false)
       ),
     ],
   }) as OoxmlNode;
