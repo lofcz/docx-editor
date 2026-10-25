@@ -430,7 +430,7 @@ The born-table Original recovery checkpoint makes Original retain the independen
 
 ## R20
 
-- [ ] Keep imported and foreign revisions separate
+- [x] Keep imported and foreign revisions separate
 
 **Depends:** [R19](05-suggestions.md#r19), [V01](11-verification.md#v01)
 
@@ -444,7 +444,9 @@ The born-table Original recovery checkpoint makes Original retain the independen
 
 **Check:** Add a focused native document regression. Include save/reopen and undo/redo. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** codex solo, branch `codex/react-block-proof`. **Evidence:** Existing `recomposeOwnedProposals` and `replaceOwnedProposals` keep application-owned groups explicit through the ownership ledger. The native inverse planner preserves unselected foreign and imported revisions, while overlapping unselected proposals refuse before changing tracking mode, canonical content, group membership, or history. Edits outside foreign markup still commit and preserve the foreign revision through undo/redo and DOCX reopening.
+
+The focused local run passes 3 cases and 29 assertions (`/tmp/r20-foreign-focused.log`), covering preserved foreign markup, saved reload without adopting foreign groups, and atomic overlap refusal. The shared run passes 8 cases and 1,232 assertions (`/tmp/r20-foreign-shared.log`) across both client orders and reconnect receivers, including peer edits, histories, decisions, geometry, and reopening. No new source file was needed because the existing owned-proposal planner is the production boundary. R19, host integration, and final cutover gates remain separate.
 
 ## R21
 
