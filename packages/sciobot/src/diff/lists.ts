@@ -363,8 +363,14 @@ export function planListMembership(
     const membership = state.numbering,
       marker = state.checkbox;
     const target = patch.target;
-    if (target.kind === 'none' && !membership && !marker && state.dormantChecked === undefined)
+    if (target.kind === 'none' && !membership && !marker && state.dormantChecked === undefined) {
+      if (target.retainedIndent !== undefined)
+        return fail(
+          'Retained indentation requires original list membership.',
+          'unsupported-operation'
+        );
       continue;
+    }
     if (target.kind === 'checklist') {
       if (
         !membership &&
@@ -396,7 +402,27 @@ export function planListMembership(
         )
           continue;
       } else {
-        const style = target.style ?? null;
+        if (target.instance.templateNumId !== undefined) {
+          const template = resolveNumberingLevel(
+            numbering,
+            target.instance.templateNumId,
+            target.level
+          )?.level;
+          if (
+            !template ||
+            template.numFmt === 'none' ||
+            (target.kind === 'bullet') !== (template.numFmt === 'bullet')
+          )
+            return fail(
+              'The imported list template has no matching level.',
+              'unsupported-operation'
+            );
+        }
+        const style = JSON.stringify([
+          target.style ?? null,
+          target.instance.templateNumId ?? null,
+          target.instance.ancestorStarts ?? [],
+        ]);
         if (newStyles.has(target.instance.key) && newStyles.get(target.instance.key) !== style)
           return fail('One new list instance has conflicting marker styles.', 'ambiguous-target');
         newStyles.set(target.instance.key, style);
@@ -404,6 +430,7 @@ export function planListMembership(
           definition = JSON.stringify([
             target.kind,
             target.style ?? null,
+            target.instance.templateNumId ?? null,
             target.kind === 'ordered' ? (target.instance.start ?? 1) : null,
           ]);
         const previous = newInstances.get(levelKey);

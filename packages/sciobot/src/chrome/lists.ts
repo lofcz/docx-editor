@@ -1,3 +1,4 @@
+import { listToggleSiblings } from './list-toggle-siblings';
 import { paragraphTextOf, paragraphOffsetIndex, findNode } from '@docx-editor.dev/core/store';
 import type { DocxEditorInstance } from '@docx-editor.dev/core/editor';
 import { paragraphsInCells, paragraphFragmentsOf } from '@docx-editor.dev/core/layout';
@@ -53,7 +54,8 @@ function change(
   editor: DocxEditorInstance,
   context: BlockCommandContext,
   target: (state: ListSourceState, id: string) => ListTarget | ReturnType<typeof fail>,
-  sequences = false
+  sequences = false,
+  targetIds?: readonly string[]
 ) {
   const s = editor.surface;
   if (!s) return fail('The native editor is not attached.');
@@ -65,7 +67,7 @@ function change(
   if (part.name !== pkg.mainDocumentPart) return fail('List controls require the body story.');
   const patches = [];
   const reader = createListSourceReader(pkg, part);
-  for (const id of selection(editor)) {
+  for (const id of targetIds ?? selection(editor)) {
     const inspected = reader.read(id);
     if (!inspected.success) return inspected;
     const state = inspected.state;
@@ -157,6 +159,14 @@ export function setManualList(
   style: ListStyle | 'todo' | 'none',
   context: BlockCommandContext
 ) {
+  return setListTargets(editor, style, context);
+}
+function setListTargets(
+  editor: DocxEditorInstance,
+  style: ListStyle | 'todo' | 'none',
+  context: BlockCommandContext,
+  targetIds?: readonly string[]
+) {
   if (![...LIST_STYLES, 'todo', 'none'].includes(style))
     return fail('Choose an application list style.');
   editor.surface?.flushPendingInput();
@@ -176,7 +186,8 @@ export function setManualList(
             style,
           };
     },
-    true
+    true,
+    targetIds
   );
 }
 /** Toggle native membership; captured checklist indentation has a separate dispatch contract. */
@@ -211,7 +222,53 @@ export function toggleManualList(
             marker?.numFmt === formats[style] &&
             (!glyphs[style] || marker.text === glyphs[style]);
     });
-  return setManualList(editor, active ? 'none' : style, context);
+  if (!active && selectedCollapsed(editor)) {
+    const revision = readEditorRevision(editor, context.documentId, context.epoch);
+    if (!revision) return fail('The native document is not ready.');
+    try {
+      const targetIds = listToggleSiblings(
+        { pkg: s.session.currentPackage(), partName: s.session.part().name, revision },
+        ids[0]!
+      );
+      return setListTargets(editor, style, context, targetIds);
+    } catch (error) {
+      return fail(error instanceof Error ? error.message : String(error));
+    }
+  }
+  if (active) return removeManualListToggle(editor, ids, context);
+  return setManualList(editor, style, context);
+}
+function selectedCollapsed(editor: DocxEditorInstance) {
+  const { anchor, head } = editor.surface!.state().selection;
+  return anchor.paragraphId === head.paragraphId && anchor.offset === head.offset;
+}
+function removeManualListToggle(
+  editor: DocxEditorInstance,
+  ids: readonly string[],
+  context: BlockCommandContext
+) {
+  const s = editor.surface!,
+    pkg = s.session.currentPackage(),
+    part = pkg.parts.get(pkg.mainDocumentPart)!;
+  const revision = readEditorRevision(editor, context.documentId, context.epoch);
+  if (!revision) return fail('The native document is not ready.');
+  const patches = [];
+  for (const paragraphId of ids) {
+    const state = manualListState(editor, context, paragraphId);
+    if (!state) return fail('The selected list source is unavailable.');
+    patches.push({
+      paragraphId,
+      target: {
+        kind: 'none' as const,
+        retainedIndent: state.checkbox?.level ?? state.numbering?.level ?? 0,
+      },
+    });
+  }
+  const planned = planManualListSequences({ pkg, partName: part.name, revision }, patches);
+  if (!planned.success) return planned;
+  if (!planned.plan.operations.length)
+    return { success: true as const, committed: false, revision };
+  return applyManualListPlan(editor, planned.plan, context, true);
 }
 /** Match the captured indentTodo action, independently of native checkbox conversion. */
 export function indentManualChecklist(editor: DocxEditorInstance, context: BlockCommandContext) {
@@ -344,6 +401,13 @@ export function createListToolbar(editor: DocxEditorInstance, context: BlockComm
     [
       'Apply list',
       () => setManualList(editor, style.value as ListStyle | 'todo' | 'none', context),
+    ],
+    [
+      'Toggle list',
+      () =>
+        style.value === 'none'
+          ? setManualList(editor, 'none', context)
+          : toggleManualList(editor, style.value as ListStyle | 'todo', context),
     ],
     ['Insert bullets', () => insertManualList(editor, 'disc', context)],
     ['Insert numbers', () => insertManualList(editor, 'decimal', context)],

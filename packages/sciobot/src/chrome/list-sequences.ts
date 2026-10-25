@@ -1,3 +1,4 @@
+import { resetRemovedListSequences } from './list-removal-sequences';
 import { parentNodeOf, type OoxmlNode } from '@docx-editor.dev/core/store';
 import {
   createListSourceReader,
@@ -253,7 +254,10 @@ export function planManualListSequences(
     }
     return planListMembership(
       source,
-      [...patches].map(([paragraphId, target]) => ({ paragraphId, target }))
+      resetRemovedListSequences(
+        source,
+        [...patches].map(([paragraphId, target]) => ({ paragraphId, target }))
+      )
     );
   } catch (error) {
     return {

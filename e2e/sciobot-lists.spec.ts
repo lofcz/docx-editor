@@ -394,3 +394,66 @@ for (const prior of [false, true])
     const saved = await page.evaluate(() => window.listControls.saved());
     expect(saved[0]).toEqual(saved[1]);
   });
+
+for (const decision of ['direct', 'accept', 'reject'] as const)
+  test(`source list toggles convert siblings and split the removed counter through the toolbar: ${decision}`, async ({
+    page,
+  }) => {
+    await page.goto('/lists.html');
+    await page.waitForFunction(() => !!window.listControls);
+    const toolbar = page.locator('[data-pane="0"]').getByRole('toolbar', { name: 'Lists' });
+    await page.evaluate(() => window.listControls.selectRange(0, 1, 1, 2));
+    await toolbar.getByRole('combobox', { name: 'List style' }).selectOption('decimal');
+    await toolbar.getByRole('button', { name: 'Apply list', exact: true }).click();
+    await page.evaluate(() => window.listControls.settle());
+    await page.evaluate(() => window.listControls.select(1, 2));
+    await toolbar.getByRole('combobox', { name: 'List style' }).selectOption('lower-roman');
+    await toolbar.getByRole('button', { name: 'Toggle list', exact: true }).click();
+    await page.evaluate(() => window.listControls.settle());
+    const converted = await page.evaluate(() => window.listControls.state());
+    expect(converted.paragraphs.slice(0, 3).map((p) => p.marker?.text)).toEqual([
+      'i.',
+      'ii.',
+      'iii.',
+    ]);
+    if (decision !== 'direct')
+      expect(await page.evaluate(() => window.listControls.suggest())).toBe(true);
+    await toolbar.getByRole('button', { name: 'Toggle list', exact: true }).click();
+    await page.evaluate(() => window.listControls.settle());
+    const pending = await page.evaluate(() => window.listControls.state());
+    expect(pending.paragraphs.slice(0, 3).map((p) => p.marker?.text ?? null)).toEqual([
+      'i.',
+      null,
+      'i.',
+    ]);
+    expect(pending.selection).toEqual(converted.selection);
+    if (decision !== 'direct') {
+      const groups = await page.evaluate(() => window.listControls.groups());
+      expect(groups).toHaveLength(1);
+      expect(
+        await page.evaluate(
+          ({ id, decision }) =>
+            decision === 'accept' ? window.listControls.accept(id) : window.listControls.reject(id),
+          { id: groups[0]!.id, decision }
+        )
+      ).toBe(true);
+      await page.evaluate(() => window.listControls.settle());
+    }
+    const final = await page.evaluate(() => window.listControls.state());
+    if (decision === 'reject') expect(final.fingerprint).toEqual(converted.fingerprint);
+    expect(await page.evaluate(() => window.listControls.undo())).toBe(true);
+    expect((await page.evaluate(() => window.listControls.state())).fingerprint).toEqual(
+      decision === 'direct' ? converted.fingerprint : pending.fingerprint
+    );
+    expect(await page.evaluate(() => window.listControls.redo())).toBe(true);
+    expect((await page.evaluate(() => window.listControls.state())).fingerprint).toEqual(
+      final.fingerprint
+    );
+    await page.keyboard.type('!');
+    await page.evaluate(() => window.listControls.settle());
+    expect((await page.evaluate(() => window.listControls.state())).paragraphs[1]!.text).toBe(
+      'Be!ta'
+    );
+    const saved = await page.evaluate(() => window.listControls.saved());
+    expect(saved[0]).toEqual(saved[1]);
+  });

@@ -13,10 +13,20 @@ export type ListStyle = (typeof LIST_STYLES)[number];
 export type ListInstance =
   | { readonly kind: 'existing'; readonly numId: string }
   /** One key joins a multilevel instance. Kind and start belong to each target level. */
-  | { readonly kind: 'new'; readonly key: string; readonly start?: number };
+  | {
+      readonly kind: 'new';
+      readonly key: string;
+      readonly start?: number;
+      readonly templateNumId?: string;
+      /** Native parent counter values for a fork below the root level. */
+      readonly ancestorStarts?: readonly number[];
+    };
 
 export type ListTarget =
-  | { readonly kind: 'none' }
+  | {
+      readonly kind: 'none';
+      /** Source plain-indent steps retained after a toggle. */ readonly retainedIndent?: number;
+    }
   | {
       readonly kind: 'bullet' | 'ordered';
       readonly level: number;
@@ -52,7 +62,11 @@ const identifier = (value: unknown): boolean =>
 /** Called only after the D01 plain JSON gate. */
 export function isListTarget(value: unknown): value is ListTarget {
   if (!record(value)) return false;
-  if (value.kind === 'none') return keys(value, ['kind']);
+  if (value.kind === 'none')
+    return (
+      keys(value, ['kind', 'retainedIndent']) &&
+      (value.retainedIndent === undefined || level(value.retainedIndent))
+    );
   if (!level(value.level)) return false;
   if (value.kind === 'checklist')
     return typeof value.checked === 'boolean' && keys(value, ['kind', 'level', 'checked']);
@@ -87,7 +101,20 @@ export function isListTarget(value: unknown): value is ListTarget {
         Number.isSafeInteger(instance.start) &&
         Number(instance.start) >= 0 &&
         Number(instance.start) <= 2147483647)) &&
-    keys(instance, ['kind', 'key', 'start'])
+    (instance.templateNumId === undefined ||
+      (value.style === undefined &&
+        typeof instance.templateNumId === 'string' &&
+        /^\d{1,9}$/.test(instance.templateNumId) &&
+        Number(instance.templateNumId) > 0)) &&
+    (instance.ancestorStarts === undefined ||
+      (instance.templateNumId !== undefined &&
+        Array.isArray(instance.ancestorStarts) &&
+        instance.ancestorStarts.length <= Number(value.level) &&
+        instance.ancestorStarts.every(
+          (start: unknown) =>
+            Number.isSafeInteger(start) && Number(start) >= 0 && Number(start) <= 2147483647
+        ))) &&
+    keys(instance, ['kind', 'key', 'start', 'templateNumId', 'ancestorStarts'])
   );
 }
 

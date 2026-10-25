@@ -153,7 +153,12 @@ export function propertyElement(property: OoxmlProperty, id: string, prior?: Oox
   ];
   if (priorElement && sameAttributes(priorElement, attributes)) return prior!;
   return {
-    id,
+    // Paragraph indentation is one scalar field holder. Keep its identity across attribute edits
+    // so independent leading and trailing changes retain separate collaboration ownership.
+    id:
+      property.localName === 'ind' && priorElement?.namespaceUri === WML_NAMESPACE_URI
+        ? priorElement.id
+        : id,
     kind: 'generic',
     namespaceUri: WML_NAMESPACE_URI,
     localName: property.localName,

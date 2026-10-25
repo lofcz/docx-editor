@@ -1,5 +1,14 @@
-import { collectRevisionSites, type RevisionAddress } from '@docx-editor.dev/core/store';
-import { applyDirectListAssignments, type DirectListContext } from '../ai/direct-lists';
+import { copyListInstanceTemplate } from '../ai/list-instance-template';
+import {
+  ensureListDefinition,
+  collectRevisionSites,
+  type RevisionAddress,
+} from '@docx-editor.dev/core/store';
+import {
+  applyDirectListAssignments,
+  removedListProperties,
+  type DirectListContext,
+} from '../ai/direct-lists';
 import { planListMembership } from '../diff/lists';
 import type { CanonicalEdit, CanonicalEditPlan } from '../diff/plan';
 import { refuseWrite } from '../diff/fragment-seeds';
@@ -39,15 +48,54 @@ export function stageTrackedList(
   )
     refuseWrite('The list source changed after planning.', 'stale-revision');
   const originalSites = new Set(collectRevisionSites(part).map((site) => site.node.id));
+  const target = edit.after;
+  if (
+    (target.kind === 'ordered' || target.kind === 'bullet') &&
+    target.instance.kind === 'new' &&
+    target.instance.templateNumId !== undefined &&
+    !context.instances.has(target.instance.key)
+  ) {
+    const { key, templateNumId } = target.instance;
+    // Each construction primitive needs its own preview boundary, including born-node removals.
+    writer.edit((working) => {
+      const made = ensureListDefinition(working, target.kind);
+      if (!made) throw new Error('The native engine refused a new list definition.');
+      context.instances.set(key, made.numId);
+      return made.pkg;
+    });
+    writer.edit((working) =>
+      copyListInstanceTemplate(working, templateNumId, context.instances.get(key)!)
+    );
+  }
+
+  const retainedIndent = edit.after.kind === 'none' ? edit.after.retainedIndent : undefined;
+  // Publish both native operations separately so preview budgets include intermediate snapshots.
   writer.edit((working) =>
     applyDirectListAssignments(
       working,
       edit.partName,
-      [{ paragraphId: edit.paragraphId, before: edit.before, target: edit.after }],
+      [
+        {
+          paragraphId: edit.paragraphId,
+          before: edit.before,
+          target: retainedIndent === undefined ? edit.after : { kind: 'none' },
+        },
+      ],
       context,
       revision
     )
   );
+  if (retainedIndent !== undefined)
+    writer.apply(edit.partName, {
+      op: 'setParagraphProperties',
+      paragraphId: edit.paragraphId,
+      properties: removedListProperties(
+        writer.currentPackage().parts.get(edit.partName)!,
+        edit.paragraphId,
+        retainedIndent
+      ),
+      revision,
+    });
   const fresh = collectRevisionSites(writer.currentPackage().parts.get(edit.partName)!).filter(
     (site) => !originalSites.has(site.node.id)
   );

@@ -206,6 +206,8 @@ The peer-sibling checkpoint preserves independent alignment and paragraph-mark f
 
 The captured checklist indentation control passes both frozen on/off captures, direct and tracked decisions, exact native Word oracles, concurrent text, and independent histories. The affected batch passes 151 cases and 2226 assertions across ten files (`/tmp/n08-checklist-indent-final.log`). Two real Chromium cases pass (`/tmp/n08-checklist-indent-browser.log`). See [captured checklist indentation evidence](evidence/checklist-indentation.md), including the external Word editing limitation. N08 remains unchecked.
 
+The toggle checkpoint adds collapsed original-sibling conversion, selection-scoped expanded conversion, reduced plain indentation, and imported counter-template copying after removal. Native indentation writes preserve existing scalar holder identities. This restores rejected leading geometry while retaining peer trailing geometry. The combined batch passes 47 cases and 582 assertions; the earlier affected regression batch passes 255 cases. Nested tail restarts retain imported parent counter values through native ancestor starts. Strengthened shared checks verify cold pending-room rejection, exact saved Word output, independent histories, and remote caret geometry. See [list toggle and removal evidence](evidence/list-toggle-sequence-checkpoint.md). Complete outdent resets, polite restarts, generic property births, portable ownership, default admission, and the existing final parity gates remain. N08 stays unchecked.
+
 ## N09
 
 - [x] Connect manual table insertion

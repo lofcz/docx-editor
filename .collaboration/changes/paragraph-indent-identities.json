@@ -1,0 +1,13 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Changing paragraph indentation attributes replaces the ind node identity. A later peer indentation edit then authors another constructor containing the proposal's leading geometry. Rejecting that proposal retains the peer constructor and therefore also retains the rejected geometry.",
+  "after": "Attribute updates preserve an existing Word ind node identity. The scalar ownership layer can retract proposed leading indentation while retaining a peer's trailing indentation. Existing foreign attributes, child nodes, and namespace bindings remain intact.",
+  "reason": "The native writer emits existing attribute primitives instead of replacing one paragraph property holder. Existing readers already support these primitives. No shared schema, format version, ownership protocol, repair rule, or model field changes. The correction is limited to Word paragraph indentation; other properties retain their existing identity behavior. Older writers retain their replacement behavior. The private experimental property-review prototype remains internal. No room migration, baseline capture, application edit, or reseeding occurs. Numeric limits remain unchanged.",
+  "tests": [
+    "packages/core/src/store/__tests__/paragraph-indent-identity.test.ts",
+    "packages/sciobot/src/chrome/list-toggle-collaboration.test.ts"
+  ],
+  "changeset": "preserve-paragraph-indent-identities",
+  "migration": null
+}

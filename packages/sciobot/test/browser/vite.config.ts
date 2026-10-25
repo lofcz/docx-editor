@@ -6,13 +6,20 @@ import react from '@vitejs/plugin-react';
 const root = path.resolve(import.meta.dirname, '../../../..');
 const core = path.join(root, 'packages/core');
 const manifest = JSON.parse(readFileSync(path.join(core, 'package.json'), 'utf8'));
+// A fresh ordinary build avoids thousands of source-module requests on slow filesystems.
+// Resolve every core subpath consistently so the fixture still loads one engine copy.
+const builtCore = process.env.SCIOBOT_BROWSER_BUILT_CORE === '1';
 const aliases = Object.keys(manifest.exports).flatMap((key) => {
   if (key.includes('*') || key.includes('styles') || key.includes('package.json')) return [];
+  const entry = manifest.exports[key];
+  if (builtCore && (typeof entry !== 'object' || typeof entry?.import !== 'string')) return [];
   const subpath = key === '.' ? '' : key.slice(2);
   const stem = path.join(core, 'src', subpath);
-  const file = [`${stem}.ts`, path.join(stem, 'index.ts')].find((candidate) =>
-    existsSync(candidate)
-  );
+  const file = builtCore
+    ? path.resolve(core, entry.import)
+    : [`${stem}.ts`, path.join(stem, 'index.ts')].find((candidate) => existsSync(candidate));
+  if (builtCore && (!file || !existsSync(file)))
+    throw new Error('Build every native core entry before using SCIOBOT_BROWSER_BUILT_CORE.');
   if (!file) return [];
   const name = '@docx-editor.dev/core' + (subpath ? `/${subpath}` : '');
   return [

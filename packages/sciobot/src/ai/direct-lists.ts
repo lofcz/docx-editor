@@ -1,3 +1,4 @@
+import { copyListInstanceTemplate, setListInstanceStart } from './list-instance-template';
 import { writeDormantListState } from '../diff/list-metadata';
 import { styleListInstance } from './direct-list-style';
 import {
@@ -20,7 +21,6 @@ import type { ListSourceState, ListTarget } from '../diff/list-types';
 
 const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 const W14 = 'http://schemas.microsoft.com/office/word/2010/wordml';
-const NUMBERING = '/word/numbering.xml';
 
 /** One paragraph's list destination inside a direct transaction. */
 export interface DirectListAssignment {
@@ -63,6 +63,31 @@ function seedNodes(part: OoxmlPart, xml: string, name: string) {
   return body && body.kind !== 'textValue' ? freshSeeds(part, body.children) : [];
 }
 
+/** Remove one source indentation step while keeping trailing and opaque geometry. */
+export function removedListProperties(part: OoxmlPart, paragraphId: string, steps: number) {
+  const properties = directParagraphProperties(part, paragraphId),
+    attributes = { ...properties.find((property) => property.localName === 'ind')?.attributes };
+  for (const name of [
+    'left',
+    'start',
+    'hanging',
+    'firstLine',
+    'firstLineChars',
+    'hangingChars',
+    'leftChars',
+    'startChars',
+  ])
+    delete attributes[name];
+  if (steps > 0) attributes.left = String(steps * 360);
+  return [
+    ...properties.filter((property) => property.localName !== 'ind'),
+    ...(Object.keys(attributes).length ||
+    properties.some((property) => property.localName === 'ind')
+      ? [{ localName: 'ind', attributes }]
+      : []),
+  ];
+}
+
 /**
  * Apply owned list membership after native identity allocation. New instances share one Word
  * definition per plan key; existing instances keep their definitions and later ordinals.
@@ -94,36 +119,23 @@ export function applyDirectListAssignments(
     if (!id) {
       const made = ensureListDefinition(pkg, target.kind);
       if (!made) throw new ListWriteError('The native engine refused a new list definition.');
-      pkg = target.style ? styleListInstance(made.pkg, made.numId, target.style) : made.pkg;
+      pkg = target.instance.templateNumId
+        ? copyListInstanceTemplate(made.pkg, target.instance.templateNumId, made.numId)
+        : target.style
+          ? styleListInstance(made.pkg, made.numId, target.style)
+          : made.pkg;
       id = made.numId;
       instances.set(target.instance.key, id);
     }
+    const ancestorKey = `${id}:ancestors`;
+    if (target.instance.ancestorStarts && !levels.has(ancestorKey)) {
+      for (const [level, start] of target.instance.ancestorStarts.entries())
+        pkg = setListInstanceStart(pkg, id, level, start);
+      levels.add(ancestorKey);
+    }
     const levelKey = `${id}:${target.level}`;
     if (target.instance.start !== undefined && !levels.has(levelKey)) {
-      // An authored start belongs to this new instance only; its abstract template stays shared.
-      const numbering = pkg.parts.get(NUMBERING)!;
-      const num = numbering.root.children.find(
-        (node) =>
-          node.kind !== 'textValue' &&
-          node.localName === 'num' &&
-          node.attributes.some(
-            (attribute) => attribute.localName === 'numId' && attribute.value === id
-          )
-      );
-      if (!num || num.kind === 'textValue')
-        throw new ListWriteError('The new native list instance is missing.');
-      const parsed = readOoxmlPart(
-        `<w:numbering xmlns:w="${W}"><w:num w:numId="${id}"><w:lvlOverride w:ilvl="${target.level}"><w:startOverride w:val="${target.instance.start}"/></w:lvlOverride></w:num></w:numbering>`,
-        { name: `/sciobot-direct-list-${++seeds}.xml`, contentType: numbering.contentType }
-      );
-      if (!parsed.ok) throw new ListWriteError('Invalid native list start.');
-      const wrapper = parsed.part.root.children[0]!;
-      if (wrapper.kind === 'textValue') throw new ListWriteError('Invalid native list start.');
-      const inserted = insertChildren(numbering, num.id, num.children.length, [
-        ...freshSeeds(numbering, [wrapper.children[0]!]),
-      ]);
-      if (!inserted.ok) throw new ListWriteError('The native list start was refused.');
-      pkg = withPart(pkg, inserted.part);
+      pkg = setListInstanceStart(pkg, id, target.level, target.instance.start);
       levels.add(levelKey);
     }
     return id;
@@ -175,7 +187,11 @@ export function applyDirectListAssignments(
         ...(target.kind === 'none' ? {} : { level: target.level }),
         ...(revision ? { revision } : {}),
       });
-    if (target.kind === 'checklist' || checkbox) {
+    if (
+      target.kind === 'checklist' ||
+      checkbox ||
+      (target.kind === 'none' && target.retainedIndent !== undefined)
+    ) {
       const properties = directParagraphProperties(part(), paragraphId),
         attributes = { ...properties.find((property) => property.localName === 'ind')?.attributes };
       for (const name of ['left', 'start', 'hanging']) delete attributes[name];
@@ -194,10 +210,16 @@ export function applyDirectListAssignments(
       apply({
         op: 'setParagraphProperties',
         paragraphId,
-        properties: [
-          ...properties.filter((property) => property.localName !== 'ind'),
-          ...(Object.keys(attributes).length ? [{ localName: 'ind', attributes }] : []),
-        ],
+        ...(revision && target.kind === 'none' && target.retainedIndent !== undefined
+          ? { revision }
+          : {}),
+        properties:
+          target.kind === 'none' && target.retainedIndent !== undefined
+            ? removedListProperties(part(), paragraphId, target.retainedIndent)
+            : [
+                ...properties.filter((property) => property.localName !== 'ind'),
+                ...(Object.keys(attributes).length ? [{ localName: 'ind', attributes }] : []),
+              ],
       });
     }
     const dormant =
