@@ -46,6 +46,7 @@ import {
 } from '../native/inline-code';
 import type { NativeEditFailure } from '../contracts/document';
 import { DOMAIN_BLOCK_TAGS } from '../projection/block-tags';
+import { HORIZONTAL_RULE_PARAGRAPH_XML, withHorizontalRuleStyle } from '../native/horizontal-rule';
 import { compileInlineTarget } from './inline-target';
 import type { InsertedBlockBinding } from './inserted-blocks';
 import type { TargetAstNode } from '../projection/parse-target';
@@ -384,8 +385,8 @@ export function siblingFragmentSeeds(
       if (!table) return fail('A new table needs complete rectangular GFM rows and alignments.');
       placed.push({ before: flat.length, seed: { kind: 'table', path: [index], ...table } });
     } else if (
-      (node.type === 'mdxJsxFlowElement' || node.type === 'math') &&
-      bound.has(String(index))
+      node.type === 'thematicBreak' ||
+      ((node.type === 'mdxJsxFlowElement' || node.type === 'math') && bound.has(String(index)))
     ) {
       separateTable();
       placed.push({ before: flat.length, seed: { kind: 'block', path: [index], ast: node } });
@@ -549,6 +550,14 @@ function seedParagraph(context: RenderContext): string {
 function blockXml(node: TargetAstNode, path: readonly number[], context: RenderContext): string {
   if (node.type === 'paragraph' || node.type === 'heading')
     return paragraphXml(node, path, context);
+  if (node.type === 'thematicBreak') {
+    const prepared = withHorizontalRuleStyle(context.pkg);
+    if (!prepared)
+      refuseWrite('The document cannot gain the horizontal-rule style.', 'unsupported-operation');
+    context.pkg = prepared!;
+    context.paragraphs.push('');
+    return HORIZONTAL_RULE_PARAGRAPH_XML;
+  }
   if (node.type === 'table') {
     const table = tableRows(node);
     if (!table)
@@ -693,7 +702,7 @@ function placeBlock(
     node = cloneFresh(body.children[0]!, next, {
       prefix: w14RootPrefix(part.root),
       used: new Set(usedParaIds(part.root)),
-      seed: `scio-fragment:${bindings.get(seed.path.join('/'))!.payload.id}`,
+      seed: `scio-fragment:${bindings.get(seed.path.join('/'))?.payload.id ?? seed.path.join('-')}`,
     }),
     parent = findNode(part, parentId) as OoxmlElement;
   const terminal = parent.children.findIndex((child) => wmlElement(child, 'sectPr'));

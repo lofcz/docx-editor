@@ -660,7 +660,7 @@ Additional WIP evidence: [tracked atoms in born paragraphs](evidence/tracked-bor
 
 **Check:** Add a focused Bun test with explicit expected results.
 
-**Claim:** unclaimed. **Evidence:** pending. The native Markdown projection currently emits code paragraphs as plain text, has no horizontal-rule syntax, and emits equations as fallback text, so these insertions cannot land their target yet.
+**Claim:** codex solo, branch `codex/react-block-proof`. **Evidence:** The shared sibling materializer now accepts thematic-break fragments and reuses the existing block-math payload/materialization path. The focused `fragment-seeds.test.ts` batch passes 5 cases and 61 assertions (`/tmp/d34-math2.log`), including native thematic-break insertion with reserved style preparation, block math save/reopen, empty replanning, undo, and redo. Compatibility: `.collaboration/changes/sciobot-fragment-native-blocks.json`; changeset: `.changeset/native-thematic-break-fragments.md`. D34 remains open until the application code-block representation is defined and fenced code insertion preserves language and whitespace through projection.
 
 ## D35
 

@@ -1,0 +1,10 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "New thematic-break fragments were rejected before materialization.",
+  "after": "Thematic-break fragments materialize through the reserved native horizontal-rule style; existing block-math materialization is covered by the same sibling path.",
+  "reason": "No collaboration codec, journal, provider, or public document model fields changed.",
+  "tests": ["packages/sciobot/src/diff/fragment-seeds.test.ts"],
+  "changeset": "native-thematic-break-fragments",
+  "migration": null
+}

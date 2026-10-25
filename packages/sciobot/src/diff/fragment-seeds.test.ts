@@ -258,12 +258,28 @@ test('unresolved quote styles, rich cells, and unrepresented blocks refuse atomi
       [plain, 'Intro.\n\n> Quote.'],
       [styled, 'Intro.\n\n> - item'],
       [styled, 'Intro.\n\n```js\nx()\n```'],
-      [styled, 'Intro.\n\n---'],
     ] as const) {
       const result = planTargetDocument(await source(editor), target);
       expect({ target, success: result.success }).toEqual({ target, success: false });
       expect(Object.hasOwn(result, 'plan')).toBe(false);
     }
+    await land(styled, 'Intro.\n\n---', await plan(styled, 'Intro.\n\n---'));
+    const mathEditor = mount(p('Intro.'));
+    try {
+      await land(
+        mathEditor,
+        'Intro.\n\n$$\nx^2\n$$',
+        await plan(mathEditor, 'Intro.\n\n$$\nx^2\n$$')
+      );
+    } finally {
+      mathEditor.destroy();
+    }
+    expect(body(styled).map((node) => nameOf(node))).toEqual(['p', 'p']);
+    const rule = body(styled)[1]!;
+    expect(
+      rule.kind !== 'textValue' &&
+        rule.children.some((child) => child.kind !== 'textValue' && child.localName === 'pPr')
+    ).toBe(true);
   } finally {
     plain.destroy();
     styled.destroy();

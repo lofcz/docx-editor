@@ -99,8 +99,10 @@ export function planInsertedBlocks(
   ): NativeEditFailure | null => {
     if (block.kind === 'paragraph' || block.kind === 'row' || block.kind === 'cell') return null;
     const math = block.kind === 'block' && ast.type === 'math';
-    if (block.kind === 'block' && !math)
+    const thematicBreak = block.kind === 'block' && ast.type === 'thematicBreak';
+    if (block.kind === 'block' && !math && !thematicBreak)
       return fail('New opaque blocks need their own native representation.');
+    if (thematicBreak) return null;
     if (block.kind === 'table') {
       const listed = (item: LogicalBlock): boolean =>
         item.kind === 'paragraph' ? !!item.list : 'children' in item && item.children.some(listed);
