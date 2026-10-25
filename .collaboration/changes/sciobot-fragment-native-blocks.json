@@ -1,10 +1,13 @@
 {
   "impact": "compatible",
   "fields": [],
-  "before": "New thematic-break fragments were rejected before materialization.",
-  "after": "Thematic-break fragments materialize through the reserved native horizontal-rule style; existing block-math materialization is covered by the same sibling path.",
+  "before": "New thematic-break and fenced-code fragments were rejected before native materialization; block math had no shared code-block payload representation.",
+  "after": "Thematic-breaks use the reserved native horizontal-rule style, block math uses its existing payload path, and fenced code uses a registered code_block payload that preserves language and exact whitespace.",
   "reason": "No collaboration codec, journal, provider, or public document model fields changed.",
-  "tests": ["packages/sciobot/src/diff/fragment-seeds.test.ts"],
+  "tests": [
+    "packages/sciobot/src/diff/fragment-seeds.test.ts",
+    "packages/sciobot/src/projection/code-block.test.ts"
+  ],
   "changeset": "native-thematic-break-fragments",
   "migration": null
 }

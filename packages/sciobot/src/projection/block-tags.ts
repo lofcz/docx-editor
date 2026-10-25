@@ -1,6 +1,7 @@
 import { serializeInlineImage } from './inline-image';
 import { serializeMath } from './math';
 import { serializeMention } from './mention';
+import { serializeCodeBlock } from './code-block';
 import type { BlockPayload, JsonValue } from '../blocks/payload-schema';
 
 export interface BlockAttributeBinding {
@@ -167,6 +168,15 @@ export const DOMAIN_BLOCK_TAGS: ReadonlyMap<string, BlockTagDefinition> = new Ma
   string,
   BlockTagDefinition
 >([
+  [
+    'code_block',
+    {
+      tag: 'code',
+      kind: 'atomic',
+      attributes: (payload) => ordered(payload, ['language', 'value']),
+      serialize: serializeCodeBlock,
+    },
+  ],
   ['callout', { tag: 'callout', kind: 'container', attributes: callout }],
   ...['story', 'solution'].map(
     (tag) => [tag, { tag, kind: 'container', attributes: containerAttributes }] as const

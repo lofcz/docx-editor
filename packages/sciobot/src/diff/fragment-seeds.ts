@@ -386,6 +386,7 @@ export function siblingFragmentSeeds(
       placed.push({ before: flat.length, seed: { kind: 'table', path: [index], ...table } });
     } else if (
       node.type === 'thematicBreak' ||
+      (node.type === 'code' && bound.has(String(index))) ||
       ((node.type === 'mdxJsxFlowElement' || node.type === 'math') && bound.has(String(index)))
     ) {
       separateTable();
@@ -590,7 +591,10 @@ function blockXml(node: TargetAstNode, path: readonly number[], context: RenderC
     return `<w:tbl><w:tblPr><w:tblW w:w="0" w:type="auto"/></w:tblPr><w:tblGrid>${'<w:gridCol w:w="' + width + '"/>'.repeat(0)}${Array.from({ length: columns }, () => `<w:gridCol w:w="${width}"/>`).join('')}</w:tblGrid>${rows}</w:tbl>`;
   }
   const binding = context.bindings.get(path.join('/'));
-  if ((node.type !== 'mdxJsxFlowElement' && node.type !== 'math') || !binding)
+  if (
+    (node.type !== 'mdxJsxFlowElement' && node.type !== 'math' && node.type !== 'code') ||
+    !binding
+  )
     refuseWrite(
       `New ${node.type} blocks need their own native representation.`,
       'unsupported-operation'
@@ -600,6 +604,21 @@ function blockXml(node: TargetAstNode, path: readonly number[], context: RenderC
     binding.payload.type === MDX_BLOCK ||
     DOMAIN_BLOCK_TAGS.get(binding.payload.type)?.kind === 'atomic'
   ) {
+    if (binding.payload.type === 'code_block') {
+      const language = binding.payload.attributes.language,
+        value = binding.payload.attributes.value;
+      if (typeof language !== 'string' || typeof value !== 'string' || language.length > 128)
+        refuseWrite('A new code block needs bounded language and text values.');
+      const styled = withInlineCodeStyle(context.pkg);
+      if (!styled)
+        refuseWrite('The document cannot gain the inline code style.', 'unsupported-operation');
+      context.pkg = styled!;
+      const content = value.split('\n').map((line) => {
+        context.paragraphs.push('');
+        return `<w:p>${runXml(line, ['code'])}</w:p>`;
+      });
+      return `<w:sdt>${properties}<w:sdtContent>${content.join('')}</w:sdtContent></w:sdt>`;
+    }
     if (binding.payload.type === BLOCK_MATH || binding.payload.type === INLINE_MATH) {
       const math = decodeMathPayload(encodeBlockPayload(binding.payload));
       if (math.status !== 'supported') refuseWrite('A new equation needs a valid original source.');

@@ -257,7 +257,6 @@ test('unresolved quote styles, rich cells, and unrepresented blocks refuse atomi
     for (const [editor, target] of [
       [plain, 'Intro.\n\n> Quote.'],
       [styled, 'Intro.\n\n> - item'],
-      [styled, 'Intro.\n\n```js\nx()\n```'],
     ] as const) {
       const result = planTargetDocument(await source(editor), target);
       expect({ target, success: result.success }).toEqual({ target, success: false });
@@ -273,6 +272,16 @@ test('unresolved quote styles, rich cells, and unrepresented blocks refuse atomi
       );
     } finally {
       mathEditor.destroy();
+    }
+    const codeEditor = mount(p('Intro.'));
+    try {
+      await land(
+        codeEditor,
+        'Intro.\n\n```ts\nconst x = 1;\n\nreturn x;\n```',
+        await plan(codeEditor, 'Intro.\n\n```ts\nconst x = 1;\n\nreturn x;\n```')
+      );
+    } finally {
+      codeEditor.destroy();
     }
     expect(body(styled).map((node) => nameOf(node))).toEqual(['p', 'p']);
     const rule = body(styled)[1]!;

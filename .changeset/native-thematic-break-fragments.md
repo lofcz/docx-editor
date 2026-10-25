@@ -2,4 +2,4 @@
 '@docx-editor.dev/pro': patch
 ---
 
-Allow native sibling materialization of thematic-break and block-math fragments, including the reserved horizontal-rule style.
+Materialize thematic-break, block-math, and fenced-code sibling fragments through native payloads, preserving code languages, whitespace, and embedded backtick runs.

@@ -48,7 +48,7 @@ export function insertedBlockProblem(
 ): NativeEditFailure | null {
   if (block.kind === 'paragraph') return inlineProblem(ast);
   const registered = ast.type === 'mdxJsxFlowElement';
-  if (block.kind === 'block' && ast.type === 'thematicBreak') return null;
+  if (block.kind === 'block' && (ast.type === 'thematicBreak' || ast.type === 'code')) return null;
   const listed = (item: LogicalBlock): boolean =>
     item.kind === 'paragraph' ? !!item.list : 'children' in item && item.children.some(listed);
   if (list.kind !== 'none' || (!registered && listed(block)))

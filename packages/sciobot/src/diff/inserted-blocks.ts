@@ -47,6 +47,21 @@ export const defaultBlockId = (): string => crypto.randomUUID();
 
 /** The application payload a new registered element describes. Unknown tags have none. */
 export function insertedPayload(ast: TargetAstNode, id: string): BlockPayload | null {
+  if (ast.type === 'code') {
+    if (
+      typeof ast.value !== 'string' ||
+      (ast.lang !== null && typeof ast.lang !== 'string') ||
+      (typeof ast.lang === 'string' && ast.lang.length > 128) ||
+      (ast.meta !== null && ast.meta !== undefined)
+    )
+      return null;
+    return {
+      version: 1,
+      id,
+      type: 'code_block',
+      attributes: { language: ast.lang ?? '', value: ast.value },
+    };
+  }
   if (ast.type === 'math' || ast.type === 'inlineMath') {
     const kind = ast.type === 'math' ? 'block' : 'inline';
     if (typeof ast.value !== 'string' || !matchesNativeMathAst(ast, kind, ast.value)) return null;
@@ -99,8 +114,9 @@ export function planInsertedBlocks(
   ): NativeEditFailure | null => {
     if (block.kind === 'paragraph' || block.kind === 'row' || block.kind === 'cell') return null;
     const math = block.kind === 'block' && ast.type === 'math';
+    const code = block.kind === 'block' && ast.type === 'code';
     const thematicBreak = block.kind === 'block' && ast.type === 'thematicBreak';
-    if (block.kind === 'block' && !math && !thematicBreak)
+    if (block.kind === 'block' && !math && !code && !thematicBreak)
       return fail('New opaque blocks need their own native representation.');
     if (thematicBreak) return null;
     if (block.kind === 'table') {
@@ -108,21 +124,21 @@ export function planInsertedBlocks(
         item.kind === 'paragraph' ? !!item.list : 'children' in item && item.children.some(listed);
       return listed(block) ? fail('Lists inside new tables need nested table list paths.') : null;
     }
-    if (!mdx(ast) && !math) {
+    if (!mdx(ast) && !math && !code) {
       if (block.kind === 'container' && ast.type === 'blockquote' && path.length === 1) return null;
       return fail(`New ${ast.type} blocks need their own native representation.`);
     }
     const id = allocate();
     if (!isBlockId(id)) return fail('The block ID allocator returned an invalid ID.');
     // Native math has its own codec; React admission receives MDX syntax only.
-    const authored = math ? undefined : authorPayload?.(ast, id);
+    const authored = math || code ? undefined : authorPayload?.(ast, id);
     const payload = authored?.payload ?? insertedPayload(ast, id);
     const definition = payload && DOMAIN_BLOCK_TAGS.get(payload.type);
     const opaque = payload?.type === MDX_BLOCK && block.kind === 'atomic';
     if (
       !payload ||
       payload.id !== id ||
-      (!opaque && (!definition || definition.kind !== (math ? 'atomic' : block.kind))) ||
+      (!opaque && (!definition || definition.kind !== (math || code ? 'atomic' : block.kind))) ||
       !payloadMatches(ast, payload)
     )
       return fail('New application blocks need a registered payload type.');
@@ -130,7 +146,7 @@ export function planInsertedBlocks(
     if (typeof label !== 'string' || label.length > 256)
       return fail('A new application block needs a bounded readable label.');
     blocks.push({ path: [...path], payload, label });
-    if (block.kind === 'atomic' || math) return null;
+    if (block.kind === 'atomic' || math || code) return null;
     const group = block as LogicalGroup;
     const children = (ast.children ?? []) as TargetAstNode[];
     if (children.length !== group.children.length)
@@ -196,7 +212,11 @@ export function isInsertedBlockBindings(
         if (!node) return false;
         siblings = Array.isArray(node.children) ? (node.children as TargetAstNode[]) : [];
       }
-      if (!node || (!mdx(node) && node.type !== 'math') || !payloadMatches(node, binding.payload))
+      if (
+        !node ||
+        (!mdx(node) && node.type !== 'math' && node.type !== 'code') ||
+        !payloadMatches(node, binding.payload)
+      )
         return false;
     }
     // A complete atomic AST owns its descendants. Extra child bindings would create orphan payloads.

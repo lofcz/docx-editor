@@ -37,6 +37,14 @@ const mdx = (node: TargetAstNode) =>
 const opaque = (payload: BlockPayload) => payload.type === MDX_BLOCK || payload.type === MDX_INLINE;
 
 export function payloadMatches(node: TargetAstNode, payload: BlockPayload): boolean {
+  if (payload.type === 'code_block') {
+    return (
+      node.type === 'code' &&
+      typeof node.value === 'string' &&
+      node.value === payload.attributes.value &&
+      (node.lang ?? '') === payload.attributes.language
+    );
+  }
   if (payload.type === BLOCK_MATH || payload.type === INLINE_MATH) {
     const math = decodeMathPayload(encodeBlockPayload(payload));
     if (math.status !== 'supported') return false;
