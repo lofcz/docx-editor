@@ -100,9 +100,9 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 - [x] Coalesce streamed suggestion targets safely
 
-**Depends:** [R19](05-suggestions.md#r19), [C07](01-contracts.md#c07), [V01](11-verification.md#v01)
+**Depends:** [C07](01-contracts.md#c07), [V01](11-verification.md#v01)
 
-**Primary files:** `fork:packages/sciobot/src/ai/review-stream.ts`; `sibling review-stream.test.ts`
+**Primary files:** `fork:packages/sciobot/src/ai/review-stream.ts; `sibling review-stream.test.ts`
 
 **Read:** [S08](sources.md#s08), [S02](sources.md#s02)
 

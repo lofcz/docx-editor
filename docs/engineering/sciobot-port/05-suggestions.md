@@ -432,9 +432,9 @@ The born-table Original recovery checkpoint makes Original retain the independen
 
 - [x] Keep imported and foreign revisions separate
 
-**Depends:** [R19](05-suggestions.md#r19), [V01](11-verification.md#v01)
+**Depends:** [V01](11-verification.md#v01)
 
-**Primary files:** `fork:packages/sciobot/src/review/foreign-revisions.ts`; `sibling foreign-revisions.test.ts`
+**Primary files:** `fork:packages/sciobot/src/review/foreign-revisions.ts; `sibling foreign-revisions.test.ts`
 
 **Read:** [S25](sources.md#s25)
 

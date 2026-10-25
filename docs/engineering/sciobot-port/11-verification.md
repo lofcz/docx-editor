@@ -82,9 +82,9 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 - [x] Measure large-document interaction and retention
 
-**Depends:** [B16](02-react-blocks.md#b16), [I01](10-app-integration.md#i01), [U10](09-editor-ui.md#u10)
+**Depends:** [B16](02-react-blocks.md#b16), [I01](10-app-integration.md#i01)
 
-**Primary files:** `fork:e2e/sciobot-performance.spec.ts`; `docs/engineering/sciobot-port/evidence/performance.json`
+**Primary files:** `fork:e2e/sciobot-performance.spec.ts; `docs/engineering/sciobot-port/evidence/performance.json`
 
 **Read:** [S24](sources.md#s24), [S25](sources.md#s25)
 
@@ -118,9 +118,9 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 - [x] Check native runtime package boundaries
 
-**Depends:** [C03](01-contracts.md#c03), [I21](10-app-integration.md#i21)
+**Depends:** [C03](01-contracts.md#c03)
 
-**Primary files:** `fork:private adapter dependency check`; `app:production bundle report`
+**Primary files:** `fork:private adapter dependency check; `app:production bundle report`
 
 **Read:** [S24](sources.md#s24), [S25](sources.md#s25)
 
