@@ -208,11 +208,11 @@ Final verification against installed fork `929e0ea4a9bf68f3a4c9a7c133e55bc76b76d
 
 ## X11
 
-- [ ] Render source citation chips
+- [x] Render source citation chips
 
 **Depends:** [B05](02-react-blocks.md#b05), [B20](02-react-blocks.md#b20), [B21](02-react-blocks.md#b21), [P04](03-agent-projection.md#p04), [V01](11-verification.md#v01)
 
-**Primary files:** `app:src/components/workspace/docx/blocks/source-chip.tsx`; `sibling browser test`
+**Primary files:** `app:src/components/workspace/docx/blocks/source-chip.tsx`; `app:src/lib/docx/source-citation.ts`; `app:scripts/docx-native/harness/source-citations.test.ts`
 
 **Read:** [S10](sources.md#s10)
 
@@ -222,7 +222,7 @@ Final verification against installed fork `929e0ea4a9bf68f3a4c9a7c133e55bc76b76d
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** codex, branch `codex/react-block-proof`. **Evidence:** Application `e9eeaa81f` installs native runtime `926527dd155f7bd647d538d7ecbcadea2683d4ec` and connects existing source/book provenance. Ten distinct installed browser cases verify complete citation attributes, two AI waves, both decisions, original-view provenance, exact native hit geometry, independent peer history, offline deletion, and save/reopen convergence. The native batch passes 79 cases and 1,094 assertions; fifteen application units and frontend/harness types pass. Native mixed revision text stays visible. Commands, scoped limits, archive hashes, and earlier-reader checks are in [source citation evidence](evidence/native-source-citations.md).
 
 ## X12
 
