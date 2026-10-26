@@ -126,7 +126,7 @@ The completed combined browser command passes **45 cases, zero failures, 1,045 a
 
 ## X07
 
-- [ ] Port preparation retiming actions
+- [x] Port preparation retiming actions
 
 **Depends:** [X06](08-domain-content.md#x06), [V01](11-verification.md#v01)
 
@@ -140,7 +140,17 @@ The completed combined browser command passes **45 cases, zero failures, 1,045 a
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** codex, isolated application worktree, commits `59f372e90ad4b881cc5e0e4918e3408f01417399` and `c2df9c9c3de2752ac5961476a65e866f86f6b2d4`.
+
+**Evidence:** `src/lib/docx/retime-document.ts` connects the existing title duration control to one native transaction. `src/components/lesson-plan/retime-values.ts` shares allocation rules with the Plate adapter. The reference examples retain exact whole-minute allocations and the one-minute activity minimum. Short lessons merge root phases into Preparation. Their activity controls, introductory paragraphs, and recap descriptions move through native tree primitives. The action updates title metadata and generated Word labels in the same history unit. Unrelated attributes, formatted text, bookmarks, hyperlinks, native identities, and unsupported future payload records remain intact. The action uses direct editing mode and refuses conflicting pending field proposals. It never disables tracking. The detached preview does not replace the live package.
+
+The browser regression exposed incorrect sibling order after native undo. Fork commits `4151d7b1` and `929e0ea4a9bf68f3a4c9a7c133e55bc76b76d906` fix ordered field history and pre-bootstrap admission. Private field protocol 3 retains same-transaction sibling anchors and original Yjs slots. Low-level profiles 1 and 2 retain their previous behavior. Old private room profiles refuse the new scope. Upgrade private SDK consumers together and bootstrap a fresh room from saved DOCX, as described in `packages/sciobot/README.md#ordered-field-history`. DOCX payload and review record formats remain unchanged. No published core format changes.
+
+The source batch passes **96 cases, zero failures, 1,547 assertions**: `bun test --timeout 60000 --preload ./scripts/test/preload-dom.ts packages/sciobot/src/collaboration/review-sequences.test.ts packages/sciobot/src/collaboration/review-fields.test.ts packages/sciobot/src/collaboration/review-field-retraction.test.ts packages/sciobot/src/collaboration/review-history.test.ts packages/sciobot/src/review/recompose-properties.test.ts packages/sciobot/src/review/recompose-payloads-collaboration.test.ts packages/sciobot/src/blocks/move.test.ts`. These cover separate removals, peer insertions at each neighboring position, both delivery orders, repeated histories, profile fencing, mutation-free premature admission, and actual native property/recomposition collaboration. A cold-Yjs-state probe also retains the restored order and profile header.
+
+The focused application unit batch passes **17 cases**: `bun x rstest src/lib/docx/retime-document.test.ts src/lib/preparationTiming.test.ts src/lib/docx/phase-durations.test.ts`. The integration boundary batch passes **52 cases, zero failures, 1,887 assertions**, including activity suggestions, direct AI edits, duration totals, title controls, retiming, and text export. Command: `DOCX_NATIVE_SNAPSHOT=/home/lofcz/.cache/sciobot-docx-native/port-current-integration bun test --timeout 120000 scripts/docx-native/harness/retiming.test.ts scripts/docx-native/harness/lesson-title.test.ts scripts/docx-native/harness/activity.test.ts scripts/docx-native/harness/duration-totals.test.ts scripts/docx-native/harness/direct-edits.test.ts scripts/docx-native/harness/text-export.test.ts`.
+
+Final verification against installed fork `929e0ea4a9bf68f3a4c9a7c133e55bc76b76d906` passes **eight browser cases, zero failures, 898 assertions**: `DOCX_NATIVE_SNAPSHOT=/home/lofcz/.cache/sciobot-docx-native/port-current-integration bun test --timeout 120000 scripts/docx-native/harness/retiming.test.ts scripts/docx-native/harness/lesson-title.test.ts`. Browser input selects 20- and 90-minute targets in both client orders. Offline peer typing, resource edits, and deletion survive retiming. One undo restores every duration and the original phase order; redo restores the retimed result. Peer deletion history stays independent. Exact native paragraph fingerprints, control IDs, Word label text, future payload JSON, saved digests, reopen, cursor geometry, and owned-scope health pass. Invalid budgets change no native data. Application and harness typechecks pass 6,835 and 2,406 files. Five archive hashes match the manifest. Every consumer resolves one core. Frozen installation, scoped formatting, lint, diff checks, and required fork hooks pass.
 
 ## X08
 
@@ -248,7 +258,7 @@ The completed combined browser command passes **45 cases, zero failures, 1,045 a
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** Blocked on [X37](08-domain-content.md#x37): the native Markdown projection (`DOMAIN_BLOCK_TAGS`, used by the working view) has no tag definition for this type. The block projects only as its native children, so its export cannot carry the original attributes. The application cannot pass definitions to `readWorkingView`.
+**Claim:** unclaimed. **Evidence:** X37 is closed. Implement the renderer and focused application checks in the isolated worktree.
 
 ## X14
 
@@ -266,7 +276,7 @@ The completed combined browser command passes **45 cases, zero failures, 1,045 a
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** Blocked on [X37](08-domain-content.md#x37): the native Markdown projection (`DOMAIN_BLOCK_TAGS`, used by the working view) has no tag definition for this type. The block projects only as its native children, so its export cannot carry the original attributes. The application cannot pass definitions to `readWorkingView`.
+**Claim:** unclaimed. **Evidence:** X37 is closed. Implement the renderer and focused application checks in the isolated worktree.
 
 ## X15
 
@@ -284,7 +294,7 @@ The completed combined browser command passes **45 cases, zero failures, 1,045 a
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** Blocked on [X37](08-domain-content.md#x37): the native Markdown projection (`DOMAIN_BLOCK_TAGS`, used by the working view) has no tag definition for this type. The block projects only as its native children, so its export cannot carry the original attributes. The application cannot pass definitions to `readWorkingView`.
+**Claim:** unclaimed. **Evidence:** X37 is closed. Implement the renderer and focused application checks in the isolated worktree.
 
 ## X16
 
