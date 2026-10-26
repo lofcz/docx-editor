@@ -11,7 +11,7 @@ import {
   propertyToken,
 } from '../../test/support/property-execution';
 import { buildBlockIndex } from '../blocks/block-index';
-import type { JsonValue, JsonObject } from '../data/json';
+import type { JsonValue, JsonObject } from '../blocks/payload-schema';
 import { readWorkingView } from './working-view';
 import { readCommittedView } from './committed-view';
 import { type RecomposeOptions, recomposeOwnedProposals } from './recompose';

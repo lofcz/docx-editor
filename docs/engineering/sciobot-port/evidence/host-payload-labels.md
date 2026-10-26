@@ -9,3 +9,11 @@ Existing property, shared property, and atomic target fixtures now exercise this
 The five-file source batch passes 23 cases and 398 assertions in `/tmp/r19-payload-host-final-source.log`. The subsequent host guard file includes an additional explicit executor precedence case in `/tmp/r19-payload-host-precedence.log`. Private types passed 2,431 files before the final guard fixture addition. Required commit checks cover the final source.
 
 The app host supplies activity name/duration labels and localized phase labels through this service. Fields that do not change the native label retain the exact original fallback. R19 and I04 remain open for their remaining scope.
+
+## Installed verification
+
+Runtime `628af77f8a038443b6ebf64aa21629a45d48604d` builds the private archive `sciobot-docx-9dc117fd9e39.tgz`. The four public archives retain their previous bytes. Five recorded hashes, a frozen install, and one physical native core pass. Frontend types pass 6,842 files; harness types pass 2,416 files. Executor units pass 11 cases.
+
+The exact five-fixture compiled command passes 24 cases and 400 assertions in `/tmp/r19-payload-host-compiled-final.log`. Its first attempt stopped on an unmapped type-only `data/json` import. That fixture now imports the same JSON types through the existing payload-schema exports. All test bodies and acceptance assertions remain unchanged. The first Pro build correctly refused missing adapter declarations; the final build started after both adapter handles completed and passed.
+
+The actual app tool and file bridge command passes 24 cases and 322 assertions in `/tmp/r19-payload-host-app-browser.log`. Four new cases cover both client orders and both decisions. Real `edit_document` calls replace activity name and duration proposals across factories. Peer keyboard input survives. Native payloads retain their committed baseline while review is pending. Old owned group IDs disappear, native text revisions do not nest, Word label text matches the selected decision, native history restores proposals, and saved outputs converge.
