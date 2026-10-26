@@ -14,7 +14,7 @@ export function assertNativePropertyProfile(doc: Y.Doc): void {
     !meta ||
     meta.get('protocolVersion') !== 1 ||
     meta.get('sharedSchemaVersion') !== 9 ||
-    meta.get('repairVersion') !== 14 ||
+    meta.get('repairVersion') !== 15 ||
     meta.get('canonicalModelVersion') !== 1
   )
     throw new Error('Unsupported native property ownership profile.');

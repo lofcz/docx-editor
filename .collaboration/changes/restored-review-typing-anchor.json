@@ -1,0 +1,14 @@
+{
+  "impact": "migration-required",
+  "fields": ["repairVersion"],
+  "before": "Undo of linked-image acceptance restored offline peer typing outside its deleted review branch and omitted it from the proposed branch. Restoration-site origins and collected string anchors changed inferred branch membership.",
+  "after": "Restored original typing uses its retained source identity to find its original typing seam. Anchor matching retains exact character identities after collection. Both paired review snapshots retain the peer edit across repeated decision undo, redo, and cold room reopening.",
+  "reason": "Deterministic interpretation of existing restored character identities changes repairVersion from 14 to 15. Schema 9, protocol 1, canonical model 1, and record encodings stay unchanged. Old clients must refuse the new format. Export with the previous compatible deployment and reseed fresh rooms; no room is relabeled or migrated here. Changes to the transport remain evaluation-only under the EigenPal Pro License. Private native ownership guards require the matching format, without importing Pro into production.",
+  "tests": [
+    "packages/sciobot/src/review/recompose-inline-images-shared.test.ts",
+    "packages/pro/src/collaboration/__tests__/revision-text-copies.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-format.test.ts"
+  ],
+  "changeset": "restored-review-typing-anchor",
+  "migration": "upgrade-rooms-to-format-19151"
+}

@@ -9,7 +9,7 @@ function nativeNodes(doc: Y.Doc): Y.Map<unknown> | null {
   if (
     meta.get('protocolVersion') !== 1 ||
     meta.get('sharedSchemaVersion') !== 9 ||
-    meta.get('repairVersion') !== 14 ||
+    meta.get('repairVersion') !== 15 ||
     meta.get('canonicalModelVersion') !== 1
   )
     return null;

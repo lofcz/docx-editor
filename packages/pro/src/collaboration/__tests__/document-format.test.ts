@@ -416,12 +416,29 @@ test('restored split typing refuses repair format 13 without changing the room',
   }
 });
 
+test('restored review typing refuses repair format 14 without changing the room', () => {
+  const doc = savedRoom();
+  try {
+    doc.getMap(PACKAGE_META_KEY).set('repairVersion', 14);
+    const bytes = Y.encodeStateAsUpdate(doc);
+    const version = readCollaborationFormatVersion(doc);
+    expect(version).toBe('docx-collaboration:1.9.14.1');
+    expect(() => assertCollaborationFormatCompatibility(version)).toThrow(
+      'collaboration-format-mismatch'
+    );
+    expect(() => readCollaborationDocument(doc)).toThrow('schema-version-mismatch');
+    expect(Y.encodeStateAsUpdate(doc)).toEqual(bytes);
+  } finally {
+    doc.destroy();
+  }
+});
+
 test('authored text shape refuses schema 7 without changing the room', () => {
   const doc = savedRoom();
   try {
     doc.getMap(PACKAGE_META_KEY).set('sharedSchemaVersion', 7);
     const bytes = Y.encodeStateAsUpdate(doc);
-    expect(readCollaborationFormatVersion(doc)).toBe('docx-collaboration:1.7.14.1');
+    expect(readCollaborationFormatVersion(doc)).toBe('docx-collaboration:1.7.15.1');
     expect(() => readCollaborationDocument(doc)).toThrow('schema-version-mismatch');
     expect(Y.encodeStateAsUpdate(doc)).toEqual(bytes);
   } finally {
@@ -434,7 +451,7 @@ test('paragraph boundaries refuse schema 8 without changing the room', () => {
   try {
     doc.getMap(PACKAGE_META_KEY).set('sharedSchemaVersion', 8);
     const bytes = Y.encodeStateAsUpdate(doc);
-    expect(readCollaborationFormatVersion(doc)).toBe('docx-collaboration:1.8.14.1');
+    expect(readCollaborationFormatVersion(doc)).toBe('docx-collaboration:1.8.15.1');
     expect(() => readCollaborationDocument(doc)).toThrow('schema-version-mismatch');
     expect(Y.encodeStateAsUpdate(doc)).toEqual(bytes);
   } finally {

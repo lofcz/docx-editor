@@ -306,6 +306,12 @@ These rules change interpretation of existing identity and revision marks. No ne
 
 Stop writes and recover offline edits before upgrading. Back up the room and export with its compatible deployment. Verify peer text placement, hyperlink targets, pending revisions, and inline controls before migration. Reconcile incorrect content in that deployment before export. Follow [Upgrade saved rooms](#upgrade-saved-rooms) to create fresh rooms and persistence keys. Deploy matching clients, servers, workers, and agents. Do not rewrite version metadata or replay old updates into replacement rooms. Keep original rooms as read-only backups.
 
+### Upgrade rooms to format 1.9.15.1
+
+Repair version 15 preserves offline peer typing in paired review branches after acceptance undo. Restored characters use their original typing positions. Collected character identities remain valid anchors. Repeated undo, redo, and room reopening retain both review branches. Schema 9, protocol 1, and canonical model 1 stay unchanged.
+
+Use the previous compatible deployment to export each DOCX. Verify peer text, hyperlinks, images, and pending revisions before upgrading. Follow [Upgrade saved rooms](#upgrade-saved-rooms) to create fresh rooms and persistence keys. Preserve original rooms and offline updates. Deploy matching clients, servers, workers, and agents. Do not relabel saved rooms or replay old updates. Room undo history does not transfer through DOCX. The transport remains evaluated under the EigenPal Pro License.
+
 ### Upgrade rooms to format 1.9.14.1
 
 Shared schema 9 adds a nonprinting boundary to each paragraph's shared text. Newly inserted leading controls precede this boundary. Concurrent first typing follows it. Explicit typing before an observed control keeps its position. Removing all visible content preserves the boundary. No boundary character or element enters the DOCX. Repair version 14 and canonical model 1 stay unchanged.

@@ -65,12 +65,29 @@ function branchAttributes(
 }
 function typedAfter(text: Y.Text, shown: ShownText, at: number, left: number): boolean {
   let pointer = parseClientClock(shown.identities.origins[at] ?? '');
+  // Undo recreates typing beside restoration markers, not necessarily its original neighbor.
+  // Read the original typing seam from its retained identity, as every replica can do.
+  if (shown.identities.restored[at] && shown.identities.followingOriginal?.[at] && text.doc) {
+    const identity = parseClientClock(shown.identities.ids[at] ?? '');
+    const source = identity && structAt(text.doc, identity);
+    if (identity && source) {
+      pointer =
+        identity.clock === source.id.clock
+          ? source.origin
+          : { client: identity.client, clock: identity.clock - 1 };
+    }
+  }
   for (let depth = 0; pointer && text.doc && depth < 64; depth++) {
     const item = structAt(text.doc, pointer);
     if (!item) return false;
-    if (item.content instanceof Y.ContentString)
-      return itemIdentity(text, item, pointer.clock - item.id.clock) === shown.identities.ids[left];
-    pointer = item.origin;
+    // Collection can erase an anchor's string content. Its character identity remains valid.
+    if (itemIdentity(text, item, pointer.clock - item.id.clock) === shown.identities.ids[left])
+      return true;
+    if (item.content instanceof Y.ContentString) return false;
+    pointer =
+      pointer.clock === item.id.clock
+        ? item.origin
+        : { client: pointer.client, clock: pointer.clock - 1 };
   }
   return false;
 }

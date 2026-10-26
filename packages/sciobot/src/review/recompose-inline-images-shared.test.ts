@@ -252,13 +252,36 @@ for (const peerOffset of [1, 10])
               decision === 'accept' ? [imageId] : []
             );
           }
-          expect(alice!.exec({ type: 'undo' }).ok).toBe(true);
-          await pair.settle();
-          pair.editors.forEach((editor, i) =>
-            expect(native(editor.surface!.session.currentPackage())).toBe(pending[i]!)
-          );
-          expect(alice!.exec({ type: 'redo' }).ok).toBe(true);
-          await pair.settle();
+          for (let cycle = 0; cycle < 2; cycle++) {
+            expect(alice!.exec({ type: 'undo' }).ok).toBe(true);
+            await pair.settle();
+            pair.editors.forEach((editor, i) =>
+              expect(native(editor.surface!.session.currentPackage())).toBe(pending[i]!)
+            );
+            const restored = await createTwoEditorFixture({
+              document: new Uint8Array(await alice!.save()),
+              documentId: propertyContext.documentId,
+              ownedAttributes: true,
+              editor: { modules: [SCIOBOT_NATIVE_REVIEW_MODULE], imageDecodePort: decodePort },
+              roomSnapshot: Y.encodeStateAsUpdate(pair.documents[0]!),
+            });
+            try {
+              restored.editors.forEach((editor) => {
+                expect(native(editor.surface!.session.currentPackage())).toBe(pending[0]!);
+                const groups = readReviewGroups(editor.surface!.session.currentPackage());
+                if (!groups.success) throw Error(groups.error);
+                expect(groups.groups).toHaveLength(2);
+              });
+              restored.ownership.forEach((handle) => handle.assertHealthy());
+            } finally {
+              restored.destroy();
+            }
+            expect(alice!.exec({ type: 'redo' }).ok).toBe(true);
+            await pair.settle();
+            pair.editors.forEach((editor) =>
+              expect(word(editor.surface!.session.currentPackage())).toBe(word(expected))
+            );
+          }
           bob!.surface!.setSelection({
             anchor: { paragraphId, offset: 1 },
             head: { paragraphId, offset: 1 },
