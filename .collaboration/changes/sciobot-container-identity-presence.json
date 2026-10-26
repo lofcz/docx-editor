@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Tracked sibling removals reject complete application containers, preventing source excerpt citation identity review.",
+  "after": "Complete application containers retain their exact native subtree while existing block presence records review removal or replacement. Descendant sentence edits keep the original wrapper.",
+  "reason": "The private adapter writes existing schema version 2 block presence records and standard native removal decisions. No shared fields, repair rules, format identifier, public API, or published packages change.",
+  "tests": [
+    "packages/sciobot/src/review/recompose-container-identity.test.ts",
+    "packages/sciobot/src/review/block-presence-shared-decisions.test.ts",
+    "packages/sciobot/src/review/recompose-application-fragments-collaboration.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

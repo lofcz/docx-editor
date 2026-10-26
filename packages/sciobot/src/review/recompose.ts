@@ -315,7 +315,7 @@ export async function recomposeOwnedProposals(
     if (
       !payloads.presence &&
       options.createPresenceProposalId &&
-      needsTrackedPresence(planned.plan, !!preparedImages?.images)
+      needsTrackedPresence(planned.plan, !!preparedImages?.images, baseline)
     )
       payloads.presence = { proposalId: options.createPresenceProposalId() };
     const changedByPlanner = fresh();

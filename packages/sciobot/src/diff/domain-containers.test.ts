@@ -383,6 +383,7 @@ test('domain attribute decoding preserves inert expressions and native property 
     type: 'source_excerpt',
     bookId: 7,
     trust: 'verified',
+    sourceType: 'web',
     url: 'https://example.com?a=1&b=2',
   });
   const expression = parsed(
@@ -526,3 +527,16 @@ test('planning preserves the live document, payloads, selection, revision, and e
     editor.destroy();
   }
 });
+
+for (const [attributes, media, trust] of [
+  ['type="generated" url="https://youtu.be/video"', 'youtube', 'generated'],
+  ['type="verified" url="https://www.youtube.com/watch?v=id"', 'youtube', 'verified'],
+  ['type="web" url="https://youtu.be/video"', 'web', 'verified'],
+  ['type="youtube" url="https://example.test/page"', 'youtube', 'verified'],
+  ['title="Book"', 'web', undefined],
+] as const)
+  test(`source media follows the captured application grammar independently of trust: ${attributes}`, () => {
+    const root = parsed(`<source ${attributes}>\n\nQuote.\n\n</source>`)[0]!;
+    expect(domainNodeFromAst(root)).toMatchObject({ type: 'source_excerpt', sourceType: media });
+    expect(domainNodeFromAst(root)?.trust).toBe(trust);
+  });

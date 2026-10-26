@@ -99,6 +99,20 @@ export function domainNodeFromAst(ast: TargetAstNode): (DomainNode & JsonObject)
     delete props.bookid;
     if (bookId === null) delete props.bookId;
     else props.bookId = bookId;
+    // Match the application's source grammar: media chrome is inferred independently of trust.
+    if (!Object.hasOwn(props, 'sourceType')) {
+      let media: 'web' | 'youtube' = props.trust === 'youtube' ? 'youtube' : 'web';
+      if (props.trust !== 'web' && props.trust !== 'youtube') {
+        try {
+          const host = new URL(props.url).hostname.replace(/^www\./, '');
+          if (['youtube.com', 'm.youtube.com', 'music.youtube.com', 'youtu.be'].includes(host))
+            media = 'youtube';
+        } catch {
+          /* Malformed URLs keep ordinary web chrome. */
+        }
+      }
+      props.sourceType = media;
+    }
     if (props.trust === 'web' || props.trust === 'youtube') {
       if (props.url) props.trust = 'verified';
       else delete props.trust;

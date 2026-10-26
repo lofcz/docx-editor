@@ -1,3 +1,5 @@
+import { siblingBlockRemovals } from './sibling-block-removals';
+import { buildBlockIndex } from '../blocks/block-index';
 import type { InlineImageRuntime } from '../native/inline-image-runtime';
 import { stageBornAtoms } from './tracked-born-atoms';
 import {
@@ -61,7 +63,7 @@ function gap(part: OoxmlPart, edit: Siblings): readonly string[] | null {
   return parent.children.slice(before + 1, after).map((node) => node.id);
 }
 
-/** Stage one exact paragraph/heading gap; only this step's fresh sites enter its receipt. */
+/** Stage an exact gap; application roots retain presence ownership instead of paragraph redlines. */
 export function stageTrackedSiblings(
   writer: TrackedStageWriter,
   edit: Siblings,
@@ -79,6 +81,13 @@ export function stageTrackedSiblings(
     refuseWrite('The original native sibling gap no longer matches the plan.', 'ambiguous-target');
   const protection = propertyControlRefusal(before, edit.parentId);
   if (protection) refuseWrite(protection, 'unsupported-operation');
+  const pkg = writer.currentPackage();
+  const removedBlocks = new Set(siblingBlockRemovals(pkg, [edit]));
+  const blockIndex = buildBlockIndex(pkg);
+  const retainedControls = new Set(
+    [...removedBlocks].map((id) => blockIndex.byId.get(id)!.controlId)
+  );
+  const removedParagraphs = edit.removedIds.filter((id) => !retainedControls.has(id));
   const originalSites = new Map(
     collectRevisionSites(before).map((site) => [site.node.id, JSON.stringify(site.node)])
   );
@@ -87,9 +96,13 @@ export function stageTrackedSiblings(
   );
   for (const id of edit.removedIds) {
     const paragraph = findNode(before, id);
-    if (paragraph?.kind !== 'paragraph' || section(paragraph))
+    if (
+      (!retainedControls.has(id) && paragraph?.kind !== 'paragraph') ||
+      !paragraph ||
+      section(paragraph)
+    )
       refuseWrite(
-        'Only complete native paragraphs without section marks can be removed here.',
+        'Removal needs complete paragraphs or owned application blocks without section marks.',
         'unsupported-operation'
       );
     if (
@@ -114,7 +127,7 @@ export function stageTrackedSiblings(
   if (!seeded.success) refuseWrite(seeded.error, seeded.code);
   const seeds = seeded.seeds;
   const oldIds = nodeIds(before);
-  for (const id of edit.removedIds) {
+  for (const id of removedParagraphs) {
     const text = paragraphTextOf(before, id)!;
     if (text)
       writer.apply(before.name, {
@@ -228,7 +241,7 @@ export function stageTrackedSiblings(
   if (
     addresses.size !==
     Number(bornRoots.some((id) => findNode(current, id)?.kind !== 'contentControl')) +
-      Number(Boolean(edit.removedIds.length))
+      Number(Boolean(removedParagraphs.length))
   )
     refuseWrite('A structural gap lost its distinct insertion/deletion addresses.', 'apply-failed');
   if (!addresses.size) return [];
@@ -242,7 +255,7 @@ export function stageTrackedSiblings(
       partName: before.name,
       addresses: receipt,
       insertedParagraphIds: inserted,
-      removedParagraphIds: [...edit.removedIds],
+      removedParagraphIds: removedParagraphs,
     },
   ];
 }

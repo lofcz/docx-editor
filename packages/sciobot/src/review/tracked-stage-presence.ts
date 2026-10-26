@@ -1,3 +1,4 @@
+import { siblingBlockRemovals } from './sibling-block-removals';
 import { insertedAtomsOfEdit } from '../diff/inserted-cell-atoms';
 import type { InlineImageRuntime } from '../native/inline-image-runtime';
 import { buildBlockIndex } from '../blocks/block-index';
@@ -12,13 +13,20 @@ import { withBlockPresenceRecord } from './block-presence-store';
 import type { TrackedStageAttribution, TrackedStageWriter } from './tracked-stage-writer';
 
 /** Read-only admission for a fresh host presence identity, after target planning. */
-export function needsTrackedPresence(plan: CanonicalEditPlan, hasImages = false): boolean {
-  return plan.operations.some(
-    (edit) =>
-      edit.kind === 'inline-remove' ||
-      (edit.kind === 'siblings' &&
-        (edit.blocks ?? []).some((binding) => binding.path.length === 1)) ||
-      insertedAtomsOfEdit(edit).some((atom) => atom.kind === 'inline-control' || hasImages)
+export function needsTrackedPresence(
+  plan: CanonicalEditPlan,
+  hasImages = false,
+  pkg?: OoxmlPackage
+): boolean {
+  return (
+    !!(pkg && siblingBlockRemovals(pkg, plan.operations).length) ||
+    plan.operations.some(
+      (edit) =>
+        edit.kind === 'inline-remove' ||
+        (edit.kind === 'siblings' &&
+          (edit.blocks ?? []).some((binding) => binding.path.length === 1)) ||
+        insertedAtomsOfEdit(edit).some((atom) => atom.kind === 'inline-control' || hasImages)
+    )
   );
 }
 
@@ -38,6 +46,7 @@ export function stageTrackedPresence(
     )
   );
   const removals = plan.operations.filter((edit) => edit.kind === 'inline-remove');
+  const removedBlocks = siblingBlockRemovals(before, plan.operations);
   const roots = plan.operations.flatMap((edit) =>
     edit.kind === 'siblings'
       ? (edit.blocks ?? [])
@@ -45,9 +54,12 @@ export function stageTrackedPresence(
           .map((binding) => binding.payload.id)
       : []
   );
-  if (!needsTrackedPresence(plan, !!images)) {
+  if (!needsTrackedPresence(plan, !!images, before)) {
     if (supplied)
-      refuseWrite('Presence ownership has no inserted application roots.', 'invalid-input');
+      refuseWrite(
+        'Presence ownership has no application roots or inline changes.',
+        'invalid-input'
+      );
     return;
   }
   if (
@@ -57,7 +69,7 @@ export function stageTrackedPresence(
     Object.keys(supplied).some((key) => key !== 'proposalId')
   )
     refuseWrite(
-      'Inserted application blocks need an explicit presence proposal identity.',
+      'Application presence changes need an explicit proposal identity.',
       'unsupported-operation'
     );
   const bornInline: InlinePresenceNative[] = [];
@@ -132,6 +144,11 @@ export function stageTrackedPresence(
         blockId,
         before: { present: false },
         after: { present: true },
+      })),
+      ...removedBlocks.map((blockId) => ({
+        blockId,
+        before: { present: true },
+        after: { present: false },
       })),
       ...removals.map((edit) => ({
         blockId: edit.blockId,
