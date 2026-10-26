@@ -123,3 +123,43 @@ test('content proof validation rejects missing, duplicate, malformed, and change
   ).toMatchObject({ code: 'ambiguous-target' });
   expect(writeOoxmlPackage(loaded.package)).toEqual(bytes);
 });
+
+test('content proofs admit committed interior runs but retain owned and foreign revision guards', () => {
+  const marked = (content: string) =>
+    '<w:p xmlns:g="urn:sciobot:docx:review-groups:1"><w:pPr><w:rPr><w:ins w:id="8" w:author="Bot" g:group="g1:proof"/></w:rPr></w:pPr>' +
+    content +
+    '</w:p>';
+  const insert = (text: string, author = 'Bot') =>
+    '<w:ins g:group="g1:proof" w:id="7" w:author="' +
+    author +
+    '"><w:r><w:t>' +
+    text +
+    '</w:t></w:r></w:ins>';
+  const load = (content: string) => {
+    const loaded = readOoxmlPackage(docxFixture(marked(content)));
+    if (!loaded.ok) throw Error(loaded.reason);
+    return loaded.package;
+  };
+  const original = load(insert('Left') + insert('Right'));
+  const read = readReviewGroups(original);
+  if (!read.success) throw Error(read.error);
+  const ownership = read.groups.map(grant);
+  const captured = captureOwnedProposalContentProofs(original, revision, ownership);
+  if (!captured.success) throw Error(captured.error);
+  const peer = '<w:r><w:rPr><w:b/></w:rPr><w:t>Peer</w:t></w:r>';
+  const verify = (content: string) =>
+    verifyOwnedProposalContentProofs(load(content), revision, ownership, captured.contentProofs);
+  expect(verify(insert('Left') + peer + insert('Right'))).toBeNull();
+  expect(verify(insert('Changed') + peer + insert('Right'))).toMatchObject({
+    code: 'ambiguous-target',
+  });
+  expect(verify(insert('Left') + peer + insert('Right', 'Other'))).not.toBeNull();
+  expect(
+    verify(
+      insert('Left') + '<w:ins w:id="9" w:author="Other">' + peer + '</w:ins>' + insert('Right')
+    )
+  ).toMatchObject({ code: 'ambiguous-target' });
+  expect(
+    verify(insert('Left') + peer + insert('Right').replace('<w:r>', '<w:r><w:rPr><w:i/></w:rPr>'))
+  ).toMatchObject({ code: 'ambiguous-target' });
+});

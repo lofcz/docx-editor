@@ -1,7 +1,11 @@
-import { WML_NAMESPACE_URI, type OoxmlNode } from '@docx-editor.dev/core/store';
+import {
+  canonicalOoxmlFingerprint,
+  WML_NAMESPACE_URI,
+  type OoxmlNode,
+} from '@docx-editor.dev/core/store';
 
 /**
- * A marked paragraph's selected text revisions own their contents. Trailing committed
+ * A marked paragraph's selected text revisions own their contents. Committed
  * text runs outside them survive the native inverse and are not part of that ownership.
  * Preserve paragraph properties, controls, unknown elements, and unselected revisions.
  */
@@ -35,9 +39,29 @@ export function ownedStructuralContent(root: OoxmlNode, selected: ReadonlySet<st
           )
       ) &&
       node.children.some(mark);
-    let end = node.children.length;
-    if (independent) while (end > 0 && plain(node.children[end - 1]!)) end--;
-    const children = node.children.slice(0, end).map((child) => visit(child, depth + 1));
+    const children: OoxmlNode[] = [];
+    for (const child of node.children) {
+      if (independent && plain(child)) continue;
+      const current = visit(child, depth + 1);
+      const previous = children.at(-1);
+      // A committed insertion can split an owned insertion around itself. Join only
+      // its direct fragments with exactly the same native revision attributes.
+      if (
+        independent &&
+        previous &&
+        mark(previous) &&
+        mark(current) &&
+        previous.kind !== 'textValue' &&
+        current.kind !== 'textValue' &&
+        canonicalOoxmlFingerprint({ ...previous, children: [] } as OoxmlNode) ===
+          canonicalOoxmlFingerprint({ ...current, children: [] } as OoxmlNode)
+      ) {
+        children[children.length - 1] = {
+          ...previous,
+          children: [...previous.children, ...current.children],
+        } as OoxmlNode;
+      } else children.push(current);
+    }
     if (
       children.length === node.children.length &&
       children.every((child, i) => child === node.children[i])

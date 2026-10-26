@@ -50,3 +50,5 @@ Two new real-browser cases pass both client orders with 62 assertions. Four succ
 The original sixteen direct/read/bridge browser cases pass in the combined run. The two new cases pass in their corrected identity-based file selection. The composite browser evidence covers eighteen distinct cases. Eleven executor unit cases also pass. Frontend types pass across 6,840 files; harness types pass across 2,414 files. Scoped format/lint and diff checks pass. Logs are `/tmp/r19-app-tool-waves.log`, `/tmp/r19-app-ownership-final.log`, `/tmp/r19-app-edit-units.log`, `/tmp/r19-app-types-final.log`, `/tmp/r19-app-harness-final.log`, and `/tmp/r19-app-lint-final.log`.
 
 R19 and I04 remain open. This session-local ledger does not restore host ownership after a new document mount. Remaining native recovery routes and declared integration dependencies still need completion.
+
+The [interior peer continuation checkpoint](interior-peer-continuation.md) extends this writer to unchanged interior atom gaps. It retains the existing tail cases and their exact acceptance oracles.

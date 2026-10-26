@@ -1,0 +1,16 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Committed styled text between owned inline atoms split a native insertion. Content proofs rejected the unchanged owned fragments, and table replacement continued only trailing peer text.",
+  "after": "Read-only ownership proofs coalesce exact selected native insertion fragments around independently committed runs. Paragraph marks, foreign revisions, owned text and formatting remain guarded. The private writer locates retained text by source identities and ordered physical atom gaps, verifies complete gap text and native formatting, and uses native paragraph splitting and moves to retain interior peer text outside AI insertion wrappers.",
+  "reason": "Private proof projection and writer admission change. The canonical tree remains authoritative. Native encodings, public APIs and reader semantics do not change. No shared fields or migration are added. The evaluation transport remains test-only under the EigenPal Pro License.",
+  "tests": [
+    "packages/sciobot/src/review/recompose-styled-cell-peer.test.ts",
+    "packages/sciobot/src/review/owned-proposal-content.test.ts",
+    "packages/sciobot/src/review/owned-proposal-plan.test.ts",
+    "packages/sciobot/src/review/recompose-new-table-atom-peer-online.test.ts",
+    "packages/sciobot/src/review/recompose-new-table-atom-peer-interior.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

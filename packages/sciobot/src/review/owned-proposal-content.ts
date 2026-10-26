@@ -3,8 +3,10 @@ import { sha256FontBytes } from '@docx-editor.dev/core/layout';
 import {
   canonicalOoxmlFingerprint,
   findNode,
+  parentNodeOf,
   type OoxmlNode,
   type OoxmlPackage,
+  type OoxmlPart,
 } from '@docx-editor.dev/core/store';
 import { buildBlockIndex } from '../blocks/block-index';
 import type { NativeEditFailure, RevisionToken } from '../contracts/document';
@@ -132,6 +134,7 @@ export function captureOwnedProposalContentProofs(
         selectedSites.set(member.partName, ids);
       }
       const native: string[] = [];
+      const normalizedParts = new Map<string, OoxmlPart>();
       for (const member of group.native) {
         const part = pkg.parts.get(member.partName);
         if (!part || !member.siteNodeIds.length)
@@ -140,7 +143,24 @@ export function captureOwnedProposalContentProofs(
         for (const nodeId of member.siteNodeIds) {
           const node = findNode(part, nodeId);
           if (!node) return fail('An owned native site is missing.', 'invalid-document');
-          const saved = semantic(node);
+          const parent = parentNodeOf(part, nodeId);
+          let guarded: OoxmlNode | null = node;
+          if (parent?.kind === 'paragraph') {
+            const key = JSON.stringify([part.name, parent.id]);
+            let normalized = normalizedParts.get(key);
+            if (!normalized) {
+              const root = ownedStructuralContent(parent, selectedSites.get(member.partName)!);
+              if (root.kind === 'textValue')
+                return fail('Invalid native proof root.', 'invalid-document');
+              normalized = { ...part, root };
+              normalizedParts.set(key, normalized);
+            }
+            guarded = findNode(normalized, nodeId);
+          }
+          // Coalesced fragments retain their first site identity. The original site
+          // must still exist above; only the read-only proof projection can omit it.
+          if (!guarded) continue;
+          const saved = semantic(guarded);
           // An inverse restores current property bags or removes a marked paragraph.
           // Committed suffixes of independently marked paragraphs survive the inverse.
           // All other content outside the revision subtree remains guarded.

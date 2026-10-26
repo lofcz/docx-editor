@@ -4,6 +4,11 @@ import {
   collectRevisionSites,
   findNode,
   paragraphTextOf,
+  paragraphOffsetIndex,
+  moveNode,
+  removeNode,
+  replaceNode,
+  insertChildren,
   type OoxmlNode,
   type OoxmlParagraphNode,
   type OoxmlPart,
@@ -17,6 +22,8 @@ interface Tail {
   readonly paragraphId: string;
   readonly targetId: string;
   readonly length: number;
+  readonly start: number;
+  readonly end: number;
   readonly decisions: readonly string[];
   readonly cancelled: readonly string[];
   readonly expected: OoxmlParagraphNode;
@@ -65,7 +72,7 @@ function styleSpans(items: readonly { readonly length: number; readonly style: s
   return JSON.stringify(spans);
 }
 
-/** Physical atom slots establish continuity. Equal text only verifies an unchanged tail. */
+/** Physical atom slots and source identities establish continuity. Text verifies an unchanged gap. */
 export function planCellTailContinuation(
   part: OoxmlPart,
   source: OoxmlParagraphNode,
@@ -77,33 +84,47 @@ export function planCellTailContinuation(
   targetType: (id: string) => string | undefined
 ): Tail | null {
   const runs = textRuns(baseline);
-  if (!runs || !runs.every((run, i) => source.children.at(i - runs.length)?.id === run.id))
+  if (!runs) return null;
+  const runStart = source.children.findIndex((node) => node.id === runs[0]!.id);
+  if (runStart < 0 || !runs.every((run, i) => source.children[runStart + i]?.id === run.id))
     return null;
   const before = ownedAtomGapInventory(source, sourceType, selected),
     after = ownedAtomGapInventory(target, targetType);
   if (!before || !after || JSON.stringify(before.atoms) !== JSON.stringify(after.atoms))
     return null;
-  const sourceGap = before.gaps.at(-1)!,
-    targetGap = after.gaps.at(-1)!;
   const leaves = runs.flatMap((run) =>
     run.kind === 'run' ? run.children.filter((n) => n.kind === 'text') : []
   );
-  if (sourceGap.length !== leaves.length || sourceGap.some((n, i) => n.id !== leaves[i]!.id))
-    return null;
+  if (!leaves.length) return null;
+  const gapIndex = before.gaps.findIndex((gap) => gap.some((node) => node.id === leaves[0]!.id));
+  if (gapIndex < 0) return null;
+  const sourceGap = before.gaps[gapIndex]!,
+    targetGap = after.gaps[gapIndex]!;
+  const leafStart = sourceGap.findIndex((node) => node.id === leaves[0]!.id);
+  if (!leaves.every((node, i) => sourceGap[leafStart + i]?.id === node.id)) return null;
+  if (sourceGap.map(textOf).join('') !== targetGap.map(textOf).join('')) return null;
   const text = runs.map(runTextOf).join('');
-  if (!text || targetGap.map(textOf).join('') !== text) return null;
-  // Retain authored run identities and opaque data only when the target requests the same
-  // complete text and native formatting. Different text boundaries alone do not restyle it.
+  if (!text) return null;
+  const withinGap = sourceGap.slice(0, leafStart).map(textOf).join('').length;
+  const index = paragraphOffsetIndex(target);
+  const gapStart = targetGap.length ? index.spanOf(targetGap[0]!)?.start : undefined;
+  if (gapStart === undefined) return null;
+  const start = gapStart + withinGap,
+    end = start + text.length;
   const targetStyles: { length: number; style: string }[] = [];
   for (const node of targetGap) {
-    const run = node.kind === 'text' && findRun(target, node.id);
+    const span = index.spanOf(node);
+    if (!span) return null;
+    const length = Math.min(span.end, end) - Math.max(span.start, start);
+    if (length <= 0) continue;
+    const run = findRun(target, node.id);
     if (
       !run ||
       run.kind !== 'run' ||
       !run.children.every((n) => n.kind === 'text' || n.kind === 'runProperties')
     )
       return null;
-    targetStyles.push({ length: textOf(node).length, style: styleOf(run) });
+    targetStyles.push({ length, style: styleOf(run) });
   }
   if (
     styleSpans(runs.map((run) => ({ length: runTextOf(run).length, style: styleOf(run) }))) !==
@@ -145,6 +166,8 @@ export function planCellTailContinuation(
     paragraphId: baseline.id,
     targetId: target.id,
     length: text.length,
+    start,
+    end,
     decisions: sites.map((site) => site.node.id),
     cancelled: [...cancelled],
     expected: baseline,
@@ -170,11 +193,54 @@ export function continueCellTail(part: OoxmlPart, plan: Tail, cancelled: Set<str
   const length = paragraphTextOf(restored.part, plan.targetId)?.length;
   if (length === undefined || length < plan.length)
     refuseWrite('The replacement cell tail disappeared.', 'apply-failed');
+  if (plan.end !== length) {
+    const target = findNode(restored.part, plan.targetId);
+    if (target?.kind !== 'paragraph')
+      refuseWrite('The replacement paragraph disappeared.', 'apply-failed');
+    const properties = target.children.find((child) => child.kind === 'paragraphProperties');
+    const split = applyTreeOp(restored.part, {
+      op: 'splitParagraphMany',
+      paragraphId: plan.targetId,
+      offsets: [plan.start, plan.end],
+    });
+    if (!split.ok || split.effect.created.length !== 2)
+      refuseWrite('Cannot divide the duplicate cell text.', 'apply-failed');
+    let part = split.part;
+    const deferred = { deferValidation: true };
+    const apply = (edit: ReturnType<typeof moveNode>) => {
+      if (!edit.ok) refuseWrite('Cannot continue the committed cell text.', 'apply-failed');
+      part = edit.part;
+    };
+    const append = (id: string) => {
+      const head = findNode(part, plan.targetId);
+      if (head?.kind !== 'paragraph')
+        refuseWrite('The replacement paragraph disappeared.', 'apply-failed');
+      apply(moveNode(part, id, head.id, head.children.length, deferred));
+    };
+    const restoredRuns = node?.kind === 'paragraph' && textRuns(node);
+    if (!restoredRuns) refuseWrite('The retained runs disappeared.', 'apply-failed');
+    for (const run of restoredRuns) append(run.id);
+    const suffix = findNode(part, split.effect.created[1]!);
+    if (suffix?.kind !== 'paragraph')
+      refuseWrite('The replacement suffix disappeared.', 'apply-failed');
+    for (const child of suffix.children) if (child.kind !== 'paragraphProperties') append(child.id);
+    for (const id of split.effect.created) apply(removeNode(part, id, deferred));
+    if (properties) {
+      const head = findNode(part, plan.targetId);
+      const holder =
+        head?.kind === 'paragraph' &&
+        head.children.find((child) => child.kind === 'paragraphProperties');
+      if (holder) apply(replaceNode(part, holder.id, properties, deferred));
+      else apply(insertChildren(part, plan.targetId, 0, [properties], deferred));
+    }
+    plan.cancelled.forEach((key) => cancelled.add(key));
+    return part;
+  }
   const removed = applyTreeOp(restored.part, {
     op: 'deleteText',
     paragraphId: plan.targetId,
-    start: length - plan.length,
-    end: length,
+    start: plan.start,
+    end: plan.end,
   });
   if (!removed.ok) refuseWrite('Cannot remove the duplicate cell tail.', 'apply-failed');
   plan.cancelled.forEach((key) => cancelled.add(key));
