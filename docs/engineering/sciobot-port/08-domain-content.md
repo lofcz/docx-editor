@@ -258,7 +258,7 @@ Final verification against installed fork `929e0ea4a9bf68f3a4c9a7c133e55bc76b76d
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** X37 is closed. Implement the renderer and focused application checks in the isolated worktree.
+**Claim:** codex, branch `codex/react-block-proof`. **Evidence:** Native target authoring now recognizes callout, story, and solution containers. Callout variants retain the application alias and normalization rules. The pure authoring, existing container, and captured projection batch passes 47 cases and 214 assertions. The isolated application renderer and real-browser checks are in progress. X13 remains unchecked until those checks pass.
 
 ## X14
 
@@ -276,7 +276,7 @@ Final verification against installed fork `929e0ea4a9bf68f3a4c9a7c133e55bc76b76d
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** X37 is closed. Implement the renderer and focused application checks in the isolated worktree.
+**Claim:** codex, branch `codex/react-block-proof`. **Evidence:** Native target authoring now recognizes story containers and preserves metadata and native descendants during a second target wave. The shared authoring batch passes 47 cases and 214 assertions. The isolated application renderer and real-browser checks are in progress. X14 remains unchecked until those checks pass.
 
 ## X15
 

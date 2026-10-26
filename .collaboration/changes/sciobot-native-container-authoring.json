@@ -1,0 +1,13 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Container tags were readable, but new callout, story, and solution targets had no private payload authoring mapping.",
+  "after": "The private target planner creates existing registered container payloads and matches retained container identity. Callout type attributes map to the existing variant property. Native descendants retain their existing representation.",
+  "reason": "The new writer uses existing canonical operations, payload schemas, and registered type encodings. Shared reader interpretation, native format, private ownership protocols, and public APIs stay unchanged. Compiled fixture setup uses the built supported ownership attachment for the former prototype alias; both source factories already use the same implementation.",
+  "tests": [
+    "packages/sciobot/src/diff/container-authoring.test.ts",
+    "packages/sciobot/src/diff/domain-containers.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

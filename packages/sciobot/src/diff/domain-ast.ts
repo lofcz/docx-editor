@@ -14,6 +14,9 @@ const tags: Readonly<Record<string, string>> = {
   recap_phase: 'recap_phase',
   lesson_visual: 'lesson_visual',
   listening: 'listening',
+  callout: 'callout',
+  story: 'story',
+  solution: 'solution',
   'scio-inline-equation': 'inline_equation',
   'scio-equation': 'equation',
 };
@@ -40,12 +43,20 @@ export function domainNodeFromAst(ast: TargetAstNode): (DomainNode & JsonObject)
         : undefined;
   if (!type) return null;
   const attributes: [string, JsonValue][] = [];
+  let calloutType: string | undefined;
+  let calloutVariant: string | undefined;
   for (const raw of Array.isArray(ast.attributes) ? ast.attributes : []) {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) continue;
     const attr = raw as JsonObject;
     if (attr.type !== 'mdxJsxAttribute' || typeof attr.name !== 'string') continue;
     let name = attr.name,
       value = attr.value;
+    if (type === 'callout' && (name === 'type' || name === 'variant')) {
+      const normalized = typeof value === 'string' ? value.trim().toLowerCase() : '';
+      if (name === 'type') calloutType = normalized || undefined;
+      else calloutVariant = normalized || undefined;
+      continue;
+    }
     if (name === 'type' && (type === 'lesson_phase' || type === 'recap_phase')) name = 'phaseType';
     else if (name === 'type' && (type === 'source' || type === 'source_excerpt')) name = 'trust';
     else if (name === 'organizational_minutes' && type === 'lesson_title')
@@ -72,6 +83,8 @@ export function domainNodeFromAst(ast: TargetAstNode): (DomainNode & JsonObject)
     attributes.push([name, value]);
   }
   const props = Object.fromEntries(attributes) as Record<string, JsonValue>;
+  if (type === 'callout' && (calloutType ?? calloutVariant))
+    props.variant = (calloutType ?? calloutVariant)!;
   if (type === 'source' || type === 'source_excerpt') {
     props.url = typeof props.url === 'string' ? props.url : '';
     if (typeof props.title !== 'string') delete props.title;

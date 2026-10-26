@@ -43,6 +43,12 @@ try {
   const collaboration = join(directory, 'collaboration.ts');
   const support = readFileSync(join(packageRoot, 'test/support/collaboration.ts'), 'utf8')
     .replace("from '../../src/collaboration'", "from '@sciobot/docx/collaboration'")
+    // The former prototype factory now calls the same supported attachment. Keep compiled
+    // fixtures on that built factory instead of importing a second source implementation.
+    .replace(
+      "import { attachPropertyReviewHistoryPrototype } from '../../src/collaboration/review-history';",
+      "import { attachOwnedReviewHistory as attachPropertyReviewHistoryPrototype } from '@sciobot/docx/collaboration';"
+    )
     .replace(
       "from '../../../pro/src/collaboration/document-session'",
       "from '@docx-editor.dev/pro/collaboration'"

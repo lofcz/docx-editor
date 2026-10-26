@@ -24,6 +24,9 @@ const STRATEGIES: Readonly<Record<string, DomainDiffStrategy>> = {
   lesson_activity: { kind: 'container', updateProps: ['name', 'duration'] },
   lesson_visual: { kind: 'atomic' },
   listening: { kind: 'atomic' },
+  callout: { kind: 'container' },
+  story: { kind: 'container' },
+  solution: { kind: 'container' },
   source: { kind: 'atomic' },
   source_excerpt: {
     kind: 'container',
