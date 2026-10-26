@@ -94,7 +94,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** codex, isolated `sciobot-next` worktree at detached commits `7372c120c`, `9767144a1`, and `2ac716769`. **Evidence:** `src/components/workspace/docx/blocks/activity.tsx` renders native activity name and duration controls while leaving the activity body in the native slot. Edit-mode changes use the canonical payload transaction. Suggestion-mode changes use `planDomainProperties` and `trackPropertyPlan`, including the generated fallback label and revision-bound owned review context. The Chromium command `bun test --timeout 300000 scripts/docx-native/harness/activity.test.ts` passes 3 cases: edit-mode name/duration with native body preservation, plus two-session property suggestion convergence for both client orders (`73/41` and `41/73`). The pair cases assert proposed Markdown convergence and the single-session case asserts the native body remains intact. Follow-up `c39572ae1` removes body-text label guessing, requires the explicitly generated label, preserves attribute removals, and allocates unique property proposal IDs. The same three browser cases pass. X05 remains open: resource controls, exact proposal counts, both field proposals, decision history, offline concurrency, deletion, and save/reopen checks remain required by the shared completion rules.
 
 ## X06
 
