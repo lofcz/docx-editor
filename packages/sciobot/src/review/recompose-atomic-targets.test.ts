@@ -14,7 +14,7 @@ import { buildBlockIndex } from '../blocks/block-index';
 import type { JsonValue, JsonObject } from '../data/json';
 import { readWorkingView } from './working-view';
 import { readCommittedView } from './committed-view';
-import { recomposeOwnedProposals } from './recompose';
+import { type RecomposeOptions, recomposeOwnedProposals } from './recompose';
 import { acceptAllReviewGroups } from './accept-all';
 import { rejectAllReviewGroups } from './reject-all';
 import { groups } from '../../test/support/review-groups';
@@ -66,16 +66,24 @@ for (const action of ['accept', 'reject'] as const)
           .replace('original-audio', `${wave}-audio`)
           .replace('Good morning!', `${wave === 'second' ? 'Second' : 'First'} line!`)
           .replace('Phase body', `Phase ${wave}`);
-      const options = (wave: string) => ({
-        payloads: {
-          atomic: {
-            proposalId: `target-${wave}`,
-            fallbackTargets: ['visual', 'audio'].map((blockId) => ({
-              blockId,
-              before: `Old ${blockId} fallback`,
-              after: `${wave} ${blockId} fallback`,
-            })),
-          },
+      const options = (wave: string): RecomposeOptions => ({
+        preparePayloads: (targets) => {
+          expect(targets).toHaveLength(2);
+          for (const item of targets) {
+            expect(item.executor).toBe('atomic');
+            expect(item.beforeText).toBe(`Old ${item.blockId} fallback`);
+            expect(item.before).toEqual(item.blockId === 'visual' ? atomicVisual : opaque);
+          }
+          return {
+            atomic: {
+              proposalId: `target-${wave}`,
+              fallbackTargets: targets.map((item) => ({
+                blockId: item.blockId,
+                before: item.beforeText,
+                after: `${wave} ${item.blockId} fallback`,
+              })),
+            },
+          };
         },
       });
       const first = await recomposeOwnedProposals(

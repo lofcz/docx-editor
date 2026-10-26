@@ -1,3 +1,9 @@
+import {
+  recomposePayloadTargets,
+  type RecomposePayloadTarget,
+  type RecomposePayloadOptions,
+} from './recompose-payload-targets';
+export type { RecomposePayloadTarget, RecomposePayloadOptions } from './recompose-payload-targets';
 import { needsTrackedPresence } from './tracked-stage-presence';
 import { isCurrentNativeTarget } from './recompose-current-target';
 import { projectApplicationPresence, readApplicationProposals } from './application-proposals';
@@ -67,6 +73,10 @@ export interface RecomposeOptions {
   readonly payloads?: TrackedPayloadOptions;
   /** Called only when this target needs presence ownership and none was supplied explicitly. */
   readonly createPresenceProposalId?: () => string;
+  /** Read-only host label preparation after owned inverses, before the final revision guard. */
+  readonly preparePayloads?: (
+    targets: readonly RecomposePayloadTarget[]
+  ) => RecomposePayloadOptions | Promise<RecomposePayloadOptions>;
 }
 
 const active = new WeakSet<DocxEditorInstance>();
@@ -279,7 +289,29 @@ export async function recomposeOwnedProposals(
     if (!planned.success) return planned;
     const preparedImages = prepareImages ? await prepareImages(planned.plan) : undefined;
     if (preparedImages && !preparedImages.success) return preparedImages;
-    const payloads = { ...input.payloads };
+    let payloads = { ...input.payloads };
+    if (
+      options.preparePayloads &&
+      planned.plan.operations.some((edit) => edit.kind === 'payload')
+    ) {
+      const targets = recomposePayloadTargets(baseline, planned.plan, payloads);
+      if (!targets.success) return targets;
+      if (targets.targets.length) {
+        const prepared = copyBoundedJson(
+          await options.preparePayloads(targets.targets),
+          EDIT_PLAN_LIMITS
+        );
+        if (!prepared.ok) return fail(prepared.reason);
+        if (
+          !prepared.value ||
+          typeof prepared.value !== 'object' ||
+          Array.isArray(prepared.value) ||
+          Object.keys(prepared.value).some((key) => !['properties', 'atomic'].includes(key))
+        )
+          return fail('Invalid host payload preparation result.');
+        payloads = { ...(prepared.value as RecomposePayloadOptions), ...payloads };
+      }
+    }
     if (
       !payloads.presence &&
       options.createPresenceProposalId &&

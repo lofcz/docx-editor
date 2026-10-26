@@ -12,7 +12,7 @@ import {
 import { buildBlockIndex } from '../blocks/block-index';
 import { readCommittedView } from './committed-view';
 import { readWorkingView } from './working-view';
-import { recomposeOwnedProposals } from './recompose';
+import { type RecomposeOptions, recomposeOwnedProposals } from './recompose';
 import { groups } from '../../test/support/review-groups';
 import { acceptAllReviewGroups } from './accept-all';
 import { rejectAllReviewGroups } from './reject-all';
@@ -28,6 +28,28 @@ for (const action of ['accept', 'reject'] as const)
       if (!result.success) throw Error(result.error);
       return result.view.projection.text;
     };
+    let prepared = 0;
+    const options = (name: string, proposalId: string): RecomposeOptions => ({
+      preparePayloads: async (targets) => {
+        prepared++;
+        expect(targets).toHaveLength(1);
+        expect(targets[0]!.before.attributes.name).toBe('Old activity');
+        expect(targets[0]!.after.attributes.name).toBe(name);
+        expect(targets[0]!.beforeText).toBe('Old activity — 10 minutes');
+        return {
+          properties: {
+            proposalId,
+            fallbackTargets: [
+              {
+                blockId: targets[0]!.blockId,
+                before: targets[0]!.beforeText,
+                after: `${name} — 10 minutes`,
+              },
+            ],
+          },
+        };
+      },
+    });
     try {
       const initial = await view();
       expect(initial).toContain('name="Old activity"');
@@ -45,20 +67,7 @@ for (const action of ['accept', 'reject'] as const)
           contentProofs: [],
         },
         propertyContext,
-        {
-          payloads: {
-            properties: {
-              proposalId: 'wave-one',
-              fallbackTargets: [
-                {
-                  blockId: 'activity',
-                  before: 'Old activity — 10 minutes',
-                  after: 'First activity — 10 minutes',
-                },
-              ],
-            },
-          },
-        }
+        options('First activity', 'wave-one')
       );
       stop();
       if (!first.success) throw Error(first.error);
@@ -87,23 +96,11 @@ for (const action of ['accept', 'reject'] as const)
           contentProofs: first.contentProofs,
         },
         propertyContext,
-        {
-          payloads: {
-            properties: {
-              proposalId: 'wave-two',
-              fallbackTargets: [
-                {
-                  blockId: 'activity',
-                  before: 'Old activity — 10 minutes',
-                  after: 'Second activity — 10 minutes',
-                },
-              ],
-            },
-          },
-        }
+        options('Second activity', 'wave-two')
       );
       if (!second.success) throw Error(second.error);
       expect(await view()).toBe(secondTarget);
+      expect(prepared).toBe(2);
       const original = initial.replace('Outside', 'Outside manual');
       expect(await view(true)).toBe(original);
       expect(

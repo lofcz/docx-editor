@@ -1,0 +1,16 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "AI recomposition accepted only precomputed host fallback labels. An application tool could not prepare labels from the ownership-relative native baseline after earlier owned proposals were withdrawn.",
+  "after": "The private recomposer offers a read-only asynchronous host callback with detached before/after payloads and exact native fallback text. Explicit fixed executors retain precedence. The callback cannot mutate canonical data or the plan. Its bounded output is validated before the unchanged freshness, content proof, and native transaction gates.",
+  "reason": "Private host services change. Canonical writes still use existing tracked payload stages. Native encodings, reader semantics and Office-shaped public APIs do not change. No shared fields or migration are added. The evaluated transport remains test-only under the EigenPal Pro License.",
+  "tests": [
+    "packages/sciobot/src/review/recompose-payload-host.test.ts",
+    "packages/sciobot/src/review/recompose-payloads.test.ts",
+    "packages/sciobot/src/review/recompose-payloads-collaboration.test.ts",
+    "packages/sciobot/src/review/recompose-atomic-targets.test.ts",
+    "packages/sciobot/src/review/recompose-presence-host.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

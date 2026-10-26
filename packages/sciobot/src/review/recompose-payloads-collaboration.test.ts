@@ -9,7 +9,7 @@ import { propertyRecordFixture } from '../../test/support/property-record';
 import { propertyContext, propertyToken } from '../../test/support/property-execution';
 import { readWorkingView } from './working-view';
 import { readCommittedView } from './committed-view';
-import { recomposeOwnedProposals } from './recompose';
+import { type RecomposeOptions, recomposeOwnedProposals } from './recompose';
 import { SCIOBOT_NATIVE_REVIEW_MODULE } from './native-module';
 import { acceptAllReviewGroups } from './accept-all';
 import { rejectAllReviewGroups } from './reject-all';
@@ -43,18 +43,24 @@ for (const clients of [
           initial
             .replace('name="Old activity"', `name="${name} activity"`)
             .replace('Body', `Body ${body}`);
-        const options = (name: string) => ({
-          payloads: {
-            properties: {
-              proposalId: `shared-${name.toLowerCase()}`,
-              fallbackTargets: [
-                {
-                  blockId: 'activity',
-                  before: 'Old activity — 10 minutes',
-                  after: `${name} activity — 10 minutes`,
-                },
-              ],
-            },
+        const options = (name: string): RecomposeOptions => ({
+          preparePayloads: (targets) => {
+            expect(targets).toHaveLength(1);
+            expect(targets[0]!.before).toEqual(baselinePayload);
+            expect(targets[0]!.after.attributes.name).toBe(`${name} activity`);
+            expect(targets[0]!.beforeText).toBe('Old activity — 10 minutes');
+            return {
+              properties: {
+                proposalId: `shared-${name.toLowerCase()}`,
+                fallbackTargets: [
+                  {
+                    blockId: 'activity',
+                    before: targets[0]!.beforeText,
+                    after: `${name} activity — 10 minutes`,
+                  },
+                ],
+              },
+            };
           },
         });
         const first = await recomposeOwnedProposals(
