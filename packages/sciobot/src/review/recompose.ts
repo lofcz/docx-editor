@@ -1,3 +1,4 @@
+import { needsTrackedPresence } from './tracked-stage-presence';
 import { isCurrentNativeTarget } from './recompose-current-target';
 import { projectApplicationPresence, readApplicationProposals } from './application-proposals';
 import { projectPendingProperties } from './property-projection';
@@ -64,6 +65,8 @@ export interface RecomposeOptions {
   readonly target?: TargetDocumentOptions;
   /** Exact localized Word fallback labels for changed property and atomic payloads. */
   readonly payloads?: TrackedPayloadOptions;
+  /** Called only when this target needs presence ownership and none was supplied explicitly. */
+  readonly createPresenceProposalId?: () => string;
 }
 
 const active = new WeakSet<DocxEditorInstance>();
@@ -276,6 +279,13 @@ export async function recomposeOwnedProposals(
     if (!planned.success) return planned;
     const preparedImages = prepareImages ? await prepareImages(planned.plan) : undefined;
     if (preparedImages && !preparedImages.success) return preparedImages;
+    const payloads = { ...input.payloads };
+    if (
+      !payloads.presence &&
+      options.createPresenceProposalId &&
+      needsTrackedPresence(planned.plan, !!preparedImages?.images)
+    )
+      payloads.presence = { proposalId: options.createPresenceProposalId() };
     const changedByPlanner = fresh();
     if (changedByPlanner) return changedByPlanner;
     const changedContent = verifyOwnedProposalContentProofs(
@@ -290,7 +300,7 @@ export async function recomposeOwnedProposals(
       selected.selection,
       planned.plan,
       input.context,
-      input.payloads,
+      payloads,
       preparedImages?.images
     );
     if (!result.success) return result;

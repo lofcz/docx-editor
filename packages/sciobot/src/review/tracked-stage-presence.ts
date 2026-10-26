@@ -11,6 +11,17 @@ import { createBlockPresenceRecord } from './block-presence-plan';
 import { withBlockPresenceRecord } from './block-presence-store';
 import type { TrackedStageAttribution, TrackedStageWriter } from './tracked-stage-writer';
 
+/** Read-only admission for a fresh host presence identity, after target planning. */
+export function needsTrackedPresence(plan: CanonicalEditPlan, hasImages = false): boolean {
+  return plan.operations.some(
+    (edit) =>
+      edit.kind === 'inline-remove' ||
+      (edit.kind === 'siblings' &&
+        (edit.blocks ?? []).some((binding) => binding.path.length === 1)) ||
+      insertedAtomsOfEdit(edit).some((atom) => atom.kind === 'inline-control' || hasImages)
+  );
+}
+
 /** Capture complete, fully initialized application subtrees after all ordered native stages. */
 export function stageTrackedPresence(
   writer: TrackedStageWriter,
@@ -34,7 +45,7 @@ export function stageTrackedPresence(
           .map((binding) => binding.payload.id)
       : []
   );
-  if (!roots.length && !removals.length && !births.length) {
+  if (!needsTrackedPresence(plan, !!images)) {
     if (supplied)
       refuseWrite('Presence ownership has no inserted application roots.', 'invalid-input');
     return;

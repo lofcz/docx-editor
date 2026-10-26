@@ -1,0 +1,13 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "The application tool host could not allocate presence ownership lazily for planned application block insertions. Supplying a presence identity to plain text targets is correctly refused.",
+  "after": "The private recomposer optionally requests a fresh host presence identity only after an admitted target requires one. Explicit supplied identities retain precedence. Allocation failures write nothing, and intervening native edits still fail the fresh revision guard. The existing presence writer and this host service share one admission predicate.",
+  "reason": "This is a private host service option. Office-shaped public automation, native encodings and reader semantics stay unchanged. No format fields or migration are added. The evaluated transport remains test-only under the EigenPal Pro License.",
+  "tests": [
+    "packages/sciobot/src/review/recompose-presence-host.test.ts",
+    "packages/sciobot/src/review/recompose-born-inline-paragraphs.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

@@ -14,4 +14,6 @@ The proof fixture admits independently committed styled runs and rejects changed
 
 The six-file affected source batch passes 82 cases and 7,889 assertions in `/tmp/r19-interior-final.log`. Private types pass 2,429 files. Proof normalization now caches only affected paragraphs instead of traversing unrelated document content. The final proof and ownership-plan rerun is recorded separately in `/tmp/r19-interior-proof-final.log`.
 
+The app host also needs fresh presence identities for targets containing new application blocks. The private composer now accepts a lazy `createPresenceProposalId` host service. It calls the service only for admitted presence edits without an explicit identity. Failed allocation changes no content or history. An intervening host edit fails the unchanged revision guard. The four-file presence/birth/removal batch passes 59 cases and 1,185 assertions in `/tmp/r19-presence-source-final.log`.
+
 R19 remains open. This checkpoint supports one contiguous committed peer range in one unchanged atom gap. Multiple separate peer ranges, topology-changing recovery, and the remaining declared ownership routes still need completion.
