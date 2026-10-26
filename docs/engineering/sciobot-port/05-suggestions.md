@@ -432,6 +432,8 @@ The born-table Original recovery checkpoint makes Original retain the independen
 
 [D30 acceptance](evidence/d30-closure.md) closes inline atom planning and materialization. R19 remains open for the remaining ownership reconciliation routes.
 
+**Working-property reset checkpoint (`82fb3064`):** pending application payloads now prevent the canonical native no-op shortcut. Exact working-target equality still avoids redundant writes. Returning an owned property to its committed value runs the existing inverse transaction. The focused `recompose-payloads.test.ts`, `recompose-payloads-collaboration.test.ts`, and `recompose.test.ts` command passes 23 cases and 323 assertions. Four new real-session cases cover both client orders and reconnect receivers, offline peer text, reset undo/redo, and saved convergence. Application commit `6e80987c2` installs the exact rebuilt runtime and passes 31 browser cases, 29 unit cases, both typechecks, and a production build. Private mention types also coexist with the host Plate plugin: `5dcc784a` removes the conflicting global mdast augmentation, and the dedicated host fixture and 94 parser regressions pass. Compatibility records are `.collaboration/changes/sciobot-working-property-noop.json` and `.collaboration/changes/sciobot-host-markdown-types.json`. R19 remains open for its recorded rich-image ownership defect and remaining integration requirements.
+
 ## R20
 
 - [x] Keep imported and foreign revisions separate
