@@ -190,11 +190,11 @@ Final verification against installed fork `929e0ea4a9bf68f3a4c9a7c133e55bc76b76d
 
 ## X10
 
-- [ ] Render listening exercises with existing services
+- [x] Render listening exercises with existing services
 
 **Depends:** [X09](08-domain-content.md#x09), [B05](02-react-blocks.md#b05), [B17](02-react-blocks.md#b17), [V01](11-verification.md#v01)
 
-**Primary files:** `app:src/components/workspace/docx/blocks/listening.tsx`; `sibling browser test`
+**Primary files:** `app:src/components/workspace/docx/blocks/listening.tsx`; `app:src/lib/docx/listening-audio.ts`; `app:src/lib/docx/listening-locks.ts`; `app:scripts/docx-native/harness/listening-player.test.ts`
 
 **Read:** [S12](sources.md#s12)
 
@@ -204,7 +204,7 @@ Final verification against installed fork `929e0ea4a9bf68f3a4c9a7c133e55bc76b76d
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** codex, branch `codex/react-block-proof`. **Evidence:** Application `a7d38a465` integrates existing playback, cache hydration, and explicit generation with native payload storage. Thirteen distinct player browser cases verify local playback, long transcripts, two-session history/convergence, stale response cancellation, review freshness, locked playback, and cold reopening. The final unit batch passes 31 cases. Frontend/harness types pass 6,849/2,424 files. Commands, fixtures, exact oracles, and limits are in [listening player evidence](evidence/native-listening-player.md). Runtime remains `4f0029f0b8df49f1aa966c43ce52a7a97b8443b0`.
 
 ## X11
 

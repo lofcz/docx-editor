@@ -24,13 +24,16 @@
       ]
     },
     "BasicBlocksKit": {
-      "behavior": "Paragraph, H1-H3, quote and rule insertion, conversion, input rules and shortcuts.",
-      "savedData": "p, h1, h2, h3, blockquote, hr and native text children.",
+      "behavior": "Paragraph, H1-H3, quote and rule insertion, conversion, input rules and shortcuts. Explicit page-break insertion/removal and static forced pagination.",
+      "savedData": "p, h1, h2, h3, blockquote, hr, page_break and native text children; PageBreak Markdown and plain-text form feed.",
       "routeSources": [
         "src/components/ui/paragraph-node.tsx",
         "src/components/ui/heading-node.tsx",
         "src/components/ui/blockquote-node.tsx",
-        "src/components/ui/hr-node.tsx"
+        "src/components/ui/hr-node.tsx",
+        "src/components/page-break/element.tsx",
+        "src/components/page-break/plugin.ts",
+        "src/components/page-break/markdown.ts"
       ]
     },
     "CodeBlockKit": {
@@ -396,6 +399,13 @@
           "exported": "BasicBlocksKit"
         },
         "renderers": [
+          {
+            "name": "PageBreakElement",
+            "definition": {
+              "path": "src/components/page-break/element.tsx",
+              "exported": "PageBreakElement"
+            }
+          },
           {
             "name": "ParagraphElement",
             "definition": {
@@ -1151,6 +1161,13 @@
         },
         "renderers": [
           {
+            "name": "PageBreakElementStatic",
+            "definition": {
+              "path": "src/components/page-break/element.tsx",
+              "exported": "PageBreakElementStatic"
+            }
+          },
+          {
             "name": "ParagraphElementStatic",
             "definition": {
               "path": "src/components/ui/paragraph-node-static.tsx",
@@ -1194,7 +1211,7 @@
           }
         ],
         "workspaceFeature": "BasicBlocksKit",
-        "savedData": "p, h1, h2, h3, blockquote, hr and native text children.",
+        "savedData": "p, h1, h2, h3, blockquote, hr, page_break and native text children; PageBreak Markdown and plain-text form feed.",
         "leaves": [
           "I17",
           "I21",
@@ -2144,8 +2161,8 @@
       "src/components/align-base-kit.tsx": "6c21547a2f518eafe00bb7f093c69482658f0b2d2bd1953b8479c9d0433ca60e",
       "src/components/align-kit.tsx": "2abdd89921d4f197b76624275a5246b4996e038e5232e8543569be43418d4714",
       "src/components/autoformat-kit.tsx": "414ac95f3054c9bab0071a284d8d779f918e335f7744603093acd405709e08a8",
-      "src/components/basic-blocks-base-kit.tsx": "fc8cbab6efe7c76b377d1efc3da2bf232e97b279d29f710eff1da5756a8e3fa9",
-      "src/components/basic-blocks-kit.tsx": "dfb1278d79d4177b00728d87e5a78287a069cc9cf5b2ec426b6d450f8c3741b3",
+      "src/components/basic-blocks-base-kit.tsx": "25f9be4058ae5a89f8a131f1eb25e87339f8f2d22720846a1134fa9402dbd1a7",
+      "src/components/basic-blocks-kit.tsx": "cc0eae54fd3d7fb5db582709da4f6a9f856ce45cad0ad26fb96c14501b584b3b",
       "src/components/basic-marks-base-kit.tsx": "94b9a089c05045f920af04e5b76187934cc104b335aa2ab2e4f364dc2a461e51",
       "src/components/basic-marks-kit.tsx": "171ac49afa9907d68700dac048f2a4279aef0e0c6d08d7e5c7cc3970dcce0905",
       "src/components/block-menu-kit.tsx": "7270ad6c385ec1e2a83875e0c68e5939d4ad3be60be316f5fd0ae52244d9cbb1",
@@ -2195,7 +2212,7 @@
       "src/components/link-kit.tsx": "f40990f730553b1097c416a86491a2ac01abafeb472666b86cdf1205a90a02f7",
       "src/components/list-base-kit.tsx": "e49b5981b9c973c0ad02361cac307f5dc4b37518611a31401c718b86b043181e",
       "src/components/list-kit.tsx": "a0a7aab10f69effddbc6aabb1e0c192e6e07ca5f0204a540a4d2268bf977d05a",
-      "src/components/markdown-kit.tsx": "ce17115475c5ec3509ba483fdb81d3786ab7af92891b1b10b96367fdd7cf9c34",
+      "src/components/markdown-kit.tsx": "2ed49ab05f0a79b91f57f30cf7bd45fd7c037c50bde663a95d34f2717c15d73a",
       "src/components/math-base-kit.tsx": "79c5dc2ea5032ee4e544638617eac3332d968e4103eff8a125da7df48c58bafa",
       "src/components/math-kit.tsx": "8a95f0cdf0cd4064bab78d7b57537105a43c12d541e40860cbb402e00615206d",
       "src/components/mdx/base-kit.tsx": "0d3f712ac538994ec043f1fde613504b031ad4e7a017c98278078c38f2aaac07",
@@ -2206,6 +2223,9 @@
       "src/components/media-kit.tsx": "7f755401cf0a4ee9f285d4f88a583605f0159b276ae150f6b8f3e2cd11d38e85",
       "src/components/mention-base-kit.tsx": "69406e9ae52e38ce2e6a72ea4eab4bc91908d0d78ea737e2354a91b46bd9b697",
       "src/components/mention-kit.tsx": "a63cd570217286970361e460b1be7171fa3aced753bed6e24064c7ae83780596",
+      "src/components/page-break/element.tsx": "55370a406c59d4b0285c0e6f1efa41d536c037597ae63f824068bdd17d2d6486",
+      "src/components/page-break/markdown.ts": "0da186fdb1733abb38bf4c5532f8a39a9ab0bed0e915dde147bcffff96fdd496",
+      "src/components/page-break/plugin.ts": "bfc1029ccf83943b0cf9c2b75f4c802d8fecb3b537c2bb725aa75cb1fb988c20",
       "src/components/plate-types.ts": "b3f70b4fb6c1e0321d7de798dcbccc13cfa79ead540518866ea87692f14e63a4",
       "src/components/shared-material/SharedLessonDocView.tsx": "598bea0d0c5b54d53b1b1f6bb010f86a14f51ed73ac91ceb4760c221b5ea012a",
       "src/components/slash-kit.tsx": "7bb09badc177818ef4329c29336ad0693686c044e7f3ff13fb5927865384e76c",
@@ -2296,7 +2316,7 @@
       "src/components/ui/phase-node.tsx": "4414a632976085f5ef359db3def0cb958edf9bf6a246f774bbfad186bebcbdfa",
       "src/components/ui/preparation-recap-node-static.tsx": "893457994680b0bf4e7a710ab212cb4c4ab16acdd3411087da523b9c3fa175b1",
       "src/components/ui/preparation-recap-node.tsx": "8b35edf422f4e37b8c6c4395fd427987e7b7f583f6c095b7dfc5a806b717d630",
-      "src/components/ui/slash-catalog.ts": "32dd4ec45f87f45d9577eac1a4e25b4d6ed65b7e277f6648589444725d053f96",
+      "src/components/ui/slash-catalog.ts": "280ab9a04143da7c5ea17d4bc2140c2ca73637bc132d578300d575c49a8617a1",
       "src/components/ui/slash-node.tsx": "52cccdf36a87d5afcba34f19208487b4c8200c18e72d649096967fa048cc313f",
       "src/components/ui/smiles-node-static.tsx": "afbe862f3e4bb15de9db6cae78f898f5ba071efbae5b506b076f7d1230392250",
       "src/components/ui/smiles-node.tsx": "edcb2109fc49b48a22c59df273aa1da6513e6dee116b7e2a76476890d94dfe08",
@@ -2325,7 +2345,7 @@
       "src/hooks/chat/useWorkspaceEditBridge.ts": "cbfec4099d903d776667d56afa433a2dcfc64b9100efc2e7828b2f7d36ed5152",
       "src/lib/ai-review-diff.ts": "5233a070f764270172fdc03ca7df564e16483aac958acfce42748ebf1fa7d701",
       "src/lib/attemptAddToChat.ts": "48bba3c1edd55149746e1b93c71a5618b754d31e62d6c14fbfc3632f58976e41",
-      "src/lib/documentTextExport.ts": "98c44374699e571801c10c5c276af0916ba790c2699d3a8c18da797b0cefcb9a",
+      "src/lib/documentTextExport.ts": "99624032c656380d2545ef28625211ab7ed56348bdbb81a834142efc16c85d2b",
       "src/lib/lesson-plan-deserialize.ts": "6293cee4ca05d2c8a43fdf7f1cc7407aed3792623fe1571d1c959a7376107700",
       "src/lib/quote-focus.ts": "36adb76ec6510af621758673865f72887b1281ece77747533ad6760fdb615cb9",
       "src/lib/suggestion-groups.ts": "36a044d291c18da1e54aa7d6ed4391de59839143808191ef38e2a758a1392912",

@@ -198,9 +198,9 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Read:** [S01](sources.md#s01), [S20](sources.md#s20), [S22](sources.md#s22)
 
-**Change:** Convert saved paragraphs, headings, marks, and links into native Word content. Retain the original snapshot for fallback.
+**Change:** Convert saved paragraphs, headings, marks, and links into native Word content. Convert explicit legacy page breaks into native Word page breaks. Retain the original snapshot for fallback.
 
-**Close when:** Captured legacy fixtures preserve visible text, heading levels, links, and marks. Repeating migration does not duplicate content.
+**Close when:** Captured legacy fixtures preserve visible text, heading levels, links, marks, and explicit page breaks. Repeating migration does not duplicate content.
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
