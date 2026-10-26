@@ -149,3 +149,89 @@ for (const clients of [
         pair.destroy();
       }
     }, 30000);
+
+for (const clients of [
+  [41, 73],
+  [73, 41],
+] as const)
+  for (const receiver of [0, 1] as const)
+    test(`resetting an owned property retains offline peer text and history; ${clients}/${receiver}`, async () => {
+      const pair = await createTwoEditorFixture({
+        document: writeOoxmlPackage(propertyRecordFixture()),
+        documentId: propertyContext.documentId,
+        ownedAttributes: true,
+        clientIds: clients,
+        editor: { modules: [SCIOBOT_NATIVE_REVIEW_MODULE] },
+      });
+      try {
+        const [alice, bob] = pair.editors as [DocxEditorInstance, DocxEditorInstance];
+        const original = (await views(alice))[1]!;
+        const target = original.replace('name="Old activity"', 'name="First activity"');
+        const first = await recomposeOwnedProposals(
+          alice,
+          {
+            revision: propertyToken(alice),
+            targetMarkdown: target,
+            ownership: [],
+          },
+          propertyContext,
+          {
+            payloads: {
+              properties: {
+                proposalId: 'shared-reset-first',
+                fallbackTargets: [
+                  {
+                    blockId: 'activity',
+                    before: 'Old activity — 10 minutes',
+                    after: 'First activity — 10 minutes',
+                  },
+                ],
+              },
+            },
+          }
+        );
+        if (!first.success) throw Error(first.error);
+        await pair.settle();
+        pair.pause();
+        const paragraphId = bob
+          .surface!.session.paragraphIds()
+          .find((id) => paragraphTextOf(bob.surface!.session.part(), id) === 'Outside')!;
+        expect(
+          bob.surface!.applyAutomationOps(() => [
+            { op: 'insertText', paragraphId, offset: 7, text: ' peer' },
+          ]).rejected
+        ).toBe(false);
+        const reset = await recomposeOwnedProposals(
+          alice,
+          {
+            revision: propertyToken(alice),
+            targetMarkdown: original,
+            ownership: first.ownership,
+            contentProofs: first.contentProofs,
+          },
+          propertyContext
+        );
+        if (!reset.success) throw Error(reset.error);
+        expect(reset.committed).toBe(true);
+        pair.reconnect(receiver);
+        await pair.settle();
+        const expected = original.replace('Outside', 'Outside peer');
+        for (const editor of pair.editors)
+          expect(await views(editor)).toEqual([expected, expected]);
+        expect(alice.exec({ type: 'undo' }).ok).toBe(true);
+        await pair.settle();
+        for (const editor of pair.editors)
+          expect(await views(editor)).toEqual([
+            expected,
+            target.replace('Outside', 'Outside peer'),
+          ]);
+        expect(alice.exec({ type: 'redo' }).ok).toBe(true);
+        await pair.settle();
+        for (const editor of pair.editors)
+          expect(await views(editor)).toEqual([expected, expected]);
+        const saved = await pair.savedDigests();
+        expect(saved[0]).toEqual(saved[1]);
+      } finally {
+        pair.destroy();
+      }
+    });

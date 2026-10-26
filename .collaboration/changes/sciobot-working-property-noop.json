@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "The recomposition native no-op shortcut compared committed payload attributes while application proposals were pending. Returning a proposed attribute to its committed value could leave its pending group unchanged.",
+  "after": "Pending application proposals disable the canonical no-op shortcut. Exact working-target equality still avoids redundant writes. Restoring the committed value uses the existing owned inverse transaction and preserves undo/redo.",
+  "reason": "Only private admission logic changes. Existing native operations and proposal records remain authoritative. No shared field, schema, provider, public API, or package version changes.",
+  "tests": [
+    "packages/sciobot/src/review/recompose-payloads.test.ts",
+    "packages/sciobot/src/review/recompose-payloads-collaboration.test.ts",
+    "packages/sciobot/src/review/recompose.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

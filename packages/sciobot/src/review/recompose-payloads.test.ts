@@ -228,3 +228,62 @@ for (const mismatch of ['missing-fallback', 'stale-label'] as const)
       editor.destroy();
     }
   });
+
+test('returning a pending property to its committed value removes the owned proposal', async () => {
+  const editor = propertyEditor();
+  const read = async () => {
+    const result = await readWorkingView(editor.surface!.session, propertyToken(editor));
+    if (!result.success) throw Error(result.error);
+    return result.view.projection.text;
+  };
+  try {
+    const original = await read();
+    const target = original.replace('name="Old activity"', 'name="First activity"');
+    const first = await recomposeOwnedProposals(
+      editor,
+      {
+        revision: propertyToken(editor),
+        targetMarkdown: target,
+        ownership: [],
+      },
+      propertyContext,
+      {
+        payloads: {
+          properties: {
+            proposalId: 'property-reset-first',
+            fallbackTargets: [
+              {
+                blockId: 'activity',
+                before: 'Old activity — 10 minutes',
+                after: 'First activity — 10 minutes',
+              },
+            ],
+          },
+        },
+      }
+    );
+    if (!first.success) throw Error(first.error);
+    const reset = await recomposeOwnedProposals(
+      editor,
+      {
+        revision: propertyToken(editor),
+        targetMarkdown: original,
+        ownership: first.ownership,
+        contentProofs: first.contentProofs,
+      },
+      propertyContext
+    );
+    if (!reset.success) throw Error(reset.error);
+    expect(reset.committed).toBe(true);
+    expect(await read()).toBe(original);
+    expect(groups(editor)).toHaveLength(0);
+    expect(editor.exec({ type: 'undo' }).ok).toBe(true);
+    expect(await read()).toBe(target);
+    expect(groups(editor)).toHaveLength(1);
+    expect(editor.exec({ type: 'redo' }).ok).toBe(true);
+    expect(await read()).toBe(original);
+    expect(groups(editor)).toHaveLength(0);
+  } finally {
+    editor.destroy();
+  }
+});
