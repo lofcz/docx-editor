@@ -15,11 +15,8 @@ export type MentionNode = {
   position?: Link['position'];
 };
 
-declare module 'mdast' {
-  interface StaticPhrasingContentMap {
-    mention: MentionNode;
-  }
-}
+// Keep custom mention nodes local. A global mdast augmentation conflicts with the host's
+// installed Markdown plugins, which can declare their own mention node shape.
 
 /**
  * A remark plugin that converts @username patterns and [display

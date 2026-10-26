@@ -1,0 +1,15 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "The private target mention parser augmented global mdast types with an optional position property. Loading it beside the host Plate plugin produced TS2717.",
+  "after": "Private mention types remain local to their parser. The host can register its own mention node shape without a conflicting ambient declaration. Runtime parsing and persisted documents remain unchanged.",
+  "reason": "This removes a private type declaration only. No native operations, ownership fields, provider behavior, or public package API changes.",
+  "tests": [
+    "packages/sciobot/test/host-markdown-compat/host.ts",
+    "packages/sciobot/src/projection/parse-target.test.ts",
+    "packages/sciobot/src/projection/mention-literal.test.ts",
+    "packages/sciobot/src/projection/mdx.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}
