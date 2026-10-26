@@ -1,3 +1,4 @@
+import { FIELD_PROPERTY_REVIEW_EXECUTOR } from './property-record-schema';
 import {
   applyTreeOp,
   collectRevisionSites,
@@ -233,7 +234,10 @@ export function prepareExternalReview(pkg: OoxmlPackage):
     counts = new Map<string, number>();
   for (const record of records) {
     const atomic = record.extension?.executor === ATOMIC_REVIEW_EXECUTOR,
-      execution = atomic || record.extension?.executor === 'sciobot-properties-v1',
+      execution =
+        atomic ||
+        record.extension?.executor === 'sciobot-properties-v1' ||
+        record.extension?.executor === FIELD_PROPERTY_REVIEW_EXECUTOR,
       fallback = labels(record),
       keys = new Set(
         record.nativeRevisions.map((revision) => propertyAddressKey(revision.partName, revision))

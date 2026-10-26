@@ -19,6 +19,7 @@ export interface PropertyFallbackTarget {
 }
 export interface TrackPropertiesContext extends TrackTextContext {
   readonly proposalId: string;
+  readonly intent?: import('../diff/domain-properties').DomainPropertyIntent;
 }
 export type TrackPropertiesResult =
   | {

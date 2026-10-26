@@ -4,7 +4,11 @@ import type { NativeEditFailure, RevisionToken } from '../contracts/document';
 import { createEditPlan, type CanonicalEdit } from '../diff/plan';
 import { createPendingPropertyProposal, type PendingPropertyProposal } from './property-projection';
 import { type StoredPropertyRecord, readPropertyReviewStore } from './property-record-store';
-import { ATOMIC_PAYLOAD_CHANGE, ATOMIC_REVIEW_EXECUTOR } from './property-record-schema';
+import {
+  FIELD_PROPERTY_REVIEW_EXECUTOR,
+  ATOMIC_PAYLOAD_CHANGE,
+  ATOMIC_REVIEW_EXECUTOR,
+} from './property-record-schema';
 import { readPayloadGroupDecisions, payloadGroupDecisionKey } from './payload-group-decisions';
 
 /** Bind persisted stable block IDs to this load's actual canonical owners. Never reuse saved node IDs. */
@@ -119,7 +123,13 @@ export function bindStoredPropertyProposals(
       if (operations.length) {
         const plan = createEditPlan(revision, operations);
         if (!plan.success) return plan;
-        const proposal = createPendingPropertyProposal(entry.id, plan.plan);
+        const proposal = createPendingPropertyProposal(
+          entry.id,
+          plan.plan,
+          entry.decoded.value.extension?.executor === FIELD_PROPERTY_REVIEW_EXECUTOR
+            ? 'field-edit'
+            : undefined
+        );
         if (!proposal.success) return proposal;
         pending.push(proposal.proposal);
       }

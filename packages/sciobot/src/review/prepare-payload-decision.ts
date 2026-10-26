@@ -1,3 +1,4 @@
+import { FIELD_PROPERTY_REVIEW_EXECUTOR } from './property-record-schema';
 import {
   applyTreeOp,
   collectRevisionSites,
@@ -88,7 +89,9 @@ export function preparePayloadProposalDecision(
     extension = record.extension,
     labels = extension?.fallbackLabels;
   if (
-    extension?.executor !== (atomic ? ATOMIC_REVIEW_EXECUTOR : 'sciobot-properties-v1') ||
+    !(
+      atomic ? [ATOMIC_REVIEW_EXECUTOR] : ['sciobot-properties-v1', FIELD_PROPERTY_REVIEW_EXECUTOR]
+    ).includes(String(extension?.executor)) ||
     !Array.isArray(labels) ||
     labels.length !== sourceRecord.blocks.length
   )

@@ -1,0 +1,15 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "The private application property planner enforced AI container pairing rules for manual field gestures. Resource-only activity suggestions required structural replacement.",
+  "after": "Explicit manual field gestures retain the exact native block owner. Private field proposals use a distinct executor marker. Views, decisions, ownership replacement, and reopen retain this marker. AI pairing rules remain unchanged.",
+  "reason": "Only the unpublishable private SDK changes. Existing proposals retain their executor and semantics. Older private SDKs refuse the new executor for decisions and refuse resource projections rather than changing native content. Hosts must install the matching private SDK for field gestures. Shared core fields, provider protocols, and public package APIs remain unchanged.",
+  "tests": [
+    "packages/sciobot/src/review/recompose-properties.test.ts",
+    "packages/sciobot/src/diff/domain-properties.test.ts",
+    "packages/sciobot/src/review/property-projection.test.ts",
+    "packages/sciobot/src/review/recompose-payloads.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

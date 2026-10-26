@@ -9,6 +9,7 @@ export interface TrackedPayloadOptions {
   /** Fresh host identity for inserted application subtree presence ownership. */
   readonly presence?: { readonly proposalId: string };
   readonly properties?: {
+    readonly intent?: import('../diff/domain-properties').DomainPropertyIntent;
     readonly proposalId: string;
     readonly fallbackTargets: readonly PropertyFallbackTarget[];
   };
@@ -48,7 +49,14 @@ export function stageTrackedPayloads(
       !supplied ||
       typeof supplied !== 'object' ||
       Array.isArray(supplied) ||
-      Object.keys(supplied).some((key) => !['proposalId', 'fallbackTargets'].includes(key))
+      Object.keys(supplied).some(
+        (key) =>
+          !(
+            executor === 'properties'
+              ? ['proposalId', 'fallbackTargets', 'intent']
+              : ['proposalId', 'fallbackTargets']
+          ).includes(key)
+      )
     )
       refuseWrite(
         'Changed application payloads need explicit host fallback targets.',
@@ -65,6 +73,7 @@ export function stageTrackedPayloads(
         author: attribution.author,
         date: attribution.date,
         proposalId: supplied.proposalId,
+        ...(executor === 'properties' && 'intent' in supplied ? { intent: supplied.intent } : {}),
       },
       executor
     );

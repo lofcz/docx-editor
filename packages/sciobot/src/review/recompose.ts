@@ -28,7 +28,10 @@ import {
   verifyOwnedProposalContentProofs,
   type OwnedProposalContentProof,
 } from './owned-proposal-content';
-import { reconcileRecompositionOwnership } from './recompose-ownership';
+import {
+  reconcileRecompositionOwnership,
+  freezeRecompositionOwnership,
+} from './recompose-ownership';
 import {
   replaceOwnedProposals,
   type OwnedProposalReplacementResult,
@@ -227,7 +230,7 @@ export async function recomposeOwnedProposals(
         success: true,
         committed: false,
         revision: Object.freeze({ ...actual }),
-        ownership: Object.freeze(input.request.ownership.map(freezeOwnership)),
+        ownership: Object.freeze(input.request.ownership.map(freezeRecompositionOwnership)),
         contentProofs: Object.freeze(proofs.map((proof) => Object.freeze({ ...proof }))),
       };
     // Both planner calls run before observed live capture. Their detached inverse previews
@@ -294,7 +297,7 @@ export async function recomposeOwnedProposals(
     for (const proof of result.contentProofs) contentProofs.set(proof.groupId, proof);
     return {
       ...result,
-      ownership: Object.freeze([...ledger.values()].map(freezeOwnership)),
+      ownership: Object.freeze([...ledger.values()].map(freezeRecompositionOwnership)),
       contentProofs: Object.freeze(
         [...contentProofs.values()].map((proof) => Object.freeze({ ...proof }))
       ),
@@ -304,21 +307,4 @@ export async function recomposeOwnedProposals(
   } finally {
     active.delete(editor);
   }
-}
-
-function freezeOwnership(group: OwnedProposalGroup): OwnedProposalGroup {
-  return Object.freeze({
-    groupId: group.groupId,
-    native: Object.freeze(
-      group.native.map((member) =>
-        Object.freeze({
-          partName: member.partName,
-          addresses: Object.freeze(
-            member.addresses.map((address) => Object.freeze({ ...address }))
-          ),
-        })
-      )
-    ),
-    properties: Object.freeze(group.properties.map((member) => Object.freeze({ ...member }))),
-  });
 }

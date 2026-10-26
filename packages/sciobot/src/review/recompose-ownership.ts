@@ -61,3 +61,20 @@ export function reconcileRecompositionOwnership(
     return fail(cause instanceof Error ? cause.message : String(cause), 'invalid-document');
   }
 }
+
+export function freezeRecompositionOwnership(group: OwnedProposalGroup): OwnedProposalGroup {
+  return Object.freeze({
+    groupId: group.groupId,
+    native: Object.freeze(
+      group.native.map((member) =>
+        Object.freeze({
+          partName: member.partName,
+          addresses: Object.freeze(
+            member.addresses.map((address) => Object.freeze({ ...address }))
+          ),
+        })
+      )
+    ),
+    properties: Object.freeze(group.properties.map((member) => Object.freeze({ ...member }))),
+  });
+}

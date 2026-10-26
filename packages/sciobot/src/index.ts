@@ -169,3 +169,5 @@ export {
 } from './chrome/lists';
 export { insertManualList } from './chrome/insert-list';
 export { installListEditing } from './chrome/list-input';
+
+export * from './review/recompose-properties';

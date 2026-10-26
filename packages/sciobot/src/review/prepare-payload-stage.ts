@@ -24,6 +24,7 @@ import {
   type PropertyReviewRecord,
   type StoredPropertyBlock,
   type StoredPropertyRevision,
+  FIELD_PROPERTY_REVIEW_EXECUTOR,
   ATOMIC_PAYLOAD_CHANGE,
   ATOMIC_REVIEW_EXECUTOR,
 } from './property-record-schema';
@@ -89,7 +90,7 @@ export function prepareApplicationPayloadStage(
   } catch (cause) {
     return fail(cause instanceof Error ? cause.message : String(cause));
   }
-  const pending = createPendingPropertyProposal(attribution.proposalId, plan);
+  const pending = createPendingPropertyProposal(attribution.proposalId, plan, attribution.intent);
   if (!pending.success) return pending;
   const part = pkg.parts.get(pkg.mainDocumentPart)!,
     index = buildBlockIndex(pkg),
@@ -184,7 +185,8 @@ export function prepareApplicationPayloadStage(
             remove: block.changes
               .filter((change) => !change.after.present)
               .map((change) => change.name),
-          }
+          },
+          attribution.intent
         );
     if (!checked.success) return checked;
   }
@@ -276,7 +278,11 @@ export function prepareApplicationPayloadStage(
     blocks: [...blocks.values()],
     nativeRevisions: [],
     extension: {
-      executor: atomic ? ATOMIC_REVIEW_EXECUTOR : 'sciobot-properties-v1',
+      executor: atomic
+        ? ATOMIC_REVIEW_EXECUTOR
+        : attribution.intent === 'field-edit'
+          ? FIELD_PROPERTY_REVIEW_EXECUTOR
+          : 'sciobot-properties-v1',
       fallbackLabels: labels,
     },
   };

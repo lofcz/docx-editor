@@ -7,6 +7,9 @@ import { DOMAIN_BLOCK_TAGS } from '../projection/block-tags';
 import { domainDiffStrategy, sameContainerIdentity } from './domain-strategies';
 import { createEditPlan, EDIT_PLAN_LIMITS, type CanonicalEdit, type EditPlanResult } from './plan';
 
+/** Explicit host gestures retain a known native owner, independently of AI pairing rules. */
+export type DomainPropertyIntent = 'field-edit';
+
 export interface DomainPropertySource {
   readonly revision: RevisionToken;
   readonly pkg: OoxmlPackage;
@@ -32,8 +35,10 @@ const record = (value: unknown): value is JsonObject =>
  */
 export function planDomainProperties(
   source: DomainPropertySource,
-  target: DomainPropertyTarget
+  target: DomainPropertyTarget,
+  intent?: DomainPropertyIntent
 ): EditPlanResult {
+  if (intent !== undefined && intent !== 'field-edit') return fail('Invalid property edit intent.');
   if (!source || typeof source !== 'object') return fail('Missing domain property source.');
   const descriptors = Object.getOwnPropertyDescriptors(source);
   for (const key of ['revision', 'pkg', 'blockId'])
@@ -95,6 +100,7 @@ export function planDomainProperties(
       .concat(Object.entries(set))
   );
   if (
+    intent !== 'field-edit' &&
     !sameContainerIdentity(
       { ...attributes, type: block.payload.type },
       { ...after, type: block.payload.type }

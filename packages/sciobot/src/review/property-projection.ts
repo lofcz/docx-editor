@@ -15,7 +15,7 @@ import {
   type CanonicalEditPlan,
   type PlannedValue,
 } from '../diff/plan';
-import { planDomainProperties } from '../diff/domain-properties';
+import { planDomainProperties, type DomainPropertyIntent } from '../diff/domain-properties';
 import { planAtomicBlock } from '../diff/atomic-blocks';
 import { domainDiffStrategy } from '../diff/domain-strategies';
 import { jsonDataKey } from '../diff/target-key';
@@ -26,6 +26,7 @@ import { ATOMIC_PAYLOAD_CHANGE } from './property-record-schema';
 export interface PendingPropertyProposal {
   readonly id: string;
   readonly plan: CanonicalEditPlan;
+  readonly intent?: DomainPropertyIntent;
 }
 export type PropertyProposalResult =
   | { readonly success: true; readonly proposal: PendingPropertyProposal }
@@ -90,11 +91,17 @@ const withStates = (
 /** Validate and freeze D13 attribute deltas or D14 complete atomic payload pairs. */
 export function createPendingPropertyProposal(
   id: string,
-  plan: CanonicalEditPlan
+  plan: CanonicalEditPlan,
+  intent?: DomainPropertyIntent
 ): PropertyProposalResult {
-  const copied = copyBoundedJson({ id, plan }, DEFAULT_PAYLOAD_LIMITS);
+  const copied = copyBoundedJson(
+    { id, plan, ...(intent === undefined ? {} : { intent }) },
+    DEFAULT_PAYLOAD_LIMITS
+  );
   if (!copied.ok) return fail(copied.reason);
   const data = copied.value as unknown as PendingPropertyProposal;
+  if (data.intent !== undefined && data.intent !== 'field-edit')
+    return fail('Invalid property edit intent.');
   if (typeof data.id !== 'string' || !data.id.trim() || data.id.length > 128)
     return fail('Property proposal IDs require nonempty strings of at most 128 characters.');
   const checked = decodeEditPlan(JSON.stringify(data.plan));
@@ -109,7 +116,11 @@ export function createPendingPropertyProposal(
     );
   return {
     success: true,
-    proposal: Object.freeze({ id: data.id, plan: checked.plan }),
+    proposal: Object.freeze({
+      id: data.id,
+      plan: checked.plan,
+      ...(data.intent ? { intent: data.intent } : {}),
+    }),
   };
 }
 
@@ -117,7 +128,7 @@ interface BlockChain {
   readonly controlId: string;
   readonly partName: string;
   readonly keys: Map<string, PlannedValue[]>;
-  readonly steps: PayloadEdit[][];
+  readonly steps: { edits: PayloadEdit[]; intent?: DomainPropertyIntent }[];
   readonly atomic: boolean;
 }
 
@@ -151,10 +162,10 @@ export function projectPendingProperties(
     if (
       !raw ||
       typeof raw !== 'object' ||
-      Object.keys(raw).some((key) => !['id', 'plan'].includes(key))
+      Object.keys(raw).some((key) => !['id', 'plan', 'intent'].includes(key))
     )
       return fail('Invalid property proposal record.');
-    const checked = createPendingPropertyProposal(raw.id, raw.plan);
+    const checked = createPendingPropertyProposal(raw.id, raw.plan, raw.intent);
     if (!checked.success) return checked;
     const proposal = checked.proposal;
     if (ids.has(proposal.id)) return fail('Duplicate property proposal IDs.', 'ambiguous-target');
@@ -204,7 +215,10 @@ export function projectPendingProperties(
       blockEdits.push(edit);
       step.set(edit.blockId, blockEdits);
     }
-    for (const [blockId, edits] of step) chains.get(blockId)!.steps.push(edits);
+    for (const [blockId, edits] of step)
+      chains
+        .get(blockId)!
+        .steps.push({ edits, ...(proposal.intent ? { intent: proposal.intent } : {}) });
   }
   const index = buildBlockIndex(pkg),
     store = readPayloadStore(pkg);
@@ -271,7 +285,7 @@ export function projectPendingProperties(
     let working = baseline.pkg,
       attributes = withStates(block.payload.attributes, before);
     for (const step of chain.steps) {
-      const targets = new Map(step.map((edit) => [edit.path[1] as string, edit.after])),
+      const targets = new Map(step.edits.map((edit) => [edit.path[1] as string, edit.after])),
         checked = planDomainProperties(
           { pkg: working, revision: data.revision, blockId },
           {
@@ -279,7 +293,8 @@ export function projectPendingProperties(
               [...targets].flatMap(([key, state]) => (state.present ? [[key, state.value]] : []))
             ),
             remove: [...targets].filter(([, state]) => !state.present).map(([key]) => key),
-          }
+          },
+          step.intent
         );
       if (!checked.success) return checked;
       attributes = withStates(attributes, targets);

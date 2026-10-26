@@ -1,3 +1,4 @@
+export const FIELD_PROPERTY_REVIEW_EXECUTOR = 'sciobot-field-properties-v1';
 import type { RevisionAddress } from '@docx-editor.dev/core/store';
 import { DEFAULT_PAYLOAD_LIMITS, isBlockId } from '../blocks/payload-schema';
 import { copyBoundedJson, type JsonObject, type JsonValue } from '../data/json';
