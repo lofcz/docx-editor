@@ -7,7 +7,7 @@ import { paragraphTextOf, writeOoxmlPackage } from '@docx-editor.dev/core/store'
 import { createTwoEditorFixture } from '../../test/support/collaboration';
 import { atomicFixture, atomicVisual, atomicListening } from '../../test/support/atomic-execution';
 import { propertyContext, propertyToken } from '../../test/support/property-execution';
-import type { JsonObject } from '../data/json';
+import type { JsonObject } from '../blocks/payload-schema';
 import { buildBlockIndex } from '../blocks/block-index';
 import { readWorkingView } from './working-view';
 import { readCommittedView } from './committed-view';
