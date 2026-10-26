@@ -1,0 +1,16 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Replacing an owned atom-bearing table continued only plain committed peer tails. Styled tails could lose their physical paragraph continuity. Equivalent Markdown targets also created redundant replacement waves when pending application proposals disabled native equivalence checks.",
+  "after": "The writer retains existing peer runs when ordered atom ownership, exact source identities, complete suffix text, and native property spans match. Original run identities and metadata remain intact. Native no-op checks use detached proposed property and presence packages, matching the actual working projection. Returning a pending property to its committed value still removes the proposal.",
+  "reason": "Only private writer admission and read-only target comparison change. Existing canonical operations, payload schemas, private ownership protocols, and native reader semantics remain unchanged. Derived read packages never replace the live store. No shared fields or public automation APIs are added. The existing format remains docx-collaboration:1.9.15.1. The evaluated transport remains test-only under the EigenPal Pro License. No room migration is needed for this writer fix.",
+  "tests": [
+    "packages/sciobot/src/review/recompose-styled-cell-peer.test.ts",
+    "packages/sciobot/src/review/recompose-new-table-atom-peer-online.test.ts",
+    "packages/sciobot/src/review/recompose-new-table-atom-peer-interior.test.ts",
+    "packages/sciobot/src/review/recompose-payloads.test.ts",
+    "packages/sciobot/src/review/recompose-payloads-collaboration.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

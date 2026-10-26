@@ -21,7 +21,7 @@ interface Tail {
   readonly cancelled: readonly string[];
   readonly expected: OoxmlParagraphNode;
 }
-function plainRuns(paragraph: OoxmlParagraphNode): readonly OoxmlNode[] | null {
+function textRuns(paragraph: OoxmlParagraphNode): readonly OoxmlNode[] | null {
   const runs = paragraph.children.filter((n) => n.kind !== 'paragraphProperties');
   return runs.length &&
     runs.every(
@@ -29,7 +29,7 @@ function plainRuns(paragraph: OoxmlParagraphNode): readonly OoxmlNode[] | null {
         n.kind === 'run' &&
         n.children.every(
           (c) =>
-            (c.kind === 'runProperties' && !c.attributes.length && !c.children.length) ||
+            c.kind === 'runProperties' ||
             (c.kind === 'text' && c.children.length === 1 && c.children[0]!.kind === 'textValue')
         )
     )
@@ -38,6 +38,32 @@ function plainRuns(paragraph: OoxmlParagraphNode): readonly OoxmlNode[] | null {
 }
 const textOf = (node: OoxmlNode): string =>
   node.kind === 'textValue' ? node.value : node.children.map(textOf).join('');
+const runTextOf = (node: OoxmlNode): string =>
+  node.kind === 'run'
+    ? node.children
+        .filter((child) => child.kind === 'text')
+        .map(textOf)
+        .join('')
+    : '';
+
+function styleOf(run: OoxmlNode): string {
+  if (run.kind !== 'run') return '';
+  const properties = run.children.find((node) => node.kind === 'runProperties');
+  return properties && (properties.attributes.length || properties.children.length)
+    ? canonicalOoxmlFingerprint(properties)
+    : '';
+}
+/** Compare native formatting across text boundaries without coalescing the retained runs. */
+function styleSpans(items: readonly { readonly length: number; readonly style: string }[]): string {
+  const spans: { length: number; style: string }[] = [];
+  for (const item of items) {
+    if (!item.length) continue;
+    const previous = spans.at(-1);
+    if (previous?.style === item.style) previous.length += item.length;
+    else spans.push({ ...item });
+  }
+  return JSON.stringify(spans);
+}
 
 /** Physical atom slots establish continuity. Equal text only verifies an unchanged tail. */
 export function planCellTailContinuation(
@@ -50,7 +76,7 @@ export function planCellTailContinuation(
   sourceType: (id: string) => string | undefined,
   targetType: (id: string) => string | undefined
 ): Tail | null {
-  const runs = plainRuns(baseline);
+  const runs = textRuns(baseline);
   if (!runs || !runs.every((run, i) => source.children.at(i - runs.length)?.id === run.id))
     return null;
   const before = ownedAtomGapInventory(source, sourceType, selected),
@@ -64,22 +90,26 @@ export function planCellTailContinuation(
   );
   if (sourceGap.length !== leaves.length || sourceGap.some((n, i) => n.id !== leaves[i]!.id))
     return null;
-  const text = runs.map(textOf).join('');
+  const text = runs.map(runTextOf).join('');
   if (!text || targetGap.map(textOf).join('') !== text) return null;
-  // The complete target suffix must remain ordinary text, with no requested restyling.
+  // Retain authored run identities and opaque data only when the target requests the same
+  // complete text and native formatting. Different text boundaries alone do not restyle it.
+  const targetStyles: { length: number; style: string }[] = [];
   for (const node of targetGap) {
     const run = node.kind === 'text' && findRun(target, node.id);
     if (
       !run ||
       run.kind !== 'run' ||
-      !run.children.every(
-        (n) =>
-          n.kind === 'text' ||
-          (n.kind === 'runProperties' && !n.attributes.length && !n.children.length)
-      )
+      !run.children.every((n) => n.kind === 'text' || n.kind === 'runProperties')
     )
       return null;
+    targetStyles.push({ length: textOf(node).length, style: styleOf(run) });
   }
+  if (
+    styleSpans(runs.map((run) => ({ length: runTextOf(run).length, style: styleOf(run) }))) !==
+    styleSpans(targetStyles)
+  )
+    return null;
   const addresses = new Set(
     receipts
       .filter((r) => r.partName === part.name)

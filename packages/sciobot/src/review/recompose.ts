@@ -1,5 +1,6 @@
 import { isCurrentNativeTarget } from './recompose-current-target';
-import { readApplicationProposals } from './application-proposals';
+import { projectApplicationPresence, readApplicationProposals } from './application-proposals';
+import { projectPendingProperties } from './property-projection';
 import {
   prepareInlineImageResources,
   type InlineImageResolver,
@@ -195,18 +196,20 @@ export async function recomposeOwnedProposals(
     // Check the actual working target before inverses can create a redundant replacement.
     const application = readApplicationProposals(pkg, actual);
     if (!application.success) return application;
-    // Canonical payloads keep committed values while their proposals remain pending.
-    // A native no-op against those values cannot establish equality with the working target.
-    const hasPendingApplication =
-      application.properties.length > 0 || application.presence.length > 0;
+    // Compare the same proposed payloads and presence as the working projection. The live
+    // package retains committed payload values, so it cannot prove semantic target equality.
+    // These detached read packages never replace the native store or install a snapshot.
+    const properties = projectPendingProperties(pkg, actual, application.properties, 'working');
+    if (!properties.success) return properties;
+    const presence = projectApplicationPresence(properties.pkg, application.presence, 'working');
+    if (!presence.success) return presence;
     const sameTarget =
       sameAst ||
-      (!hasPendingApplication &&
-        isCurrentNativeTarget(
-          { revision: actual, pkg, projection: working.view.projection },
-          input.request.targetMarkdown,
-          options.target?.definitions
-        ));
+      isCurrentNativeTarget(
+        { revision: actual, pkg: presence.pkg, projection: working.view.projection },
+        input.request.targetMarkdown,
+        options.target?.definitions
+      );
     const changedByCurrentPlan = fresh();
     if (changedByCurrentPlan) return changedByCurrentPlan;
     const hasMergedCells = working.view.projection.cells.some(

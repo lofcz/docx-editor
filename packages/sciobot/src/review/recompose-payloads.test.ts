@@ -263,6 +263,22 @@ test('returning a pending property to its committed value removes the owned prop
       }
     );
     if (!first.success) throw Error(first.error);
+    expect(target).toContain('duration="10"');
+    const pendingPackage = editor.surface!.session.currentPackage();
+    const pendingToken = propertyToken(editor);
+    const equivalent = await recomposeOwnedProposals(
+      editor,
+      {
+        revision: pendingToken,
+        targetMarkdown: target.replace('duration="10"', 'duration="10.0"'),
+        ownership: first.ownership,
+        contentProofs: first.contentProofs,
+      },
+      propertyContext
+    );
+    expect(equivalent).toMatchObject({ success: true, committed: false });
+    expect(editor.surface!.session.currentPackage()).toBe(pendingPackage);
+    expect(propertyToken(editor)).toEqual(pendingToken);
     const reset = await recomposeOwnedProposals(
       editor,
       {
