@@ -2,7 +2,7 @@
 
 Port the production workspace editor to the DOCX fork. Keep AI editing, suggestions, and React blocks as required capabilities.
 
-The detailed inventory below is traceability, not the cutover gate. The initial replacement is viable when the six active gates below pass in `sciobot-next`; the remaining leaves are deferred product parity work and must not block wiring in the replacement.
+The detailed inventory below is traceability, not the cutover gate. The initial replacement is viable when the six active gates below pass in `sciobot-next`; the remaining leaves track product parity and stay open until their implementation and verification pass.
 
 The React block proof supplies a tested starting point. It does not establish full application parity.
 
@@ -19,7 +19,7 @@ Keep this list small and reviewable. Close a gate only with a command, fixture, 
 | **CUT-05 Arbitrary React blocks** | A production React block can be inserted, edited, moved, persisted, restored, and collaborated on without Plate serializers. | C03, B01, B02, B03, B04, B05, B06, B07, B08, B09, B10, B11, B12, B13, B14, B15, B16, B17, B18, B19, B20, B21, B22, B23 |
 | **CUT-06 Collaboration and release evidence** | Two real sessions converge for concurrent edits and review waves; runtime dependencies and production coverage are verified. | V01, V02, V03, V04, V05, V06, V07, V08 |
 
-Everything else in the workstream tables is deferred until one of these gates requires it. Do not create a new leaf for a cosmetic or domain-specific port unless it blocks a gate.
+The workstream tables retain the remaining implementation work. Do not create a new leaf for a cosmetic or domain-specific port unless it blocks a gate.
 
 Read the [implementation notes](docs/engineering/sciobot-port/evidence/implementation-notes.md) before extending the native adapter.
 
