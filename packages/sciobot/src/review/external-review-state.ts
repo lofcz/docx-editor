@@ -1,8 +1,8 @@
+import { payloadFallback, payloadFallbackContains, type PayloadFallback } from './payload-fallback';
 import { FIELD_PROPERTY_REVIEW_EXECUTOR } from './property-record-schema';
 import {
   applyTreeOp,
   collectRevisionSites,
-  paragraphTextOf,
   type OoxmlPackage,
   type OoxmlPart,
 } from '@docx-editor.dev/core/store';
@@ -28,12 +28,10 @@ import {
 } from './property-record-schema';
 import { readPayloadGroupDecisions, payloadGroupDecisionKey } from './payload-group-decisions';
 import {
-  atomicFallbackParagraph,
   nativePropertyAddress,
   paragraphOwner,
   propertyAddressKey,
   propertyControlRefusal,
-  propertyFallbackParagraph,
 } from './property-fallback';
 
 export type ExternalReviewStatus = 'pending' | 'accepted' | 'rejected' | 'resolved' | 'conflict';
@@ -80,6 +78,8 @@ interface Candidate {
   readonly label: ExternalFallbackLabel | null;
   readonly part: OoxmlPart | null;
   readonly paragraphId: string | null;
+  readonly fallback: PayloadFallback | null;
+  readonly controlId: string | null;
   readonly keys: ReadonlySet<string>;
   conflict: ExternalReviewConflict | null;
   native: readonly LocatedSite[];
@@ -263,10 +263,8 @@ export function prepareExternalReview(pkg: OoxmlPackage):
       counts.set(block.blockId, (counts.get(block.blockId) ?? 0) + 1);
       const owner = index.byId.get(block.blockId),
         part = owner ? pkg.parts.get(owner.partName) : undefined,
-        paragraph =
-          owner && part
-            ? (atomic ? atomicFallbackParagraph : propertyFallbackParagraph)(part, owner.controlId)
-            : null,
+        nativeFallback = owner && part ? payloadFallback(part, owner.controlId, atomic) : null,
+        paragraph = nativeFallback?.paragraph,
         payload = payloads.entries.get(block.blockId),
         label = fallback?.get(block.blockId) ?? null;
       let conflict: ExternalReviewConflict | null = disposition ? 'conflicting-decisions' : null;
@@ -281,7 +279,12 @@ export function prepareExternalReview(pkg: OoxmlPackage):
         conflict ??= 'invalid-execution-metadata';
       if (!owner || owner.payload.type !== block.type || !part || !paragraph || !payload)
         conflict ??= 'missing-owner';
-      if (part && paragraph && propertyControlRefusal(part, paragraph.id))
+      if (
+        part &&
+        paragraph &&
+        (propertyControlRefusal(part, owner!.controlId) ??
+          propertyControlRefusal(part, paragraph.id))
+      )
         conflict ??= 'restricted-owner';
       if (owner && payload && label) {
         if (payload.label !== label.before) conflict ??= 'changed-committed-value';
@@ -302,6 +305,8 @@ export function prepareExternalReview(pkg: OoxmlPackage):
         label,
         part: part ?? null,
         paragraphId: paragraph?.id ?? null,
+        fallback: nativeFallback,
+        controlId: owner?.controlId ?? null,
         keys,
         conflict,
         native: [],
@@ -326,18 +331,21 @@ export function prepareExternalReview(pkg: OoxmlPackage):
         byAddress.set(key, addressed);
       }
     }
-  const owners = new Map<string, Set<string>>();
-  for (const candidate of candidates)
-    if (candidate.part && candidate.paragraphId) {
-      const locations = owners.get(candidate.record.id) ?? new Set<string>();
-      locations.add(locationKey(candidate.part.name, candidate.paragraphId));
-      owners.set(candidate.record.id, locations);
-    }
   const moved = new Set<string>();
   for (const record of records)
     for (const revision of record.nativeRevisions) {
       for (const site of byAddress.get(propertyAddressKey(revision.partName, revision)) ?? [])
-        if (!owners.get(record.id)?.has(site.location)) moved.add(record.id);
+        if (
+          !candidates.some(
+            (candidate) =>
+              candidate.record.id === record.id &&
+              candidate.part &&
+              candidate.fallback &&
+              candidate.part.name === revision.partName &&
+              payloadFallbackContains(candidate.part, candidate.fallback, site.site.node)
+          )
+        )
+          moved.add(record.id);
     }
   const selectedByPart = new Map<string, Set<string>>();
   for (const candidate of candidates) {
@@ -352,7 +360,13 @@ export function prepareExternalReview(pkg: OoxmlPackage):
     )
       candidate.conflict = 'invalid-execution-metadata';
     if (!candidate.part || !candidate.paragraphId) continue;
-    const local = byParagraph.get(locationKey(candidate.part.name, candidate.paragraphId)) ?? [],
+    const local = (
+        byParagraph.get(locationKey(candidate.part.name, candidate.paragraphId)) ?? []
+      ).filter(
+        ({ site }) =>
+          candidate.fallback &&
+          payloadFallbackContains(candidate.part!, candidate.fallback, site.node)
+      ),
       owned = local.filter((site) => site.key && candidate.keys.has(site.key));
     candidate.native = owned;
     if (
@@ -386,13 +400,15 @@ export function prepareExternalReview(pkg: OoxmlPackage):
         if (
           view?.original &&
           view.proposed &&
-          paragraphTextOf(view.original, paragraphId) === label.textBefore &&
-          paragraphTextOf(view.proposed, paragraphId) === label.textAfter
+          payloadFallback(view.original, candidate.controlId!, candidate.atomic)?.text ===
+            label.textBefore &&
+          payloadFallback(view.proposed, candidate.controlId!, candidate.atomic)?.text ===
+            label.textAfter
         )
           status = 'pending';
         else candidate.conflict = 'changed-fallback';
       } else {
-        const text = paragraphTextOf(part, paragraphId);
+        const text = payloadFallback(part, candidate.controlId!, candidate.atomic)?.text;
         if (label.textBefore === label.textAfter && text === label.textBefore) status = 'pending';
         else if (text === label.textAfter) status = 'accepted';
         else if (text === label.textBefore) status = 'rejected';

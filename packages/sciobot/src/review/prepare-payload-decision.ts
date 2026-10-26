@@ -18,13 +18,11 @@ import { decodeBlockPresenceRecord } from './block-presence-schema';
 import { projectPendingProperties } from './property-projection';
 import {
   nativePropertyAddress,
-  paragraphOwner,
   propertyAddressKey,
   propertyControlRefusal,
-  propertyFallbackParagraph,
-  atomicFallbackParagraph,
 } from './property-fallback';
 
+import { payloadFallback, payloadFallbackContains, type PayloadFallback } from './payload-fallback';
 import { readPayloadGroupDecisions, payloadGroupDecisionKey } from './payload-group-decisions';
 
 const fail = (
@@ -134,8 +132,8 @@ export function preparePayloadProposalDecision(
   }
   for (const id of labelValues.keys())
     if (!record.blocks.some((block) => block.blockId === id)) labelValues.delete(id);
-  const paragraphIds = new Set<string>(),
-    changedParagraphs = new Set<string>();
+  const fallbacks: PayloadFallback[] = [],
+    changedFallbacks: PayloadFallback[] = [];
   for (const saved of record.blocks) {
     if (atomic && (saved.changes.length !== 1 || saved.changes[0]!.name !== ATOMIC_PAYLOAD_CHANGE))
       return fail(
@@ -152,21 +150,21 @@ export function preparePayloadProposalDecision(
       !labelValues.has(saved.blockId)
     )
       return fail('A property decision has no exact current native owner.', 'invalid-document');
-    const paragraph = atomic
-      ? atomicFallbackParagraph(part, owner.controlId)
-      : propertyFallbackParagraph(part, owner.controlId);
-    if (!paragraph)
+    const nativeFallback = payloadFallback(part, owner.controlId, atomic);
+    if (!nativeFallback)
       return fail('A generated property fallback is missing or ambiguous.', 'invalid-document');
-    const restriction = propertyControlRefusal(part, paragraph.id);
+    const restriction =
+      propertyControlRefusal(part, owner.controlId) ??
+      propertyControlRefusal(part, nativeFallback.paragraph.id);
     if (restriction) return fail(restriction, 'unsupported-operation');
-    paragraphIds.add(paragraph.id);
+    fallbacks.push(nativeFallback);
     const fallback = labelValues.get(saved.blockId)!;
     if ((atomic || data.decision === 'accept') && stored.label !== fallback.before)
       return fail(
         'The stored fallback label changed while this proposal was pending.',
         'stale-revision'
       );
-    if (fallback.textBefore !== fallback.textAfter) changedParagraphs.add(paragraph.id);
+    if (fallback.textBefore !== fallback.textAfter) changedFallbacks.push(nativeFallback);
     for (const change of saved.changes) {
       const attributes = owner.payload.attributes;
       if (
@@ -227,7 +225,7 @@ export function preparePayloadProposalDecision(
       const address = nativePropertyAddress(site.node);
       return (
         address &&
-        paragraphIds.has(paragraphOwner(part, site.node) ?? '') &&
+        fallbacks.some((fallback) => payloadFallbackContains(part, fallback, site.node)) &&
         address.author === record.author &&
         address.date === record.date &&
         !record.nativeRevisions.some(
@@ -251,7 +249,7 @@ export function preparePayloadProposalDecision(
         return (
           actual &&
           propertyAddressKey(part.name, actual) === key &&
-          paragraphIds.has(paragraphOwner(part, site.node) ?? '')
+          fallbacks.some((fallback) => payloadFallbackContains(part, fallback, site.node))
         );
       });
     if (
@@ -259,7 +257,7 @@ export function preparePayloadProposalDecision(
         (site) =>
           site.refused ||
           !['ins', 'del'].includes(site.node.localName) ||
-          !paragraphIds.has(paragraphOwner(part, site.node) ?? '')
+          !fallbacks.some((fallback) => payloadFallbackContains(part, fallback, site.node))
       )
     )
       return fail(
@@ -291,11 +289,11 @@ export function preparePayloadProposalDecision(
       siteNodeIds: matches.map((site) => site.node.id),
     });
   }
-  for (const id of changedParagraphs) {
+  for (const fallback of changedFallbacks) {
     const owned = sites.some((site) => {
       const address = nativePropertyAddress(site.node);
       return (
-        paragraphOwner(part, site.node) === id &&
+        payloadFallbackContains(part, fallback, site.node) &&
         address &&
         record.nativeRevisions.some(
           (saved) =>

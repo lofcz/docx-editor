@@ -1,10 +1,10 @@
-import { paragraphTextOf, type OoxmlPackage } from '@docx-editor.dev/core/store';
+import { type OoxmlPackage } from '@docx-editor.dev/core/store';
 import { buildBlockIndex } from '../blocks/block-index';
 import type { BlockPayload } from '../blocks/payload-schema';
 import type { NativeEditFailure } from '../contracts/document';
 import { copyBoundedJson } from '../data/json';
 import { EDIT_PLAN_LIMITS, type CanonicalEditPlan } from '../diff/plan';
-import { atomicFallbackParagraph, propertyFallbackParagraph } from './property-fallback';
+import { payloadFallback } from './payload-fallback';
 import type { TrackedPayloadOptions } from './tracked-stage-payloads';
 
 /** Plain host data from the ownership-relative baseline. It grants no write authority. */
@@ -44,13 +44,10 @@ export function recomposePayloadTargets(
     if (target && target.executor !== executor)
       return fail('A block has conflicting payload executors.');
     if (!target) {
-      const paragraph =
-        executor === 'atomic'
-          ? atomicFallbackParagraph(part, owner.controlId)
-          : propertyFallbackParagraph(part, owner.controlId);
-      const beforeText = paragraph && paragraphTextOf(part, paragraph.id);
+      const fallback = payloadFallback(part, owner.controlId, executor === 'atomic');
+      const beforeText = fallback?.text;
       if (typeof beforeText !== 'string')
-        return fail('The changed block needs one generated native fallback paragraph.');
+        return fail('The changed block needs an exact native fallback owner.');
       target = {
         executor,
         blockId: owner.id,

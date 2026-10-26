@@ -17,7 +17,8 @@ import { GROUP_ID_LIMIT } from './group-markers';
 import { readReviewGroups } from './groups';
 import { ownedProposalSelectionProblem } from './owned-proposal-input';
 import type { OwnedProposalGroup } from './owned-proposal-plan';
-import { atomicFallbackParagraph, propertyAddressKey } from './property-fallback';
+import { propertyAddressKey } from './property-fallback';
+import { payloadFallback } from './payload-fallback';
 import { ATOMIC_REVIEW_EXECUTOR } from './property-record-schema';
 import { readPropertyReviewStore } from './property-record-store';
 import { decodeBlockPresenceRecord } from './block-presence-schema';
@@ -211,7 +212,7 @@ export function captureOwnedProposalContentProofs(
         const atomic = record.decoded.value.extension?.executor === ATOMIC_REVIEW_EXECUTOR;
         // Property decisions own their named attributes and native revision sites, not an
         // unrelated suffix in the generated label. Atomic decisions own the complete fallback.
-        const fallback = atomic ? atomicFallbackParagraph(part, block.controlId) : null;
+        const fallback = atomic ? payloadFallback(part, block.controlId, true)?.node : null;
         const current = atomic
           ? block.payload
           : saved.changes.map((change) => [

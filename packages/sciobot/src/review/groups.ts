@@ -1,3 +1,4 @@
+import { payloadFallback } from './payload-fallback';
 import { decodeBlockPresenceRecord } from './block-presence-schema';
 import { bindBlockPresenceRecord } from './block-presence-plan';
 import {
@@ -19,7 +20,6 @@ import {
   atomicFallbackParagraph,
   nativePropertyAddress,
   propertyAddressKey,
-  propertyFallbackParagraph,
 } from './property-fallback';
 import { reviewGroupMarker } from './group-markers';
 import { readPayloadGroupDecisions, payloadGroupDecisionKey } from './payload-group-decisions';
@@ -370,15 +370,16 @@ function derive(
           bucket.readOnly = true;
           continue;
         }
-        const fallback =
-          propertyFallbackParagraph(pkg.parts.get(native.partName)!, native.controlId) ??
-          atomicFallbackParagraph(pkg.parts.get(native.partName)!, native.controlId);
+        const nativeFallback =
+          payloadFallback(pkg.parts.get(native.partName)!, native.controlId, false) ??
+          payloadFallback(pkg.parts.get(native.partName)!, native.controlId, true);
+        const fallback = nativeFallback?.paragraph;
         bucket.anchor = {
           partName: native.partName,
           nodeId: native.controlId,
           path,
           paragraphId: fallback?.id ?? null,
-          offset: 0,
+          offset: nativeFallback?.offset ?? 0,
         };
         const addresses = new Set(
           record.nativeRevisions.map((address) => propertyAddressKey(address.partName, address))

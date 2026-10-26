@@ -1,0 +1,16 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Atomic payload review requires a generated fallback paragraph, so inline source citation updates cannot enter review.",
+  "after": "Native fallback ownership resolves either its existing paragraph or its exact inline content control. Tracked text stays inside that control; neighboring prose and citations retain independent review and history.",
+  "reason": "Private adapter execution emits existing insertText/deleteText operations, including supported inside ownership, and unchanged atomic payload records. No shared field, repair rule, format identifier, public API, or published package changes.",
+  "tests": [
+    "packages/sciobot/src/review/recompose-inline-sources.test.ts",
+    "packages/sciobot/src/review/recompose-payloads.test.ts",
+    "packages/sciobot/src/review/track-atomic.test.ts",
+    "packages/sciobot/src/review/reconcile-external.test.ts",
+    "packages/sciobot/src/review/recompose-payloads-collaboration.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

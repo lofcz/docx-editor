@@ -2,7 +2,6 @@ import {
   collectRevisionSites,
   contentControlPropertiesOf,
   findNode,
-  paragraphTextOf,
   type OoxmlPackage,
   type TreeDocOp,
 } from '@docx-editor.dev/core/store';
@@ -31,12 +30,10 @@ import {
 import { trackedParagraphTextOps, canonicalTrackedDate } from './tracked-inline';
 import {
   nativePropertyAddress,
-  paragraphOwner,
   propertyAddressKey,
-  propertyFallbackParagraph,
   propertyControlRefusal,
-  atomicFallbackParagraph,
 } from './property-fallback';
+import { payloadFallback, payloadFallbackContains, type PayloadFallback } from './payload-fallback';
 import type { PropertyFallbackTarget, TrackPropertiesContext } from './track-properties';
 
 const fail = (
@@ -193,7 +190,7 @@ export function prepareApplicationPayloadStage(
   if (data.fallbackTargets.length !== blocks.size)
     return fail('Each changed block needs one explicit generated fallback target.');
   const ops: TreeDocOp[] = [],
-    paragraphIds = new Set<string>(),
+    fallbacks: PayloadFallback[] = [],
     labels: {
       blockId: string;
       before: string;
@@ -209,7 +206,15 @@ export function prepareApplicationPayloadStage(
         return address ? [propertyAddressKey(part.name, address)] : [];
       })
     );
-  for (const target of data.fallbackTargets) {
+  // Original offsets remain valid when several inline labels share one paragraph.
+  const orderedTargets = [...data.fallbackTargets].sort((a, b) => {
+    const left = index.byId.get(a?.blockId),
+      right = index.byId.get(b?.blockId);
+    const x = left && payloadFallback(part, left.controlId, atomic),
+      y = right && payloadFallback(part, right.controlId, atomic);
+    return x && y ? x.paragraph.id.localeCompare(y.paragraph.id) || y.offset - x.offset : 0;
+  });
+  for (const target of orderedTargets) {
     if (
       !target ||
       Object.keys(target).some((key) => !['blockId', 'before', 'after'].includes(key)) ||
@@ -220,11 +225,16 @@ export function prepareApplicationPayloadStage(
     seen.add(target.blockId);
     const owner = index.byId.get(target.blockId)!,
       control = findNode(part, owner.controlId),
-      paragraph = atomic
-        ? atomicFallbackParagraph(part, owner.controlId)
-        : propertyFallbackParagraph(part, owner.controlId),
+      fallback = payloadFallback(part, owner.controlId, atomic),
+      paragraph = fallback?.paragraph,
       entry = payloads.entries.get(owner.id);
-    if (!control || control.kind !== 'contentControl' || paragraph?.kind !== 'paragraph' || !entry)
+    if (
+      !control ||
+      control.kind !== 'contentControl' ||
+      paragraph?.kind !== 'paragraph' ||
+      !fallback ||
+      !entry
+    )
       return fail(
         'The property block needs one generated native fallback paragraph.',
         'unsupported-operation'
@@ -234,30 +244,41 @@ export function prepareApplicationPayloadStage(
         'Bound property fallbacks need their own native reconciliation.',
         'unsupported-operation'
       );
-    const restriction = propertyControlRefusal(part, paragraph.id);
+    const restriction =
+      propertyControlRefusal(part, owner.controlId) ?? propertyControlRefusal(part, paragraph.id);
     if (restriction) return fail(restriction, 'unsupported-operation');
-    const text = paragraphTextOf(part, paragraph.id);
+    const text = fallback.text;
     if (
       typeof target.before !== 'string' ||
       typeof target.after !== 'string' ||
       text !== target.before
     )
       return fail('The generated fallback before-text no longer matches.', 'stale-revision');
-    if (beforeSites.some((site) => paragraphOwner(part, site.node) === paragraph.id))
+    if (beforeSites.some((site) => payloadFallbackContains(part, fallback, site.node)))
       return fail(
         'The generated fallback already contains pending native revisions.',
         'unsupported-operation'
       );
     const textPlan = planParagraphText(
-      { revision: current, partName: part.name, paragraphId: paragraph.id, text },
+      {
+        revision: current,
+        partName: part.name,
+        paragraphId: paragraph.id,
+        text,
+        offset: fallback.offset,
+      },
       target.after
     );
     if (!textPlan.success) return textPlan;
     for (const edit of textPlan.plan.operations) {
       if (edit.kind !== 'text') return fail('Unexpected native fallback intention.');
-      ops.push(...trackedParagraphTextOps(edit, paragraph, attribution.author, date));
+      ops.push(
+        ...trackedParagraphTextOps(edit, paragraph, attribution.author, date).map((op) =>
+          fallback.inline && op.op === 'insertText' ? { ...op, inside: owner.controlId } : op
+        )
+      );
     }
-    paragraphIds.add(paragraph.id);
+    fallbacks.push(fallback);
     labels.push({
       blockId: owner.id,
       before: entry.label,
@@ -298,7 +319,8 @@ export function prepareApplicationPayloadStage(
       const changed = working.parts.get(part.name)!,
         revisions = new Map<string, StoredPropertyRevision>();
       for (const site of collectRevisionSites(changed)) {
-        if (!paragraphIds.has(paragraphOwner(changed, site.node) ?? '')) continue;
+        if (!fallbacks.some((fallback) => payloadFallbackContains(changed, fallback, site.node)))
+          continue;
         const address = nativePropertyAddress(site.node);
         if (
           !address ||
