@@ -194,7 +194,7 @@ export function planTargetAtomic(
       target = { ...payload, mdast };
       const parsed = parseTargetMarkdown(serializeOpaqueMdx(target).text);
       if (!parsed.success) return parsed;
-      const root = parsed.target.normalizedAst.children[0] as TargetAstNode | undefined;
+      const root = parsed.target.ast.children[0] as TargetAstNode | undefined;
       const syntax =
         payload.type === MDX_INLINE
           ? root && Array.isArray(root.children)

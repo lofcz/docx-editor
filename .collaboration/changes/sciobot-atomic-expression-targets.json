@@ -1,0 +1,15 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Retained React MDX targets with inert attribute expressions compared raw target AST against normalized reparse AST. Parser-owned empty expression metadata caused unchanged requested syntax to be refused.",
+  "after": "The exact syntax guard compares raw parser AST on both sides, still ignoring only positional AST data through the existing key. Stored expression source, opaque metadata, and complete native acceptance oracles remain guarded.",
+  "reason": "Private writer admission only. Canonical encodings, native readers and Office-shaped public APIs stay unchanged. No format fields or migration are added. The evaluated transport remains test-only under the EigenPal Pro License.",
+  "tests": [
+    "packages/sciobot/src/diff/target-atomic.test.ts",
+    "packages/sciobot/src/projection/mdx.test.ts",
+    "packages/sciobot/src/review/recompose-atomic-targets.test.ts",
+    "packages/sciobot/src/review/recompose-atomic-targets-collaboration.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}
