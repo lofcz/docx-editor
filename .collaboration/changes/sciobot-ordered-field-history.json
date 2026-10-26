@@ -1,0 +1,18 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "The private review field normalizer captured evolving neighbors during separate sibling removals. Undo could reorder restored phases and move original entries across concurrent peer insertions.",
+  "after": "Explicit private field protocol 3 retains sibling anchors removed earlier in the same transaction and restores original Yjs slots. Native review history selects this fenced profile before bootstrap. Explicit low-level profiles 1 and 2 retain their prior behavior.",
+  "reason": "No published core format, native operation, provider codec, public API, or DOCX schema changes. The unpublishable SDK advertises a distinct private field protocol header. Existing protocol 2 rooms refuse the new scope, and older scopes refuse protocol 3 state. Private SDK consumers must upgrade together and bootstrap a fresh room from saved DOCX, as documented in packages/sciobot/README.md#ordered-field-history. Existing headers are never rewritten. The new profile is not asserted compatible with old private rooms.",
+  "tests": [
+    "packages/sciobot/src/collaboration/review-sequences.test.ts",
+    "packages/sciobot/src/collaboration/review-fields.test.ts",
+    "packages/sciobot/src/collaboration/review-field-retraction.test.ts",
+    "packages/sciobot/src/collaboration/review-history.test.ts",
+    "packages/sciobot/src/review/recompose-properties.test.ts",
+    "packages/sciobot/src/review/recompose-payloads-collaboration.test.ts",
+    "packages/sciobot/src/blocks/move.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

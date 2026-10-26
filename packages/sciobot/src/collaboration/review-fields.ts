@@ -42,7 +42,9 @@ import {
 export { REVIEW_FIELD_TARGETS, REVIEW_FIELD_INTENTS } from './review-field-codec';
 export interface OwnedReviewFieldOptions extends OwnedTextOptions {
   /** Experimental protocol 2 requires explicit attachment; existing hosts keep protocol 1. */
-  readonly protocol?: '1' | '2';
+  readonly protocol?: '1' | '2' | '3';
+  /** Protocol 3 binds its ordered-removal policy before bootstrap. Old rooms require a fresh bootstrap. */
+  readonly bootstrap?: 'create' | 'join';
   /** Hosts may lower the fixed record limits. Raising them is refused. */
   readonly limits?: { readonly targets?: number; readonly intents?: number };
 }
@@ -58,7 +60,7 @@ export interface ReviewFieldReceipt {
   readonly record: string;
 }
 interface State {
-  readonly protocol: '1' | '2';
+  readonly protocol: '1' | '2' | '3';
   readonly doc: Y.Doc;
   readonly targets: Y.Map<string>;
   readonly intents: Y.Map<string>;
@@ -167,7 +169,7 @@ function eligible(
   // an absent scalar baseline over them would erase retained peer-bearing cell structure.
   if (
     transaction &&
-    nativeBirthFieldCreation(state.doc, transaction, target, state.protocol === '2')
+    nativeBirthFieldCreation(state.doc, transaction, target, state.protocol !== '1')
   )
     return null;
   if (
@@ -213,6 +215,8 @@ function record(
   }
 ) {
   healthy(state);
+  if (state.protocol === '3' && state.targets.get('protocol') !== '3')
+    throw new ReviewFieldError('Wait for the ordered review field room header before editing.');
   if (state.doc.store.pendingStructs || state.doc.store.pendingDs)
     throw new ReviewFieldError('Review fields must wait for complete room updates.');
   const key = fieldAddress(target),
@@ -348,7 +352,7 @@ function install() {
         (!this._item ||
           this._item.id.clock < (transaction.beforeState.get(this._item.id.client) ?? 0))
       )
-        for (const entry of removedStringItems(this, index, length)) {
+        for (const entry of removedStringItems(this, index, length, state.protocol === '3')) {
           const original = originalReviewSequenceTarget(
               state.doc,
               this,
@@ -397,7 +401,7 @@ function install() {
       excluded.has(root) ||
       (this._item &&
         this._item.id.clock >= (transaction.beforeState.get(this._item.id.client) ?? 0) &&
-        !(state.protocol === '2' && nativeNumberingChildArray(state.doc, this)))
+        !(state.protocol !== '1' && nativeNumberingChildArray(state.doc, this)))
     )
       return insertItems.call(this, index, content);
     const count = content.filter((value) => typeof value === 'string').length,
@@ -409,7 +413,7 @@ function install() {
     )
       throw new ReviewFieldError('Review field ownership exceeds its complete insertion budget.');
     insertItems.call(this, index, content);
-    for (const entry of removedStringItems(this, index, content.length))
+    for (const entry of removedStringItems(this, index, content.length, state.protocol === '3'))
       record(
         state,
         null,
@@ -498,7 +502,7 @@ function records(state: State) {
 }
 function normalize(state: State) {
   const { targets, winners } = records(state),
-    retained = state.protocol === '2' ? retainedNumberingBirths(state.doc, targets, winners) : null,
+    retained = state.protocol !== '1' ? retainedNumberingBirths(state.doc, targets, winners) : null,
     edits: (() => void)[] = [],
     arrays = new Map<
       Y.Array<unknown>,
@@ -551,7 +555,8 @@ function normalize(state: State) {
           keys,
           removeItems,
           insertItems,
-          state.protocol === '2'
+          state.protocol !== '1',
+          state.protocol === '3'
         );
     }, NORMALIZE);
 }
@@ -573,17 +578,19 @@ function limits(options: OwnedReviewFieldOptions) {
 }
 export function attachOwnedReviewFields(doc: Y.Doc, options: OwnedReviewFieldOptions = {}) {
   if (attached.has(doc)) throw new ReviewFieldError('Review fields are already attached.');
-  if (options.protocol !== undefined && !['1', '2'].includes(options.protocol))
+  if (options.protocol !== undefined && !['1', '2', '3'].includes(options.protocol))
     throw new ReviewFieldError('Unsupported owned review field protocol.');
   const protocol = options.protocol ?? '1';
+  if (protocol === '3' && !['create', 'join'].includes(String(options.bootstrap)))
+    throw new ReviewFieldError('Ordered review fields need a create or join bootstrap mode.');
   // Cold structural receipts need restored item ancestry before their first normalization.
-  if (protocol === '2') doc.getMap<string>(OWNED_TEXT_LINEAGE);
+  if (protocol !== '1') doc.getMap<string>(OWNED_TEXT_LINEAGE);
   const state: State = {
     protocol,
     doc,
     targets: doc.getMap(REVIEW_FIELD_TARGETS),
     intents: doc.getMap(REVIEW_FIELD_INTENTS),
-    retractions: protocol === '2' ? doc.getMap(REVIEW_FIELD_RETRACTIONS) : null,
+    retractions: protocol !== '1' ? doc.getMap(REVIEW_FIELD_RETRACTIONS) : null,
     origins: new Set(),
     known: new WeakMap(),
     transactions: new WeakMap(),
@@ -604,6 +611,8 @@ export function attachOwnedReviewFields(doc: Y.Doc, options: OwnedReviewFieldOpt
     throw state.error;
   };
   if (!doc.store.pendingStructs && !doc.store.pendingDs) records(state);
+  if (protocol === '3' && options.bootstrap === 'create' && !state.targets.has('protocol'))
+    state.targets.set('protocol', '3');
   install();
   attached.set(doc, state);
   const beforeTransaction = (transaction: Y.Transaction) => {
@@ -634,7 +643,7 @@ export function attachOwnedReviewFields(doc: Y.Doc, options: OwnedReviewFieldOpt
         !changed.has(state.targets) &&
         !changed.has(state.intents) &&
         !changed.has(state.retractions) &&
-        !(state.protocol === '2' && changed.has(doc.share.get(OWNED_TEXT_LINEAGE))) &&
+        !(state.protocol !== '1' && changed.has(doc.share.get(OWNED_TEXT_LINEAGE))) &&
         !(transaction.origin instanceof Y.UndoManager) &&
         !(
           (state.protocol === '1' || transaction.local) &&

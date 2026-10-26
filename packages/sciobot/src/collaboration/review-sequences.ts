@@ -29,32 +29,46 @@ export function reviewArray(doc: Y.Doc, target: ReviewFieldTarget): Y.Array<unkn
   throw new ReviewFieldError('Review sequence lineage exceeds its limit.');
 }
 
-export function removedStringItems(array: Y.Array<unknown>, start: number, length: number) {
-  const all: { key: string; value: unknown }[] = [];
-  let at = 0;
+export function removedStringItems(
+  array: Y.Array<unknown>,
+  start: number,
+  length: number,
+  retainTransactionAnchors = false
+) {
+  const all: { key: string; value: unknown; visible: boolean }[] = [];
+  const transaction = retainTransactionAnchors ? array.doc?._transaction : null;
   for (let item = array._start; item; item = item.right) {
-    if (item.deleted || !item.countable) continue;
+    if (!item.countable) continue;
     const values = item.content.getContent();
-    for (let offset = 0; offset < item.length; offset++, at++)
+    for (let offset = 0; offset < item.length; offset++) {
+      const clock = item.id.clock + offset;
+      const removedHere =
+        transaction &&
+        clock < (transaction.beforeState.get(item.id.client) ?? 0) &&
+        Y.isDeleted(transaction.deleteSet, Y.createID(item.id.client, clock));
+      if (item.deleted && !removedHere) continue;
       all.push({
-        key: item.id.client + ':' + (item.id.clock + offset),
+        key: item.id.client + ':' + clock,
         value: values[offset],
+        visible: !item.deleted,
       });
+    }
   }
-  return all.slice(start, start + length).flatMap((entry, offset) =>
-    typeof entry.value === 'string'
+  let visible = 0;
+  return all.flatMap((entry, index) => {
+    if (!entry.visible) return [];
+    const selected = visible >= start && visible < start + length;
+    visible++;
+    return selected && typeof entry.value === 'string'
       ? [
           {
             key: entry.key,
             value: entry.value,
-            position: {
-              left: all[start + offset - 1]?.key ?? null,
-              right: all[start + offset + 1]?.key ?? null,
-            },
+            position: { left: all[index - 1]?.key ?? null, right: all[index + 1]?.key ?? null },
           },
         ]
-      : []
-  );
+      : [];
+  });
 }
 
 export function originalReviewSequenceTarget(
@@ -80,7 +94,8 @@ export function normalizeReviewArray(
   entries: readonly { target: ReviewFieldTarget; present: boolean; restoreOrder: boolean }[],
   remove: typeof Y.Array.prototype.delete,
   insert: typeof Y.Array.prototype.insert,
-  preserveInsertionOrder = false
+  preserveInsertionOrder = false,
+  restoreOriginalSlots = false
 ) {
   if (array._item?.deleted) return;
   for (const { target, present, restoreOrder } of entries) {
@@ -123,7 +138,8 @@ export function normalizeReviewArray(
       throw new ReviewFieldError('Review sequence visibility does not match its shared length.');
     const retainedInsertion = preserveInsertionOrder && !target.initiallyPresent;
     const base =
-        retainedInsertion && position !== null
+        (retainedInsertion || (restoreOriginalSlots && target.initiallyPresent)) &&
+        position !== null
           ? position
           : (rightAt ?? (right === null ? at : (leftAt ?? (left === null ? 0 : position)))),
       desired = base === null ? null : base - visible.filter((entry) => entry.index < base).length,

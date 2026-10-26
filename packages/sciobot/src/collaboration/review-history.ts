@@ -89,7 +89,8 @@ function createReviewHistory(
   try {
     fields = attachOwnedReviewFields(doc, {
       onError: options.onError,
-      protocol: experimentalProperties ? '2' : '1',
+      protocol: experimentalProperties ? '3' : '1',
+      ...(experimentalProperties ? { bootstrap: options.bootstrap } : {}),
     });
   } catch (cause) {
     flags.dispose();

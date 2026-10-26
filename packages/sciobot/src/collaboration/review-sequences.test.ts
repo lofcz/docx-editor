@@ -164,3 +164,83 @@ test('later ordinary insertion preserves the position of an already restored bas
     doc.destroy();
   }
 });
+
+for (const reverse of [false, true])
+  for (const receiver of [0, 1] as const)
+    for (const peerIndex of [1, 2, 3])
+      test(`separate removals in one gesture restore original sibling anchors: ${reverse}/${receiver}/${peerIndex}`, () => {
+        const docs = [new Y.Doc(), new Y.Doc()];
+        docs.forEach((doc, index) => {
+          doc.clientID = index ? 73 : 41;
+        });
+        const scopes = docs.map((doc, index) =>
+          attachOwnedReviewFields(doc, { protocol: '3', bootstrap: index ? 'join' : 'create' })
+        );
+        const arrays = docs.map((doc) => doc.getArray<string>('children'));
+        arrays[0]!.insert(0, ['head', 'middle', 'tail']);
+        Y.applyUpdate(docs[1]!, Y.encodeStateAsUpdate(docs[0]!), 'relay');
+        scopes.forEach((scope) => scope.enable());
+        const history = new Y.UndoManager(arrays[0]!, { captureTimeout: 0 });
+        let connected = false;
+        docs.forEach((doc, index) =>
+          doc.on('update', (update, origin) => {
+            if (connected && origin !== 'relay') Y.applyUpdate(docs[1 - index]!, update, 'relay');
+          })
+        );
+        try {
+          scopes[0]!.capture(
+            () =>
+              docs[0]!.transact(() => {
+                arrays[0]!.delete(reverse ? 2 : 1, 1);
+                arrays[0]!.delete(1, 1);
+              }),
+            2
+          );
+          arrays[1]!.insert(peerIndex, ['peer']);
+          const restored = ['head', 'middle', 'tail'];
+          restored.splice(peerIndex, 0, 'peer');
+          connected = true;
+          Y.applyUpdate(docs[receiver]!, Y.encodeStateAsUpdate(docs[1 - receiver]!), 'relay');
+          Y.applyUpdate(docs[1 - receiver]!, Y.encodeStateAsUpdate(docs[receiver]!), 'relay');
+          for (const array of arrays) expect(array.toArray()).toEqual(['head', 'peer']);
+          for (let pass = 0; pass < 3; pass++) {
+            expect(history.undo()).not.toBeNull();
+            for (const array of arrays) expect(array.toArray()).toEqual(restored);
+            expect(history.redo()).not.toBeNull();
+            for (const array of arrays) expect(array.toArray()).toEqual(['head', 'peer']);
+          }
+        } finally {
+          history.destroy();
+          scopes.forEach((scope) => scope.dispose());
+          docs.forEach((doc) => doc.destroy());
+        }
+      });
+
+test('ordered field profile refuses old rooms and older readers without rewriting their headers', () => {
+  const old = new Y.Doc(),
+    fresh = new Y.Doc();
+  old.getMap('sciobot-review-field-targets-v1').set('protocol', '2');
+  const before = Y.encodeStateAsUpdate(old);
+  try {
+    expect(() => attachOwnedReviewFields(old, { protocol: '3', bootstrap: 'create' })).toThrow(
+      'Unsupported owned review field protocol'
+    );
+    expect(Y.encodeStateAsUpdate(old)).toEqual(before);
+    expect(() => attachOwnedReviewFields(fresh, { protocol: '3' })).toThrow('bootstrap mode');
+    const scope = attachOwnedReviewFields(fresh, { protocol: '3', bootstrap: 'create' });
+    const cold = new Y.Doc();
+    try {
+      Y.applyUpdate(cold, Y.encodeStateAsUpdate(fresh));
+      expect(() => attachOwnedReviewFields(cold, { protocol: '2' })).toThrow(
+        'Unsupported owned review field protocol'
+      );
+      expect(cold.getMap('sciobot-review-field-targets-v1').get('protocol')).toBe('3');
+    } finally {
+      cold.destroy();
+      scope.dispose();
+    }
+  } finally {
+    old.destroy();
+    fresh.destroy();
+  }
+});

@@ -44,6 +44,14 @@ Protocol 1 application rooms require an explicit upgrade. Stop every writer, exp
 
 The generic `attachOwnedTextAttributes` helper keeps protocol 1 as its default for standalone use. It does not supply the complete native review scope required by shared suggestions or image replacement. For low-level protocol 2 use, call `setStructuralAttributes` before local edits or remote delivery. Join mode configures that expectation without writing room metadata.
 
+### Ordered field history
+
+`attachOwnedReviewHistory` uses private field protocol 3. This policy preserves original Yjs sequence slots during undo. Separate removals in one transaction retain each other's original sibling anchors. Concurrent peer insertions retain their positions.
+
+Attach the scope with `bootstrap: 'create'` before creating the room. A joining scope uses `bootstrap: 'join'`. The creator records the field protocol before document bootstrap. Protocols 1 and 2 retain their previous behavior for explicit low-level consumers.
+
+Protocol 3 refuses protocol 2 room state. Older scopes also refuse the protocol 3 header. Upgrade every private SDK consumer together. Save the existing DOCX, then create a fresh room with protocol 3 and join that room. Do not rename or overwrite an existing room's protocol header. Existing DOCX payloads, pending review records, and Word revisions retain their formats. A DOCX export does not transfer Yjs room history.
+
 ## Native data and writes
 
 Direct target plans use `inline-remove` for managed images, inline math, mentions, and sources. Each removal carries its native control identity, complete payload, and subtree fingerprint. Execution checks these values before any live write. Planning uses a native removal preview to resolve subsequent paragraph coordinates. Surviving controls keep their native identities. Source property changes retain their original controls. Payload retirement and unreferenced image cleanup share the same undo unit. Shared removal requires complete owned review history. Tracked atom removal remains unsupported; direct execution never disables tracking.
@@ -304,32 +312,8 @@ Complete target planning retains canonical table owners while combining row/colu
 
 An unchanged unique GFM table resolves back to its current native auto syntax during recomposition. Generated cell separators therefore cannot collapse native paragraphs during an unrelated body edit. Explicit HTML targets express paragraph and span changes. Changed multi-paragraph GFM cell planning, new property/list destinations, and the other open port leaves retain their documented limits.
 
+Application equations use `createMathPayload(id, kind, texExpression)` and `insertMath(editor, request)`. The payload retains LaTeX whitespace, Unicode, and line endings exactly. Word receives readable literal source in native controls. Inline fallback uses spaces between source lines; block fallback uses separate paragraphs. Empty source displays `□`. Imported OMML remains native and opaque. Insertion never converts or replaces imported equations. Call `prepareNativeDocument` before creating shared rooms. Shared equation insertion refuses missing payload infrastructure before writes. Direct insertion creates one undo unit for the control and payload. Tracked insertion belongs to the review executor. Equation controls and editing actions remain tracked by X24; this storage API does not complete that leaf.
 
-Application equations use `createMathPayload(id, kind, texExpression)` and `insertMath(editor, request)`.
-The payload retains LaTeX whitespace, Unicode, and line endings exactly. Word receives readable literal source in native controls.
-Inline fallback uses spaces between source lines; block fallback uses separate paragraphs. Empty source displays `□`.
-Imported OMML remains native and opaque. Insertion never converts or replaces imported equations.
-Call `prepareNativeDocument` before creating shared rooms. Shared equation insertion refuses missing payload infrastructure before writes.
-Direct insertion creates one undo unit for the control and payload. Tracked insertion belongs to the review executor.
-Equation controls and editing actions remain tracked by X24; this storage API does not complete that leaf.
+Application mentions use `createMentionPayload(id, key, value, attributes)` and `insertMention(editor, request)`. The persistent block ID is separate from the application `key`. Document keys retain their leading `/`. The payload preserves exact display text and optional private attributes, including icons and cover references. Native fallback text replaces display line boundaries with spaces; an empty display uses the key as fallback. Markdown uses the existing `[label](mention:identifier)` syntax with escaped labels and encoded identifiers. Labels can contain literal Markdown, line boundaries, empty text, and at-signs without creating nested mentions. Source property spans distinguish label syntax from identifier syntax; escaped values have no direct substring write range. Mentions use locked inline controls and one native history unit. Prepare shared documents before room bootstrap. X22 still owns browser suggestions and mention controls. D30 still owns AI insertion execution.
 
-
-Application mentions use `createMentionPayload(id, key, value, attributes)` and `insertMention(editor, request)`.
-The persistent block ID is separate from the application `key`. Document keys retain their leading `/`.
-The payload preserves exact display text and optional private attributes, including icons and cover references.
-Native fallback text replaces display line boundaries with spaces; an empty display uses the key as fallback.
-Markdown uses the existing `[label](mention:identifier)` syntax with escaped labels and encoded identifiers.
-Labels can contain literal Markdown, line boundaries, empty text, and at-signs without creating nested mentions.
-Source property spans distinguish label syntax from identifier syntax; escaped values have no direct substring write range.
-Mentions use locked inline controls and one native history unit. Prepare shared documents before room bootstrap.
-X22 still owns browser suggestions and mention controls. D30 still owns AI insertion execution.
-
-
-Math projection uses standard inline/display math fences only when parsing retains the exact source and kind.
-Other sources use inert `<scio-inline-equation texExpression="..." />` or `<scio-equation texExpression="..." />` data syntax.
-This preserves empty inline equations, otherwise normalized line boundaries, and GFM-sensitive pipe characters.
-The private target parser converts these exact one-attribute forms to the same math AST as ordinary fences. Ordinary `equation` and `inline_equation` JSX names remain opaque React data; this adapter reserves only the `scio-` math tags.
-Unknown attributes, nested children, and expression-valued source attributes stay opaque and cannot silently become math payloads.
-Numeric-looking LaTeX stays a string. Escaped source properties have no direct substring write range.
-The sibling materializer can insert display equations with exact metadata and readable multiline Word fallback.
-D30 still owns canonical inline atom execution, retained paragraph reconciliation, and executor-side image resource handling.
+Math projection uses standard inline/display math fences only when parsing retains the exact source and kind. Other sources use inert `<scio-inline-equation texExpression="..." />` or `<scio-equation texExpression="..." />` data syntax. This preserves empty inline equations, otherwise normalized line boundaries, and GFM-sensitive pipe characters. The private target parser converts these exact one-attribute forms to the same math AST as ordinary fences. Ordinary `equation` and `inline_equation` JSX names remain opaque React data; this adapter reserves only the `scio-` math tags. Unknown attributes, nested children, and expression-valued source attributes stay opaque and cannot silently become math payloads. Numeric-looking LaTeX stays a string. Escaped source properties have no direct substring write range. The sibling materializer can insert display equations with exact metadata and readable multiline Word fallback. D30 still owns canonical inline atom execution, retained paragraph reconciliation, and executor-side image resource handling.
