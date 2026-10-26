@@ -172,11 +172,11 @@ Final verification against installed fork `929e0ea4a9bf68f3a4c9a7c133e55bc76b76d
 
 ## X09
 
-- [ ] Preserve listening markup and audio references
+- [x] Preserve listening markup and audio references
 
 **Depends:** [B02](02-react-blocks.md#b02), [P05](03-agent-projection.md#p05), [D14](04-edit-planner.md#d14), [V01](11-verification.md#v01)
 
-**Primary files:** `fork:packages/sciobot/src/blocks/listening-codec.ts`; `sibling listening-codec.test.ts`
+**Primary files:** `app:src/lib/docx/listening.ts`; `app:src/lib/docx/listening.test.ts`; `app:scripts/docx-native/harness/listening-edits.test.ts`
 
 **Read:** [S12](sources.md#s12), [S11](sources.md#s11)
 
@@ -186,7 +186,7 @@ Final verification against installed fork `929e0ea4a9bf68f3a4c9a7c133e55bc76b76d
 
 **Check:** Add a focused native document regression. Include save/reopen and undo/redo. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** codex, branch `codex/react-block-proof`. **Evidence:** Application `c5b7bbf8c` and `b5b8cee742ee9bb85cde4b36b9af685ca5643e77` adapt the existing shared grammar to B02/P05 native payload storage. Both captured listening Markdown fixtures roundtrip with complete audio/hash/seed, speaker voices/portraits, stable keys, transcript text, and unknown data retained. Nearby edits preserve complete payloads and exact native control fingerprints. Both client orders, both decisions, both histories, remote caret geometry, deletion during peer editing, both reconnect receivers, saved convergence, and cold reopening pass. The final units pass 12 cases. Eight installed listening browser cases pass across review/offline commands with 140 assertions. The initial affected atomic/listening batch passes nine cases. Frontend/harness types pass 6,844/2,418 files; scoped checks pass. Complete command and independent oracle details are in [listening evidence](evidence/native-listening-data.md). Runtime stays `4f0029f0b8df49f1aa966c43ce52a7a97b8443b0`. X10 retains playback, hydration, generation, and freshness integration.
 
 ## X10
 
