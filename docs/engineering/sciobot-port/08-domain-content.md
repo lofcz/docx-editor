@@ -244,7 +244,7 @@ Final verification against installed fork `929e0ea4a9bf68f3a4c9a7c133e55bc76b76d
 
 ## X13
 
-- [ ] Render callout blocks
+- [x] Render callout blocks
 
 **Depends:** [B05](02-react-blocks.md#b05), [B06](02-react-blocks.md#b06), [P04](03-agent-projection.md#p04), [V01](11-verification.md#v01), [X37](08-domain-content.md#x37)
 
@@ -258,11 +258,11 @@ Final verification against installed fork `929e0ea4a9bf68f3a4c9a7c133e55bc76b76d
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** codex, branch `codex/react-block-proof`. **Evidence:** Native target authoring now recognizes callout, story, and solution containers. Callout variants retain the application alias and normalization rules. The pure authoring, existing container, and captured projection batch passes 47 cases and 214 assertions. The isolated application renderer and real-browser checks are in progress. X13 remains unchecked until those checks pass.
+**Claim:** codex, branch `codex/react-block-proof`. **Evidence:** Runtime `f5bb40c9c703e61abef8cec05021d02eda715f78` and application `fad7d96a2232a048418c4d3069212bc27c1fda28` implement native callouts. Appearance helpers and the emoji picker are reused without Plate runtime imports. Native paragraphs and nested lists retain their slots. The Markdown import fixture preserves variant aliases, icon, explicit background, and opaque metadata through browser typing and export. Three container browser cases cover both client orders, offline peer edits, deletion, both histories, exact owner identities, geometry, native save convergence, and reopening. The combined container/retiming batch passes eight cases and 960 assertions. Native authoring and captured projections pass 47 cases and 214 assertions. Frontend and harness types, scoped formatting/lint, five archive hashes, frozen install, and single-core resolution pass. See [container evidence](evidence/native-container-renderers.md).
 
 ## X14
 
-- [ ] Render story blocks
+- [x] Render story blocks
 
 **Depends:** [B05](02-react-blocks.md#b05), [B06](02-react-blocks.md#b06), [P04](03-agent-projection.md#p04), [V01](11-verification.md#v01), [X37](08-domain-content.md#x37)
 
@@ -276,7 +276,7 @@ Final verification against installed fork `929e0ea4a9bf68f3a4c9a7c133e55bc76b76d
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** codex, branch `codex/react-block-proof`. **Evidence:** Native target authoring now recognizes story containers and preserves metadata and native descendants during a second target wave. The shared authoring batch passes 47 cases and 214 assertions. The isolated application renderer and real-browser checks are in progress. X14 remains unchecked until those checks pass.
+**Claim:** codex, branch `codex/react-block-proof`. **Evidence:** Runtime `f5bb40c9c703e61abef8cec05021d02eda715f78` and application `fad7d96a2232a048418c4d3069212bc27c1fda28` implement localized story chrome around native descendants. The imported fixture nests a callout and a two-level native list inside the story. Narrator and opaque metadata remain exact through editing, concurrent peer deletion, both actors' histories, saved convergence, and reopening. Native owner identities and remote caret geometry remain equal. The combined browser batch passes eight cases and 960 assertions; source authoring/projection checks pass 47 cases and 214 assertions. Frontend/harness types and scoped checks pass. See [container evidence](evidence/native-container-renderers.md).
 
 ## X15
 
