@@ -280,7 +280,7 @@ Final verification against installed fork `929e0ea4a9bf68f3a4c9a7c133e55bc76b76d
 
 ## X15
 
-- [ ] Render solution blocks
+- [x] Render solution blocks
 
 **Depends:** [B05](02-react-blocks.md#b05), [B06](02-react-blocks.md#b06), [P04](03-agent-projection.md#p04), [V01](11-verification.md#v01), [X37](08-domain-content.md#x37)
 
@@ -294,7 +294,7 @@ Final verification against installed fork `929e0ea4a9bf68f3a4c9a7c133e55bc76b76d
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** X37 is closed. Implement the renderer and focused application checks in the isolated worktree.
+**Claim:** codex solo, branch `codex/react-block-proof`. **Evidence:** Application `fe157dbd7beb83d80769eff8ccca74c520367909` registers a native solution renderer over runtime `f5bb40c9c703e61abef8cec05021d02eda715f78`. Reveal state stays local to one editor and synchronizes its page fragments. Continuation controls, nested synchronous AI reveal, native selection, and input capture expose answers before editing. Screen-only hiding retains native Word pagination. Print and exports retain full answer content. Exact native state, package revision, history, and saved digest remain unchanged by reveal/hide. The final solution/container browser batch passes eight cases and 137 assertions, including both client orders, independent peer visibility, concurrent edits/deletion, both histories, caret geometry, saved convergence, and collapsed reopening. Frontend/harness types and scoped format/lint pass. No runtime pin, shared format, canonical content model, or public API changes. See [solution evidence](evidence/native-solution-renderer.md).
 
 ## X16
 
