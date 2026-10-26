@@ -406,6 +406,8 @@ function install() {
       return insertItems.call(this, index, content);
     const count = content.filter((value) => typeof value === 'string').length,
       reservation = state.reservations.at(-1);
+    if (count && state.protocol === '3' && state.targets.get('protocol') !== '3')
+      throw new ReviewFieldError('Wait for the ordered review field room header before editing.');
     if (
       state.targets.size - Number(state.targets.has('protocol')) + count > state.limits.targets ||
       retainedIntentCount(state) + count > state.limits.intents ||
@@ -675,6 +677,8 @@ export function attachOwnedReviewFields(doc: Y.Doc, options: OwnedReviewFieldOpt
     extraIntents = 0
   ): T => {
     healthy(state);
+    if (state.protocol === '3' && state.targets.get('protocol') !== '3')
+      throw new ReviewFieldError('Wait for the ordered review field room header before editing.');
     if (doc.store.pendingStructs || doc.store.pendingDs)
       throw new ReviewFieldError('Review fields must wait for complete room updates.');
     if (!Number.isSafeInteger(fieldWrites) || fieldWrites < 0)

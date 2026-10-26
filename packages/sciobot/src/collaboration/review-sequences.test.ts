@@ -244,3 +244,26 @@ test('ordered field profile refuses old rooms and older readers without rewritin
     fresh.destroy();
   }
 });
+
+test('an ordered join refuses insertion before room initialization without changing shared data', () => {
+  const doc = new Y.Doc();
+  const scope = attachOwnedReviewFields(doc, { protocol: '3', bootstrap: 'join' });
+  const array = doc.getArray<string>('children');
+  scope.enable();
+  const before = Y.encodeStateAsUpdate(doc);
+  try {
+    expect(() => array.insert(0, ['premature child'])).toThrow('room header before editing');
+    expect(() => scope.capture(() => doc.getText('body').insert(0, 'premature text'), 0)).toThrow(
+      'room header before editing'
+    );
+    expect(array.toArray()).toEqual([]);
+    expect(doc.getText('body').toString()).toBe('');
+    expect(Y.encodeStateAsUpdate(doc)).toEqual(before);
+    doc.getMap('sciobot-review-field-targets-v1').set('protocol', '3');
+    scope.capture(() => doc.getText('body').insert(0, 'ready'), 0);
+    expect(doc.getText('body').toString()).toBe('ready');
+  } finally {
+    scope.dispose();
+    doc.destroy();
+  }
+});

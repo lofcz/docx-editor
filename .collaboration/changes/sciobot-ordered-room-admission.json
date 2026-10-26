@@ -1,0 +1,13 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "A private protocol 3 join could attempt insertion before receiving its creator's field header. Late record validation could refuse after a physical array insertion.",
+  "after": "Protocol 3 checks its header before inserting owned sequence entries or entering a native capture. Rejected early edits preserve shared data, and editing works after the creator's header arrives.",
+  "reason": "This rejects premature writes outside the documented private room initialization contract. Valid protocol 3 state and normalization retain their meaning. No shared field, version, provider behavior, native operation, or public package API changes.",
+  "tests": [
+    "packages/sciobot/src/collaboration/review-sequences.test.ts",
+    "packages/sciobot/src/collaboration/review-history.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}
