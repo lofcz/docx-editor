@@ -6,19 +6,26 @@
 // override merges over the table's. Layout reads the answer; the table structure lane owns
 // the order the sources are consulted in.
 
-import { readTwipsMeasure } from '@docx-editor.dev/core/store';
+import { readTwipsMeasure, WML_NAMESPACE_URI } from '@docx-editor.dev/core/store';
 import type { OoxmlElement } from '../store/package/ooxml-tree.ts';
 
 /** File-local element/attribute lookups, the same two `semantic-table.ts` keeps. */
 function childNamed(node: OoxmlElement, localName: string): OoxmlElement | undefined {
   for (const child of node.children) {
-    if (child.kind !== 'textValue' && child.localName === localName) return child;
+    if (
+      child.kind !== 'textValue' &&
+      child.namespaceUri === WML_NAMESPACE_URI &&
+      child.localName === localName
+    )
+      return child;
   }
   return undefined;
 }
 
 function attributeValue(node: OoxmlElement, localName: string): string | undefined {
-  return node.attributes.find((attribute) => attribute.localName === localName)?.value;
+  return node.attributes.find(
+    (attribute) => attribute.namespaceUri === WML_NAMESPACE_URI && attribute.localName === localName
+  )?.value;
 }
 
 /**
@@ -89,6 +96,23 @@ export function readMarginSides(container: OoxmlElement | undefined): Partial<Ce
     ...(bottom === undefined ? {} : { bottom }),
     ...(right === undefined ? {} : { right }),
   };
+}
+
+/**
+ * Give every cell of one row the row's largest top margin, in place.
+ *
+ * A row lays out its content below one top padding: a cell whose own `w:tcMar` top is
+ * smaller still starts its text where the cell with the largest top margin does (0, 100
+ * and 300 twips against 300 twips, with and without paragraph spacing, measured). Bottom
+ * margins stay per cell.
+ */
+export function raiseRowTopMargins<Cell extends { readonly margins: CellMarginsPt }>(
+  cells: Cell[]
+): void {
+  let top = 0;
+  for (const cell of cells) top = Math.max(top, cell.margins.top);
+  for (const [index, cell] of cells.entries())
+    if (cell.margins.top < top) cells[index] = { ...cell, margins: { ...cell.margins, top } };
 }
 
 /** A cell's own `w:tcMar` over the table's per-side defaults. */

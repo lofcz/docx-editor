@@ -1,6 +1,8 @@
 import { styleSeparatorMembersOf } from './style-separator-group.ts';
 import { applicationParagraphDefaults } from './application-paragraph-defaults.ts';
 import { applicationRunDefaults } from './application-run-defaults.ts';
+import { readDistributedSpacing } from './distributed-spacing.ts';
+import { themeCacheMaterial } from './theme-cache-material.ts';
 import { applyLigatureCompatibility } from './run-ligatures.ts';
 import { numberingParagraphProperties } from './numbering-paragraph-properties.ts';
 import { numberingLevelRank } from './numbering-level-tier.ts';
@@ -33,7 +35,7 @@ import type { OoxmlProperty } from '../store/store/tree-op-types.ts';
 import { stableHash } from '../store/comparators/canonical.ts';
 import {
   cjkTypographyFromSettings,
-  defaultsSelectEastAsianFace,
+  defaultsTypography,
   type CjkTypographySettings,
 } from './cjk-typography.ts';
 import {
@@ -53,6 +55,7 @@ import {
   type ParagraphBorders,
   type ParagraphLineSpacing,
   type ParagraphSpacing,
+  cascadeLineSpacingFlags,
 } from './paragraph-style.ts';
 import { paragraphShading } from './ooxml-shading.ts';
 import { cascadedTabStops, tabStopsFingerprint, type ResolvedTabStops } from './paragraph-tabs.ts';
@@ -60,6 +63,7 @@ import { withNumberingTabRule } from './numbering-tab-rule.ts';
 import { NO_THEME_FONTS, type ThemeFonts } from './run-style.ts';
 import { combineStyleToggles } from './style-toggles.ts';
 import { styleChain, styleIdFromProps } from './style-chain.ts';
+import { resolveParagraphOutlineLevel } from './paragraph-outline-level.ts';
 import { paragraphMarkRunProperties } from './paragraph-mark-run.ts';
 import { legacyTableDefaultProperties } from './table-style-compatibility.ts';
 import {
@@ -95,6 +99,12 @@ export interface StyleCascadeTable {
   readonly doNotBreakWrappedTables?: true;
   /** Legacy or explicitly disabled optional OpenType substitutions. */
   readonly disableOptionalLigatures?: true;
+  /**
+   * How distributed paragraphs spread their lines when the document selects character
+   * distribution (`DistributedSpacing` in `distributed-spacing.ts`); absent for `'spaces'`.
+   * @internal
+   */
+  readonly distributedSpacing?: 'characters' | 'legacyCharacters';
   /** Legacy noExtraLineSpacing behavior, included in the producer fingerprint. */
   readonly preserveExactLineBaseline?: true;
   /** `w:adjustLineHeightInTable`: cell paragraphs snap to the section line grid too. */
@@ -106,16 +116,15 @@ export interface StyleCascadeTable {
    * spacing is a fixed 5pt before and 10pt after.
    */
   readonly fixedParagraphSpacing?: true;
-  /**
-   * `w:doNotExpandShiftReturn`: a justified line ending in a manual line break keeps its
-   * natural spacing, as a last line does.
-   */
+  /** `w:doNotExpandShiftReturn`: a justified line before a manual break keeps natural spacing. */
   readonly unstretchedManualBreakLines?: true;
   /**
    * Legacy modes: a justified line ending in a page or column break stretches to the measure
    * unless it is the last line of its paragraph.
    */
   readonly pageBreakLinesStretch?: true;
+  /** `w:splitPgBreakAndParaMark` in a legacy mode: the mark after a page break takes a line. @internal */
+  readonly pageBreakMarkOnNextPage?: true;
   /** Explicit compatibility opt-in to the unmodified ISO table style hierarchy. */
   readonly strictTableStyleHierarchy?: boolean;
   readonly typography?: CjkTypographySettings;
@@ -435,29 +444,6 @@ export function tableCellStyleFormatting(
 }
 
 /**
- * The theme as cache-key material: every face present, `null` when the theme has none.
- *
- * `ThemeFonts` leaves the East Asian, complex-script, and supplemental faces optional,
- * and a producer that reads a theme with no such scheme hands over `undefined` for
- * them. The comparator behind `stableHash` refuses `undefined` by design, so a key built
- * from the raw object failed layout for any document whose theme lacked one of those
- * faces.
- */
-function themeCacheMaterial(themeFonts: ThemeFonts): Record<string, unknown> {
-  return {
-    major: themeFonts.major ?? null,
-    minor: themeFonts.minor ?? null,
-    majorEastAsia: themeFonts.majorEastAsia ?? null,
-    minorEastAsia: themeFonts.minorEastAsia ?? null,
-    majorBidi: themeFonts.majorBidi ?? null,
-    minorBidi: themeFonts.minorBidi ?? null,
-    majorSupplemental: themeFonts.majorSupplemental ?? null,
-    minorSupplemental: themeFonts.minorSupplemental ?? null,
-    chineseFontTableFaces: themeFonts.chineseFontTableFaces ?? null,
-  };
-}
-
-/**
  * Build a cascade table from a styles part root.
  *
  * Only direct `w:style` children of the root participate (bounded count). Duplicate
@@ -469,13 +455,17 @@ export function buildStyleCascadeTable(
   themeFonts: ThemeFonts = NO_THEME_FONTS,
   settingsRoot: OoxmlElement | null = null
 ): StyleCascadeTable {
-  let typography = cjkTypographyFromSettings(settingsRoot);
   // One read of the compatibility profile; the cache token folds every rule it turns on.
   const compatibility = compatibilityProfileFromSettings(settingsRoot);
+  let typography = cjkTypographyFromSettings(settingsRoot);
+  if (compatibility.has('lineEndPunctuationAtEveryAlignment'))
+    typography = Object.freeze({ ...typography, legacyLineEndPunctuation: true as const });
   const ligaturesEnabled = compatibility.has('optionalLigatures');
   const ligatureCompatibility = ligaturesEnabled ? {} : { disableOptionalLigatures: true as const };
   const strictTableHierarchy = compatibility.has('strictTableStyleHierarchy');
   const settingsCompatibility = cascadeCompatibility(compatibility);
+  const spacing = readDistributedSpacing(stylesRoot, compatibility);
+  const distribution = spacing ? { distributedSpacing: spacing } : {};
   const styles = new Map<string, StyleDefinition>();
   const theme = themeCacheMaterial(themeFonts);
   if (!stylesRoot) {
@@ -493,9 +483,11 @@ export function buildStyleCascadeTable(
         typography,
         strictTableHierarchy,
         ...settingsCompatibility,
+        ...distribution,
       }),
       ...settingsCompatibility,
       ...ligatureCompatibility,
+      ...distribution,
       strictTableStyleHierarchy: strictTableHierarchy,
       typography,
       docDefaultsRun: runDefaults,
@@ -510,8 +502,10 @@ export function buildStyleCascadeTable(
   }
 
   const authoredDefaults = readDocDefaults(stylesRoot);
-  const sourceEastAsianFont = defaultsSelectEastAsianFace(authoredDefaults.run, themeFonts);
-  typography = Object.freeze({ ...typography, sourceEastAsianFont });
+  typography = Object.freeze({
+    ...typography,
+    ...defaultsTypography(stylesRoot, authoredDefaults.run, themeFonts),
+  });
   const defaults = {
     ...authoredDefaults,
     run: [...applicationRunDefaults(stylesRoot, ligaturesEnabled), ...authoredDefaults.run],
@@ -546,6 +540,7 @@ export function buildStyleCascadeTable(
   const cacheToken = stableHash({
     ...settingsCompatibility,
     ...ligatureCompatibility,
+    ...distribution,
     strictTableHierarchy,
     typography,
     dR: propertiesFingerprint(defaults.run),
@@ -577,6 +572,7 @@ export function buildStyleCascadeTable(
     cacheToken,
     ...settingsCompatibility,
     ...ligatureCompatibility,
+    ...distribution,
     strictTableStyleHierarchy: strictTableHierarchy,
     typography,
     docDefaultsRun: defaults.run,
@@ -934,31 +930,7 @@ export function resolveParagraphLayoutInputs(
     : undefined;
   const tabStops = withNumberingTabRule(cascadedTabStops(nodes), styleCascade);
   const styleId = cascaded ? cascaded.styleId : (styleIdFromProps(props, 'pStyle') ?? null);
-  let outlineLevel: number | null = null;
-  let sawOutlineProperty = false;
-  for (const property of props) {
-    if (property.localName !== 'outlineLvl') continue;
-    sawOutlineProperty = true;
-    const value = property.attributes?.val;
-    outlineLevel = value !== undefined && /^[0-8]$/.test(value) ? Number(value) : null;
-  }
-  if (!sawOutlineProperty && styleCascade && styleId) {
-    const chain = styleChain(styleCascade, styleId, 'paragraph');
-    for (let index = chain.length - 1; index >= 0; index -= 1) {
-      const inherited = chain[index]!.outlineLevel;
-      if (inherited !== null) {
-        outlineLevel = inherited;
-        break;
-      }
-    }
-  }
-  // Built-in Heading styles remain semantic even when a producer omits styles.xml (or names
-  // one without defining it). Keep this in the core record substrate so Markdown, PDF and
-  // future exporters agree. An explicit outlineLvl=9/invalid above deliberately blocks it.
-  if (!sawOutlineProperty && outlineLevel === null && styleId) {
-    const builtIn = /^heading\s*([1-9])$/i.exec(styleId.trim());
-    if (builtIn) outlineLevel = Number(builtIn[1]) - 1;
-  }
+  const outlineLevel = resolveParagraphOutlineLevel(props, styleCascade, styleId);
   return {
     props,
     indent,
@@ -976,9 +948,7 @@ export function resolveParagraphLayoutInputs(
     lineSpacing: withLineGrid(
       {
         ...paragraphLineSpacing(props),
-        ...(styleCascade?.preserveExactLineBaseline
-          ? { preserveExactBaseline: true as const }
-          : {}),
+        ...cascadeLineSpacingFlags(styleCascade),
       },
       props,
       lineUnitPt,

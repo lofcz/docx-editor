@@ -22,6 +22,7 @@ export interface AutofitFlowDeps extends AutofitFieldContext {
   /** The pass producer the break cache keys on: note marks, display mode, author filter. */
   readonly producer?: string;
   readonly defaultTabStopPt?: number;
+  readonly compatibilityMode?: number;
 }
 
 /** One context per flow deps object, so every reader in a pass shares it. */
@@ -55,23 +56,31 @@ export function autofitContextOf(deps: AutofitFlowDeps): TableAutofitContext {
     deps.drawingLayoutToken ?? '',
     deps.inlineDrawingLayout ? 'drawings' : '',
     `tab:${deps.defaultTabStopPt ?? ''}`,
+    `mode:${deps.compatibilityMode ?? ''}`,
     // Saved field results break as text in the editable mode and stay whole in the default.
     `fields:${currentFieldResultsMode()}`,
   ].join('\0');
+  const paragraphTokens = new WeakMap<OoxmlElement, string>();
   const context: TableAutofitContext = {
     measurer: deps.measurer,
     ...(deps.listItems ? { listItems: deps.listItems } : {}),
     ...(deps.inlineDrawingLayout ? { inlineDrawingLayout: deps.inlineDrawingLayout } : {}),
     fields,
     ...(deps.defaultTabStopPt !== undefined ? { defaultTabStopPt: deps.defaultTabStopPt } : {}),
+    ...(deps.compatibilityMode !== undefined ? { compatibilityMode: deps.compatibilityMode } : {}),
     passToken,
-    paragraphToken: (paragraph) =>
-      [
+    paragraphToken: (paragraph) => {
+      const known = paragraphTokens.get(paragraph);
+      if (known !== undefined) return known;
+      const token = [
         deps.projectionTokenForParagraph?.(paragraph) ?? '',
         deps.drawingTokenForParagraph?.(paragraph) ?? '',
         deps.refFields?.tokenForParagraph(paragraph.id) ?? '',
         listItemToken(deps.listItems?.get(paragraph.id)),
-      ].join('\0'),
+      ].join('\0');
+      paragraphTokens.set(paragraph, token);
+      return token;
+    },
   };
   flowContexts.set(deps, context);
   return context;

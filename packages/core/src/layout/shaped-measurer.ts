@@ -2,6 +2,7 @@ import { withAuthoredCjkGapMetric } from './cjk-auto-spacing-metric-port.ts';
 import { createResolvedCjkAutoSpacingGapMetric } from './sfnt-auto-spacing-metrics.ts';
 import { isRunKerningEnabled } from './run-kerning.ts';
 import { runLigatureFeatureKey } from './run-ligatures.ts';
+import { fontMapsCodePoint } from './sfnt-cmap-coverage.ts';
 import { createShapedLineMetrics } from './shaped-line-metrics.ts';
 import { withSymbolFaceMetrics } from './symbol-face-metrics.ts';
 import {
@@ -31,9 +32,15 @@ import type { TextMeasurer } from './semantic-records.ts';
 import { shapedRunOutline } from './text-outline.ts';
 import { shapedClusterInkBounds } from './glyph-ink-bounds.ts';
 import { segmentGraphemes } from './grapheme.ts';
-import { type ResolvedRunStyle } from './run-style.ts';
+import { glyphSizeFactorOf, type ResolvedRunStyle } from './run-style.ts';
 import { sfntStrikeoutStrokeEm, type StrikeoutStrokeEm } from './sfnt-strikeout-metrics.ts';
 import type { OperationSnapshot } from './resolved-cache.ts';
+import {
+  SYNTHETIC_BOLD_ADVANCE_EM,
+  isSyntheticBold,
+  syntheticBoldGlyphCount,
+  withSyntheticBoldCaretAdvances,
+} from './synthetic-bold.ts';
 import {
   layoutFaceHasSmallCaps,
   layoutRunHalfPointsOf,
@@ -126,6 +133,9 @@ export interface LayoutEnvironmentShapedMeasurerOptions {
  * full face box would have allowed 2x, which is a usable layout blow-up from a file.
  */
 const MAX_LINE_GAP_FACE_BOXES = 0.5;
+
+/** Bound on cached coverage answers per face; a file controls which characters are asked. */
+const MAX_COVERAGE_ENTRIES_PER_FONT = 4096;
 
 /**
  * Ceiling on a face's own ascent + descent, as a multiple of the size it is drawn at.
@@ -288,10 +298,36 @@ export function createShapedMeasurer(
 
   // Static face numbers, so one read per face serves every size: the em fractions scale.
   const strikeoutByFont = new WeakMap<ResolvedFont, StrikeoutStrokeEm | null>();
+  // Coverage answers per face and text; the callers ask about single hinted characters.
+  const coverageByFont = new WeakMap<ResolvedFont, Map<string, boolean>>();
 
   const measurer: TextMeasurer = {
     hasResolvedFont(style) {
       return resolveFontCached(style) !== null;
+    },
+    faceCovers(text, style) {
+      const font = resolveFontCached(style);
+      if (!font) return undefined;
+      let byText = coverageByFont.get(font);
+      if (!byText) {
+        byText = new Map();
+        coverageByFont.set(font, byText);
+      }
+      const known = byText.get(text);
+      if (known !== undefined) return known;
+      // The face's own cmap answers: shaping would report HarfBuzz's own substitutes (a
+      // missing U+2011 shapes as U+2010) and the export glyph fallback as covered.
+      let covered = true;
+      for (const character of text) {
+        const mapped = fontMapsCodePoint(font, character.codePointAt(0)!);
+        if (mapped === undefined) return undefined;
+        if (!mapped) {
+          covered = false;
+          break;
+        }
+      }
+      if (byText.size < MAX_COVERAGE_ENTRIES_PER_FONT) byText.set(text, covered);
+      return covered;
     },
     strikeoutMetrics(style) {
       const font = resolveFontCached(style);
@@ -322,7 +358,8 @@ export function createShapedMeasurer(
               : [style.shaping.script, style.shaping.direction, text]
           )}`
         : `0:${text}`;
-      const widthKey = `${isRunKerningEnabled(style) ? 1 : 0}:${runLigatureFeatureKey(style)}:${shapingKey}`;
+      const syntheticBold = isSyntheticBold(style, font);
+      const widthKey = `${isRunKerningEnabled(style) ? 1 : 0}:${syntheticBold ? 1 : 0}:${runLigatureFeatureKey(style)}:${shapingKey}`;
       let advance = byText.get(widthKey);
       if (advance === undefined) {
         let total = 0;
@@ -338,6 +375,13 @@ export function createShapedMeasurer(
           // Missing-glyph advances do not describe the browser's fallback ink.
           if (shaped.glyphs.some((glyph) => glyph.id === 0)) return fallbackWidth(text, style);
           for (const glyph of shaped.glyphs) total += glyph.advanceX;
+          // A face without bold widens each inked glyph when it draws the bold itself.
+          if (syntheticBold)
+            total +=
+              syntheticBoldGlyphCount(shaped) *
+              (layoutRunHalfPointsOf(style) / 2) *
+              SYNTHETIC_BOLD_ADVANCE_EM *
+              baseEnvironment.fixedPointScale;
         } catch {
           // Shaping refuses malformed or oversized input by design. Falling back keeps a
           // hostile font from taking the document down with it.
@@ -410,7 +454,7 @@ export function createShapedMeasurer(
           return fallbackAdvances(text, style);
         const run = shapeLayoutStyleRun(shaper, baseEnvironment, font, style, text);
         if (run.glyphs.some((glyph) => glyph.id === 0)) return fallbackAdvances(text, style);
-        return (
+        const advances =
           shapedCaretAdvances(
             text,
             run,
@@ -427,8 +471,14 @@ export function createShapedMeasurer(
               baseEnvironment.fixedPointScale +
               text.length * style.characterSpacingPt +
               wordSpacingAdvance(text, style)
-          )
-        );
+          );
+        if (!advances || !isSyntheticBold(style, font)) return advances;
+        const extraPt =
+          (layoutRunHalfPointsOf(style) / 2) *
+          SYNTHETIC_BOLD_ADVANCE_EM *
+          glyphSizeFactorOf(style) *
+          (style.horizontalScalePercent / 100);
+        return withSyntheticBoldCaretAdvances(advances, run, extraPt);
       } catch {
         return fallbackAdvances(text, style);
       }

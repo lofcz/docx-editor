@@ -161,9 +161,18 @@ export class Paragraph extends ModelObject implements PromisedItem {
   /**
    * The paragraph style, by the name a reader sees in the styles gallery.
    *
-   * `null` where the document names none. A name it does not already define is refused rather than
-   * created, and the write rides the same `w:pPr` rewrite the alignment and indent members do — so
-   * applying a style and adjusting a spacing in one sync is one write rather than a refusal.
+   * A read answers the style's `nameLocal` as the styles part writes it, such as `heading 1`, and
+   * any name read writes back to the same style. `null` where the document names none, where the
+   * paragraph's style has the same name as an earlier paragraph style (assigning that name applies
+   * the earlier style), and where its name is one a write refuses, such as a blank name. A name it does
+   * not already define is refused rather than created; list the defined names with
+   * `context.document.getStyles()` and assign the `nameLocal` of a style whose `type` is
+   * `Paragraph`. A refused name rejects the sync with `InvalidArgument`, and
+   * `debugInfo.innerError.code` is `edit.style-not-defined` (or `edit.no-styles-defined` when the
+   * document has no styles part). To apply a built-in style by its enum value, as
+   * `styleBuiltIn` does elsewhere, find its name with `getStyles()` and assign it here. The write
+   * rides the same `w:pPr` rewrite the alignment and indent members do — so applying a style and
+   * adjusting a spacing in one sync is one write rather than a refusal.
    */
   get style(): string {
     return this.loadedProperty<string>('style');
@@ -394,7 +403,8 @@ export class Paragraph extends ModelObject implements PromisedItem {
   startNewList(): List {
     const target = `${this.path.label}.startNewList`;
     const created = List.promised(this.context, target, false);
-    this.commandAnswering(
+    this.commandCreating(
+      created,
       target,
       () => ({ op: 'startNewList', paragraph: this.#handle() }),
       (value) => {
@@ -417,7 +427,8 @@ export class Paragraph extends ModelObject implements PromisedItem {
       fail({ code: 'InvalidArgument', target });
     }
     const joined = List.promised(this.context, target, false);
-    this.commandAnswering(
+    this.commandCreating(
+      joined,
       target,
       () => ({ op: 'attachToList', paragraph: this.#handle(), listId, level }),
       (value) => {
@@ -490,6 +501,8 @@ export class Paragraph extends ModelObject implements PromisedItem {
    *
    * `\n`, `\r`, and `\r\n` in `text` start new paragraphs, tracked with `TrackMineOnly`. See
    * `Range.insertText` for the rules.
+   *
+   * You can load the returned range in the same sync. Editing it needs a sync first.
    */
   insertText(
     text: string,
@@ -505,7 +518,8 @@ export class Paragraph extends ModelObject implements PromisedItem {
     const written = insertableTextWithBreaks(text, target);
     const where = paragraphTextLocation(insertLocation, target);
     const created = Range.promised(this.context, target, false);
-    this.commandAnswering(
+    this.commandCreating(
+      created,
       target,
       () =>
         where === 'Replace'
@@ -522,13 +536,17 @@ export class Paragraph extends ModelObject implements PromisedItem {
     return created;
   }
 
-  /** Add a paragraph beside this one. Answers the new paragraph. */
+  /**
+   * Add a paragraph beside this one. Answers the new paragraph.
+   * You can load the returned paragraph in the same sync. Editing it needs a sync first.
+   */
   insertParagraph(paragraphText: string, insertLocation: 'Before' | 'After'): Paragraph {
     const target = `${this.path.label}.insertParagraph`;
     const written = insertableText(paragraphText, target);
     const where = besideLocation(insertLocation, target);
     const created = Paragraph.promised(this.context, target, false);
-    this.commandAnswering(
+    this.commandCreating(
+      created,
       target,
       () => ({
         op: 'insertParagraph',
@@ -551,6 +569,10 @@ export class Paragraph extends ModelObject implements PromisedItem {
    * this paragraph's identity — so a caller can read back what each piece became without having to
    * work out which of them is the original. The collection is filled by the split itself: there is
    * no second read, because a second read would describe the document the split had already made.
+   *
+   * With `TrackMineOnly`, each new paragraph mark is a tracked insertion, and reject joins the
+   * pieces again. A tracked split keeps its delimiters: `trimDelimiters` set to `true` refuses
+   * with `NotSupported` when a delimiter is found, and nothing changes.
    */
   split(delimiters: string[], trimDelimiters?: boolean, trimSpacing?: boolean): RangeCollection {
     const target = `${this.path.label}.split`;

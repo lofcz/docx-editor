@@ -15,6 +15,7 @@ import type {
   TrackedChangeFilterMode,
   TrackedChangePredicate,
   ViewScope,
+  TableInteractionLabelKey,
 } from '../contracts/editor.ts';
 import type { ReviewDisplayMode } from '../layout/revision-projection.ts';
 import type { RevisionStyles } from '../output/revision-presentation.ts';
@@ -204,11 +205,11 @@ export interface PaginatedSurface extends SurfaceBlockReservations {
    */
   adjustIndent(direction: 'increase' | 'decrease'): boolean;
   /**
-   * Tab (`increase`) or Shift+Tab (`decrease`) over a selection outside a list: change the
-   * indent and keep the text.
+   * Tab (`increase`) or Shift+Tab (`decrease`) over a selection outside a list and outside a
+   * table cell (the key moves between cells there): change the indent and keep the text.
    *
-   * A selection over two or more paragraphs, or a cell rectangle, steps the left indent of
-   * each paragraph. A selection in one paragraph that starts at the paragraph start, whole or
+   * A selection over two or more paragraphs, or a cell rectangle (only from a host calling
+   * this directly), steps the left indent of each paragraph. A selection in one paragraph that starts at the paragraph start, whole or
    * partial, works on the first line: Tab sets a first-line indent of one default tab stop
    * (`w:defaultTabStop`), or steps the left indent when the first line already has that
    * indent or more, or a hanging indent. Shift+Tab clears a first-line indent that the
@@ -250,12 +251,13 @@ export interface PaginatedSurface extends SurfaceBlockReservations {
    */
   canAdjustIndent(direction: 'increase' | 'decrease'): boolean;
   /**
-   * Enter on an empty list item: outdent a level, or leave the list at level 0.
-   *
-   * Answers false when the caret is not on an empty list item, so the caller falls
-   * through to an ordinary paragraph split.
+   * Enter on an empty list item: outdent a level, or leave the list at level 0. Backspace
+   * at an item's start (`removeListNumber`): drop its number and keep the text in place.
+   * Both answer false when they did not handle the key, so the caller splits or joins.
    */
   exitListOnEmptyItem(): boolean;
+  /** Backspace at the start of `paragraphId`: drop its list number; false if it is not one. */
+  removeListNumber(paragraphId: string): boolean;
   /** Whether the paragraph at the caret is a list item, for Tab's Word-like fallback. */
   isListParagraph(): boolean;
   /**
@@ -810,14 +812,14 @@ export interface PaginatedSurface extends SurfaceBlockReservations {
   selectedText(): string;
   /**
    * Every clipboard flavour for the current selection: plain text, and the interop HTML
-   * carrying the embedded fragment when the selection is a body-story range. A cell
-   * rectangle answers grid text plus a flattened table; `html` is null where only plain
-   * text should be written. Unsupported object selections return a refusal reason.
+   * carrying the embedded fragment when the selection is a body-story range. A cell rectangle
+   * answers grid text plus a flattened table; `html` is null where only plain text should be
+   * written. A chart refuses as `'chart-content'`, another object as `'unsupported-content'`.
    */
   copyFlavours(): {
     readonly text: string;
     readonly html: string | null;
-    readonly reason?: 'unsupported-content';
+    readonly reason?: 'unsupported-content' | 'chart-content';
   };
   /**
    * Route one paste payload by fidelity: embedded fragment, then external HTML, then
@@ -847,9 +849,7 @@ export interface PaginatedSurface extends SurfaceBlockReservations {
    *
    * @public
    */
-  setTableInteractionLabel(
-    resolver: (key: 'table.insertRowBelow' | 'table.insertColumnRight') => string
-  ): void;
+  setTableInteractionLabel(resolver: (key: TableInteractionLabelKey) => string): void;
   /**
    * Move the painted pages into `container`, which may belong to another document: a pop-out
    * window or an iframe. The session, undo history, selection and collaboration replica stay

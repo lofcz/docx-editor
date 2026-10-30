@@ -11,6 +11,20 @@ import {
 import { reservedRevisionIdsOf } from './revision-id-reservations.ts';
 import { WML_NAMESPACE_URI, type OoxmlNode, type OoxmlPart } from '../package/ooxml-tree.ts';
 
+let partWalks = 0;
+
+/** @internal Test recorder: how many times a mint walked a whole part for its highest id. */
+export function revisionIdWalkRecorder(): { readonly walks: number; reset(): void } {
+  return {
+    get walks() {
+      return partWalks;
+    },
+    reset() {
+      partWalks = 0;
+    },
+  };
+}
+
 /**
  * The next free `@w:id` for a revision in this part.
  *
@@ -24,6 +38,7 @@ import { WML_NAMESPACE_URI, type OoxmlNode, type OoxmlPart } from '../package/oo
  * No actor keeps the dense sequence byte-identical to a solo Word document.
  */
 export function nextRevisionId(part: OoxmlPart, actorId?: string): () => string {
+  partWalks += 1;
   const reserved = reservedRevisionIdsOf(part.name);
   let highest = -1;
   for (const id of reserved) highest = Math.max(highest, Number(id));

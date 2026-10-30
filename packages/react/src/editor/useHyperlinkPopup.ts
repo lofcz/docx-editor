@@ -104,6 +104,13 @@ export function isFieldLink(link: SurfaceHyperlink): boolean {
   return link.paragraphId === '';
 }
 
+/**
+ * The longest target the per-update check reads. `selectedText` builds the whole selected
+ * string, so a select-all panel in a long document would pay for it on every remote keystroke.
+ * Longer targets are checked once, at Apply.
+ */
+const TARGET_CHECK_LIMIT = 4096;
+
 const CLOSED: HyperlinkPopupState = Object.freeze({
   mode: 'closed' as const,
   link: null,
@@ -172,17 +179,33 @@ function caretViewportAnchor(owner: Node | null): HyperlinkPopupAnchor | null {
 export const HyperlinkPopupContext = createContext<UseHyperlinkPopupResult | null>(null);
 
 /**
+ * Counts what shows the shared popover state: `DocxEditor.HyperLink`, or a host panel that
+ * reads `useHyperlinkPopup()`. The shared state answers link clicks, Ctrl/Cmd+K and the
+ * `text.link` control only while one is mounted, so with nothing to show the panel those
+ * controls are disabled instead of opening a panel no one sees.
+ */
+export const HyperlinkPopupViewsContext = createContext<(() => () => void) | null>(null);
+
+/** Count the calling component as a view of the shared popover state while it is mounted. */
+export function useHyperlinkPopupView(): void {
+  const attach = useContext(HyperlinkPopupViewsContext);
+  useEffect(() => attach?.(), [attach]);
+}
+
+/**
  * The hyperlink popover's behavior.
  *
- * Inside a `DocxEditor.HyperLink` (which the packaged editor mounts by default) this is the
- * SHARED state that compound is driving, so a custom toolbar button and the popover agree.
- * Outside one it is a standalone instance that registers with the engine itself — a host
- * building its own link UI from scratch needs nothing else.
+ * Inside `DocxEditor.Root` this is the SHARED state that `DocxEditor.HyperLink` renders, so
+ * a custom panel and the toolbar agree. Calling it marks the component as a view of that
+ * state: while one is mounted, link clicks, Ctrl/Cmd+K and the Insert link controls open
+ * it. Outside a root it is a standalone instance that registers with the engine itself — a
+ * host building its own link UI from scratch needs nothing else.
  *
  * @public
  */
 export function useHyperlinkPopup(): UseHyperlinkPopupResult {
   const provided = useContext(HyperlinkPopupContext);
+  useHyperlinkPopupView();
   // Both hooks run every render, in the same order: `standalone` only decides whether the
   // instance below registers with the engine, never whether it exists.
   const own = useHyperlinkPopupInstance(provided === null);
@@ -202,6 +225,11 @@ export function useHyperlinkPopupInstance(active = true): UseHyperlinkPopupResul
   viewportRef.current = viewport;
   const [state, setState] = useState<HyperlinkPopupState>(CLOSED);
   const selectionPinRef = useRef<{ editor: Editor; pin: SelectionPin } | null>(null);
+  // The words a create panel opened over; empty for a panel opened at a bare caret.
+  const targetTextRef = useRef('');
+  // Whether those words were already a pending deletion when the panel opened. Linking struck
+  // words the user selected is allowed; words struck after the panel opened are gone.
+  const struckAtOpenRef = useRef(false);
   // The engine's gestures fire from listeners registered ONCE; reading the live state
   // through a ref keeps that registration off the render path, so opening the popover does
   // not tear down and rebind the surface's chrome handlers.
@@ -213,11 +241,34 @@ export function useHyperlinkPopupInstance(active = true): UseHyperlinkPopupResul
   const canEdit = editor ? editor.can({ type: 'insertText', text: '' }).ok : false;
 
   const releaseSelectionPin = useCallback(() => {
+    targetTextRef.current = '';
+    struckAtOpenRef.current = false;
     const retained = selectionPinRef.current;
     if (!retained) return;
     retained.editor.releaseSelection(retained.pin);
     selectionPinRef.current = null;
   }, []);
+
+  // Whether the words a create panel is about to link are gone: another participant deleted
+  // or rewrote them, or an undo took them out. The selection maps through those edits, so it
+  // no longer holds the same text, and Apply would insert the draft as a NEW link at the
+  // collapsed caret instead of linking what the user selected. A peer that strikes the words
+  // in suggesting mode leaves the text in place, so the engine says whether it is a pending
+  // deletion now that was not one when the panel opened.
+  // `everyUpdate` bounds the cost on the per-update path; see `TARGET_CHECK_LIMIT`.
+  const targetGone = useCallback(
+    (everyUpdate = false) => {
+      const target = targetTextRef.current;
+      if (target === '' || !editor) return false;
+      const struck =
+        !struckAtOpenRef.current &&
+        editor.surface?.hyperlinks.selectionIsPendingDeletion() === true;
+      if (struck) return true;
+      if (everyUpdate && target.length > TARGET_CHECK_LIMIT) return false;
+      return editor.query({ type: 'selectedText' }) !== target;
+    },
+    [editor]
+  );
 
   const open = useCallback(
     (link?: SurfaceHyperlink | null, anchor?: HyperlinkPopupAnchor | null) => {
@@ -287,6 +338,8 @@ export function useHyperlinkPopupInstance(active = true): UseHyperlinkPopupResul
     // own overlay and releases the pin when the caret leaves — which is what closes us below.
     const pin = editor?.retainSelection() ?? null;
     if (editor && pin) selectionPinRef.current = { editor, pin };
+    targetTextRef.current = selected;
+    struckAtOpenRef.current = editor?.surface?.hyperlinks.selectionIsPendingDeletion() === true;
     setState({
       mode: 'editing',
       link: null,
@@ -349,13 +402,17 @@ export function useHyperlinkPopupInstance(active = true): UseHyperlinkPopupResul
   //
   // Only a panel that RETAINED something is governed by this: an edit panel opened on an
   // existing link is covered by the effect above, and typing in the URL field moves no caret.
+  //
+  // The same holds when the words themselves disappear while the caret stays put: a peer that
+  // deletes the selected text leaves the pin in place, so `targetGone` asks the document.
   useEffect(() => {
     const current = stateRef.current;
     if (current.mode !== 'editing' || current.link) return;
     const surface = editor?.surface;
-    if (!surface || surface.retainedSelection()) return;
-    setState(CLOSED);
-  }, [snapshot, editor]);
+    if (!surface) return;
+    if (surface.retainedSelection() && !targetGone(true)) return;
+    close();
+  }, [snapshot, editor, targetGone, close]);
 
   const copy = useCallback(async () => {
     const href = stateRef.current.link?.href;
@@ -388,6 +445,12 @@ export function useHyperlinkPopupInstance(active = true): UseHyperlinkPopupResul
     const current = stateRef.current;
     const hyperlinks = editor?.surface?.hyperlinks;
     if (!hyperlinks) return false;
+    // The effect above closes the panel on the tick that removed its target; this covers an
+    // Apply that lands before that tick renders.
+    if (!current.link && targetGone()) {
+      close();
+      return false;
+    }
     const url = current.url.trim();
     if (url.length === 0) {
       setState((previous) => ({ ...previous, error: true }));
@@ -410,7 +473,7 @@ export function useHyperlinkPopupInstance(active = true): UseHyperlinkPopupResul
     // highlight, or the words stay lit over a link that already exists.
     close();
     return true;
-  }, [editor, close]);
+  }, [editor, close, targetGone]);
 
   const unlink = useCallback(() => {
     const hyperlinks = editor?.surface?.hyperlinks;

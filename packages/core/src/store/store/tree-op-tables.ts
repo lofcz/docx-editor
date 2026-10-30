@@ -273,7 +273,7 @@ function projectWmlAttributes(
   return projected;
 }
 
-function trackedRevisionAttributes(
+export function trackedRevisionAttributes(
   revisionId: string,
   revision: RevisionAttributionInput,
   wml: WmlFreshNamespaceContext

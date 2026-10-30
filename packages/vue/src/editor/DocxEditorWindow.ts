@@ -14,6 +14,8 @@ import {
 } from 'vue';
 import { openEditorWindow, type EditorWindow } from '@docx-editor.dev/core/editor';
 import type { DocxEditorChildren } from '../docx-editor-children';
+import { useTranslation } from '../i18n';
+import { useChromeDark } from './color-mode-context';
 
 /** Props for `DocxEditorWindow`. @public */
 export interface DocxEditorWindowProps {
@@ -81,6 +83,7 @@ export const DocxEditorWindow = defineComponent({
     close: () => true,
   },
   setup(props, { slots, emit }) {
+    const dark = useChromeDark();
     const popup = shallowRef<EditorWindow | null>(null);
     let generation = 0;
 
@@ -132,12 +135,24 @@ export const DocxEditorWindow = defineComponent({
     );
     onBeforeUnmount(closeCurrent);
 
+    // The window's own document has no host direction to inherit, so a right-to-left
+    // catalog sets it on the window's editor root.
+    const translation = useTranslation();
+
     return () => {
       const target = popup.value?.element;
       // Two keyed branches, never one retargeted Teleport: the content must remount to move.
       return target
         ? h(Teleport, { to: target, key: 'popout' }, [
-            h('div', { class: 'docx-editor', style: { height: '100%' } }, slots.default?.()),
+            h(
+              'div',
+              {
+                class: `docx-editor${dark.value ? ' dark' : ''}`,
+                style: { height: '100%' },
+                dir: translation.dir,
+              },
+              slots.default?.()
+            ),
           ])
         : h(Fragment, { key: 'inline' }, slots.default?.());
     };

@@ -1,4 +1,4 @@
-import { withOwnAnchorOnlyZones } from './empty-anchor-exclusion.ts';
+import { withOwnParagraphAnchorZones } from './empty-anchor-exclusion.ts';
 import type { BodyAnchorFrameBase } from './body-flow-helpers.ts';
 import type { RevisionDisplayMode, RevisionAuthorFilter } from './revision-projection.ts';
 import type { OoxmlElement } from '../store/package/ooxml-tree.ts';
@@ -38,6 +38,7 @@ export function createParagraphDrawingWrap(options: {
   // preceding paragraph's after-spacing. Its origin excludes the extra lines that
   // its own wrap caused there, just as a top-and-bottom anchor excludes its own skip.
   const displacements = new Map<string, number>();
+  const liftedDisplacements = new Map<string, Map<string, number>>();
   const followingAnchors = new Map<string, ReadonlySet<string>>();
   const followingAnchor = (zone: ExclusionZone, index: number): boolean => {
     if (
@@ -65,6 +66,38 @@ export function createParagraphDrawingWrap(options: {
     }
     return eligible.has(zone.drawingNodeId);
   };
+  // A topAndBottom drawing that a negative offset lifts above its own paragraph keeps the
+  // place its paragraph gives it, and the lines before the anchor that its band crosses move
+  // below it. The anchor's origin then excludes that push, so the band does not chase it.
+  const liftedAnchors = new Map<string, ReadonlySet<string>>();
+  const liftedAnchor = (zone: ExclusionZone, index: number): boolean => {
+    if (zone.sourceKind || zone.input.mode !== 'topAndBottom' || !options.drawingLayout)
+      return false;
+    const anchorOrder = options.paragraphOrder.get(zone.anchorParagraphId);
+    const entry = options.paragraphAt(index);
+    const entryOrder = entry ? options.paragraphOrder.get(entry.paragraph.id) : undefined;
+    if (anchorOrder === undefined || entryOrder === undefined || anchorOrder <= entryOrder)
+      return false;
+    let eligible = liftedAnchors.get(zone.anchorParagraphId);
+    if (!eligible) {
+      const anchor = options.paragraphAt(options.paragraphIndex(zone.anchorParagraphId));
+      eligible = new Set(
+        anchor && !anchor.frame && anchor.paragraph.id === zone.anchorParagraphId
+          ? anchoredDrawingAtomsInParagraph(anchor.paragraph, options.drawingLayout)
+              .filter(
+                ({ projection }) =>
+                  projection.wrap === 'topAndBottom' &&
+                  projection.position?.vertical.relativeFrom === 'paragraph' &&
+                  projection.position.vertical.align === null &&
+                  (projection.position.vertical.offsetEmu ?? 0) < 0
+              )
+              .map(({ projection }) => projection.drawingNodeId)
+          : []
+      );
+      liftedAnchors.set(zone.anchorParagraphId, eligible);
+    }
+    return eligible.has(zone.drawingNodeId);
+  };
   const extent = (lines: readonly PendingLine[]) =>
     lines.reduce((sum, line) => sum + line.height + (line.exclusionSkipBefore ?? 0), 0);
   return {
@@ -77,11 +110,13 @@ export function createParagraphDrawingWrap(options: {
       top: number,
       left: number,
       right: number,
+      startOffset: number,
+      paragraphSpaceBefore: number,
       omittedAnchor?: string
     ): readonly ExclusionZone[] {
       const all = entry.frame
         ? []
-        : withOwnAnchorOnlyZones(
+        : withOwnParagraphAnchorZones(
             zones,
             entry.paragraph,
             options.drawingLayout,
@@ -90,6 +125,8 @@ export function createParagraphDrawingWrap(options: {
             left,
             right,
             columnIndex,
+            startOffset,
+            paragraphSpaceBefore,
             options.compatibilityMode,
             options.displayMode ?? 'proposed',
             options.revisionAuthorFilter,
@@ -117,9 +154,13 @@ export function createParagraphDrawingWrap(options: {
           const entryOrder = options.paragraphOrder.get(entry.paragraph.id);
           const anchorOrder = options.paragraphOrder.get(zone.anchorParagraphId);
           // A page- or margin-framed band does not move when the text before it reflows, so it
-          // reaches back over the whole page. A flow-framed one would chase its own anchor.
+          // reaches back over the whole page. A flow-framed one would chase its own anchor, except
+          // a raised text table, whose position leaves out the move it causes.
           const reachesBack =
-            (!options.seedForwardOnly && zone.pageFramedBand === true) ||
+            (!options.seedForwardOnly &&
+              (zone.pageFramedBand === true ||
+                zone.reachesEarlierLines === true ||
+                liftedAnchor(zone, index))) ||
             (!placement && followingAnchor(zone, index));
           if (entryOrder !== undefined && anchorOrder !== undefined) {
             if (anchorOrder > entryOrder && !reachesBack) return false;
@@ -172,9 +213,32 @@ export function createParagraphDrawingWrap(options: {
           `${pageIndex}:${zone.anchorParagraphId}`,
           Math.max(0, extent(lines) - extent(breakWithout(zone.anchorParagraphId)))
         );
+      // A lifted band pushes every earlier paragraph on the page it crosses, not only the
+      // preceding one. Each paragraph keeps its own share, replaced when it lays out again.
+      const entryId = options.paragraphAt(index)?.paragraph.id;
+      if (entryId === undefined) return;
+      for (const [key, shares] of liftedDisplacements)
+        if (key.startsWith(`${pageIndex}:`)) shares.delete(entryId);
+      if (!lines.some((line) => (line.exclusionSkipBefore ?? 0) > 0.001)) return;
+      const anchors = new Set(
+        zones
+          .filter((candidate) => !options.seedForwardOnly && liftedAnchor(candidate, index))
+          .map((candidate) => candidate.anchorParagraphId)
+      );
+      for (const anchorId of anchors) {
+        const share = Math.max(0, extent(lines) - extent(breakWithout(anchorId)));
+        if (share <= 0.001) continue;
+        const key = `${pageIndex}:${anchorId}`;
+        const shares = liftedDisplacements.get(key) ?? new Map<string, number>();
+        shares.set(entryId, share);
+        liftedDisplacements.set(key, shares);
+      }
     },
     displacement(pageIndex: number, paragraphId: string): number {
-      return displacements.get(`${pageIndex}:${paragraphId}`) ?? 0;
+      const key = `${pageIndex}:${paragraphId}`;
+      let lifted = 0;
+      for (const share of liftedDisplacements.get(key)?.values() ?? []) lifted += share;
+      return (displacements.get(key) ?? 0) + lifted;
     },
   };
 }

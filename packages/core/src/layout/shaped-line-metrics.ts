@@ -1,4 +1,4 @@
-import { legacyCjkLineMetrics } from './legacy-cjk-line-metrics.ts';
+import { cjkLineMetrics } from './cjk-line-metrics.ts';
 import type { ResolvedFont } from './font-resource.ts';
 import type { TextMeasurer } from './semantic-records.ts';
 import { type ResolvedRunStyle } from './run-style.ts';
@@ -9,6 +9,30 @@ import {
   type LayoutShapingEnvironment,
 } from './layout-run-shape.ts';
 import type { TextShaper } from './shaped-run.ts';
+import { faceLineGapPt, takesLegacyLineGap } from './times-new-roman-leading.ts';
+import { sameFontFamily } from '../store/package/default-font-faces.ts';
+
+/** Half-point keys are integers, so a half step marks the named-face entry of a size. */
+const NAMED_FACE_KEY = 0.5;
+
+/**
+ * True when `font` is the family that `style` names, not a substitute or a glyph fallback. A
+ * localized East Asian name and its English name name one family (`メイリオ` and `Meiryo`).
+ */
+function drawsAsNamedFace(font: ResolvedFont, style: ResolvedRunStyle): boolean {
+  if (style.fontFamily === null) return false;
+  // A bold or italic request answered by the same family's regular face (a synthesized
+  // style) still draws as the named family. A stand-in from another family does not.
+  const substitution = font.substitution;
+  if (
+    substitution !== null &&
+    (substitution.lineMetrics !== undefined ||
+      !sameFontFamily(substitution.requested.family, substitution.resolved.family))
+  )
+    return false;
+  // The exact comparison answers almost every call on this per-span path without allocating.
+  return font.family === style.fontFamily || sameFontFamily(font.family, style.fontFamily);
+}
 
 /** Cached face metrics, independent of the glyph fallback selected by a run. */
 export function createShapedLineMetrics(
@@ -30,7 +54,13 @@ export function createShapedLineMetrics(
       linesByFont.set(font, bySize);
     }
     const halfPoints = layoutRunHalfPointsOf(style);
-    const cached = bySize.get(halfPoints);
+    // The legacy gap depends on the run, not only the face, so it keys the cache too.
+    const legacyGap = takesLegacyLineGap(style);
+    // So does the CJK line rule for a taller face: it applies to the family the run names,
+    // not to a substitute for it or to a glyph fallback that the same font object serves.
+    const namedFace = drawsAsNamedFace(font, style);
+    const key = (legacyGap ? halfPoints : -halfPoints) + (namedFace ? NAMED_FACE_KEY : 0);
+    const cached = bySize.get(key);
     if (cached) {
       return factor === 1
         ? cached
@@ -85,18 +115,20 @@ export function createShapedLineMetrics(
         const faceBoxCeiling = baseSizePt * maxFaceBoxEm;
         const squeeze = rawFaceBox > faceBoxCeiling ? faceBoxCeiling / rawFaceBox : 1;
         const faceBox = rawFaceBox * squeeze;
+        const ownGap = shaped.metrics.lineGap / baseEnvironment.fixedPointScale;
         const lineGap = Math.min(
-          Math.max(0, shaped.metrics.lineGap / baseEnvironment.fixedPointScale),
+          Math.max(0, faceLineGapPt(font.family, ascent, descent, ownGap, baseSizePt, legacyGap)),
           faceBox * maxLineGapFaceBoxes
         );
         const height = faceBox + lineGap;
         if (height > 0) {
-          metrics = legacyCjkLineMetrics(
+          metrics = cjkLineMetrics(
             font,
             baseSizePt,
             { height, baseline: ascent * squeeze + lineGap },
             lineGap,
-            2 / baseEnvironment.fixedPointScale
+            2 / baseEnvironment.fixedPointScale,
+            namedFace
           );
         } else {
           metrics = fallback.lineMetrics(style);
@@ -110,7 +142,7 @@ export function createShapedLineMetrics(
     // Fallback answers are already at the drawn size; only face metrics shaped at the base
     // size are cached and rescaled.
     if (!scalable) return metrics;
-    bySize.set(halfPoints, metrics);
+    bySize.set(key, metrics);
     return factor === 1
       ? metrics
       : { height: metrics.height * factor, baseline: metrics.baseline * factor };

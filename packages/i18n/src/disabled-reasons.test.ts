@@ -51,9 +51,27 @@ describe('every refusal the section-break lane publishes is translatable', () =>
   });
 });
 
+test.each([
+  'this content is locked; only alignment, indents, spacing, and line and page breaks can change',
+  'this content is bound to data and cannot change',
+])('the paragraph format refusal "%s" is translatable', (reason) => {
+  expect(localizeDisabledReason(reason, createT(en))).not.toBe(reason);
+});
+
 test('the empty reviewer roster refusal is translatable', () => {
   const reason = 'the document has no review authors';
   expect(localizeDisabledReason(reason, createT(en))).not.toBe(reason);
+});
+
+test.each([
+  'this drawing is a chart; only delete applies, and it removes the whole chart',
+  'the selection contains a chart; a chart cannot be copied, cut or pasted',
+])('the chart refusal %s is translatable', (reason) => {
+  expect(localizeDisabledReason(reason, createT(en))).toBe(
+    reason.startsWith('the selection')
+      ? en.disabledReason.chartClipboard
+      : en.disabledReason.chartDrawing
+  );
 });
 
 test('the picture-selected insert refusal is translatable', () => {
@@ -63,6 +81,7 @@ test('the picture-selected insert refusal is translatable', () => {
 
 test.each([
   'compact linear editing cannot preserve this equation source formatting',
+  'compact linear text cannot spell this equation',
   'equation replacement is not supported in suggesting mode',
   'in suggesting mode, remove the whole equation block rather than one equation',
 ])('the equation popover refusal %s is translatable', (reason) => {
@@ -72,4 +91,29 @@ test.each([
 test('the content-lock formatting refusal is translatable', () => {
   const reason = 'this content is locked';
   expect(localizeDisabledReason(reason, createT(en))).not.toBe(reason);
+});
+
+test.each([
+  [
+    'suggesting cannot delete a whole table; stop suggesting to delete it, or delete its rows one at a time',
+    'tableDeleteSuggesting',
+  ],
+  ['suggesting cannot move a table; stop suggesting to move it', 'tableMoveSuggesting'],
+  ['selecting a table row is not supported yet', 'selectTableRowUnsupported'],
+  ['selecting a table column is not supported yet', 'selectTableColumnUnsupported'],
+] as const)('the table refusal %s is translatable', (reason, key) => {
+  expect(localizeDisabledReason(reason, createT(en))).toBe(en.disabledReason[key]);
+});
+
+// The undo and indent buttons and the Go To and Bookmark rows show these when disabled. Without an
+// entry, a localized editor showed them in English.
+test.each([
+  ['nothing to undo', 'nothingToUndo'],
+  ['nothing to redo', 'nothingToRedo'],
+  ['the selection is already at the outermost level', 'outermostLevel'],
+  ['the selection cannot indent any further', 'cannotIndentFurther'],
+  ['no Go To view is registered', 'noGoToView'],
+  ['no bookmark dialog is registered', 'noBookmarkDialog'],
+] as const)('the chrome refusal "%s" is translatable', (reason, key) => {
+  expect(localizeDisabledReason(reason, createT(en))).toBe(en.disabledReason[key]);
 });

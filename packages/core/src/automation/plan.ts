@@ -21,7 +21,9 @@ import {
   planBookmarks,
   withEnclosedBookmarkDrops,
 } from './plan-bookmarks.ts';
-import { planDocumentProperties } from './plan-document-properties.ts';
+import { planPackageOperation } from './plan-package-operations.ts';
+// The shared frozen refusal and query answer, under the names this planner has always used.
+import { answered as query, refused as refuse } from './plan-results.ts';
 import { referencedNoteIds } from './note-references.ts';
 import { settingsPartOf } from '../store/package/note-properties.ts';
 import { stylesPartOf } from '../store/package/ooxml-indexes.ts';
@@ -44,6 +46,7 @@ import { ownsInsertedControl } from './tracked-content-controls.ts';
 import { isInlineAtomOperation, planInlineAtoms } from './plan-fields.ts';
 import { planTableOperation } from './plan-tables.ts';
 import { planVirtualFurniture } from './virtual-furniture.ts';
+import { emptyFrameWriteRefusal } from './empty-text-frame.ts';
 import { isAutomationCommand } from './operations.ts';
 import { planPictures } from './plan-pictures.ts';
 import {
@@ -101,8 +104,6 @@ import type {
 import { createBatchCommandPolicy } from './batch-command-policy.ts';
 import type {
   AutomationCapabilities,
-  AutomationError,
-  AutomationErrorCode,
   AutomationHandle,
   AutomationSpan,
   AutomationValue,
@@ -230,21 +231,10 @@ export interface BatchPlanner {
     | { readonly ok: false; readonly detail: string; readonly selection?: number };
 }
 
-function error(code: AutomationErrorCode, message: string, detail?: string): AutomationError {
-  return Object.freeze(detail === undefined ? { code, message } : { code, message, detail });
-}
-
-function refuse(code: AutomationErrorCode, message: string, detail?: string): PlannedOperation {
-  return { ok: false, error: error(code, message, detail) };
-}
 /** A handle whose object an edit, a peer, or an undo removed: reading again finds a fresh one. */
 const removed = (message: string) => refuse('invalid-handle', message, TARGET_REMOVED);
 
 const APPLIED: AutomationValue = Object.freeze({ kind: 'applied' as const });
-
-function query(value: AutomationValue): PlannedOperation {
-  return { ok: true, kind: 'query', value };
-}
 
 /** Planning state remains separate for each story and scoped body. */
 interface StoryPlan {
@@ -1507,7 +1497,7 @@ export function createBatchPlanner(host: BatchPlannerHost): BatchPlanner {
     }
     const conflict = touch(plan, range.start.paragraphId);
     if (conflict) return conflict;
-    const styleId = reads.styles().idOf('hyperlink');
+    const styleId = reads.styles().characterIdOf('hyperlink');
     return staged((aim) => ({
       op: 'insertHyperlink',
       paragraphId: range.start.paragraphId,
@@ -1662,7 +1652,8 @@ export function createBatchPlanner(host: BatchPlannerHost): BatchPlanner {
             const refusal = pinWrite(plan) ?? claim(plan, paragraphId);
             if (!refusal) plan.externalCreatedCount += createdCount;
             return refusal;
-          }
+          },
+          trackingAuthor
         );
       case 'startNewList':
       case 'attachToList':
@@ -1688,12 +1679,15 @@ export function createBatchPlanner(host: BatchPlannerHost): BatchPlanner {
       case 'removeDocumentInformation':
       case 'getDocumentProperty':
       case 'setDocumentProperties':
-        return planDocumentProperties(
-          operation,
-          packageReads,
-          () => pinWrite(planFor(packageReads.body!)),
-          !host.collaborative
-        );
+      case 'getStyles':
+      case 'getSections':
+      case 'getPageSetup':
+        return planPackageOperation(operation, {
+          reads: packageReads,
+          handles,
+          pin: () => pinWrite(planFor(packageReads.body!)),
+          supportsPartCreation: !host.collaborative,
+        });
       case 'getDocument':
         return query({ kind: 'handle', handle: handles.document() });
 
@@ -1971,24 +1965,6 @@ export function createBatchPlanner(host: BatchPlannerHost): BatchPlanner {
           paragraph.value,
           joinedParagraphGroups(story).byFragment.get(paragraph.value.paragraphId)?.fragments
         );
-      }
-
-      case 'getSections': {
-        if (!handles.resolve(operation.document, 'document'))
-          return refuse('invalid-handle', 'that handle does not name a document', 'document');
-        return query({
-          kind: 'handles',
-          handles: packageReads.sections().map((section) => handles.section(section.index)),
-        });
-      }
-
-      case 'getPageSetup': {
-        const target = handles.resolve(operation.section, 'section');
-        if (!target || target.kind !== 'section')
-          return refuse('invalid-handle', 'that handle does not name a section', 'section');
-        const section = packageReads.sections()[target.index];
-        if (!section) return refuse('invalid-handle', 'that section is not in this document');
-        return query({ kind: 'pageSetup', setup: section.pageSetup });
       }
 
       case 'setPageSetup': {
@@ -2876,7 +2852,12 @@ export function createBatchPlanner(host: BatchPlannerHost): BatchPlanner {
         return refuse('conflicting-operations', 'header/footer creation must commit alone');
       const conflict = commandPolicy.conflict(operation);
       if (conflict) return refuse('conflicting-operations', conflict.message, conflict.detail);
-      const planned = plan(operation, trackingAuthor);
+      const planned = emptyFrameWriteRefusal(
+        operation,
+        () => plan(operation, trackingAuthor),
+        handles,
+        packageReads
+      );
       if (planned.ok && planned.kind === 'command' && planned.solitary) {
         if (commandPolicy.hasCommands)
           return refuse('conflicting-operations', 'header/footer creation must commit alone');

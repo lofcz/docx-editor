@@ -1,6 +1,8 @@
 {
   "title": "Guides",
   "pages": [
+    "right-to-left",
+    "cjk",
     "loading-and-saving",
     "open-failures",
     "diagnostics",
@@ -19,7 +21,6 @@
     "images",
     "custom-styles",
     "fonts",
-    "right-to-left",
     "dark-mode",
     "pop-out-windows",
     "export",

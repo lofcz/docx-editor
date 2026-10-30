@@ -108,7 +108,28 @@ export interface CjkFontsFragment {
     readonly from: CjkFontFaceRequest;
     readonly to: CjkFontFaceRequest;
   }[];
+  /**
+   * With `loading: 'background'`, the face and its substitutions, settled after the
+   * download. The editor paints the document first and lays it out again on arrival.
+   */
+  readonly deferred?: Promise<CjkFontsFragment>;
 }
+
+/**
+ * Whether a large CJK font download may delay the first paint.
+ *
+ * - `'background'`: the face installs in a separate step, after the document's other fonts.
+ *   The first paint never waits for it, and text in it can move once when it arrives.
+ * - `'wait'`: the face installs in the same step as the document's other fonts. A large
+ *   document (over about 512 KB of uncompressed content) waits up to 2 seconds for them
+ *   before its first paint. A small document paints at once and lays out again when all
+ *   of its fonts arrive.
+ *
+ * Either way, a document export that receives this resolver waits for the face.
+ *
+ * @public
+ */
+export type CjkFontLoading = 'background' | 'wait';
 
 /**
  * A fetch of the packaged face that failed for a reason other than cancellation.
@@ -132,8 +153,13 @@ export interface CjkFontLoadFailure {
 export interface CjkFontsOptions {
   /** Injectable for tests; defaults to the global `fetch`. */
   readonly fetcher?: typeof fetch;
-  /** Fetch failures. Defaults to a console warning. The document then opens without the face. */
+  /** Fetch failures. Defaults to a console warning. The document keeps its other fonts. */
   readonly onFailure?: (failure: CjkFontLoadFailure) => void;
+  /**
+   * Whether the download may delay the document. Defaults to `'background'`, because the
+   * face is about 16 MB. See {@link CjkFontLoading}.
+   */
+  readonly loading?: CjkFontLoading;
 }
 
 /**
@@ -274,33 +300,68 @@ function loadFace(fetcher: typeof fetch, url: string, signal?: AbortSignal): Pro
  * A document without one never downloads the 16 MB face.
  *
  * The face has one weight and one style, so every face of a named family points at it. Put
- * it after the origins whose faces you prefer: a family an earlier origin already paints is
- * left to that origin.
+ * it after the origins whose faces you prefer. A family an earlier origin paints by the time
+ * this resolver runs is left to that origin. A face an earlier origin loads in the background
+ * is not painted yet, so this face still downloads.
+ *
+ * The download does not delay the first paint by default: the document paints with its other
+ * fonts and lays out again when this face arrives. See {@link CjkFontLoading} for
+ * `loading: 'wait'`. A document export that receives this resolver waits for the face.
  *
  * The face is the file inside this package, fetched from where your bundler emits it. Nothing
- * comes from a third party. A failed fetch reports through `onFailure` and the document opens
- * without the face; cancellation rejects with `signal.reason`.
+ * comes from a third party. A failed fetch reports through `onFailure` and the document keeps
+ * its other fonts; cancellation rejects with `signal.reason`.
  *
  * @public
  */
 export function cjkFonts(options: CjkFontsOptions = {}): CjkFontsResolver {
   async function resolveCjkFonts(request: CjkFontsRequest): Promise<CjkFontsFragment> {
-    const painted = new Set(
-      (request.resolvedFaces ?? [])
-        .filter((face) => face.weight === 400 && face.style === 'normal')
-        .map((face) => face.family.trim().toLowerCase())
+    const faces = new Set(
+      (request.resolvedFaces ?? []).map(
+        (face) => `${face.family.trim().toLowerCase()}/${face.weight}/${face.style}`
+      )
     );
+    const isPainted = (family: string, weight = 400, style = 'normal') =>
+      faces.has(`${family.trim().toLowerCase()}/${weight}/${style}`);
+    // A localized name whose English family an earlier origin paints is that family: it takes
+    // the painted face, not the packaged one.
+    const aliases: CjkFontsFragment['substitutions'][number][] = [];
     const planned = request.families.filter((family) => {
       const key = family.trim().toLowerCase();
-      return SUBSTITUTED.has(key) && !painted.has(key);
+      if (!SUBSTITUTED.has(key) || isPainted(family)) return false;
+      const english = LOCALIZED_CJK_FAMILIES.get(family.trim());
+      if (english === undefined || !isPainted(english)) return true;
+      for (const [weight, style] of FACES)
+        aliases.push({
+          from: { family, weight, style },
+          to: isPainted(english, weight, style)
+            ? { family: english, weight, style }
+            : { family: english, weight: 400, style: 'normal' },
+        });
+      return false;
     });
     const named = request.families.some(
       (family) => family.trim().toLowerCase() === NOTO_SANS_CJK_JP_FAMILY.toLowerCase()
     );
-    if (planned.length === 0 && !named) return { sources: [], substitutions: [] };
-    if (painted.has(NOTO_SANS_CJK_JP_FAMILY.toLowerCase())) {
-      return { sources: [], substitutions: substitutionsFor(planned) };
+    if (planned.length === 0 && !named) return { sources: [], substitutions: aliases };
+    if (isPainted(NOTO_SANS_CJK_JP_FAMILY)) {
+      return { sources: [], substitutions: [...aliases, ...substitutionsFor(planned)] };
     }
+    if ((options.loading ?? 'background') === 'background') {
+      // Settles, never rejects: a cancelled load answers nothing instead.
+      const deferred = downloadFace(planned, request, aliases).catch(() => ({
+        sources: [],
+        substitutions: aliases,
+      }));
+      return { sources: [], substitutions: aliases, deferred };
+    }
+    return downloadFace(planned, request, aliases);
+  }
+  async function downloadFace(
+    planned: readonly string[],
+    request: CjkFontsRequest,
+    aliases: CjkFontsFragment['substitutions']
+  ): Promise<CjkFontsFragment> {
     const fetcher = options.fetcher ?? defaultFetch;
     let url = '';
     let bytes: Uint8Array;
@@ -317,7 +378,7 @@ export function cjkFonts(options: CjkFontsOptions = {}): CjkFontsResolver {
       };
       if (options.onFailure) options.onFailure(failure);
       else console.warn(`[fonts-cjk] ${failure.family} (${failure.url}): ${failure.diagnostic}`);
-      return { sources: [], substitutions: [] };
+      return { sources: [], substitutions: aliases };
     }
     if (request.signal?.aborted) throw request.signal.reason;
     return {
@@ -330,7 +391,7 @@ export function cjkFonts(options: CjkFontsOptions = {}): CjkFontsResolver {
           faceIndex: 0,
         },
       ],
-      substitutions: substitutionsFor(planned),
+      substitutions: [...aliases, ...substitutionsFor(planned)],
     };
   }
   const descriptor = { value: true, enumerable: false, configurable: true } as const;

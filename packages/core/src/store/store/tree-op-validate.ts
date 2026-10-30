@@ -38,6 +38,7 @@ import { validateInsertBuildingBlock } from './building-block-insert.ts';
 import type { OoxmlNode, OoxmlParagraphNode, OoxmlPart } from '../package/ooxml-tree.ts';
 import { findNode, type EditOptions } from '../package/ooxml-edit.ts';
 import { restylePassesContentLock } from './content-lock-policy.ts';
+import { changesOnlyLockFreeParagraphProperties } from './content-lock-paragraph-properties.ts';
 import { OFFICE_MATH_NAMESPACE_URI, parseLinearMath } from '../package/omml-equation.ts';
 import { isValidXmlText } from '../package/sinks.ts';
 import { isDangerousKey } from '../package/safe-record.ts';
@@ -116,10 +117,12 @@ import {
 } from './tree-op-toc.ts';
 import { validateRefreshFieldResults } from './tree-op-field-results.ts';
 import { validateInsertTable } from './tree-op-insert-table.ts';
+import { validateMoveTable } from './tree-op-move-table.ts';
 import { validateReplaceStoryBlocks } from './tree-op-story-replace.ts';
 import {
   ACCEPTED_PARAGRAPH_PROPERTIES,
   ACCEPTED_RUN_PROPERTIES,
+  ADDITIVE_RUN_PROPERTIES,
   TREE_DOC_OP_KINDS,
   invalidRevisionAttribution,
   type OoxmlProperty,
@@ -127,7 +130,10 @@ import {
   type TreeOpRejection,
 } from './tree-op-types.ts';
 
-const RUN_PROPERTY_SET: ReadonlySet<string> = new Set(ACCEPTED_RUN_PROPERTIES);
+const RUN_PROPERTY_SET: ReadonlySet<string> = new Set([
+  ...ACCEPTED_RUN_PROPERTIES,
+  ...ADDITIVE_RUN_PROPERTIES,
+]);
 const PARAGRAPH_PROPERTY_SET: ReadonlySet<string> = new Set(ACCEPTED_PARAGRAPH_PROPERTIES);
 
 function validateProperties(
@@ -352,6 +358,7 @@ export function validateTreeOp(
   if (op.op === 'insertTable') {
     return validateInsertTable(part, op);
   }
+  if (op.op === 'moveTable') return validateMoveTable(part, op);
 
   if (op.op === 'insertToc') {
     return validateInsertToc(part, op);
@@ -626,7 +633,7 @@ export function validateTreeOp(
       if (op.revision !== undefined && invalidRevisionAttribution(op.revision))
         return 'invalid-property-value';
       if (!Number.isInteger(op.level) || op.level < 0 || op.level > 8) return 'invalid-range';
-      if (isBoundAt(part, op.paragraphId)) return 'bound';
+      // A data binding mirrors text only, so it lets paragraph properties change.
       if (effectiveContentLockAt(part, op.paragraphId).content) return 'locked';
       return null;
     }
@@ -709,7 +716,7 @@ export function validateTreeOp(
           if (!Number.isInteger(position) || Math.abs(position) > 31680) return 'invalid-range';
         }
       }
-      if (isBoundAt(part, op.paragraphId)) return 'bound';
+      // A data binding mirrors text only, so it lets paragraph properties change.
       if (effectiveContentLockAt(part, op.paragraphId).content) return 'locked';
       return null;
     }
@@ -720,7 +727,7 @@ export function validateTreeOp(
       if (!Number.isInteger(level) || level < 0 || level > 8) return 'invalid-range';
       // A numId is file-addressable and becomes an attribute value: digits only.
       if (op.numId !== null && !/^\d{1,9}$/.test(op.numId)) return 'invalid-range';
-      if (isBoundAt(part, op.paragraphId)) return 'bound';
+      // A data binding mirrors text only, so it lets paragraph properties change.
       if (effectiveContentLockAt(part, op.paragraphId).content) return 'locked';
       return null;
     }
@@ -814,8 +821,12 @@ export function validateTreeOp(
       if (op.revision !== undefined && invalidRevisionAttribution(op.revision)) {
         return 'invalid-property-value';
       }
-      if (isBoundAt(part, op.paragraphId)) return 'bound';
-      if (effectiveContentLockAt(part, op.paragraphId).content) return 'locked';
+      // A data binding mirrors text only, so it lets paragraph properties change.
+      if (
+        effectiveContentLockAt(part, op.paragraphId).content &&
+        !changesOnlyLockFreeParagraphProperties(part, op)
+      )
+        return 'locked';
       return null;
     }
     case 'insertInlineContentControl': {

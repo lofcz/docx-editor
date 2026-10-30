@@ -249,6 +249,6 @@ export interface SemanticLayoutOptions {
 export type BlockLayoutOptions = ColumnBalanceBlockLayoutOptions<SemanticLayoutOptions> & {
   readonly disabledParagraphFrameIds?: ReadonlySet<string>;
   readonly paragraphFrameFallbackRound?: number;
-  /** Set by the one retry of `layoutBlocksWithGeometry`: hidden furniture zones yield. */
+  /** Set by the one retry of `layoutBlocksWithGeometry`: blocking unsupported furniture zones yield. */
   readonly yieldHiddenFurnitureZones?: boolean;
 };

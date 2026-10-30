@@ -10,11 +10,31 @@ import type { ParagraphLineSpacing } from './paragraph-style.ts';
 import type { RevisionAuthorFilter, RevisionDisplayMode } from './revision-projection.ts';
 import type { ThemeFonts } from './run-style.ts';
 import type { LayoutBox } from './semantic-records.ts';
+import type { SpaceShrinkRule } from './space-shrink-rule.ts';
 
 /** Paragraph geometry affects line starts and heights, so callers must include it in cache keys. */
 export interface ParagraphFlowOptions {
   readonly paragraphRtl?: boolean;
-  readonly justifySpaceShrink?: boolean;
+  /**
+   * How a line may compress its inter-word spaces to keep the word that overflows it
+   * (`resolveSpaceShrinkRule`). Absent, lines keep natural spaces.
+   */
+  readonly spaceShrink?: SpaceShrinkRule;
+  /** A left tab stop past the margin is honoured, and its text may run past the margin. */
+  readonly leftTabsPastMargin?: boolean;
+  /** An inline object opening its line stays on it beside a float, however wide. */
+  readonly inlineObjectsBesideFloats?: boolean;
+  /** Square wrapping on the largest side breaks a tie to the physical left (mode 15 and later). */
+  readonly largestWrapTieLeft?: boolean;
+  /**
+   * A Korean paragraph-final mark that hangs lets the text before it fill the measure (mode 15
+   * and later). Otherwise that last line keeps its natural width.
+   */
+  readonly koreanHangingLineFills?: boolean;
+  /** A body paragraph, where a column break ends its column. */
+  readonly columnBreaksEndColumns?: boolean;
+  /** The paragraph mark after a closing page break takes a line on the next page. */
+  readonly pageBreakMarkOnNextPage?: boolean;
   /** Justified paragraphs may compress East Asian punctuation to fit a line; others keep natural widths. */
   readonly cjkPunctuationFit?: boolean;
   readonly typography?: CjkParagraphTypography;

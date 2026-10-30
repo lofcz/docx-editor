@@ -34,6 +34,8 @@ import {
 //   - deleting inside an existing `w:del` does nothing, since it is already gone.
 
 import { textWithHyphens } from './tree-op-inline-elements.ts';
+import { noteReferenceEndingAt, noteTypingProperties } from './note-typing-boundary.ts';
+import { trackedTypingProperties } from './fit-text-typing-boundary.ts';
 import {
   WML_NAMESPACE_URI,
   type OoxmlElement,
@@ -56,6 +58,7 @@ import {
   type EditOptions,
 } from '../package/ooxml-edit.ts';
 import { equivalentNodes } from './ooxml-node-equality.ts';
+import { sameRevision } from './same-revision.ts';
 import { nextRevisionId } from './tree-op-revision-ids.ts';
 import { TEXT_DEPS, fromEdit } from './tree-op-nodes.ts';
 import {
@@ -376,9 +379,10 @@ function applyTrackedInsertion(
     ? Math.max(aim, replacedEnd(paragraph, offsets, replaced!, author, aim))
     : aim;
   const trailingDestination = trailingInsertionDestination(paragraph, offset);
+  const afterNote = bias === 'left' && noteReferenceEndingAt(paragraph, offset);
   const fieldDestination = owner
     ? insertionDestination(paragraph, offset, owner, bias)
-    : fieldInsertionEndAt(paragraph, offset)
+    : fieldInsertionEndAt(paragraph, offset) || afterNote
       ? insertionDestination(paragraph, offset, null)
       : null;
   const fieldSite = fieldDestination?.site;
@@ -386,10 +390,15 @@ function applyTrackedInsertion(
     ? [...offsets.segments].reverse().find((segment) => segment.end === offset)?.runId
     : undefined;
   const fieldLeftRun = fieldLeftRunId ? findNode(part, fieldLeftRunId) : null;
-  const fieldProperties = () => (fieldLeftRun ? insertedRunProperties(mint, fieldLeftRun) : []);
+  const fieldProperties = () =>
+    afterNote
+      ? noteTypingProperties(paragraph, offset, mint)
+      : fieldLeftRun
+        ? insertedRunProperties(mint, fieldLeftRun)
+        : [];
   // Beside a control that typing cannot enter, the words take the text's formatting outside it.
   const besideProperties = (): readonly OoxmlNode[] | null => {
-    if (replacesThisEdit) return null;
+    if (replacesThisEdit || afterNote) return null;
     const run = formattingRunBesideRestrictedControl(paragraph, offset, offsets);
     return run === undefined ? null : run ? insertedRunProperties(mint, run) : [];
   };
@@ -563,7 +572,8 @@ function applyTrackedInsertion(
           node.id === fieldSite.run.id
         ) {
           const children = childrenOf(node);
-          const properties = () => insertedRunProperties(mint, node);
+          const properties = () =>
+            afterNote ? fieldProperties() : insertedRunProperties(mint, node);
           const head = inlineRunSlice(mint, node, children.slice(0, fieldSite.index));
           const tail = inlineRunSlice(mint, node, [
             ...children.filter(isRunProperties).map((child) => copy(mint, child)),
@@ -766,7 +776,13 @@ function applyTrackedInsertion(
           cursor.offset = end + payload.length;
           continue;
         }
-        const properties = insertedRunProperties(mint, node);
+        const properties = trackedTypingProperties(
+          insertedRunProperties(mint, node),
+          part,
+          offsets,
+          node,
+          offset
+        );
         if (offset === start) {
           out.push(wrap(properties, containerDepth, node, offset - start), node);
         } else if (offset === end) {
@@ -875,7 +891,7 @@ function splitRunAndInsert(
  * valid, and read identically by anything that concatenates, but it accumulates one element
  * per keystroke and is not what Word writes.
  */
-function coalesced(mint: () => string, nodes: readonly OoxmlNode[]): OoxmlNode[] {
+export function coalesced(mint: () => string, nodes: readonly OoxmlNode[]): OoxmlNode[] {
   const out: OoxmlNode[] = [];
   for (const node of nodes) {
     const previous = out[out.length - 1];
@@ -965,21 +981,6 @@ function mergeableTextRun(run: OoxmlElement): boolean {
   return (
     content.length > 0 &&
     content.every((child) => child.kind === 'text' || child.kind === 'deletedText')
-  );
-}
-
-/** Two wrappers are the same revision when their `CT_TrackChange` triple agrees. */
-function sameRevision(a: OoxmlElement, b: OoxmlElement): boolean {
-  const read = (node: OoxmlElement, localName: string): string | undefined =>
-    node.attributes.find(
-      (attribute) =>
-        attribute.namespaceUri === WML_NAMESPACE_URI && attribute.localName === localName
-    )?.value;
-  return (
-    read(a, 'id') !== undefined &&
-    read(a, 'id') === read(b, 'id') &&
-    read(a, 'author') === read(b, 'author') &&
-    read(a, 'date') === read(b, 'date')
   );
 }
 

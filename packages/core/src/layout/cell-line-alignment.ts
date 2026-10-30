@@ -1,3 +1,4 @@
+import { placeOrdinaryCellLine } from './ordinary-cell-line.ts';
 // Placing and aligning one cell line in its line box.
 //
 // Shared by cell placement and row geometry reuse, so a reused line goes through exactly the
@@ -9,6 +10,7 @@ import { alignLineWithPictures } from './line-picture-alignment.ts';
 import {
   alignSpans,
   boxLineSetsLikeLastLine,
+  paragraphDistributedSpacing,
   lineAlignmentMeasure,
   lineAlignOffset,
   type Alignment,
@@ -40,6 +42,19 @@ export function alignCellLine(
   shared: CellLineAlignment
 ): ReturnType<typeof alignLineWithPictures> {
   const { alignment } = shared;
+  const ordinary =
+    !shared.rtl && placedDrawings.length === 0
+      ? placeOrdinaryCellLine(
+          pendingLine,
+          paragraphId,
+          penX,
+          y,
+          lineIndent,
+          lineAvailableWidth,
+          alignment
+        )
+      : null;
+  if (ordinary) return { spans: ordinary.spans, offset: ordinary.offset, drawings: placedDrawings };
   const placedSpans = pendingLine.spans.map((span) => ({
     ...span,
     // A cell paragraph breaks under its own id, so its spans share the broken range.
@@ -47,7 +62,7 @@ export function alignCellLine(
     box: { ...span.box, x: span.box.x + penX, y },
   }));
   // A float in the cell leaves the line passages; the line aligns inside them, as in the body.
-  // Placement mirrors a right-to-left line, which records no passages.
+  // A right-to-left line maps its mirrored passages back through the pen origin.
   const measure = lineAlignmentMeasure(pendingLine, penX, lineIndent, lineAvailableWidth);
   return alignLineWithPictures(
     placedSpans,
@@ -65,7 +80,10 @@ export function alignCellLine(
         shared.rtl,
         shared.inTableCell,
         pendingLine.spaceShrink === true,
-        measure.passages
+        measure.passages,
+        paragraphDistributedSpacing(shared.props, shared.styleCascade),
+        shared.styleCascade?.typography?.eastAsianSpacing !== false,
+        pendingLine
       ),
     (aligned) => lineAlignOffset(placedSpans, aligned, alignment, measure.available, measure.used)
   );

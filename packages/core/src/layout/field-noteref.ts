@@ -37,7 +37,6 @@ import {
 } from '../store/package/ooxml-shared.ts';
 import {
   authoredDocumentEndnoteProperties,
-  authoredDocumentFootnoteProperties,
   authoredEndnotePropertiesFromSectPr,
   authoredFootnotePropertiesFromSectPr,
   resolveEndnoteProperties,
@@ -54,7 +53,10 @@ import {
 } from './field-instruction.ts';
 import { walkStoryParagraphs } from './list-resolve.ts';
 import { deriveNoteDisplayMarksResolved, type NoteReferenceSite } from './note-numbering.ts';
-import { enumerateDocumentSectionsFromBlocks, paragraphSectionNode } from './section-properties.ts';
+import {
+  enumerateDocumentSectionsFromBlocks,
+  sectionPropertiesNodes,
+} from './section-properties.ts';
 
 /** Ceiling on note reference sites one story contributes; sites past it resolve to cache. */
 const MAX_NOTEREF_SITES = 4096;
@@ -116,40 +118,28 @@ export function noteRefNumberingFromNotes(
 
 /**
  * The save-refresh path's numbering input, rebuilt from the package the way the surface
- * builds its notes input (settings-level `w:footnotePr`/`w:endnotePr`, then each section's
- * paragraph-level `w:sectPr` override), so a refreshed NOTEREF result carries the value the
- * pages paint. The final section's body-level `w:sectPr` resolves to the document defaults
- * here exactly as it does there.
+ * builds its notes input (each section's own `w:sectPr` — a paragraph's, or the body-level one
+ * for the final section — with only the endnote position falling back to settings.xml), so a
+ * refreshed NOTEREF result carries the value the pages paint.
  */
 export function noteRefNumberingForPart(
   pkg: OoxmlPackage,
   part: OoxmlPart,
   blocks: readonly OoxmlElement[]
 ): NoteRefNumberingInput {
-  const settings = settingsPartOf(pkg);
-  const docFnAuthored = authoredDocumentFootnoteProperties(settings);
-  const docEnAuthored = authoredDocumentEndnoteProperties(settings);
-  const documentFootnoteProps = resolveFootnoteProperties(undefined, docFnAuthored);
+  // settings.xml contributes only the endnote position; numbering is per section.
+  const docEnAuthored = authoredDocumentEndnoteProperties(settingsPartOf(pkg));
+  const documentFootnoteProps = resolveFootnoteProperties();
   const documentEndnoteProps = resolveEndnoteProperties(undefined, docEnAuthored);
   const sections = enumerateDocumentSectionsFromBlocks(part, blocks).sections;
-  const sectPrOf = (section: NoteRefSectionRange): OoxmlElement | undefined => {
-    if (section.blockStart === section.blockEndExclusive) return undefined;
-    const block = blocks[section.blockEndExclusive - 1];
-    return block?.kind === 'paragraph' ? paragraphSectionNode(block) : undefined;
-  };
+  const sectPrs = sectionPropertiesNodes(part, blocks, sections);
   return {
     sections,
-    footnotePropsBySection: sections.map((section) =>
-      resolveFootnoteProperties(
-        authoredFootnotePropertiesFromSectPr(sectPrOf(section)),
-        docFnAuthored
-      )
+    footnotePropsBySection: sectPrs.map((sectPr) =>
+      resolveFootnoteProperties(authoredFootnotePropertiesFromSectPr(sectPr))
     ),
-    endnotePropsBySection: sections.map((section) =>
-      resolveEndnoteProperties(
-        authoredEndnotePropertiesFromSectPr(sectPrOf(section)),
-        docEnAuthored
-      )
+    endnotePropsBySection: sectPrs.map((sectPr) =>
+      resolveEndnoteProperties(authoredEndnotePropertiesFromSectPr(sectPr), docEnAuthored)
     ),
     documentFootnoteProps,
     documentEndnoteProps,

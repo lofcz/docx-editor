@@ -2,6 +2,7 @@ import {
   editorHostElement,
   editorInstanceScope,
   hostDocumentOf,
+  hostWindowOf,
   isDomNode,
   listenForOutsidePress,
 } from '@docx-editor.dev/core/editor';
@@ -44,7 +45,7 @@ import { MenuBookmark } from './menu-bookmark';
 import type { ToolbarTranslate } from '../toolbar/toolbar-context';
 import { chromeIcon, guardToolbarMousedown } from '../toolbar/ToolbarButton';
 import { MORE_PATHS } from '../toolbar/ToolbarOverflow';
-import { FIXED_ATTRIBUTE, useToolbarOverflow } from '../toolbar/useToolbarOverflow';
+import { FIXED_ATTRIBUTE, useToolbarGroupOverflow } from '../toolbar/useToolbarOverflow';
 import {
   MENU_OVERFLOW_ID,
   MenuRowTabIndexContext,
@@ -80,9 +81,10 @@ import {
   type MenuPartComponent,
 } from './parts';
 import { MenuHelp, MenuReportIssue } from './menu-help';
-import { useScopeClassName } from '../scope-context';
+import { useChromeScopeClassName } from '../color-mode-context';
 import { MenuReview, MenuReviewers } from './Reviewers';
 import { usePopupEscape } from '../toolbar/usePopupEscape';
+import { useChromeDir } from '../../i18n';
 
 const MENU_PARTS: Record<ChromeMenuId, Component> = {
   file: MenuFile,
@@ -201,7 +203,8 @@ const DocxEditorMenuRoot = defineComponent({
     provide(MenuRowTabIndexContext, 0);
     const dialogs = useDialogHost();
     const popups = usePopupConfig();
-    const scopeClassName = useScopeClassName();
+    const scopeClassName = useChromeScopeClassName();
+    const chromeDir = useChromeDir();
     const editorRef = useDocxEditor();
     const { t: catalogT } = useTranslation();
     const openMenu = ref<MenuId | null>(null);
@@ -425,7 +428,7 @@ const DocxEditorMenuRoot = defineComponent({
       ids: [],
       order: [],
     });
-    const { attach, overflow } = useToolbarOverflow(
+    const { attach, overflow } = useToolbarGroupOverflow(
       () => props.overflow,
       () => layout.value.ids,
       () => layout.value.order
@@ -537,7 +540,8 @@ const DocxEditorMenuRoot = defineComponent({
             data-testid="docx-menubar"
             // One line when the bar measures itself; the stylesheet reads this.
             {...(props.overflow ? { 'data-overflow': '' } : {})}
-            class={`${scopeClassName}docx-menubar${props.className ? ` ${props.className}` : ''}`}
+            class={`${scopeClassName()}docx-menubar${props.className ? ` ${props.className}` : ''}`}
+            dir={chromeDir.value}
             onMousedown={guardToolbarMousedown}
             onKeydown={(event: KeyboardEvent) => {
               if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
@@ -547,7 +551,8 @@ const DocxEditorMenuRoot = defineComponent({
               const index = triggers.indexOf(hostDocumentOf(bar).activeElement as HTMLElement);
               if (index === -1) return;
               event.preventDefault();
-              const step = event.key === 'ArrowRight' ? 1 : -1;
+              const rtl = hostWindowOf(bar).getComputedStyle(bar).direction === 'rtl';
+              const step = (event.key === 'ArrowRight' ? 1 : -1) * (rtl ? -1 : 1);
               const next = triggers[(index + step + triggers.length) % triggers.length];
               const id = next?.closest('[data-menu]')?.getAttribute('data-menu');
               if (!id) return;

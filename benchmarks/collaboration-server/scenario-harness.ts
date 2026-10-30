@@ -25,6 +25,7 @@ import { advanceClock, resetClock } from './scenario-clock.ts';
 import { TypedTokens } from './scenario-tokens.ts';
 import { DecisionOracle } from './scenario-decisions.ts';
 import { CaretWatch } from './scenario-presence.ts';
+import { sameShownState, shownStateOf, type ShownState } from './scenario-shown-state.ts';
 import * as Y from 'yjs';
 import {
   paragraphTextOf,
@@ -48,7 +49,7 @@ import {
 } from './scenario-fresh.ts';
 import type { DocumentRegistry } from '../../packages/pro/src/collaboration/document/index.ts';
 import { sharedTexts } from './scenario-tree.ts';
-import { storeFrom } from './document-text.ts';
+import { storeFrom, storeFromPackage } from './document-text.ts';
 import {
   Network,
   openReplica,
@@ -65,10 +66,12 @@ import {
   type EditKind,
 } from './scenario-plan.ts';
 import {
+  blockSkeleton,
   comparableBody,
   fingerprint,
   firstDifference,
   firstDifferentParagraph,
+  mainPartIds,
   paragraphIds,
   missingDeletion,
   reopen,
@@ -177,6 +180,8 @@ class Simulation {
   firstFailure = -1;
   /** Check every replica against its shared state after every action, not only at the end. */
   strict = false;
+  /** The shared state and tree each replica last passed `checkShown` with. */
+  private readonly passedAt = new Map<Replica, ShownState>();
   /**
    * With in-order delivery every edit sees every earlier one, so the editing replica must
    * hold exactly what one plain store holds after the same edits. The store follows each
@@ -194,9 +199,14 @@ class Simulation {
     for (const replica of this.replicas) {
       // A replica waiting for a held-back update keeps its last complete view on purpose.
       if (awaitingUpdates(replica.ydoc)) continue;
+      // An unchanged replica passes again; see `scenario-shown-state.ts` for why.
+      const now = shownStateOf(replica.ydoc, replica.store.currentPackage());
+      const passed = this.passedAt.get(replica);
+      if (passed && sameShownState(passed, now)) continue;
       const problem = withFreshBuild(replica.ydoc, replica.handle.session, (built, registry) =>
         built.ok ? this.shownDifference(replica, built.package, registry) : null
       );
+      if (!problem) this.passedAt.set(replica, now);
       if (problem) {
         this.problems.push(`replica ${replica.index} ${when} ${problem}`);
         if (this.firstFailure < 0) this.firstFailure = this.performed;
@@ -386,6 +396,7 @@ class Simulation {
             this.refused[`gate:${refusal}`] = (this.refused[`gate:${refusal}`] ?? 0) + 1;
             break;
           }
+          const before = editor.store.currentPackage();
           const removing = this.tokens.beforeEdit(editor.store, op);
           const decision = this.decisions.before(editor.store, op, editor.index, editor.ydoc);
           const result = applyOp(editor.store, op, `replica-${editor.index}`);
@@ -411,6 +422,7 @@ class Simulation {
           }
           this.sequence.push(tagged.addressed);
           this.sequenceReplicas.push(editor.index);
+          this.checkAuthorBlocks(editor, before, tagged.addressed);
           this.followLockstep(editor, tagged.addressed);
         } catch (error) {
           this.problems.push(`replica ${editor.index} threw ${(error as Error).stack ?? error}`);
@@ -447,6 +459,33 @@ class Simulation {
   /** Close every open undo group, as a host does when its operations finish. */
   closeGroups(): void {
     for (const index of [...this.groups.keys()]) this.toggleGroup(index);
+  }
+
+  /**
+   * An edit leaves its author's blocks where one plain store leaves them after the same edit
+   * on the same document. This holds under every delivery, because no remote update arrives
+   * inside one edit. Convergence cannot see a block that every replica lost or misplaced
+   * alike; this check can. It compares blocks only: inside a paragraph, a concurrent conflict
+   * can show differently from a plain store, and sequential runs compare text in lockstep.
+   */
+  private checkAuthorBlocks(editor: Replica, before: OoxmlPackage, addressed: Addressed): void {
+    // A replica that holds back an update keeps its last complete view on purpose.
+    if (awaitingUpdates(editor.ydoc)) return;
+    const solo = storeFromPackage(before);
+    const op = bindIds(solo, addressed);
+    const result = op
+      ? applyOp(solo, op, `replica-${editor.index}`)
+      : { ok: false as const, reason: 'unbound' };
+    // A plain store can refuse what a replica's conflict view allowed; that is not a lost block.
+    if (!result.ok) return;
+    const known = mainPartIds(before);
+    const expected = blockSkeleton(solo.currentPackage(), known);
+    const actual = blockSkeleton(editor.store.currentPackage(), known);
+    if (expected !== actual) {
+      this.problems.push(
+        `replica ${editor.index} holds other blocks than a plain store after its own edit ${firstDifference(expected, actual)} (edit ${this.sequence.length - 1})`
+      );
+    }
   }
 
   /** Apply an edit a replica made to the lockstep store, and compare the two. */

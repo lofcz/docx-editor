@@ -1,3 +1,4 @@
+import { copyLineHangingPunctuation } from './line-hanging-punctuation.ts';
 import { automaticTextSpacingBefore } from './cjk-automatic-spacing.ts';
 // The broken-but-unplaced line: the record breakParagraph accumulates and pagination
 // budgets, before placement publishes a LineRecord from it. Extracted from paragraph-flow
@@ -11,6 +12,7 @@ import { clipInlineDrawingRecordVertically, type InlineDrawingRecord } from './d
 import { topAndBottomSkipBeforeLine, type ExclusionZone } from './drawing-exclusion.ts';
 import type { ModelRange } from './field-pieces.ts';
 import type { WrapSegment } from './line-wrap-passages.ts';
+import type { SpaceShrinkFloor } from './space-shrink-rule.ts';
 import { PAGE_BREAK_CHAR } from '@docx-editor.dev/core/store';
 
 export interface PendingLine {
@@ -48,6 +50,17 @@ export interface PendingLine {
    * overflow such as hanging punctuation.
    */
   spaceShrink?: true;
+  /**
+   * The flow admitted a word on this line by borrowing inter-word space, so its natural
+   * content can run past its float passage while the compressed line stays inside it.
+   */
+  borrowedSpace?: true;
+  /**
+   * The line borrowed inter-word space under a rule for every alignment
+   * (`SpaceShrinkRule.everyAlignment`), so alignment compresses it to fill the measure as it
+   * does a justified line, each space down to this floor.
+   */
+  compressesSpaces?: SpaceShrinkFloor;
   /** Model ranges on this line covering deleted content; see {@link LineRecord.deletedRanges}. */
   deletedRanges?: readonly ModelRange[];
   /** Vertical gap inserted before this line to clear a drawing exclusion band. */
@@ -83,8 +96,9 @@ export interface PendingLine {
    */
   wrapSegment?: WrapSegment;
   /**
-   * The float passages a line that steps over a float holds content in, left to right, in
-   * paragraph-local coordinates. The first starts where the line's content begins.
+   * The float passages a line that steps over a float holds content in, in the order its pen
+   * met them, in paragraph-local coordinates (mirrored when {@link wrapMirrored}). The first
+   * starts where the line's content begins.
    *
    * Each part of such a line aligns INSIDE its own passage: centred text is centred beside the
    * float on each side, and right-aligned text ends at each passage's right edge. Aligning the
@@ -92,6 +106,12 @@ export interface PendingLine {
    * one passage holds whole, which {@link wrapSegment} describes.
    */
   wrapPassages?: readonly { readonly start: number; readonly end: number }[];
+  /**
+   * The line broke in x mirrored about its paragraph's measure, as a right-to-left line does
+   * beside a float (`wrap-break-space.ts`): it fills the rightmost passage first. Its spans,
+   * {@link wrapSegment} and {@link wrapPassages} are then in that mirrored x, in break order.
+   */
+  wrapMirrored?: true;
   /** Tracked anchored-drawing attributions on this line; see {@link LineRecord.anchorRevisions}. */
   anchorRevisions?: readonly RevisionAttribution[];
   /** Revisions a resolved view answered on this line; see {@link LineRecord.changeSites}. */
@@ -144,6 +164,23 @@ export function admittedToNarrowPassage(
   const opening = characterAt(pieces, offset);
   if (opening !== undefined && ZERO_WIDTH_OPENER.test(opening)) return true;
   return continuesCutSegment;
+}
+
+/**
+ * Whether page or column breaks, and nothing else, precede `offset` among a paragraph's
+ * pieces: the text from `offset` is then the paragraph's first line, with its indent.
+ */
+export function onlyLeadingBreaksBefore(
+  pieces: readonly { readonly start: number; readonly text: string; readonly breakKind?: string }[],
+  offset: number
+): boolean {
+  let seen = false;
+  for (const piece of pieces) {
+    if (piece.start >= offset) continue;
+    if (piece.text !== PAGE_BREAK_CHAR && piece.breakKind !== 'column') return false;
+    seen = true;
+  }
+  return seen;
 }
 
 /** Whether page breaks, and nothing else, precede `offset` among a paragraph's pieces. */
@@ -210,12 +247,15 @@ export function holdsOnlyPageBreak(line: PendingLine): boolean {
 }
 
 /**
- * Spaces (U+0020) and tabs take no line height, whatever their size, underline or tab leader.
- * A line that holds only them measures as an empty line: the paragraph mark sets its height.
- * A no-break space still counts, and so does a line break.
+ * Spaces (U+0020), ideographic spaces (U+3000) and tabs take no line height, whatever their
+ * face, size, underline or tab leader. A line that holds only them measures as an empty line:
+ * the paragraph mark sets its height. A no-break space still counts, and so does a line break.
  */
 export function isHeightlessWhitespace(text: string): boolean {
-  return text.length > 0 && /^[ \t]+$/.test(text);
+  // Spaces, tabs, soft hyphens and zero-width characters draw no ink: a line of only these
+  // takes the paragraph mark's height. An ideographic space draws in the East Asian face, so
+  // counting it would give a Latin line the taller line of that face.
+  return text.length > 0 && /^[ \t\u00AD\u200B\u200C\u200D\u2060\uFEFF\u3000]+$/.test(text);
 }
 
 /** Face extents translated by an authored baseline position, without rescaling glyphs. */
@@ -269,6 +309,7 @@ const SPAN_DECORATIONS: Record<Exclude<keyof StyleSpanRecord, 'range' | 'text' |
   caretEdges: true,
   tabLeader: true,
   tabLeaderAdvancePt: true,
+  tabAlignment: true,
   link: true,
   wrapAdvanceBefore: true,
   revisions: true,
@@ -302,6 +343,8 @@ function decorationsMatch(previous: StyleSpanRecord, current: StyleSpanRecord): 
   return true;
 }
 
+const isSoundMark = (codePoint: number) => codePoint === 0x3099 || codePoint === 0x309a;
+
 /** Whether one ideographic seam between two closed spans carries no information. */
 function seamIsMergeable(previous: StyleSpanRecord, current: StyleSpanRecord): boolean {
   if (previous.glyphOffsetPt || current.glyphOffsetPt) return false;
@@ -311,6 +354,8 @@ function seamIsMergeable(previous: StyleSpanRecord, current: StyleSpanRecord): b
   const before = lastCodePointOf(previous.text);
   const after = current.text.codePointAt(0);
   if (before === undefined || after === undefined) return false;
+  // A sound mark split into its own span (`sound-mark-pieces.ts`) must not rejoin its base.
+  if (isSoundMark(before) || isSoundMark(after)) return false;
   if (!isIdeographicForLineBreak(before) || !isIdeographicForLineBreak(after)) return false;
   if (previous.range.paragraphId !== current.range.paragraphId) return false;
   if (previous.range.end !== current.range.start) return false;
@@ -425,43 +470,50 @@ export function pendingLineFlowExtentAtPlacement(
  * quietly corrupt every subsequent reuse.
  */
 export function frozenLine(line: PendingLine): PendingLine {
-  return Object.freeze({
-    spans: line.spans.map((span) =>
-      Object.freeze({ ...span, box: Object.freeze({ ...span.box }) })
-    ),
-    drawings: line.drawings.map((drawing) =>
-      Object.freeze({
-        ...drawing,
-        paintBounds: Object.freeze({ ...drawing.paintBounds }),
-        hitBounds: Object.freeze({ ...drawing.hitBounds }),
-      })
-    ),
-    start: line.start,
-    end: line.end,
-    width: line.width,
-    height: line.height,
-    baseline: line.baseline,
-    leading: line.leading,
-    trailingSpacing: line.trailingSpacing,
-    ...(line.pageBreakAfter ? { pageBreakAfter: true } : {}),
-    ...(line.columnBreakAfter ? { columnBreakAfter: true } : {}),
-    ...(line.manualBreakAfter ? { manualBreakAfter: true } : {}),
-    ...(line.spaceShrink ? { spaceShrink: true } : {}),
-    ...(line.deletedRanges ? { deletedRanges: Object.freeze(line.deletedRanges) } : {}),
-    ...(line.exclusionSkipBefore ? { exclusionSkipBefore: line.exclusionSkipBefore } : {}),
-    ...(line.breakClearance ? { breakClearance: true } : {}),
-    ...(line.ownBandClearance ? { ownBandClearance: true } : {}),
-    ...(line.anchorClearanceBefore !== undefined
-      ? { anchorClearanceBefore: line.anchorClearanceBefore }
-      : {}),
-    ...(line.firstLineOffset ? { firstLineOffset: line.firstLineOffset } : {}),
-    ...(line.wrapSegment ? { wrapSegment: Object.freeze({ ...line.wrapSegment }) } : {}),
-    ...(line.wrapPassages
-      ? { wrapPassages: Object.freeze(line.wrapPassages.map((passage) => Object.freeze(passage))) }
-      : {}),
-    ...(line.anchorRevisions ? { anchorRevisions: Object.freeze(line.anchorRevisions) } : {}),
-    ...(line.changeSites ? { changeSites: Object.freeze(line.changeSites) } : {}),
-  }) as PendingLine;
+  return copyLineHangingPunctuation(
+    line,
+    Object.freeze({
+      spans: line.spans.map((span) =>
+        Object.freeze({ ...span, box: Object.freeze({ ...span.box }) })
+      ),
+      drawings: line.drawings.map((drawing) =>
+        Object.freeze({
+          ...drawing,
+          paintBounds: Object.freeze({ ...drawing.paintBounds }),
+          hitBounds: Object.freeze({ ...drawing.hitBounds }),
+        })
+      ),
+      start: line.start,
+      end: line.end,
+      width: line.width,
+      height: line.height,
+      baseline: line.baseline,
+      leading: line.leading,
+      trailingSpacing: line.trailingSpacing,
+      ...(line.pageBreakAfter ? { pageBreakAfter: true } : {}),
+      ...(line.columnBreakAfter ? { columnBreakAfter: true } : {}),
+      ...(line.manualBreakAfter ? { manualBreakAfter: true } : {}),
+      ...(line.spaceShrink ? { spaceShrink: true } : {}),
+      ...(line.compressesSpaces ? { compressesSpaces: line.compressesSpaces } : {}),
+      ...(line.deletedRanges ? { deletedRanges: Object.freeze(line.deletedRanges) } : {}),
+      ...(line.exclusionSkipBefore ? { exclusionSkipBefore: line.exclusionSkipBefore } : {}),
+      ...(line.breakClearance ? { breakClearance: true } : {}),
+      ...(line.ownBandClearance ? { ownBandClearance: true } : {}),
+      ...(line.anchorClearanceBefore !== undefined
+        ? { anchorClearanceBefore: line.anchorClearanceBefore }
+        : {}),
+      ...(line.firstLineOffset ? { firstLineOffset: line.firstLineOffset } : {}),
+      ...(line.wrapSegment ? { wrapSegment: Object.freeze({ ...line.wrapSegment }) } : {}),
+      ...(line.wrapPassages
+        ? {
+            wrapPassages: Object.freeze(line.wrapPassages.map((passage) => Object.freeze(passage))),
+          }
+        : {}),
+      ...(line.wrapMirrored ? { wrapMirrored: true } : {}),
+      ...(line.anchorRevisions ? { anchorRevisions: Object.freeze(line.anchorRevisions) } : {}),
+      ...(line.changeSites ? { changeSites: Object.freeze(line.changeSites) } : {}),
+    }) as PendingLine
+  );
 }
 
 /**
@@ -543,12 +595,15 @@ export function growPendingLineDrawingExtent(line: PendingLine): void {
     line.height = Math.max(line.height, drawing.y + drawing.height + drawing.distB);
 }
 
-/** Clip each inline drawing that reaches above its line's top to paint from that top down. */
+/**
+ * Clip each inline drawing that reaches above its line's top to paint from that top down. Text
+ * art whose ink reaches past its box keeps it, as text drawn along an arch rises over the box.
+ */
 export function clipLineDrawingsAtTop(line: PendingLine): void {
   for (let index = 0; index < line.drawings.length; index += 1) {
     const drawing = line.drawings[index]!;
     const bounds = drawing.paintBounds;
-    if (bounds.y >= -0.001) continue;
+    if (bounds.y >= -0.001 || drawing.textArt?.inkBounds) continue;
     line.drawings[index] = clipInlineDrawingRecordVertically(drawing, 0, bounds.y + bounds.height);
   }
 }

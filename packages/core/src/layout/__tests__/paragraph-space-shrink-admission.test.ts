@@ -1,3 +1,4 @@
+import { spacingOf as spansSpacing } from './shrunk-space.ts';
 import { expect, test } from 'bun:test';
 import { layoutContext, load } from './anchored-drawing-test-fixtures.ts';
 import { layoutSemanticDocument } from '../semantic-layout.ts';
@@ -69,12 +70,12 @@ function layout(bodyXml: string, width: number, compatibilityMode: number | unde
   return linesOf(result)[0]!;
 }
 
-const spacingOf = (line: LineRecord) => line.spans.map((s) => s.style.shaping?.wordSpacingPt ?? 0);
+const spacingOf = (line: LineRecord) => spansSpacing(line.spans);
 const startOf = (line: LineRecord, text: string) =>
   line.spans.find((s) => s.text.startsWith(text))!.box.x - line.spans[0]!.box.x;
 
 test('a last line whose period hangs keeps natural spacing, in body text and in a cell', () => {
-  for (const mode of [undefined, 14, 15]) {
+  for (const mode of [undefined, 14]) {
     for (const [bodyXml, width] of [
       [justified(run('aa bb cc dd.')), 92],
       [oneCell(justified(run('aa bb cc dd.')), 92), 200],
@@ -84,6 +85,19 @@ test('a last line whose period hangs keeps natural spacing, in body text and in 
       expect(spacingOf(line)).toEqual(line.spans.map(() => 0));
       expect(startOf(line, 'dd')).toBeCloseTo(72, 6);
     }
+  }
+});
+
+test('mode 15 shrinks a last line to keep its period inside, in body text and in a cell', () => {
+  for (const [bodyXml, width] of [
+    [justified(run('aa bb cc dd.')), 92],
+    [oneCell(justified(run('aa bb cc dd.')), 92), 200],
+  ] as const) {
+    const line = layout(bodyXml, width, 15);
+    expect(line.spans.map((s) => s.text).join('')).toBe('aa bb cc dd.');
+    // Each of the three spaces gives up its 1pt to the 75% floor.
+    expect(spacingOf(line).filter((spacing) => spacing !== 0)).toEqual([-1, -1, -1]);
+    expect(startOf(line, 'dd')).toBeCloseTo(69, 6);
   }
 });
 

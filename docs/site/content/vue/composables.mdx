@@ -146,7 +146,7 @@ Subscribe to an editor event for the component lifetime:
 import { useEditorEvent } from '@docx-editor.dev/vue';
 
 // `selectionChange` also fires for other state that moves without a document change, such
-// as the collaboration status, so compare the selection itself.
+// as the collaboration status or the page count, so compare the selection itself.
 let lastSelection: unknown = null;
 useEditorEvent('selectionChange', (snapshot) => {
   if (snapshot.selection !== lastSelection) panelOpen.value = false;
@@ -247,6 +247,22 @@ function toggleOrientation() {
 ```
 
 `apply()` returns `true` when the editor applies the update. Sizes and margins use twips. Set `scope` to `'section'` or `'document'`.
+
+## `useEditorColorMode`
+
+Match parts that you build yourself to the editor theme. `colorMode` is a computed ref holding the theme that `DocxEditorRoot` resolved from its `colorMode` prop: `'light'` or `'dark'`. With `color-mode="system"`, it follows the operating system setting. Outside a root, or without `colorMode`, it is `'light'`:
+
+```vue
+<script setup lang="ts">
+import { useEditorColorMode } from '@docx-editor.dev/vue';
+
+const { colorMode } = useEditorColorMode();
+</script>
+
+<template>
+  <aside :class="colorMode === 'dark' ? 'notes notes--dark' : 'notes'" />
+</template>
+```
 
 ## `useWatermark`
 
@@ -602,9 +618,11 @@ Returns typed state and actions for `text.color`, `font.size`, `font.family`, `t
 
 Returns the label for the active table border target.
 
-## `useTranslation` and `useChromeTranslate`
+## `useTranslation`, `useChromeTranslate`, and `useChromeDir`
 
 `useTranslation` returns `{ t, catalogue, lang }` for the active locale. `useChromeTranslate` resolves labels for chrome `t` props. Pass a `Map` to override selected labels.
+
+`useChromeDir` returns a read-only ref with the direction the editor chrome renders in: `'ltr'`, `'rtl'`, or `undefined` when the chrome inherits the host page direction. For more information, see [Right-to-left support](/docs/2.x/guides/right-to-left#choose-the-interface-direction).
 
 ## Toolbar helpers
 

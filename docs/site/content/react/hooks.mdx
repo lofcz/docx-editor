@@ -168,7 +168,7 @@ import { useEditorEvent } from '@docx-editor.dev/react';
 
 const lastSelection = useRef<unknown>(null);
 // `selectionChange` also fires for other state that moves without a document change, such
-// as the collaboration status, so compare the selection itself.
+// as the collaboration status or the page count, so compare the selection itself.
 useEditorEvent('selectionChange', (snapshot) => {
   if (snapshot.selection !== lastSelection.current) setPanelOpen(false);
   lastSelection.current = snapshot.selection;
@@ -246,6 +246,19 @@ function OrientationToggle() {
       {landscape ? 'Portrait' : 'Landscape'}
     </button>
   );
+}
+```
+
+## `useEditorColorMode`
+
+Use `useEditorColorMode` to match parts that you build yourself to the editor theme. It returns `{ colorMode }`, the theme that `DocxEditor.Root` resolved from its `colorMode` prop: `'light'` or `'dark'`. With `colorMode="system"`, it follows the operating system setting. Outside a root, or without `colorMode`, it returns `'light'`:
+
+```tsx
+import { useEditorColorMode } from '@docx-editor.dev/react';
+
+function NotesPanel() {
+  const { colorMode } = useEditorColorMode();
+  return <aside className={colorMode === 'dark' ? 'notes notes--dark' : 'notes'} />;
 }
 ```
 
@@ -618,6 +631,7 @@ For optional development feedback, subscribe with `useEditorEvent('historyDiagno
 | `useOpenFailure(options?)` | Returns the refused open, its packaged message, and `dismiss`, for your own toast or banner. See [Handle files that do not open](/docs/2.x/guides/open-failures). |
 | `useNavigationPane(options?)` | Provides navigation-pane open state, width, and whether the open pane covers the page (`overlay`). |
 | `useTranslation()` | Returns `{ t, catalogue, lang }` for the active locale catalog. |
+| `useChromeDir()` | Returns the direction the editor chrome renders in, `'ltr'` or `'rtl'`, or `undefined` when the chrome inherits the host page direction. See [Right-to-left support](/docs/2.x/guides/right-to-left#choose-the-interface-direction). |
 | `useChromeTranslate(overrides?)` | Returns a catalog resolver that checks an override `Map` first. |
 | `useFonts(source, ...fragments)` | Builds a stable `FontResolver`. See the [Fonts guide](/docs/2.x/guides/fonts). |
 | `useNotePropertiesState()` | Provides note-numbering properties for the current scope. |
@@ -647,7 +661,7 @@ Call the hook in a child component of the matching dialog. Each returns `values`
 | Hook | Draft type | Draft keys |
 | --- | --- | --- |
 | `usePageSetupDialog()` | `PageSetupDialogFields` | `pageWidth`, `pageHeight`, `orientation`, `marginTop`, `marginBottom`, `marginLeft`, `marginRight`, `scope` |
-| `useParagraphDialog()` | `UseParagraphDialogReturn['values']` | `alignment`, `indentLeft`, `indentRight`, `special`, `specialBy`, `spaceBefore`, `spaceAfter`, `lineRule`, `lineValue`, `contextualSpacing`, `keepNext`, `keepLines`, `widowControl`, `pageBreakBefore`, `tabStops`, `clearedAllTabStops` |
+| `useParagraphDialog()` | `UseParagraphDialogReturn['values']` | `direction`, `alignment`, `indentLeft`, `indentRight`, `special`, `specialBy`, `spaceBefore`, `spaceAfter`, `lineRule`, `lineValue`, `contextualSpacing`, `keepNext`, `keepLines`, `widowControl`, `pageBreakBefore`, `tabStops`, `clearedAllTabStops` |
 | `useTextFormFieldDialog()` | `TextFormFieldDialogFields` | `defaultText`, `type`, `maxLength`, `format`, `enabled` |
 | `useRevisionMarkupDialog()` | `ResolvedRevisionMarkup` | `insertions`, `deletions`, `changedLines`, `movedFrom`, `movedTo`, `cells`, `formatting`, `trackMoves`, `trackFormatting` |
 | `useWatermarkDialog()` | `WatermarkDialogFields` | `kind`, `imageData`, `imageName`, `scale`, `washout`, `text`, `fontFamily`, `fontSizePt`, `bold`, `italic`, `transparency`, `color`, `layout` |

@@ -40,6 +40,7 @@ import { createDocumentRefresh } from '@docx-editor.dev/core/editor';
 import { createFontSource } from '@docx-editor.dev/core/editor';
 import { CSSProperties } from 'react';
 import { DEFAULT_FONT } from '@docx-editor.dev/core/editor';
+import { deferFonts } from '@docx-editor.dev/core/editor';
 import { defineFontResolver } from '@docx-editor.dev/core/editor';
 import { DocumentChange } from '@docx-editor.dev/core/contracts/editor';
 import { DocumentHandle } from '@docx-editor.dev/core/contracts/editor';
@@ -55,6 +56,9 @@ import { DocumentSearchOptions } from '@docx-editor.dev/core/editor';
 import { DocumentSource } from '@docx-editor.dev/core/contracts/editor';
 import { DocxDocument } from '@docx-editor.dev/core/contracts/types';
 import { DocxEditorInstance } from '@docx-editor.dev/core/editor';
+import { DrawingGraphicKind } from '@docx-editor.dev/core/store';
+import { DrawingSupport } from '@docx-editor.dev/core/store';
+import { DrawingSupportIssue } from '@docx-editor.dev/core/store';
 import { Editor } from '@docx-editor.dev/core/contracts/editor';
 import { EditorCommand } from '@docx-editor.dev/core/contracts/editor';
 import { EditorCommandExecute } from '@docx-editor.dev/core/editor';
@@ -163,6 +167,7 @@ import { SupportedImageMime } from '@docx-editor.dev/core/editor';
 import { SurfaceFormatting } from '@docx-editor.dev/core/editor';
 import { SurfaceHyperlink } from '@docx-editor.dev/core/editor';
 import { TableChromeSlotId } from '@docx-editor.dev/core/editor';
+import { TableInteractionLabelKey } from '@docx-editor.dev/core/contracts/editor';
 import { TextFormFieldDialogSession } from '@docx-editor.dev/core/editor';
 import { TextMatch } from '@docx-editor.dev/core/contracts/editor';
 import { TextMeasurer } from '@docx-editor.dev/core/editor';
@@ -469,6 +474,11 @@ export const ContextMenuSelectAll: ((input: ContextMenuCommandProps) => react.JS
 };
 
 // @public
+export const ContextMenuSelectTable: ((input: ContextMenuTableRowProps) => react.JSX.Element | null) & {
+    docxRow: string;
+};
+
+// @public
 export const ContextMenuSplitCell: ((input: ContextMenuCommandProps) => react.JSX.Element | null) & {
     docxRow: string;
 };
@@ -486,6 +496,8 @@ export { DEFAULT_FONT }
 
 // @public
 export const DEFAULT_WATERMARK_PRESETS: readonly string[];
+
+export { deferFonts }
 
 export { defineFontResolver }
 
@@ -761,6 +773,8 @@ export interface DocxEditorContextMenuNamespace {
     readonly Row: typeof MenuRow;
     // (undocumented)
     readonly SelectAll: typeof ContextMenuSelectAll;
+    // (undocumented)
+    readonly SelectTable: typeof ContextMenuSelectTable;
     // (undocumented)
     readonly Separator: typeof MenuSeparator;
     readonly Slot: typeof MenuItem;
@@ -1509,6 +1523,7 @@ export interface DocxEditorRootProps {
     author?: string;
     // (undocumented)
     children?: DocxEditorChildren;
+    colorMode?: 'light' | 'dark' | 'system';
     contentLockPolicy?: ContentLockPolicy;
     document?: DocumentSource;
     fieldResults?: FieldResultsMode;
@@ -1526,7 +1541,7 @@ export interface DocxEditorRootProps {
     popups?: DocxEditorPopups;
     reviewDisplayMode?: ReviewDisplayMode;
     revisionMarkup?: RevisionMarkupOptions;
-    tableInteractionLabel?: (key: 'table.insertRowBelow' | 'table.insertColumnRight') => string;
+    tableInteractionLabel?: (key: TableInteractionLabelKey) => string;
     translate?: (key: string, params?: Record<string, string | number>) => string;
     zoom?: number;
     zoomMode?: ZoomMode | 'auto';
@@ -1796,6 +1811,7 @@ export interface DocxEditorUnsupportedElementProps extends UnsupportedElementRul
     children: (props: {
         element: UnsupportedElement;
     }) => ReactNode;
+    includePartial?: UnsupportedElementRule['includePartial'];
 }
 
 // @public
@@ -1875,6 +1891,12 @@ export type DocxFontsSource = DocxFontOrigin | readonly DocxFontOrigin[];
 
 // @public
 export type DocxSource = string | URL | Uint8Array | ArrayBuffer;
+
+export { DrawingGraphicKind }
+
+export { DrawingSupport }
+
+export { DrawingSupportIssue }
 
 export { Editor }
 
@@ -2225,6 +2247,7 @@ export function LocaleProvider(input: LocaleProviderProps): react.JSX.Element;
 export interface LocaleProviderProps {
     // (undocumented)
     children: DocxEditorChildren;
+    dir?: 'ltr' | 'rtl';
     // (undocumented)
     i18n?: Translations;
 }
@@ -2717,6 +2740,9 @@ export { RefreshResult }
 export { RefreshSubmission }
 
 export { RefreshUpdate }
+
+// @public
+export type ResolvedColorMode = 'light' | 'dark';
 
 export { ResolvedRevisionMarkup }
 
@@ -3220,6 +3246,9 @@ export interface UseBookmarksReturn {
 }
 
 // @public
+export function useChromeDir(): 'ltr' | 'rtl' | undefined;
+
+// @public
 export function useChromeTranslate(overrides?: ReadonlyMap<string, string>): ChromeTranslate;
 
 // @public
@@ -3390,6 +3419,14 @@ export interface UseDocxSourceResult {
 
 // @public
 export function useEditorCaret(): EditorCaret | null;
+
+// @public
+export function useEditorColorMode(): UseEditorColorModeReturn;
+
+// @public
+export interface UseEditorColorModeReturn {
+    readonly colorMode: ResolvedColorMode;
+}
 
 // @public
 export function useEditorCommand(target: ChromeSlotId | EditorCommand): EditorCommandState;
@@ -3638,7 +3675,7 @@ export interface UseRevisionMarkupDialogReturn extends UseDialogReturn<ResolvedR
 }
 
 // @public
-export function useScopeClassName(): '' | 'docx-editor ';
+export function useScopeClassName(): '' | 'docx-editor ' | 'docx-editor dark ';
 
 // @public
 export function useScopedChromeAnchor(findAnchor: (viewport: HTMLElement) => HTMLElement | null, placement: ScopedChromeAnchorPlacement): ScopedChromeAnchor;
@@ -3673,6 +3710,7 @@ export function useToolbarLabelFor(t: ToolbarTranslate | undefined): (key: strin
 // @public
 export function useTranslation(): {
     catalogue: LocaleStrings;
+    dir: 'ltr' | 'rtl';
     lang: string;
     t: TFunction;
 };

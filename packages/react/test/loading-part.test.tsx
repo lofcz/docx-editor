@@ -19,7 +19,7 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import { renderToString } from 'react-dom/server';
 import { act, cleanup, render, waitFor } from '@testing-library/react';
 import { zipSync, strToU8 } from 'fflate';
-import type { DocxEditorInstance } from '@docx-editor.dev/core/editor';
+import type { DocxEditorInstance, EditorModule } from '@docx-editor.dev/core/editor';
 import { DocxEditor } from '../src/components/DocxEditor.tsx';
 import { DocxEditorLoading } from '../src/editor/DocxEditorLoading.tsx';
 import { DocxEditorRoot } from '../src/editor/DocxEditorRoot.tsx';
@@ -96,6 +96,37 @@ const LARGE_SOURCE = zipSync({
  * work, and a slow runner must still finish the whole open inside the waits below.
  */
 const SLICED_PARAGRAPHS = 600;
+// The sliced-open tests await the engine's own signal that the open laid out its last page, so
+// they take as long as the open does. This budget only bounds an open that never ends.
+const SLICED_OPEN_TEST_TIMEOUT_MS = 45_000;
+
+/**
+ * Resolves when the editor reports that the opening document laid out its last page
+ * (`document.open`, outcome `opened`), and rejects with the open's code on any other outcome.
+ * The tests await this instead of polling the DOM while the open runs: a failed DOM assertion
+ * formats the element it received, with the whole page tree behind it, and a poll re-ran that
+ * after every slice, which on a slow runner stalled each slice for seconds.
+ */
+function openSettled(): { module: EditorModule; settled: Promise<void> } {
+  let resolve!: () => void;
+  let reject!: (error: Error) => void;
+  const settled = new Promise<void>((done, fail) => {
+    resolve = done;
+    reject = fail;
+  });
+  return {
+    module: {
+      id: 'test-open-settled',
+      onDiagnostic: (event) => {
+        if (event.kind !== 'document.open') return;
+        if (event.outcome === 'opened') resolve();
+        // A refused or crashed open ends at once, with its code, instead of at the test budget.
+        else reject(new Error(`the open was rejected: ${event.code}`));
+      },
+    },
+    settled,
+  };
+}
 
 function slicedSource(): Uint8Array {
   const paragraphs: string[] = [];
@@ -137,6 +168,15 @@ function trackedIndicator(places: string[]) {
 
 const LOADING = '.docx-editor__loading';
 const SPINNER = '.docx-editor__loading-spinner';
+
+/**
+ * Whether `selector` matches nothing in `container`. Inside `waitFor`, assert on this and not on
+ * the element: every failed retry formats the received element, and formatting a painted
+ * document walks the whole window, which costs seconds per retry on a slow runner.
+ */
+function absent(container: HTMLElement, selector: string): boolean {
+  return container.querySelector(selector) === null;
+}
 
 afterEach(() => {
   cleanup();
@@ -333,8 +373,91 @@ describe('DocxEditor.Loading', () => {
       expect(view.container.textContent).toContain('large body');
     });
     await waitFor(() => {
-      expect(view.container.querySelector(LOADING)).toBeNull();
+      expect(absent(view.container, LOADING)).toBe(true);
     });
+  });
+
+  test('the overlay stays the same element when a LARGE document arrives', async () => {
+    // The Root builds a new instance for the bytes and attaches it one commit later. A new
+    // overlay element would replay its appearance delay, and the workspace would show
+    // through.
+    const tree = (document?: Uint8Array) => (
+      <DocxEditorRoot {...(document ? { document } : {})}>
+        <DocxEditorLoading overlay />
+        <DocxEditorViewport>
+          <DocxEditorContent />
+        </DocxEditorViewport>
+      </DocxEditorRoot>
+    );
+    const view = render(tree());
+    await act(async () => {});
+    const overlay = view.container.querySelector(LOADING);
+    expect(overlay).not.toBeNull();
+    const removed: Node[] = [];
+    const observer = new MutationObserver((records) => {
+      for (const record of records) removed.push(...record.removedNodes);
+    });
+    observer.observe(view.container, { childList: true, subtree: true });
+
+    view.rerender(tree(LARGE_SOURCE));
+    await act(async () => {});
+    expect(view.container.querySelector(LOADING)).toBe(overlay);
+    await waitFor(() => expect(view.container.textContent).toContain('large body'));
+    await waitFor(() => expect(absent(view.container, LOADING)).toBe(true));
+    observer.disconnect();
+    // Removed once, when the pages arrive, and never replaced on the way.
+    expect(removed.filter((node) => node === overlay)).toHaveLength(1);
+  });
+
+  test('the in-flow screen also stays the same element, so its spinner keeps turning', async () => {
+    const tree = (document?: Uint8Array) => (
+      <DocxEditorRoot {...(document ? { document } : {})}>
+        <DocxEditorLoading />
+        <DocxEditorViewport>
+          <DocxEditorContent />
+        </DocxEditorViewport>
+      </DocxEditorRoot>
+    );
+    const view = render(tree());
+    await act(async () => {});
+    const screen = view.container.querySelector(LOADING);
+    expect(screen).not.toBeNull();
+    view.rerender(tree(LARGE_SOURCE));
+    await act(async () => {});
+    expect(view.container.querySelector(LOADING)).toBe(screen);
+    await waitFor(() => expect(view.container.textContent).toContain('large body'));
+  });
+
+  test('a SMALL document arriving under the overlay still removes it', async () => {
+    const tree = (document?: Uint8Array) => (
+      <DocxEditorRoot {...(document ? { document } : {})}>
+        <DocxEditorLoading overlay />
+        <DocxEditorViewport>
+          <DocxEditorContent />
+        </DocxEditorViewport>
+      </DocxEditorRoot>
+    );
+    const view = render(tree());
+    await act(async () => {});
+    expect(view.container.querySelector(LOADING)).not.toBeNull();
+    view.rerender(tree(docx('<w:p><w:r><w:t>small body</w:t></w:r></w:p>')));
+    await act(async () => {});
+    expect(view.container.textContent).toContain('small body');
+    expect(view.container.querySelector(LOADING)).toBeNull();
+  });
+
+  test('an editor that is never attached does not keep the overlay up', async () => {
+    const tree = (document?: Uint8Array) => (
+      <DocxEditorRoot {...(document ? { document } : {})}>
+        <DocxEditorLoading overlay />
+      </DocxEditorRoot>
+    );
+    const view = render(tree());
+    await act(async () => {});
+    expect(view.container.querySelector(LOADING)).not.toBeNull();
+    view.rerender(tree(LARGE_SOURCE));
+    await act(async () => {});
+    expect(view.container.querySelector(LOADING)).toBeNull();
   });
 
   test('the menu bar is disabled and closed while the next document opens', async () => {
@@ -509,32 +632,33 @@ describe('DocxEditor.Loading', () => {
     expect(view.container.querySelector('.docx-editor__loading-page')).not.toBeNull();
   });
 
-  test('with overlay, the indicator moves below the laid-out pages while the rest are laid out', async () => {
-    const places: string[] = [];
-    const view = render(
-      <DocxEditorRoot document={slicedSource()}>
-        <div style={{ position: 'relative' }}>
-          <DocxEditorViewport>
-            <DocxEditorContent />
-          </DocxEditorViewport>
-          <DocxEditorLoading overlay indicator={trackedIndicator(places)} />
-        </div>
-      </DocxEditorRoot>
-    );
+  test(
+    'with overlay, the indicator moves below the laid-out pages while the rest are laid out',
+    async () => {
+      const places: string[] = [];
+      const open = openSettled();
+      const view = render(
+        <DocxEditorRoot document={slicedSource()} modules={[open.module]}>
+          <div style={{ position: 'relative' }}>
+            <DocxEditorViewport>
+              <DocxEditorContent />
+            </DocxEditorViewport>
+            <DocxEditorLoading overlay indicator={trackedIndicator(places)} />
+          </div>
+        </DocxEditorRoot>
+      );
 
-    await waitFor(() => expect(places).toContain('below the pages'), { timeout: 20_000 });
-    expect(places[0]).toBe('screen');
-    // The screen yields at the first painted page, but the indicator below the pages stays until the
-    // last slice lands. Wait for that end state, not for the screen alone.
-    await waitFor(
-      () => {
-        expect(view.container.querySelector(LOADING)).toBeNull();
-        expect(view.container.querySelector('.docx-opening-indicator')).toBeNull();
-        expect(view.container.querySelector('.mine')).toBeNull();
-      },
-      { timeout: 20_000 }
-    );
-  });
+      // The screen yields at the first painted page, but the indicator below the pages stays until
+      // the last slice lands. Wait for that end state, not for the screen alone.
+      await act(() => open.settled);
+      expect(places[0]).toBe('screen');
+      expect(places).toContain('below the pages');
+      expect(absent(view.container, LOADING)).toBe(true);
+      expect(absent(view.container, '.docx-opening-indicator')).toBe(true);
+      expect(absent(view.container, '.mine')).toBe(true);
+    },
+    SLICED_OPEN_TEST_TIMEOUT_MS
+  );
 
   test('className is appended after the load-bearing class, not instead of it', () => {
     const view = render(<DocxEditorLoading when className="demo-loading" />);
@@ -584,19 +708,38 @@ describe('packaged DocxEditor loading screen', () => {
     ).toBe(true);
   });
 
-  test('loadingIndicator shows on the loading page, then below the laid-out pages', async () => {
-    const places: string[] = [];
-    const view = render(
-      <DocxEditor document={slicedSource()} loadingIndicator={trackedIndicator(places)} />
-    );
+  test(
+    'loadingIndicator shows on the loading page, then below the laid-out pages',
+    async () => {
+      const places: string[] = [];
+      const open = openSettled();
+      const view = render(
+        <DocxEditor
+          document={slicedSource()}
+          modules={[open.module]}
+          loadingIndicator={trackedIndicator(places)}
+        />
+      );
 
-    await act(async () => {});
-    expect(view.container.querySelector('.docx-editor__loading-page .mine')).not.toBeNull();
-    expect(view.container.querySelector(SPINNER)).toBeNull();
-    await waitFor(() => expect(places).toContain('below the pages'), { timeout: 20_000 });
-    await waitFor(() => expect(view.container.querySelector('.mine')).toBeNull(), {
-      timeout: 20_000,
+      await act(async () => {});
+      expect(view.container.querySelector('.docx-editor__loading-page .mine')).not.toBeNull();
+      expect(view.container.querySelector(SPINNER)).toBeNull();
+      await act(() => open.settled);
+      expect(places).toContain('below the pages');
+      expect(absent(view.container, '.mine')).toBe(true);
+    },
+    SLICED_OPEN_TEST_TIMEOUT_MS
+  );
+
+  test('a file that cannot be opened ends the wait at once, with the open code', async () => {
+    const open = openSettled();
+    const started = performance.now();
+    render(<DocxEditor document={strToU8('not a docx package')} modules={[open.module]} />);
+    await act(async () => {
+      await expect(open.settled).rejects.toThrow(/the open was rejected: open\./);
     });
+    // Ends with the refusal itself, far inside any test budget.
+    expect(performance.now() - started).toBeLessThan(5_000);
   });
 
   test('loadingIndicator without chrome warns once in development', () => {

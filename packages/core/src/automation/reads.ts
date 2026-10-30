@@ -23,6 +23,7 @@ import { hasJoinedBoundary } from './joined-paragraphs.ts';
 // paragraph, because the caller counted with a different list than the engine writes with.
 
 import { shapesInParagraphs, type AutomationShapesRead } from './shapes.ts';
+import { emptyFrameRoot } from './empty-text-frame.ts';
 import {
   resolveHeaderFooterResolutionBySection,
   type HeaderFooterSectionResolution,
@@ -199,6 +200,7 @@ export interface AutomationPackageReads {
 const NO_STYLE_INDEX: AutomationStyleIndex = Object.freeze({
   nameOf: () => null,
   idOf: () => null,
+  characterIdOf: () => null,
   defaultId: null,
   present: false,
   inheritsRtl: () => false,
@@ -469,8 +471,9 @@ export function documentReads(pkg: OoxmlPackage): AutomationPackageReads {
       const listing = shapesOf(story.owner);
       if (!owner || !listing.ok) return null;
       const shape = listing.shapes.find((entry) => entry.id === story.shapeId);
-      if (!shape?.textboxRoot) return null;
-      return storyReadsOver(story, owner.part, owner.scope, shape.textboxRoot, stylesOf);
+      const root = shape?.textboxRoot ?? (shape?.emptyFrame ? emptyFrameRoot(shape) : null);
+      if (!root) return null;
+      return storyReadsOver(story, owner.part, owner.scope, root, stylesOf);
     }
     const slot = slotOf(story);
     if (!slot) return null;

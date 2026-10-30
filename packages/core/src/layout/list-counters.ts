@@ -1,8 +1,9 @@
 // Per-story OOXML list counter state (ECMA-376 numbering).
 //
-// Counters are keyed by numId: each `w:num` instance maintains an independent sequence even
-// when multiple nums share one abstractNum. A `w:startOverride` on a num applies only the
-// first time that numId is encountered in the story walk.
+// Counters belong to the ABSTRACT list: every `w:num` that names one `w:abstractNum` counts on
+// one shared vector, so a second `w:num` over the same definition continues the first. A
+// `w:num` restarts that shared vector only through `w:startOverride`, once, at its first
+// paragraph on an overridden level (see `createListCounterState`).
 
 import {
   resolveNumberingLevel,
@@ -10,6 +11,7 @@ import {
   type NumberingLevel,
 } from './numbering-index.ts';
 import { expandLvlText } from './numbering-format.ts';
+import type { ListNumLevel } from './field-listnum.ts';
 
 /**
  * The result of counting ONE list paragraph: the level that applied, the counter vector after it,
@@ -47,7 +49,12 @@ export interface ListCounterState {
   advance(numId: string, ilvl: number): ListCounterAdvance | null;
 }
 
-/** Effective first-emitted value per ilvl, honoring `w:startOverride` and level overrides. */
+/**
+ * The value each level of `numId` starts from, indices 0..8.
+ *
+ * A `w:startOverride` names it. When the same `w:lvlOverride` also replaces the level, the
+ * replacement's `w:start` wins over the `w:startOverride` value.
+ */
 function effectiveStartsForNum(index: NumberingIndex, numId: string): number[] {
   const num = index.nums.get(numId);
   const starts: number[] = [];
@@ -57,10 +64,25 @@ function effectiveStartsForNum(index: NumberingIndex, numId: string): number[] {
       starts.push(1);
       continue;
     }
-    const startOverride = num?.overrides.get(ilvl)?.startOverride;
-    starts.push(startOverride ?? resolved.level.start);
+    const override = num?.overrides.get(ilvl);
+    const startOverride = override?.startOverride;
+    starts.push(
+      startOverride === undefined ? resolved.level.start : (override?.level?.start ?? startOverride)
+    );
   }
   return starts;
+}
+
+/** The levels of `numId` that carry a `w:startOverride`, or null when none does. */
+function restartLevelsOfNum(index: NumberingIndex, numId: string): ReadonlySet<number> | null {
+  const num = index.nums.get(numId);
+  if (!num) return null;
+  let levels: Set<number> | null = null;
+  for (const [ilvl, override] of num.overrides) {
+    if (override.startOverride === undefined) continue;
+    (levels ??= new Set()).add(ilvl);
+  }
+  return levels;
 }
 
 function levelFormats(
@@ -101,10 +123,33 @@ function lvlRestartTriggerIlvl(targetIlvl: number, lvlRestart: number | undefine
   return triggerIlvl;
 }
 
+/**
+ * An item on level `ilvl` counts every level above it that has no item yet (since that level
+ * last started again) once, at that level's start. The next item on such a parent level then
+ * continues from there: a level 1 item before any level 0 item makes the next level 0 item `2.`.
+ * List paragraphs and LISTNUM fields share this rule.
+ */
+function countSkippedParents(
+  counters: number[],
+  initialized: boolean[],
+  ilvl: number,
+  startOf: (parent: number) => number
+): void {
+  for (let parent = 0; parent < ilvl; parent += 1) {
+    if (initialized[parent]) continue;
+    counters[parent] = startOf(parent);
+    initialized[parent] = true;
+  }
+}
+
 /** The counter values of one bag at one point of its walk. */
 export interface ListCounterSnapshot {
+  /** Keyed by abstractNumId. */
   readonly counters: ReadonlyMap<string, readonly number[]>;
+  /** Keyed by abstractNumId. */
   readonly initialized: ReadonlyMap<string, readonly boolean[]>;
+  /** The numIds whose `w:startOverride` restart has already applied. */
+  readonly restarted: ReadonlySet<string>;
 }
 
 const counterSnapshots = new WeakMap<
@@ -127,32 +172,54 @@ const copyArrays = <T>(source: ReadonlyMap<string, readonly T[]>): Map<string, T
 
 /**
  * Create a fresh counter bag for one story (body, or one header/footer part).
+ *
+ * Every `w:num` over one `w:abstractNum` counts on the same vector. A `w:num` with a
+ * `w:startOverride` restarts it once: at its first paragraph whose level carries an override,
+ * that level starts again from the `w:num`'s value. The restart applies to that level alone and
+ * is then spent, so a later paragraph of the same `w:num` on another overridden level continues.
+ * A level that starts again after a parent level takes the start of the `w:num` counting it.
  */
 export function createListCounterState(index: NumberingIndex): ListCounterState {
-  /** numId → current counter values[0..8]. */
-  const byNumId = new Map<string, number[]>();
-  /** numId → whether each level has emitted at least once. */
-  const initializedByNumId = new Map<string, boolean[]>();
+  /** abstractNumId → current counter values[0..8]. */
+  const byAbstract = new Map<string, number[]>();
+  /** abstractNumId → whether each level has emitted at least once since its last restart. */
+  const initializedByAbstract = new Map<string, boolean[]>();
   /** numId → authored effective starts[0..8]. */
   const startsByNumId = new Map<string, number[]>();
+  /** numId → the levels its `w:startOverride` names, or null for none. */
+  const restartLevelsByNumId = new Map<string, ReadonlySet<number> | null>();
+  /** numIds whose one `w:startOverride` restart has applied. */
+  const restarted = new Set<string>();
 
-  const ensure = (id: string): { counters: number[]; initialized: boolean[]; starts: number[] } => {
-    let counters = byNumId.get(id);
+  const ensure = (
+    abstractNumId: string,
+    numId: string
+  ): { counters: number[]; initialized: boolean[]; starts: number[] } => {
+    let counters = byAbstract.get(abstractNumId);
     if (!counters) {
       counters = [0, 0, 0, 0, 0, 0, 0, 0, 0];
-      byNumId.set(id, counters);
+      byAbstract.set(abstractNumId, counters);
     }
-    let initialized = initializedByNumId.get(id);
+    let initialized = initializedByAbstract.get(abstractNumId);
     if (!initialized) {
       initialized = [false, false, false, false, false, false, false, false, false];
-      initializedByNumId.set(id, initialized);
+      initializedByAbstract.set(abstractNumId, initialized);
     }
-    let starts = startsByNumId.get(id);
+    let starts = startsByNumId.get(numId);
     if (!starts) {
-      starts = effectiveStartsForNum(index, id);
-      startsByNumId.set(id, starts);
+      starts = effectiveStartsForNum(index, numId);
+      startsByNumId.set(numId, starts);
     }
     return { counters, initialized, starts };
+  };
+
+  const restartLevelsOf = (numId: string): ReadonlySet<number> | null => {
+    let levels = restartLevelsByNumId.get(numId);
+    if (levels === undefined) {
+      levels = restartLevelsOfNum(index, numId);
+      restartLevelsByNumId.set(numId, levels);
+    }
+    return levels;
   };
 
   const state: ListCounterState = {
@@ -163,8 +230,13 @@ export function createListCounterState(index: NumberingIndex): ListCounterState 
       if (!resolved) return null;
 
       const { abstractNumId, level } = resolved;
-      const { counters, initialized, starts } = ensure(numId);
+      const { counters, initialized, starts } = ensure(abstractNumId, numId);
       const { formats } = levelFormats(index, numId, starts);
+
+      if (!restarted.has(numId) && restartLevelsOf(numId)?.has(ilvl)) {
+        initialized[ilvl] = false;
+        restarted.add(numId);
+      }
 
       // Deeper levels restart per `w:lvlRestart` when this ilvl is used.
       for (let deeper = ilvl + 1; deeper <= 8; deeper += 1) {
@@ -175,6 +247,8 @@ export function createListCounterState(index: NumberingIndex): ListCounterState 
           initialized[deeper] = false;
         }
       }
+
+      countSkippedParents(counters, initialized, ilvl, (parent) => starts[parent] ?? 1);
 
       // Increment this level from its authored baseline.
       const effectiveStart = starts[ilvl] ?? level.start;
@@ -220,17 +294,75 @@ export function createListCounterState(index: NumberingIndex): ListCounterState 
       return advance;
     },
   };
+  fieldAdvancers.set(state, (counterKey, ilvl, levelOf, setValue) => {
+    const level = levelOf(ilvl);
+    if (!level || ilvl < 0 || ilvl > 8) return null;
+    let counters = byAbstract.get(counterKey);
+    let initialized = initializedByAbstract.get(counterKey);
+    if (!counters || !initialized) {
+      counters = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+      initialized = [false, false, false, false, false, false, false, false, false];
+      byAbstract.set(counterKey, counters);
+      initializedByAbstract.set(counterKey, initialized);
+    }
+    for (let deeper = ilvl + 1; deeper <= 8; deeper += 1) {
+      const trigger = lvlRestartTriggerIlvl(deeper, levelOf(deeper)?.lvlRestart);
+      if (trigger !== null && ilvl <= trigger) initialized[deeper] = false;
+    }
+    countSkippedParents(counters, initialized, ilvl, (parent) => levelOf(parent)?.start ?? 1);
+    if (setValue !== undefined) counters[ilvl] = setValue;
+    else if (initialized[ilvl]) counters[ilvl] += 1;
+    else counters[ilvl] = level.start;
+    initialized[ilvl] = true;
+    const expand = counters.map((value, index) =>
+      initialized![index] ? value : (levelOf(index)?.start ?? 1)
+    );
+    const formats = counters.map((_, index) => levelOf(index)?.numFmt ?? 'decimal');
+    if (level.vanish || level.numFmt === 'bullet') return null;
+    return expandLvlText(level.lvlText, expand, legalEffectiveFormats(formats, !!level.isLgl));
+  });
   counterSnapshots.set(state, {
-    save: () => ({ counters: copyArrays(byNumId), initialized: copyArrays(initializedByNumId) }),
+    save: () => ({
+      counters: copyArrays(byAbstract),
+      initialized: copyArrays(initializedByAbstract),
+      restarted: new Set(restarted),
+    }),
     load(snapshot) {
-      byNumId.clear();
-      for (const [id, values] of copyArrays(snapshot.counters)) byNumId.set(id, values);
-      initializedByNumId.clear();
+      byAbstract.clear();
+      for (const [id, values] of copyArrays(snapshot.counters)) byAbstract.set(id, values);
+      initializedByAbstract.clear();
       for (const [id, values] of copyArrays(snapshot.initialized))
-        initializedByNumId.set(id, values);
+        initializedByAbstract.set(id, values);
+      restarted.clear();
+      for (const id of snapshot.restarted) restarted.add(id);
     },
   });
   return state;
+}
+
+/** The levels one LISTNUM field counts on, by level index. */
+export type ListNumLevelOf = (ilvl: number) => ListNumLevel | undefined;
+
+const fieldAdvancers = new WeakMap<
+  ListCounterState,
+  (counterKey: string, ilvl: number, levelOf: ListNumLevelOf, setValue?: number) => string | null
+>();
+
+/**
+ * Count one LISTNUM field on the counters `state` keeps under `counterKey` (an
+ * abstractNumId, so the field and the list's paragraphs continue each other), and return the
+ * text it displays, or null when it displays none. `setValue` is the field's `\s` value.
+ *
+ * @internal
+ */
+export function advanceListNumField(
+  state: ListCounterState,
+  counterKey: string,
+  ilvl: number,
+  levelOf: ListNumLevelOf,
+  setValue?: number
+): string | null {
+  return fieldAdvancers.get(state)?.(counterKey, ilvl, levelOf, setValue) ?? null;
 }
 
 /** Substitution-ready counter vectors, keyed on the advance results that produced them. */

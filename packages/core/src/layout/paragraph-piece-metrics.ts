@@ -3,9 +3,11 @@
 // where a `w:ptab` lands. Extracted from paragraph-flow so that module stays inside its line
 // budget; it is the only consumer.
 
+import { RIGHT_TO_LEFT_LETTER } from './rtl-letter.ts';
 import { PAGE_BREAK_CHAR, type OoxmlProperty } from '@docx-editor.dev/core/store';
 import type { FieldAwarePiece, PositionalTab } from './field-projection.ts';
 import type { TabLeader } from './paragraph-tabs.ts';
+import { measureInlineDrawing } from './drawing-layout.ts';
 import { displayText, runStylesEqual, type ResolvedRunStyle } from './run-style.ts';
 import { styleForFontSlot } from './script-itemization.ts';
 import * as lineEndSpaces from './line-end-whitespace.ts';
@@ -87,9 +89,6 @@ export function placeableContentSuffixes(
   return suffixes;
 }
 
-/** Hebrew, Arabic, Syriac, Thaana and N'Ko letters, and their presentation forms. */
-const RIGHT_TO_LEFT_LETTER = /[\u0590-\u08ff\ufb1d-\ufdff\ufe70-\ufeff]/u;
-
 /**
  * The text after a tab, up to the next tab or break: its width, and where a decimal stop
  * aligns it. An ignored page break adds no width and does not end the segment.
@@ -127,13 +126,16 @@ export function measureFollowingTabSegment(
   for (let index = pieceIndex; index < pieces.length; index += 1) {
     const piece = pieces[index]!;
     const style = styleForFontSlot(piece.style, piece.fontSlot);
-    if (piece.inlineWidget) {
-      width += piece.inlineWidget.width;
-      if (!sawDecimal) decimalOffset = width;
-      continue;
-    }
-    if (piece.unsupported) {
-      width += piece.unsupported.width;
+    // An inline picture, placeholder, or host widget advances the segment by its own width.
+    const atomWidth = piece.inlineWidget
+      ? piece.inlineWidget.width
+      : piece.unsupported
+        ? piece.unsupported.width
+        : piece.inlineDrawing
+          ? measureInlineDrawing(piece.inlineDrawing.projection).totalWidth
+          : undefined;
+    if (atomWidth !== undefined) {
+      width += atomWidth;
       if (!sawDecimal) decimalOffset = width;
       continue;
     }

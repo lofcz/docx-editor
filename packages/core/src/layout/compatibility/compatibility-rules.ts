@@ -51,17 +51,25 @@ const legacy = (behavior: string, source: string): ModeRule => ({
 
 /** Rules that depend only on the mode. */
 export const MODE_RULES = {
+  autofitMinimumSkipsFirstLine: legacy(
+    'An autofit column minimum leaves out a positive first-line indent: a word too wide for the first line breaks there',
+    'ECMA-376 Part 1 §17.3.1.12 ind'
+  ),
   anchorOnlyParagraphSeeding: modern(
     'Seed the pages of consecutive anchor-only paragraphs before later bands wrap earlier text',
     'ECMA-376 Part 1 §20.4.2.3 anchor'
   ),
   anchorOnlyParagraphWrapExclusion: modern(
-    'An anchor-only paragraph wraps around its own anchors before it is placed',
+    'Anchor-only paragraphs and leading paragraph-relative anchors resolve their own wrap before first-fragment placement',
     'ECMA-376 Part 1 §20.4.2.3 anchor'
   ),
   anchorsLayOutInCell: modern(
     'Every anchored object in a table cell lays out in its cell; none is out of cell',
     'ECMA-376 Part 1 §20.4.2.3 anchor (layoutInCell)'
+  ),
+  distributedLinesSpreadCharacters: legacy(
+    'A distributed paragraph spreads the slack of every line after every character, whatever the document defaults and run kerning. A space first takes up to its face average character width less its own advance',
+    'ECMA-376 Part 1 §17.18.44 ST_Jc'
   ),
   fixedTableContentEdgeOrigin: legacy(
     'A collapsed fixed left table aligns its leading cell content edge with the text column',
@@ -111,13 +119,45 @@ export const MODE_RULES = {
     'Note reference bands in table rows honor cell widow control and keep-lines cuts',
     'ECMA-376 Part 1 §17.11 Footnotes and Endnotes'
   ),
+  openingColumnBreakTakesNoLine: legacy(
+    'A column break that opens a paragraph leaves no line in the column it ends',
+    'ECMA-376 Part 1 §17.3.3.1 br'
+  ),
+  inlineObjectStaysBesideFloat: legacy(
+    'An inline object that opens its line stays on it beside a float even when it is wider than the gap there, and runs past the margin or over the float. In modern modes it moves below the float',
+    'ECMA-376 Part 1 §20.4.2.3 anchor'
+  ),
+  leftTabStopsPastMargin: legacy(
+    'A custom left tab stop past the margin is honoured, and the text after it may run past the margin. In modern modes the stop reaches the margin and its text wraps there',
+    'ECMA-376 Part 1 §17.3.1.37 tabs'
+  ),
   oversizedRowKeepGroupReleases: legacy(
     'A kept row group that exceeds a fresh page starts beside preceding content, except directly below authored headers',
     'ECMA-376 Part 1 §17.3.1.15 keepNext'
   ),
+  lineEndPunctuationAtEveryAlignment: legacy(
+    'Line-end East Asian punctuation hangs past the margin at every paragraph alignment, and the text before it fills the measure. The paragraph kinsoku switch does not stop it. Modern modes hang only in justified and distributed paragraphs',
+    'ECMA-376 Part 1 §17.3.1.21 overflowPunct'
+  ),
+  koreanHangingLineFills: modern(
+    'A Korean paragraph-final mark that hangs past the margin lets the text before it fill the measure. Earlier modes keep that last line at its natural width',
+    'ECMA-376 Part 1 §17.3.1.21 overflowPunct'
+  ),
+  largestWrapTieLeft: modern(
+    'Square wrapping on the largest side keeps text on the physical left when both sides are equally wide; earlier modes keep it on the right',
+    'ECMA-376 Part 1 §20.4.2.17 wrapSquare'
+  ),
+  wrapIgnoresMultipleSpacingExtra: modern(
+    'A wrap band moves a line only where it crosses the text or picture of the line, not the extra space an auto line-spacing multiple adds below it',
+    'ECMA-376 Part 1 §17.3.1.33 spacing'
+  ),
   positionedTableBreaksAtMargin: modern(
     'A page- or margin-positioned table that breaks ends its first fragment at the bottom margin, not the page edge',
     'ECMA-376 Part 1 §17.4.57 tblpPr'
+  ),
+  omittedRepeatEndsPage: modern(
+    'Content after a table whose last page leaves out the repeated header rows starts on the next page',
+    'ECMA-376 Part 1 §17.4.49 tblHeader'
   ),
   pageBreakBeforeKeepsSpace: legacy(
     'A paragraph with a page break before keeps its space before at the top of the new page. In modern modes only the first block of a section keeps it',
@@ -127,9 +167,25 @@ export const MODE_RULES = {
     'A justified line that ends in a page or column break stretches to the measure, unless it is the last line of its paragraph',
     'ECMA-376 Part 1 §17.3.3.1 br'
   ),
+  repeatBoundaryUsesHeaderRule: legacy(
+    "A complete body row directly below a repeated header row reserves the wider of its own top border and the header row's bottom border; modern modes keep the band of the row it follows in the table",
+    'ECMA-376 Part 1 §17.4.49 tblHeader'
+  ),
+  repeatKeepsWholeRow: legacy(
+    'Repeated header rows stay above a row that cannot split and does not fit below them, or a row whose first line, or the first row of a nested table that opens a cell, does not fit below them, also when the row continues from the previous page; the row stays whole and runs past the bottom margin',
+    'ECMA-376 Part 1 §17.4.49 tblHeader'
+  ),
+  repeatedHeaderYieldsToTerminalRule: modern(
+    'Repeated header rows are omitted when the last fixed-height row fits below them only without its bottom rule',
+    'ECMA-376 Part 1 §17.4.49 tblHeader'
+  ),
   rowPageBreakYieldsToKeep: modern(
     'A row with a page break does not start a page when the row before it keeps with it',
     'ECMA-376 Part 1 §17.3.1.15 keepNext'
+  ),
+  tallRowStaysWhole: legacy(
+    'A row that cannot split and is taller than a page stays whole on its page and runs past the bottom margin',
+    'ECMA-376 Part 1 §17.4.6 cantSplit'
   ),
   tableParagraphWidowControl: modern(
     'Paragraphs that split inside table cells apply widow and orphan control',
@@ -138,6 +194,10 @@ export const MODE_RULES = {
   vMergeTextMovesPastHeadRow: modern(
     'Merged cell text moves whole into the next row when the head row cannot hold it',
     'ECMA-376 Part 1 §17.4.84 vMerge'
+  ),
+  wrappedAnchorsStayBelowTopMargin: modern(
+    'A wrapping object positioned from its paragraph never starts above the top margin',
+    'ECMA-376 Part 1 §20.4.2.11 positionV'
   ),
 } as const satisfies Record<string, ModeRule>;
 
@@ -178,6 +238,12 @@ export const PROFILE_RULES = {
       const declared = p.settings.enableOpenTypeFeatures;
       return declared === 'ambiguous' ? false : (declared ?? p.modeClass === 'modern');
     },
+  },
+  pageBreakMarkOnNextPage: {
+    behavior:
+      'A paragraph mark after a page break takes a line at the top of the next page. Only legacy modes read the option',
+    source: 'ECMA-376 Part 4 §14.8.3 splitPgBreakAndParaMark',
+    applies: (p) => p.legacy.splitPgBreakAndParaMark === true && p.modeClass === 'legacy',
   },
   preserveExactLineBaseline: {
     behavior:

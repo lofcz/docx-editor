@@ -42,6 +42,8 @@ export interface SemanticTableCell {
   readonly headsVerticalMerge?: true;
   /** `w:hideMark` excludes the end-of-cell glyph from row sizing. */
   readonly hideEndMark?: boolean;
+  /** `w:noWrap`: autofit never narrows the cell's column below its preferred width. */
+  readonly noWrap?: true;
   /** `w:vAlign` — defaults to top when omitted/unrecognised. */
   readonly vAlign: CellVerticalAlign;
   /** `w:textDirection`; unsupported values keep horizontal layout. */
@@ -58,8 +60,6 @@ export interface SemanticTableCell {
   readonly contentBottomIsOuter?: boolean;
   /** Clearance this AUTHORED ROW reserves above its content for its own top rule, in points. */
   readonly topBandClearancePt?: number;
-  /** The CELL declares `w:tcBorders/w:top` as `nil`, rather than a table style doing so. */
-  readonly suppressesTopBand?: true;
   /** Row-local clearance in points for authored minima, before vMerge combines content boxes. */
   readonly minimumContentInsets?: { readonly top: number; readonly bottom: number };
   /** Validated 6-hex shading fill, absent for none/auto. */

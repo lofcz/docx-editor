@@ -22,7 +22,7 @@ export const selectDocumentReadOnly = (snapshot: EditorSnapshot) =>
 
 export { COMPACT_CARD_WIDTH } from '../review/rail-metrics.ts';
 export const COMPOSE_KEY = '\u0000compose';
-export const RAIL_OVERSCAN = 600;
+export { RAIL_OVERSCAN } from '../review/rail-window.ts';
 export const AUTHOR_SLOTS = 8;
 export const DEFAULT_CARD_HEIGHT = 72;
 export const COLLAPSED_CARD_HEIGHT = 64;
@@ -65,12 +65,7 @@ export function initialsOf(author: string): string {
     .join('');
 }
 
-export const REVIEW_DATE_FORMAT = new Intl.DateTimeFormat(undefined, {
-  month: 'short',
-  day: 'numeric',
-  hour: 'numeric',
-  minute: '2-digit',
-});
+export { reviewDateFormat } from '../review/review-date-format.ts';
 
 export function partOverrides(
   children: VNode | VNode[] | undefined

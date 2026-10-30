@@ -1,4 +1,8 @@
 // Cheap package-level gates for `TreePackageStore`.
+//
+// The delete gates read the part as the open transaction has left it, which is the tree the
+// op edits. The node index moves to that tree with each op, so a batch of deletes finds every
+// target without walking the part again.
 
 import { findNode } from '../package/ooxml-edit.ts';
 import type { OoxmlPackage } from '../package/ooxml-package.ts';

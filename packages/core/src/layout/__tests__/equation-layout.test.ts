@@ -171,7 +171,7 @@ describe('atomic equation paragraph layout', () => {
     expect(equations[0]!.range.end - equations[0]!.range.start).toBe(1);
   });
 
-  test('auto line spacing scales the text band instead of the built-up fraction', () => {
+  test('auto line spacing adds its share of the text band below the built-up fraction', () => {
     const fraction =
       '<m:oMath><m:f><m:fPr><m:type m:val="bar"/></m:fPr>' +
       '<m:num><m:r><m:t>1</m:t></m:r></m:num>' +
@@ -182,17 +182,11 @@ describe('atomic equation paragraph layout', () => {
         '<w:p><w:pPr><w:spacing w:line="360" w:lineRule="auto"/></w:pPr>' + `${fraction}</w:p>`
       )
     )[0]!;
-    const plainMultiple = linesOf(
-      layout(
-        '<w:p><w:pPr><w:spacing w:line="360" w:lineRule="auto"/></w:pPr>' +
-          '<w:r><w:t>x</w:t></w:r></w:p>'
-      )
-    )[0]!;
+    const plain = linesOf(layout('<w:p><w:r><w:t>x</w:t></w:r></w:p>'))[0]!;
 
-    expect(multiple.box.height).toBeCloseTo(
-      Math.max(single.box.height, plainMultiple.box.height),
-      5
-    );
+    // The line keeps the fraction's extent, and the 1.5 multiple adds half a text band.
+    expect(multiple.box.height).toBeCloseTo(single.box.height + plain.box.height / 2, 5);
+    expect(multiple.baseline).toBeCloseTo(single.baseline, 5);
     expect(multiple.box.height).toBeLessThan(single.box.height * 1.5);
   });
 
@@ -311,5 +305,60 @@ describe('atomic equation paragraph layout', () => {
     );
     expect(nextProducer).not.toBe(first);
     expect(measureCalls).toBeGreaterThan(callsAfterStyleChange);
+  });
+});
+
+describe('script placement', () => {
+  const sizePt = 12;
+  const run = (text: string) =>
+    `<m:r><w:rPr><w:sz w:val="${sizePt * 2}"/></w:rPr><m:t>${text}</m:t></m:r>`;
+  const script = (inner: string) =>
+    equationSpan(`<w:p><m:oMath>${inner}</m:oMath></w:p>`).equation!.geometry;
+
+  test('a subscript baseline sits a fifth of an em below the base baseline', () => {
+    // The control size sizes the structure, so the em is the run size here.
+    const control = `<m:sSubPr><m:ctrlPr><w:rPr><w:sz w:val="${sizePt * 2}"/></w:rPr></m:ctrlPr></m:sSubPr>`;
+    const geometry = script(
+      `<m:sSub>${control}<m:e>${run('M')}</m:e><m:sub>${run('d')}</m:sub></m:sSub>`
+    );
+    expect(geometry.kind).toBe('script');
+    if (geometry.kind !== 'script') return;
+    const sub = geometry.subscript!;
+    const drop = sub.box.y + sub.baseline - geometry.baseline;
+    expect(drop / sizePt).toBeCloseTo(0.2, 5);
+  });
+
+  const fraction = (numerator: string, denominator: string) =>
+    `<m:f><m:num>${numerator}</m:num><m:den>${denominator}</m:den></m:f>`;
+  const tall = fraction(fraction(run('a'), run('b')), run('c'));
+
+  test('a tall subscript stays clear of a superscript', () => {
+    const geometry = script(
+      `<m:sSubSup><m:e>${run('x')}</m:e><m:sub>${tall}</m:sub><m:sup>${run('2')}</m:sup></m:sSubSup>`
+    );
+    expect(geometry.kind).toBe('script');
+    if (geometry.kind !== 'script') return;
+    const sup = geometry.superscript!;
+    expect(geometry.subscript!.box.y).toBeGreaterThan(sup.box.y + sup.box.height);
+    assertFiniteGeometry(geometry);
+  });
+
+  test('a tall subscript without a superscript starts inside the script box', () => {
+    const geometry = script(`<m:sSub><m:e>${run('x')}</m:e><m:sub>${tall}</m:sub></m:sSub>`);
+    expect(geometry.kind).toBe('script');
+    if (geometry.kind !== 'script') return;
+    expect(geometry.subscript!.box.y).toBeGreaterThanOrEqual(0);
+    assertFiniteGeometry(geometry);
+  });
+
+  test('a subscript stays clear of a superscript', () => {
+    const geometry = script(
+      `<m:sSubSup><m:e>${run('x')}</m:e><m:sub>${run('i')}</m:sub><m:sup>${run('2')}</m:sup></m:sSubSup>`
+    );
+    expect(geometry.kind).toBe('script');
+    if (geometry.kind !== 'script') return;
+    const sup = geometry.superscript!;
+    expect(geometry.subscript!.box.y).toBeGreaterThan(sup.box.y + sup.box.height);
+    assertFiniteGeometry(geometry);
   });
 });

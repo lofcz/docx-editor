@@ -70,6 +70,14 @@ import {
 import { scopedRevisionRoot } from './tree-op-revision-scope.ts';
 import { strikesWholeControl } from './tree-op-control-strike.ts';
 import { holdsRevisionContainer } from './revision-container-presence.ts';
+import {
+  changesOnlyLockFreeParagraphProperties,
+  restoresOnlyLockFreeParagraphProperties,
+} from './content-lock-paragraph-properties.ts';
+import {
+  isParagraphPropertyChange,
+  writesOnlyParagraphProperties,
+} from './bound-paragraph-properties.ts';
 import { attributionTargets } from './revision-author-change.ts';
 import { revisionStructuralReach, type RevisionOpAction } from './tree-op-revisions.ts';
 import {
@@ -512,6 +520,11 @@ const TREE_OP_REACH: {
   // A whole-table insert writes BESIDE the anchor paragraph, never into it — the same shape
   // as a TOC insert, and answered by the controls enclosing that paragraph.
   insertTable: (op) => ({ kind: 'nodes', targets: [{ nodeId: op.beforeParagraphId }] }),
+  // A move leaves one place and writes beside the anchor, so it is asked of both.
+  moveTable: (op) => ({
+    kind: 'nodes',
+    targets: [{ nodeId: op.tableId, removes: true }, { nodeId: op.beforeBlockId }],
+  }),
   insertTableRow: (op) => restructuring(op.tableId),
   deleteTableRow: (op) => ({
     kind: 'nodes',
@@ -647,6 +660,9 @@ interface ControlTouch {
   readonly discarded: boolean;
   readonly survivingLocks?: readonly ContentControlLock[];
   readonly keepsContent?: boolean;
+  /** A decision on a paragraph property change: it leaves a bound control's text alone. */
+  readonly paragraphPropertiesOnly?: boolean;
+  /** A removed control locked only against removal stays as an empty shell. */
   readonly shellKept?: boolean;
 }
 function structuralImageOwnsControl(part: OoxmlPart, control: OoxmlNode, row: boolean): boolean {
@@ -1002,7 +1018,9 @@ function resolveRevisionReach(
     if (isRevisionNode(node, revision, localName, siteNodeIdSet)) {
       seen += 1;
       if (controls.length === 0) unprotected.push(node.id);
-      const keepsContent = revisionDecisionKeepsContent(node, action);
+      const keepsContent =
+        revisionDecisionKeepsContent(node, action) ||
+        (action === 'reject' && restoresOnlyLockFreeParagraphProperties(part, node));
       for (let index = 0; index < controls.length; index += 1) {
         touches.push({
           control: controls[index]!,
@@ -1010,6 +1028,7 @@ function resolveRevisionReach(
           removed: false,
           discarded: false,
           keepsContent,
+          paragraphPropertiesOnly: isParagraphPropertyChange(node),
         });
       }
       // Only the direction that removes a revision wrapper's content removes nested controls.
@@ -1089,6 +1108,9 @@ const MAX_REVISION_NODES = 50_000;
  * inside it or retarget the link it holds has not been stopped by anything.
  */
 export function contentControlLockRefusal(part: OoxmlPart, op: TreeDocOp): TreeOpRejection | null {
+  // Alignment, indents, and spacing place the paragraph around the locked text; binding and
+  // forms checks still run.
+  if (changesOnlyLockFreeParagraphProperties(part, op)) return null;
   const reach = treeOpReach(op);
   const revisionDecision = op.op === 'acceptAllRevisions' || op.op === 'rejectAllRevisions';
   // Changing a control's METADATA and REMOVING it are refused by different halves of `ST_Lock`
@@ -1160,9 +1182,11 @@ export function contentControlBindingRefusal(
   // cannot desync a custom XML part, and refusing them would make a bound field freeze the
   // document's own layout.
   if (reach.kind === 'part' || reach.kind === 'documentProperties') return null;
+  // The binding mirrors text, so paragraph properties stay free (`bound-paragraph-properties.ts`).
+  if (writesOnlyParagraphProperties(op)) return null;
   for (const touch of resolveReach(part, reach).touches) {
     if (namedControlAnswersForItself && !touch.discarded) continue;
-    if (touch.removed) continue;
+    if (touch.removed || touch.paragraphPropertiesOnly) continue;
     if (contentControlPropertiesOf(touch.control).dataBinding) return 'bound';
   }
   return null;

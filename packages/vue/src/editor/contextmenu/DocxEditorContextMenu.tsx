@@ -38,6 +38,7 @@ import {
 } from '../menu/parts';
 import { warnUnmatchedHiddenRow } from '../menu/menu-warnings';
 import { contextMenuRowId } from './row-alias';
+import { isDocumentContextMenuTarget } from './menu-target';
 import { ContextMenuContext, type ContextMenuAnchor } from './contextmenu-context';
 import {
   ContextMenuCopy,
@@ -52,6 +53,7 @@ import {
   ContextMenuInsertColumnRight,
   ContextMenuMergeCells,
   ContextMenuSplitCell,
+  ContextMenuSelectTable,
   ContextMenuInsertRowAbove,
   ContextMenuInsertRowBelow,
   ContextMenuItem,
@@ -63,8 +65,10 @@ import {
   ContextMenuRefreshTocPageNumbers,
   useTableContextMenuVisible,
 } from './parts';
-import { useScopeClassName } from '../scope-context';
+import { useChromeScopeClassName } from '../color-mode-context';
+import { MenuLinkRow } from '../menu/menu-link-row';
 import { chromeControlForSlot, chromeIcon } from '../toolbar/ToolbarButton';
+import { useChromeDir } from '../../i18n';
 
 const VIEWPORT_INSET = 8;
 
@@ -157,7 +161,8 @@ const BASE_DEFAULT_SET: readonly DefaultEntry[] = [
   {
     kind: 'row',
     id: 'text.link',
-    render: () => <MenuItem slotId="text.link" labelKey="formattingBar.insertLink" />,
+    // The label switches to Edit link on an existing link; see `MenuLinkRow`.
+    render: () => <MenuLinkRow shortcutKey="contextMenu.insertLinkShortcut" />,
   },
   {
     kind: 'row',
@@ -169,6 +174,11 @@ const BASE_DEFAULT_SET: readonly DefaultEntry[] = [
 function tableContextEntries(): readonly DefaultEntry[] {
   return [
     { kind: 'separator', id: 'sep.table' },
+    {
+      kind: 'row',
+      id: ContextMenuSelectTable.docxRow,
+      render: () => <ContextMenuSelectTable />,
+    },
     {
       kind: 'row',
       id: ContextMenuInsertRowAbove.docxRow,
@@ -290,7 +300,8 @@ export const DocxEditorContextMenu = defineComponent({
     onOpenChange: { type: Function as PropType<(open: boolean) => void>, default: undefined },
   },
   setup(props, { slots }) {
-    const scopeClassName = useScopeClassName();
+    const scopeClassName = useChromeScopeClassName();
+    const chromeDir = useChromeDir();
     const editorRef = useDocxEditor();
     const stateTick = useEditorStateTick();
     const { t: catalogT } = useTranslation();
@@ -345,6 +356,13 @@ export const DocxEditorContextMenu = defineComponent({
           : null);
       if (!scroller) return;
       const onContextMenu = (event: MouseEvent) => {
+        // A second right-click on the open panel neither moves it nor shows the browser's menu.
+        if (panelRef.value?.contains(event.target as Node | null)) {
+          event.preventDefault();
+          return;
+        }
+        // Chrome in the scroller, such as the link popover, keeps the browser's own menu.
+        if (!isDocumentContextMenuTarget(scroller, event.target)) return;
         event.preventDefault();
         const keyboard = event.button === -1 || (event.clientX === 0 && event.clientY === 0);
         const box = scroller.getBoundingClientRect();
@@ -405,9 +423,12 @@ export const DocxEditorContextMenu = defineComponent({
         const win = hostWindowOf(panel);
         const maxX = win.innerWidth - width - VIEWPORT_INSET;
         const maxY = win.innerHeight - height - VIEWPORT_INSET;
+        // Right-to-left chrome opens toward the left of the pointer, and flips right instead.
+        const rtl = win.getComputedStyle(panel).direction === 'rtl';
+        const leftward = rtl ? anchor.value.x - width >= VIEWPORT_INSET : anchor.value.x > maxX;
         const x = Math.max(
           VIEWPORT_INSET,
-          anchor.value.x > maxX ? anchor.value.x - width : anchor.value.x
+          Math.min(leftward ? anchor.value.x - width : anchor.value.x, maxX)
         );
         const y = Math.max(
           VIEWPORT_INSET,
@@ -524,7 +545,8 @@ export const DocxEditorContextMenu = defineComponent({
                     props.t?.('contextMenu.ariaLabel') ??
                     catalogT('contextMenu.ariaLabel' as TranslationKey),
                   tabindex: -1,
-                  class: `${scopeClassName}docx-toolbar__menu docx-contextmenu${props.className ? ` ${props.className}` : ''}`,
+                  class: `${scopeClassName()}docx-toolbar__menu docx-contextmenu${props.className ? ` ${props.className}` : ''}`,
+                  dir: chromeDir.value,
                   style,
                   onKeydown: (event: KeyboardEvent) => {
                     const panel = panelRef.value;
@@ -563,6 +585,7 @@ export interface DocxEditorContextMenuNamespace {
   readonly PasteWithoutFormatting: typeof ContextMenuPasteWithoutFormatting;
   readonly Delete: typeof ContextMenuDelete;
   readonly SelectAll: typeof ContextMenuSelectAll;
+  readonly SelectTable: typeof ContextMenuSelectTable;
   readonly InsertRowAbove: typeof ContextMenuInsertRowAbove;
   readonly InsertRowBelow: typeof ContextMenuInsertRowBelow;
   readonly InsertColumnLeft: typeof ContextMenuInsertColumnLeft;
@@ -591,6 +614,7 @@ export const ContextMenu = Object.assign(DocxEditorContextMenu, {
   PasteWithoutFormatting: ContextMenuPasteWithoutFormatting,
   Delete: ContextMenuDelete,
   SelectAll: ContextMenuSelectAll,
+  SelectTable: ContextMenuSelectTable,
   InsertRowAbove: ContextMenuInsertRowAbove,
   InsertRowBelow: ContextMenuInsertRowBelow,
   InsertColumnLeft: ContextMenuInsertColumnLeft,

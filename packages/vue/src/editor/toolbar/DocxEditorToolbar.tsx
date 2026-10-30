@@ -19,7 +19,8 @@ import {
 import { docxSlotOf, unwrapFragment } from '../merge-arrangement';
 import { flattenChildren } from '../../lib/flattenChildren';
 import { useEditorState } from '../useEditorState';
-import { useScopeClassName } from '../scope-context';
+import { useChromeDir } from '../../i18n';
+import { useChromeScopeClassName } from '../color-mode-context';
 import { ToolbarContext, useToolbarLabel, type ToolbarTranslate } from './toolbar-context';
 import { ToolbarButton, chromeControlForSlot, guardToolbarMousedown } from './ToolbarButton';
 import {
@@ -33,6 +34,11 @@ import {
   collapseOrder,
   TOOLBAR_COLLAPSE_ORDER,
   TOOLBAR_PINNED_GROUPS,
+  toolbarGroupItems,
+  toolbarGroupsKey,
+  toolbarHostPanelShown,
+  toolbarShownCount,
+  type ToolbarFitGroup,
 } from '@docx-editor.dev/core/editor';
 import { readToolbarChildren, vnodeFlag, type ToolbarChildren } from './toolbar-children';
 import {
@@ -49,7 +55,12 @@ import {
   warnSlotOutsideArrangement,
   warnUnknownGroupAnchor,
 } from './toolbar-warnings';
-import { FIXED_ATTRIBUTE, GROUP_ATTRIBUTE, useToolbarOverflow } from './useToolbarOverflow';
+import {
+  FIXED_ATTRIBUTE,
+  GROUP_ATTRIBUTE,
+  ITEM_ATTRIBUTE,
+  useToolbarOverflow,
+} from './useToolbarOverflow';
 import {
   ToolbarImageInsert,
   ToolbarImageWrap,
@@ -197,8 +208,11 @@ function iconPart(slot: ChromeSlotId): PartLike {
   return part;
 }
 
-function buildDefaultGroups(image: EditorSnapshot['image']): readonly DefaultGroup[] {
-  return formattingBarChromeGroups(image).map((group) => {
+function buildDefaultGroups(
+  image: EditorSnapshot['image'],
+  direction: boolean
+): readonly DefaultGroup[] {
+  return formattingBarChromeGroups(image, { direction }).map((group) => {
     if (group.id === 'alignment') {
       return {
         id: group.id,
@@ -350,7 +364,7 @@ const DocxEditorToolbarRoot = defineComponent({
     overflow: { type: Boolean, default: true },
   },
   setup(props, { slots }) {
-    const scopeClassName = useScopeClassName();
+    const scopeClassName = useChromeScopeClassName();
     provide(
       ToolbarContext,
       computed(() => ({ t: props.t, onSave: props.onSave }))
@@ -359,14 +373,21 @@ const DocxEditorToolbarRoot = defineComponent({
     const image = useEditorState(selectToolbarImage);
     const toolbarDisabled = useEditorState(selectToolbarDisabled);
     const tableChromeVisible = useEditorState(selectTableChromeVisible);
-    const defaultGroups = computed(() => buildDefaultGroups(image.value));
+    // A right-to-left interface language puts the paragraph direction buttons in the bar.
+    const chromeDir = useChromeDir();
+    const defaultGroups = computed(() =>
+      buildDefaultGroups(image.value, chromeDir.value === 'rtl')
+    );
     const defaultSlots = computed(
       () =>
         new Set(defaultGroups.value.flatMap((group) => group.entries.map((entry) => entry.slot)))
     );
     // Which groups exist depends on the children, which Vue only renders inside `render`. The
     // render writes the answer here and the measuring hook reads it after the render.
-    const layout = shallowRef<{ groups: readonly string[]; order: readonly string[] }>({
+    const layout = shallowRef<{
+      groups: readonly ToolbarFitGroup[];
+      order: readonly string[];
+    }>({
       groups: [],
       order: [],
     });
@@ -392,17 +413,26 @@ const DocxEditorToolbarRoot = defineComponent({
         );
         const { overrides, tableOverrides, appended } = parsed;
         const arranged = arrangeGroups(defaultGroups.value, parsed);
-        const collapsible = [
-          ...arranged.filter((group) => !group.pinned).map((group) => group.id),
-          ...(tableChromeVisible.value ? [TABLE_CONTEXTUAL_GROUP_ID] : []),
+        const collapsible: ToolbarFitGroup[] = [
+          ...arranged
+            .filter((group) => !group.pinned)
+            .map((group) => ({ id: group.id, items: groupItems(group, overrides) })),
+          // Table chrome is one unit: its border controls act together on one target.
+          ...(tableChromeVisible.value
+            ? [{ id: TABLE_CONTEXTUAL_GROUP_ID, items: [TABLE_CONTEXTUAL_GROUP_ID] }]
+            : []),
         ];
         const priorities = new Map<string, number>();
         for (const group of arranged) {
           if (group.priority !== undefined) priorities.set(group.id, group.priority);
         }
-        const order = collapseOrder(collapsible, TOOLBAR_COLLAPSE_ORDER, priorities);
+        const order = collapseOrder(
+          collapsible.map((group) => group.id),
+          TOOLBAR_COLLAPSE_ORDER,
+          priorities
+        );
         if (
-          layout.value.groups.join('\u0000') !== collapsible.join('\u0000') ||
+          toolbarGroupsKey(layout.value.groups) !== toolbarGroupsKey(collapsible) ||
           layout.value.order.join('\u0000') !== order.join('\u0000')
         ) {
           layout.value = { groups: collapsible, order };
@@ -424,10 +454,21 @@ const DocxEditorToolbarRoot = defineComponent({
         const sections: ToolbarOverflowSection[] = [];
         let drawn = 0;
         for (const group of arranged) {
-          if (overflow.value.has(group.id)) {
-            const rows = group.entries.flatMap((entry) => {
+          // The group's controls in bar order. When the bar runs out of width they leave from
+          // the END, one at a time, so the bar keeps a prefix and "⋯" holds the rest.
+          const items = groupItems(group, overrides);
+          const entryBySlot = new Map<string, DefaultEntry>(
+            group.entries.map((entry) => [entry.slot, entry])
+          );
+          const shown = group.pinned
+            ? items.length
+            : toolbarShownCount(overflow.value, group.id, items.length);
+          const hidden = items.slice(shown);
+          if (hidden.length > 0) {
+            const rows = hidden.flatMap((item) => {
+              const entry = entryBySlot.get(item);
+              if (!entry) return [];
               const override = overrides.get(entry.slot);
-              if (isHiddenOverride(override)) return [];
               // A `Toolbar.Slot` may give its own panel content.
               const panelContent =
                 override?.type === ToolbarSlot
@@ -448,17 +489,20 @@ const DocxEditorToolbarRoot = defineComponent({
                 );
               return [<Fragment key={entry.slot}>{row}</Fragment>];
             });
-            const extra = hostPanelContent(group);
+            const extra = toolbarHostPanelShown(group.extras.length > 0, hidden)
+              ? hostPanelContent(group)
+              : null;
             if (extra !== null) rows.push(<Fragment key="host">{extra}</Fragment>);
-            if (rows.length === 0) continue;
-            sections.push({
-              id: group.id,
-              labelKey: group.labelKey,
-              ...(group.heading ? { label: hostGroupText(group.heading, label) } : {}),
-              children: rows,
-            });
-            continue;
+            if (rows.length > 0) {
+              sections.push({
+                id: group.id,
+                labelKey: group.labelKey,
+                ...(group.heading ? { label: hostGroupText(group.heading, label) } : {}),
+                children: rows,
+              });
+            }
           }
+          if (shown === 0) continue;
           if (drawn > 0) bar.push(h(ToolbarSeparator, { key: `separator-${group.id}` }));
           drawn += 1;
           bar.push(
@@ -472,12 +516,14 @@ const DocxEditorToolbarRoot = defineComponent({
                   : {}),
                 ...(group.pinned ? { [FIXED_ATTRIBUTE]: '' } : { [GROUP_ATTRIBUTE]: group.id }),
               },
-              [
-                ...group.entries.map((entry) => h(Fragment, { key: entry.slot }, [render(entry)])),
-                ...(group.extras.length > 0
-                  ? [h(Fragment, { key: 'host' }, [...group.extras])]
-                  : []),
-              ]
+              items.slice(0, shown).map((item) => {
+                const entry = entryBySlot.get(item);
+                return h(
+                  'div',
+                  { key: item, class: 'docx-toolbar__item', [ITEM_ATTRIBUTE]: item },
+                  entry ? [render(entry)] : [...group.extras]
+                );
+              })
             )
           );
         }
@@ -553,7 +599,8 @@ const DocxEditorToolbarRoot = defineComponent({
           disabled: toolbarDisabled.value,
           'aria-label': props.t?.('formattingBar.label') ?? label('formattingBar.label'),
           'data-testid': 'docx-toolbar',
-          class: `${scopeClassName}docx-toolbar${props.className ? ` ${props.className}` : ''}`,
+          class: `${scopeClassName()}docx-toolbar${props.className ? ` ${props.className}` : ''}`,
+          dir: chromeDir.value,
           ...(measuring.value ? { 'data-overflow': '' } : {}),
           onMousedown: guardToolbarMousedown,
         },
@@ -562,6 +609,20 @@ const DocxEditorToolbarRoot = defineComponent({
     };
   },
 });
+
+/**
+ * A group's collapsible controls, in bar order (see core's `toolbarGroupItems`). A slot removed
+ * with `hidden` takes no place.
+ */
+function groupItems(
+  group: ArrangedGroup,
+  overrides: ReadonlyMap<ArrangementKey, VNode>
+): readonly string[] {
+  const slots = group.entries
+    .filter((entry) => !isHiddenOverride(overrides.get(entry.slot)))
+    .map((entry) => entry.slot);
+  return toolbarGroupItems(slots, group.extras.length > 0);
+}
 
 type HostGroupHeading = Pick<DocxEditorToolbarGroupProps, 'id' | 'label' | 'labelKey'>;
 

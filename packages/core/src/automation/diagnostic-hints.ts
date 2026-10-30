@@ -122,6 +122,10 @@ const HINTS: Readonly<Record<Exclude<DiagnosticCode, CollaborationDiagnosticCode
     "The operation is not one a field result supports. A field result reads its text and takes insertText(text, 'Replace') with plain text; its other range members refuse. A result write also refuses when the result holds content other than plain runs. Read or write the result with those members only.",
   'edit.ooxml-unsupported':
     'The OOXML is not the one shape insertOoxml inserts: a Flat OPC package (pkg:package) whose document part holds one paragraph with exactly one inline m:oMath and, around it, plain runs. Other parts, relationships, images, fields, paragraph properties, display equations, and unknown elements refuse. Send only that shape.',
+  'edit.style-not-defined':
+    'The style name is not defined in this document, or it names a style of another type. List the defined styles with document.getStyles(), then assign the nameLocal of a listed style of the right type: a paragraph style for paragraph, range, and body styles, and a table style for a table.',
+  'edit.no-styles-defined':
+    'The document has no styles part, so it defines no styles and no style name applies. Leave the style as it is, or start from a document whose styles part defines the style you need.',
   'edit.section-mark':
     'The edit would remove a section break that holds page layout settings. Remove the section break on its own.',
   'edit.table-structure-unsupported':
@@ -158,6 +162,8 @@ const HINTS: Readonly<Record<Exclude<DiagnosticCode, CollaborationDiagnosticCode
     'An input method composition is in progress, so no preview began. Retry after the composition ends.',
   'edit.preview-diverged':
     'The document answered a replayed read differently from the preview, so the commit wrote nothing. Read the document again and build a new preview.',
+  'edit.read-after-commit':
+    'The writes in this sync are applied, and a load that followed them failed. Read the document again before you decide; do not apply the same edit again.',
   'edit.collaboration-not-ready':
     'The collaboration session is not ready to replicate edits, so this one was refused. Wait for the ready status, then retry; a destroyed session needs a rejoin.',
   'edit.collaboration-text-limit':

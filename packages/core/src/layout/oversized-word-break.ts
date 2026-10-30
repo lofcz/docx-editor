@@ -13,6 +13,8 @@ export interface OversizedWordPrefix {
 export interface OversizedWordRemainder extends OversizedWordPrefix {
   /** Whether chopping closed at least one line, so the caller can preserve word state. */
   readonly brokeLine: boolean;
+  /** The remainder stays on the line, and its final mark hangs past the margin. */
+  readonly finalMarkHangs?: true;
 }
 
 /**
@@ -59,6 +61,10 @@ export function chopOversizedWord(
     /** Closes a line that ends inside the word, after a cut. Defaults to `closeLine`. */
     readonly closeCutLine?: () => void;
     readonly overflowTolerancePt: number;
+    /** @internal Observe actual width decisions without another room or measurement read. */
+    readonly onWidthComparison?: (width: number, room: number, fits: boolean) => void;
+    /** Advance after this candidate in the same cross-run grapheme. */
+    readonly followingWidth?: number;
     /** Keep the leading fragment with the preceding text when their seam is protected. */
     readonly keepWithPrevious?: boolean;
     /**
@@ -68,9 +74,20 @@ export function chopOversizedWord(
      * the measure it GROWS past it instead, pushing the protected seam out past the margin.
      */
     readonly cutAllowedAt?: (text: string, utf16Index: number) => boolean;
+    /**
+     * Whether `text`, the rest of the word at `width`, may stay on the current line with its
+     * final mark hanging past the margin. Asked when a cut would leave only the word's final
+     * grapheme for the next line; a mark that ends the word then hangs rather than open a line
+     * alone. A mark inside the word still opens the next line.
+     */
+    readonly finalMarkHangs?: (text: string, width: number) => boolean;
   }
 ): OversizedWordRemainder {
-  if (width <= options.remainingLineWidth() + options.overflowTolerancePt) {
+  const initialWidth = width + (options.followingWidth ?? 0);
+  const initialRoom = options.remainingLineWidth();
+  const initialFits = initialWidth <= initialRoom + options.overflowTolerancePt;
+  options.onWidthComparison?.(initialWidth, initialRoom, initialFits);
+  if (initialFits) {
     return { text, modelStart, width, brokeLine: false };
   }
   const graphemes = segmentGraphemes(text);
@@ -79,10 +96,12 @@ export function chopOversizedWord(
   let remainingWidth = width;
   let brokeLine = false;
 
-  while (
-    graphemeFrom < graphemes.length &&
-    remainingWidth > options.remainingLineWidth() + options.overflowTolerancePt
-  ) {
+  while (graphemeFrom < graphemes.length) {
+    const testedWidth = remainingWidth + (options.followingWidth ?? 0);
+    const room = options.remainingLineWidth();
+    const overflows = testedWidth > room + options.overflowTolerancePt;
+    options.onWidthComparison?.(testedWidth, room, !overflows);
+    if (!overflows) break;
     const graphemesLeft = graphemes.length - graphemeFrom;
     if (graphemesLeft === 1) {
       if (options.lineHasText() && !(utf16From === 0 && options.keepWithPrevious)) {
@@ -102,7 +121,9 @@ export function chopOversizedWord(
       const mid = (low + high) >> 1;
       const utf16To = graphemes[mid - 1]!.utf16To;
       const prefixWidth = options.measureText(text.slice(utf16From, utf16To));
-      if (prefixWidth <= available + options.overflowTolerancePt) {
+      const fits = prefixWidth <= available + options.overflowTolerancePt;
+      options.onWidthComparison?.(prefixWidth, available, fits);
+      if (fits) {
         fitTo = mid;
         low = mid + 1;
       } else {
@@ -140,6 +161,18 @@ export function chopOversizedWord(
       options.closeLine();
       brokeLine = true;
       continue;
+    }
+    if (fitTo === graphemes.length - 1 && options.finalMarkHangs) {
+      const rest = text.slice(utf16From);
+      const restWidth = options.measureText(rest);
+      if (options.finalMarkHangs(rest, restWidth))
+        return {
+          text: rest,
+          modelStart: modelStart + utf16From,
+          width: restWidth,
+          brokeLine,
+          finalMarkHangs: true,
+        };
     }
     // The final group may continue in the next run. Keep it on the pending line;
     // only the caller can decide whether the next piece permits a line break.

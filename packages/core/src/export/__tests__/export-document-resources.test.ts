@@ -267,16 +267,14 @@ test('source diagnostics accept a text box whose path flags are inert', () => {
   }
 });
 
-test('source diagnostics report a framed object whose preview cannot be placed', () => {
+test('source diagnostics accept a framed object preview as a drawing', () => {
   const body =
     '<w:p><w:pPr><w:framePr w:y="-854" w:vAnchor="text"/></w:pPr><w:r><w:t>Before</w:t>' +
     '<w:object xmlns:v="urn:schemas-microsoft-com:vml"><v:shape type="#_x0000_t75" style="width:52.5pt;height:56.25pt"><v:imagedata r:id="preview"/></v:shape></w:object>' +
     '<w:t>After</w:t></w:r></w:p>';
   const opened = openHeadlessDocument(docxBytes(body, false));
   if (!opened.ok) throw new Error(opened.reason);
-  expect(collectExportContentWarnings(opened.view)).toEqual([
-    { code: 'legacy-drawing', partName: '/word/document.xml' },
-  ]);
+  expect(collectExportContentWarnings(opened.view)).toEqual([]);
 });
 
 test('source diagnostics identify hidden paragraph joins outside the supported subset', () => {
@@ -293,6 +291,31 @@ test('source diagnostics identify hidden paragraph joins outside the supported s
     if (!opened.ok) throw new Error(opened.reason);
     expect(collectExportContentWarnings(opened.view)).toEqual(
       unsupported ? [{ code: 'unsupported-style-separator', partName: '/word/document.xml' }] : []
+    );
+  }
+});
+
+test('source diagnostics defer projected MC legacy fallbacks to page-level warnings', () => {
+  const pict = (style: string) =>
+    '<w:pict><v:shape xmlns:v="urn:schemas-microsoft-com:vml" ' +
+    `id="Fallback" style="${style}" path="unsupported"/></w:pict>`;
+  for (const [fallback, represented] of [
+    [pict('width:100pt;height:50pt'), true],
+    [pict('width:100pt;height:50pt;rotation:15'), true],
+    // Without usable drawing geometry, the source warning must remain.
+    [pict(''), false],
+    // Unsupported branch nesting does not create a layout record.
+    [`<w:r>${pict('width:100pt;height:50pt')}</w:r>`, false],
+  ] as const) {
+    const body =
+      '<w:p><w:r>' +
+      '<mc:AlternateContent xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" ' +
+      'xmlns:future="urn:unsupported-shape"><mc:Choice Requires="future"><w:drawing/></mc:Choice>' +
+      `<mc:Fallback>${fallback}</mc:Fallback></mc:AlternateContent></w:r></w:p>`;
+    const opened = openHeadlessDocument(docxBytes(body, false));
+    if (!opened.ok) throw new Error(opened.reason);
+    expect(collectExportContentWarnings(opened.view)).toEqual(
+      represented ? [] : [{ code: 'legacy-drawing', partName: '/word/document.xml' }]
     );
   }
 });

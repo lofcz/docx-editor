@@ -28,6 +28,7 @@ import type { FormFieldKind } from './field-form.ts';
 import type { AllowlistedPageField } from './field-instruction.ts';
 import type { PageFieldNumberFormat, PageFieldSwitches } from './field-page-switches.ts';
 import type { AutonumFieldSpec } from './field-autonum.ts';
+import type { ListNumFieldSpec } from './field-listnum.ts';
 import type { HyperlinkFieldSpec } from './field-link.ts';
 import type { PageRefFieldProjection, RefFieldSpec } from './field-ref.ts';
 import type { SymbolFieldSpec } from './field-symbol.ts';
@@ -42,6 +43,7 @@ import {
 import type { ResolvedRunStyle, ThemeFonts } from './run-style.ts';
 import type { SpanLinkRecord } from './semantic-records.ts';
 import type { OmmlEquationProjection } from '@docx-editor.dev/core/store';
+import type { EquationLayoutInput } from './equation-layout.ts';
 
 /**
  * A `w:ptab` — the ABSOLUTE-position tab (ECMA-376 §17.3.3.16), which is what a table of
@@ -193,6 +195,8 @@ export interface FieldAwarePiece {
   readonly unsupported?: UnsupportedContentRecord;
   /** Bounded paragraph-level OMML projection occupying one UTF-16 model unit. */
   readonly equation?: OmmlEquationProjection;
+  /** With {@link equation}: the layout inputs that do not live on the shared projection. */
+  readonly equationLayout?: EquationLayoutInput;
   /**
    * The revision wrappers enclosing this text, outermost first, absent when untracked.
    *
@@ -225,6 +229,17 @@ export interface ModelRange {
 }
 
 export type MutableModelRange = { start: number; end: number };
+
+/** The ranges overlapping `[start, end)`, clipped to it. */
+export function rangesWithin(
+  ranges: readonly ModelRange[],
+  start: number,
+  end: number
+): ModelRange[] {
+  return ranges
+    .filter((range) => range.start < end && range.end > start)
+    .map((range) => ({ start: Math.max(range.start, start), end: Math.min(range.end, end) }));
+}
 
 /**
  * A model range whose content a resolved view removed, with the revisions that removed it.
@@ -374,6 +389,7 @@ export interface PieceEmitExtras {
   readonly inlineDrawing?: InlineDrawingLayoutInput;
   readonly anchoredAtom?: true;
   readonly equation?: FieldAwarePiece['equation'];
+  readonly equationLayout?: FieldAwarePiece['equationLayout'];
   readonly unsupported?: FieldAwarePiece['unsupported'];
   /**
    * Attribution to attach INSTEAD of the walk's live stack, for text emitted after the walk
@@ -399,6 +415,8 @@ export interface PieceEmitExtras {
  * `piecesOfParagraph`.
  */
 export interface PendingFieldProjection {
+  /** Set from the instruction: ASK and SET display no result. */
+  hidesResult?: boolean;
   hasNestedField?: boolean;
   characterStyleSpec?: import('./field-character-style.ts').CharacterStyleField | null;
   /** Allowlisted kind when live-projecting; null paints inert cached text at the atom. */
@@ -470,6 +488,11 @@ export interface PendingFieldProjection {
    * synthesized sequential value is the only display they have; there is no cache to prefer.
    */
   autonumSpec: AutonumFieldSpec | null;
+  /**
+   * Recognized LISTNUM instruction, or absent/null when the field is none. Its number comes
+   * from the story's list walk (`RefFieldContext`), and wins over a saved result.
+   */
+  listNumSpec?: ListNumFieldSpec | null;
   /**
    * Bounded `w:ffData` render state read at `begin` (`legacyFormFieldDataOf` — state only,
    * macros never), or null when absent or malformed. {@link formField} stays presence-based:

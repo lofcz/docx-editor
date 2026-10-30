@@ -85,7 +85,13 @@ export function beginHistoryGroupFrames(editor: DocxEditorInstance, group: Histo
 export function bindHistoryGroup(editor: Editor, element: HTMLElement, config: HistoryGroupBindingOptions): HistoryGroupBinding;
 
 // @public
-export function blankDocumentBytes(): Uint8Array;
+export function blankDocumentBytes(options?: BlankDocumentOptions): Uint8Array;
+
+// @public
+export interface BlankDocumentOptions {
+    readonly bidiLanguage?: string;
+    readonly direction?: 'ltr' | 'rtl';
+}
 
 // @public
 export interface BookmarkChromeHandlers {
@@ -1149,9 +1155,6 @@ export interface CollaborationModuleContribution {
 // @internal
 export function collapseOrder(groups: readonly string[], order?: readonly string[], priorities?: ReadonlyMap<string, number>): readonly string[];
 
-// @internal
-export function collapsibleGroupCost(groupWidth: number, separatorLeading: number): number;
-
 // @public
 export type CollectReviewItems = (input: ReviewModelInput) => readonly ReviewItem[];
 
@@ -1376,6 +1379,9 @@ export function defaultChromeGroups(): readonly ChromeGroup[];
 export function defaultTableLabel(key: TableInteractionLabelKey): string;
 
 // @public
+export function deferFonts(origin: FontOrigin): MarkedFontResolver;
+
+// @public
 export function defineFontResolver<T extends FontResolver>(resolve: T): MarkedFontResolver<T>;
 
 // @public
@@ -1489,7 +1495,7 @@ export interface DocxEditorConfig {
     reviewDisplayMode?: ReviewDisplayMode;
     revisionMarkup?: RevisionMarkupOptions;
     revisionStyles?: RevisionStyles;
-    tableInteractionLabel?: (key: 'table.insertRowBelow' | 'table.insertColumnRight') => string;
+    tableInteractionLabel?: (key: TableInteractionLabelKey) => string;
     translate?: (key: string, params?: Record<string, string | number>) => string;
     unsupportedElementRules?: readonly UnsupportedElementRule[];
     zoom?: number;
@@ -1548,6 +1554,9 @@ export const DRAWING_REL_FROM_H: readonly string[];
 export const DRAWING_REL_FROM_V: readonly string[];
 
 // @public
+export type DrawingGraphicKind = 'picture' | 'chart' | 'diagram' | 'shape' | 'group' | 'textbox' | 'canvas' | 'graphic';
+
+// @public
 export interface DrawingPositionInput {
     // (undocumented)
     readonly horizontalEmu?: number;
@@ -1561,6 +1570,26 @@ export interface DrawingPositionInput {
 }
 
 // @public
+export function drawingPreviewDocx(editor: DocxEditorInstance, element: Pick<UnsupportedElement, 'ownerPartName' | 'nodeId'>, limits?: DrawingPreviewPackageLimits): DrawingPreviewPackageResult;
+
+// @public
+export interface DrawingPreviewPackageLimits {
+    readonly maxBytes?: number;
+    readonly maxParts?: number;
+}
+
+// @public
+export type DrawingPreviewPackageResult = {
+    readonly copiedParts: readonly string[];
+    readonly docx: Uint8Array;
+    readonly ok: true;
+    readonly pageFitsDrawing: boolean;
+} | {
+    readonly ok: false;
+    readonly reason: 'drawing-not-found' | 'too-many-parts' | 'too-large';
+};
+
+// @public
 export type DrawingSelectionIntent = {
     readonly kind: 'none';
 } | {
@@ -1569,6 +1598,18 @@ export type DrawingSelectionIntent = {
 } | {
     readonly kind: 'programmatic';
 };
+
+// @public
+export type DrawingSupport = 'native' | 'partial' | 'unrendered';
+
+// @public
+export interface DrawingSupportIssue {
+    readonly code: 'unsupported-effect' | 'renderer-required' | 'unverified-3d' | 'saved-fallback' | 'unplaced-drawing' | 'inspection-limit' | 'projection-diagnostic';
+    readonly detail: string;
+    readonly localName: string;
+    readonly namespaceUri: string;
+    readonly nodeId: string;
+}
 
 // @public
 export interface EditorCommandExecute {
@@ -1739,6 +1780,7 @@ export interface FontConfigurationBase extends FontConfigurationFragment {
 
 // @public
 export interface FontConfigurationFragment {
+    readonly deferred?: Promise<FontConfigurationFragment | undefined>;
     // (undocumented)
     readonly sources?: readonly FontSource[];
     // (undocumented)
@@ -1828,7 +1870,12 @@ export interface FontUrlSource {
 export const formatInches: (twips: number) => string;
 
 // @public
-export function formattingBarChromeGroups(image: ImageContext | null): readonly ChromeGroup[];
+export function formattingBarChromeGroups(image: ImageContext | null, options?: FormattingBarOptions): readonly ChromeGroup[];
+
+// @public
+export interface FormattingBarOptions {
+    readonly direction?: boolean;
+}
 
 // @public
 export function generateRulerTicks(lengthPx: number, unit: RulerUnit): RulerTick[];
@@ -1995,6 +2042,9 @@ export interface HistoryShortcutKeys {
 // @public
 export function historyShortcutOf(event: HistoryShortcutKeys): 'undo' | 'redo' | null;
 
+// @internal
+export function hostDirectionOf(node: Element | null): 'ltr' | 'rtl';
+
 // @public
 export function hostDocumentOf(node: Node | null | undefined): Document;
 
@@ -2051,6 +2101,7 @@ export interface HyperlinkOps {
     linkById(linkId: string): SurfaceHyperlink | null;
     linksInCaretParagraph(): SurfaceHyperlink[];
     removeHyperlink(linkId?: string): boolean;
+    selectionIsPendingDeletion(): boolean;
 }
 
 // @public
@@ -2287,6 +2338,9 @@ export function isTableChromeSlot(slot: ChromeSlotId): slot is TableChromeSlotId
 // @public
 export function isTextNode(value: unknown): value is Text;
 
+// @internal
+export function keepScrollAtInlineEnd(scroller: HTMLElement): () => void;
+
 // @public
 export function layoutPointsToCssPixels(points: number, paintScale: number): number;
 
@@ -2382,6 +2436,9 @@ export const NO_MIXED_FIELDS: ParagraphDialogMixed;
 
 // @public
 export function observeContentControlPopup(panel: HTMLElement, anchor: HTMLElement): () => void;
+
+// @internal
+export function observeHostDirection(node: Element, onChange: () => void): () => void;
 
 // @public
 export function observeUnsupportedElements(container: HTMLElement, listener: (hosts: readonly UnsupportedElementHost[]) => void): () => void;
@@ -2532,7 +2589,7 @@ export interface PaginatedSurface extends SurfaceBlockReservations {
     convertNote(fromKind: 'footnote' | 'endnote', noteId: number): boolean;
     copyFlavours(): {
         readonly html: string | null;
-        readonly reason?: 'unsupported-content';
+        readonly reason?: 'unsupported-content' | 'chart-content';
         readonly text: string;
     };
     currentPage(mode?: 'viewport' | 'caret'): number;
@@ -2646,6 +2703,7 @@ export interface PaginatedSurface extends SurfaceBlockReservations {
     refreshToc(tocId?: string, mode?: 'entire' | 'pageNumbers'): boolean;
     releaseSelection(pin: SelectionPin): void;
     remotePresenceColor(name: string): string | undefined;
+    removeListNumber(paragraphId: string): boolean;
     repaintHighlights(): void;
     // (undocumented)
     replaceImage(drawingNodeId: string, bytes: Uint8Array, mime: SupportedImageMime, options: {
@@ -2734,7 +2792,7 @@ export interface PaginatedSurface extends SurfaceBlockReservations {
     }): boolean;
     setSelection(next: SemanticSelection): void;
     setShowParagraphMarks(show: boolean): void;
-    setTableInteractionLabel(resolver: (key: 'table.insertRowBelow' | 'table.insertColumnRight') => string): void;
+    setTableInteractionLabel(resolver: (key: TableInteractionLabelKey) => string): void;
     setTocLabels(labels: NonNullable<PaginatedSurfaceOptions['tocLabels']>): void;
     setTrackedChangesFilter(predicate: TrackedChangePredicate | null, mode?: TrackedChangeFilterMode): void;
     setTranslate(translate: PaginatedSurfaceOptions['translate']): void;
@@ -2785,7 +2843,7 @@ export interface PaginatedSurfaceOptions {
     // (undocumented)
     readonly onRequestContentControlWidget?: (session: ContentControlWidgetSession) => boolean;
     readonly onRequestGoTo?: () => boolean;
-    readonly onRequestHyperlink?: () => void;
+    readonly onRequestHyperlink?: () => boolean | void;
     // (undocumented)
     readonly onRequestInvalidTextFormField?: (session: InvalidTextFormFieldSession) => boolean;
     readonly onRequestTextFormField?: (session: TextFormFieldDialogSession) => boolean;
@@ -2804,7 +2862,7 @@ export interface PaginatedSurfaceOptions {
     readonly scale?: number;
     readonly showBookmarks?: boolean;
     readonly showParagraphMarks?: boolean;
-    readonly tableInteractionLabel?: (key: 'table.insertRowBelow' | 'table.insertColumnRight') => string;
+    readonly tableInteractionLabel?: (key: TableInteractionLabelKey) => string;
     readonly tocLabels?: {
         readonly title: string;
     };
@@ -3027,7 +3085,23 @@ export interface ParagraphTabStop {
 export function parseIsoDate(value: string): Date | null;
 
 // @public
-export function partOfNodeId(session: Pick<TreeDocxSessionView, 'currentPackage' | 'part'>, nodeId: string | undefined): OoxmlPart | null;
+export function partOfNodeId(session: Pick<TreeDocxSessionView, 'currentPackage' | 'part'> & Partial<Pick<TreeDocxSessionView, 'storyParts'>>, nodeId: string | undefined): OoxmlPart | null;
+
+// @internal
+export function placeSubmenu(row: {
+    readonly left: number;
+    readonly right: number;
+    readonly top: number;
+}, panel: {
+    readonly height: number;
+    readonly width: number;
+}, view: {
+    readonly height: number;
+    readonly width: number;
+}, rtl: boolean): {
+    readonly left: number;
+    readonly top: number;
+};
 
 // @public
 export function pointsToEmu(points: number): number;
@@ -3098,6 +3172,9 @@ export function readInlineMargins(style: CSSStyleDeclaration): {
 
 // @public
 export function readSplitCellCounts(columns: string, rows: string, limits: SplitCellLimits | null): SplitCellCounts;
+
+// @internal
+export function readToolbarRow(bar: HTMLElement, memory: ToolbarRowMemory, itemKey: (groupId: string, itemId: string) => string): ToolbarRowReading;
 
 // @public
 export interface RefreshChange {
@@ -3499,6 +3576,16 @@ export interface RulerIndent {
 export type RulerIndentHandle = 'firstLine' | 'hanging' | 'left' | 'right';
 
 // @public
+export interface RulerMarginTick {
+    readonly height: number;
+    readonly label?: string;
+    readonly position: number;
+}
+
+// @public
+export function rulerMarginTicks(page: RulerPageMetrics, indent: Pick<RulerIndent, 'rtl'>, unit: RulerUnit): RulerMarginTick[];
+
+// @public
 export function rulerPageBox(pages: readonly {
     readonly box: {
         height: number;
@@ -3519,6 +3606,9 @@ export interface RulerPageMetrics {
     // (undocumented)
     readonly rightMargin: number;
 }
+
+// @public
+export function rulerTabPosition(tabTwips: number, page: RulerPageMetrics, indent: Pick<RulerIndent, 'rtl'>): number;
 
 // @public
 export interface RulerTick {
@@ -3570,7 +3660,7 @@ export function runToolbarCommand(editor: Editor | null, id: TableChromeSlotId, 
 export function runToolbarCommand(editor: Editor | null, id: ChromeSlotId, value: undefined, options: EditorExecOptions): ExecResult;
 
 // @internal
-export const sameOverflow: typeof sameIds;
+export function sameItemOverflow(a: ToolbarItemOverflow, b: ToolbarItemOverflow): boolean;
 
 // @public
 export function sameTabStops(a: readonly ParagraphTabStop[], b: readonly ParagraphTabStop[]): boolean;
@@ -3825,6 +3915,12 @@ export function storyLabelTop(storyRect: {
     readonly bottom: number;
     readonly top: number;
 }, sheetTop: number | undefined, barHeight: number, clearance: number): number;
+
+// @internal
+export function submenuKeys(rtl: boolean): {
+    readonly close: string;
+    readonly open: string;
+};
 
 // @public
 export type SupportedImageMime = 'image/png' | 'image/jpeg' | 'image/gif' | 'image/bmp' | 'image/webp';
@@ -4102,7 +4198,7 @@ export function tableCommandState(command: EditorCommand, surface: PaginatedSurf
 export function tableCommandToolbarState(surface: PaginatedSurface | null, command: EditorCommand): Pick<ToolbarCommandState, 'enabled' | 'disabledReason'>;
 
 // @public
-export type TableInteractionLabelKey = 'table.insertRowBelow' | 'table.insertColumnRight';
+export type TableInteractionLabelKey = 'table.insertRowBelow' | 'table.insertColumnRight' | 'table.selectTable';
 
 // @public
 export type TargetMode = 'Internal' | 'External';
@@ -4160,6 +4256,8 @@ export interface TextMatch {
 // @public
 export interface TextMeasurer {
     caretAdvances?(text: string, style: ResolvedRunStyle): readonly number[] | undefined;
+    // @internal
+    faceCovers?(text: string, style: ResolvedRunStyle): boolean | undefined;
     hasResolvedFont?(style: ResolvedRunStyle): boolean;
     inkBounds?(text: string, style: ResolvedRunStyle): {
         left: number;
@@ -4183,6 +4281,12 @@ export function toEditorFontError(error: unknown): EditorFontError;
 
 // @internal
 export const TOOLBAR_COLLAPSE_ORDER: readonly string[];
+
+// @internal
+export const TOOLBAR_HOST_ITEM = "host-content";
+
+// @internal
+export const TOOLBAR_ITEM_ATTRIBUTE = "data-toolbar-item";
 
 // @internal
 export const TOOLBAR_OVERFLOW_HYSTERESIS = 24;
@@ -4211,20 +4315,19 @@ export function toolbarCommandState(editor: Editor | null, id: ChromeSlotId): To
 export function toolbarCommandStates(editor: Editor | null, ids: readonly ChromeSlotId[]): readonly ToolbarCommandState[];
 
 // @internal
-export interface ToolbarFitInput {
-    readonly available: number;
-    readonly fixed: number;
-    readonly groups: readonly string[];
-    // (undocumented)
-    readonly hysteresis?: number;
-    readonly more: number;
-    readonly order: readonly string[];
-    readonly previous?: ReadonlySet<string> | undefined;
-    readonly widths: ReadonlyMap<string, number>;
+export interface ToolbarFitGroup {
+    readonly id: string;
+    readonly items: readonly string[];
 }
 
 // @internal
+export function toolbarGroupItems(slots: readonly string[], hasHostContent: boolean): string[];
+
+// @internal
 export function toolbarGroupPriority(id: string, order?: readonly string[]): number | undefined;
+
+// @internal
+export function toolbarGroupsKey(groups: readonly ToolbarFitGroup[]): string;
 
 // @internal
 export interface ToolbarHostGroupPlacement {
@@ -4234,7 +4337,31 @@ export interface ToolbarHostGroupPlacement {
 }
 
 // @internal
-export function toolbarOverflowGroups(input: ToolbarFitInput): ReadonlySet<string>;
+export function toolbarHostPanelShown(hasHostContent: boolean, hidden: readonly string[]): boolean;
+
+// @internal
+export interface ToolbarItemFitInput {
+    readonly available: number;
+    readonly fixed: number;
+    readonly gap: number;
+    readonly groupBases: ReadonlyMap<string, number>;
+    readonly groupGaps?: ReadonlyMap<string, number>;
+    readonly groups: readonly ToolbarFitGroup[];
+    readonly hysteresis?: number;
+    readonly itemWidths: ReadonlyMap<string, number>;
+    readonly more: number;
+    readonly order: readonly string[];
+    readonly previous?: ToolbarItemOverflow | undefined;
+}
+
+// @internal
+export function toolbarItemKey(groupId: string, itemId: string): string;
+
+// @internal
+export type ToolbarItemOverflow = ReadonlyMap<string, number>;
+
+// @internal
+export function toolbarOverflowItems(input: ToolbarItemFitInput): ToolbarItemOverflow;
 
 // @internal
 export interface ToolbarPanelPlacement {
@@ -4259,6 +4386,26 @@ export function toolbarPopupLeft(input: {
     readonly popupWidth: number;
     readonly viewportWidth: number;
 }): number;
+
+// @internal
+export interface ToolbarRowMemory {
+    readonly groupBases: Map<string, number>;
+    readonly groupGaps: Map<string, number>;
+    readonly itemWidths: Map<string, number>;
+    more: number;
+}
+
+// @internal
+export interface ToolbarRowReading {
+    readonly available: number;
+    readonly fixed: number;
+    readonly gap: number;
+    readonly more: number;
+    readonly overflowing: boolean | null;
+}
+
+// @internal
+export function toolbarShownCount(overflow: ToolbarItemOverflow, groupId: string, itemCount: number): number;
 
 // @public (undocumented)
 export type ToolbarSlotValue<K extends ToolbarValueSlot> = K extends keyof ToolbarValueMap ? ToolbarValueMap[K] : unknown;
@@ -4417,23 +4564,18 @@ export const twipsToInches: (twips: number) => number;
 // @public
 export interface UnsupportedElement {
     readonly bounds?: LayoutBox;
-    // (undocumented)
     readonly drawing?: InlineDrawingRecord | AnchoredDrawingRecord;
-    // (undocumented)
+    readonly drawingIssues?: readonly DrawingSupportIssue[];
     readonly equation?: EquationSpanRecord;
-    // (undocumented)
+    readonly graphicKind?: DrawingGraphicKind;
     readonly label: string;
-    // (undocumented)
     readonly localName: string;
-    // (undocumented)
     readonly namespaceUri: string | null;
-    // (undocumented)
     readonly nodeId: string;
-    // (undocumented)
     readonly ownerPartName: string;
-    // (undocumented)
     readonly placement: 'inline' | 'block';
     readonly source: OoxmlElement | null;
+    readonly support?: Exclude<DrawingSupport, 'native'>;
 }
 
 // @public
@@ -4452,19 +4594,19 @@ export interface UnsupportedElementHost {
 
 // @public
 export interface UnsupportedElementLayout {
-    // (undocumented)
     readonly height: number;
-    // (undocumented)
     readonly width: number;
 }
 
 // @public
 export interface UnsupportedElementRule {
-    // (undocumented)
+    readonly includePartial?: boolean;
     readonly layout?: UnsupportedElementLayout;
-    // (undocumented)
     readonly match?: (element: UnsupportedElement) => boolean;
 }
+
+// @public
+export function unsupportedElementRuleMatches(rule: UnsupportedElementRule, element: UnsupportedElement): boolean;
 
 // @public
 export function validateDrawingPositionInput(position: DrawingPositionInput): boolean;

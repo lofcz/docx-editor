@@ -20,6 +20,7 @@ import {
   projectDrawingsInPart,
 } from '../package/drawing-projection.ts';
 import { createWalkState, type DrawingDiagnostic } from '../package/drawing-projection-walk.ts';
+import { drawingPaintFields } from '../../layout/drawing-paint-fields.ts';
 import { createPackageShapeThemeResolvers } from '../package/theme-color-resolution.ts';
 
 const WP = 'http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing';
@@ -29,7 +30,6 @@ const WPG = 'http://schemas.microsoft.com/office/word/2010/wordprocessingGroup';
 const MC = 'http://schemas.openxmlformats.org/markup-compatibility/2006';
 const V = 'urn:schemas-microsoft-com:vml';
 const OWNER = '/word/document.xml';
-const ELLIPSE_POINT_COUNT = 32;
 
 function parsePart(body: string) {
   const xml =
@@ -783,16 +783,16 @@ describe('wps vector shape projection', () => {
     const drawing = doubleRuleShapeDrawing().replace(
       '<a:solidFill><a:srgbClr val="000000"/></a:solidFill>',
       '<a:solidFill><a:schemeClr val="accent1">' +
-        '<a:lumMod val="100001"/>' +
+        '<a:lumMod val="10000001"/>' +
         '</a:schemeClr></a:solidFill>'
     );
     const part = parsePart(`<w:p><w:r>${mcWrapped(drawing)}</w:r></w:p>`);
     const atoms = indexInlineDrawingProjectionsInPart(part, {
       resolveSchemeColor: () => '4472C4',
     });
-    // Nothing paints; layout keeps only the anchor's wrap footprint.
+    // Unsupported geometry keeps a visible placeholder with the authored extent.
     expect([...atoms.values()].map((atom) => [atom.footprintOnly, atom.vectorShape])).toEqual([
-      [true, null],
+      [undefined, null],
     ]);
   });
 
@@ -817,7 +817,8 @@ describe('wps vector shape projection', () => {
     const shape = [...atoms.values()][0]!.vectorShape!;
     expect(shape.components).toHaveLength(2);
     expect(shape.components?.map((component) => component.fillHex)).toEqual(['4472C4', 'FF0000']);
-    expect(shape.components?.[0]!.subpathsEmu[0]).toHaveLength(ELLIPSE_POINT_COUNT);
+    // The ellipse flattens adaptively from the geometry engine.
+    expect(shape.components?.[0]!.subpathsEmu[0]!.length).toBeGreaterThanOrEqual(8);
     expect(shape.components?.[1]!.subpathsEmu[0]![0]).toEqual({ x: 100000, y: 0 });
 
     const rotated = parsePart(
@@ -936,7 +937,7 @@ describe('wps vector shape projection', () => {
     expect(projection.diagnostics.filter((d) => d.code === 'unsupported-graphic')).toHaveLength(1);
   });
 
-  test('an MC-wrapped inline chart paints nothing and keeps its extent on the line', () => {
+  test('an MC-wrapped inline chart without a fallback that paints keeps its placeholder', () => {
     const drawing =
       '<w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0">' +
       '<wp:extent cx="914400" cy="457200"/><wp:docPr id="10" name="Chart 10"/>' +
@@ -945,22 +946,26 @@ describe('wps vector shape projection', () => {
       '</a:graphicData></a:graphic></wp:inline></w:drawing>';
     const part = parsePart(`<w:p><w:r>${mcWrapped(drawing)}</w:r></w:p>`);
     const atoms = indexInlineDrawingProjectionsInPart(part);
+    // A chart never paints nothing: it keeps its labelled placeholder at its extent.
     expect([...atoms.values()].map((atom) => [atom.footprintOnly, atom.extentEmu])).toEqual([
-      [true, { cx: 914400, cy: 457200 }],
+      [undefined, { cx: 914400, cy: 457200 }],
     ]);
-    expect(projectDrawingsInPart(part)).toHaveLength(0);
+    expect(projectDrawingsInPart(part)).toHaveLength(1);
+    const [projection] = projectDrawingsInPart(part);
+    expect(projection?.picture).toBeNull();
+    expect(drawingPaintFields(projection!).placeholderGraphicKind).toBe('chart');
   });
 
-  test('unsupported path verbs refuse vector geometry and stay invisible under MC', () => {
+  test('unsupported path verbs refuse vector geometry and keep a placeholder under MC', () => {
     const bezier = doubleRuleShapeDrawing().replace(
       '<a:lnTo><a:pt x="0" y="38100"/></a:lnTo>',
-      '<a:quadBezTo><a:pt x="1" y="1"/><a:pt x="0" y="38100"/></a:quadBezTo>'
+      '<a:spiralTo><a:pt x="1" y="1"/><a:pt x="0" y="38100"/></a:spiralTo>'
     );
     const part = parsePart(`<w:p><w:r>${mcWrapped(bezier)}</w:r></w:p>`);
     const atoms = indexInlineDrawingProjectionsInPart(part);
-    // Nothing paints; layout keeps only the anchor's wrap footprint.
+    // Unsupported geometry keeps a visible placeholder with the authored extent.
     expect([...atoms.values()].map((atom) => [atom.footprintOnly, atom.vectorShape])).toEqual([
-      [true, null],
+      [undefined, null],
     ]);
   });
 

@@ -1,4 +1,5 @@
 import { createContextualRunFormatting } from '../layout/complex-script-formatting.ts';
+import { paragraphMarkFace } from '../layout/paragraph-mark-face.ts';
 
 // Run and paragraph property edits at the selection (paginated-surface seam).
 //
@@ -31,10 +32,15 @@ import {
 } from './surface-formatting.ts';
 import { formattableRanges } from '@docx-editor.dev/core/store';
 import { findNode } from '../store/package/ooxml-edit.ts';
+import { isEastAsianFontFamily } from '../store/package/default-font-faces.ts';
 import { formattingRangeBesideRestrictedControl } from '../store/store/direct-properties.ts';
 import { wmlChildNamed, wmlAttributeValue } from '../store/store/tree-op-table-shared.ts';
 import { formattingRunAt, propertyContainer } from '../store/store/direct-properties.ts';
 import { clearsRunValue } from '../store/store/direct-properties.ts';
+import {
+  noteReferenceEndingAt,
+  noteTypingSourceRange,
+} from '../store/store/note-typing-boundary.ts';
 import type {
   FormattingDisplayMode,
   FormattingRevisionAuthorFilter,
@@ -136,18 +142,31 @@ export function createSurfaceFormat(deps: SurfaceFormatDeps): FormatMethods {
   const storyPart = () => session.partFor(deps.storyScope()) ?? session.part();
   // A caret beside a control that typing cannot enter reads the run that typing will copy,
   // outside the control, rather than the control's own run; or no run, when typing copies none.
+  // After a note reference it reads the run whose face typing takes, never the reference run.
+  // With no such run, typing takes the paragraph mark's face, which `markFace` carries
+  // resolved through the styles; after a reference that ends a link, it takes no face.
   const formattingSelection = (
     selection: SemanticSelection
-  ): { readonly selection: SemanticSelection; readonly caretSpan: boolean } => {
+  ): {
+    readonly selection: SemanticSelection;
+    readonly caretSpan: boolean;
+    readonly markFace?: readonly SurfaceProperty[];
+  } => {
     const { anchor, head } = selection;
     if (anchor.paragraphId !== head.paragraphId || anchor.offset !== head.offset) {
       return { selection, caretSpan: true };
     }
     const paragraph = findNode(storyPart(), head.paragraphId);
-    const run = paragraph
-      ? formattingRangeBesideRestrictedControl(paragraph, head.offset)
-      : undefined;
-    if (run === undefined) return { selection, caretSpan: true };
+    if (paragraph?.kind !== 'paragraph') return { selection, caretSpan: true };
+    const afterNote = noteReferenceEndingAt(paragraph, head.offset) !== undefined;
+    const run = afterNote
+      ? noteTypingSourceRange(paragraph, head.offset)
+      : formattingRangeBesideRestrictedControl(paragraph, head.offset);
+    if (run === undefined) return { selection, caretSpan: !afterNote };
+    if (run === null && afterNote) {
+      const markFace = paragraphMarkFace(paragraph, session.stylesRoot(), session.settingsRoot());
+      return { selection, caretSpan: false, markFace };
+    }
     if (run === null) return { selection, caretSpan: false };
     const start = run.end <= head.offset ? run.end - 1 : run.start;
     return {
@@ -157,6 +176,19 @@ export function createSurfaceFormat(deps: SurfaceFormatDeps): FormatMethods {
       },
       caretSpan: true,
     };
+  };
+  // A font pick (`w:ascii` and `w:hAnsi` set to one family, nothing else) of an EAST ASIAN
+  // font also sets `w:eastAsia`, so the pick reaches Chinese, Japanese, and Korean text. A
+  // Latin font leaves `w:eastAsia` alone: it has no CJK glyphs, and writing it there would
+  // repaint the ideographs in a fallback face. The font is East Asian by its name only.
+  const withEastAsianSlot = (
+    attributes: Record<string, string> | undefined
+  ): Record<string, string> | undefined => {
+    const family = attributes?.ascii;
+    if (!family || attributes.hAnsi !== family || Object.keys(attributes).length !== 2) {
+      return attributes;
+    }
+    return isEastAsianFontFamily(family) ? { ...attributes, eastAsia: family } : attributes;
   };
   const applyOps = (
     ops: Parameters<TreeDocxSessionView['applyTreeOps']>[0],
@@ -462,7 +494,8 @@ export function createSurfaceFormat(deps: SurfaceFormatDeps): FormatMethods {
     setRunProperty(localName, attributes) {
       const refused = refuseRunFormat();
       if (refused) return refused;
-      const incoming = { localName, ...(attributes ? { attributes } : {}) };
+      const widened = localName === 'rFonts' ? withEastAsianSlot(attributes) : attributes;
+      const incoming = { localName, ...(widened ? { attributes: widened } : {}) };
       if (
         localName === 'rStyle' &&
         (typeof attributes?.val !== 'string' || attributes.val.length > 512)
@@ -537,7 +570,8 @@ export function createSurfaceFormat(deps: SurfaceFormatDeps): FormatMethods {
           deps.defaultFontFamily?.() ?? null,
           read.caretSpan
         ),
-        pending,
+        // The mark's face first, so an armed format still answers over it.
+        mergedProperties(read.markFace ?? [], pending ?? []),
         inheritedFonts
           ? {
               ...inheritedFonts,
@@ -555,18 +589,23 @@ export function createSurfaceFormat(deps: SurfaceFormatDeps): FormatMethods {
       // enumeration rather than a boolean: `w:vertAlign` carries superscript AND subscript,
       // so "is it on" is only answerable against the value being toggled.
       const value = attributes?.val;
+      // The document answers from the same selection the toolbar reads, so a press after a
+      // note reference toggles the face typing takes there, not the reference's face.
+      const read = formattingSelection(selectionNow.value);
+      const documentActive = read.caretSpan
+        ? isRunPropertyActive(
+            currentLayout.value,
+            read.selection,
+            localName,
+            cells,
+            value,
+            deps.paragraphOrder()
+          )
+        : pendingPropertyState(read.markFace ?? null, localName, value) === true;
       // A pending entry answers for the toggle state ahead of the document — pressing Bold
       // twice at a caret must cancel, not double-arm.
       const active =
-        pendingPropertyState(deps.pendingFormats(), localName, value) ??
-        isRunPropertyActive(
-          currentLayout.value,
-          selectionNow.value,
-          localName,
-          cells,
-          value,
-          deps.paragraphOrder()
-        );
+        pendingPropertyState(deps.pendingFormats(), localName, value) ?? documentActive;
       // Toggling OFF sends an explicit off value rather than dropping the element: the
       // property may be inherited from a style, and removing the local override would let the
       // inherited value come back. Two of these are closed enumerations, not booleans, and
@@ -586,14 +625,6 @@ export function createSurfaceFormat(deps: SurfaceFormatDeps): FormatMethods {
         // rather than arming an explicit override: Bold pressed twice must leave nothing
         // pending, or typing would split the run to write a redundant `b val="0"`.
         const pending = deps.pendingFormats() ?? [];
-        const documentActive = isRunPropertyActive(
-          currentLayout.value,
-          selectionNow.value,
-          localName,
-          undefined,
-          value,
-          deps.paragraphOrder()
-        );
         if (!active === documentActive) {
           const kept = pending.filter((property) => property.localName !== localName);
           deps.setPendingFormats(kept.length > 0 ? kept : null);

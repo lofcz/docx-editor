@@ -80,6 +80,7 @@ import { CollaborationSchemaError } from './errors.ts';
 import type { CollaborationHandle, CollaborationIdentityUpdate } from './types.ts';
 import type { DocumentCollaborationSession } from './document-session-contract.ts';
 import { UndoGroups, type CollaborationUndoGroup } from './document-undo-group.ts';
+import { restoreLostTombstones } from './document/tombstone-guard.ts';
 import type { CreateDocumentCollaborationOptions } from './document-session-options.ts';
 
 /**
@@ -184,6 +185,7 @@ class DocumentSession implements DocumentCollaborationSession {
       viewIsCurrent: () => !this.viewWaiting,
     });
     ydoc.on('beforeTransaction', this.onBeforeYjsTransaction);
+    ydoc.on('afterTransaction', this.onYjsTransaction);
     ydoc.on('afterAllTransactions', this.onYjsTransactions);
     awareness.on('change', this.onAwarenessChange);
     this.stopBlobWatch = blobs.observeChanges((digests) => {
@@ -541,6 +543,7 @@ class DocumentSession implements DocumentCollaborationSession {
     this.stopBlobWatch();
     this.stopSeedWatch();
     this.ydoc.off('beforeTransaction', this.onBeforeYjsTransaction);
+    this.ydoc.off('afterTransaction', this.onYjsTransaction);
     this.ydoc.off('afterAllTransactions', this.onYjsTransactions);
     this.awareness.off('change', this.onAwarenessChange);
     // Withdraw only this session's presence. The host owns the awareness and may keep its own
@@ -680,6 +683,12 @@ class DocumentSession implements DocumentCollaborationSession {
   remoteSelectionMove(): CollaborationSelectionMove | null {
     return this.caretAnchors.move();
   }
+
+  // A peer's undo can empty a deletion this replica still stands by: write it again.
+  private readonly onYjsTransaction = (transaction: Y.Transaction): void => {
+    if (this.destroyed || !this.hasCompatibleSharedSchema() || !this.canWriteSharedState()) return;
+    restoreLostTombstones(transaction, this.registry.schema.nodes, this.undoManager);
+  };
 
   private readonly onYjsTransactions = (
     _doc: Y.Doc,

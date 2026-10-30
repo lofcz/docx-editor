@@ -22,7 +22,7 @@ Set interface translation and document locale separately. Neither setting transl
 | Packaged editor `i18n` | Interface catalog for the packaged editor. |
 | `Root.locale` | Regional date input and engine-generated labels. Default: `en-US`. |
 | `Root.translate` | Live drawing and form-control label resolver. |
-| `Root.tableInteractionLabel` | Table row and column insertion labels. |
+| `Root.tableInteractionLabel` | Labels for the table row and column insertion controls and the table select handle. |
 | Toolbar, menu, context menu, and review `t` | Label resolver for that interface region. |
 | Application labels | Your application's own translation catalog. |
 
@@ -33,6 +33,7 @@ Import only the catalogs your application uses from `@docx-editor.dev/i18n`. The
 | Export | Locale             |
 | ------ | ------------------ |
 | `en`   | English            |
+| `ar`   | Arabic             |
 | `de`   | German             |
 | `es`   | Spanish            |
 | `fr`   | French             |
@@ -60,6 +61,10 @@ If a region's `t` overrides every label, return a useful string for every key it
 Changes to `Root.locale` apply to subsequent edits without replacing the editor instance. Existing stored date formats remain unchanged. Changes to `Root.translate` update generated labels without replacing the instance. Keep document bytes and font configuration stable when you change interface language.
 
 Interface language does not set paragraph direction. Use document formatting and the left-to-right or right-to-left controls for paragraph direction. Keep language-sensitive font shaping in the font configuration's `language` field. Use date fields and form controls to verify regional input behavior in your application.
+
+### Right-to-left interfaces
+
+The `ar` and `he` catalogs mirror the editor interface, including the review column, which moves to the left of the page. For direction rules, new right-to-left documents, and how the rendering engine lays out right-to-left text, see [Right-to-left support](/docs/2.x/guides/right-to-left).
 
 ## React and Vue reference
 

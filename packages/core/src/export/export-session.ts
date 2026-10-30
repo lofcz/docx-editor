@@ -31,6 +31,8 @@ import {
   type LayoutDocumentViewOptions,
 } from '../layout/document-layout-coordinator.ts';
 import { createFixedMeasurer } from '../layout/fixed-measurer.ts';
+import { sniffImageMime } from '../store/package/image-resources.ts';
+import { IMAGE_RESOURCE_HARD_CEILINGS } from '../store/runtime/limits.ts';
 import { createInlineDrawingLayoutBundle } from '../layout/inline-drawing-source.ts';
 import { releasePageFieldProjectionState } from '../layout/field-page-furniture.ts';
 import { createParagraphLayoutCache } from '../layout/layout-cache.ts';
@@ -209,6 +211,27 @@ export interface ExportSession {
   validatedImageBytes(
     source: InlineDrawingRecord | AnchoredDrawingRecord | ListMarkerPictureRecord
   ): Uint8Array | null;
+  /**
+   * A defensive copy of the original bytes of an EMF or WMF picture that has no raster in this
+   * session, for an exporter that draws the metafile itself. Null for any other resource, and
+   * when the part's signature does not match the metafile format it claims.
+   *
+   * @internal
+   */
+  metafileBytes?(
+    source: InlineDrawingRecord | AnchoredDrawingRecord
+  ): { readonly mime: 'image/x-emf' | 'image/x-wmf'; readonly bytes: Uint8Array } | null;
+  /**
+   * The settled resource of the picture saved in a drawn chart's `mc:Fallback`, for an
+   * exporter that exports the chart as that picture. Layout never reads it, so a drawn chart
+   * never waits for it; this reads it on request. Undefined for a record without one, and
+   * after disposal.
+   *
+   * @internal
+   */
+  chartFallbackResource?(
+    source: InlineDrawingRecord | AnchoredDrawingRecord
+  ): Promise<InlineDrawingRecord['resource'] | undefined>;
   /**
    * Release per-document caches, pending resource work, and image-byte capabilities. Idempotent.
    * Previously resolved layout snapshots remain immutable and traversable after disposal.
@@ -492,7 +515,9 @@ export function openDocumentForExport(
         finish();
         return;
       }
-      pollRevision();
+      // The first check waits one task, so a resource that settles in a microtask is not
+      // timed out when a slow layout pass already used up the deadline.
+      timer = setTimeout(pollRevision, 0);
     });
   };
 
@@ -722,6 +747,53 @@ export function openDocumentForExport(
           .mintValidatedBytes(source.resource.validatedHandle, source.resource.contentId)
           ?.slice() ?? null
       );
+    },
+    async chartFallbackResource(source) {
+      const state = activeState;
+      if (!state || !source.chart || !source.chartFallbackResource) return undefined;
+      if (source.chartFallbackResource.kind !== 'pending') return source.chartFallbackResource;
+      // The same bound as layout's resource settlement. A fallback that does not settle in time
+      // answers as unreadable, so the exporter leaves the chart out with its warning instead of
+      // failing the whole export.
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const timedOut = new Promise<InlineDrawingRecord['resource']>((resolve) => {
+        timer = setTimeout(
+          () =>
+            resolve(
+              Object.freeze({
+                kind: 'unrenderable',
+                partName: null,
+                mime: 'unknown',
+                reason: 'decode-failed',
+              })
+            ),
+          timeoutMs
+        );
+      });
+      try {
+        return await Promise.race([
+          state.drawingBundle.resolveChartFallback(source.ownerPartName, source.drawingNodeId),
+          timedOut,
+        ]);
+      } finally {
+        clearTimeout(timer);
+      }
+    },
+    metafileBytes(source) {
+      const state = activeState;
+      const resource = source.resource;
+      if (!state || resource.kind !== 'unrenderable' || resource.partName === null) return null;
+      // Only a format refusal falls back to the vector replay; a resource-limit or signature
+      // refusal stays refused, so the replay never sees bytes the image pipeline turned away.
+      if (resource.reason !== 'unsupported-format' && resource.reason !== 'decode-failed') {
+        return null;
+      }
+      const mime = resource.mime;
+      if (mime !== 'image/x-emf' && mime !== 'image/x-wmf') return null;
+      const bytes = state.view.currentPackage().partBytes.get(resource.partName);
+      if (!bytes || bytes.byteLength > IMAGE_RESOURCE_HARD_CEILINGS.maxEncodedBytes) return null;
+      if (sniffImageMime(bytes) !== mime) return null;
+      return { mime, bytes: bytes.slice() };
     },
     dispose: disposeSession,
   };

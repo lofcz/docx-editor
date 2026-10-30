@@ -24,6 +24,9 @@ function paragraph(parts: readonly string[], pPr = '', rPr = ''): OoxmlElement {
     `<w:p xmlns:w="${W}"><w:pPr><w:overflowPunct w:val="0"/>${pPr}</w:pPr>${parts.map((text) => `<w:r><w:rPr><w:sz w:val="22"/>${rPr}</w:rPr><w:t xml:space="preserve">${escape(text)}</w:t></w:r>`).join('')}</w:p>`
   );
 }
+// Mode 15: legacy modes also hang punctuation in left, centered, and right-aligned lines.
+const MODERN_MODE =
+  '<w:compat><w:compatSetting w:name="compatibilityMode" w:uri="http://schemas.microsoft.com/office/word" w:val="15"/></w:compat>';
 function layout(
   parts: readonly string[],
   width: number,
@@ -33,7 +36,7 @@ function layout(
   sourceDefaults = false
 ) {
   const p = paragraph(parts, pPr, rPr);
-  const settingsRoot = root(`<w:settings xmlns:w="${W}">${settings}</w:settings>`);
+  const settingsRoot = root(`<w:settings xmlns:w="${W}">${MODERN_MODE}${settings}</w:settings>`);
   const cascade = sourceDefaults
     ? buildStyleCascadeTable(
         root(
@@ -361,7 +364,7 @@ describe('CJK follow-up: document and paragraph policy', () => {
     }
     const kanaSettings = '<w:characterSpacingControl w:val="compressPunctuationAndJapaneseKana"/>';
     expect(layout(['アイ'], 12, '', '', kanaSettings)[0]!.width).toBe(12);
-    expect(layout(['アイ'], 11, '', '', kanaSettings)[0]!.width).toBe(10.5);
+    expect(textLines(['アイ'], 11, '', '', kanaSettings)).toEqual(['ア', 'イ']);
   });
   test('contextual compression preserves the explicit hanging punctuation switch', () => {
     const settings = '<w:characterSpacingControl w:val="compressPunctuation"/>';
@@ -396,7 +399,7 @@ describe('CJK follow-up: document and paragraph policy', () => {
         }
       }
     }
-    expect(textLines(['か\u3099天地'], 17, '', '', settings)).toEqual(['か\u3099天', '地']);
+    expect(textLines(['か\u3099天地'], 17, '', '', settings)).toEqual(['か\u3099', '天地']);
   });
   test('compression leaves projected atoms and source properties unchanged', () => {
     const style = Object.freeze({ ...DEFAULT_RUN_STYLE, fontSizePt: 11 });
@@ -413,7 +416,7 @@ describe('CJK follow-up: document and paragraph policy', () => {
       )
     );
     const result = compressCjkPieces(pieces, resolveCjkTypography([], settings), measurer);
-    expect(result[0]!.style.characterSpacingPt).toBe(-0.75);
+    expect(result[0]).toBe(pieces[0]!);
     expect(result[1]).toBe(pieces[1]!);
     expect(result[2]).toBe(pieces[2]!);
     expect(result[3]).toBe(pieces[3]!);

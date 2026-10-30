@@ -192,9 +192,14 @@ export class Body extends ModelObject {
    * The paragraph style, by the name a reader sees in the styles gallery.
    *
    * Reading answers the name every paragraph in the story agrees on, and `null` where they do not or
-   * where the document names no style. Writing applies it to all of them, and a name the document
-   * does not already define is refused rather than created — a minted style would report itself
-   * applied while the text stayed exactly as it looked.
+   * where no paragraph style name writes back to their style. Writing applies it to all of them, and
+   * a name the document does not already define is refused rather than created — a minted style
+   * would report itself applied while the text stayed exactly as it looked.
+   *
+   * List the names you can write with `context.document.getStyles()`, and assign the `nameLocal`
+   * of a style whose `type` is `Paragraph`; character, table, and list names are refused.
+   * A name read is always one that writes back to the same style. `null` means there is no such
+   * name: write a listed name instead.
    */
   get style(): string {
     return this.loadedProperty<string>('style');
@@ -311,6 +316,8 @@ export class Body extends ModelObject {
    *
    * `\n`, `\r`, and `\r\n` in `text` start new paragraphs, tracked with `TrackMineOnly` at
    * `Start` and `End`. See `Range.insertText` for the rules.
+   *
+   * You can load the returned range in the same sync. Editing it needs a sync first.
    */
   insertText(
     text: string,
@@ -327,7 +334,8 @@ export class Body extends ModelObject {
     const where = bodyTextLocation(insertLocation, target);
     this.requireUsablePath();
     const created = Range.promised(this.context, target, false);
-    this.commandAnswering(
+    this.commandCreating(
+      created,
       target,
       () =>
         where === 'Replace'
@@ -344,7 +352,10 @@ export class Body extends ModelObject {
     return created;
   }
 
-  /** Add a paragraph at the start or the end of the story. Answers the new paragraph. */
+  /**
+   * Add a paragraph at the start or the end of the story. Answers the new paragraph.
+   * You can load the returned paragraph in the same sync. Editing it needs a sync first.
+   */
   insertParagraph(
     paragraphText: string,
     insertLocation: InsertLocation.start | InsertLocation.end | 'Start' | 'End'
@@ -354,7 +365,8 @@ export class Body extends ModelObject {
     const where = bodyParagraphLocation(insertLocation, target);
     const handle = this.#handle();
     const created = Paragraph.promised(this.context, target, false);
-    this.commandAnswering(
+    this.commandCreating(
+      created,
       target,
       () => ({
         op: 'insertParagraph',

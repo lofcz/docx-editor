@@ -234,12 +234,21 @@ export {
 } from './export-traversal.ts';
 export { lineSegments, type LineSegment } from './line-segments.ts';
 export { vectorShapeInkClip } from './vector-shape-ink.ts';
+export {
+  groupPictureLayerDrawing,
+  type DrawingGroupPictureLayerRecord,
+} from './drawing-group-picture-layers.ts';
 export type {
   AnchoredDrawingLayoutFallback,
   AnchoredDrawingRecord,
-  DrawingGroupPictureRecord,
   InlineDrawingRecord,
 } from './drawing-layout.ts';
+export type { DrawingGroupPictureRecord, DrawingPlaceholderKind } from './drawing-paint-fields.ts';
+export type {
+  DrawingChartPlotType,
+  DrawingChartShownAs,
+  DrawingChartSummary,
+} from '../store/package/chart-summary.ts';
 export type { TextboxStoryLayout } from './textbox-story-layout.ts';
 export type { TextboxOutlineProjection } from '../store/package/legacy-vml-textbox-geometry.ts';
 export type { DrawingTextArtRecord, TextArtFit } from './drawing-text-art.ts';
@@ -263,6 +272,16 @@ export type {
   VectorShapeComponent,
   VectorShapeProjection,
 } from '../store/package/drawing-shape-projection.ts';
+export type {
+  AffineMatrix,
+  GradientStop,
+  VectorGradient,
+} from '../store/package/drawing-gradient.ts';
+export type { ShapeShadow } from '../store/package/drawing-shape-effects.ts';
+export type { VectorPattern } from '../store/package/drawing-pattern-fill.ts';
+export type { ShapeColor } from '../store/package/drawing-shape-color.ts';
+export type { PictureFrameEffects } from '../store/package/drawing-picture-frame.ts';
+export type { ShapeReflection } from '../store/package/drawing-shape-effects.ts';
 export {
   createDocumentStyleDependencies,
   type DocumentStyleDependencies,
@@ -315,6 +334,7 @@ export {
   type ParagraphLineSpacing,
 } from './paragraph-style.ts';
 export {
+  automaticTextColor,
   paragraphShading,
   paragraphShadingBox,
   resolveOoxmlShadingFill,
@@ -607,6 +627,7 @@ export {
   type ParagraphLayoutCache,
   type ParagraphLayoutCacheOptions,
 } from './layout-cache.ts';
+export { SYNTHETIC_BOLD_ADVANCE_EM } from './synthetic-bold.ts';
 export {
   createLayoutScheduler,
   type LayoutScheduler,
@@ -727,6 +748,7 @@ export {
   TablePaginationError,
   type TablePaginationErrorCode,
 } from './semantic-table-layout.ts';
+export { compoundBorderStrokesForExtentPt, type CompoundBorderStroke } from './border-metrics.ts';
 export {
   borderExtentPt,
   borderWeight,
@@ -772,3 +794,10 @@ export type {
   InlineWidgetRequest,
   InlineWidgetMetricsProvider,
 } from '../contracts/inline-widget-metrics.ts';
+export { shapedRunOutline } from './text-outline.ts';
+
+export type {
+  DrawingGraphicKind,
+  DrawingSupport,
+  DrawingSupportIssue,
+} from '../store/package/drawing-support.ts';

@@ -51,6 +51,7 @@ import type {
   TreeOpRejection,
 } from '../store/store/tree-op-types.ts';
 import { TABLE_BORDER_STYLES } from '../store/table-border-style.ts';
+import { planSelectTableRegion } from './table-select-plan.ts';
 
 function isVisualRtlTable(layout: SemanticLayout, tableId: string): boolean {
   return tableInteractionIndex(layout).occurrences.some(
@@ -99,7 +100,8 @@ export interface TableCommandPlannerInput {
 
 export type TableCommandSelectionPolicy =
   | { readonly kind: 'preserveSelection' }
-  | { readonly kind: 'adoptCommittedCaret' };
+  | { readonly kind: 'adoptCommittedCaret' }
+  | { readonly kind: 'selectCells'; readonly cells: CellSelection };
 
 export type TableCommandPlan =
   | {
@@ -735,6 +737,7 @@ export function planTableRowHeightResize(
 export function planTableCommand(input: TableCommandPlannerInput): TableCommandPlan {
   plannerCallCount += 1;
   const { command, part, viewing, editable } = input;
+  if (command.type === 'selectTableRegion') return planSelectTableRegion(input, command);
 
   if (viewing || !editable) {
     return refusal('locked', 'the document is open for viewing');
@@ -742,7 +745,6 @@ export function planTableCommand(input: TableCommandPlannerInput): TableCommandP
 
   switch (command.type) {
     case 'toggleHeaderRow':
-    case 'selectTableRegion':
     case 'setTableProperties':
       return refusal(
         'unsupported',
@@ -976,7 +978,6 @@ export function tableCommandCanSupport(command: EditorCommand): {
   }
   switch (command.type) {
     case 'toggleHeaderRow':
-    case 'selectTableRegion':
     case 'setTableProperties':
       return {
         supported: false,

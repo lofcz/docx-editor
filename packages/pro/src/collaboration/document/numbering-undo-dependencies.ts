@@ -76,7 +76,7 @@ export class NumberingUndoDependencies {
     this.after();
   }
   deleteFilter(): (item: Y.Item) => boolean {
-    const nodeFilter = nodeRecordDeleteFilter(this.registry.schema.nodes);
+    const nodeFilter = nodeRecordDeleteFilter(this.registry.schema.nodes, this.registry.schema);
     return (item) =>
       !this.retains(item) &&
       !retainsNumberingInfrastructure(this.registry.schema, item) &&

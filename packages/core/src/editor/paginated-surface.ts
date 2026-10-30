@@ -5,6 +5,7 @@ import {
 } from './surface-inline-widget-metrics.ts';
 import {
   createUnsupportedElementProjection,
+  unsupportedElementPaintOptions,
   validateUnsupportedElementRules,
 } from './unsupported-element-state.ts';
 import { DocumentSelectionHistory } from './document-selection-history.ts';
@@ -20,6 +21,7 @@ import {
   type PendingFormat,
 } from './caret-format-state.ts';
 import { CaretFormatHistory } from './caret-format-history.ts';
+import { createTypedDirectionOps } from './surface-typed-direction.ts';
 import {
   captureTableCaret,
   tableCommandSelection,
@@ -34,7 +36,7 @@ import { createDrawingGestures } from './surface-drawing-gestures.ts';
 import { createTextboxEditing } from './surface-textbox-editing.ts';
 import { storyOutsideTextbox, textboxOwnerDeps } from './surface-textbox-owner.ts';
 import { createCaretComplexScriptResolver } from './surface-complex-script.ts';
-import { setSurfaceAccessibleLabel } from './surface-accessibility.ts';
+import { applySurfaceStrings } from './surface-accessibility.ts';
 import { refreshWriteBlocked, registerRefreshComposition } from './refresh-write-guard.ts';
 import { UNEXPLAINED_WRITE_REFUSAL, writeBlockReason } from './refresh-write-guard.ts';
 import { createLegacyDropdownInteraction } from './surface-legacy-dropdown.ts';
@@ -242,7 +244,12 @@ import type {
 } from './paginated-surface-contract.ts';
 import type { ExecResult, SelectionPin, ViewScope } from '../contracts/editor.ts';
 import type { TableCommandPlan } from './table-command-plan.ts';
-import { suggestingStructureRefusal } from './surface-suggesting-structure.ts';
+import { suggestingStructureRefusal, tableLookupIn } from './surface-suggesting-structure.ts';
+import { wholeTableDeletionPlan } from './table-select-plan.ts';
+import {
+  createSurfaceTableSelectHandle,
+  type SurfaceTableSelectHandle,
+} from './surface-table-select-handle.ts';
 import {
   clampedToDocument,
   collapsedAt,
@@ -469,7 +476,7 @@ export function mountPaginatedSurface(
   pagesLayer.spellcheck = false;
   pagesLayer.setAttribute('role', 'textbox');
   pagesLayer.setAttribute('aria-multiline', 'true');
-  setSurfaceAccessibleLabel(pagesLayer, options.translate);
+  applySurfaceStrings(pagesLayer, options.translate);
   pagesLayer.style.outline = 'none';
 
   // The one highlight the browser cannot draw. A SIBLING of the pages, never a child: the
@@ -489,11 +496,14 @@ export function mountPaginatedSurface(
   const remoteSelectionLayer = overlaySheet(mountDocument, 'docx-remote-selection-overlay');
   const bookmarkLayer = overlaySheet(mountDocument, 'docx-bookmark-overlay');
   const tableFurnitureLayer = overlaySheet(mountDocument, 'docx-table-furniture', false);
+  const tableSelectLayer = overlaySheet(mountDocument, 'docx-table-select-layer', false);
+  let tableSelectHandle: SurfaceTableSelectHandle | null = null;
 
   container.style.position = 'relative';
   // Stacking order over the pages, bottom first.
   const sheets = [
     tableFurnitureLayer,
+    tableSelectLayer,
     commentLayer,
     bookmarkLayer,
     highlightLayer,
@@ -1001,6 +1011,7 @@ export function mountPaginatedSurface(
     revisionDisplayMode,
     revisionFilter
   );
+  const typedDirectionOps = createTypedDirectionOps(session, revisionDisplayMode, revisionFilter);
   const paragraphMarkVisible = (paragraphId: string): boolean => {
     const part = partOfNodeId(session, paragraphId) ?? session.part();
     return revisionParagraphMarkVisible(part, paragraphId, revisionDisplayMode(), revisionFilter());
@@ -1816,12 +1827,12 @@ export function mountPaginatedSurface(
     },
   });
 
-  // A settled image resource must reach the screen on its own — nothing else may ever
-  // touch the document (a letterhead the user only reads). The flush is queued, not
-  // immediate, so a burst of settles (every image of a page decoding) lays out once; after
-  // destroy the scheduler is cancelled and the queued flush finds nothing pending.
+  // A settled image resource reaches the screen on its own through a queued flush, so a burst
+  // lays out once. A sliced opening's later slices and closing full layout read it anyway; a
+  // flush then would finish the paused slice and relay the prefix in one task.
   let resourceFlushQueued = false;
   onDrawingResourcesChanged = () => {
+    if (openingBlockLimit !== null) return;
     scheduler.invalidateAll(session.packageRevision(), 'drawing-resources');
     if (resourceFlushQueued) return;
     resourceFlushQueued = true;
@@ -2173,15 +2184,10 @@ export function mountPaginatedSurface(
   function resolveBodyContentControlAtCaret(): ContentControlBoundaryRecord | null {
     const found = contentControlAtSelection(currentLayout, selection, measurer);
     // Belt and braces: the records are the body's, so a match from another part is a bug in
-    // the index rather than an answer, and must not become a write.
+    // the index rather than an answer, and must not become a write. A control a peer inserted
+    // during a session has a logical id with no part name, so the part is looked up.
     if (!found) return null;
-    return partNameOfNodeId(found.id) === session.part().name ? found : null;
-  }
-
-  /** The part name a node id names, or '' when it names none. */
-  function partNameOfNodeId(id: string): string {
-    const hash = id.indexOf('#');
-    return hash === -1 ? '' : id.slice(0, hash);
+    return partOfNodeId(session, found.id)?.name === session.part().name ? found : null;
   }
 
   /**
@@ -2760,15 +2766,7 @@ export function mountPaginatedSurface(
         materialize: materializedSet,
         ariaHidden: false,
         drawingStrings,
-        unsupportedOwnerPartName: (nodeId) =>
-          partOfNodeId(session, nodeId)?.name ?? session.part().name,
-        unsupportedSource: (nodeId, ownerPartName) => {
-          const part = ownerPartName
-            ? session.currentPackage().parts.get(ownerPartName)
-            : partOfNodeId(session, nodeId);
-          const node = part ? findNode(part, nodeId) : null;
-          return node && node.kind !== 'textValue' ? node : null;
-        },
+        ...unsupportedElementPaintOptions(unsupportedProjection, session),
         breakMarkStrings,
         ...(options.fieldShading ? { fieldShading: options.fieldShading } : {}),
         ...(revisionStyles !== undefined ? { revisionStyles } : {}),
@@ -3023,7 +3021,7 @@ export function mountPaginatedSurface(
     }
     // Without an author, refuse every suggested edit instead of writing untracked changes.
     if (editingMode === 'suggest' && !author?.trim() && edits) return AUTHOR_WRITE_REFUSAL;
-    if (editingMode === 'suggest') return suggestingStructureRefusal(ops);
+    if (editingMode === 'suggest') return suggestingStructureRefusal(ops, tableLookupIn(session));
     return null;
   }
 
@@ -3473,7 +3471,7 @@ export function mountPaginatedSurface(
 
   hfScope = createHeaderFooterScopeController({
     session,
-    layout: editingLayout,
+    layout: () => currentLayout,
     sectionAtPage,
     revisionDisplayMode,
     revisionAuthorFilter: revisionFilter,
@@ -3938,6 +3936,7 @@ export function mountPaginatedSurface(
   /** Draw selected cells, retained text, or paragraph marks native selection cannot show. */
   function renderOverlay(): void {
     textFormInteraction?.update();
+    tableSelectHandle?.update();
     const rects = cellSelection
       ? cellSelectionRects(currentLayout, cellSelection.cellIds)
       : retainedSelection
@@ -4555,10 +4554,12 @@ export function mountPaginatedSurface(
         text.length
       );
       const redoMark = { paragraphId: target.paragraphId, start: landing, end: landing };
+      // Letters in a right-to-left script start a `w:rtl` run, joined to the caret format.
+      const formatOps = typedDirectionOps(target, landing, text, pendingOps);
       commit(
         () =>
           withoutPendingOnRejection(
-            [...insertOps, ...pendingOps],
+            [...insertOps, ...formatOps],
             insertOps,
             selectionMark(),
             redoMark
@@ -4576,6 +4577,8 @@ export function mountPaginatedSurface(
     insertPlainText: (text: string) => insertPlainText(text),
 
     deleteBackward() {
+      const tableDeletion = wholeTableDeletionPlan(editingLayout(), cellSelection, editingMode);
+      if (tableDeletion) return void surface.applyTableCommandPlan(tableDeletion);
       if (textFormInteraction?.selectForDeletion('backward')) return;
       if (deleteAtomicControl('backward')) return;
       const plan = deleteSelectionPlan();
@@ -4622,6 +4625,8 @@ export function mountPaginatedSurface(
           );
           return;
         }
+        // A list item's first Backspace removes its number, not the paragraph break.
+        if (surface.removeListNumber(position.paragraphId)) return;
         const order = paragraphOrder();
         const index = order.indexOf(position.paragraphId);
         const previous = order[index - 1];
@@ -5295,7 +5300,7 @@ export function mountPaginatedSurface(
     setTranslate: (next) => {
       if (translate === next) return;
       translate = next;
-      setSurfaceAccessibleLabel(pagesLayer, next);
+      applySurfaceStrings(pagesLayer, next);
       textFormInteraction?.update();
       const nextBreakStrings = breakMarkStringsFromTranslate(next);
       const labelsMoved =
@@ -5395,8 +5400,10 @@ export function mountPaginatedSurface(
       unsupportedProjection.view(session).currentPackage();
       const geometryUnchanged = projection.geometryKey() === unsupportedProjection.geometryKey();
       if (geometryUnchanged) {
+        const paintChanged = projection.includePartial !== unsupportedProjection.includePartial;
         unsupportedProjection = projection;
         furnitureSource = createCurrentFurnitureSource(revisionFilter());
+        if (paintChanged) render(false);
         return;
       }
       flushPendingInputAndLayout();
@@ -5640,6 +5647,10 @@ export function mountPaginatedSurface(
       if (!plan.ok) {
         return { ok: false, code: plan.code, reason: plan.reason };
       }
+      if (plan.selection.kind === 'selectCells') {
+        setCellSelection(plan.selection.cells);
+        return { ok: true, changed: false };
+      }
       const caretCapture = captureTableCaret(session);
       try {
         const selectionBefore = selectionMark();
@@ -5783,6 +5794,7 @@ export function mountPaginatedSurface(
         legacyCheckboxInteraction?.destroy();
         pointer?.destroy();
         tableInteraction.destroy();
+        tableSelectHandle?.destroy();
         navigation.destroy();
         equationInteraction.destroy();
         selectionSync.destroy();
@@ -6194,6 +6206,18 @@ export function mountPaginatedSurface(
     applyTableCommandPlan: (plan) => surface.applyTableCommandPlan(plan),
     label: (key) => tableLabelState.resolve(key),
   });
+  tableSelectHandle = createSurfaceTableSelectHandle({
+    pagesLayer,
+    layer: tableSelectLayer,
+    listeners: hostListeners,
+    scale: () => scale,
+    pageOffsetX: (pageIndex) => materializedExtent?.pageOffsetX.get(pageIndex) ?? 0,
+    read: () => ({ layout: currentLayout, selection, editingMode }),
+    label: (key) => tableLabelState.resolve(key),
+    setCellSelection: (cells) => setCellSelection(cells),
+    session: () => session,
+    applyTableCommandPlan: (plan) => surface.applyTableCommandPlan(plan),
+  });
 
   render();
   legacyDropdownInteraction?.sync();
@@ -6231,9 +6255,11 @@ export function mountPaginatedSurface(
   surface.setTableInteractionLabel = (resolver) => {
     tableLabelState.resolve = resolver;
     tableInteraction.refreshLabels();
+    tableSelectHandle?.update();
   };
   surface.refreshTableInteractionLabels = () => {
     tableInteraction.refreshLabels();
+    tableSelectHandle?.update();
   };
   const refreshMeasurements = (reason = 'fonts') => {
     if (destroyed) return;

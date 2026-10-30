@@ -1,3 +1,4 @@
+import { fragmentPageRoute, rememberFragmentPageRoute } from './fragment-page-routes.ts';
 // Which paragraph a line's offsets count in.
 //
 // Two lanes need this and neither may import the other: the interaction lane resolves a
@@ -359,17 +360,83 @@ export function fragmentHolding(
   layout: SemanticLayout,
   paragraphId: string
 ): ParagraphFragmentRecord | null {
-  for (const page of layout.pages) {
-    for (const fragment of paragraphFragmentsOnPage(page)) {
-      if (fragment.paragraphId === paragraphId) return fragment;
+  const route = fragmentPageRoute(layout, paragraphId);
+  if (route !== undefined) {
+    const page = layout.pages.find((candidate) => candidate.index === route);
+    if (page) {
+      const fragments = paragraphFragmentsOnPage(page);
+      const named = fragments.find((fragment) => fragment.paragraphId === paragraphId);
+      if (named) return named;
+      const drawn = fragments.find((fragment) =>
+        fragmentParagraphs(fragment).includes(paragraphId)
+      );
+      if (drawn) return drawn;
     }
   }
-  for (const page of layout.pages) {
-    for (const fragment of paragraphFragmentsOnPage(page)) {
-      if (fragmentParagraphs(fragment).includes(paragraphId)) return fragment;
-    }
+  const index = holdingIndexOf(layout);
+  const named = namedFragment(layout, index, paragraphId);
+  if (named) {
+    rememberFragmentPageRoute(layout, paragraphId, index.pages.get(named)!);
+    return named;
   }
-  return null;
+  if (!index.drawn) {
+    // Built once, on the first read that no fragment claims by name: the merged case.
+    const drawn = new Map<string, ParagraphFragmentRecord>();
+    for (const page of layout.pages) {
+      for (const fragment of paragraphFragmentsOnPage(page)) {
+        for (const id of fragmentParagraphs(fragment)) if (!drawn.has(id)) drawn.set(id, fragment);
+      }
+    }
+    index.drawn = drawn;
+  }
+  const drawn = index.drawn.get(paragraphId);
+  if (drawn) rememberFragmentPageRoute(layout, paragraphId, index.pages.get(drawn)!);
+  return drawn ?? null;
+}
+
+/**
+ * Per layout: the fragments {@link fragmentHolding} answers from, so a read over a long
+ * selection walks the pages once instead of once per paragraph.
+ *
+ * `named` keeps the FIRST fragment in page order that carries each name, and fills page by
+ * page only as far as a read needs, so a caret read near the top of a long document still
+ * loads only the pages before it. `drawn` is the fallback for a name no fragment carries.
+ * Layouts are immutable, so identity is the key.
+ */
+interface HoldingIndex {
+  /** Pages `0..loadedPages - 1` are in `named`. */
+  loadedPages: number;
+  readonly named: Map<string, ParagraphFragmentRecord>;
+  readonly pages: WeakMap<ParagraphFragmentRecord, number>;
+  drawn: ReadonlyMap<string, ParagraphFragmentRecord> | null;
+}
+
+const HOLDING_INDEXES = new WeakMap<SemanticLayout, HoldingIndex>();
+
+function holdingIndexOf(layout: SemanticLayout): HoldingIndex {
+  let index = HOLDING_INDEXES.get(layout);
+  if (!index) {
+    index = { loadedPages: 0, named: new Map(), pages: new WeakMap(), drawn: null };
+    HOLDING_INDEXES.set(layout, index);
+  }
+  return index;
+}
+
+function namedFragment(
+  layout: SemanticLayout,
+  index: HoldingIndex,
+  paragraphId: string
+): ParagraphFragmentRecord | undefined {
+  let found = index.named.get(paragraphId);
+  while (!found && index.loadedPages < layout.pages.length) {
+    const page = layout.pages[index.loadedPages++]!;
+    for (const fragment of paragraphFragmentsOnPage(page)) {
+      if (!index.pages.has(fragment)) index.pages.set(fragment, page.index);
+      if (!index.named.has(fragment.paragraphId)) index.named.set(fragment.paragraphId, fragment);
+    }
+    found = index.named.get(paragraphId);
+  }
+  return found;
 }
 
 /**

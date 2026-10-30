@@ -24,6 +24,7 @@ const MODE_MATRIX = {
   anchorOnlyParagraphSeeding: 'modern',
   anchorOnlyParagraphWrapExclusion: 'modern',
   anchorsLayOutInCell: 'modern',
+  distributedLinesSpreadCharacters: 'legacy',
   fixedTableContentEdgeOrigin: 'legacy',
   floatingTableContentOrigin: 'legacy',
   floatingTableOverlapMovesLeft: 'modern',
@@ -38,11 +39,17 @@ const MODE_MATRIX = {
   noteTableCellKeeps: 'modern',
   oversizedRowKeepGroupReleases: 'legacy',
   positionedTableBreaksAtMargin: 'modern',
+  omittedRepeatEndsPage: 'modern',
   pageBreakBeforeKeepsSpace: 'legacy',
   pageBreakLinesStretch: 'legacy',
+  repeatBoundaryUsesHeaderRule: 'legacy',
+  repeatKeepsWholeRow: 'legacy',
+  repeatedHeaderYieldsToTerminalRule: 'modern',
   rowPageBreakYieldsToKeep: 'modern',
+  tallRowStaysWhole: 'legacy',
   tableParagraphWidowControl: 'modern',
   vMergeTextMovesPastHeadRow: 'modern',
+  wrappedAnchorsStayBelowTopMargin: 'modern',
 } as const satisfies Record<ModeRuleName, 'legacy' | 'modern'>;
 
 test('each mode rule applies in exactly its class', () => {

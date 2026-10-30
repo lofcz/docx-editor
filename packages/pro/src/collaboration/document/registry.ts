@@ -3,14 +3,7 @@ Copyright (c) 2026 EigenPal, Inc. All rights reserved.
 Licensed under the EigenPal Pro Evaluation License 1.0 — see packages/pro/LICENSE.md.
 Production use requires a commercial agreement: licensing@eigenpal.com
 */
-import {
-  putResourceBinary,
-  putResourceContentTypeOverride,
-  retireResourcePart,
-  retireResourceBinary,
-  putResourceRelationship,
-  retireResourceRelationship,
-} from './registry-resource-records.ts';
+import * as resourceRecords from './registry-resource-records.ts';
 import { BirthUndoDependencies } from './birth-undo-dependencies.ts';
 import { subscribeTextReads } from './registry-text-reads.ts';
 import { TEXT_DELETIONS_KEY } from './paragraph-text-deletions.ts';
@@ -108,6 +101,8 @@ export class DocumentRegistry {
   readonly history = new RegistryHistory();
   /** Ids more than one parent lists. Their placement can move without their listings moving. */
   private contested = new Set<LogicalId>();
+  /** Structural batches seen: a move or delete can change which text is first in order. */
+  structureVersion = 0;
   /** Parents a contested child moved from or to since the materializer last asked. */
   private readonly reparented = new Set<LogicalId>();
   /** Every child-array listing. Derived, never replicated. */
@@ -654,7 +649,7 @@ export class DocumentRegistry {
 
   deleteXmlPart(name: string): void {
     this.partCountCache = -1;
-    retireResourcePart(this.schema, name);
+    resourceRecords.retireResourcePart(this.schema, name);
   }
 
   /**
@@ -672,16 +667,16 @@ export class DocumentRegistry {
    */
   putRelationship(record: EncodedRelationship): void {
     this.relationshipCountCache = -1;
-    putResourceRelationship(this.schema, record);
+    resourceRecords.putResourceRelationship(this.schema, record);
   }
 
   deleteRelationship(ownerPart: string, relationshipId: string): void {
     this.relationshipCountCache = -1;
-    retireResourceRelationship(this.schema, ownerPart, relationshipId);
+    resourceRecords.retireResourceRelationship(this.schema, ownerPart, relationshipId);
   }
 
   putContentTypeOverride(partName: string, mediaType: string): void {
-    putResourceContentTypeOverride(this.schema, partName, mediaType);
+    resourceRecords.putResourceContentTypeOverride(this.schema, partName, mediaType);
   }
 
   deleteContentTypeOverride(partName: string): void {
@@ -693,11 +688,11 @@ export class DocumentRegistry {
   }
 
   putBinary(descriptor: CanonicalBinaryDescriptor, retainedOverride = true): void {
-    putResourceBinary(this.schema, descriptor, retainedOverride);
+    resourceRecords.putResourceBinary(this.schema, descriptor, retainedOverride);
   }
 
   deleteBinary(storageKey: string): void {
-    retireResourceBinary(this.schema, storageKey);
+    resourceRecords.retireResourceBinary(this.schema, storageKey);
   }
 
   relationships(): readonly EncodedRelationship[] {
@@ -889,7 +884,10 @@ export class DocumentRegistry {
     if (structural) for (const id of this.contested) changed.add(id);
     if (changed.size > 0) this.resolveParents(changed);
     // The holder that shows a contested copy is the last in document order.
-    if (structural) this.inline.orderChanged();
+    if (structural) {
+      this.structureVersion += 1;
+      this.inline.orderChanged();
+    }
   }
 
   /** The records that lost their last parent since the last call, and still have none. */

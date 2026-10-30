@@ -43,36 +43,11 @@ import { nextRevisionId } from './tree-op-revision-ids.ts';
 import { PROPERTY_CHANGE_WRAPPER_OF_OP } from './tree-op-tracked-properties.ts';
 import type { ContentLockPolicy, TransactionRevisionIds } from '../package/ooxml-edit.ts';
 
-/**
- * The ops whose tracked appliers write a revision wrapper. They get the transaction's
- * bookkeeping — the shared counter, and the record of what it has written, which is what
- * tells a replacement's insertion from a keystroke after Backspace.
- */
-const TRACKED_WRAPPER_OPS: ReadonlySet<string> = new Set([
-  'insertText',
-  'insertParagraphs',
-  'insertTab',
-  'insertHardBreak',
-  'insertPageBreak',
-  'insertPageField',
-  'insertComplexField',
-  'insertEquation',
-  'insertDrawing',
-  'deleteText',
-  'insertHyperlink',
-  'removeHyperlink',
-  'setHyperlinkTarget',
-  'setParagraphMarkRevision', // Mints from the same counter, so it does not reset it.
-]);
-
-/**
- * Of those, the ones whose content comes from the CALLER and can carry revision ids in with
- * it: an anchored text box holds `w:txbxContent` paragraphs that may already be revised. They
- * still get the record — they write a wrapper, and the next op has to know it — but the
- * counter is dropped around them, so nothing after them draws from a walk taken before the
- * content arrived.
- */
-const IMPORTS_REVISION_IDS: ReadonlySet<string> = new Set(['insertDrawing']);
+import {
+  IMPORTS_REVISION_IDS,
+  keepsRevisionCounter,
+  TRACKED_WRAPPER_OPS,
+} from './tree-store-revision-counter.ts';
 import { applyTreeOp } from './tree-ops.ts';
 import { contentLockPolicyOf } from './content-lock-policy.ts';
 import type { ImpactClass, TreeDocOp, TreeOpRejection } from './tree-op-types.ts';
@@ -545,8 +520,9 @@ export class TreeDocumentStore {
      * The tracked TEXT ops' bookkeeping. The COUNTER is dropped, like the property group, the
      * moment anything else runs (`applyPackage` included): a paste re-mints the ids it carries
      * against the part as it stands, and a walk taken before it would hand out an id the paste
-     * just used. What this transaction WROTE survives all of it — a record of the past cannot
-     * go stale, and the replacement rule reads it after ops that mint nothing.
+     * just used. Only `keepsRevisionCounter` ops, which add no id, leave it standing. What this
+     * transaction WROTE survives all of it — a record of the past cannot go stale, and the
+     * replacement rule reads it after ops that mint nothing.
      */
     const trackedRevisionIdsFor = (
       op: TreeDocOp,
@@ -559,7 +535,9 @@ export class TreeDocumentStore {
       const writes = TRACKED_WRAPPER_OPS.has(op.op);
       // A property op keeps the counter: its group takes one id and imports none.
       if (!writes && PROPERTY_CHANGE_WRAPPER_OF_OP.get(op.op) !== undefined) return null;
-      if (!writes || IMPORTS_REVISION_IDS.has(op.op)) resetRevisionCounters();
+      if (writes ? IMPORTS_REVISION_IDS.has(op.op) : !keepsRevisionCounter(op)) {
+        resetRevisionCounters();
+      }
       return writes ? revisionIdsFor(part) : null;
     };
 

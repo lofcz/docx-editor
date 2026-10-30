@@ -122,15 +122,17 @@ describe('server-first defaults', () => {
         // Small table text no longer reserves an inherited, taller cell-end mark.
         pages: 25,
         bodyLineCount: 280,
-        // Includes the four checkbox symbols, two nonbreaking hyphens, and three bookmark links.
-        markdownLength: 17_241,
+        // Includes the four checkbox symbols, two authored nonbreaking hyphens, the operator
+        // of the one n-ary equation, and three bookmark links.
+        markdownLength: 17_242,
         headers: 24,
         footers: 24,
-        markdownHash: 'c1684571c79d1e7609b3f41aaa5779353bbf6fe644c83fe45890d7b6e5e9f558',
+        markdownHash: '20daa38adba518ad09706e71447e03ce67b442a87087a85cac831a493073c888',
       });
       expect(translated.markdown).toContain('[Section 1](#section1)');
       expect(translated.markdown).toContain('[Section 6 – Nested Tables](#section6)');
       expect(translated.markdown).toContain('[Section 12 – Form Elements](#section12)');
+      expect(translated.markdown).toContain('Summation: ∑i\\=1ni');
       expect(translated.markdown).toStartWith('**COMPREHENSIVE WORD ELEMENT**');
       expect(translated.markdown).toEndWith(
         'Endnote 2: Additional bibliography reference – Smith et al\\., 2025\\.'

@@ -55,6 +55,12 @@ export interface ResolvedRunStyle {
    */
   readonly fontFamilyEastAsia: string | null;
   /**
+   * True when a `w:rFonts` in the cascade (run, style, or authored `w:rPrDefault`) names the
+   * East Asian face, not only a format, application, or theme default.
+   * @internal
+   */
+  readonly eastAsianFontAuthored?: true;
+  /**
    * Present only on a `w:rtl` or `w:cs` run: the LATIN lane that the complex-script values
    * replaced in `fontFamily`, `fontSizePt`, `bold` and `italic`. Nothing draws with it; it
    * lets a copy of the formatting (the format painter) write each lane back separately.
@@ -321,6 +327,7 @@ export function resolveRunStyle(
         const familyEastAsia = themedEastAsia ?? attributes?.eastAsia;
         if (familyEastAsia && familyEastAsia.length <= 128) {
           style.fontFamilyEastAsia = familyEastAsia;
+          style.eastAsianFontAuthored = true;
         }
         const themedComplex = themeFonts
           ? themeFontFamilyOf(attributes?.cstheme, themeFonts)
@@ -372,7 +379,8 @@ export function resolveRunStyle(
         style.italic = toggle(property);
         break;
       case 'u': {
-        const variant = property.attributes?.val ?? 'single';
+        // Without `w:val` the element sets no underline of its own: it keeps an inherited one.
+        const variant = property.attributes?.val ?? style.underline?.variant ?? 'none';
         style.underline =
           variant === 'none' || !toggle(property)
             ? null
@@ -551,6 +559,7 @@ export function runStylesEqual(a: ResolvedRunStyle, b: ResolvedRunStyle): boolea
     a.shaping?.context?.after === b.shaping?.context?.after &&
     a.fontFamily === b.fontFamily &&
     a.fontFamilyEastAsia === b.fontFamilyEastAsia &&
+    a.eastAsianFontAuthored === b.eastAsianFontAuthored &&
     a.latinLane?.fontFamily === b.latinLane?.fontFamily &&
     a.latinLane?.fontFamilyEastAsia === b.latinLane?.fontFamilyEastAsia &&
     a.latinLane?.fontSizePt === b.latinLane?.fontSizePt &&

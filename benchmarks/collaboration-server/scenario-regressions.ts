@@ -152,6 +152,28 @@ const CLEAN: readonly { config: ScenarioConfig; delivery: Delivery; seed: number
   // A card addressed its change among every wrapper, and a plain store that kept an empty
   // wrapper of a change bound it to another change.
   { config: 'trackedStructuresSequential', delivery: 'in-order', seed: 4 },
+  // A block moved toward the start of its container in one transaction removed the block
+  // after its old place on every replica, and a block two peers moved at once showed at its
+  // old place after a later move.
+  { config: 'reorderSequential', delivery: 'in-order', seed: 1 },
+  { config: 'reorder', delivery: 'server', seed: 1 },
+  { config: 'reorderUndo', delivery: 'server', seed: 2 },
+  { config: 'reorderEverything', delivery: 'peer', seed: 3 },
+  // A table move in a parent that listed the table twice, after two peers moved it at once,
+  // inserted its separator paragraph one place late, so the two tables touched.
+  { config: 'reorder', delivery: 'server', seed: 11 },
+  { config: 'reorder', delivery: 'peer', seed: 12 },
+  { config: 'reorderUndo', delivery: 'server', seed: 25 },
+  { config: 'reorderEverything', delivery: 'server', seed: 52 },
+  // Two replicas deleted one row or table at once and one undid its delete: the row showed
+  // again, with the text the other deleted (server 40, 1005, 1045). An undone table move left
+  // its separator, which a peer moved at the same time, with no paragraph identity (peer
+  // 1058). The case of peer 95, a false report of the check, stays as a replay only: the seed
+  // passes on code without the fixes once the check is right.
+  { config: 'reorderUndo', delivery: 'server', seed: 40 },
+  { config: 'reorderUndo', delivery: 'server', seed: 1005 },
+  { config: 'reorderEverything', delivery: 'server', seed: 1045 },
+  { config: 'reorderUndo', delivery: 'peer', seed: 1058 },
 ];
 
 /**
@@ -159,7 +181,29 @@ const CLEAN: readonly { config: ScenarioConfig; delivery: Delivery; seed: number
  * into `replays/` and the seed back into `CLEAN`.
  */
 const OPEN: readonly { config: ScenarioConfig; delivery: Delivery; seed: number; case: string }[] =
-  [];
+  [
+    // Blocks moved, split, and joined at once show one typed character twice. Every case in
+    // `replays/open/` moves blocks, and none of them loses or misplaces a block. The other
+    // cases there were shrunk before the fuzzer moved tables with `moveTable`; their seeds now
+    // run clean, but the cases still fail: text shows twice, a caret lands at the wrong
+    // offset after concurrent joins, and an edit after an undone join is refused
+    // (`invalid-bound`).
+    {
+      config: 'reorder',
+      delivery: 'server',
+      seed: 3057,
+      case: 'moved-and-split-blocks-show-typed-text-twice.json',
+    },
+    // Typing that its typist undoes, in a paragraph a peer deletes and another peer splits at
+    // the same time, shows again once updates settle. No block moves; the fuzzer reports it
+    // since it counts a typist's own undo as a deletion of the typing.
+    {
+      config: 'reorderUndo',
+      delivery: 'peer',
+      seed: 63,
+      case: 'undone-typing-shows-after-concurrent-delete-and-split.json',
+    },
+  ];
 
 /** How many test files share the seeds. Each file defines one share with `scenarioShare`. */
 export const SCENARIO_SHARES = 8;

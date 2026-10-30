@@ -40,7 +40,13 @@ import {
   textWithHyphens,
 } from './tree-op-inline-elements.ts';
 import { characterStyleElement, emptyParagraphRunProperties } from './mark-character-style-run.ts';
+import {
+  insertAfterNoteInRun,
+  noteReferenceEndingAt,
+  noteTypingProperties,
+} from './note-typing-boundary.ts';
 import { withFreshIds } from '../package/hf-lifecycle-shell.ts';
+import { endsFitTextGroup, insertAfterFitTextGroup } from './fit-text-typing-boundary.ts';
 import {
   isContentRevisionKind,
   isInlineRunContainer,
@@ -184,6 +190,7 @@ import {
   applyRewriteTocPageNumbers,
 } from './tree-op-toc.ts';
 import { applyInsertTable } from './tree-op-insert-table.ts';
+import { applyMoveTable } from './tree-op-move-table.ts';
 import { applyReplaceStoryBlocks } from './tree-op-story-replace.ts';
 import {
   inlineWrapperProperties,
@@ -360,6 +367,7 @@ function applyValidatedTreeOp(part: OoxmlPart, op: TreeDocOp, options?: EditOpti
   if (op.op === 'insertBuildingBlock') return applyInsertBuildingBlock(part, op, options);
   if (isBookmarkTreeOp(op)) return applyBookmarkOp(part, op, options);
   if (op.op === 'insertTable') return applyInsertTable(part, op, options);
+  if (op.op === 'moveTable') return applyMoveTable(part, op, options);
   if (op.op === 'deleteBlock') return applyDeleteBlock(part, op.blockId, options);
   if (op.op === 'insertToc') return applyInsertToc(part, op, options);
   if (op.op === 'replaceTocResult') return applyReplaceTocResult(part, op, options);
@@ -843,6 +851,21 @@ function applyInsertContent(
   }
 
   if (site.kind === 'atRunIndex') {
+    if (bias === 'left' && noteReferenceEndingAt(paragraph, offset)) {
+      const edited = insertAfterNoteInRun(
+        part,
+        paragraph,
+        offset,
+        site.run,
+        site.index,
+        nodes,
+        nextId,
+        deferOptions(options, control)
+      );
+      return edited
+        ? finishContentEdit(fromEdit(edited, effect), control, options)
+        : { ok: false, reason: 'tree-invariant' };
+    }
     // Text right before the index takes plain typing in place, rather than gaining a sibling
     // `w:t` per keystroke. Only that node: an earlier one would sit before the index.
     const prior = site.run.children[site.index - 1];
@@ -930,13 +953,15 @@ function applyInsertContent(
           ? findNode(part, leftSegment.runId)
           : null;
     const inheritedProperties =
-      leftRun && leftRun.kind === 'run'
-        ? fieldInsertionEndAt(paragraph, offset)
-          ? insertedRunProperties(nextId, leftRun)
-          : leftRun.children
-              .filter((child) => child.kind === 'runProperties')
-              .map((child) => withFreshIds(child, nextId))
-        : emptyParagraphRunProperties(paragraph, nextId);
+      bias === 'left' && noteReferenceEndingAt(paragraph, offset)
+        ? noteTypingProperties(paragraph, offset, nextId)
+        : leftRun && leftRun.kind === 'run'
+          ? fieldInsertionEndAt(paragraph, offset)
+            ? insertedRunProperties(nextId, leftRun)
+            : leftRun.children
+                .filter((child) => child.kind === 'runProperties')
+                .map((child) => withFreshIds(child, nextId))
+          : emptyParagraphRunProperties(paragraph, nextId);
     inserted = fromEdit(
       insertChildren(
         part,
@@ -986,6 +1011,17 @@ function applyInsertContent(
       options,
     });
     if (relocated) return relocated;
+    // Right after a fitted group, the text starts its own run without `w:fitText`.
+    if (endsFitTextGroup(run, after ? (findNode(part, after.runId) ?? undefined) : undefined)) {
+      const edited = insertAfterFitTextGroup(
+        part,
+        run,
+        nodes,
+        nextId,
+        deferOptions(options, control)
+      );
+      if (edited) return finishContentEdit(fromEdit(edited, effect), control, options);
+    }
     const plain = insertIntoText(before);
     if (plain) return plain;
     const index = run.children.findIndex((child) => contains(child, before.node.id));
@@ -3199,7 +3235,10 @@ function withSectionMarkOf(
       : first;
   const sectPr = namedChild(paragraphPropertiesNodeOf(second), 'sectPr');
   if (!sectPr) return withMark;
-  const carried = cloneWithNewIds(sectPr, nextId);
+  // The section properties MOVE, keeping their node ids, like the runs the join moves: a peer
+  // that edits them at the same time (a note properties write, a page setup) then edits the
+  // node the survivor holds, and the edit is not lost to a copy.
+  const carried = sectPr;
   const pPr = paragraphPropertiesNodeOf(withMark);
   if (!pPr) {
     const minted = {

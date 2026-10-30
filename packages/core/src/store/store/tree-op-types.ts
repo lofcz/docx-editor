@@ -11,6 +11,7 @@ import type { InsertParagraphsOp } from './tree-op-insert-paragraphs.ts';
 import type { InsertFragmentOp } from './tree-op-fragment.ts';
 import type { InsertBookmarkOp, DeleteBookmarkOp } from './tree-op-bookmarks.ts';
 import type { TableCellPropertyOp } from './tree-op-table-cell-properties.ts';
+import type { InsertTableOp, MoveTableOp } from './table-placement-op-types.ts';
 // The op vocabulary and effect/rejection contracts (tree-ops seam).
 //
 // This module owns what an op IS — the declarative, JSON-safe `TreeDocOp` shapes, the
@@ -100,6 +101,16 @@ export const ACCEPTED_RUN_PROPERTIES = [
   'w', // horizontal scaling
   'kern',
 ] as const;
+
+/**
+ * Run properties an op may ADD or replace, but that a write which leaves them out keeps.
+ *
+ * `w:rtl` marks text typed in a right-to-left script. It is a property of the text, not of
+ * its formatting: Clear Formatting keeps it, the format painter does not carry it, and a
+ * bold toggle that rewrites a run's formatting does not drop it. So it stays outside
+ * {@link ACCEPTED_RUN_PROPERTIES}, whose members a write replaces as a set.
+ */
+export const ADDITIVE_RUN_PROPERTIES = ['rtl'] as const;
 // `w:rStyle` is deliberately ABSENT. It is preserved, not accepted: this list is the set a
 // property write REPLACES, so admitting the character style would make a bold toggle delete
 // it. `insertHyperlink` writes `w:rStyle` itself, as part of making the run a link, which is
@@ -639,25 +650,8 @@ export type TreeDocOp =
       readonly op: 'deleteBlock';
       readonly blockId: string;
     }
-  | {
-      /**
-       * Insert a fresh empty table immediately before a block-level paragraph.
-       *
-       * Before, never after, so the anchor paragraph stays as the block that follows the
-       * table: a `w:tbl` is not a valid final child of a story container, and two tables
-       * that end up adjacent merge into one when the file is reopened. When the anchor's
-       * previous sibling is already a table, a separating empty paragraph is authored with
-       * it, which is what Word does for the same reason.
-       */
-      readonly op: 'insertTable';
-      readonly beforeParagraphId: string;
-      readonly rows: number;
-      readonly cols: number;
-      /** Width of every grid column, in twips. The caller divides the content width. */
-      readonly columnWidthTwips: number;
-      /** Propose the complete table through native row and cell insertion revisions. */
-      readonly revision?: RevisionAttributionInput;
-    }
+  | InsertTableOp
+  | MoveTableOp
   | {
       /** Insert a fresh row above or below a canonical table row. */
       readonly op: 'insertTableRow';
@@ -1273,6 +1267,8 @@ export type TreeOpRejection =
   | 'unknown-drawing'
   /** The drawing's graphic payload is not a supported picture. */
   | 'not-a-picture-drawing'
+  /** A chart in any state: only a delete applies, and it removes the whole chart. */
+  | 'chart-drawing'
   /** A lock flag or `@locked` forbids this mutation. */
   | 'drawing-locked'
   /** Finite EMU extent, crop, or position value is out of range. */

@@ -1,3 +1,4 @@
+import { ReviewAnchorIndex } from './review-anchor-index.ts';
 // Where a review card sits beside the page.
 //
 // One index per layout, covering every story a card can be anchored in: the body, the
@@ -12,13 +13,13 @@
 // cannot place.
 
 import {
-  paragraphFragmentsOf,
   paragraphFragmentsOfBlocks,
-  reviewAnchorIndex,
   type ReviewParagraphAnchor,
   type SemanticLayout,
 } from '@docx-editor.dev/core/layout';
+import { bodyReviewAnchors } from '../layout/body-review-anchors.ts';
 import { fragmentParagraphs } from '../layout/line-segments.ts';
+import { weakRefOf, type WeakRefOf } from '../store/package/weak-ref.ts';
 
 /**
  * Paragraph anchors for every story on a layout, memoized on the layout OBJECT.
@@ -26,41 +27,105 @@ import { fragmentParagraphs } from '../layout/line-segments.ts';
  * A published layout is immutable, so the index is valid for exactly as long as that object
  * is the current one, and a new revision brings a new one.
  */
-const bodyFragmentsOf = (page: SemanticLayout['pages'][number]) => paragraphFragmentsOf(page);
 
 export function createAnchorIndex(): (
   layout: SemanticLayout
-) => Map<string, ReviewParagraphAnchor> {
-  const cache = new WeakMap<SemanticLayout, Map<string, ReviewParagraphAnchor>>();
+) => ReadonlyMap<string, ReviewParagraphAnchor> {
+  const cache = new WeakMap<SemanticLayout, ReviewAnchorIndex>();
+  let last: {
+    readonly pages: WeakRefOf<SemanticLayout['pages']>;
+    readonly index: WeakRefOf<ReviewAnchorIndex>;
+  } | null = null;
   return (layout) => {
     const cached = cache.get(layout);
     if (cached) return cached;
-    // The projection is passed as a STABLE reference, not an inline arrow: the index caches
-    // each page's anchors under the projection that produced them, and a fresh closure per
-    // call would miss that cache on every commit.
-    const index = reviewAnchorIndex(layout, bodyFragmentsOf);
-    for (const page of layout.pages) {
-      // Header/footer stories join the same index so their cards get real geometry. A story's
-      // box is sheet-absolute like a page's content box, and its fragments are story-relative
-      // like body fragments are content-relative — the same two-space sum
-      // `reviewItemGeometry` performs. FIRST page wins, matching the body rule: a shared part
-      // painted on every page anchors its card where the reader first meets it.
-      for (const story of [page.header, page.footer]) {
-        if (!story) continue;
-        register(index, story.fragments, page.index, story.box.y);
-      }
-      // Note stories, on the same terms. Without these a note card came back with
-      // `anchorY: null` and `pageIndex: null`: the rail sorts a null page last, so a
-      // footnote change on page 2 of a long document rendered below the final page's cards,
-      // with no leader line to the text it belongs to.
-      for (const area of [page.footnotes, page.endnotes]) {
-        if (!area) continue;
-        for (const note of area.notes) register(index, note.fragments, page.index, note.box.y);
-      }
+    const carried = last && carriedIndex(last, layout);
+    if (carried) {
+      cache.set(layout, carried);
+      last = { pages: weakRefOf(layout.pages), index: weakRefOf(carried) };
+      return carried;
     }
-    cache.set(layout, index);
-    return index;
+    const index = new Map<string, ReviewParagraphAnchor>();
+    for (const page of layout.pages)
+      for (const [id, anchor] of bodyReviewAnchors(page)) if (!index.has(id)) index.set(id, anchor);
+    for (const page of layout.pages)
+      for (const [id, anchor] of otherStoryAnchors(page)) if (!index.has(id)) index.set(id, anchor);
+    const complete = ReviewAnchorIndex.from(index);
+    cache.set(layout, complete);
+    last = { pages: weakRefOf(layout.pages), index: weakRefOf(complete) };
+    return complete;
   };
+}
+
+function sameKeys(a: ReadonlyMap<string, unknown>, b: ReadonlyMap<string, unknown>): boolean {
+  if (a.size !== b.size) return false;
+  for (const key of a.keys()) if (!b.has(key)) return false;
+  return true;
+}
+
+const otherAnchors = new WeakMap<
+  SemanticLayout['pages'][number],
+  Map<string, ReviewParagraphAnchor>
+>();
+
+/** Furniture and notes in the same first-page order as the complete index. */
+function otherStoryAnchors(
+  page: SemanticLayout['pages'][number]
+): Map<string, ReviewParagraphAnchor> {
+  const known = otherAnchors.get(page);
+  if (known) return known;
+  const anchors = new Map<string, ReviewParagraphAnchor>();
+  for (const story of [page.header, page.footer]) {
+    if (story) register(anchors, story.fragments, page.index, story.box.y);
+  }
+  for (const area of [page.footnotes, page.endnotes]) {
+    if (!area) continue;
+    for (const note of area.notes) register(anchors, note.fragments, page.index, note.box.y);
+  }
+  otherAnchors.set(page, anchors);
+  return anchors;
+}
+
+/** One page's body anchors, from the per-page cache the full index reads. */
+const bodyAnchorsOf = (page: SemanticLayout['pages'][number]) => bodyReviewAnchors(page);
+
+/**
+ * The previous index with each changed page's anchors swapped in, when nothing else can have
+ * moved. A keystroke publishes a new layout whose pages are the previous objects but the one it
+ * landed on, and the whole index was built again per keystroke. A changed page qualifies when
+ * its body and other stories anchor the same
+ * paragraphs; an entry is replaced only where the previous index took it from that page, since
+ * the first page wins.
+ */
+function carriedIndex(
+  last: {
+    readonly pages: WeakRefOf<SemanticLayout['pages']>;
+    readonly index: WeakRefOf<ReviewAnchorIndex>;
+  },
+  layout: SemanticLayout
+): ReviewAnchorIndex | null {
+  const previous = last.pages.deref();
+  const lastIndex = last.index.deref();
+  if (!previous || !lastIndex || previous.length !== layout.pages.length) return null;
+  let index: Map<string, ReviewParagraphAnchor> | null = null;
+  for (const [position, page] of layout.pages.entries()) {
+    const before = previous[position]!;
+    if (page === before) continue;
+    const anchors = bodyAnchorsOf(page);
+    const was = bodyAnchorsOf(before);
+    if (!sameKeys(anchors, was)) return null;
+    // A pass lays the page's note areas out again; their paragraphs must be the ones it held.
+    const other = otherStoryAnchors(page);
+    const wasOther = otherStoryAnchors(before);
+    if (!sameKeys(other, wasOther)) return null;
+    index ??= new Map();
+    for (const [id, anchor] of anchors)
+      if (lastIndex.get(id) === was.get(id)) index.set(id, anchor);
+    // Body anchors and earlier story occurrences retain precedence.
+    for (const [id, anchor] of other)
+      if (lastIndex.get(id) === wasOther.get(id)) index.set(id, anchor);
+  }
+  return index ? lastIndex.updated(index) : lastIndex;
 }
 
 function register(

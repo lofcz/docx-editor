@@ -11,7 +11,6 @@ import { storyBlocks, paragraphMergeGroupOf } from '../layout/story-roots.ts';
 import { DEPENDENCY_KEY_IDS, ORIGIN_IDS } from '../store/registry/frozen-ids.ts';
 import type { TreeModelChange } from '../store/store/tree-store.ts';
 import type { OoxmlNode, OoxmlPart } from '../store/package/ooxml-tree.ts';
-import { findNode } from '../store/package/ooxml-edit.ts';
 
 const MAX_WALK_DEPTH = 32;
 
@@ -180,8 +179,8 @@ export function bodyParagraphSectionIndexForSession(
   part: OoxmlPart,
   paragraphId: string
 ): number | null {
-  // Collaboration can assign opaque node IDs without the source part's parse prefix.
-  if (!paragraphId.startsWith(`${part.name}#`) && findNode(part, paragraphId)?.kind !== 'paragraph')
-    return null;
+  // A part-named id from another story is never a body paragraph. A logical id from a
+  // collaboration session names no part, so the body's own index answers for it.
+  if (paragraphId.includes('#') && !paragraphId.startsWith(`${part.name}#`)) return null;
   return bodySectionMapForSession(session, part).get(paragraphId) ?? null;
 }

@@ -9,7 +9,13 @@ Production use requires a commercial agreement: licensing@eigenpal.com
 import { isValidElement, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import type { TranslationKey } from '@docx-editor.dev/i18n';
-import { Slot, useDocxEditor, useEditorEvent, useEditorState } from '@docx-editor.dev/react';
+import {
+  Slot,
+  useDocxEditor,
+  useEditorEvent,
+  useEditorState,
+  useTranslation,
+} from '@docx-editor.dev/react';
 import type { ReviewItemView } from './useReview.ts';
 import type { ReviewBalloonProps, ReviewMarkersProps, ReviewPartProps } from './review-types.ts';
 import {
@@ -20,7 +26,7 @@ import {
 } from './review-context.ts';
 import {
   MARKER_STEP,
-  REVIEW_DATE_FORMAT,
+  reviewDateFormat,
   guardMousedown,
   idsOf,
   initialsOf,
@@ -76,7 +82,17 @@ export interface ReviewListProps {
   collapsed?: ReadonlySet<string>;
   scale?: number;
   offset?: number;
-  /** Visible band of the scroller; cards outside it are not mounted. Null renders all. */
+  /**
+   * Visible band of the scroller, in the rail's coordinates; cards outside it are not mounted.
+   * Before the rail measures its scroller the band is empty (`top` greater than `bottom`, both
+   * infinite), so no positioned card renders.
+   *
+   * Null, or leaving it out, mounts every card. That is correct but costs one card per pending
+   * change on each render. Inside the packaged review rail the band arrives on its own, including
+   * for a `List` override. A list mounted elsewhere measures its own scroller and passes the
+   * part of it in view, widened by a margin above and below (the rail uses 600 px) so cards
+   * mount before they scroll into view.
+   */
   window?: { top: number; bottom: number } | null;
   /**
    * A render prop takes over the card entirely, keeping the rail's subscription, anchoring
@@ -788,11 +804,12 @@ type BalloonEntry = Extract<ReviewItemView, { readonly kind: 'revision' }>;
 
 /** `ReviewTime` for a raw dataset date, outside any item context. */
 export function BalloonTime({ raw }: { raw: string }) {
+  const { lang } = useTranslation();
   const when = new Date(raw);
   if (Number.isNaN(when.getTime())) return null;
   return (
     <time className="docx-review__time" dateTime={raw}>
-      {REVIEW_DATE_FORMAT.format(when)}
+      {reviewDateFormat(lang).format(when)}
     </time>
   );
 }

@@ -27,6 +27,8 @@ Use your own React components and TSX for toolbars, menus, and panels. Connect t
 | Editor stylesheet | Every composed editor | Styles the viewport and packaged controls |
 | `.docx-editor` wrapper | Custom controls that use editor styles | Supplies scoped styles and tokens |
 | Container height | Every composed editor | Gives the viewport room to render |
+| Flex column to the viewport | When chrome shares the container height | Gives the viewport the height that the chrome does not use |
+| Popovers | When you use links, content controls, equations, or the context menu | Mounts the popovers that `<DocxEditor>` mounts for you |
 | Remount `key` | When you change modules | Loads the new modules |
 | Positioned workspace row | When you place the navigation pane beside the viewport | Anchors the navigation pane |
 | Pro review module | When you use Pro review chrome | Enables comments, tracked changes, and custom-node review chrome |
@@ -65,9 +67,46 @@ export function Editor({ bytes }: { bytes: Uint8Array }) {
 
 You can place optional chrome anywhere inside `Root`. Optional chrome includes the toolbar, menu, rulers, navigation pane, hyperlink popover, and context menu.
 
+### Popovers
+
+`Root` does not mount the hyperlink, content control, equation, or context menu popovers. `<DocxEditor>` mounts all four for you: `HyperLink`, `ContentControl`, `Equation`, and `ContextMenu`. In a composed editor, mount the popovers that you use. Without `HyperLink`, the link button, the context menu's **Insert link** row, and Ctrl+K (⌘+K on macOS) do not open a panel. Without `ContextMenu`, a right-click opens the browser menu.
+
+You can mount a popover in one of two ways. The first way is to add it as a child of `Viewport`, as in [A full composition](#a-full-composition):
+
+```tsx
+<DocxEditor.Viewport>
+  <DocxEditor.Content />
+  <DocxEditor.HyperLink />
+  <DocxEditor.ContextMenu />
+</DocxEditor.Viewport>
+```
+
+The second way is to pass it to `Root` in the `popups` prop, wrapped with `definePopup`. `Content` renders the `popups` entries:
+
+```tsx
+import { DocxEditor, definePopup } from '@docx-editor.dev/react';
+
+const popups = {
+  hyperlink: definePopup(DocxEditor.HyperLink),
+  contentControl: definePopup(DocxEditor.ContentControl),
+  equation: definePopup(DocxEditor.Equation),
+  contextMenu: definePopup(DocxEditor.ContextMenu),
+};
+
+export function Editor({ bytes }: { bytes: Uint8Array }) {
+  return (
+    <DocxEditor.Root document={bytes} popups={popups}>
+      {/* Toolbar, viewport, and content */}
+    </DocxEditor.Root>
+  );
+}
+```
+
+To customize a popover, pass your own component to `definePopup`. Define that component outside the parent component, so that it keeps its state when the parent renders again.
+
 ### Root props
 
-The editor reads construction props when it creates the instance. Changes to `document` or `imageDecodePort` remount the editor. Changes to `fonts`, `author`, `locale`, `mode`, `translate`, `zoom`, `zoomMode`, or the locale catalog apply without a remount. These changes preserve edits, caret position, and undo history.
+The editor reads construction props when it creates the instance. Changes to `document` or `imageDecodePort` remount the editor. Changes to `fonts`, `author`, `locale`, `mode`, `translate`, `zoom`, `zoomMode`, `colorMode`, or the locale catalog apply without a remount. These changes preserve edits, caret position, and undo history.
 
 | Prop | Type | Description |
 | --- | --- | --- |
@@ -78,11 +117,12 @@ The editor reads construction props when it creates the instance. Changes to `do
 | `mode` | `'edit' \| 'view' \| 'suggesting'` | Sets the editing mode. When omitted, `w:trackRevisions` can select suggesting mode. |
 | `modules` | `readonly EditorModule[]` | Registers modules during construction. Remount with a different `key` to change them. |
 | `zoom` / `zoomMode` | `number` / `ZoomMode \| 'auto'` | Sets the display scale and its source. `'auto'` fits the page width. |
+| `colorMode` | `'light' \| 'dark' \| 'system'` | Sets the chrome theme for every composed part, including dialogs and a pop-out window. `'system'` follows the OS setting. Changes apply without a remount. |
 | `onReady` | `(editor: Editor) => void` | Runs once per instance after `Content` attaches. |
 | `onChange` | `(change: DocumentChange) => void` | Reports revision and identity changes after mutations. |
 | `onFontError` | `(error: EditorFontError) => void` | Reports typed font-resolution failures. |
 | `translate` | `(key, params?) => string` | Resolves live document-surface labels. It defaults to the active catalog. |
-| `tableInteractionLabel` | `(key) => string` | Resolves labels for table insertion controls. |
+| `tableInteractionLabel` | `(key) => string` | Resolves labels for the table insertion controls and the table select handle. |
 | `imageDecodePort` | `ImageDecodePort` | Overrides raster decoding for tests or custom hosts. |
 
 For exact signatures, see the [React API reference](/docs/2.x/api/react).
@@ -155,7 +195,7 @@ A group whose slots are all hidden is removed with its separator.
 
 ### Add controls to the preset toolbar
 
-`Toolbar.Group` adds your controls to the preset toolbar as a group. The group collapses into the **More** panel like the built-in groups. `Toolbar.Slot` replaces one built-in slot with your own content in the slot's place:
+`Toolbar.Group` adds your controls to the preset toolbar as a group. When the toolbar runs out of width, the group's children move into the **More** panel together, as one control. `Toolbar.Slot` replaces one built-in slot with your own content in the slot's place:
 
 ```tsx
 <DocxEditor.Toolbar>
@@ -423,6 +463,16 @@ Children replace the whole first screen. While the remaining pages lay out, the 
 
 Use `DocxEditor.Loading.Spinner` with `className` to style the packaged spinner. If you conditionally mount content, use `snapshot().isLoading`. Do not use `isOpening` for that condition. `DocxEditor.Content` must remain mounted while the scheduled open completes.
 
+To add an animated loading screen, pass it as children to `DocxEditor.Loading`. The component keeps the screen mounted while the editor instance changes. This prevents that change from restarting the screen’s entry animation.
+
+```tsx
+<DocxEditor.Loading overlay>
+  <MyAnimatedLoadingScreen />
+</DocxEditor.Loading>
+```
+
+Prefer this component to a loading screen controlled only by `isLoading || isOpening`. Both flags can briefly read `false` during editor replacement.
+
 ## Custom link popover
 
 `DocxEditor.HyperLink` provides the hyperlink popover. It includes the URL, edit fields, apply, copy, and unlink actions. Its parts accept `className`, `asChild`, and `hidden`. Action parts also accept `icon`:
@@ -434,7 +484,7 @@ Use `DocxEditor.Loading.Spinner` with `className` to style the packaged spinner.
 </DocxEditor.HyperLink>
 ```
 
-The parts are `Url`, `Fields`, `Edit`, `Apply`, `Cancel`, `Copy`, `Unlink`, and `Error`. Use `useHyperlinkPopup()` when you provide all popover markup.
+The parts are `Url`, `Fields`, `Edit`, `Apply`, `Cancel`, `Copy`, `Unlink`, and `Error`. Use `useHyperlinkPopup()` when you provide all popover markup. While a component that calls it is mounted, link clicks, Ctrl+K or Cmd+K, the toolbar **Link** button, and the context menu **Insert link** row open its state. If no link panel is mounted, those controls are disabled.
 
 ## Rulers
 
@@ -711,6 +761,21 @@ For more information, see [Pop-out windows and iframes](/docs/2.x/guides/pop-out
 ## Layout constraints
 
 Import the stylesheet once and give the editor container a height. Use a flex column when chrome shares that height. Packaged controls and the viewport apply their own `.docx-editor` scope. The wrapper in [Primitives](#primitives) also makes editor styles and tokens available to custom controls.
+
+`Root` does not render a DOM element, so the chrome and the viewport are children of the flex column. Give the viewport `flex: 1` and `min-height: 0`. The viewport then takes the height that the chrome does not use, and the pages scroll inside it:
+
+```tsx
+<div className="docx-editor" style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+  <DocxEditor.Root document={bytes} popups={popups}>
+    <DocxEditor.Toolbar />
+    <DocxEditor.Viewport style={{ flex: 1, minHeight: 0 }}>
+      <DocxEditor.Content />
+    </DocxEditor.Viewport>
+  </DocxEditor.Root>
+</div>
+```
+
+If you put an element between the container and the viewport, give that element the same `flex: 1` and `min-height: 0`, and make it a flex column too.
 
 Inside `DocxEditor.Viewport`, the navigation pane is sticky and needs no positioning context. If you place the pane beside the viewport instead, put both in a row with `position: relative`. Beside the viewport, the pane uses absolute positioning over the document gutter, and without that row it enters normal flow and moves the page.
 

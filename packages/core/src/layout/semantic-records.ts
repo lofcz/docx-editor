@@ -21,7 +21,7 @@ import type {
   ParagraphBorderSide,
   ParagraphSpacing,
 } from './paragraph-style.ts';
-import type { ResolvedTabStops, TabLeader } from './paragraph-tabs.ts';
+import type { ResolvedTabStops, TabAlignment, TabLeader } from './paragraph-tabs.ts';
 import type { FieldAtomMarker, ModelRange } from './field-pieces.ts';
 import type { InlineDrawingRecord, AnchoredDrawingRecord } from './drawing-layout.ts';
 import type { ImageResourceState } from '../store/package/image-resources.ts';
@@ -243,6 +243,13 @@ export interface StyleSpanRecord {
    */
   readonly tabLeaderAdvancePt?: number;
   /**
+   * Alignment of the stop a `\t` span advanced to, when it is not `left`. A distributed
+   * line stretches the text after its last tab only when that tab reached a left stop.
+   *
+   * @internal
+   */
+  readonly tabAlignment?: Exclude<TabAlignment, 'left'>;
+  /**
    * The hyperlink this span belongs to, or absent for ordinary text.
    *
    * Carried on the SPAN rather than looked up at paint time because a link that wraps
@@ -461,6 +468,8 @@ export interface ParagraphFragmentRecord {
     readonly hSpace: number;
     readonly vSpace: number;
     readonly box: LayoutBox;
+    /** The frame's vertical position comes from the page or margin, not from the text flow. */
+    readonly pageFramed?: true;
   };
   readonly range: SourceRange;
   readonly props: readonly OoxmlProperty[];

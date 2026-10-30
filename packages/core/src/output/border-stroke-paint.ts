@@ -8,6 +8,8 @@
 // THICKNESS IS NOT DECIDED HERE. Layout publishes the stroke box, already inflated for the
 // compound styles (`border-metrics.ts`), and these functions only choose how to fill it.
 
+import { compoundBorderStrokesForExtentPt } from '../layout/border-metrics.ts';
+
 /** Compound `ST_Border` values that layout already inflated — do not hairline-snap. */
 export function isCompoundParagraphBorder(val: string): boolean {
   return (
@@ -55,9 +57,25 @@ export function applyParagraphBorderStyle(
       rule.style.backgroundSize = vertical ? `100% ${period}px` : `${period}px 100%`;
       return;
     }
+    case 'triple': {
+      // Three equal strokes with equal gaps fill the five-stroke band layout published.
+      const line = thicknessPx / 5;
+      const ink = `#${color}`;
+      const band = (from: number, to: number, fill: string) =>
+        `${fill} ${from * line}px, ${fill} ${to * line}px`;
+      const stops = [
+        band(0, 1, ink),
+        band(1, 2, 'transparent'),
+        band(2, 3, ink),
+        band(3, 4, 'transparent'),
+        band(4, 5, ink),
+      ];
+      rule.style.backgroundColor = 'transparent';
+      rule.style.backgroundImage = `linear-gradient(to ${vertical ? 'right' : 'bottom'}, ${stops.join(', ')})`;
+      return;
+    }
     case 'double':
     case 'doubleWave':
-    case 'triple':
     case 'thinThickSmallGap':
     case 'thickThinSmallGap':
     case 'thinThickThinSmallGap':
@@ -69,9 +87,23 @@ export function applyParagraphBorderStyle(
     case 'thinThickThinLargeGap': {
       // Fill the published band without CSS border-width snapping. A subpixel
       // stroke must not grow to a whole CSS pixel at small zoom levels.
-      // Triple and thinThick* retain their existing double approximation.
-      const line = thicknessPx / 3;
       rule.style.backgroundColor = 'transparent';
+      const strokes = scale > 0 ? compoundBorderStrokesForExtentPt(val, thicknessPx / scale) : null;
+      if (strokes) {
+        const stops = strokes.flatMap((stroke) => {
+          const from = stroke.offsetPt * scale;
+          const to = from + stroke.widthPt * scale;
+          return [
+            `transparent ${from}px`,
+            `#${color} ${from}px`,
+            `#${color} ${to}px`,
+            `transparent ${to}px`,
+          ];
+        });
+        rule.style.backgroundImage = `linear-gradient(to ${vertical ? 'right' : 'bottom'}, ${stops.join(', ')})`;
+        return;
+      }
+      const line = thicknessPx / 3;
       rule.style.backgroundImage = `linear-gradient(to ${vertical ? 'right' : 'bottom'}, #${color} 0px, #${color} ${line}px, transparent ${line}px, transparent ${line * 2}px, #${color} ${line * 2}px)`;
       return;
     }

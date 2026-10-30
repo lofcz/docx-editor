@@ -29,6 +29,7 @@
 export {
   createDocxEditor,
   blankDocumentBytes,
+  type BlankDocumentOptions,
   type DocxEditorInstance,
   type DocxEditorConfig,
 } from './editor/index.ts';
@@ -91,6 +92,7 @@ export {
   FONT_RESOLVER_MARK_KEY,
   composeFontConfiguration,
   composeFontOrigins,
+  deferFonts,
   defineFontResolver,
   isFontResolver,
   type ComposeFontOriginsOptions,

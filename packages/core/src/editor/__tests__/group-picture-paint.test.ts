@@ -208,13 +208,6 @@ describe('a drawing group with a picture member', () => {
       expect(container.querySelector('.docx-drawing-ready img')).not.toBeNull();
     });
   });
-
-  test('a group with two pictures still paints nothing', async () => {
-    await withMounted(docx(pictureMember(0) + pictureMember(2_540_000)), (surface, container) => {
-      expect(groupRecord(surface)).toBeUndefined();
-      expect(container.querySelectorAll('.docx-drawing')).toHaveLength(0);
-    });
-  });
 });
 
 describe('a drawing group whose picture cannot render', () => {
@@ -233,10 +226,11 @@ describe('a drawing group whose picture cannot render', () => {
       ['picture-only', picture],
       ['picture and vector', picture + BAR_MEMBER],
     ] as const) {
-      test(`an MC-wrapped ${shape} group with a ${name} picture is not shown`, async () => {
+      test(`an MC-wrapped ${shape} group with a ${name} picture shows one placeholder`, async () => {
         await withMounted(docx(members, options), (surface, container) => {
-          expect(groupRecord(surface)).toBeUndefined();
-          expect(container.querySelectorAll('.docx-drawing')).toHaveLength(0);
+          expect(groupRecord(surface)).toBeDefined();
+          expect(container.querySelectorAll('.docx-drawing-placeholder')).toHaveLength(1);
+          expect(container.querySelectorAll('[data-docx-unsupported]')).toHaveLength(1);
           expect(container.textContent).toContain('Title');
         });
       });

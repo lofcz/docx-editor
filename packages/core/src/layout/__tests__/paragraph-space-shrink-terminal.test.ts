@@ -1,3 +1,4 @@
+import { anyShrunk, spacingOf } from './shrunk-space.ts';
 import { expect, test } from 'bun:test';
 import { loadBody } from './float-over-table-harness.ts';
 import { createLayoutSession, layoutSemanticDocument } from '../semantic-layout.ts';
@@ -47,7 +48,7 @@ const content = (result: ReturnType<typeof layoutSemanticDocument>) =>
       .trimEnd()
   );
 const compressed = (result: ReturnType<typeof layoutSemanticDocument>) =>
-  linesOf(result).some((l) => l.spans.some((s) => (s.style.shaping?.wordSpacingPt ?? 0) < 0));
+  linesOf(result).some((l) => anyShrunk(l.spans));
 /** Where the last visible glyph of `word` ends, from the line's first span. */
 const wordEnd = (result: ReturnType<typeof layoutSemanticDocument>, word: string) => {
   const spans = linesOf(result)[0]!.spans;
@@ -59,18 +60,18 @@ test("a justified paragraph's last word borrows inter-word space, with measurabl
   const result = modern(paragraph(runs(['aa bb cc'])));
   expect(content(result)).toEqual(['aa bb cc']);
   const spans = linesOf(result)[0]!.spans;
-  expect(spans.map((s) => s.style.shaping?.wordSpacingPt ?? 0)).toEqual([-1, -1, 0]);
+  expect(spacingOf(spans)).toEqual([-1, -1, 0]);
   for (const span of spans)
     expect(measurer.measure(span.text, span.style)).toBeCloseTo(span.box.width, 6);
   for (let i = 1; i < spans.length; i++)
-    expect(spans[i]!.box.x).toBeCloseTo(spans[i - 1]!.box.x + spans[i - 1]!.box.width, 6);
+    expect(spans[i]!.box.x).toBeCloseTo(spans[i - 1]!.box.x + spans[i - 1]!.box.width - 1, 6);
   expect(wordEnd(result, 'cc')).toBeCloseTo(66, 6);
 });
 
 test('a last line that fits keeps its natural spacing and never stretches', () => {
   for (const text of ['aa bb', 'aa bb cc dd']) {
     const last = linesOf(modern(paragraph(runs([text])))).at(-1)!.spans;
-    expect(last.every((s) => !s.style.shaping?.wordSpacingPt)).toBe(true);
+    expect(anyShrunk(last)).toBe(false);
     for (let i = 1; i < last.length; i++)
       expect(last[i]!.box.x).toBeCloseTo(last[i - 1]!.box.x + last[i - 1]!.box.width, 6);
   }
@@ -90,18 +91,12 @@ test('a last word split across styled runs, or followed by blank runs, still fit
   }
 });
 
-test('a hard break, trailing tab, or page field after or as the last word keeps the wrap', () => {
+test('a page field after or as the last word keeps the wrap', () => {
   const ref = (result: string) =>
     `<w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve">` +
     ` REF bm1 \\h </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r>` +
     `<w:r><w:t>${result}</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r>`;
   for (const xml of [
-    '<w:r><w:t>aa bb cc</w:t><w:br/></w:r>',
-    '<w:r><w:t>aa bb cc</w:t><w:br/><w:t>dd</w:t></w:r>',
-    '<w:r><w:t>aa bb cc</w:t><w:tab/></w:r>',
-    // The word keeps its own space, so only the break or tab after it can refuse it.
-    '<w:r><w:t xml:space="preserve">aa bb cc </w:t><w:br/></w:r>',
-    '<w:r><w:t xml:space="preserve">aa bb cc </w:t><w:tab/></w:r>',
     runs(['aa bb ']) + `<w:fldSimple w:instr="PAGE"><w:r><w:t>cc</w:t></w:r></w:fldSimple>`,
     // A page reference and a note reference can change width after the line is decided.
     runs(['aa bb ']) + ref('cc').replace(' REF bm1 ', ' PAGEREF bm1 '),
@@ -139,16 +134,19 @@ test('the space floor and the expansion preference still decide for the last wor
   ]);
 });
 
-test('legacy, unspecified, left-aligned and right-to-left paragraphs keep the wrap', () => {
+test('legacy, unspecified and left-aligned paragraphs keep the wrap', () => {
   const body = paragraph(runs(['aa bb cc']));
   for (const mode of [undefined, 14]) expect(content(layout(body, mode))).toEqual(['aa bb', 'cc']);
   expect(content(modern(paragraph(runs(['aa bb cc']), 66, '<w:jc w:val="left"/>')))).toEqual([
     'aa bb',
     'cc',
   ]);
+});
+
+test('justified right-to-left paragraphs compress the last word like left-to-right ones', () => {
   const rtl = modern(paragraph(runs(['aa bb cc']), 66, '<w:bidi/><w:jc w:val="both"/>'));
-  expect(linesOf(rtl).length).toBe(2);
-  expect(compressed(rtl)).toBe(false);
+  expect(linesOf(rtl).length).toBe(1);
+  expect(compressed(rtl)).toBe(true);
 });
 
 test('retained layout publishes the same last-line geometry as a fresh one', () => {
@@ -206,4 +204,18 @@ test('a last line compresses only when the flow admitted its last word', () => {
   // A line that is not the paragraph's last compresses whenever it overflows, as before.
   const middle = alignSpans(words, measurer, 0, 66, 'both', false);
   expect(middle.at(-1)!.box.x + middle.at(-1)!.box.width).toBeCloseTo(66, 6);
+});
+
+test('a word before a text-wrapping break or a tab borrows inter-word space', () => {
+  for (const xml of [
+    '<w:r><w:t>aa bb cc</w:t><w:br/></w:r>',
+    '<w:r><w:t>aa bb cc</w:t><w:br/><w:t>dd</w:t></w:r>',
+    '<w:r><w:t>aa bb cc</w:t><w:tab/></w:r>',
+    '<w:r><w:t>aa bb cc</w:t><w:tab/><w:t>dd</w:t></w:r>',
+    '<w:r><w:t xml:space="preserve">aa bb cc </w:t><w:br/></w:r>',
+  ]) {
+    const result = modern(paragraph(xml));
+    expect(content(result)[0]).toBe('aa bb cc');
+    expect(compressed(result)).toBe(true);
+  }
 });

@@ -305,6 +305,7 @@
       "propsAddedInReact": [
         "author",
         "children",
+        "colorMode",
         "contentLockPolicy",
         "document",
         "fieldResults",
@@ -553,6 +554,7 @@
         "author",
         "change",
         "children",
+        "colorMode",
         "contentLockPolicy",
         "document",
         "editorRef",
@@ -598,7 +600,7 @@
       "vueOnly": []
     },
     "shortcuts": {
-      "reactOnly": ["\"Ctrl+K\"", "'Ctrl+E'", "'Ctrl+J'", "'Ctrl+L'", "'Ctrl+R'"],
+      "reactOnly": ["'Ctrl+E'", "'Ctrl+J'", "'Ctrl+L'", "'Ctrl+R'"],
       "vueOnly": []
     },
     "sidebarKinds": {

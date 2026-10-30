@@ -10,6 +10,7 @@ if (!GlobalRegistrator.isRegistered) GlobalRegistrator.register();
 
 import { describe, expect, test, afterEach } from 'bun:test';
 import { readFileSync } from 'node:fs';
+import { RICH_CLIPBOARD_FIXTURE } from '../../store/__tests__/clipboard-fragment-fixtures.ts';
 import { zipSync, strToU8 } from 'fflate';
 import { serializeOoxmlPart } from '@docx-editor.dev/core/store';
 import { fragmentFromHtml, wrapInteropHtml } from '../clipboard-fragment-codec.ts';
@@ -121,7 +122,27 @@ describe('full-document fidelity through the real surface', () => {
   // cannot select (TOC field machinery, `w:vMerge` continuation cells). Judging block
   // coverage against the raw tree flattened every vertically merged table and unwrapped
   // the TOC SDT on a real select-all copy - exactly what this pins.
-  const SAMPLE = `${import.meta.dir}/../../../../../examples/vite/public/sample.docx`;
+  const SAMPLE = RICH_CLIPBOARD_FIXTURE;
+
+  test('select-all copy of the drawing showcase refuses chart content explicitly', () => {
+    const bytes = new Uint8Array(
+      readFileSync(`${import.meta.dir}/../../../../../examples/vite/public/sample.docx`)
+    );
+    const container = document.createElement('div');
+    const mounted = mountPaginatedSurface(container, bytes, { scale: 1 });
+    if (!mounted.ok) throw new Error(mounted.reason);
+    try {
+      mounted.surface.selectAll();
+      expect(mounted.surface.copyFlavours()).toEqual({
+        text: '',
+        html: null,
+        reason: 'chart-content',
+      });
+    } finally {
+      mounted.surface.destroy();
+      container.remove();
+    }
+  });
 
   test('select-all copy of the sample keeps merged tables, the TOC SDT, and numbering', () => {
     const bytes = new Uint8Array(readFileSync(SAMPLE));
@@ -379,6 +400,56 @@ describe('rich paste', () => {
     expect(paragraphs.map((fragment) => fragment.indent.left)).toEqual([36, 72]);
     const markup = serializeOoxmlPart(target.surface.session.part());
     expect(markup.match(/<w:numPr>/g)).toHaveLength(2);
+  });
+
+  test('a pasted right-aligned Word number sits in its hanging slot, not left of the margin', () => {
+    const target = mount(paragraph(''));
+    putCaret(target.surface, 0);
+    const item = (level: number, alt: string, marker: string, text: string): string =>
+      `<p style="margin-left:${level * 36}pt;text-indent:${alt ? -level * 36 : -18}pt;` +
+      `${alt}mso-list:l0 level${level} lfo2"><span style="mso-list:Ignore">` +
+      `${alt ? '<span>&nbsp;&nbsp;&nbsp;&nbsp;</span>' : ''}${marker}` +
+      `<span>&nbsp;&nbsp;</span></span>${text}</p>`;
+    target.surface.pasteRich(
+      'Some\nNested\nIndented\nOn',
+      item(1, '', '1.', 'Some') +
+        item(2, '', 'a.', 'Nested') +
+        item(3, 'mso-text-indent-alt:-18.0pt;', 'i.', 'Indented') +
+        item(2, '', 'b.', 'On')
+    );
+
+    const roman = target.surface
+      .layout()
+      .pages.flatMap((page) => page.fragments)
+      .find((fragment) => fragment.kind === 'paragraph' && fragment.marker?.text === 'i.');
+    expect(roman?.kind).toBe('paragraph');
+    if (roman?.kind !== 'paragraph') return;
+    const marker = roman.marker!;
+    // lvlJc=right: the number ENDS at `left - hanging`, 18pt short of the 108pt text.
+    expect(marker.box.x + marker.box.width).toBeCloseTo(roman.box.x - 18, 3);
+  });
+
+  test('a pasted list item without its own indents takes the level rule geometry', () => {
+    const target = mount(paragraph(''));
+    putCaret(target.surface, 0);
+    target.surface.pasteRich(
+      'Alpha',
+      '<html><head><style>@list l0:level1 {mso-level-text:"%1\\)";' +
+        'margin-left:54.0pt;text-indent:-27.0pt;color:red;mso-ansi-font-weight:bold;}' +
+        '</style></head><body><ol start=1 type=1>' +
+        '<li style="mso-list:l0 level1 lfo1">Alpha</li></ol></body></html>'
+    );
+
+    const item = target.surface
+      .layout()
+      .pages.flatMap((page) => page.fragments)
+      .find((fragment) => fragment.kind === 'paragraph' && fragment.marker !== undefined);
+    expect(item?.kind).toBe('paragraph');
+    if (item?.kind !== 'paragraph') return;
+    const marker = item.marker!;
+    expect(marker.text).toBe('1)');
+    // The number hangs 27pt left of the 54pt text indent.
+    expect(item.box.x - marker.box.x).toBeCloseTo(27, 3);
   });
 
   test('external Word footnotes land as referenced note parts', () => {

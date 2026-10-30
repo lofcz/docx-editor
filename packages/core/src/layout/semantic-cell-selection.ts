@@ -295,6 +295,41 @@ export function cellSelectionBetween(
   };
 }
 
+/** Every cell of a table, as one rectangle; null when the table is not laid out. */
+export function wholeTableCellSelection(
+  layout: SemanticLayout,
+  tableId: string
+): CellSelection | null {
+  const table = tableIndex(layout).get(tableId);
+  if (!table) return null;
+  const cellIds: string[] = [];
+  const seen = new Set<string>();
+  let lastRow = 0;
+  for (const entry of table.placed) {
+    if (entry.isHeaderRepeat || seen.has(entry.cell.id)) continue;
+    seen.add(entry.cell.id);
+    cellIds.push(entry.cell.id);
+    lastRow = Math.max(lastRow, entry.rowIndex);
+  }
+  if (cellIds.length === 0) return null;
+  return {
+    kind: 'cells',
+    tableId,
+    cellIds,
+    rows: { from: 0, to: lastRow },
+    columns: { from: 0, to: columnCountOf(table) - 1 },
+    text: textRangeOf(layout, tableId, cellIds),
+  };
+}
+
+/** Whether a rectangle holds every cell of its table. */
+export function coversWholeTable(layout: SemanticLayout, selection: CellSelection): boolean {
+  const whole = wholeTableCellSelection(layout, selection.tableId);
+  if (!whole) return false;
+  const selected = new Set(selection.cellIds);
+  return whole.cellIds.every((id) => selected.has(id));
+}
+
 /**
  * Paragraph ids that are DIRECT children of the cells — nested tables excluded — in
  * document order, each once.
@@ -650,4 +685,37 @@ export function cellAddressAt(
   }
   cellAddressIndexCache.set(layout, index);
   return index.get(paragraphId) ?? null;
+}
+
+/**
+ * The cell Tab (`next`) or Shift+Tab (`previous`) moves to from the innermost cell holding
+ * `paragraphId`: the table's cells in document order, each once (a cell split across pages
+ * included), skipping the cells a vertical merge continues and the empty stand-in a merge that
+ * crosses a page paints at the top of the next page. Its paragraphs come with it, in document
+ * order, nested tables included. `end` when no cell follows in that direction, null outside a
+ * table.
+ */
+export function cellInTabOrder(
+  layout: SemanticLayout,
+  paragraphId: string,
+  direction: 'next' | 'previous'
+): { readonly cellId: string; readonly paragraphIds: readonly string[] } | 'end' | null {
+  const address = cellAddressAt(layout, paragraphId);
+  if (!address) return null;
+  const table = tableIndex(layout).get(address.tableId);
+  if (!table) return null;
+  const order = new Set<string>();
+  for (const entry of table.placed)
+    if (!entry.isHeaderRepeat && !entry.cell.vMergeContinue && entry.cell.blocks.length > 0)
+      order.add(entry.cell.id);
+  const cells = [...order];
+  // A paragraph in a cell a vertical merge continues has no place in the order.
+  const from = cells.indexOf(address.cellId);
+  if (from < 0) return null;
+  const step = direction === 'next' ? 1 : -1;
+  for (let at = from + step; at >= 0 && at < cells.length; at += step) {
+    const paragraphIds = paragraphsInCells(layout, [cells[at]!]);
+    if (paragraphIds.length > 0) return { cellId: cells[at]!, paragraphIds };
+  }
+  return 'end';
 }

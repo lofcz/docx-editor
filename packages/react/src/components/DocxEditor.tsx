@@ -12,10 +12,10 @@ import { DocxEditorInvalidTextFormFieldDialog } from '../editor/DocxEditorInvali
 import { DocxEditorContentControlWidget } from '../editor/DocxEditorContentControlWidget';
 import { createPackagedPopups } from '../editor/popup-config';
 import { DocxEditorTextFormFieldDialog } from '../editor/DocxEditorTextFormFieldDialog';
-import { forwardRef, useCallback, useEffect, useRef, useState } from 'react';
+import { forwardRef, useCallback, useRef } from 'react';
 import type { CSSProperties, ForwardRefExoticComponent, RefAttributes } from 'react';
-import type { Editor } from '@docx-editor.dev/core/contracts/editor';
-import { prefersColorSchemeDark, resolveIsDark, subscribeSystemDark } from '../lib/colorMode';
+import type { Editor, TableInteractionLabelKey } from '@docx-editor.dev/core/contracts/editor';
+import { useResolvedDark } from '../editor/color-mode-context';
 import { useDocxEditor } from '../editor/context';
 import { DocxEditorContent } from '../editor/DocxEditorContent';
 import { DocxEditorWindow } from '../editor/DocxEditorWindow';
@@ -46,7 +46,7 @@ import { DocxEditorEquation } from '../editor/DocxEditorEquation';
 import { DocxEditorNotesChrome } from '../editor/DocxEditorNotes';
 import { ContextMenu as DocxEditorContextMenuCompound } from '../editor/contextmenu';
 import { DocxEditorContentControl } from '../editor/DocxEditorContentControl';
-import { LocaleProvider, useTranslation } from '../i18n';
+import { LocaleProvider, useChromeDir, useTranslation } from '../i18n';
 import type { TranslationKey } from '../i18n';
 import type { DocxEditorProps, DocxEditorRef } from '../types';
 import { ScopedByAncestorContext } from '../editor/scope-context';
@@ -141,7 +141,8 @@ const RULER_ROW_STYLE: CSSProperties = {
 const VERTICAL_RULER_STYLE: CSSProperties = {
   position: 'absolute',
   top: 40,
-  left: 0,
+  // The inline start of the wrapper's own `dir`: the right edge in a right-to-left interface.
+  insetInlineStart: 0,
   zIndex: 10,
   pointerEvents: 'none',
 };
@@ -289,15 +290,9 @@ const DocxEditorFrame = forwardRef<DocxEditorRef, DocxEditorProps>(
     if (!chrome && loadingIndicator !== undefined) warnLoadingIndicatorWithoutChrome();
     warnOpenFailureActions(openFailure, renderOpenFailureActions !== undefined);
 
-    // Chrome colour mode: 'system' subscribes to the OS setting. Only the chrome
-    // root's `.dark` class moves — the
-    // document canvas stays Word-faithful.
-    const [systemDark, setSystemDark] = useState(prefersColorSchemeDark);
-    useEffect(() => {
-      if (colorMode !== 'system') return undefined;
-      return subscribeSystemDark(setSystemDark);
-    }, [colorMode]);
-    const isDark = resolveIsDark(colorMode, systemDark);
+    // Chrome colour mode: 'system' subscribes to the OS setting. The same rule `Root`
+    // applies, which this also hands the mode to for the parts that scope themselves.
+    const isDark = useResolvedDark(colorMode);
 
     // Label resolution, in precedence order: the host's `t`, else the active
     // `LocaleContext` catalogue (bundled English unless a provider swapped it).
@@ -312,6 +307,9 @@ const DocxEditorFrame = forwardRef<DocxEditorRef, DocxEditorProps>(
     // union derived from `en.json`, while the prop takes a plain `string` so a host can
     // supply any resolver. Every key this component passes is a real catalogue key.
     const { t: catalogT } = useTranslation();
+    // A right-to-left catalog mirrors the chrome. Otherwise the chrome inherits the host
+    // page direction; the viewport keeps a left-to-right base either way.
+    const chromeDirection = useChromeDir();
     const translate = useCallback(
       (key: string, params?: Record<string, string | number>) =>
         t ? t(key, params) : catalogT(key as TranslationKey, params),
@@ -337,7 +335,7 @@ const DocxEditorFrame = forwardRef<DocxEditorRef, DocxEditorProps>(
         {/* The vertical ruler scrolls WITH the document, so unlike its horizontal
           twin it belongs inside the scroller. Its margin handles remain accessible. */}
         {rulers && chrome ? (
-          <div style={VERTICAL_RULER_STYLE}>
+          <div style={VERTICAL_RULER_STYLE} dir={chromeDirection}>
             <DocxEditorVerticalRuler />
           </div>
         ) : null}
@@ -351,6 +349,7 @@ const DocxEditorFrame = forwardRef<DocxEditorRef, DocxEditorProps>(
       <div
         className={`docx-editor${isDark ? ' dark' : ''}${className ? ` ${className}` : ''}`}
         style={CONTAINER_STYLE}
+        dir={chromeDirection}
       >
         {/* Title bar and toolbar share one surface, closed by the seam under the
           toolbar — see CHROME_BAND_STYLE. */}
@@ -438,7 +437,7 @@ const DocxEditorFrame = forwardRef<DocxEditorRef, DocxEditorProps>(
     );
 
     const tableInteractionLabel = useCallback(
-      (key: 'table.insertRowBelow' | 'table.insertColumnRight') => translate(key),
+      (key: TableInteractionLabelKey) => translate(key),
       [translate]
     );
 
@@ -454,6 +453,9 @@ const DocxEditorFrame = forwardRef<DocxEditorRef, DocxEditorProps>(
         {...(author !== undefined ? { author } : {})}
         {...(locale !== undefined ? { locale } : {})}
         translate={translate}
+        // Resolved once, here: Root takes the answer, so the OS setting has one subscriber.
+        // Only with chrome: `chrome={false}` has never themed its bare viewport.
+        {...(chrome ? { colorMode: isDark ? ('dark' as const) : ('light' as const) } : {})}
         mode={mode}
         {...(modules !== undefined ? { modules } : {})}
         {...(zoom !== undefined ? { zoom } : {})}

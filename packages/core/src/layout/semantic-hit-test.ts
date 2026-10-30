@@ -4,6 +4,7 @@ import { drawingAtOffset, pictureEdgeX, pictureIsRtl } from './inline-picture-ca
 import { bidiPrefixWidth } from './shaped-caret-advances.ts';
 import { nearestBidiSpan, paragraphIsRtl } from './rtl-paragraph.ts';
 import { lineContentEdges } from './pending-line.ts';
+import { snapToSoundMarkCluster } from './sound-mark-hit.ts';
 import { headerFooterAnchoredDrawingOrigin } from './header-footer-drawing-origin.ts';
 // Pointer hit testing in MODEL space, over semantic layout records.
 //
@@ -730,9 +731,20 @@ function offsetOnLine(
 
   // Text owns its published box. Check every text box before looking at drawing gaps:
   // otherwise a later inline image can claim text that lies between earlier images.
-  for (const span of spans) {
-    if (x >= span.box.x && x < span.box.x + span.box.width) {
-      return offsetWithinSpan(span, x, context);
+  for (const [index, span] of spans.entries()) {
+    // A shrunk space ends where the next span starts.
+    const next = spans[index + 1];
+    let end = span.box.x + span.box.width;
+    if (next && next.box.x < end && next.box.x > span.box.x && endsWithSpaceSlot(span.text))
+      end = next.box.x;
+    if (x >= span.box.x && x < end) {
+      return snapToSoundMarkCluster(
+        offsetWithinSpan(span, x, context),
+        x,
+        line.range.start,
+        (offset) => characterAt(line, offset),
+        (offset) => caretBoxOnLine(line, offset, context.measurer).x
+      );
     }
   }
 
@@ -999,10 +1011,15 @@ export function caretBoxOnLine(
       // gap. That gap is what paint draws as `word-spacing`; sitting on the upstream end
       // lands inside the stretched space. With no gap (unjustified, or a mere run split
       // after a space), keep upstream affinity so typing continues the preceding run.
+      // Between other characters only alignment opens a gap (East Asian justification, or
+      // a distributed line spread per character), and the caret sits after it, before the
+      // next character, as it does after character spacing.
       if (next && next.range.start === offset) {
         const cjk = isCjk(lastCodePointOf(span.text) ?? 0) || isCjk(next.text.codePointAt(0) ?? 0);
         const gap = next.box.x - (span.box.x + span.box.width) - (next.wrapAdvanceBefore ?? 0);
-        if ((endsWithSpaceSlot(span.text) && gap > 0.25) || (cjk && gap > 0.001)) {
+        const spaceSlot = endsWithSpaceSlot(span.text);
+        // A shrunk space overlaps the next span, which starts where the painted space ends.
+        if ((spaceSlot && (gap > 0.25 || gap < -0.001)) || ((cjk || !spaceSlot) && gap > 0.001)) {
           chosen = next;
           break;
         }
@@ -1062,7 +1079,7 @@ function justifiedSpaceEndX(
   const next = spans[spans.indexOf(span) + 1];
   if (!next || next.range.start !== span.range.end) return undefined;
   const gap = next.box.x - (span.box.x + span.box.width) - (next.wrapAdvanceBefore ?? 0);
-  return gap > 0.25 ? next.box.x : undefined;
+  return gap > 0.25 || gap < -0.001 ? next.box.x : undefined;
 }
 
 function offsetWithinSpan(span: StyleSpanRecord, x: number, context: HitContext): LineOffset {

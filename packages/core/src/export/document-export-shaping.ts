@@ -1,5 +1,6 @@
 // Document-aware font resolution shared by every headless exporter.
 
+import { drawingPartFontFamilies } from '../store/package/drawing-part-fonts.ts';
 import { textPathFontFamily } from '../store/package/legacy-vml-text-art.ts';
 import { collectRenderedFontFamilyCandidates } from '../store/package/rendered-fonts.ts';
 import {
@@ -349,6 +350,14 @@ export async function openFontBackedDocumentForExport(
         termination === 'active' ? session.layoutFor(displayMode) : Promise.reject(unavailable()),
       validatedImageBytes: (drawing: Parameters<ExportSession['validatedImageBytes']>[0]) =>
         termination === 'active' ? session.validatedImageBytes(drawing) : null,
+      metafileBytes: (drawing: Parameters<NonNullable<ExportSession['metafileBytes']>>[0]) =>
+        termination === 'active' ? (session.metafileBytes?.(drawing) ?? null) : null,
+      chartFallbackResource: (
+        drawing: Parameters<NonNullable<ExportSession['chartFallbackResource']>>[0]
+      ) =>
+        termination === 'active'
+          ? (session.chartFallbackResource?.(drawing) ?? Promise.resolve(undefined))
+          : Promise.resolve(undefined),
       admittedFontFace: bindSessionAdmittedFont({
         status: () => termination,
         unavailable,
@@ -426,6 +435,8 @@ export async function acquireDocumentExportShaping(
             onOriginFailure: (failure) => originFailures.push(failure),
             reserveOwnedBytes: fontByteLease.reserve,
             maxExecutionFontBytes: executionPolicy.maxFontBytes,
+            // Export writes every page once, so it waits for faces an editor paints late.
+            awaitDeferred: true,
           }
         );
         throwIfAborted(controller.signal);
@@ -570,6 +581,11 @@ function documentFontFamilies(view: HeadlessDocumentView): readonly string[] {
   // tier, direct/synthetic/marker faces precede inherited candidates. This keeps a hostile header
   // or orphan note from crowding the body's active Normal face out of the resolver cap.
   appendStoryTier(bodyRoots, 'body');
+  // Chart and saved diagram parts name their labels' faces outside every story.
+  for (const family of drawingPartFontFamilies(view.currentPackage(), theme)) {
+    const fold = family.toLowerCase();
+    if (!byFold.has(fold)) byFold.set(fold, family);
+  }
   appendStoryTier(furnitureRoots, 'furniture');
   appendStoryTier(noteRoots, 'note');
   return [...byFold.values()];

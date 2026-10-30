@@ -1,16 +1,13 @@
 import { sameResourceSubstrate } from './package-resource-substrate.ts';
-import { createSubtreeAggregateMemo } from '../store/package/subtree-memo-policy.ts';
-import { groupTextboxesLayoutToken } from './group-textbox-layout.ts';
 import { stylesPartOf } from '../store/package/ooxml-indexes.ts';
 import { drawingInputsUnchangedByParagraphEdit } from './drawing-paragraph-change.ts';
 // Package-backed inline drawing layout source (typed-drawings-and-images task 6).
-//
 // Precomputes run-level drawing / MC atom projections from a bounded part traversal with
 // ancestor xmlns bindings. Field projection consumes the atom-id map; it never re-walks MC
 // with an empty namespace scope.
 
-import { textboxLayoutToken } from './textbox-layout-token.ts';
-import { pointsDigest, vectorShapeLayoutToken } from './drawing-geometry-digest.ts';
+import { vectorShapeLayoutToken } from './drawing-geometry-digest.ts';
+import { drawingProjectionLayoutToken } from './drawing-projection-layout-token.ts';
 import { isLegacyVmlAtom } from '../store/package/legacy-vml-projection.ts';
 import type {
   OoxmlDrawingNode,
@@ -20,7 +17,6 @@ import type {
   OoxmlPart,
 } from '../store/package/ooxml-tree.ts';
 import {
-  createDrawingRelationshipResolver,
   DEFAULT_DRAWING_PROJECTION_LIMITS,
   indexInlineDrawingProjectionsInPart,
   isRunLevelMcAlternateContent,
@@ -42,16 +38,25 @@ import {
   type ValidatedImageBytesReleaseToken,
 } from '../store/package/validated-image-bytes.ts';
 import { createPackageShapeThemeResolvers } from '../store/package/theme-color-resolution.ts';
-import { wrapFootprintProjection } from '../store/package/drawing-wrap-footprint.ts';
+import { packageDrawingProjectionContext } from '../store/package/drawing-projection-context.ts';
+import { diagramPartsToken } from '../store/package/diagram-parts.ts';
 import { createPictureBulletResourceResolver } from './numbering-picture-bullet-resources.ts';
 import type { OoxmlPackage } from '../store/package/ooxml-package.ts';
 import type { InlineDrawingLayoutContext } from './drawing-layout.ts';
 import { walkDrawingAtoms } from './drawing-inline-walk.ts';
 import { framedTokenJoin } from './framed-token.ts';
 import {
-  aggregateParagraphTokensForTableBlock,
-  createTableRowTokenStore,
-} from './table-paragraph-tokens.ts';
+  chartRecordProjection,
+  replacesFailedChartFallback,
+  resolveChartFallbackResource,
+} from './drawing-chart-fallback.ts';
+import {
+  DECODE_FAILED_RESOURCE,
+  drawingResourceLayoutToken,
+  FOOTPRINT_RESOURCE,
+  pendingResourceKey,
+} from './drawing-resource-keys.ts';
+import { groupPictureLayerResources } from './drawing-group-picture-layers.ts';
 
 /** Layout-owned read surface for inline drawing package state (no binding/session lane). */
 export interface InlineDrawingPackageReader {
@@ -68,6 +73,15 @@ export interface InlineDrawingLayoutBundle {
   drawingTokenForParagraph(paragraph: OoxmlNode, ownerPartName: string): string;
   /** Number of discovered image decodes that have not settled yet. */
   pendingResourceCount(): number;
+  /**
+   * The settled resource of the picture saved in a drawn chart's `mc:Fallback`, read on
+   * request. Layout never reads it, so it is never pending layout work. Undefined for a
+   * drawing without one.
+   */
+  resolveChartFallback(
+    ownerPartName: string,
+    atomId: string
+  ): Promise<ImageResourceState | undefined>;
   /** Mint validated bytes for a ready handle when contentId matches; null on stale/mismatch. */
   mintValidatedBytes(
     handle: ValidatedImageBytesHandle,
@@ -85,30 +99,18 @@ export interface CreateInlineDrawingLayoutBundleOptions {
   readonly resourceLookup?: ImageResourceLookup;
 }
 
-const FOOTPRINT_RESOURCE: ImageResourceState = Object.freeze({
-  kind: 'unrenderable',
-  partName: null,
-  mime: 'unknown',
-  reason: 'non-picture-graphic',
-});
-
-function pendingResourceKey(projection: DrawingProjection): string {
-  const picture = projection.picture ?? projection.groupPicture;
-  if (picture?.embeddedRelationshipId) {
-    return `embed:${projection.ownerPartName}:${picture.embeddedRelationshipId}`;
-  }
-  if (picture?.linkedRelationshipId) {
-    return `link:${projection.ownerPartName}:${picture.linkedRelationshipId}`;
-  }
-  return `nonpicture:${projection.drawingNodeId}`;
-}
-
 interface PartDrawingContextSlot {
   readonly context: InlineDrawingLayoutContext;
   readonly cacheTokenForPart: () => string;
   readonly drawingTokenForParagraph: (paragraph: OoxmlNode) => string;
   readonly isCompatibleWith: (part: OoxmlPart, pkg: OoxmlPackage) => boolean;
   readonly pendingResourceCount: () => number;
+  readonly resolveChartFallback: (atomId: string) => Promise<ImageResourceState | undefined>;
+  /**
+   * Remove and return the settled resources that follow from the package alone, with their
+   * picture handles still retained, for the slot that replaces this one.
+   */
+  readonly takeSettledResources: () => ReadonlyMap<string, ImageResourceState>;
   readonly dispose: () => void;
 }
 
@@ -265,164 +267,6 @@ export function drawingSourceOrderInPart(
   return order;
 }
 
-function drawingProjectionLayoutToken(projection: DrawingProjection): string {
-  const position = projection.position;
-  const anchor = projection.anchor;
-  const picture = projection.picture;
-  const wrap = projection.wrapGeometry;
-  const vector = projection.vectorShape;
-  const groupPicture = projection.groupPicture;
-  // Length-framed (`framedTokenJoin`): relationship ids, part names, and preset geometry
-  // are verbatim file values, so a printable field separator would let two different
-  // picture references serialize to one token — and `isCompatibleWith` compares
-  // projections by this token alone when the resource substrate is unchanged.
-  // This also validates retained projections used by paint and drawing controls. Every
-  // top-level field needs a token decision, including diagnostics used for placeholders.
-  const fields = {
-    drawingNodeId: projection.drawingNodeId,
-    ownerPartName: projection.ownerPartName,
-    kind: projection.kind,
-    diagnostics: framedTokenJoin(
-      projection.diagnostics.map((diagnostic) =>
-        framedTokenJoin([diagnostic.code, diagnostic.nodeId, diagnostic.detail ?? ''])
-      )
-    ),
-    relationshipId: projection.relationshipId ?? '',
-    docPrId: String(projection.docPrId ?? ''),
-    name: projection.name,
-    title: projection.title,
-    description: projection.description,
-    hyperlinkHref: projection.hyperlinkHref ?? '',
-    hidden: String(projection.hidden),
-    extentEmu: framedTokenJoin([String(projection.extentEmu.cx), String(projection.extentEmu.cy)]),
-    effectExtentEmu: framedTokenJoin([
-      String(projection.effectExtentEmu.top),
-      String(projection.effectExtentEmu.right),
-      String(projection.effectExtentEmu.bottom),
-      String(projection.effectExtentEmu.left),
-    ]),
-    inlineDistancesEmu: framedTokenJoin([
-      String(projection.inlineDistancesEmu.top),
-      String(projection.inlineDistancesEmu.right),
-      String(projection.inlineDistancesEmu.bottom),
-      String(projection.inlineDistancesEmu.left),
-    ]),
-    wrap: projection.wrap,
-    textboxStory: projection.textboxStory ? textboxLayoutToken(projection.textboxStory) : '',
-    groupTextboxes: groupTextboxesLayoutToken(projection.groupTextboxes),
-    compatibilityBranchNodeId: projection.compatibilityBranchNodeId ?? '',
-    footprintOnly: projection.footprintOnly ? 'footprint' : '',
-    anchor: anchor
-      ? framedTokenJoin([
-          String(anchor.simplePos),
-          String(anchor.relativeHeight),
-          String(anchor.layoutInCell),
-          String(anchor.allowOverlap),
-          String(anchor.behindDocument),
-        ])
-      : '',
-    locks: framedTokenJoin([
-      String(projection.locks.select),
-      String(projection.locks.move),
-      String(projection.locks.resize),
-      String(projection.locks.changeAspect),
-    ]),
-    effects: framedTokenJoin([
-      String(projection.effects.grayscale),
-      String(projection.effects.brightness),
-      String(projection.effects.contrast),
-      String(projection.effects.bilevel ?? ''),
-    ]),
-    picture: picture
-      ? framedTokenJoin([
-          String(picture.crop.left),
-          String(picture.crop.top),
-          String(picture.crop.right),
-          String(picture.crop.bottom),
-          String(picture.transform.rotationDegrees),
-          String(picture.transform.flipHorizontal),
-          String(picture.transform.flipVertical),
-          String(picture.transform.offsetEmu.x),
-          String(picture.transform.offsetEmu.y),
-          String(picture.transform.extentEmu.cx),
-          String(picture.transform.extentEmu.cy),
-          picture.embeddedRelationshipId ?? '',
-          picture.linkedRelationshipId ?? '',
-          picture.presetGeometry ?? '',
-          picture.fillMode,
-        ])
-      : '',
-    groupPicture: groupPicture
-      ? framedTokenJoin([
-          String(groupPicture.crop.left),
-          String(groupPicture.crop.top),
-          String(groupPicture.crop.right),
-          String(groupPicture.crop.bottom),
-          String(groupPicture.frameEmu.x),
-          String(groupPicture.frameEmu.y),
-          String(groupPicture.frameEmu.cx),
-          String(groupPicture.frameEmu.cy),
-          groupPicture.embeddedRelationshipId ?? '',
-          groupPicture.linkedRelationshipId ?? '',
-          groupPicture.memberNodeId,
-          groupPicture.alternateContent ? 'mc' : '',
-        ])
-      : '',
-    legacyGraphic: projection.legacyGraphic ? JSON.stringify(projection.legacyGraphic) : '',
-    textArt: JSON.stringify(projection.textArt) ?? '',
-    vectorShape: vector ? vectorShapeLayoutToken(vector) : '',
-    wrapGeometry: wrap
-      ? framedTokenJoin([
-          wrap.element,
-          wrap.textSide,
-          String(wrap.distancesEmu.top),
-          String(wrap.distancesEmu.right),
-          String(wrap.distancesEmu.bottom),
-          String(wrap.distancesEmu.left),
-          String(wrap.polygon.length),
-          pointsDigest(wrap.polygon),
-        ])
-      : '',
-    position: position
-      ? framedTokenJoin([
-          position.horizontal.relativeFrom,
-          position.horizontal.align ?? '',
-          String(position.horizontal.offsetEmu ?? ''),
-          position.vertical.relativeFrom,
-          position.vertical.align ?? '',
-          String(position.vertical.offsetEmu ?? ''),
-          String(position.simplePosition.xEmu),
-          String(position.simplePosition.yEmu),
-        ])
-      : '',
-  } satisfies Record<keyof DrawingProjection, string>;
-  return framedTokenJoin(Object.values(fields));
-}
-
-// Length-framed where a field embeds file text (resource keys carry relationship ids and
-// part names verbatim), so no crafted id can shift a field boundary.
-function drawingResourceLayoutToken(resource: ImageResourceState): string {
-  switch (resource.kind) {
-    case 'ready':
-      return framedTokenJoin([
-        'ready',
-        resource.resourceKey,
-        resource.contentId,
-        `${resource.pixelWidth}x${resource.pixelHeight}`,
-      ]);
-    case 'pending':
-      return framedTokenJoin(['pending', resource.resourceKey]);
-    case 'external':
-      return framedTokenJoin(['external', resource.relationshipId, resource.sinkSafe ? '1' : '0']);
-    case 'missing':
-      return 'missing';
-    case 'unrenderable':
-      return `unrenderable:${resource.reason}`;
-    default:
-      return (resource as ImageResourceState).kind;
-  }
-}
-
 /**
  * Story levels folded into a paragraph's drawing token.
  *
@@ -460,6 +304,8 @@ function createPartDrawingContextSlot(options: {
   readonly rememberReadyHandle: (handle: ValidatedImageBytesHandle) => void;
   readonly forgetReadyHandle: (handle: ValidatedImageBytesHandle) => void;
   readonly pictureBulletResource: NonNullable<InlineDrawingLayoutContext['pictureBulletResource']>;
+  /** Settled pictures of the slot this one replaces; their handles stay retained. */
+  readonly carried?: ReadonlyMap<string, ImageResourceState>;
 }): PartDrawingContextSlot {
   const {
     ownerPartName,
@@ -472,7 +318,12 @@ function createPartDrawingContextSlot(options: {
   } = options;
   let disposed = false;
   let generation = 0;
-  const resourceByKey = new Map<string, ImageResourceState>();
+  const resourceByKey = new Map<string, ImageResourceState>(options.carried);
+  /**
+   * Keys whose state follows from the package alone: an embedded picture, or a shape with no
+   * picture. A replacement slot over the same images and relationships may reuse them.
+   */
+  const carriableKeys = new Set<string>(options.carried?.keys());
   const inFlight = new Set<string>();
   const resourceEpochByKey = new Map<string, number>();
   const drawingTokensByParagraph = new WeakMap<
@@ -483,15 +334,13 @@ function createPartDrawingContextSlot(options: {
   let resourceEpoch = 0;
   let lastCompatiblePart = part;
 
-  const resolveRelationshipTarget = createDrawingRelationshipResolver(pkg, ownerPartName);
   const theme = createPackageShapeThemeResolvers(pkg);
+  const diagramToken = diagramPartsToken(pkg);
   const stylesPart = stylesPartOf(pkg);
-  const atomProjections = indexInlineDrawingProjectionsInPart(part, {
-    stylesPart,
-    resolveRelationship: resolveRelationshipTarget,
-    resolveSchemeColor: theme.resolveSchemeColor,
-    resolveStyleMatrixReference: theme.resolveStyleMatrixReference,
-  });
+  const atomProjections = indexInlineDrawingProjectionsInPart(
+    part,
+    packageDrawingProjectionContext(pkg, ownerPartName)
+  );
   const atomIdentities = drawingAtomIdentities(part);
   const hasObjects = atomIdentities
     ? Array.from(atomIdentities.values()).some(
@@ -499,11 +348,13 @@ function createPartDrawingContextSlot(options: {
       )
     : true;
 
+  /** Settlement of each decode in flight, for a caller that awaits one picture. */
+  const settlements = new Map<string, Promise<void>>();
   const scheduleResolve = (projection: DrawingProjection, key: string): void => {
     if (disposed || inFlight.has(key)) return;
     inFlight.add(key);
     const startGeneration = generation;
-    void lookup
+    const settlement = lookup
       .resolveForProjection(projection)
       .then((state) => {
         if (disposed || startGeneration !== generation) return;
@@ -518,30 +369,55 @@ function createPartDrawingContextSlot(options: {
       })
       .catch(() => {
         if (disposed || startGeneration !== generation) return;
-        resourceByKey.set(
-          key,
-          Object.freeze({
-            kind: 'unrenderable',
-            partName: null,
-            mime: 'unknown',
-            reason: 'decode-failed',
-          })
-        );
+        resourceByKey.set(key, DECODE_FAILED_RESOURCE);
         resourceEpoch += 1;
         resourceEpochByKey.set(key, resourceEpoch);
         inFlight.delete(key);
         onResourceSettled(ownerPartName);
       });
+    settlements.set(key, settlement);
+    void settlement.finally(() => settlements.delete(key));
+  };
+
+  // A drawn chart's fallback picture, read only when an exporter asks: never pending layout
+  // work, and it never moves the resource epoch.
+  const resolveChartFallback = (atomId: string): Promise<ImageResourceState | undefined> => {
+    const startGeneration = generation;
+    return resolveChartFallbackResource({
+      projection: atomProjections.get(atomId),
+      cached: (key) => resourceByKey.get(key),
+      settlement: (key) => settlements.get(key),
+      resolve: (fallback) => lookup.resolveForProjection(fallback),
+      live: () => !disposed && startGeneration === generation,
+      store: (key, state) => {
+        resourceByKey.set(key, state);
+        if (state.kind === 'ready') rememberReadyHandle(state.validatedHandle);
+      },
+    });
   };
 
   const resourceOf = (projection: DrawingProjection): ImageResourceState => {
-    // A wrap footprint has nothing to resolve, and must never start a decode or a fetch.
-    if (projection.footprintOnly) return FOOTPRINT_RESOURCE;
+    // A wrap footprint, or a chart placeholder over a failed fallback, has nothing to
+    // resolve, and must never start a decode or a fetch.
+    if (projection.footprintOnly || replacesFailedChartFallback(projection)) {
+      return FOOTPRINT_RESOURCE;
+    }
     const key = pendingResourceKey(projection);
+    const shown = projection.picture ?? projection.groupPicture;
+    // A legacy graphic resolves from its own geometry, not from the relationship alone.
+    if (projection.legacyGraphic) {
+      const carried = options.carried?.get(key);
+      if (carriableKeys.delete(key) && carried && resourceByKey.get(key) === carried) {
+        resourceByKey.delete(key);
+        if (carried.kind === 'ready') forgetReadyHandle(carried.validatedHandle);
+      }
+    } else if ((!shown || shown.embeddedRelationshipId) && !resourceByKey.has(key)) {
+      carriableKeys.add(key);
+    }
     const cached = resourceByKey.get(key);
     if (cached) return cached;
 
-    const linked = (projection.picture ?? projection.groupPicture)?.linkedRelationshipId;
+    const linked = shown?.embeddedRelationshipId ? null : shown?.linkedRelationshipId;
     if (linked) {
       const linkedState = lookup.resolveLinked(ownerPartName, linked);
       resourceByKey.set(key, linkedState);
@@ -561,18 +437,18 @@ function createPartDrawingContextSlot(options: {
     return pending;
   };
 
-  // An MC-wrapped group whose picture cannot render paints nothing, the same as an MC
-  // payload the projection cannot draw (`projectRunLevelMcDrawing`), and keeps only its wrap
-  // footprint. A linked picture settles at once; an embedded one counts only after its decode
-  // settles, so a pending group keeps its frame and paints its vector members.
+  // Failed groups retain one replaceable placeholder. Chart fallback pictures use
+  // their chart projection after resource failure, preserving chart metadata.
+  const settledResource = (shown: DrawingProjection): ImageResourceState | undefined => {
+    const picture = shown.picture ?? shown.groupPicture;
+    return picture && !picture.embeddedRelationshipId
+      ? resourceOf(shown)
+      : resourceByKey.get(pendingResourceKey(shown));
+  };
   const projectionForAtom = (atomNodeId: string): DrawingProjection | null => {
     const projection = atomProjections.get(atomNodeId) ?? null;
-    if (!projection?.groupPicture?.alternateContent) return projection;
-    const state = projection.groupPicture.linkedRelationshipId
-      ? resourceOf(projection)
-      : resourceByKey.get(pendingResourceKey(projection));
-    return state && state.kind !== 'ready' && state.kind !== 'pending'
-      ? wrapFootprintProjection(projection)
+    return projection?.chartFallbackPicture
+      ? chartRecordProjection(projection, settledResource)
       : projection;
   };
 
@@ -657,9 +533,11 @@ function createPartDrawingContextSlot(options: {
       `${ownerPartName}|${resourceEpoch}|${generation}|${atomProjections.size}`,
     drawingTokenForParagraph,
     pendingResourceCount: () => inFlight.size,
+    resolveChartFallback,
     isCompatibleWith: (nextPart, nextPkg) => {
       const nextTheme = createPackageShapeThemeResolvers(nextPkg);
       if (nextTheme.cacheToken !== theme.cacheToken) return false;
+      if (diagramPartsToken(nextPkg) !== diagramToken) return false;
       if (nextPart === part && stylesPartOf(nextPkg) === stylesPart) {
         lastCompatiblePart = nextPart;
         return true;
@@ -690,12 +568,10 @@ function createPartDrawingContextSlot(options: {
           return true;
         }
       }
-      const nextProjections = indexInlineDrawingProjectionsInPart(nextPart, {
-        stylesPart: stylesPartOf(nextPkg),
-        resolveRelationship: createDrawingRelationshipResolver(nextPkg, ownerPartName),
-        resolveSchemeColor: nextTheme.resolveSchemeColor,
-        resolveStyleMatrixReference: nextTheme.resolveStyleMatrixReference,
-      });
+      const nextProjections = indexInlineDrawingProjectionsInPart(
+        nextPart,
+        packageDrawingProjectionContext(nextPkg, ownerPartName)
+      );
       if (nextProjections.size !== atomProjections.size) return false;
       for (const [atomId, projection] of atomProjections) {
         const next = nextProjections.get(atomId);
@@ -709,6 +585,20 @@ function createPartDrawingContextSlot(options: {
       lastCompatiblePart = nextPart;
       return true;
     },
+    takeSettledResources: () => {
+      const taken = new Map<string, ImageResourceState>();
+      for (const key of carriableKeys) {
+        const state = resourceByKey.get(key);
+        // A failure can be transient (a decode that threw), so the next slot asks again.
+        const fixed =
+          state?.kind === 'ready' ||
+          (state?.kind === 'unrenderable' && state.reason === 'non-picture-graphic');
+        if (!state || !fixed) continue;
+        taken.set(key, state);
+        resourceByKey.delete(key);
+      }
+      return taken;
+    },
     dispose: () => {
       disposed = true;
       generation += 1;
@@ -717,6 +607,7 @@ function createPartDrawingContextSlot(options: {
       }
       resourceByKey.clear();
       inFlight.clear();
+      settlements.clear();
       resourceEpochByKey.clear();
     },
   };
@@ -763,6 +654,17 @@ export function createInlineDrawingLayoutBundle(
       releaseTokensByKey.delete(handle.resourceKey);
     }
   };
+  /** Settled pictures handed from a replaced part slot to the next slot for that part. */
+  const carriedByPart = new Map<string, ReadonlyMap<string, ImageResourceState>>();
+  const releaseCarried = (keep: (ownerPartName: string) => boolean = () => false): void => {
+    for (const [ownerPartName, carried] of carriedByPart) {
+      if (keep(ownerPartName)) continue;
+      for (const state of carried.values()) {
+        if (state.kind === 'ready') forgetReadyHandle(state.validatedHandle);
+      }
+      carriedByPart.delete(ownerPartName);
+    }
+  };
 
   const pictureBullets = createPictureBulletResourceResolver({
     currentPackage: () => pkgSnapshot,
@@ -791,6 +693,8 @@ export function createInlineDrawingLayoutBundle(
     if (existing) return existing;
     const part = resolvePart(ownerPartName, reader);
     partByName.set(ownerPartName, part);
+    const carried = carriedByPart.get(ownerPartName);
+    carriedByPart.delete(ownerPartName);
     const slot = createPartDrawingContextSlot({
       ownerPartName,
       part,
@@ -800,6 +704,7 @@ export function createInlineDrawingLayoutBundle(
       rememberReadyHandle,
       forgetReadyHandle,
       pictureBulletResource: pictureBullets.resolve,
+      ...(carried ? { carried } : {}),
     });
     slots.set(ownerPartName, slot);
     slotMintCounter += 1;
@@ -811,6 +716,11 @@ export function createInlineDrawingLayoutBundle(
     const nextPkg = reader.currentPackage();
     const resourceSubstrateUnchanged = sameResourceSubstrate(nextPkg, pkgSnapshot);
     if (resourceSubstrateUnchanged) {
+      // A part laid out only now and then (a header, say) may not have rebuilt its slot
+      // since the last edit. Its carried pictures stay valid while the part exists.
+      releaseCarried(
+        (ownerPartName) => nextPkg.parts.has(ownerPartName) || ownerPartName === reader.part().name
+      );
       // The numbering part's bytes and rels are unchanged too, so resolved bullets stand.
       for (const [ownerPartName, slot] of slots) {
         const nextPart =
@@ -820,6 +730,10 @@ export function createInlineDrawingLayoutBundle(
           partByName.set(ownerPartName, nextPart);
           continue;
         }
+        // Text typed into a text box changes its projection, so the slot is replaced. The
+        // part's images and relationships are unchanged: keep each decoded picture, or every
+        // picture in the part goes pending and repaints from a new URL on each keystroke.
+        if (nextPart) carriedByPart.set(ownerPartName, slot.takeSettledResources());
         slot.dispose();
         slots.delete(ownerPartName);
         partByName.delete(ownerPartName);
@@ -828,6 +742,7 @@ export function createInlineDrawingLayoutBundle(
       pkgSnapshot = nextPkg;
       return;
     }
+    releaseCarried();
     for (const slot of slots.values()) slot.dispose();
     slots.clear();
     partByName.clear();
@@ -871,6 +786,9 @@ export function createInlineDrawingLayoutBundle(
       for (const slot of slots.values()) count += slot.pendingResourceCount();
       return count;
     },
+    resolveChartFallback(ownerPartName: string, atomId: string) {
+      return slotFor(ownerPartName, options.session).resolveChartFallback(atomId);
+    },
     mintValidatedBytes(handle: ValidatedImageBytesHandle, expectedContentId: string) {
       // A validated handle is a capability owned by the bundle that discovered and retained
       // it. The process registry can still mint a live handle belonging to another export
@@ -885,6 +803,7 @@ export function createInlineDrawingLayoutBundle(
     },
     dispose() {
       pictureBullets.reset();
+      releaseCarried();
       for (const slot of slots.values()) slot.dispose();
       slots.clear();
       partByName.clear();
@@ -941,60 +860,14 @@ function framedAtomToken(
     atomId,
     drawingProjectionLayoutToken(projection),
     drawingResourceLayoutToken(resourceOf(projection)),
+    ...(groupPictureLayerResources(projection, resourceOf) ?? []).map(drawingResourceLayoutToken),
   ];
   if (epochOf) parts.push(String(epochOf(projection)));
   return framedTokenJoin(parts);
 }
 
-/**
- * `drawingTokenForTableBlock` memoized per (immutable table node, drawing epoch).
- *
- * The table token exists to VALIDATE the prepass memo, so it is recomputed before every
- * memo hit — which walked every row and cell of every table on every layout pass. The
- * token is a pure function of the table subtree (node identity) and the part's drawing
- * projection/resource state, and `drawingLayoutEpoch` already stands in for the latter
- * (it moves whenever any projection or resource in the part does). No epoch means the
- * caller cannot see resource moves, so the recompute path is kept — the same rule the
- * section prepass memo follows.
- */
-export function drawingTokenForTableBlockMemo(
-  table: OoxmlNode,
-  epoch: string | undefined,
-  drawingTokenForParagraph: (paragraph: OoxmlNode) => string
-): string {
-  if (epoch === undefined) return drawingTokenForTableBlock(table, drawingTokenForParagraph);
-  const cached = tableDrawingTokenCache.get(table);
-  if (cached && cached.epoch === epoch) return cached.token;
-  // Rows keep their identity across a cell edit, so their segments answer under the same epoch.
-  const reuse = { rows: rowDrawingTokens, scope: undefined, epoch };
-  const token = aggregateParagraphTokensForTableBlock(table, drawingTokenForParagraph, reuse);
-  // A token grows with the table: about one item per 64 characters.
-  tableDrawingTokenCache.set(table, { epoch, token }, token.length >> 6);
-  return token;
-}
-
-/** Aggregated drawing token per immutable table node, valid for one drawing epoch. */
-const tableDrawingTokenCache = createSubtreeAggregateMemo<{
-  readonly epoch: string;
-  readonly token: string;
-}>();
-const rowDrawingTokens = createTableRowTokenStore();
-
-/**
- * Aggregate per-paragraph drawing tokens for a table subtree (cache + incremental keys).
- *
- * The shared position-preserving walk (`aggregateParagraphTokensForTableBlock`): a
- * per-paragraph token embeds file-influenced values and its own printable separators, so a
- * printable join lets a token value shift a boundary, and sorting or skipping empties lets
- * two different paragraph-to-token ASSIGNMENTS over one byte-identical subtree concatenate
- * to the same string — and the table's prepared-block memo then serves a break with stale
- * drawing layout.
- */
-export function drawingTokenForTableBlock(
-  table: OoxmlNode,
-  drawingTokenForParagraph: (paragraph: OoxmlNode) => string
-): string {
-  return aggregateParagraphTokensForTableBlock(table, drawingTokenForParagraph);
-}
-
+export {
+  drawingTokenForTableBlock,
+  drawingTokenForTableBlockMemo,
+} from './drawing-table-tokens.ts';
 export { drawingProjectionLayoutToken, drawingResourceLayoutToken, vectorShapeLayoutToken };

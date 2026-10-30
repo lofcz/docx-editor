@@ -59,7 +59,7 @@ Links, equation previews, and **Show/Hide** remain available. Search and program
 | --------- | ------------------------- | ----------------------------------- |
 | `modules` | `readonly EditorModule[]` | Modules registered at construction. |
 
-The editor ignores later `modules` array changes. Change the Vue `:key` to remount the editor with another module set.
+The editor ignores later `modules` array changes. Change the Vue `:key` to remount the editor with another module set. The drawing renderers from `drawingModule()` and `reviewModule()` are different: they serve every editor in the page, and a remount does not remove them. For more information, see [Advanced drawing rendering](/docs/2.x/pro/drawing).
 
 ```vue
 <script setup lang="ts">
@@ -87,7 +87,7 @@ These props control the packaged frame:
 | `navigation` | `boolean \| DocxEditorNavigationProps` | Toggles or configures the navigation pane. |
 | `openFailure` | `boolean \| DocxEditorOpenFailureProps` | Shows, hides, or configures the dialog for a file that does not open. For more information, see [Handle files that do not open](/docs/2.x/guides/open-failures). |
 | `rulers` | `boolean` | Toggles both packaged rulers. |
-| `hyperlinkPopup` | `boolean` | Toggles the hyperlink popover. |
+| `hyperlinkPopup` | `boolean` | Toggles the hyperlink popover. If you hide it, mount a panel that calls `useHyperlinkPopup()`, or the Insert link controls are disabled. |
 | `contextMenu` | `boolean \| DocxEditorContextMenuProps` | Toggles or configures the context menu. |
 | `t` | `(key, params?) => string` | Resolves live chrome and drawing labels. |
 | `i18n` | `Translations` | Supplies a live catalog to this editor. |

@@ -33,12 +33,17 @@ import { FIELD_CODE_INPUT_REFUSAL } from './surface-field-code-input.ts';
 import { PICTURE_SELECTED_INSERT_REASON } from './docx-editor-images.ts';
 import { PREVIEW_WRITE_REFUSAL, REFRESH_WRITE_REFUSAL } from './refresh-write-guard.ts';
 import { BOUND_CHANGES_REFUSAL, LOCKED_CHANGES_REFUSAL } from './review-guard-refusals.ts';
+import { LOCKED_PARAGRAPH_FORMAT_REASON } from './paragraph-format-lock-refusal.ts';
 import {
   LOCKED_CONTENT_BREAK_REFUSAL,
   LOCKED_SECTION_BREAK_REFUSAL,
   SUGGESTED_BREAK_REFUSAL,
   TABLE_CELL_BREAK_REFUSAL,
 } from './surface-section-breaks.ts';
+import {
+  SUGGESTING_TABLE_DELETE_REFUSAL,
+  SUGGESTING_TABLE_MOVE_REFUSAL,
+} from './surface-suggesting-structure.ts';
 
 export {
   openDiagnosticCode,
@@ -72,6 +77,7 @@ const EDIT_SENTENCES: ReadonlyMap<string, EditDiagnosticCode> = new Map([
   ['the document is open for viewing', 'edit.read-only'],
   ['the document is read-only', 'edit.read-only'],
   ['this content is locked', 'edit.protected-content'],
+  [LOCKED_PARAGRAPH_FORMAT_REASON, 'edit.protected-content'],
   [READ_ONLY_PROTECTION_REASON, 'edit.read-only'],
   [COMMENTS_PROTECTION_REASON, 'edit.protected-content'],
   [FORMS_WRITE_REASON, 'edit.protected-content'],
@@ -83,6 +89,8 @@ const EDIT_SENTENCES: ReadonlyMap<string, EditDiagnosticCode> = new Map([
   [COLLABORATION_FIELD_RESULTS_REFUSAL, 'edit.unsupported-story'],
   [FIELD_CODE_INPUT_REFUSAL, 'edit.field-structure'],
   [SUGGESTED_BREAK_REFUSAL, 'edit.tracked-structure-unsupported'],
+  [SUGGESTING_TABLE_DELETE_REFUSAL, 'edit.tracked-structure-unsupported'],
+  [SUGGESTING_TABLE_MOVE_REFUSAL, 'edit.tracked-structure-unsupported'],
   [TABLE_CELL_BREAK_REFUSAL, 'edit.section-mark'],
   [LOCKED_SECTION_BREAK_REFUSAL, 'edit.protected-content'],
   [LOCKED_CONTENT_BREAK_REFUSAL, 'edit.protected-content'],

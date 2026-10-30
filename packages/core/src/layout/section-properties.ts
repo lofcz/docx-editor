@@ -71,6 +71,8 @@ export interface SectionColumns {
   readonly separator?: boolean;
   /** Authored `w:col` geometry when `equalWidth` is false. */
   readonly definitions?: readonly SectionColumnDefinition[];
+  /** A right-to-left section (`w:bidi`): the first column is the rightmost. */
+  readonly rightToLeft?: true;
 }
 
 /**
@@ -411,6 +413,7 @@ function parseSectionPropertiesUncached(sectPr: OoxmlNode): SectionProperties {
       equalWidth,
       separator: cols ? onOffAttribute(cols, 'sep', false) : false,
       definitions: equalWidth ? [] : columnDefinitions(cols, count, contentWidthTwips),
+      ...(count > 1 && readOnOffChild(sectPr, 'bidi') ? { rightToLeft: true as const } : {}),
     },
     // Render-truthful: Word writes swapped dimensions AND the attribute, but a file may
     // carry only one. Width exceeding height IS a landscape page whatever the attribute
@@ -447,6 +450,28 @@ export function bodySectionNode(part: OoxmlPart): OoxmlNode | undefined {
     return undefined;
   };
   return find(part.root);
+}
+
+/**
+ * Each section's own `w:sectPr`: the one in the paragraph that closes it, or the body-level
+ * one for the last section. A section closed by anything else has none.
+ */
+export function sectionPropertiesNodes(
+  part: OoxmlPart,
+  blocks: readonly OoxmlElement[],
+  sections: readonly { readonly blockStart: number; readonly blockEndExclusive: number }[]
+): readonly (OoxmlElement | undefined)[] {
+  const body = bodySectionNode(part);
+  const final =
+    body !== undefined && body.kind !== 'textValue' ? (body as OoxmlElement) : undefined;
+  return sections.map((section, index) => {
+    const closing =
+      section.blockStart < section.blockEndExclusive
+        ? blocks[section.blockEndExclusive - 1]
+        : undefined;
+    const own = closing?.kind === 'paragraph' ? paragraphSectionNode(closing) : undefined;
+    return own ?? (index === sections.length - 1 ? final : undefined);
+  });
 }
 
 /**

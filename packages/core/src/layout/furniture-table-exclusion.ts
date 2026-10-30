@@ -7,7 +7,7 @@
 // gets it, and a first-page or even-page variant without the table gets none.
 
 import { findNode } from '../store/package/ooxml-edit.ts';
-import type { OoxmlPart } from '../store/package/ooxml-tree.ts';
+import { WML_NAMESPACE_URI, type OoxmlPart } from '../store/package/ooxml-tree.ts';
 import type { ExclusionZone } from './drawing-exclusion.ts';
 import { isOutOfFlowFragment } from './fragment-flow.ts';
 import type {
@@ -32,7 +32,9 @@ function floatOf(part: OoxmlPart, tableId: string): TableFloatPosition | null {
   const table = findNode(part, tableId);
   let float: TableFloatPosition | null = null;
   if (table && table.kind === 'table') {
-    const properties = table.children.find((child) => child.localName === 'tblPr');
+    const properties = table.children.find(
+      (child) => child.namespaceUri === WML_NAMESPACE_URI && child.localName === 'tblPr'
+    );
     float = readTableFloatPosition(properties) ?? null;
   }
   byId.set(tableId, float);
@@ -78,11 +80,12 @@ export function furnitureTableZones(
       box,
       floatingWrap: { anchorId: table.tableId, columnIndex: 0, float, sourceOrder: -1 },
     };
-    const zone = addFloatingTableExclusions([{ fragments: [placed] }], new Map(), {
-      columnCount: 1,
-      columnGapPt: 0,
-      contentWidth: contentBox.width,
-    }).get(0)?.[0];
+    const zone = addFloatingTableExclusions(
+      [{ fragments: [placed] }],
+      new Map(),
+      { columnCount: 1, columnGapPt: 0, contentWidth: contentBox.width },
+      false
+    ).get(0)?.[0];
     if (
       !zone ||
       zone.verticalBand.y >= contentBox.height ||

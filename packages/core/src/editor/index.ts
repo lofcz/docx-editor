@@ -46,7 +46,11 @@ export {
   type FontResolverMark,
   type MarkedFontResolver,
 } from './font-resolver.ts';
-export { blankDocumentBytes } from './blank-document.ts';
+export { deferFonts } from '../layout/defer-fonts.ts';
+export { blankDocumentBytes, type BlankDocumentOptions } from './blank-document.ts';
+export { keepScrollAtInlineEnd } from './scroll-inline-end.ts';
+export { placeSubmenu, submenuKeys } from './submenu-placement.ts';
+export { hostDirectionOf, observeHostDirection } from './host-direction.ts';
 export { clipboardDropLandsText, clipboardPasteLandsContent } from './clipboard-file-lane.ts';
 export {
   copyEditorStyles,
@@ -109,6 +113,8 @@ export {
 export {
   dragIndent,
   handlePosition,
+  rulerMarginTicks,
+  rulerTabPosition,
   snapTwips,
   SNAP_TWIPS_CM,
   SNAP_TWIPS_INCH,
@@ -117,6 +123,7 @@ export {
   type RulerDragOptions,
   type RulerIndent,
   type RulerIndentHandle,
+  type RulerMarginTick,
   type RulerPageMetrics,
 } from './ruler-indent.ts';
 export {
@@ -140,30 +147,43 @@ export { editorCommandKey } from './command-key.ts';
 export {
   arrangeToolbarGroups,
   collapseOrder,
-  sameOverflow,
   toolbarGroupPriority,
-  toolbarOverflowGroups,
   toolbarPanelPlacement,
   toolbarPopupLeft,
   TOOLBAR_COLLAPSE_ORDER,
   TOOLBAR_OVERFLOW_HYSTERESIS,
   TOOLBAR_PANEL_EDGE_MARGIN,
   TOOLBAR_PINNED_GROUPS,
-  type ToolbarFitInput,
   type ToolbarHostGroupPlacement,
   type ToolbarPanelPlacement,
 } from './toolbar-fit.ts';
 export {
   barRoomWidth,
-  collapsibleGroupCost,
   controlsOverflow,
   readAvailableWidth,
   readColumnGap,
   readInlineMargins,
+  readToolbarRow,
   separatorLeadingCost,
   trailingGapCost,
   type BarRoomInput,
+  type ToolbarRowMemory,
+  type ToolbarRowReading,
 } from './toolbar-measure.ts';
+export {
+  sameItemOverflow,
+  TOOLBAR_HOST_ITEM,
+  TOOLBAR_ITEM_ATTRIBUTE,
+  toolbarGroupItems,
+  toolbarGroupsKey,
+  toolbarHostPanelShown,
+  toolbarItemKey,
+  toolbarOverflowItems,
+  toolbarShownCount,
+  type ToolbarFitGroup,
+  type ToolbarItemFitInput,
+  type ToolbarItemOverflow,
+} from './toolbar-item-fit.ts';
 export { chordLetter, isGoToChord } from './chord-letter.ts';
 export { tableCommandState } from './docx-editor-derive.ts';
 export {
@@ -198,6 +218,7 @@ export {
   chromeSlotId,
   defaultChromeGroups,
   formattingBarChromeGroups,
+  type FormattingBarOptions,
   type ChromeControl,
   type ChromeControlId,
   type ChromeControlState,
@@ -683,3 +704,16 @@ export {
   setSurfaceInlineWidgetMetrics,
   type InlineWidgetMetricsSnapshot,
 } from './surface-inline-widget-metrics.ts';
+export { unsupportedElementRuleMatches } from '../layout/unsupported-content-types.ts';
+
+export type {
+  DrawingGraphicKind,
+  DrawingSupport,
+  DrawingSupportIssue,
+} from '../store/package/drawing-support.ts';
+
+export { drawingPreviewDocx } from './drawing-preview.ts';
+export type {
+  DrawingPreviewPackageLimits,
+  DrawingPreviewPackageResult,
+} from '../store/package/drawing-preview-package.ts';

@@ -1,9 +1,14 @@
 import { withStoryLineGrid } from './line-grid.ts';
 import { listLayoutToken } from './list-marker-reuse.ts';
-import { reuseSingleLineAtWidth } from './paragraph-cache-width-reuse.ts';
+import { reuseParagraphAtWidth } from './paragraph-cache-width-reuse.ts';
 import { cellParagraphInputs, cellParagraphBreakInputs } from './cell-paragraph-inputs.ts';
 import { adjustedBreakIndex, paragraphKeeps } from './pagination-keeps.ts';
 import { firstRowContentDeps } from './table-fragment-content-insets.ts';
+import {
+  endRowInsets,
+  exactOpeningExtensionPt,
+  exactTerminalBorderPt,
+} from './table-exact-terminal-border.ts';
 import { cellContextualSpacing, contextualCellNeighbours } from './contextual-paragraph-spacing.ts';
 import { emitNestedTable } from './nested-table-layout.ts';
 import { paragraphIsRtl } from './rtl-paragraph.ts';
@@ -35,7 +40,6 @@ import type { OoxmlElement, OoxmlNode } from '@docx-editor.dev/core/store';
 import { measuringFlowDeps, withoutAnchorSinks } from './table-probe-deps.ts';
 import {
   clipInlineDrawingRecordToRegion,
-  publishAnchoredDrawingsForParagraph,
   shiftInlineDrawingRecord,
   type AnchoredDrawingRecord,
   type DrawingAnchorFrameContext,
@@ -131,7 +135,7 @@ import {
 import { annotateTableFragmentGeometry } from './semantic-table-interaction.ts';
 import { type TableBorderOwnershipBudget } from './table-borders.ts';
 import { type TableVMergeResolveBudget } from './table-vmerge.ts';
-import { cellContentInsets, type CellContentInsets } from './table-cell-geometry.ts';
+import { type CellContentInsets } from './table-cell-geometry.ts';
 import { authoredRowMinimumFloorPt, type RowMinimumInsetMap } from './table-row-minimum-insets.ts';
 import {
   cellFlowBox,
@@ -141,6 +145,7 @@ import {
 } from './table-cell-text-direction.ts';
 import { finalizeTableRows, shiftBlocks } from './table-fragment-finalize.ts';
 import { cellAnchorFlow, cellAnchorScope } from './cell-anchor-layout.ts';
+import { cellBottomWithAnchors, publishCellParagraphAnchors } from './cell-paragraph-anchors.ts';
 export { finalizeTableRows } from './table-fragment-finalize.ts';
 import type { RowVMergeLayoutOptions } from './table-vmerge-heights.ts';
 import { hasCompatibilityRule } from './compatibility/compatibility-rules.ts';
@@ -179,6 +184,10 @@ export interface HostedStoryFlowDeps {
 }
 
 export interface TableFlowDeps {
+  /** Layout-only outer extent; the authored content and clip heights remain unchanged. */
+  readonly exactTerminalBorder?: { readonly row: SemanticTableRow; readonly widthPt: number };
+  /** Height an exact row gains above its authored box when it opens a continuation fragment. */
+  readonly exactOpeningExtension?: { readonly row: SemanticTableRow; readonly pt: number };
   /** The current row already has the full page band (possibly below repeated headers). */
   readonly rowAtPageStart?: boolean;
   readonly paragraphLineUnitPt?: number;
@@ -535,7 +544,7 @@ function placeCellParagraph(
       }),
       () =>
         deps.cache && !rtl && startOffset === 0 && pageZones.length === 0 && !listItem
-          ? reuseSingleLineAtWidth(deps.cache, paragraph, key, available)
+          ? reuseParagraphAtWidth(deps.cache, paragraph, key, available)
           : undefined
     );
   };
@@ -874,7 +883,8 @@ function placeCellParagraph(
         deps.measurer,
         rawRecords[0],
         originX,
-        rtl ? indent.left + available + indent.right : undefined,
+        // The content box: indents wider than a narrow cell would mirror the marker out of it.
+        rtl ? cellContentWidth : undefined,
         deps.inlineDrawingLayout?.pictureBulletResource
       )
     : undefined;
@@ -931,50 +941,17 @@ function placeCellParagraph(
     },
   };
 
-  if (deps.inlineDrawingLayout && deps.anchorFrameBase && deps.pageContentClip) {
-    const cellBox = Object.freeze({
-      x: originX,
-      y: top,
-      width: cellContentWidth,
-      height: Math.max(0, maxBottom - top),
-    });
-    const paragraphBox = fragment.box;
-    const publication = {
-      paragraph,
-      paragraphId,
-      paragraphBox,
-      lines: records,
-    };
-    if (deps.deferAnchoredDrawings) {
-      deps.deferAnchoredDrawings({
-        ...publication,
-        cellOriginX: originX,
-        cellContentWidth,
-      });
-    } else if (deps.collectAnchoredDrawings) {
-      deps.collectAnchoredDrawings(
-        publishAnchoredDrawingsForParagraph({
-          paragraph,
-          paragraphId,
-          paragraphBox,
-          lines: records,
-          drawingLayout: deps.inlineDrawingLayout,
-          frameBase: deps.anchorFrameBase(),
-          columnBox: deps.columnBoxForParagraph?.(paragraphBox) ?? paragraphBox,
-          cellBox,
-          cellContentBox: cellBox,
-          pageClip: deps.pageContentClip(),
-          cellAnchorScope: anchorScope,
-          measurer: deps.measurer,
-          ...(deps.hostedStory
-            ? { layoutTextboxStory: deps.hostedStory.layoutTextboxStoryFor }
-            : {}),
-          ...(deps.displayMode ? { displayMode: deps.displayMode } : {}),
-          ...(deps.revisionAuthorFilter ? { revisionAuthorFilter: deps.revisionAuthorFilter } : {}),
-        })
-      );
-    }
-  }
+  publishCellParagraphAnchors(deps, {
+    paragraph,
+    paragraphId,
+    paragraphBox: fragment.box,
+    lines: records,
+    originX,
+    top,
+    maxBottom,
+    cellContentWidth,
+    anchorScope,
+  });
 
   if (complete && startsParagraph && !collapseHeight && !pageZones.length && !rtl && !listItem)
     rememberCellLine(
@@ -1187,7 +1164,7 @@ function flowBlocksInBoxBounded(
 
   return {
     blocks: fragments,
-    bottom: y,
+    bottom: cellBottomWithAnchors(y, blocks, fragments, deps, inTableCell),
     cursor: {
       blockIndex,
       lineIndex,
@@ -1295,8 +1272,15 @@ export function layoutRowFragmentBounded(
   const gap = cellSpacingGeometry(cols, cellSpacingPt);
   const defaultLineHeight = deps.measurer.lineMetrics(DEFAULT_RUN_STYLE).height;
   const heightRule = row.height;
-  const exactHeightPt = heightRule.rule === 'exact' ? heightRule.valuePt : undefined;
+  const exactHeightPt =
+    heightRule.rule === 'exact'
+      ? heightRule.valuePt + exactOpeningExtensionPt(row, deps)
+      : undefined;
   const atLeastHeightPt = heightRule.rule === 'atLeast' ? heightRule.valuePt : undefined;
+  const terminalBorderPt =
+    !isHeaderRepeat && !isContinuation && depth === 0 && cellSpacingPt === 0
+      ? exactTerminalBorderPt(row, deps)
+      : 0;
   // The same spacing opens a gap above each row's cells: content starts that much lower and
   // the table closes the gap below its last row. An exact row keeps its authored height.
   const rowGapPt = exactHeightPt === undefined ? cellSpacingGapPt(cellSpacingPt) : 0;
@@ -1354,8 +1338,7 @@ export function layoutRowFragmentBounded(
     const spaced = gap && gridColumn < cols.length ? gap : null;
     const cellX = spaced ? left + spaced.cellLeft(gridColumn) : slotX;
     const cellW = Math.max(spaced ? spaced.cellWidth(gridColumn, span) : slotW, MIN_CELL_BOX_PT);
-    const ownInsets =
-      deps.cellContentInsets?.get(cell.id) ?? cellContentInsets(cell, cellSpacingPt === 0);
+    const ownInsets = endRowInsets(cell, deps, terminalBorderPt, rowTop, maxBottom, cellSpacingPt);
     const insets = rowGapPt > 0 ? { ...ownInsets, top: ownInsets.top + rowGapPt } : ownInsets;
     // Each page fragment retains the cell padding, even when its paragraph continues.
     const topInset = insets.top;
@@ -1406,8 +1389,9 @@ export function layoutRowFragmentBounded(
           ? undefined
           : rowTop + Math.min(markFloor, exactHeightPt ?? Infinity) - insets.bottom,
         cell.hideEndMark,
-        // Fixed cell boxes clip; their bottom is not a paragraph page break.
-        !vertical && ((isDetached && !clipsSpan) || exactHeightPt === undefined),
+        // Fixed cell boxes clip; their bottom is not a paragraph page break. A detached head
+        // answers to its span, not to its own row's rule.
+        !vertical && (isDetached ? !clipsSpan : exactHeightPt === undefined),
         clipsSpan ||
           clipsExactCellRow(
             vertical,
@@ -1467,7 +1451,8 @@ export function layoutRowFragmentBounded(
       physicalBottom: cellBottom,
       insets: { ...insets, top: topInset },
       nextCursor,
-      complete: cell.vMergeContinue ? true : complete,
+      // A head its fixed span clips owes nothing: what the span cannot hold is not carried.
+      complete: cell.vMergeContinue || clipsSpan ? true : complete,
       fitted,
       nestedSplitBlocked,
       ...(waits(cell) ? { flowTo } : {}),
@@ -1503,10 +1488,12 @@ export function layoutRowFragmentBounded(
   // Exact: force the authored height (clamped to the page budget) and clip leftover content.
   // atLeast: a complete row fills its minimum, bounded by the available page band.
   let clipExact = false;
+  let appliedTerminalBorderPt = 0;
   if (exactHeightPt !== undefined) {
     const exactBottom = rowTop + exactHeightPt;
     if (exactBottom <= maxBottom + 0.001) {
-      rowBottom = exactBottom;
+      appliedTerminalBorderPt = terminalBorderPt;
+      rowBottom = exactBottom + appliedTerminalBorderPt;
       clipExact = true;
     } else {
       // Exact taller than remaining band — keep content-sized clamp; pagination fails closed.
@@ -1514,12 +1501,13 @@ export function layoutRowFragmentBounded(
     }
   } else {
     // Two floors: the authored `atLeast` CONTENT minimum and the height a vMerge span
-    // assigned this row. Neither applies to a continuation fragment — a mid-row split is
-    // content-driven, and flooring both halves counts the span twice — or past the budget.
-    // A span floor already includes the row's insets through its height probe. Pad only
-    // the authored minimum, then take the maximum, or merged rows count the padding twice.
+    // assigned this row. The authored minimum also floors the fragment that completes a
+    // split row: its continuation is at least that tall. The span floor applies to the first
+    // fragment only, since flooring both halves counts the span twice. A span floor already
+    // includes the row's insets through its height probe. Pad only the authored minimum,
+    // then take the maximum, or merged rows count the padding twice.
     const authoredFloorPt =
-      isContinuation || atLeastHeightPt === undefined
+      atLeastHeightPt === undefined
         ? 0
         : authoredRowMinimumFloorPt(
             atLeastHeightPt,
@@ -1532,7 +1520,7 @@ export function layoutRowFragmentBounded(
     const floors = minBottom > rowBottom && minBottom <= maxBottom + 0.001;
     if (floors && flowed.every((entry) => entry.complete)) rowBottom = minBottom;
   }
-  rowBottom = Math.min(maxBottom, rowBottom);
+  rowBottom = Math.min(maxBottom + appliedTerminalBorderPt, rowBottom);
   const rowHeight = Math.max(0, rowBottom - rowTop);
   const cellHeight = Math.max(0, rowHeight - rowGapPt);
   if (layOutWaitingBottomToTopCells(flowed, rowHeight) && markSizedRow) anyFitted = true;
@@ -1551,7 +1539,12 @@ export function layoutRowFragmentBounded(
       const available =
         entry.cell.textDirection === 'btLr'
           ? entry.width - entry.insets.left - entry.insets.right - contentHeight
-          : cellAlignmentRoom(rowHeight, entry.insets.top, entry.insets.bottom, contentHeight);
+          : cellAlignmentRoom(
+              rowHeight - appliedTerminalBorderPt,
+              entry.insets.top,
+              entry.insets.bottom,
+              contentHeight
+            );
       if (available > 0)
         blocks = shiftBlocks(blocks, cellAlignmentShift(entry.cell.vAlign, available));
     }

@@ -45,6 +45,7 @@ import {
   useEditorState,
   useReviewAuthors,
   useReviewGutter,
+  useChromeDir,
   useTranslation,
   REVIEW_PANE_GUTTER,
   type ReviewRailRegistry,
@@ -76,6 +77,7 @@ import {
   selectPaneOpening,
   selectRevisionsIn,
 } from './review-shared.ts';
+import { useRailWindow } from './use-rail-window.ts';
 import {
   ReviewContextKey,
   ReviewItemScope,
@@ -220,7 +222,9 @@ const ReviewRoot = defineComponent({
       editorRevision
     );
     const reviewHook = useReviewWithRevision(() => railQuery.value, editorRevision);
-    const { t: bundled } = useTranslation();
+    const translation = useTranslation();
+    const chromeDir = useChromeDir();
+    const bundled = translation.t;
     const label = (key: string, params?: Record<string, string | number>) =>
       props.t?.(key, params) ?? bundled(key as never, params as never);
 
@@ -408,57 +412,11 @@ const ReviewRoot = defineComponent({
     );
     onUnmounted(() => commentClickCleanup?.());
 
-    const scrollWindow = ref<{ top: number; bottom: number } | null>(null);
-    let scrollCleanup: (() => void) | undefined;
-    watch(
-      [editorRef, documentAbsent, () => props.hidden, railRef],
-      () => {
-        scrollCleanup?.();
-        scrollCleanup = undefined;
-        const rail = railRef.value;
-        const scroller = rail?.offsetParent as HTMLElement | null;
-        if (!scroller || documentAbsent.value || props.hidden) return;
-        const win = hostWindowOf(scroller);
-        let frame = 0;
-        const read = () => ({
-          top: scroller.scrollTop - RAIL_OVERSCAN,
-          bottom: scroller.scrollTop + scroller.clientHeight + RAIL_OVERSCAN,
-        });
-        // Read in the scroll event, while layout is clean. By the frame the editor has built
-        // the pages scrolled into view, and reading there forced a layout of the document.
-        let pending: { top: number; bottom: number } | null = null;
-        const sync = (): void => {
-          frame = 0;
-          const next = pending ?? read();
-          pending = null;
-          const previous = scrollWindow.value;
-          scrollWindow.value =
-            previous && previous.top === next.top && previous.bottom === next.bottom
-              ? previous
-              : next;
-        };
-        let settle = 0;
-        const onScroll = (): void => {
-          pending = read();
-          if (frame === 0) frame = win.requestAnimationFrame(sync);
-          rail?.setAttribute('data-scrolling', '');
-          win.clearTimeout(settle);
-          settle = win.setTimeout(() => rail?.removeAttribute('data-scrolling'), 150);
-        };
-        sync();
-        scroller.addEventListener('scroll', onScroll, { passive: true });
-        const observer = new win.ResizeObserver(onScroll);
-        observer.observe(scroller);
-        scrollCleanup = () => {
-          if (frame !== 0) win.cancelAnimationFrame(frame);
-          win.clearTimeout(settle);
-          scroller.removeEventListener('scroll', onScroll);
-          observer.disconnect();
-        };
-      },
-      { flush: 'post' }
+    const scrollWindow = useRailWindow(
+      editorRef,
+      railRef,
+      () => !documentAbsent.value && !props.hidden
     );
-    onUnmounted(() => scrollCleanup?.());
 
     const draftAnchorY = ref<number | null>(null);
     const selectionRetainer = shallowRef<{
@@ -661,6 +619,7 @@ const ReviewRoot = defineComponent({
           railRef.value = null;
         },
         class: `docx-review${props.className ? ` ${props.className}` : ''}`,
+        dir: chromeDir.value,
         'data-testid': 'review-rail',
         'data-count': items.value.length,
         'data-open': expanded.value ? '' : undefined,
@@ -706,7 +665,7 @@ const ReviewRoot = defineComponent({
           ? null
           : activeRoot.anchorY !== null
             ? metrics.value.top + activeRoot.anchorY * metrics.value.scale
-            : scrollWindow.value !== null
+            : scrollWindow.value !== null && Number.isFinite(scrollWindow.value.top)
               ? scrollWindow.value.top + RAIL_OVERSCAN + 24
               : null;
       // The same card template the List renders: a host's List part (its item slot, its

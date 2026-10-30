@@ -72,7 +72,7 @@ export function isHeaderFooterScope(
  */
 export type StoryScopeLookup = Pick<
   TreeDocxSessionView,
-  'part' | 'headerFooterResolutionBySection' | 'partFor'
+  'part' | 'headerFooterResolutionBySection' | 'partFor' | 'currentPackage' | 'storyParts'
 >;
 
 /**
@@ -101,23 +101,51 @@ export type StoryScopeLookup = Pick<
  * matched from the id's prefix before anything is looked up. Sixty-four such reads and no
  * further header could be opened for the rest of the session, silently.
  *
- * Canonical ids name their part directly. Collaboration history can restore local ids with
- * no part prefix, so those resolve through the live package's node indexes instead.
- * Neither route opens a story store.
+ * Read straight from the live package instead. Ids carry the canonical part name, so this is a
+ * map lookup.
+ *
+ * A collaboration session names the nodes it creates by logical id, which carries no part name,
+ * and collaboration history can restore local ids whose prefix names no part. Those ids are
+ * looked up in each story part's node index, then in the rest of the package, which opens no
+ * story store either.
  */
 export function partOfNodeId(
-  session: Pick<TreeDocxSessionView, 'currentPackage' | 'part'>,
+  session: Pick<TreeDocxSessionView, 'currentPackage' | 'part'> &
+    Partial<Pick<TreeDocxSessionView, 'storyParts'>>,
   nodeId: string | undefined
 ): OoxmlPart | null {
   if (!nodeId) return null;
   const pkg = session.currentPackage();
   const hash = nodeId.indexOf('#');
+  if (hash === 0) return null;
   const named = hash > 0 ? pkg.parts.get(nodeId.slice(0, hash)) : undefined;
   if (named) return named;
-  const body = session.part();
-  if (hasNode(body, nodeId)) return body;
-  for (const part of pkg.parts.values()) if (part !== body && hasNode(part, nodeId)) return part;
+  const stories = session.storyParts?.() ?? [session.part()];
+  const story = stories.find((part) => hasNode(part, nodeId));
+  if (story) return story;
+  for (const part of pkg.parts.values()) {
+    if (!stories.includes(part) && hasNode(part, nodeId)) return part;
+  }
   return null;
+}
+
+/**
+ * Whether two node ids live in the same story part. Two part-named ids compare their names,
+ * a string scan that is cheap enough for every pointer move. A logical id from a session
+ * names no part, so it is looked up; an id no part holds is in no story, and matches nothing.
+ */
+export function sameStoryPart(
+  session: Pick<TreeDocxSessionView, 'currentPackage' | 'part' | 'storyParts'>,
+  left: string,
+  right: string
+): boolean {
+  const leftHash = left.indexOf('#');
+  const rightHash = right.indexOf('#');
+  if (leftHash > 0 && rightHash > 0) {
+    return leftHash === rightHash && left.startsWith(right.slice(0, rightHash + 1));
+  }
+  const leftPart = partOfNodeId(session, left);
+  return leftPart !== null && leftPart.name === partOfNodeId(session, right)?.name;
 }
 
 export function storyScopeOfNodeId(
@@ -126,7 +154,10 @@ export function storyScopeOfNodeId(
   fallback: StoryScope
 ): StoryScope {
   const hash = nodeId?.indexOf('#') ?? -1;
-  return storyScopeOfPartName(session, hash === -1 ? '' : nodeId!.slice(0, hash), fallback);
+  // A session's logical id names no part, so its part is found in the story indexes.
+  const partName =
+    hash === -1 ? (partOfNodeId(session, nodeId)?.name ?? '') : nodeId!.slice(0, hash);
+  return storyScopeOfPartName(session, partName, fallback);
 }
 
 /** The story a part holds: the body, a header or footer, or a notes part. */

@@ -183,6 +183,10 @@ export default defineConfig(async (): Promise<UserConfig> => {
               replacement: path.join(monorepoRoot, 'packages/pro/src/collaboration/index.ts'),
             },
             {
+              find: '@docx-editor.dev/pro/drawing',
+              replacement: path.join(monorepoRoot, 'packages/pro/src/drawing/index.ts'),
+            },
+            {
               find: '@docx-editor.dev/pro/react/webrtc',
               replacement: path.join(monorepoRoot, 'packages/pro/src/react/webrtc.ts'),
             },
@@ -193,10 +197,6 @@ export default defineConfig(async (): Promise<UserConfig> => {
             {
               find: '@docx-editor.dev/pro',
               replacement: path.join(monorepoRoot, 'packages/pro/src/index.ts'),
-            },
-            {
-              find: '@docx-editor.dev/fonts-cjk/browser',
-              replacement: path.join(monorepoRoot, 'packages/fonts-cjk/src/browser.ts'),
             },
             {
               find: '@docx-editor.dev/fonts/google',

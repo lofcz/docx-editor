@@ -1,5 +1,6 @@
 {
   "_lang": "he",
+  "_dir": "rtl",
   "common": {
     "cancel": "ביטול",
     "apply": "החלה",
@@ -151,7 +152,13 @@
     "subtitle": "כותרת משנה",
     "heading1": "כותרת 1",
     "heading2": "כותרת 2",
-    "heading3": "כותרת 3"
+    "heading3": "כותרת 3",
+    "normal": "רגיל",
+    "headingLevel": "כותרת {level}",
+    "noSpacing": "ללא מרווח",
+    "quote": "ציטוט",
+    "intenseQuote": "ציטוט חזק",
+    "listParagraph": "פיסקת רשימה"
   },
   "font": {
     "selectAriaLabel": "בחר סוג גופן",
@@ -428,6 +435,7 @@
     "deleteShortcut": "Del",
     "selectAll": "בחר הכל",
     "selectAllShortcut": "Ctrl+A",
+    "insertLinkShortcut": "Ctrl+K",
     "editCustomNode": "ערוך {label}",
     "removeCustomNode": "הסר {label}",
     "pasteWithoutFormatting": "הדבק ללא עיצוב",
@@ -583,6 +591,10 @@
   "headerFooter": {
     "header": "כותרת עליונה",
     "footer": "כותרת תחתונה",
+    "addHeaderHint": "לחץ פעמיים כדי להוסיף כותרת עליונה",
+    "addFooterHint": "לחץ פעמיים כדי להוסיף כותרת תחתונה",
+    "editHeaderHint": "לחץ פעמיים כדי לערוך את הכותרת העליונה",
+    "editFooterHint": "לחץ פעמיים כדי לערוך את הכותרת התחתונה",
     "options": "אפשרויות",
     "insertPageNumber": "הוסף מספר עמוד נוכחי",
     "insertTotalPages": "הוסף סך כל העמודים",
@@ -611,7 +623,15 @@
     "externalResource": "תמונה חיצונית לא נטענה",
     "invalidResource": "תמונה לא חוקית",
     "missingResource": "תמונה חסרה",
-    "nonPictureGraphic": "גרפיקה לא נתמכת ({kind})",
+    "placeholder": {
+      "chart": "תרשים לא מוצג",
+      "diagram": "דיאגרמה לא נתמכת",
+      "shape": "צורה לא נתמכת",
+      "group": "קבוצת צורות לא נתמכת",
+      "textbox": "תיבת טקסט לא נתמכת",
+      "canvas": "בד ציור לא נתמך",
+      "graphic": "גרפיקה לא נתמכת"
+    },
     "pendingResource": "טוען תמונה",
     "resourceLimit": "התמונה חורגת ממגבלות הגודל",
     "unsupportedFormat": "תבנית תמונה לא נתמכת ({format})"
@@ -954,6 +974,7 @@
     "reviewBoundChanges": "כל השינויים שנותרו נמצאים בפקדי תוכן שמקושרים לנתונים חיצוניים, ולכן אי אפשר לקבל או לדחות אותם כאן. בקשו מבעלי המסמך לעדכן את הנתונים המקושרים.",
     "commentSelection": "בחר טווח לפני הוספת הערה",
     "noCommentDraftView": "לא ניתן להוסיף כאן הערות",
+    "noLinkView": "לא ניתן להוסיף כאן קישורים",
     "mergeUnsupported": "מיזוג תאים אינו נתמך",
     "splitUnsupported": "פיצול תאים אינו נתמך",
     "mergeNeedsRectangle": "בחרו שני תאים או יותר שיוצרים מלבן כדי למזג אותם",
@@ -964,13 +985,20 @@
     "splitNeedsGrid": "לטבלה אין רשת עמודות, ולכן התא מתפצל רק למספר עמודות שמחלק את העמודות שהוא פורש ללא שארית",
     "cellHasRevision": "בתאים האלה יש שינוי במעקב. קבלו או דחו אותו קודם.",
     "cellStructureSuggesting": "כבו את מצב ההצעות כדי למזג או לפצל תאים. אי אפשר להציע שינויים כאלה.",
+    "tableDeleteSuggesting": "כבו את מצב ההצעות כדי למחוק את כל הטבלה, או מחקו את השורות שלה אחת אחת. אי אפשר להציע מחיקה של טבלה שלמה.",
+    "tableMoveSuggesting": "כבו את מצב ההצעות כדי להזיז את הטבלה. אי אפשר להציע הזזה של טבלה.",
+    "selectTableRowUnsupported": "בחירה של שורה שלמה בטבלה אינה זמינה",
+    "selectTableColumnUnsupported": "בחירה של עמודה שלמה בטבלה אינה זמינה",
     "legacyMerge": "הטבלה משתמשת בסוג ישן של תא ממוזג שאי אפשר לשנות כאן",
     "tableGridUnplaceable": "בטבלה יש תא שאינו מתאים לרשת העמודות שלה",
     "drawingLocked": "תמונה זו נעולה",
     "contentLocked": "תוכן זה נעול",
+    "lockedParagraphFormat": "תוכן זה נעול; ניתן לשנות רק יישור, כניסות, ריווח ומעברי שורה ועמוד",
+    "boundParagraphFormat": "תוכן זה מקושר לנתונים ולא ניתן לשנותו",
     "editorNotReady": "העורך אינו מוכן",
     "imageSuggesting": "שינויים בתמונות אינם זמינים במצב הצעות",
     "equationSourceFormatting": "עריכה לינארית תאבד את העיצוב של משוואה זו",
+    "equationNoLinearForm": "למשוואה זו אין צורה לינארית, ולכן לא ניתן להחליף אותה מטקסט",
     "equationSuggesting": "עריכת משוואות אינה זמינה במצב הצעות",
     "equationSuggestingDisplay": "במצב הצעות, הסירו את כל גוש המשוואות במקום משוואה אחת",
     "invalidValue": "ערך זה אינו תקף לפקודה",
@@ -994,7 +1022,15 @@
     "nothingToPaint": "בחר טקסט כדי להחיל עליו את העיצוב",
     "noReviewAuthors": "אין במסמך זה מחברי סקירה",
     "suggestingNeedsAuthor": "מצב הצעות מחייב מחבר. הגדר את המחבר בתצורת העורך.",
-    "pictureSelected": "תמונה נבחרה. מקמו את הסמן בטקסט כדי להוסיף תמונה."
+    "pictureSelected": "תמונה נבחרה. מקמו את הסמן בטקסט כדי להוסיף תמונה.",
+    "chartDrawing": "זהו תרשים. אפשר למחוק אותו, אבל לא לערוך אותו כתמונה.",
+    "chartClipboard": "הבחירה מכילה תרשים. אי אפשר להעתיק, לגזור או להדביק תרשימים.",
+    "nothingToUndo": "אין מה לבטל",
+    "nothingToRedo": "אין מה לבצע שוב",
+    "outermostLevel": "הבחירה כבר ברמה החיצונית ביותר",
+    "cannotIndentFurther": "לא ניתן להגדיל עוד את הכניסה של הבחירה",
+    "noGoToView": "מעבר אינו זמין כאן",
+    "noBookmarkDialog": "לא ניתן להוסיף סימניות כאן"
   },
   "equationPopup": {
     "apply": "החלה",

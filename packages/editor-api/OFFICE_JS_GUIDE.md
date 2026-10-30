@@ -75,7 +75,19 @@ const snapshot = await runtime.run(async (context) => {
 
 Supported read-derived proxies can share one `sync()` with their edits. For example, `body.getRange().insertText(text, 'Replace')` and `table.getCell(0, 0).value = text` resolve their reads before one atomic write transaction. This can use extra read-only transport calls. Every phase uses the same revision; concurrent changes cause `StaleDocument`.
 
-Proxies returned by insertions require a completed `sync()` before dependent operations. Do not configure a newly inserted table, image, list, or text range before that sync. If a prerequisite fails, the runtime commits no queued writes. Completed prerequisite reads can remain loaded after a later command fails.
+You can load an object that an insertion returns in the same `sync()` as the insertion. The runtime answers that load after the writes commit, so it reports the inserted value:
+
+```ts
+await runtime.run(async (context) => {
+  const inserted = context.document.body.paragraphs.getFirst().insertText('#', 'End');
+  inserted.load('text');
+  inserted.font.load('italic');
+  await context.sync();
+  return { text: inserted.text, italic: inserted.font.italic };
+});
+```
+
+If that load fails, the writes stay applied and `sync()` rejects with the load's error code and `debugInfo.innerError.code` `edit.read-after-commit`. Read again; do not apply the edit a second time. A write to the returned object, such as `inserted.font.bold = true`, and a navigation read from it, such as `getFirst()`, `getRange()`, `search()`, or `getCell()`, still require a completed `sync()` first; before it they fail with `InvalidObjectPath` and nothing commits. If a prerequisite fails, the runtime commits no queued writes. Completed prerequisite reads can remain loaded after a later command fails.
 
 ## Keep writes within one story
 
@@ -101,6 +113,29 @@ await runtime.run(async (context) => {
 ```
 
 Each write sync creates a separate transaction. Earlier successful transactions remain if a later transaction fails. Linked headers or footers can share content. Re-read that content before making a dependent edit through another section.
+
+### Read text boxes before you edit an empty-looking body
+
+A text box is its own story, so `body.text` and `body.search()` do not include its text. Some documents keep all of their visible text in floating text boxes, anchored by empty body paragraphs. If `body.text` is empty or short, read the shapes before you choose an edit target. Text inserted into an empty anchor paragraph usually appears behind the boxes.
+
+```ts
+const texts = await runtime.run(async (context) => {
+  const shapes = context.document.body.shapes.getByTypes([
+    ShapeType.textBox,
+    ShapeType.geometricShape,
+  ]);
+  shapes.load('items/id');
+  await context.sync();
+  const bodies = shapes.items.map((shape) => {
+    shape.body.load('text');
+    return shape.body;
+  });
+  await context.sync();
+  return shapes.items.map((shape, index) => ({ id: shape.id, text: bodies[index]!.text }));
+});
+```
+
+A shape that the file gives no text story reads as empty text. A write to it refuses with `InvalidArgument` and `edit.unsupported-story`. Edit a text box through its own `body` in its own sync, as with any other story.
 
 ## Preserve Office.js enum property types
 
@@ -202,7 +237,7 @@ Use `isDocxEditorError(error)` and branch on `error.code`. `error.target` identi
 | Code | Next action |
 | --- | --- |
 | `PropertyNotLoaded` | Load the named property and await sync before reading it. |
-| `InvalidObjectPath` | Sync before using a newly returned proxy, or acquire a fresh proxy in a new run. `debugInfo.innerError.code` `edit.stale-target` means the document no longer holds the object; read again. |
+| `InvalidObjectPath` | Sync before editing a newly returned proxy, or acquire a fresh proxy in a new run. `debugInfo.innerError.code` `edit.stale-target` means the document no longer holds the object; read again. |
 | `StaleDocument` | Search again, reconsider the model proposal, then write. |
 | `ConflictingChanges` | Separate edits that claim the same paragraph and reconsider anchors between commits. |
 | `NotSupported` | The call is outside the supported subset for this host, mode, or content. Don't retry it. Read `debugInfo.innerError.code`, then check the host, tracking mode, author, and operation against the [tracking subset](#tracking-subset). |
@@ -231,7 +266,7 @@ For all codes, see [Diagnostics](https://www.docx-editor.dev/docs/2.x/guides/dia
 
 ### Recover from a stale range
 
-A range addresses text by paragraph identity and offsets. When text before its end changes, including through an earlier sync of the same run, using the range fails with `StaleDocument` and nothing is applied. When `error.expectedRevision` equals `error.actualRevision`, the range moved; when they differ, another writer changed the document. In both cases, search again and reconsider the proposal before writing. Never replay the failed write unchanged.
+A range addresses text by paragraph identity and offsets. When text before its end changes, including through an earlier sync of the same run, using the range fails with `StaleDocument` and nothing is applied. When `error.expectedRevision` equals `error.actualRevision`, the range moved; when they differ, another writer changed the document. In both cases, search again and reconsider the proposal before writing. Never replay the failed write unchanged. One `StaleDocument` is different: when `debugInfo.innerError.code` is `edit.read-after-commit`, the writes in that sync are applied, and only a load on an object they created failed. Read again, and do not apply the edit a second time.
 
 ```ts
 import { isDocxEditorError } from '@docx-editor.dev/editor-api';
@@ -257,6 +292,8 @@ await runtime.run(async (context) => {
       await context.sync();
     } catch (error) {
       if (!isDocxEditorError(error) || error.code !== 'StaleDocument') throw error;
+      // The write is applied, and only a load that followed it failed: never apply it again.
+      if (error.debugInfo.innerError?.code === 'edit.read-after-commit') continue;
       // Equal revisions: the range moved, often through an earlier sync of this run.
       // Different revisions: another writer changed the document.
       // Either way, search again and reconsider before you write.
@@ -295,7 +332,8 @@ await runtime.run(async (context) => {
 | Paragraph deletion | `paragraph.delete()` records the text and the paragraph mark as deletions; accept removes the paragraph |
 | Font and paragraphs | Track font, paragraph-format, and paragraph-style edits as property revisions |
 | Paragraph insertion | Track inserted text and paragraph marks |
-| Paragraph split | `insertText()` with `\n` tracks the text and each new paragraph mark; reject joins the paragraphs again |
+| Paragraph split | `insertText()` with `\n` and `Paragraph.split()` track each new paragraph mark; reject joins the paragraphs again |
+| Breaks | `Range.insertBreak()` tracks line, page, and next-page section breaks; reject removes the break |
 | Lists | Track creation, membership, and level changes; configure newly proposed definitions |
 | Tables | Track complete insertion, cell values, row additions, and partial row deletions |
 | Content controls | Wrap nonempty ordinary text in `PlainText`, `RichText`, or `DatePicker` controls outside collaboration |
@@ -539,6 +577,33 @@ await runtime.run(async (context) => {
 
 A read returns the direction that the paragraph reads in, after its style. Writes accept only `LeftToRight` and `RightToLeft`; other values fail with `InvalidArgument`. A write of the direction that the paragraph already has changes nothing, so you can write back what you read. The write keeps `alignment` as authored: in a right-to-left paragraph, `Left` names the leading edge at the right margin. With `TrackMineOnly`, the write records a paragraph property revision.
 
+## Apply a style the document defines
+
+A style setter refuses a name that the document does not define. List the defined styles first, then pass plain names to the model. Load the item properties in the same sync as the collection:
+
+```ts
+await runtime.run(async (context) => {
+  const styles = context.document.getStyles();
+  styles.load('items/nameLocal,items/type,items/visibility,items/unhideWhenUsed,items/priority');
+  const paragraph = context.document.body.paragraphs.getFirst();
+  await context.sync();
+
+  // Offer an agent the paragraph styles a reader would see, in gallery order.
+  // Keep hidden styles that unhide once used, such as heading 2, so they can be applied too.
+  // Many styles share priority 99, so sort by name next for a stable order.
+  const names = styles.items
+    .filter((style) => style.type === 'Paragraph' && (style.visibility || style.unhideWhenUsed))
+    .sort((a, b) => a.priority - b.priority || a.nameLocal.localeCompare(b.nameLocal))
+    .map((style) => style.nameLocal);
+  const chosen = names.find((name) => name.toLowerCase() === 'quote');
+  if (chosen === undefined) return;
+  paragraph.style = chosen;
+  await context.sync();
+});
+```
+
+The list includes character, table, and list styles too. The `style` setters accept paragraph style names only and refuse the others, so filter on `type` first. Every listed paragraph style applies through `style`, including linked styles such as headings. A built-in name is accepted as listed, such as `heading 1`. `styles.load()` with no arguments reads every property of each style. To check one name, call `styles.getByNameOrNullObject(name)` and read `isNullObject` after a sync; it needs no property load. Names compare without case, so `Heading 1` finds `heading 1`; compare names the same way rather than with `===`. If a `style` write still fails, the sync rejects with `InvalidArgument` and `debugInfo.innerError.code` is `edit.style-not-defined`, or `edit.no-styles-defined` when the document has no styles part. This subset has no `styleBuiltIn`; find a built-in style's name with `getStyles()` and assign it to `style`. Style definitions are read-only.
+
 ## Go to a bookmark
 
 Go to a bookmark with the standard calls: `getBookmarkRangeOrNullObject(name)`, then `range.select()`. Check `isNullObject` after a sync instead of catching `ItemNotFound`. Selection needs a browser host (`runtime.capabilities.selection`). It opens the header, footer or note that holds the bookmark. A read-only editor refuses a selection outside the main text with `NotSupported`.
@@ -583,7 +648,7 @@ await runtime.run(async (context) => {
 
 ## Pictures and fields
 
-Insert a manual line break with `range.insertBreak('Line', 'After')` or `\v` in inserted text. Call `await context.sync()` after queuing the write. Manual line breaks support `TrackMineOnly` and text edits in the same sync. Single-line content controls refuse manual line breaks. Reads report manual line breaks as `\v`, column breaks as U+000E, and paragraph separators as `\r`. Text writes refuse U+000E. `insertText()` on a body, paragraph, or range writes `\n`, `\r`, and `\r\n` as paragraph breaks. Other paragraph separators refuse. Do not flatten these characters before sending read text back to the document.
+Insert a manual line break with `range.insertBreak('Line', 'After')` or `\v` in inserted text. Call `await context.sync()` after queuing the write. Manual line breaks support `TrackMineOnly` and text edits in the same sync. Page and next-page section breaks also support `TrackMineOnly`; each runs alone in its sync. Single-line content controls refuse manual line breaks. Reads report manual line breaks as `\v`, column breaks as U+000E, and paragraph separators as `\r`. Text writes refuse U+000E. `insertText()` on a body, paragraph, or range writes `\n`, `\r`, and `\r\n` as paragraph breaks. Other paragraph separators refuse. Do not flatten these characters before sending read text back to the document.
 
 Insert PNG or JPEG images with `range.insertInlinePictureFromBase64(data, 'After')`. Sync before setting properties on the returned picture. Width and height use points. New pictures lock the aspect ratio. Set `lockAspectRatio = false` before setting independent dimensions. Set `altTextDescription` to describe the image. Deletion preserves shared media relationships.
 

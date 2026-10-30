@@ -19,6 +19,7 @@
 // repeat above a continuation is run again and must agree.
 
 import { firstRowContentDeps } from './table-fragment-content-insets.ts';
+import { cutPart } from './table-row-minimum-fit.ts';
 import {
   initialCellCursors,
   layoutRowFragmentBounded,
@@ -67,6 +68,13 @@ export interface SplitRowInput {
   readonly base: TableFlowDeps;
 }
 
+const completeFragments = new WeakSet<TableFragmentRecord>();
+
+/** The caller proves every row is complete, including repeated headers. */
+export function markTableWithoutSplitRows(fragment: TableFragmentRecord): void {
+  completeFragments.add(fragment);
+}
+
 let observer: { placed: number; refused: number } | null = null;
 
 /** @internal Counts split rows placed again and refused, for tests that must see the lane. */
@@ -99,13 +107,15 @@ export function createSplitRowPlacements(
   input: SplitRowInput
 ): (old: TableRowFragmentRecord) => SplitRowPlacement | null {
   const chains = new Map<string, SplitRowOccurrence[]>();
-  for (const [listPosition, fragment] of input.fragments.entries())
+  for (const [listPosition, fragment] of input.fragments.entries()) {
+    if (completeFragments.has(fragment)) continue;
     fragment.rows.forEach((old, index) => {
       if (!old.isContinuation && !old.hasContinuation) return;
       let chain = chains.get(old.id);
       if (!chain) chains.set(old.id, (chain = []));
       chain.push({ listPosition, fragment, index, old });
     });
+  }
   const placed = new Map<TableRowFragmentRecord, SplitRowPlacement | null>();
   return (old) => {
     const known = placed.get(old);
@@ -211,9 +221,12 @@ function placeChain(
       )
     )
       return null;
-    const rowDeps = index === 0 ? firstRowContentDeps(structure, source, base) : base;
+    const opening = index === 0 ? firstRowContentDeps(structure, source, base) : base;
+    // Every occurrence ends its page, so it takes the paginator's split-part deps and band. The
+    // width lane only serves tables without `w:tblpPr`, never a page-positioned break.
+    const part = cutPart(structure, source, opening, bottom, k > 0, undefined);
     const placementDeps: TableFlowDeps = {
-      ...rowDeps,
+      ...part.deps,
       rowAtPageStart:
         top <= 0.001 ||
         (index > 0 && fragment.rows.slice(0, index).every((row) => row.isHeaderRepeat)),
@@ -223,7 +236,7 @@ function placeChain(
       cols,
       left,
       top,
-      bottom,
+      part.bottom,
       false,
       k > 0,
       0,

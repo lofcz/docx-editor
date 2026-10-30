@@ -13,6 +13,10 @@ export interface FixtureOptions {
   secondKern?: number;
   noPunctuation?: boolean | string;
   compression?: string;
+  /** Writes `w:balanceSingleByteDoubleByteWidth` in `w:compat`. */
+  balanceWidths?: boolean;
+  /** Writes `w:useWord97LineBreakRules` in `w:compat`. */
+  word97LineBreaks?: boolean;
   compatibility?: 14 | 15;
   defaultFace?: string | null;
   face?: string;
@@ -23,8 +27,13 @@ export interface FixtureOptions {
   italic?: boolean;
   underlineElsewhere?: boolean;
   language?: string;
+  secondLanguage?: string;
+  defaultLanguage?: string;
+  lineStartRule?: { language: string; characters: string };
   /** Paragraph properties; the default is left aligned without hanging punctuation. */
   paragraphProperties?: string;
+  /** The layout measurer; the default gives every character its font size. */
+  measurer?: TextMeasurer;
   /** One `word/fontTable.xml` entry: the face and its `w:charset` value. */
   fontTableEntry?: { name: string; charset: string };
 }
@@ -47,6 +56,7 @@ export function loadFixture(options: FixtureOptions = {}) {
     const face = second
       ? (options.secondFace ?? options.face ?? 'Yu Mincho')
       : (options.face ?? 'Yu Mincho');
+    const language = second ? (options.secondLanguage ?? options.language) : options.language;
     return (
       '<w:r><w:rPr>' +
       `<w:rFonts w:ascii="${escape(face)}" w:eastAsia="${escape(face)}"/><w:sz w:val="48"/>` +
@@ -54,7 +64,7 @@ export function loadFixture(options: FixtureOptions = {}) {
       (options.tracking === undefined ? '' : `<w:spacing w:val="${options.tracking}"/>`) +
       (options.bold ? '<w:b/>' : '') +
       (options.italic ? '<w:i/>' : '') +
-      (options.language ? `<w:lang w:eastAsia="${escape(options.language)}"/>` : '') +
+      (language ? `<w:lang w:eastAsia="${escape(language)}"/>` : '') +
       `</w:rPr><w:t xml:space="preserve">${escape(content)}</w:t></w:r>`
     );
   };
@@ -66,13 +76,16 @@ export function loadFixture(options: FixtureOptions = {}) {
     `<w:document xmlns:w="${W}"><w:body><w:p>` +
       `<w:pPr>${options.paragraphProperties ?? '<w:jc w:val="left"/><w:overflowPunct w:val="0"/>'}</w:pPr>` +
       runs +
-      (options.underlineElsewhere ? '<w:r><w:rPr><w:u/></w:rPr><w:t>字</w:t></w:r>' : '') +
+      (options.underlineElsewhere
+        ? '<w:r><w:rPr><w:u w:val="single"/></w:rPr><w:t>字</w:t></w:r>'
+        : '') +
       '</w:p></w:body></w:document>'
   );
   const face = options.defaultFace === undefined ? 'Yu Mincho' : options.defaultFace;
   entries['word/styles.xml'] = strToU8(
     `<w:styles xmlns:w="${W}"><w:docDefaults><w:rPrDefault><w:rPr>` +
       (face ? `<w:rFonts w:eastAsia="${escape(face)}"/>` : '') +
+      (options.defaultLanguage ? `<w:lang w:eastAsia="${escape(options.defaultLanguage)}"/>` : '') +
       '</w:rPr></w:rPrDefault></w:docDefaults></w:styles>'
   );
   entries['word/settings.xml'] = strToU8(
@@ -83,7 +96,10 @@ export function loadFixture(options: FixtureOptions = {}) {
           ? '<w:noPunctuationKerning/>'
           : `<w:noPunctuationKerning w:val="${options.noPunctuation}"/>`) +
       (options.compression ? `<w:characterSpacingControl w:val="${options.compression}"/>` : '') +
-      `<w:compat><w:compatSetting w:name="compatibilityMode" w:uri="http://schemas.microsoft.com/office/word" w:val="${options.compatibility ?? 15}"/></w:compat>` +
+      (options.lineStartRule
+        ? `<w:noLineBreaksBefore w:lang="${escape(options.lineStartRule.language)}" w:val="${escape(options.lineStartRule.characters)}"/>`
+        : '') +
+      `<w:compat>${options.balanceWidths ? '<w:balanceSingleByteDoubleByteWidth/>' : ''}${options.word97LineBreaks ? '<w:useWord97LineBreakRules/>' : ''}<w:compatSetting w:name="compatibilityMode" w:uri="http://schemas.microsoft.com/office/word" w:val="${options.compatibility ?? 15}"/></w:compat>` +
       '</w:settings>'
   );
   if (options.fontTableEntry) {
@@ -115,8 +131,9 @@ export function loadFixture(options: FixtureOptions = {}) {
   const pkg = view.currentPackage();
   const before = [...pkg.parts].map(([name, part]) => [name, JSON.stringify(part.root)]);
   const layout = layoutSemanticDocument(pkg.parts.get(pkg.mainDocumentPart)!, 0, {
-    measurer,
+    measurer: options.measurer ?? measurer,
     styleCascade: dependencies.styleCascade(),
+    ...(options.compatibility === undefined ? {} : { compatibilityMode: options.compatibility }),
     geometry: {
       width: (options.available ?? 680) + 20,
       height: 500,
@@ -128,6 +145,7 @@ export function loadFixture(options: FixtureOptions = {}) {
     bytes,
     view,
     lines,
+    layout,
     before,
     entries: Object.fromEntries(
       Object.entries(entries).map(([name, data]) => [name, strFromU8(data)])

@@ -8,6 +8,7 @@
 import { logicalLineSegments } from './line-segments.ts';
 import { paragraphFragmentsOf, paragraphFragmentsOfBlocks } from './semantic-records.ts';
 import type { BlockFragmentRecord, PageRecord, SemanticLayout } from './semantic-records.ts';
+import { weakRefOf, type WeakRefOf } from '../store/package/weak-ref.ts';
 
 // Memoized PER LAYOUT, which is sound because a published layout is immutable: a new revision
 // is a new object. Without this every selection walk recomputed the order — and `lineOverlap`
@@ -19,23 +20,25 @@ const documentOrderIndexCache = new WeakMap<SemanticLayout, Map<string, number>>
 const everyStoryOrderCache = new WeakMap<SemanticLayout, string[]>();
 
 /**
- * Paragraph ids on ONE page, in order, remembered on the page record.
+ * Paragraph ids on ONE page, in order, remembered on its immutable body fragments.
  *
  * Incremental layout hands an untouched page back as the same object, so a keystroke only
  * ever walks the lines of the page it landed on. The whole-document walk this replaces ran
  * on every commit — the order is rebuilt each revision because the layout object is new —
  * and at several hundred pages that walk cost more than the edit itself.
  */
-const pageOrderCache = new WeakMap<PageRecord, readonly string[]>();
+// Footer completion can replace a page before its first order read. Body ownership
+// lets that later read serve the retained page too, without retaining page geometry.
+const pageOrderCache = new WeakMap<readonly BlockFragmentRecord[], readonly string[]>();
 
-/** @internal `to` draws the same lines as `from`; only list marker labels moved. */
+/** @internal Caller proves both pages name the same paragraphs in the same logical order. */
 export function carryPageOrder(from: PageRecord, to: PageRecord): void {
-  const order = pageOrderCache.get(from);
-  if (order) pageOrderCache.set(to, order);
+  const order = pageOrderCache.get(from.fragments);
+  if (order) pageOrderCache.set(to.fragments, order);
 }
 
 function pageOrder(page: PageRecord): readonly string[] {
-  const cached = pageOrderCache.get(page);
+  const cached = pageOrderCache.get(page.fragments);
   if (cached) return cached;
   const seen = new Set<string>();
   const order: string[] = [];
@@ -55,14 +58,58 @@ function pageOrder(page: PageRecord): readonly string[] {
       order.push(fragment.paragraphId);
     }
   }
-  pageOrderCache.set(page, order);
+  pageOrderCache.set(page.fragments, order);
   return order;
+}
+
+/**
+ * The last order built, with the page orders it came from. A keystroke publishes a new layout
+ * whose pages are the previous objects but the one it landed on, and that page usually lists
+ * the same paragraphs; the order, and its index, then stand.
+ */
+let lastOrder: {
+  /** Weakly: the order must not keep a closed document's layout alive. */
+  readonly pages: WeakRefOf<readonly PageRecord[]>;
+  readonly orders: readonly (readonly string[])[];
+  readonly order: string[];
+  index?: Map<string, number>;
+} | null = null;
+
+function sameIds(a: readonly string[], b: readonly string[]): boolean {
+  if (a === b) return true;
+  if (a.length !== b.length) return false;
+  for (let index = 0; index < a.length; index += 1) if (a[index] !== b[index]) return false;
+  return true;
+}
+
+/** The previous order when `layout`'s pages list the same paragraphs, page by page. */
+function carriedOrder(layout: SemanticLayout): string[] | null {
+  const last = lastOrder;
+  const pages = last?.pages.deref();
+  if (!last || !pages || pages.length !== layout.pages.length) return null;
+  const orders: (readonly string[])[] = [];
+  for (const [index, page] of layout.pages.entries()) {
+    if (page === pages[index]) {
+      orders.push(last.orders[index]!);
+      continue;
+    }
+    const order = pageOrder(page);
+    if (!sameIds(order, last.orders[index]!)) return null;
+    orders.push(order);
+  }
+  lastOrder = { pages: weakRefOf(layout.pages), orders, order: last.order, index: last.index };
+  return last.order;
 }
 
 /** Paragraph ids in document order, deduplicated across fragments. */
 export function documentOrder(layout: SemanticLayout): string[] {
   const cached = documentOrderCache.get(layout);
   if (cached) return cached;
+  const carried = carriedOrder(layout);
+  if (carried) {
+    documentOrderCache.set(layout, carried);
+    return carried;
+  }
   const seen = new Set<string>();
   const order: string[] = [];
   for (const page of layout.pages) {
@@ -75,6 +122,7 @@ export function documentOrder(layout: SemanticLayout): string[] {
     }
   }
   documentOrderCache.set(layout, order);
+  lastOrder = { pages: weakRefOf(layout.pages), orders: layout.pages.map(pageOrder), order };
   return order;
 }
 
@@ -82,8 +130,14 @@ export function documentOrder(layout: SemanticLayout): string[] {
 export function documentOrderIndex(layout: SemanticLayout): Map<string, number> {
   const cached = documentOrderIndexCache.get(layout);
   if (cached) return cached;
-  const index = new Map<string, number>();
-  for (const [position, id] of documentOrder(layout).entries()) index.set(id, position);
+  const order = documentOrder(layout);
+  // The same order is the same index; see `lastOrder`.
+  let index = lastOrder?.order === order ? lastOrder.index : undefined;
+  if (!index) {
+    index = new Map<string, number>();
+    for (const [position, id] of order.entries()) index.set(id, position);
+    if (lastOrder?.order === order) lastOrder.index = index;
+  }
   documentOrderIndexCache.set(layout, index);
   return index;
 }

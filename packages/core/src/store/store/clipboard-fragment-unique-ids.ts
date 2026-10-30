@@ -103,8 +103,12 @@ function idSequence(
   if (actor) return stripedDecimalIdSequence(used, actor, max);
   let next = denseSeed,
     cursor = 0;
+  // The seed sits above every id of its own kind, but `wp:docPr` also skips the legacy VML
+  // shape numbers `drawingPropertyIdOccupancy` marks used, which can lie above it.
   return () => {
-    if (!bounded || next <= max) return String(next++);
+    while (used.has(String(next))) next += 1;
+    if (next <= max) return String(next++);
+    if (!bounded) return null;
     while (cursor <= max && used.has(String(cursor))) cursor++;
     return cursor <= max ? String(cursor++) : null;
   };

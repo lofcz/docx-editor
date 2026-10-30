@@ -18,6 +18,9 @@ export interface AbstractNumDefinition {
 export function activeReviewItem(items: readonly ReviewItem[], position: ReviewPosition, order: ReadonlyMap<string, number>): ReviewItem | null;
 
 // @public
+export type AffineMatrix = readonly [number, number, number, number, number, number];
+
+// @public
 export type AnchoredDrawingLayoutFallback = 'unresolvable-frame' | 'page-defer-exhausted';
 
 // @public (undocumented)
@@ -87,6 +90,9 @@ export interface AutofitFieldContext {
     readonly showFieldCodes?: boolean;
     readonly tocLinkStyleRanges?: TocLinkRanges;
 }
+
+// @internal
+export function automaticTextColor(background: string | null | undefined): 'FFFFFF' | null;
 
 // @public (undocumented)
 export type AutonumFieldKind = 'AUTONUM' | 'AUTONUMLGL' | 'AUTONUMOUT';
@@ -382,11 +388,19 @@ export type CellVerticalAlign = 'top' | 'center' | 'bottom';
 // @public
 export interface CjkTypographySettings {
     readonly after: Readonly<Record<string, string>>;
+    // @internal
+    readonly balancedWidths?: true;
     readonly before: Readonly<Record<string, string>>;
     readonly compression: 'doNotCompress' | 'compressPunctuation' | 'compressPunctuationAndJapaneseKana';
+    // @internal
+    readonly eastAsianSpacing?: false;
+    // @internal
+    readonly legacyLineEndPunctuation?: true;
     readonly punctuationKerning?: boolean;
     readonly sourceEastAsianFont?: boolean;
     readonly strict: boolean;
+    // @internal
+    readonly word97LineBreaks?: true;
 }
 
 // @public
@@ -467,6 +481,15 @@ export interface CompoundBorderMetrics {
     // (undocumented)
     readonly strokePt: number;
 }
+
+// @internal
+export interface CompoundBorderStroke {
+    readonly offsetPt: number;
+    readonly widthPt: number;
+}
+
+// @internal
+export function compoundBorderStrokesForExtentPt(val: string, extentPt: number): readonly CompoundBorderStroke[] | null;
 
 // @public
 export function computeDoubleBorderMetricsPt(widthPt: number): CompoundBorderMetrics;
@@ -822,6 +845,19 @@ export interface DrawingAccessibility {
     readonly label: string | null;
 }
 
+// @public
+export type DrawingChartPlotType = 'area' | 'area3D' | 'bar' | 'bar3D' | 'bubble' | 'doughnut' | 'line' | 'line3D' | 'ofPie' | 'pie' | 'pie3D' | 'radar' | 'scatter' | 'stock' | 'surface' | 'surface3D' | 'waterfall' | 'funnel' | 'histogram' | 'pareto' | 'boxWhisker' | 'treemap' | 'sunburst' | 'regionMap';
+
+// @public
+export type DrawingChartShownAs = 'chart' | 'fallback' | 'placeholder';
+
+// @public
+export interface DrawingChartSummary {
+    readonly plotTypes: readonly DrawingChartPlotType[];
+    readonly shownAs: DrawingChartShownAs;
+    readonly title: string | null;
+}
+
 // @public (undocumented)
 export type DrawingClipFallback = 'none' | 'unsupported-preset';
 
@@ -842,6 +878,21 @@ export interface DrawingGeometry {
     readonly paintBounds: LayoutBox;
     // (undocumented)
     readonly transformedCorners: readonly DrawingPoint[];
+}
+
+// @public
+export type DrawingGraphicKind = 'picture' | 'chart' | 'diagram' | 'shape' | 'group' | 'textbox' | 'canvas' | 'graphic';
+
+// @public
+export interface DrawingGroupPictureLayerRecord {
+    readonly crop: SourceCrop;
+    readonly frameUnit: Readonly<{
+        height: number;
+        width: number;
+        x: number;
+        y: number;
+    }>;
+    readonly resource: ImageResourceState;
 }
 
 // @public
@@ -892,6 +943,9 @@ export interface DrawingOverlayFrame {
     readonly y: number;
 }
 
+// @public
+export type DrawingPlaceholderKind = 'chart' | 'diagram' | 'shape' | 'group' | 'textbox' | 'canvas' | 'graphic';
+
 // @public (undocumented)
 export interface DrawingPoint {
     // (undocumented)
@@ -900,10 +954,23 @@ export interface DrawingPoint {
     readonly y: number;
 }
 
+// @public
+export type DrawingSupport = 'native' | 'partial' | 'unrendered';
+
+// @public
+export interface DrawingSupportIssue {
+    readonly code: 'unsupported-effect' | 'renderer-required' | 'unverified-3d' | 'saved-fallback' | 'unplaced-drawing' | 'inspection-limit' | 'projection-diagnostic';
+    readonly detail: string;
+    readonly localName: string;
+    readonly namespaceUri: string;
+    readonly nodeId: string;
+}
+
 // @public (undocumented)
 export interface DrawingTextArtRecord {
     // (undocumented)
     readonly bold: boolean;
+    readonly components?: readonly VectorShapeComponent[];
     // (undocumented)
     readonly fillAlpha: number;
     readonly fillHex: string | null;
@@ -911,6 +978,12 @@ export interface DrawingTextArtRecord {
     // (undocumented)
     readonly fontFamily: string;
     readonly fontSizePt: number;
+    readonly inkBounds?: Readonly<{
+        bottom: number;
+        left: number;
+        right: number;
+        top: number;
+    }>;
     // (undocumented)
     readonly italic: boolean;
     readonly path: string | null;
@@ -1286,7 +1359,9 @@ export type FontValidationResult = {
 export function forEachSemanticDrawing(layout: SemanticLayout, visit: (drawing: SemanticDrawingVisit) => void): void;
 
 // @public
-export function forEachSemanticSpan(layout: SemanticLayout, visitor: (visit: SemanticSpanVisit) => void): void;
+export function forEachSemanticSpan(layout: SemanticLayout, visitor: (visit: SemanticSpanVisit) => void, options?: {
+    readonly spanlessMarkers?: boolean;
+}): void;
 
 // @public
 export function forEachSemanticStory(layout: SemanticLayout, visit: (story: SemanticStoryVisit) => void): void;
@@ -1347,6 +1422,13 @@ export interface GlyphOutline {
 export function glyphSizeFactorOf(style: ResolvedRunStyle): number;
 
 // @public
+export interface GradientStop {
+    readonly alpha: number;
+    readonly hex: string;
+    readonly offset: number;
+}
+
+// @public
 export const GRAPHEME_SEGMENTER_LOCALE: 'und';
 
 // @public
@@ -1385,6 +1467,9 @@ export interface GraphemeWordSegmentRecord {
     // (undocumented)
     readonly wordLike: boolean;
 }
+
+// @internal
+export function groupPictureLayerDrawing<D extends InlineDrawingRecord | AnchoredDrawingRecord>(drawing: D, layer: DrawingGroupPictureLayerRecord): D;
 
 // @public
 export interface GroupTextboxStoryRecord {
@@ -1597,6 +1682,9 @@ export interface InlineDrawingRecord {
     // (undocumented)
     readonly baselineOffset: number;
     readonly bidiLevel?: number;
+    readonly chart?: DrawingChartSummary;
+    // @internal
+    readonly chartFallbackResource?: ImageResourceState;
     // (undocumented)
     readonly crop: SourceCrop;
     // (undocumented)
@@ -1612,9 +1700,11 @@ export interface InlineDrawingRecord {
     // (undocumented)
     readonly effects: DrawingImageEffects;
     readonly formatting?: InlineDrawingFormatting;
+    readonly frameEffects?: PictureFrameEffects;
     // (undocumented)
     readonly geometry: DrawingGeometry;
     readonly groupPicture?: DrawingGroupPictureRecord;
+    readonly groupPictureLayers?: readonly DrawingGroupPictureLayerRecord[];
     readonly groupTextboxStories?: readonly GroupTextboxStoryRecord[];
     // (undocumented)
     readonly height: number;
@@ -1629,12 +1719,13 @@ export interface InlineDrawingRecord {
     readonly paintBounds: LayoutBox;
     // (undocumented)
     readonly paragraphId: string;
-    readonly placeholderGraphicKind: string | null;
+    readonly placeholderGraphicKind: DrawingPlaceholderKind | null;
     // (undocumented)
     readonly resource: ImageResourceState;
     readonly revisions?: readonly RevisionAttribution[];
     // (undocumented)
     readonly start: number;
+    readonly textArt?: DrawingTextArtRecord;
     readonly textboxStory?: TextboxStoryLayout;
     // (undocumented)
     readonly transform: DrawingTransform;
@@ -2694,6 +2785,7 @@ export interface ParagraphFragmentRecord {
         readonly dropCapLines?: number;
         readonly groupId: string;
         readonly hSpace: number;
+        readonly pageFramed?: true;
         readonly sourceOrder: number;
         readonly vSpace: number;
         readonly wrap: 'auto' | 'around' | 'tight' | 'through' | 'none' | 'notBeside';
@@ -2801,11 +2893,15 @@ export function paragraphLayoutKey(inputs: ParagraphKeyInputs): ParagraphLayoutK
 
 // @public
 export interface ParagraphLineSpacing {
+    // @internal
+    readonly descentAnchored?: true;
     readonly gridPitch?: number;
     readonly preserveExactBaseline?: true;
     // (undocumented)
     readonly rule: LineSpacingRule;
     readonly value: number;
+    // @internal
+    readonly wrapsContentOnly?: true;
 }
 
 // @public
@@ -2869,6 +2965,12 @@ export function parseRefInstruction(raw: string): RefFieldSpec | null;
 
 // @public
 export function parseSectionProperties(sectPr: OoxmlNode | null | undefined): SectionProperties;
+
+// @public
+export interface PictureFrameEffects {
+    readonly reflection?: ShapeReflection;
+    readonly softEdgeEmu?: number;
+}
 
 // @public
 export interface PlacedCell {
@@ -3118,6 +3220,8 @@ export interface ResolvedRunStyle {
     };
     // (undocumented)
     readonly doubleStrike: boolean;
+    // @internal
+    readonly eastAsianFontAuthored?: true;
     // (undocumented)
     readonly fontFamily: string | null;
     readonly fontFamilyEastAsia: string | null;
@@ -3513,7 +3617,6 @@ export interface ScriptItem {
     readonly direction: TextDirection;
     // (undocumented)
     readonly from: number;
-    // (undocumented)
     readonly script: 'Zyyy' | 'Latn' | 'Grek' | 'Cyrl' | 'Hani' | 'Hebr' | 'Arab' | 'Deva' | 'Beng' | 'Thai' | 'Khmr';
     // (undocumented)
     readonly slot: FontSlot;
@@ -3547,6 +3650,7 @@ export interface SectionColumns {
     // (undocumented)
     readonly equalWidth?: boolean;
     readonly gapTwips: number;
+    readonly rightToLeft?: true;
     // (undocumented)
     readonly separator?: boolean;
 }
@@ -3963,6 +4067,7 @@ export interface SemanticTableCell {
         readonly bottom: number;
         readonly top: number;
     };
+    readonly noWrap?: true;
     readonly preferredWidth: PreferredWidth;
     readonly resolvedGridColumn?: number;
     readonly resolvedGridColumnCount?: number;
@@ -3974,7 +4079,6 @@ export interface SemanticTableCell {
     readonly rowTableBorders?: TableBorderBox;
     readonly shading?: string;
     readonly styleFormatting: TableCellStyleFormatting;
-    readonly suppressesTopBand?: true;
     readonly textDirection: 'horizontal' | 'btLr';
     readonly topBandClearancePt?: number;
     readonly vAlign: CellVerticalAlign;
@@ -4014,6 +4118,7 @@ export interface SemanticTableStructure {
     readonly legacyContentAlignment?: true;
     readonly legacyTrailingOuterEdge?: true;
     readonly outerRuleOffsetPt?: number;
+    readonly pastTextColumn?: true;
     // (undocumented)
     readonly rows: readonly SemanticTableRow[];
     readonly tableBorders: TableBorderBox;
@@ -4062,6 +4167,12 @@ export const sha256FontBytes: (bytes: Uint8Array) => string;
 
 // @public
 export function shadingFillFromElement(shd: OoxmlElement | undefined): string | undefined;
+
+// @public
+export interface ShapeColor {
+    readonly alpha: number;
+    readonly hex: string;
+}
 
 // @public
 export interface ShapedCluster {
@@ -4181,6 +4292,9 @@ export interface ShapedRunComparatorInputs {
 // @public
 export const shapedRunComparatorInputs: (input: ShapedRun, environment: ShapingEnvironmentInput) => ShapedRunComparatorInputs;
 
+// @internal
+export function shapedRunOutline(run: ShapedRun, pointSize: number, fixedPointScale: number): TextOutline | undefined;
+
 // @public
 export interface ShapedVerticalMetrics {
     // (undocumented)
@@ -4201,6 +4315,24 @@ export interface ShapeInput {
     readonly fontSizeHalfPoints: number;
     // (undocumented)
     readonly text: string;
+}
+
+// @public
+export interface ShapeReflection {
+    readonly blurEmu: number;
+    readonly distanceEmu: number;
+    readonly endAlpha: number;
+    readonly endPosition: number;
+    readonly startAlpha: number;
+}
+
+// @public
+export interface ShapeShadow {
+    readonly alpha: number;
+    readonly blurEmu: number;
+    readonly dxEmu: number;
+    readonly dyEmu: number;
+    readonly hex: string;
 }
 
 // @public
@@ -4375,6 +4507,8 @@ export interface StyleCascadeTable {
     readonly defaultParagraphStyleId: string | null;
     readonly defaultTableStyleId: string | null;
     readonly disableOptionalLigatures?: true;
+    // @internal
+    readonly distributedSpacing?: 'characters' | 'legacyCharacters';
     // (undocumented)
     readonly docDefaultsParagraph: readonly OoxmlProperty[];
     // (undocumented)
@@ -4386,6 +4520,8 @@ export interface StyleCascadeTable {
     readonly ignoreIndentAsNumberingTabStop?: true;
     readonly noColumnBalance?: true;
     readonly pageBreakLinesStretch?: true;
+    // @internal
+    readonly pageBreakMarkOnNextPage?: true;
     readonly preserveExactLineBaseline?: true;
     readonly strictTableStyleHierarchy?: boolean;
     // (undocumented)
@@ -4454,6 +4590,8 @@ export interface StyleSpanRecord {
     readonly range: SourceRange;
     readonly revisions?: readonly RevisionAttribution[];
     readonly style: ResolvedRunStyle;
+    // @internal
+    readonly tabAlignment?: Exclude<TabAlignment, 'left'>;
     readonly tabLeader?: TabLeader;
     readonly tabLeaderAdvancePt?: number;
     // (undocumented)
@@ -4461,6 +4599,9 @@ export interface StyleSpanRecord {
     readonly unsupported?: UnsupportedContentRecord;
     readonly wrapAdvanceBefore?: number;
 }
+
+// @public
+export const SYNTHETIC_BOLD_ADVANCE_EM: number;
 
 // @public
 export function syntheticSeparatorBox(contentWidth: number, flowHeight: number, kind?: 'separator' | 'continuationSeparator'): LayoutBox;
@@ -4497,6 +4638,7 @@ export type TableAlignment = 'left' | 'center' | 'right';
 
 // @public
 export interface TableAutofitContext {
+    readonly compatibilityMode?: number;
     readonly defaultTabStopPt?: number;
     readonly fields?: AutofitFieldContext;
     readonly inlineDrawingLayout?: InlineDrawingLayoutContext;
@@ -4763,6 +4905,7 @@ export type TextboxStoryFallbackReason = 'textbox-nesting-limit' | 'textbox-frag
 
 // @public
 export interface TextboxStoryLayout {
+    readonly chromeByVector?: true;
     readonly chromeRotationDegrees?: number;
     readonly clippedResourceToken?: string;
     readonly contentHeight: number;
@@ -4785,6 +4928,7 @@ export interface TextboxStoryLayout {
     readonly flowHeight: number;
     readonly fragments: readonly BlockFragmentRecord[];
     readonly outline?: TextboxOutlineProjection;
+    readonly overflowVisible?: true;
     readonly shadow?: Readonly<{
         alpha: number;
         dx: number;
@@ -4805,6 +4949,8 @@ export type TextDirection = 'ltr' | 'rtl';
 // @public
 export interface TextMeasurer {
     caretAdvances?(text: string, style: ResolvedRunStyle): readonly number[] | undefined;
+    // @internal
+    faceCovers?(text: string, style: ResolvedRunStyle): boolean | undefined;
     hasResolvedFont?(style: ResolvedRunStyle): boolean;
     inkBounds?(text: string, style: ResolvedRunStyle): {
         left: number;
@@ -4854,38 +5000,30 @@ export function unionLayoutBoxes(boxes: readonly LayoutBox[]): LayoutBox | null;
 // @public
 export interface UnsupportedElement {
     readonly bounds?: LayoutBox;
-    // (undocumented)
     readonly drawing?: InlineDrawingRecord | AnchoredDrawingRecord;
-    // (undocumented)
+    readonly drawingIssues?: readonly DrawingSupportIssue[];
     readonly equation?: EquationSpanRecord;
-    // (undocumented)
+    readonly graphicKind?: DrawingGraphicKind;
     readonly label: string;
-    // (undocumented)
     readonly localName: string;
-    // (undocumented)
     readonly namespaceUri: string | null;
-    // (undocumented)
     readonly nodeId: string;
-    // (undocumented)
     readonly ownerPartName: string;
-    // (undocumented)
     readonly placement: 'inline' | 'block';
     readonly source: OoxmlElement | null;
+    readonly support?: Exclude<DrawingSupport, 'native'>;
 }
 
 // @public
 export interface UnsupportedElementLayout {
-    // (undocumented)
     readonly height: number;
-    // (undocumented)
     readonly width: number;
 }
 
 // @public
 export interface UnsupportedElementRule {
-    // (undocumented)
+    readonly includePartial?: boolean;
     readonly layout?: UnsupportedElementLayout;
-    // (undocumented)
     readonly match?: (element: UnsupportedElement) => boolean;
 }
 
@@ -4903,24 +5041,55 @@ export class UnsupportedScriptError extends Error {
 // @public
 export function utf16OffsetToGrapheme(text: string, utf16Offset: number): number;
 
-// @public (undocumented)
+// @public
+export interface VectorGradient {
+    readonly coords: readonly number[];
+    // (undocumented)
+    readonly kind: 'linear' | 'radial';
+    readonly matrix: AffineMatrix;
+    readonly stops: readonly GradientStop[];
+}
+
+// @public
+export interface VectorPattern {
+    // (undocumented)
+    readonly background: ShapeColor;
+    // (undocumented)
+    readonly foreground: ShapeColor;
+    readonly rows: readonly number[];
+}
+
+// @public
 export interface VectorShapeComponent {
     readonly arrowheadsEmu?: readonly (readonly Readonly<{
         x: number;
         y: number;
     }>[])[];
+    readonly belowPicture?: true;
+    readonly clipEmu?: readonly (readonly Readonly<{
+        x: number;
+        y: number;
+    }>[])[];
     // (undocumented)
     readonly fillAlpha: number;
+    readonly fillGradient?: VectorGradient;
     // (undocumented)
     readonly fillHex: string | null;
+    readonly fillPattern?: VectorPattern;
+    readonly fillRule?: 'nonzero';
+    readonly shadow?: ShapeShadow;
+    readonly shadowOnly?: true;
     // (undocumented)
     readonly strokeAlpha: number;
     readonly strokeCap?: 'butt' | 'round' | 'square';
+    readonly strokeDash?: readonly number[];
     // (undocumented)
     readonly strokeHex: string | null;
     readonly strokeInset?: boolean;
     // (undocumented)
-    readonly strokeJoin?: 'round' | 'bevel';
+    readonly strokeJoin?: 'round' | 'bevel' | 'miter';
+    readonly strokeMiterLimit?: number;
+    readonly strokeOutsetEmu?: number;
     // (undocumented)
     readonly strokeWidthEmu: number;
     readonly subpathsClosed?: readonly boolean[];
@@ -4944,6 +5113,7 @@ export interface VectorShapeProjection {
     // (undocumented)
     readonly fillAlpha?: number;
     readonly fillHex: string | null;
+    readonly overflowVisible?: true;
     // (undocumented)
     readonly strokeAlpha?: number;
     readonly strokeHex: string | null;
@@ -4976,7 +5146,7 @@ export interface ViewportWindow {
 export const W15_NAMESPACE_URI = "http://schemas.microsoft.com/office/word/2012/wordml";
 
 // @public
-export function walkStoryParagraphs(blocks: readonly OoxmlElement[], maxTableDepth?: number): OoxmlElement[];
+export function walkStoryParagraphs(blocks: readonly OoxmlElement[], maxTableDepth?: number, skipMergedCells?: boolean): OoxmlElement[];
 
 // @public
 export function withDefaultTabInterval(tabs: ResolvedTabStops, defaultIntervalPt: number | undefined): ResolvedTabStops;

@@ -18,7 +18,7 @@ import {
 import { anchoredOutOfCell, type CellAnchorScope } from './cell-anchor-layout.ts';
 import { drawingGeometryFromProjection } from './drawing-geometry.ts';
 import { compareDrawingCollisionOrder } from './drawing-overlap.ts';
-import { topAndBottomBandAnchorY } from './top-and-bottom-clearance.ts';
+import { paragraphBandTop, topAndBottomBandAnchorY } from './top-and-bottom-clearance.ts';
 import {
   DEFAULT_REVISION_DISPLAY_MODE,
   revisionsVisible,
@@ -60,6 +60,9 @@ export const MAX_ANCHOR_PAGE_DEFERRALS = 8;
  * which for ordinary documents is once or twice.
  */
 export const MAX_DRAWING_EXCLUSION_REFLOW_PASSES = 16;
+
+/** Passages of a quarter inch or less beside a floating table hold no text. */
+export const TABLE_WRAP_MIN_PASSAGE_PT = 18;
 
 /** Raised when wrap-exclusion reflow does not converge within {@link MAX_DRAWING_EXCLUSION_REFLOW_PASSES}. */
 export class DrawingExclusionConvergenceError extends Error {
@@ -120,6 +123,12 @@ export interface ExclusionZone {
    * forward-only: reaching back would move the anchor that positions them.
    */
   readonly pageFramedBand?: boolean;
+  /**
+   * A text-anchored table raised above its anchor that leaves no text passage beside it. Like a
+   * page-framed band it moves the earlier lines it covers on its page below it. Its own position
+   * leaves out that move, so it does not chase its anchor.
+   */
+  readonly reachesEarlierLines?: boolean;
   readonly sourceOrder: number;
   readonly paintLayer: DrawingPaintLayer;
   readonly relativeHeight: number;
@@ -357,7 +366,9 @@ export function mergeAvailableIntervalsAtY(
   // even when individual letters fit. Apply this after all exclusions intersect,
   // so a second float cannot reduce an admitted passage to a column of letters.
   if (wrapsTable)
-    available = available.filter((interval) => interval.end - interval.start > 18.001);
+    available = available.filter(
+      (interval) => interval.end - interval.start > TABLE_WRAP_MIN_PASSAGE_PT + 0.001
+    );
   return Object.freeze(available);
 }
 
@@ -638,13 +649,10 @@ export function synthesizeParagraphTopAndBottomZones(options: {
     const lineTop = options.anchorLineTopByModelStart.get(modelStart);
     if (lineTop === undefined) continue;
     const pageFramed = pageFramedBandY(atom.projection, options);
-    const anchorY =
-      pageFramed ??
-      topAndBottomBandAnchorY(
-        options.paragraphStartY + lineTop,
-        atom.projection.position?.vertical ?? null,
-        options.paragraphStartY
-      );
+    const paragraphY = options.paragraphStartY;
+    const vertical = atom.projection.position?.vertical ?? null;
+    const authoredY = topAndBottomBandAnchorY(paragraphY + lineTop, vertical, paragraphY);
+    const anchorY = pageFramed ?? paragraphBandTop(authoredY, atom.projection, options);
     const measure = measureInlineDrawing(atom.projection);
     const geometry = drawingGeometryFromProjection({
       projection: atom.projection,

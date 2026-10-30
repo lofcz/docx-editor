@@ -19,6 +19,7 @@ import { warnFieldResultsChanged } from './field-results-warning';
 import { warnContentLockPolicyChanged } from './content-lock-policy-warning';
 import { warnLockedControlNavigationChanged } from './locked-control-navigation-warning';
 import type { DocxEditorChildren } from '../docx-editor-children';
+import { ChromeDarkContext, useResolvedDark } from './color-mode-context';
 // Provider-first host for the docx editor facade.
 //
 // `DocxEditorRoot` renders no DOM of its own: it creates the facade WITHOUT a container
@@ -41,6 +42,7 @@ import type {
   EditorFontError,
   FontConfiguration,
   ZoomMode,
+  TableInteractionLabelKey,
 } from '@docx-editor.dev/core/contracts/editor';
 import {
   createDocxEditor,
@@ -60,7 +62,11 @@ import type {
 import { useTranslation, type TranslationKey } from '../i18n';
 import { DocxEditorContext, ReviewRailContext, type ReviewRailRegistry } from './context';
 import type { useDocxEditor } from './context';
-import { HyperlinkPopupContext, useHyperlinkPopupInstance } from './useHyperlinkPopup';
+import {
+  HyperlinkPopupContext,
+  HyperlinkPopupViewsContext,
+  useHyperlinkPopupInstance,
+} from './useHyperlinkPopup';
 import { ContentControlContext, useContentControlInstance } from './useContentControl';
 import { ImageInsertProvider } from './images/ImageInsert';
 import {
@@ -183,9 +189,17 @@ export interface DocxEditorRootProps {
    * Localized labels for table insertion furniture. When omitted, core falls back to
    * bundled English through {@link defaultTableLabel}.
    */
-  tableInteractionLabel?: (key: 'table.insertRowBelow' | 'table.insertColumnRight') => string;
+  tableInteractionLabel?: (key: TableInteractionLabelKey) => string;
   /** Optional decode port for embedded image insertion and paint in tests or custom hosts. */
   imageDecodePort?: ImageDecodePort;
+  /**
+   * Colour theme of the composed chrome, as on `<DocxEditor>`. `'dark'` puts `.dark` beside
+   * `.docx-editor` on every part that scopes itself (toolbar, menu bar, viewport, dialogs),
+   * and `'system'` follows the OS setting as it changes. Defaults to `'light'`. The page
+   * content in the viewport is shown inverted in dark mode, as in `<DocxEditor>`. Changes
+   * apply without a remount.
+   */
+  colorMode?: 'light' | 'dark' | 'system';
   children?: DocxEditorChildren;
 }
 
@@ -278,8 +292,10 @@ export function DocxEditorRoot(props: DocxEditorRootProps) {
     zoomMode,
     tableInteractionLabel,
     imageDecodePort,
+    colorMode,
     children,
   } = props;
+  const chromeDark = useResolvedDark(colorMode);
   const { t: catalogT } = useTranslation();
   const defaultTranslate = useCallback(
     (key: string, params?: Record<string, string | number>) =>
@@ -584,31 +600,34 @@ export function DocxEditorRoot(props: DocxEditorRootProps) {
   }, [unsupportedRegistry, editor]);
 
   return (
-    <UnsupportedElementRegistryContext.Provider value={unsupportedRegistry}>
-      <FormControlTranslateProvider value={translate ?? defaultTranslate}>
-        <ReviewRailContext.Provider value={railRegistry}>
-          <DocxEditorContext.Provider value={editor}>
-            <NavigationLayoutContext.Provider value={navigationLayout}>
-              <RevisionStyleRegistryContext.Provider value={revisionStyleRegistry}>
-                {/* ONE link-popover state per editor, published here so a TOOLBAR button and the
+    // The resolved colour mode, for the parts that put `.docx-editor` on themselves.
+    <ChromeDarkContext.Provider value={chromeDark}>
+      <UnsupportedElementRegistryContext.Provider value={unsupportedRegistry}>
+        <FormControlTranslateProvider value={translate ?? defaultTranslate}>
+          <ReviewRailContext.Provider value={railRegistry}>
+            <DocxEditorContext.Provider value={editor}>
+              <NavigationLayoutContext.Provider value={navigationLayout}>
+                <RevisionStyleRegistryContext.Provider value={revisionStyleRegistry}>
+                  {/* ONE link-popover state per editor, published here so a TOOLBAR button and the
                 popover panel — which are siblings, not ancestor and descendant — see the same
                 open/closed state and only one of them registers with the engine's gestures. */}
-                <HyperlinkPopupProvider>
-                  <ContentControlProvider>
-                    {/* Outside the picture insert, which shows its refusal through the registry. */}
-                    <PopupConfigProvider value={props.popups}>
-                      <ImageInsertProvider>
-                        <DialogProvider popups={props.popups}>{children}</DialogProvider>
-                      </ImageInsertProvider>
-                    </PopupConfigProvider>
-                  </ContentControlProvider>
-                </HyperlinkPopupProvider>
-              </RevisionStyleRegistryContext.Provider>
-            </NavigationLayoutContext.Provider>
-          </DocxEditorContext.Provider>
-        </ReviewRailContext.Provider>
-      </FormControlTranslateProvider>
-    </UnsupportedElementRegistryContext.Provider>
+                  <HyperlinkPopupProvider>
+                    <ContentControlProvider>
+                      {/* Outside the picture insert, which shows its refusal through the registry. */}
+                      <PopupConfigProvider value={props.popups}>
+                        <ImageInsertProvider>
+                          <DialogProvider popups={props.popups}>{children}</DialogProvider>
+                        </ImageInsertProvider>
+                      </PopupConfigProvider>
+                    </ContentControlProvider>
+                  </HyperlinkPopupProvider>
+                </RevisionStyleRegistryContext.Provider>
+              </NavigationLayoutContext.Provider>
+            </DocxEditorContext.Provider>
+          </ReviewRailContext.Provider>
+        </FormControlTranslateProvider>
+      </UnsupportedElementRegistryContext.Provider>
+    </ChromeDarkContext.Provider>
   );
 }
 
@@ -617,8 +636,19 @@ export function DocxEditorRoot(props: DocxEditorRootProps) {
  * itself, because it consumes that context and a component cannot read its own provider.
  */
 function HyperlinkPopupProvider({ children }: { children?: DocxEditorChildren }) {
-  const popup = useHyperlinkPopupInstance(true);
-  return <HyperlinkPopupContext.Provider value={popup}>{children}</HyperlinkPopupContext.Provider>;
+  // Registered with the engine only while a view shows the state; see
+  // `HyperlinkPopupViewsContext`.
+  const [views, setViews] = useState(0);
+  const attach = useCallback(() => {
+    setViews((count) => count + 1);
+    return () => setViews((count) => count - 1);
+  }, []);
+  const popup = useHyperlinkPopupInstance(views > 0);
+  return (
+    <HyperlinkPopupViewsContext.Provider value={attach}>
+      <HyperlinkPopupContext.Provider value={popup}>{children}</HyperlinkPopupContext.Provider>
+    </HyperlinkPopupViewsContext.Provider>
+  );
 }
 
 /** One content-control chrome state per editor — inspector open + mode toggles. */

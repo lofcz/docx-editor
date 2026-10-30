@@ -30,7 +30,9 @@ type RevisionCapableOp =
           | 'deleteTableRow'
           | 'setRunProperties'
           | 'setParagraphProperties'
-          | 'setParagraphMarkProperties';
+          | 'setParagraphMarkProperties'
+          | 'setListNumbering'
+          | 'setListLevel';
       }
     >;
 const REVISION_CAPABLE_OPS: ReadonlySet<TreeDocOp['op']> = new Set<RevisionCapableOp['op']>([
@@ -53,6 +55,10 @@ const REVISION_CAPABLE_OPS: ReadonlySet<TreeDocOp['op']> = new Set<RevisionCapab
   'setParagraphProperties',
   'setParagraphMarkProperties',
   ...TRACKED_TABLE_PROPERTY_OPS,
+  // List numbering is paragraph formatting: a suggester's bullet, demote or removed number
+  // is a `w:pPrChange` a reviewer can reject, like any other paragraph property.
+  'setListNumbering',
+  'setListLevel',
 ]);
 
 export function isRevisionCapable(op: TreeDocOp): op is RevisionCapableOp {
@@ -74,8 +80,6 @@ export function isTrackedEdit(op: TreeDocOp): boolean {
     case 'mergeTableCells':
     case 'splitTableCell':
     case 'setHyperlinkTarget':
-    case 'setListNumbering':
-    case 'setListLevel':
     case 'splitParagraphMany':
       return op.revision !== undefined;
     default:

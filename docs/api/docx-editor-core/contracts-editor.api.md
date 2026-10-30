@@ -669,7 +669,7 @@ export interface DrawingPositionInput {
 export type DrawingVerticalReferenceFrame = 'bottomMargin' | 'insideMargin' | 'line' | 'margin' | 'outsideMargin' | 'page' | 'paragraph' | 'topMargin';
 
 // @public
-export type EditDiagnosticCode = 'edit.read-only' | 'edit.protected-content' | 'edit.suggesting-needs-author' | 'edit.review-module-required' | 'edit.tracked-drawing-delete-unsupported' | 'edit.tracked-structure-unsupported' | 'edit.tracked-operation-unsupported' | 'edit.tracking-mode-unsupported' | 'edit.tracking-author-required' | 'edit.comment-author-required' | 'edit.tracking-unsupported-host' | 'edit.revision-unsupported' | 'edit.tracking-required' | 'edit.tracked-image-replace-unsupported' | 'edit.tracked-deleted-text-only' | 'edit.tracked-foreign-revision-unsupported' | 'edit.tracked-own-pending-change' | 'edit.picture-selected' | 'edit.cross-structure-join' | 'edit.indivisible-content' | 'edit.field-structure' | 'edit.field-unsupported' | 'edit.field-result-unsupported' | 'edit.ooxml-unsupported' | 'edit.section-mark' | 'edit.table-structure-unsupported' | 'edit.table-merge-not-rectangle' | 'edit.table-split-unsupported' | 'edit.table-insert-refused' | 'edit.table-of-contents-refused' | 'edit.unsupported-content' | 'edit.operation-unsupported' | 'edit.unsupported-story' | 'edit.unmapped-change' | 'edit.stale-target' | 'edit.invalid-argument' | 'edit.resource-limit' | 'edit.refresh-in-progress' | 'edit.preview-active' | 'edit.preview-unsupported' | 'edit.preview-composing' | 'edit.preview-diverged' | 'edit.collaboration-not-ready' | 'edit.collaboration-text-limit' | 'edit.internal-invariant' | 'edit.refused';
+export type EditDiagnosticCode = 'edit.read-only' | 'edit.protected-content' | 'edit.suggesting-needs-author' | 'edit.review-module-required' | 'edit.tracked-drawing-delete-unsupported' | 'edit.tracked-structure-unsupported' | 'edit.tracked-operation-unsupported' | 'edit.tracking-mode-unsupported' | 'edit.tracking-author-required' | 'edit.comment-author-required' | 'edit.tracking-unsupported-host' | 'edit.revision-unsupported' | 'edit.tracking-required' | 'edit.tracked-image-replace-unsupported' | 'edit.tracked-deleted-text-only' | 'edit.tracked-foreign-revision-unsupported' | 'edit.tracked-own-pending-change' | 'edit.picture-selected' | 'edit.cross-structure-join' | 'edit.indivisible-content' | 'edit.field-structure' | 'edit.field-unsupported' | 'edit.field-result-unsupported' | 'edit.ooxml-unsupported' | 'edit.style-not-defined' | 'edit.no-styles-defined' | 'edit.section-mark' | 'edit.table-structure-unsupported' | 'edit.table-merge-not-rectangle' | 'edit.table-split-unsupported' | 'edit.table-insert-refused' | 'edit.table-of-contents-refused' | 'edit.unsupported-content' | 'edit.operation-unsupported' | 'edit.unsupported-story' | 'edit.unmapped-change' | 'edit.stale-target' | 'edit.invalid-argument' | 'edit.resource-limit' | 'edit.refresh-in-progress' | 'edit.preview-active' | 'edit.preview-unsupported' | 'edit.preview-composing' | 'edit.preview-diverged' | 'edit.read-after-commit' | 'edit.collaboration-not-ready' | 'edit.collaboration-text-limit' | 'edit.internal-invariant' | 'edit.refused';
 
 // @public
 export interface Editor extends EditorAnchorNavigation, EditorHighlights, EditorReviewHits {
@@ -829,7 +829,7 @@ export interface Editor extends EditorAnchorNavigation, EditorHighlights, Editor
     setReviewActivationExclusions(kinds: readonly ReviewRevisionKind[] | null, options?: {
         readonly formattingKinds?: readonly string[];
     }): void;
-    setTableInteractionLabel(resolver: (key: 'table.insertRowBelow' | 'table.insertColumnRight') => string): void;
+    setTableInteractionLabel(resolver: (key: TableInteractionLabelKey) => string): void;
     setTrackedChangesFilter(predicate: TrackedChangePredicate | null, mode?: TrackedChangeFilterMode): void;
     setZoom(zoom: number): ExecResult;
     setZoomMode(mode: ZoomMode | 'auto'): ExecResult;
@@ -1791,11 +1791,9 @@ export type NoteKind = 'footnote' | 'endnote';
 
 // @public
 export interface NotePropertiesSide {
-    // (undocumented)
     readonly documentAuthored?: AuthoredNoteNumbering;
     // (undocumented)
     readonly resolved: ResolvedNoteNumbering;
-    // (undocumented)
     readonly sectionAuthored?: AuthoredNoteNumbering;
 }
 
@@ -2740,6 +2738,9 @@ export interface TableContext {
     // (undocumented)
     readonly rows: number;
 }
+
+// @public
+export type TableInteractionLabelKey = 'table.insertRowBelow' | 'table.insertColumnRight' | 'table.selectTable';
 
 // @public
 export interface TableRightEdgeResizeTarget {

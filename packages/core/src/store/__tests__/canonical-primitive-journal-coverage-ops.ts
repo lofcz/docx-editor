@@ -464,6 +464,15 @@ export function authorableCoverageFixtures(): JournalCoverageFixture[] {
       cols: 2,
       columnWidthTwips: 1440,
     })),
+    story(
+      'moveTable',
+      zipDoc({ body: `<w:p><w:r><w:t>before</w:t></w:r></w:p>${TABLE}` }),
+      (store) => ({
+        op: 'moveTable',
+        tableId: tableIds(store).tableId,
+        beforeBlockId: paragraphIds(store)[0]!,
+      })
+    ),
     story('insertTableRow', zipDoc({ body: TABLE }), (store) => {
       const ids = tableIds(store);
       return {
@@ -636,7 +645,8 @@ export function authorableCoverageFixtures(): JournalCoverageFixture[] {
     lifecycle('setNoteProperties', plainDoc(), () => ({
       op: 'setNoteProperties',
       scope: 'document',
-      footnote: { numFmt: 'decimal' },
+      // A default value is not written where nothing authors it, so name another format.
+      footnote: { numFmt: 'lowerRoman' },
     })),
     story('setContentControlProperties', zipDoc({ body: SDT }), (store) => ({
       op: 'setContentControlProperties',

@@ -20,6 +20,7 @@ import type { BookmarkMarkOptionsSource } from './bookmark-chrome.ts';
 import type { TextMeasurer } from '@docx-editor.dev/core/layout';
 import type { ContentLockPolicy } from '../store/package/ooxml-edit.ts';
 import type { PaginatedSurfaceState, SurfaceEditingMode } from './paginated-surface-contract.ts';
+import type { TableInteractionLabelKey } from '../contracts/editor.ts';
 
 /**
  * How the caret moves through an inline content control whose effective lock is
@@ -193,9 +194,9 @@ export interface PaginatedSurfaceOptions {
   /**
    * Ctrl/Cmd+K — Word's Insert Hyperlink. The engine reports the request; the host's chrome
    * decides what a link dialog looks like. A host that passes nothing leaves the key alone
-   * rather than doing something surprising with it.
+   * rather than doing something surprising with it. Answering `false` leaves it alone too.
    */
-  readonly onRequestHyperlink?: () => void;
+  readonly onRequestHyperlink?: () => boolean | void;
   /**
    * Ctrl/Cmd+Shift+F5: open the host's bookmark dialog. Answers whether chrome took the
    * request; when none did, or when this is absent, the key is left to the browser.
@@ -222,9 +223,7 @@ export interface PaginatedSurfaceOptions {
    * Localized accessible names for core-owned table insertion furniture.
    * Defaults to English from `@docx-editor.dev/i18n` when omitted.
    */
-  readonly tableInteractionLabel?: (
-    key: 'table.insertRowBelow' | 'table.insertColumnRight'
-  ) => string;
+  readonly tableInteractionLabel?: (key: TableInteractionLabelKey) => string;
   /** Localized drawing refusal labels; defaults to English when omitted. */
   readonly drawingStrings?: import('../output/semantic-paint-drawings.ts').DrawingPaintStrings;
   /** Override raster decode for package image intents; defaults to browser/headless. */

@@ -27,10 +27,11 @@ import type { ReactNode } from 'react';
 //
 // ONE ROW, MEASURED. The bar used to wrap to a second and third row when it ran out of
 // width, which on a laptop beside an open navigation pane cost more vertical space than the
-// first page of the document. Now it measures itself and moves whole GROUPS into a "⋯"
-// menu (`useToolbarOverflow` for the measurement, `toolbar-overflow.ts` for the policy).
+// first page of the document. Now it measures itself and moves controls into a "⋯" menu,
+// one at a time from the end of the group the collapse order names, so the bar stays full
+// (`useToolbarOverflow` for the measurement, core's `toolbar-item-fit.ts` for the policy).
 // That is why the default arrangement below is a list of groups rather than a flat list of
-// slots: a group is the unit that collapses, and its registry label becomes the panel's
+// slots: the group decides what collapses next, and its registry label becomes the panel's
 // section heading. `overflow={false}` restores wrapping.
 
 import { ToolbarEditingMode } from './EditingMode';
@@ -45,6 +46,7 @@ import {
 } from '@docx-editor.dev/core/editor';
 import type { EditorSnapshot } from '@docx-editor.dev/core/contracts/editor';
 import { useEditorState } from '../useEditorState';
+import { useChromeDir } from '../../i18n';
 import { ToolbarContext, useToolbarLabelFor, type ToolbarTranslate } from './toolbar-context';
 import { ToolbarButton, chromeControlForSlot, guardToolbarMousedown } from './ToolbarButton';
 import { ParagraphDialogHost } from '../paragraph-dialog-host';
@@ -59,6 +61,10 @@ import {
   collapseOrder,
   TOOLBAR_COLLAPSE_ORDER,
   TOOLBAR_PINNED_GROUPS,
+  toolbarGroupItems,
+  toolbarHostPanelShown,
+  toolbarShownCount,
+  type ToolbarFitGroup,
 } from '@docx-editor.dev/core/editor';
 import { readToolbarChildren, type ToolbarChildren } from './toolbar-children';
 import {
@@ -75,7 +81,12 @@ import {
   warnSlotOutsideArrangement,
   warnUnknownGroupAnchor,
 } from './toolbar-warnings';
-import { FIXED_ATTRIBUTE, GROUP_ATTRIBUTE, useToolbarOverflow } from './useToolbarOverflow';
+import {
+  FIXED_ATTRIBUTE,
+  GROUP_ATTRIBUTE,
+  ITEM_ATTRIBUTE,
+  useToolbarOverflow,
+} from './useToolbarOverflow';
 import {
   type ImageAltTextPartComponent,
   type ImageWrapPartComponent,
@@ -141,7 +152,7 @@ import {
 } from './TableControls';
 import { TableChromeProvider } from './useTableChrome';
 import { ToolbarTableMergeCells, ToolbarTableSplitCell } from './TableCellStructure';
-import { useScopeClassName } from '../scope-context';
+import { useChromeScopeClassName } from '../color-mode-context';
 
 /** Contextual table chrome slots appended when the caret is inside a table. */
 const TABLE_CHROME_SLOTS: readonly ChromeSlotId[] = [
@@ -242,8 +253,11 @@ function iconPart(slot: ChromeSlotId): PartLike {
  * editing-mode picker (contextual slots stay available for composition) — with the
  * alignment group merged into ONE dropdown under the `'alignment'` key.
  */
-function buildDefaultGroups(image: EditorSnapshot['image']): readonly DefaultGroup[] {
-  return formattingBarChromeGroups(image).map((group) => {
+function buildDefaultGroups(
+  image: EditorSnapshot['image'],
+  direction: boolean
+): readonly DefaultGroup[] {
+  return formattingBarChromeGroups(image, { direction }).map((group) => {
     if (group.id === 'alignment') {
       return {
         id: group.id,
@@ -313,8 +327,8 @@ export interface DocxEditorToolbarProps {
    */
   preset?: boolean;
   /**
-   * `false` lets the bar WRAP to more rows instead of collapsing groups into the "⋯"
-   * menu when it runs out of width. Default `true`.
+   * `false` lets the bar WRAP to more rows instead of moving controls into the "⋯" menu,
+   * one at a time, when it runs out of width. Default `true`.
    */
   overflow?: boolean;
   children?: DocxEditorChildren;
@@ -341,7 +355,7 @@ function includesTableChromeParts(children: ReactNode, preset: boolean): boolean
 
 function DocxEditorToolbarRoot(props: DocxEditorToolbarProps) {
   // Skip the scope class when the packaged wrapper already carries it.
-  const scopeClassName = useScopeClassName();
+  const scopeClassName = useChromeScopeClassName();
   const { className, t, onSave, preset = true, overflow: overflowEnabled = true, children } = props;
   const context = useMemo(() => ({ t, onSave }), [t, onSave]);
   // The overflow panel labels its value rows from the same resolver the parts inside it
@@ -350,7 +364,13 @@ function DocxEditorToolbarRoot(props: DocxEditorToolbarProps) {
   const image = useEditorState(selectToolbarImage);
   const toolbarDisabled = useEditorState(selectToolbarDisabled);
   const tableChromeVisible = useEditorState(selectTableChromeVisible);
-  const defaultGroups = useMemo(() => buildDefaultGroups(image), [image]);
+  // A right-to-left interface language puts the paragraph direction buttons in the bar.
+  const chromeDir = useChromeDir();
+  const directionButtons = chromeDir === 'rtl';
+  const defaultGroups = useMemo(
+    () => buildDefaultGroups(image, directionButtons),
+    [image, directionButtons]
+  );
   const defaultSlots = useMemo(
     () => new Set(defaultGroups.flatMap((group) => group.entries.map((entry) => entry.slot))),
     [defaultGroups]
@@ -372,19 +392,28 @@ function DocxEditorToolbarRoot(props: DocxEditorToolbarProps) {
     () => (parsed ? arrangeGroups(defaultGroups, parsed) : []),
     [defaultGroups, parsed]
   );
-  const collapsible = useMemo(
+  const collapsible = useMemo<readonly ToolbarFitGroup[]>(
     () => [
-      ...arranged.filter((group) => !group.pinned).map((group) => group.id),
-      ...(tableChromeVisible ? [TABLE_CONTEXTUAL_GROUP_ID] : []),
+      ...arranged
+        .filter((group) => !group.pinned)
+        .map((group) => ({ id: group.id, items: groupItems(group, parsed?.overrides) })),
+      // Table chrome is one unit: its border controls act together on one target.
+      ...(tableChromeVisible
+        ? [{ id: TABLE_CONTEXTUAL_GROUP_ID, items: [TABLE_CONTEXTUAL_GROUP_ID] }]
+        : []),
     ],
-    [arranged, tableChromeVisible]
+    [arranged, parsed, tableChromeVisible]
   );
   const collapseOrderIds = useMemo(() => {
     const priorities = new Map<string, number>();
     for (const group of arranged) {
       if (group.priority !== undefined) priorities.set(group.id, group.priority);
     }
-    return collapseOrder(collapsible, TOOLBAR_COLLAPSE_ORDER, priorities);
+    return collapseOrder(
+      collapsible.map((group) => group.id),
+      TOOLBAR_COLLAPSE_ORDER,
+      priorities
+    );
   }, [arranged, collapsible]);
 
   // Only the preset arrangement has groups to collapse; `preset={false}` is the host's own
@@ -418,23 +447,38 @@ function DocxEditorToolbarRoot(props: DocxEditorToolbarProps) {
     const sections: ToolbarOverflowSection[] = [];
     let drawn = 0;
     for (const group of arranged) {
-      if (overflow.has(group.id)) {
-        const rows = group.entries.flatMap((entry) => {
+      // The group's controls in bar order. When the bar runs out of width they leave from the
+      // END, one at a time, so the bar keeps a prefix and "⋯" holds the rest, in bar order.
+      const items = groupItems(group, overrides);
+      const entryBySlot = new Map<string, DefaultEntry>(
+        group.entries.map((entry) => [entry.slot, entry])
+      );
+      const shown = group.pinned
+        ? items.length
+        : toolbarShownCount(overflow, group.id, items.length);
+      const hidden = items.slice(shown);
+      if (hidden.length > 0) {
+        const rows = hidden.flatMap((item) => {
+          const entry = entryBySlot.get(item);
+          if (!entry) return [];
           const row = overflowRow(entry, overrides, label, group.labelKey, render);
           if (row === null) return [];
           return [<Fragment key={entry.slot}>{row}</Fragment>];
         });
-        const extra = hostPanelContent(group);
+        const extra = toolbarHostPanelShown(group.extras.length > 0, hidden)
+          ? hostPanelContent(group)
+          : null;
         if (extra !== null) rows.push(<Fragment key="host">{extra}</Fragment>);
-        if (rows.length === 0) continue;
-        sections.push({
-          id: group.id,
-          labelKey: group.labelKey,
-          ...(group.heading ? { label: hostGroupText(group.heading, label) } : {}),
-          children: rows,
-        });
-        continue;
+        if (rows.length > 0) {
+          sections.push({
+            id: group.id,
+            labelKey: group.labelKey,
+            ...(group.heading ? { label: hostGroupText(group.heading, label) } : {}),
+            children: rows,
+          });
+        }
       }
+      if (shown === 0) continue;
       // The separator belongs BETWEEN what is on screen. Keyed on the group so a collapse
       // does not renumber the ones that stayed.
       if (drawn > 0) bar.push(<ToolbarSeparator key={`separator-${group.id}`} />);
@@ -449,10 +493,14 @@ function DocxEditorToolbarRoot(props: DocxEditorToolbarProps) {
           // Pinned groups are costed as fixed width rather than offered to the fit.
           {...(group.pinned ? { [FIXED_ATTRIBUTE]: '' } : { [GROUP_ATTRIBUTE]: group.id })}
         >
-          {group.entries.map((entry) => (
-            <Fragment key={entry.slot}>{render(entry)}</Fragment>
-          ))}
-          {group.extras.length > 0 ? <Fragment key="host">{group.extras}</Fragment> : null}
+          {items.slice(0, shown).map((item) => {
+            const entry = entryBySlot.get(item);
+            return (
+              <div key={item} className="docx-toolbar__item" {...{ [ITEM_ATTRIBUTE]: item }}>
+                {entry ? render(entry) : group.extras}
+              </div>
+            );
+          })}
         </div>
       );
     }
@@ -524,6 +572,7 @@ function DocxEditorToolbarRoot(props: DocxEditorToolbarProps) {
           // so a composed toolbar is styled wherever the host puts it. Nesting under the
           // packaged wrapper is fine; the stylesheet re-applies dark tokens to nested roots.
           className={`${scopeClassName}docx-toolbar${className ? ` ${className}` : ''}`}
+          dir={chromeDir}
           // One row when the bar measures itself, wrapping when it does not: the stylesheet
           // reads this rather than guessing from a breakpoint.
           {...(measuring ? { 'data-overflow': '' } : {})}
@@ -553,6 +602,20 @@ function isHiddenOverride(override: ReactElement | undefined): boolean {
     return isValidElement(nested) ? isHiddenOverride(nested) : false;
   }
   return Boolean((override.props as { hidden?: boolean }).hidden);
+}
+
+/**
+ * A group's collapsible controls, in bar order (see core's `toolbarGroupItems`). A slot removed
+ * with `hidden` takes no place.
+ */
+function groupItems(
+  group: ArrangedGroup,
+  overrides: ReadonlyMap<ArrangementKey, ReactElement> | undefined
+): readonly string[] {
+  const slots = group.entries
+    .filter((entry) => !isHiddenOverride(overrides?.get(entry.slot)))
+    .map((entry) => entry.slot);
+  return toolbarGroupItems(slots, group.extras.length > 0);
 }
 
 type HostGroupHeading = Pick<DocxEditorToolbarGroupProps, 'id' | 'label' | 'labelKey'>;

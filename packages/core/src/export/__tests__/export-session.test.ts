@@ -11,6 +11,7 @@ import {
   type OoxmlPackage,
 } from '@docx-editor.dev/core/store';
 import { forEachSemanticSpan } from '../../layout/export-traversal.ts';
+import { createFixedMeasurer } from '../../layout/fixed-measurer.ts';
 import type { SemanticLayout } from '../../layout/semantic-records.ts';
 import { openDocumentForExport } from '../export-session.ts';
 
@@ -357,6 +358,43 @@ test('a shell-only write wakes a pending resource wait and restarts on the new p
       contentTypes: imageFreeShell.contentTypes,
     });
     await expect(pending).resolves.toMatchObject({ revision: 0 });
+  } finally {
+    opened.session.dispose();
+  }
+});
+
+test('a resource that settles at once is not timed out by a slow layout pass', async () => {
+  const fixed = createFixedMeasurer();
+  let slowed = false;
+  // The first measurement outlasts the whole resource deadline. The deadline keeps a margin
+  // above one millisecond: `Date.now()` ticks in whole milliseconds, so a 1 ms deadline can
+  // expire between two statements on a busy machine, before any layout work starts.
+  const resourceTimeoutMs = 20;
+  const measurer = new Proxy(fixed, {
+    get(target, key, receiver) {
+      const value = Reflect.get(target, key, receiver);
+      if (typeof value !== 'function') return value;
+      return (...args: unknown[]) => {
+        if (!slowed) {
+          slowed = true;
+          const until = Date.now() + resourceTimeoutMs * 4;
+          while (Date.now() < until);
+        }
+        return Reflect.apply(value, target, args);
+      };
+    },
+  });
+  const source = pkg(
+    `<w:p><w:r>${textboxDrawing('<w:p><w:r><w:t>Boxed</w:t></w:r></w:p>')}</w:r></w:p>`
+  );
+  const main = source.parts.get(source.mainDocumentPart)!;
+  const store = new TreePackageStore(source, normalizeParagraphIdentity(main));
+  const opened = openDocumentForExport(liveView(store), { measurer, resourceTimeoutMs });
+  expect(opened.ok).toBe(true);
+  if (!opened.ok) return;
+  try {
+    await expect(opened.session.layout()).resolves.toBeDefined();
+    expect(slowed).toBe(true);
   } finally {
     opened.session.dispose();
   }

@@ -42,6 +42,11 @@ export {
   type DocxEditorAuthorStyleProps,
 } from './editor/DocxEditorAuthorStyle';
 export { useScopeClassName } from './editor/scope-context';
+export {
+  useEditorColorMode,
+  type ResolvedColorMode,
+  type UseEditorColorModeReturn,
+} from './editor/color-mode-context';
 export { LOADING_SNAPSHOT } from '@docx-editor.dev/core/editor';
 
 export { useEditorCommand, type EditorCommandState } from './editor/useEditorCommand';
@@ -217,6 +222,7 @@ export {
   ContextMenuInsertColumnRight,
   ContextMenuMergeCells,
   ContextMenuSplitCell,
+  ContextMenuSelectTable,
   ContextMenuInsertRowAbove,
   ContextMenuInsertRowBelow,
   ContextMenuRefreshToc,
@@ -415,6 +421,7 @@ export {
 
 export {
   LocaleProvider,
+  useChromeDir,
   useTranslation,
   type LocaleProviderProps,
   type TranslationKey,
@@ -453,6 +460,7 @@ export {
   composeFontConfiguration,
   composeFontOrigins,
   createFontSource,
+  deferFonts,
   defineFontResolver,
   isFontResolver,
   loadFonts,
@@ -647,6 +655,11 @@ export type {
   RevisionMarkupChromeHandlers,
 } from '@docx-editor.dev/core/editor';
 
+export type {
+  DrawingGraphicKind,
+  DrawingSupport,
+  DrawingSupportIssue,
+} from '@docx-editor.dev/core/store';
 export type {
   UnsupportedElement,
   UnsupportedElementLayout,

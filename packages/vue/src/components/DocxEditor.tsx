@@ -21,19 +21,15 @@ import {
   computed,
   defineComponent,
   h,
-  onMounted,
-  onUnmounted,
   provide,
-  ref,
   shallowRef,
-  watch,
   type CSSProperties,
   type PropType,
   type VNode,
 } from 'vue';
 import type { TranslationKey } from '../i18n';
-import { LocaleProvider, useTranslation } from '../i18n';
-import { prefersColorSchemeDark, resolveIsDark, subscribeSystemDark } from '../lib/colorMode';
+import { LocaleProvider, useChromeDir, useTranslation } from '../i18n';
+import { useResolvedDark } from '../editor/color-mode-context';
 import { DocxEditorRoot } from '../editor/DocxEditorRoot';
 import { DocxEditorViewport } from '../editor/DocxEditorViewport';
 import { DocxEditorContent } from '../editor/DocxEditorContent';
@@ -79,6 +75,7 @@ import type { DocxEditorContextMenuProps } from '../editor/contextmenu';
 import type { DocxEditorMenuProps } from '../editor/menu';
 import type { DocxEditorProps, DocxEditorRef } from '../types';
 import { createDocxEditorRefApi } from './DocxEditor/useDocxEditorRefApi';
+import type { TableInteractionLabelKey } from '@docx-editor.dev/core/contracts/editor';
 
 const CONTAINER_STYLE: CSSProperties = {
   display: 'flex',
@@ -115,7 +112,8 @@ const RULER_ROW_STYLE: CSSProperties = {
 const VERTICAL_RULER_STYLE: CSSProperties = {
   position: 'absolute',
   top: '40px',
-  left: 0,
+  // The inline start of the wrapper's own `dir`: the right edge in a right-to-left interface.
+  insetInlineStart: 0,
   zIndex: 10,
   pointerEvents: 'none',
 };
@@ -357,33 +355,12 @@ const DocxEditorFrame = defineComponent({
     const contextMenu = computed(() => props.contextMenu ?? true);
     const hyperlinkPopup = computed(() => props.hyperlinkPopup ?? true);
 
-    const systemDark = ref(prefersColorSchemeDark());
-    let unsubscribeDark: (() => void) | undefined;
-    onMounted(() => {
-      if (props.colorMode === 'system') {
-        unsubscribeDark = subscribeSystemDark((dark) => {
-          systemDark.value = dark;
-        });
-      }
-    });
-    onUnmounted(() => unsubscribeDark?.());
-
-    watch(
-      () => props.colorMode,
-      (mode, _, onCleanup) => {
-        unsubscribeDark?.();
-        unsubscribeDark = undefined;
-        if (mode === 'system') {
-          unsubscribeDark = subscribeSystemDark((dark) => {
-            systemDark.value = dark;
-          });
-          onCleanup(() => unsubscribeDark?.());
-        }
-      }
-    );
-
-    const isDark = computed(() => resolveIsDark(props.colorMode, systemDark.value));
+    // Chrome colour mode: 'system' subscribes to the OS setting. The same rule `Root`
+    // applies, which this also hands the mode to for the parts that scope themselves.
+    const isDark = useResolvedDark(() => props.colorMode);
     const translation = useTranslation();
+    // The chrome direction a provider decided; nothing keeps the host page direction.
+    const chromeDir = useChromeDir();
     const translate = computed(() => {
       const custom = props.t;
       const catalogT = translation.t;
@@ -391,8 +368,7 @@ const DocxEditorFrame = defineComponent({
         custom ? custom(key, params) : catalogT(key as TranslationKey, params);
     });
 
-    const tableInteractionLabel = (key: 'table.insertRowBelow' | 'table.insertColumnRight') =>
-      translate.value(key);
+    const tableInteractionLabel = (key: TableInteractionLabelKey) => translate.value(key);
 
     provide(PageNumberTranslationContext, (key) => translate.value(key));
 
@@ -441,7 +417,14 @@ const DocxEditorFrame = defineComponent({
             chrome.value ? h(DocxEditorNotesChrome) : null,
             h(DocxEditorContent),
             rulers.value && chrome.value
-              ? h('div', { style: VERTICAL_RULER_STYLE }, [h(DocxEditorVerticalRuler)])
+              ? h(
+                  'div',
+                  {
+                    style: VERTICAL_RULER_STYLE,
+                    dir: chromeDir.value,
+                  },
+                  [h(DocxEditorVerticalRuler)]
+                )
               : null,
             slots.default?.(),
           ],
@@ -456,6 +439,9 @@ const DocxEditorFrame = defineComponent({
             {
               class: `docx-editor${isDark.value ? ' dark' : ''}${props.class ? ` ${props.class}` : ''}`,
               style: CONTAINER_STYLE,
+              // A right-to-left catalog mirrors the chrome. Otherwise the chrome inherits the
+              // host page direction; the viewport keeps a left-to-right base either way.
+              dir: chromeDir.value,
             },
             [
               h('div', { style: CHROME_BAND_STYLE }, [
@@ -529,6 +515,9 @@ const DocxEditorFrame = defineComponent({
           ...(props.locale !== undefined ? { locale: props.locale } : {}),
           popups: createPackagedPopups(props.popups, hyperlinkPopup.value, contextMenu.value, t),
           translate: t,
+          // Resolved once, here: Root takes the answer, so the OS setting has one subscriber.
+          // Only with chrome: `chrome={false}` has never themed its bare viewport.
+          ...(chrome.value ? { colorMode: isDark.value ? 'dark' : 'light' } : {}),
           ...(props.mode !== undefined ? { mode: props.mode } : { mode: 'edit' }),
           ...(props.modules !== undefined ? { modules: props.modules } : {}),
           ...(props.zoom !== undefined ? { zoom: props.zoom } : {}),

@@ -22,7 +22,11 @@
 // a bounded share of what is left rather than zero, and no fit may scale a table below one
 // point per column — a zero-width column is unrecoverable downstream.
 
-import { readTwipsMeasure, type OoxmlElement } from '@docx-editor.dev/core/store';
+import {
+  readTwipsMeasure,
+  WML_NAMESPACE_URI,
+  type OoxmlElement,
+} from '@docx-editor.dev/core/store';
 import { MAX_TABLE_COLUMNS } from '../store/store/table-constraints.ts';
 
 export { MAX_TABLE_COLUMNS };
@@ -82,13 +86,20 @@ const UNITLESS = /^[+-]?\d{0,9}(?:\.\d{0,32})?$/;
 
 function childNamed(node: OoxmlElement, localName: string): OoxmlElement | undefined {
   for (const child of node.children) {
-    if (child.kind !== 'textValue' && child.localName === localName) return child;
+    if (
+      child.kind !== 'textValue' &&
+      child.namespaceUri === WML_NAMESPACE_URI &&
+      child.localName === localName
+    )
+      return child;
   }
   return undefined;
 }
 
 function attributeValue(node: OoxmlElement, localName: string): string | undefined {
-  return node.attributes.find((attribute) => attribute.localName === localName)?.value;
+  return node.attributes.find(
+    (attribute) => attribute.namespaceUri === WML_NAMESPACE_URI && attribute.localName === localName
+  )?.value;
 }
 
 /**
@@ -130,7 +141,7 @@ function readMeasurementOrPercent(
  * states contradict each other, the measurement wins and the type is ignored.
  */
 export function readPreferredWidth(node: OoxmlElement | undefined, table = false): PreferredWidth {
-  if (!node) return AUTO_PREFERRED_WIDTH;
+  if (!node || node.namespaceUri !== WML_NAMESPACE_URI) return AUTO_PREFERRED_WIDTH;
   const rawType = attributeValue(node, 'type');
   if (rawType !== undefined && rawType !== 'pct' && rawType !== 'dxa') {
     return rawType === 'nil' ? { type: 'nil', value: 0 } : AUTO_PREFERRED_WIDTH;
@@ -202,7 +213,7 @@ export function readTableIndentPt(
   node: OoxmlElement | undefined,
   limit: number
 ): number | undefined {
-  if (!node) return undefined;
+  if (!node || node.namespaceUri !== WML_NAMESPACE_URI) return undefined;
   const type = attributeValue(node, 'type');
   if (type !== undefined && type !== 'dxa' && type !== 'pct') return undefined;
   const raw = attributeValue(node, 'w');
@@ -221,7 +232,11 @@ export function gridColumnElements(table: OoxmlElement): readonly OoxmlElement[]
   if (!grid) return [];
   const cols: OoxmlElement[] = [];
   for (const child of grid.children) {
-    if (child.kind !== 'textValue' && child.localName === 'gridCol') {
+    if (
+      child.kind !== 'textValue' &&
+      child.namespaceUri === WML_NAMESPACE_URI &&
+      child.localName === 'gridCol'
+    ) {
       cols.push(child);
       if (cols.length >= MAX_TABLE_COLUMNS) break;
     }
@@ -325,7 +340,9 @@ function applyWidthClaims(
   seed: readonly (number | undefined)[],
   claims: readonly CellWidthClaim[],
   columnCount: number,
-  tableWidthPt: number
+  tableWidthPt: number,
+  /** What a `pct` cell width is a share of when the table states no width of its own. */
+  percentBasisPt = tableWidthPt
 ): (number | undefined)[] {
   // A stated total is what makes the authored grid a settled layout rather than a seed.
   const gridIsSettled = tableWidthPt > 0;
@@ -338,17 +355,20 @@ function applyWidthClaims(
     .filter(
       (claim) =>
         claim.start < columnCount &&
-        (claim.preferred.type === 'dxa' || (claim.preferred.type === 'pct' && tableWidthPt > 0))
+        (claim.preferred.type === 'dxa' || (claim.preferred.type === 'pct' && percentBasisPt > 0))
     )
     .sort((a, b) => a.span - b.span);
 
+  const textShares = new Set<number>();
   for (const claim of ordered) {
     const last = Math.min(claim.start + claim.span, columnCount);
     if (last <= claim.start) continue;
-    // 17.4.71: a `pct` cell width is relative to the overall width of the TABLE.
+    // 17.4.71: a `pct` cell width is relative to the overall width of the TABLE. A table
+    // that states no width of its own takes the text column as that width (8/92 and 25/75
+    // splits of an automatic-width table measured against the text column).
     const stated =
       claim.preferred.type === 'pct'
-        ? (tableWidthPt * claim.preferred.value) / 100
+        ? (percentBasisPt * claim.preferred.value) / 100
         : claim.preferred.value;
     if (!Number.isFinite(stated) || stated <= 0) continue;
 
@@ -357,7 +377,12 @@ function applyWidthClaims(
       // not get to restate a column an already-reconciled grid settled.
       if (gridIsSettled && claim.preferred.type === 'dxa' && seed[claim.start] !== undefined)
         continue;
-      const current = settled[claim.start];
+      // A share of the text column replaces the initial grid of a table with no width.
+      const current =
+        claim.preferred.type === 'pct' && tableWidthPt <= 0 && !textShares.has(claim.start)
+          ? undefined
+          : settled[claim.start];
+      if (claim.preferred.type === 'pct') textShares.add(claim.start);
       settled[claim.start] = current === undefined ? stated : Math.max(current, stated);
       continue;
     }
@@ -392,9 +417,10 @@ function applyWidthClaims(
  * The AutoFit content-growth limit does not shrink an already-authored wider table.
  *
  * A `pct` table width is a two-way instruction — it is Word's "AutoFit to Window", so a
- * table narrower than its stated percentage is stretched up to it as well as shrunk down.
- * An absolute or absent width only ever shrinks: a narrow autofit table is already showing
- * what Word shows, and stretching it would invent geometry no one authored.
+ * table narrower than its stated percentage is stretched up to it as well as shrunk down, and
+ * so is one whose absolute width is past the text column (`pastTextColumn`). Any other
+ * absolute or absent width only ever shrinks: a narrow autofit table already shows its
+ * authored geometry, and stretching it would invent geometry no one authored.
  */
 export function resolveColumnWidthsPt(input: {
   readonly gridCols: readonly OoxmlElement[];
@@ -404,6 +430,11 @@ export function resolveColumnWidthsPt(input: {
   readonly tableWidth: PreferredWidth;
   readonly layoutFixed: boolean;
   readonly hasOmittedRows?: boolean;
+  /**
+   * A top-level autofit table whose absolute width is wider than the text column: it is laid
+   * out at that width, so a narrower grid stretches up to it like a percentage.
+   */
+  readonly pastTextColumn?: boolean;
 }): readonly number[] {
   const { columnCount, tableWidth } = input;
   // A caller with a degenerate or non-finite content box has told us nothing about the page.
@@ -427,7 +458,13 @@ export function resolveColumnWidthsPt(input: {
     input.layoutFixed && !input.hasOmittedRows && statedTableWidth <= 0
       ? fixedCellWidthSeed(grid, input.claims)
       : grid;
-  const settled = applyWidthClaims(seed, input.claims, columnCount, statedTableWidth);
+  const settled = applyWidthClaims(
+    seed,
+    input.claims,
+    columnCount,
+    statedTableWidth,
+    statedTableWidth > 0 ? statedTableWidth : hasPage && !input.layoutFixed ? available : 0
+  );
 
   let stated = 0;
   let unsettled = 0;
@@ -466,10 +503,54 @@ export function resolveColumnWidthsPt(input: {
     floor
   );
 
-  // Only a `pct` table width stretches a narrow table up to its target.
-  const stretches = tableWidth.type === 'pct' && statedTableWidth > 0;
+  // Only a `pct` table width, or one past the text column, stretches a narrow table up to it.
+  const stretches =
+    (tableWidth.type === 'pct' || input.pastTextColumn === true) && statedTableWidth > 0;
   if (total <= target + WIDTH_EPSILON_PT && !stretches) return resolved;
   if (Math.abs(total - target) <= WIDTH_EPSILON_PT) return resolved;
   const scale = target / total;
   return resolved.map((width) => width * scale);
 }
+
+/**
+ * Whether a table's absolute width is wider than the text column it sits in. Such a top-level
+ * autofit table is laid out at its own width, past the column: a narrower grid stretches up to
+ * it, and a column whose content needs more than its share widens the table rather than
+ * breaking its words, even past the page edge. A table no wider than the column fits its
+ * minimums into the column.
+ *
+ * Measured in a 451.3pt column with a 489.7pt grid, compatibility mode 15 and legacy alike:
+ * `w:tblW` 500pt and 700pt stretch the grid to 500pt and 700pt; `w:noWrap` cells holding
+ * 598.5pt keep it under a 500pt or 563pt width; a table only 10.8pt wider than the column
+ * grows past the page to hold a long URL (also with a negative indent), and a table exactly as
+ * wide as the column breaks it; a 450pt table fits everything into the column. In a 207pt
+ * section column, a 300pt table stretches a 150pt grid to 300pt. Right-aligned and centered
+ * 500pt tables keep their alignment (into the left margin). A floating table follows the same
+ * rule; the indent does not count. Header, footer and note tables measure against their own
+ * text column. Nested and text-box tables, whose container is not a text column, keep the
+ * column rule, as do fixed-layout tables and percentage widths, for want of evidence.
+ */
+export function tableWidthPastTextColumn(table: {
+  readonly tableWidth: PreferredWidth;
+  readonly textColumnPt: number;
+  readonly layoutFixed: boolean;
+  readonly depth: number;
+  readonly textBox?: boolean;
+}): boolean {
+  const { tableWidth, textColumnPt } = table;
+  return (
+    !table.layoutFixed &&
+    table.depth === 0 &&
+    !table.textBox &&
+    tableWidth.type === 'dxa' &&
+    Number.isFinite(textColumnPt) &&
+    textColumnPt > 0 &&
+    tableWidth.value > textColumnPt + WIDTH_EPSILON_PT
+  );
+}
+
+/**
+ * The widest a table past its text column grows to hold its minimums: ~22", the widest page a
+ * document can declare, the same bound a grid column has. Content that needs more breaks.
+ */
+export const MAX_TABLE_GROWTH_PT = MAX_COLUMN_WIDTH_PT;

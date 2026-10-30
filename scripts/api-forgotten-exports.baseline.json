@@ -213,8 +213,7 @@
       "ValidatedRasterHeader",
       "ViewScope",
       "Watermark",
-      "ZoomMode",
-      "sameIds"
+      "ZoomMode"
     ],
     "export": [
       "AnchoredDrawingRecord",
@@ -318,6 +317,7 @@
       "SemanticLayout"
     ],
     "store": [
+      "AffineMatrix",
       "ApplyImagePropertiesInput",
       "AutomationTableMutation",
       "ContentControlContentLike",
@@ -329,12 +329,17 @@
       "DrawingProjectionLimits",
       "DrawingVerticalReferenceFrame",
       "EnsuredListDefinition",
+      "EvaluatedPath",
       "ExternalImageFetchPort",
+      "GeometryGuide",
+      "GeometryPath",
+      "GradientStop",
       "HistoryCaptureReason",
       "HistoryEntry",
       "ImageIntentResult",
       "InsertImageInput",
       "InsertableContentControlKind",
+      "LegacyTextboxShadow",
       "NextNodeId",
       "NoteCascadeFn",
       "OoxmlAnchoredDrawingNode",
@@ -391,11 +396,11 @@
       "RevisionAuthorPlan",
       "RevisionSite",
       "SetFieldCodeOp",
-      "ShapeSchemeColorResolver",
       "ShapeStyleMatrixResolver",
       "SiteLocation",
       "TableBorderEdgeTarget",
       "TableBorderSpecInput",
+      "TextboxLegacyFrame",
       "TocSymbol",
       "TreeDocColorValue",
       "TreeDocumentCheckpoint",
@@ -405,6 +410,9 @@
     ]
   },
   "@docx-editor.dev/i18n": {
+    "ar": [
+      "PartialLocaleStrings"
+    ],
     "de": [
       "PartialLocaleStrings"
     ],

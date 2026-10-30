@@ -11,6 +11,7 @@ import { DocxEditorContent } from '../src/editor/DocxEditorContent.tsx';
 import { DocxEditorPageNumber } from '../src/editor/DocxEditorPageNumber.tsx';
 import { DocxEditorRoot } from '../src/editor/DocxEditorRoot.tsx';
 import { DocxEditorViewport } from '../src/editor/DocxEditorViewport.tsx';
+import { useEditorState } from '../src/editor/useEditorState.ts';
 import {
   InsideViewportContext,
   useViewportOverlayHost,
@@ -44,8 +45,11 @@ const THREE_PAGES = docx(
   paragraph('one') + pageBreak + paragraph('two') + pageBreak + paragraph('three')
 );
 
-/** Three pages past the open-yield threshold, through an ordinary filler part. */
-function largeThreePages(): Uint8Array {
+/**
+ * A document with `body` that is past the open-yield threshold through an ordinary filler part,
+ * so the open lays out in slices without laying out hundreds of pages.
+ */
+function pastOpenThreshold(body: string): Uint8Array {
   const lines: string[] = [];
   for (let line = 1, total = 0; total < 700 * 1024; line += 1) {
     const text = `<l>filler line ${line} carrying a little ordinary sentence text.</l>`;
@@ -62,10 +66,38 @@ function largeThreePages(): Uint8Array {
       `<Relationships xmlns="${REL}"><Relationship Id="rId1" Type="${OD}" Target="word/document.xml"/></Relationships>`
     ),
     'word/document.xml': strToU8(
-      `<w:document xmlns:w="${W}"><w:body>${paragraph('one') + pageBreak + paragraph('two') + pageBreak + paragraph('three')}</w:body></w:document>`
+      `<w:document xmlns:w="${W}"><w:body>${body}</w:body></w:document>`
     ),
     'customXml/item1.xml': strToU8(`<filler>${lines.join('')}</filler>`),
   });
+}
+
+/** Three pages past the open-yield threshold. */
+function largeThreePages(): Uint8Array {
+  return pastOpenThreshold(
+    paragraph('one') + pageBreak + paragraph('two') + pageBreak + paragraph('three')
+  );
+}
+
+/**
+ * Pages of real text past the open-yield threshold, so the open lays out in slices. The body is
+ * well past the blocks a sliced open lays out at mount, and small enough to finish quickly on a
+ * slow runner.
+ */
+function manyPages(): Uint8Array {
+  const body: string[] = [];
+  for (let index = 0; index < 600; index += 1) {
+    body.push(paragraph(`Paragraph ${index} of a long document with ordinary sentence text.`));
+  }
+  return pastOpenThreshold(body.join(''));
+}
+
+/** Every total a page counter renders, from the published page total. */
+const rendered: number[] = [];
+function PageTotal() {
+  const total = useEditorState((snapshot) => snapshot.page.total);
+  rendered.push(total);
+  return <span data-testid="page-total">{total}</span>;
 }
 
 afterEach(cleanup);
@@ -263,4 +295,37 @@ describe('DocxEditor.PageNumber', () => {
       expect(view.container.querySelector('.docx-editor__page-number')).not.toBeNull()
     );
   });
+
+  test('a counter shows the final page total once the last page is laid out', async () => {
+    rendered.length = 0;
+    // The open ends at the mount with a partial layout. The pages laid out after it move no
+    // revision and no caret; the counter must still hear the final total.
+    let editor: (Editor & { surface: object | null }) | null = null;
+    const view = render(
+      <DocxEditorRoot
+        document={manyPages()}
+        onReady={(ready) => {
+          editor = ready as typeof editor;
+        }}
+      >
+        <DocxEditorViewport>
+          <DocxEditorContent />
+        </DocxEditorViewport>
+        <PageTotal />
+      </DocxEditorRoot>
+    );
+    await waitFor(
+      () => {
+        const opening = view.container.querySelector('[data-docx-opening-preview]') !== null;
+        // `snapshot()` reads the live total without forcing the remaining pages.
+        const final = editor!.snapshot().page.total;
+        expect(editor?.surface).toBeTruthy();
+        expect(opening).toBe(false);
+        expect(rendered.at(-1)).toBe(final);
+      },
+      { timeout: 20_000 }
+    );
+    // The first total rendered with a document mounted is the partial one.
+    expect(rendered.find((total) => total > 0)).toBeLessThan(editor!.snapshot().page.total);
+  }, 60_000);
 });

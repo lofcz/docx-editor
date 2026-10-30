@@ -161,7 +161,6 @@ export interface CollaborationDocumentPort {
     hasPendingJournals(): boolean;
     readonly interactive?: boolean;
     observePrimitiveJournal(listener: (journal: CanonicalPrimitiveJournal) => void): () => void;
-    // (undocumented)
     paragraphByNodeId(nodeId: string): CollaborationParagraph | null;
     paragraphByStableId(paragraphId: string): CollaborationParagraph | null;
     // (undocumented)

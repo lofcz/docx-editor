@@ -1,4 +1,4 @@
-// Opt-in OOXML punctuation/kana compression and hanging punctuation. All advances
+// Opt-in OOXML punctuation compression and hanging punctuation. All advances
 // are measured here and travel in layout records to browser paint and exporters.
 import type { FieldAwarePiece } from './field-projection.ts';
 import { formatRevisionOf } from './revision-projection.ts';
@@ -6,7 +6,12 @@ import { segmentGraphemes } from './grapheme.ts';
 import { measureDisplayText, type ResolvedRunStyle } from './run-style.ts';
 import { styleForFontSlot } from './script-itemization.ts';
 import type { StyleSpanRecord, TextMeasurer } from './semantic-records.ts';
-import { eastAsianLanguage, type CjkParagraphTypography } from './cjk-typography.ts';
+import {
+  eastAsianLanguage,
+  kinsokuCharacters,
+  koreanFinalMarkHangs,
+  type CjkParagraphTypography,
+} from './cjk-typography.ts';
 import { withLayoutDerivedSpacing } from './layout-derived-spacing.ts';
 import { isRunKerningEnabled } from './run-kerning.ts';
 
@@ -16,7 +21,6 @@ const FULLWIDTH_PUNCTUATION =
 // seam rule because its ink can be centred, depending on the face and locale.
 const OPENING = /^[〈《「『【〔〖〘〚（［｛]$/u;
 const CLOSING = /^[、。〉》」』】〕〗〙〛），．］｝]$/u;
-const KANA = /^[\u3041-\u3096\u30a1-\u30fa][\u3099\u309a]?$/u;
 
 /** A colon cannot borrow an opening bearing across a line or exclusion passage. */
 export function colonLostOpeningBearing(lines: LineSpans): boolean {
@@ -119,7 +123,6 @@ interface CompressionSlice {
 
 function compressionSlices(
   pieces: readonly FieldAwarePiece[],
-  includeKana: boolean,
   includePunctuation: boolean,
   measurer: TextMeasurer,
   { preserveColonAdvances, keepRightBearings }: LineLocalAdvances
@@ -189,8 +192,7 @@ function compressionSlices(
           !preserveColonAdvances &&
           !base.style.highlight &&
           !base.style.shading));
-    const fraction =
-      trimLeft || trimRight ? 0.5 : includeKana && KANA.test(cluster.text) ? 0.125 : 0;
+    const fraction = trimLeft || trimRight ? 0.5 : 0;
     if (!fraction) continue;
     // Measure the complete cluster with its base character's font. Apply the
     // same per-unit reduction to every fragment, including split combining marks.
@@ -275,28 +277,14 @@ export function compressCjkPieces(
   pieces: readonly FieldAwarePiece[],
   policy: CjkParagraphTypography,
   measurer: TextMeasurer,
-  advances: LineLocalAdvances = SHARED_BEARINGS,
-  available?: number
+  advances: LineLocalAdvances = SHARED_BEARINGS
 ): readonly FieldAwarePiece[] {
-  const compression = policy.settings?.compression;
   const punctuation =
     policy.settings?.punctuationKerning !== false && policy.settings?.sourceEastAsianFont === true;
-  const kana =
-    compression === 'compressPunctuationAndJapaneseKana' &&
-    (available === undefined ||
-      (Number.isFinite(available) &&
-        available > 0 &&
-        pieces.reduce(
-          (sum, piece) =>
-            sum +
-            measureDisplayText(piece.text, styleForFontSlot(piece.style, piece.fontSlot), measurer),
-          0
-        ) >
-          available + 0.001));
-  if (!punctuation && !kana) return pieces;
+  if (!punctuation) return pieces;
   const result: FieldAwarePiece[] = [];
   const derived = new WeakMap<ResolvedRunStyle, Map<number, ResolvedRunStyle>>();
-  const slices = compressionSlices(pieces, kana, punctuation, measurer, advances);
+  const slices = compressionSlices(pieces, punctuation, measurer, advances);
   for (const piece of pieces) {
     const compressedSlices = slices.get(piece);
     if (!compressedSlices) {
@@ -342,20 +330,75 @@ export function compressCjkPieces(
   return result;
 }
 
+/**
+ * Line-end marks that stay inside the measure in Japanese text. They wrap with the character
+ * before them instead of hanging.
+ */
+const JAPANESE_NON_HANGING = '〕》〉！？：；・!?:;)]}％°';
+/** Closing and other punctuation, and the degree sign, which Chinese text also hangs. */
+const HANGING_CLASS = /^[\p{Pe}\p{Pf}\p{Po}°]$/u;
+/** The half-width ideographic comma cannot start a Traditional Chinese line, and never hangs. */
+const TRADITIONAL_CHINESE_NON_HANGING = '､';
+
+/**
+ * Whether the paragraph's line-start rules let `mark` hang. The list is the custom or default
+ * one for the run language. A paragraph that turns kinsoku off hangs only half-width marks,
+ * except in a legacy compatibility mode, whose hanging ignores the switch. Without a run
+ * language the list is unknown, and only the switch counts.
+ */
+function lineStartForbids(
+  mark: string,
+  language: string | undefined,
+  policy: CjkParagraphTypography
+): boolean {
+  if (!policy.kinsoku && policy.settings?.legacyLineEndPunctuation !== true)
+    return !FULLWIDTH_PUNCTUATION.test(mark);
+  return (
+    language === undefined || kinsokuCharacters(language, policy.settings).before.includes(mark)
+  );
+}
+
+/** How {@link hangingCjkPunctuationAdvance} decides a line-end mark. */
+export interface HangingMarkOptions {
+  /**
+   * Only whitespace follows the text in its paragraph. Korean text hangs a mark other than
+   * `。` or `、` only there.
+   */
+  readonly paragraphFinal?: boolean;
+  /**
+   * The paragraph typography. With it, a mark hangs only when the line-start rules forbid it
+   * at a line start; otherwise it starts the next line.
+   */
+  readonly policy?: CjkParagraphTypography;
+}
+
 /** The advance of the final mark that may hang past the margin, or undefined when none may. */
 export function hangingCjkPunctuationAdvance(
   text: string,
   piece: FieldAwarePiece,
-  measurer: TextMeasurer
+  measurer: TextMeasurer,
+  { paragraphFinal = false, policy }: HangingMarkOptions = {}
 ): number | undefined {
   if (piece.projected || piece.measureText !== undefined) return undefined;
   // Callers check the paragraph's hanging policy first. Ordinary Latin words/spaces must not
   // allocate a grapheme array on every placement candidate just to discover no punctuation.
   const tail = text[text.length - 1];
-  if (!tail || !/^[\p{Pe}\p{Pf}\p{Po}]$/u.test(tail)) return undefined;
-  if (!FULLWIDTH_PUNCTUATION.test(tail) && !eastAsianLanguage(piece.props)) return undefined;
+  if (!tail || !HANGING_CLASS.test(tail)) return undefined;
+  const language = eastAsianLanguage(piece.props);
+  if (
+    language?.startsWith('ko') &&
+    (!paragraphFinal || '。、'.includes(tail) || !koreanFinalMarkHangs(policy?.settings))
+  )
+    return undefined;
+  if (language?.startsWith('ja') && JAPANESE_NON_HANGING.includes(tail)) return undefined;
+  // Simplified Chinese keeps a full-width full stop inside the measure; Traditional hangs it.
+  if (/^zh-cn$/i.test(language ?? '') && tail === '．') return undefined;
+  if (/^zh-(tw|hk|mo|hant)(-|$)/.test(language ?? '') && TRADITIONAL_CHINESE_NON_HANGING === tail)
+    return undefined;
+  if (policy && !lineStartForbids(tail, language, policy)) return undefined;
+  if (!FULLWIDTH_PUNCTUATION.test(tail) && !language) return undefined;
   const last = segmentGraphemes(text).at(-1)?.text;
-  if (!last || !/^[\p{Pe}\p{Pf}\p{Po}]$/u.test(last)) return undefined;
+  if (!last || !HANGING_CLASS.test(last)) return undefined;
   return measureDisplayText(last, styleForFontSlot(piece.style, piece.fontSlot), measurer);
 }
 
@@ -369,7 +412,12 @@ export function canHangCjkPunctuation(
   piece: FieldAwarePiece,
   remaining: number,
   width: number,
-  measurer: TextMeasurer
+  measurer: TextMeasurer,
+  options: HangingMarkOptions = {}
 ): boolean {
-  return hangsWithin(hangingCjkPunctuationAdvance(text, piece, measurer), remaining, width);
+  return hangsWithin(
+    hangingCjkPunctuationAdvance(text, piece, measurer, options),
+    remaining,
+    width
+  );
 }

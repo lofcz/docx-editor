@@ -12,6 +12,10 @@ export const DISABLED_REASON_KEYS: Readonly<Record<string, TranslationKey>> = Ob
   'editor is not ready': 'disabledReason.editorNotReady',
   // Keyed on `LOCKED_FORMAT_REASON` in the engine's content-lock admission.
   'this content is locked': 'disabledReason.contentLocked',
+  // Keyed on `LOCKED_PARAGRAPH_FORMAT_REASON` in the engine's
+  // `paragraph-format-lock-refusal.ts`; the sentences must stay the same.
+  'this content is locked; only alignment, indents, spacing, and line and page breaks can change':
+    'disabledReason.lockedParagraphFormat',
   'not wired to an editor command': 'disabledReason.notWired',
   'this document was opened for viewing': 'disabledReason.viewing',
   'the document is open for viewing': 'disabledReason.viewing',
@@ -34,7 +38,17 @@ export const DISABLED_REASON_KEYS: Readonly<Record<string, TranslationKey>> = Ob
   'a comment needs a selected range': 'disabledReason.commentSelection',
   // Keyed on `NO_COMMENT_DRAFT_VIEW` in the engine's comment draft chrome.
   'no comment draft view is registered': 'disabledReason.noCommentDraftView',
+  // Keyed on `NO_LINK_VIEW` in the engine's link chrome.
+  'no link view is registered': 'disabledReason.noLinkView',
+  'no Go To view is registered': 'disabledReason.noGoToView',
+  'no bookmark dialog is registered': 'disabledReason.noBookmarkDialog',
+  'nothing to undo': 'disabledReason.nothingToUndo',
+  'nothing to redo': 'disabledReason.nothingToRedo',
+  'the selection is already at the outermost level': 'disabledReason.outermostLevel',
+  'the selection cannot indent any further': 'disabledReason.cannotIndentFurther',
   // Sentences earlier releases gave; hosts that override their keys keep working.
+  // Earlier releases refused paragraph formatting inside a data-bound control with this one.
+  'this content is bound to data and cannot change': 'disabledReason.boundParagraphFormat',
   'cell merge is not supported yet': 'disabledReason.mergeUnsupported',
   'cell split is not supported yet': 'disabledReason.splitUnsupported',
   // Keyed on the cell merge and split refusals in the engine's `table-cell-structure-plan.ts`
@@ -51,6 +65,16 @@ export const DISABLED_REASON_KEYS: Readonly<Record<string, TranslationKey>> = Ob
   'the cells have a tracked change; accept or reject it first': 'disabledReason.cellHasRevision',
   'suggesting cannot merge or split cells; stop suggesting to change the table structure':
     'disabledReason.cellStructureSuggesting',
+  // Keyed on `SUGGESTING_TABLE_DELETE_REFUSAL` and `SUGGESTING_TABLE_MOVE_REFUSAL` in the
+  // engine's `surface-suggesting-structure.ts`; the sentences must stay the same.
+  'suggesting cannot delete a whole table; stop suggesting to delete it, or delete its rows one at a time':
+    'disabledReason.tableDeleteSuggesting',
+  'suggesting cannot move a table; stop suggesting to move it':
+    'disabledReason.tableMoveSuggesting',
+  // Keyed on the `selectTableRegion` refusals in the engine's `table-select-plan.ts` and
+  // `docx-editor-support.ts`, which name the region they refuse.
+  'selecting a table row is not supported yet': 'disabledReason.selectTableRowUnsupported',
+  'selecting a table column is not supported yet': 'disabledReason.selectTableColumnUnsupported',
   'this table uses a legacy horizontal merge the editor cannot change':
     'disabledReason.legacyMerge',
   'this table has a cell the editor cannot place in the grid':
@@ -59,12 +83,21 @@ export const DISABLED_REASON_KEYS: Readonly<Record<string, TranslationKey>> = Ob
   // Keyed on the equation lane's `can` refusals, which the equation popover shows.
   'compact linear editing cannot preserve this equation source formatting':
     'disabledReason.equationSourceFormatting',
+  // Keyed on `NO_LINEAR_FORM_EQUATION_REFUSAL` in the engine's equation lane.
+  'compact linear text cannot spell this equation': 'disabledReason.equationNoLinearForm',
   'equation replacement is not supported in suggesting mode': 'disabledReason.equationSuggesting',
   'in suggesting mode, remove the whole equation block rather than one equation':
     'disabledReason.equationSuggestingDisplay',
   // Keyed on `PICTURE_SELECTED_INSERT_REASON` in the engine's image lane.
   'a picture is selected; place the caret in text to insert a picture':
     'disabledReason.pictureSelected',
+  // Keyed on `CHART_DRAWING_REASON` in the engine's image lane (`image-state-rules.ts`).
+  'this drawing is a chart; only delete applies, and it removes the whole chart':
+    'disabledReason.chartDrawing',
+  // Keyed on `CHART_CLIPBOARD_REASON` in the engine's clipboard lane
+  // (`clipboard-object-selection.ts`).
+  'the selection contains a chart; a chart cannot be copied, cut or pasted':
+    'disabledReason.chartClipboard',
   'invalid table chrome value': 'disabledReason.invalidValue',
   'invalid value for toolbar command': 'disabledReason.invalidValue',
   'unsupported table command': 'disabledReason.unavailable',

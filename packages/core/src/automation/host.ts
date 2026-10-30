@@ -66,9 +66,12 @@ function automationError(
 
 /** Map a store story-transaction refusal onto the protocol code a caller can handle. */
 function storeTransactionError(reason: string): AutomationError {
+  // `edit.tracked-structure-unsupported` is the public code of a browser surface refusal: a
+  // suggesting-mode edit, such as deleting a whole table, that has no tracked form.
   if (
     reason === 'review-module-required' ||
-    reason === 'automation-structural-tracking-unsupported'
+    reason === 'automation-structural-tracking-unsupported' ||
+    reason === 'edit.tracked-structure-unsupported'
   )
     return automationError(
       'unsupported-capability',
@@ -264,7 +267,7 @@ export function createAutomationHost(composition: AutomationHostComposition): Au
         operation.op !== 'replaceSpan' &&
         (!supportsTrackedAutomationOperation(operation) ||
           (!stagedTracking.author &&
-            [
+            ([
               'insertContentControl',
               'insertField',
               'insertOoxml',
@@ -277,7 +280,10 @@ export function createAutomationHost(composition: AutomationHostComposition): Au
               'insertTableRows',
               'updateTable',
               'updateTableCell',
-            ].includes(operation.op)))
+              'splitParagraph',
+            ].includes(operation.op) ||
+              // Page and section breaks are tracked by the runtime author, never attributed.
+              (operation.op === 'insertBreak' && operation.breakType !== 'Line'))))
       )
         return refuse(
           operations,

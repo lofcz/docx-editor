@@ -24,6 +24,7 @@ import { normalizeFieldInstruction } from './field-instruction.ts';
 import { allowlistedPageField } from './field-instruction.ts';
 import { parseHyperlinkInstruction, type HyperlinkFieldSpec } from './field-link.ts';
 import { parseAutonumInstruction, type AutonumFieldSpec } from './field-autonum.ts';
+import { parseListNumInstruction, type ListNumFieldSpec } from './field-listnum.ts';
 import { parseRefInstruction, type RefFieldSpec } from './field-ref.ts';
 import { parseRefLinkInstruction } from './field-ref-link.ts';
 import { refSpecModifiersOf } from './field-ref-parse.ts';
@@ -56,6 +57,8 @@ export function parseFormFieldInstruction(raw: string): FormFieldKind | null {
  * the walk's vocabulary.
  */
 export interface CapturedInstructionSpecs {
+  /** ASK and SET store their result in a bookmark and display nothing where they stand. */
+  hidesResult?: boolean;
   characterStyleSpec?: CharacterStyleField | null;
   symbolSpec: SymbolFieldSpec | null;
   linkSpec: HyperlinkFieldSpec | null;
@@ -64,6 +67,8 @@ export interface CapturedInstructionSpecs {
   docPropertySpec: DocPropertyField | null;
   refSpec: RefFieldSpec | null;
   autonumSpec: AutonumFieldSpec | null;
+  /** Recognized LISTNUM instruction; its number comes from the story's list walk. */
+  listNumSpec?: ListNumFieldSpec | null;
 }
 
 /**
@@ -72,6 +77,7 @@ export interface CapturedInstructionSpecs {
  * mutually exclusive, so the first recognizer that hits wins and the rest stay null.
  */
 export function captureInstructionSpecs(pending: CapturedInstructionSpecs, raw: string): void {
+  pending.hidesResult = /^\s*(?:ASK|SET)(?:\s|$)/i.test(raw);
   pending.characterStyleSpec = parseCharacterStyleField(raw);
   pending.symbolSpec = parseSymbolInstruction(raw);
   if (pending.symbolSpec) return;
@@ -87,6 +93,8 @@ export function captureInstructionSpecs(pending: CapturedInstructionSpecs, raw: 
   pending.refSpec = parseRefInstruction(raw);
   if (pending.refSpec) return;
   pending.autonumSpec = parseAutonumInstruction(raw);
+  if (pending.autonumSpec) return;
+  pending.listNumSpec = parseListNumInstruction(raw);
 }
 
 /**
@@ -129,7 +137,7 @@ export function complexFieldInstructionMaySynthesizeGlyph(
     (options.allowRefFields &&
       specs.refSpec !== null &&
       (options.allowPageRef || !refSpecModifiersOf(specs.refSpec).pageRef)) ||
-    (options.allowAutonum && specs.autonumSpec !== null) ||
+    (options.allowAutonum && (specs.autonumSpec !== null || !!specs.listNumSpec)) ||
     (specs.formSpec !== null && options.hasLegacyFormData)
   );
 }
@@ -162,7 +170,7 @@ export function simpleFieldInstructionMaySynthesizeGlyph(
     (options.allowRefFields &&
       specs.refSpec !== null &&
       (options.allowPageRef || !refSpecModifiersOf(specs.refSpec).pageRef)) ||
-    (options.allowAutonum && specs.autonumSpec !== null)
+    (options.allowAutonum && (specs.autonumSpec !== null || !!specs.listNumSpec))
   );
 }
 

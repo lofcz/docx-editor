@@ -19,6 +19,8 @@ React and Vue use the same `insert.footnote` and `insert.endnote` chrome slots. 
 
 Select a note reference to enter its note scope. Text, lists, tables, content controls, pictures, fonts, comments, and bookmarks work inside that scope.
 
+Text typed after a body reference takes the formatting of the text before the reference, including deleted text in a suggestion and a run that holds only a tab. If no text comes before the reference, the typed text takes the formatting of the text after it. If the paragraph has no other text, it takes the paragraph mark's formatting. If the reference ends a hyperlink, the typed text goes after the link with no direct formatting. Typed text never inherits the reference style or superscript, and the toolbar shows the formatting that typing applies. The text stays outside the reference run, so deleting the note keeps that text. Explicit caret formatting still applies. This rule also applies in suggesting mode and through `Paragraph.insertText` in the Editing API.
+
 Comments need the review module and an EigenPal Pro License.
 
 Use `useNoteScopeState()` in React or Vue to read the active note scope.
@@ -38,6 +40,16 @@ The Editing API can enumerate, read, navigate, and delete notes. Use `document.f
 ## Placement and pagination
 
 The editor supports Word note positions such as page bottom, beneath text, section end, and document end.
+
+### Numbering and position
+
+Each section numbers its notes from its own note properties: the number format, start value, restart rule, and footnote position. If a section leaves a value unset, it uses the default. Footnotes use decimal numbers and endnotes use lowercase Roman numerals, both start at 1 and number continuously, and footnotes go at the page bottom. The document-wide note properties in `settings.xml` do not change numbering.
+
+The endnote position applies to the whole document. If you change it for one section, the change applies to every section.
+
+If you apply note properties to the whole document, the editor writes them to every section and to `settings.xml`. Values that you do not change keep their current values in each section.
+
+A note number is the start value of its section plus the position of the note in its numbering sequence. With continuous numbering, the sequence covers the whole document, so a section that starts at 10 after two earlier notes numbers its notes 12 and 13.
 
 ### References in body paragraphs
 

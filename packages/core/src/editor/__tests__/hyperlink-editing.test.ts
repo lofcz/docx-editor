@@ -51,7 +51,7 @@ function docx(body: string, rels = '', stylesXml = ''): Uint8Array {
   });
 }
 
-const p = (text: string) => `<w:p><w:r><w:t>${text}</w:t></w:r></w:p>`;
+const p = (text: string) => `<w:p><w:r><w:t xml:space="preserve">${text}</w:t></w:r></w:p>`;
 const PID = (index: number) => `/word/document.xml#0.0.${index}`;
 
 function nestedSmartTags(inner: string, count: number): string {
@@ -278,7 +278,7 @@ describe('editing a hyperlink through the editor', () => {
       const target = 'https://example.com/original';
       const hyperlink = '<w:hyperlink r:id="rId9"><w:r><w:t>Docs</w:t></w:r></w:hyperlink>';
       const mounted = mount(
-        `<w:p>${wrap(hyperlink)}<w:r><w:t> tail</w:t></w:r></w:p>`,
+        `<w:p>${wrap(hyperlink)}<w:r><w:t xml:space="preserve"> tail</w:t></w:r></w:p>`,
         `<Relationship Id="rId9" Type="${R}/hyperlink" Target="${target}" TargetMode="External"/>`
       );
       const before = mounted.editor.surface!.hyperlinks.linksInCaretParagraph()[0]!;
@@ -700,7 +700,7 @@ function complexField(instr: string, result = ''): string {
 describe('a field link at the caret', () => {
   // 'See ' is four characters; the HYPERLINK field's result projects as ONE atom over [4, 5).
   const FIELD_DOC =
-    '<w:p><w:r><w:t>See </w:t></w:r>' +
+    '<w:p><w:r><w:t xml:space="preserve">See </w:t></w:r>' +
     complexField(' HYPERLINK "https://example.com" ', '<w:r><w:t>site</w:t></w:r>') +
     '</w:p>';
 
@@ -738,5 +738,30 @@ describe('a field link at the caret', () => {
     const mounted = mount(p('plain text'));
     caret(mounted, 0, 3);
     expect(mounted.editor.surface!.hyperlinks.fieldLinkAtCaret()).toBeNull();
+  });
+});
+
+describe('whether a link target is a pending deletion', () => {
+  const DEL = 'w:author="Ada" w:date="2026-01-01T00:00:00Z"';
+  // "keep " + struck "GONE" by one author + struck "BYE" by another + " tail".
+  const STRUCK =
+    '<w:p><w:r><w:t xml:space="preserve">keep </w:t></w:r>' +
+    `<w:del w:id="1" ${DEL}><w:r><w:delText>GONE</w:delText></w:r></w:del>` +
+    `<w:del w:id="2" ${DEL.replace('Ada', 'Bea')}><w:r><w:delText>BYE</w:delText></w:r></w:del>` +
+    '<w:r><w:t xml:space="preserve"> tail</w:t></w:r></w:p>';
+
+  test('struck words, across adjacent deletions, are deleted; live or partial words are not', () => {
+    const mounted = mount(STRUCK);
+    const deleted = () => mounted.editor.surface!.hyperlinks.selectionIsPendingDeletion();
+    select(mounted, 0, 5, 9);
+    expect(deleted()).toBe(true);
+    select(mounted, 0, 12, 5);
+    expect(deleted()).toBe(true);
+    select(mounted, 0, 3, 9);
+    expect(deleted()).toBe(false);
+    select(mounted, 0, 10, 14);
+    expect(deleted()).toBe(false);
+    caret(mounted, 0, 6);
+    expect(deleted()).toBe(false);
   });
 });

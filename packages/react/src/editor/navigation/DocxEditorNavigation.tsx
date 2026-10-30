@@ -52,7 +52,8 @@ import {
   NavigationTitle,
   NavigationToggle,
 } from './parts';
-import { useScopeClassName } from '../scope-context';
+import { useChromeScopeClassName } from '../color-mode-context';
+import { useChromeDir } from '../../i18n';
 
 /** Props for `DocxEditor.Navigation`. @public */
 export interface DocxEditorNavigationProps extends UseNavigationPaneOptions {
@@ -102,7 +103,8 @@ export interface DocxEditorNavigationProps extends UseNavigationPaneOptions {
  */
 export function DocxEditorNavigation(props: DocxEditorNavigationProps): ReactElement {
   // Skip the scope class when the packaged wrapper already carries it.
-  const scopeClassName = useScopeClassName();
+  const scopeClassName = useChromeScopeClassName();
+  const chromeDir = useChromeDir();
   const {
     t: hostT,
     toggle = true,
@@ -167,6 +169,7 @@ export function DocxEditorNavigation(props: DocxEditorNavigationProps): ReactEle
         ref={focus.rootRef}
         className={`${scopeClassName}docx-nav${pane.open ? ' docx-nav--open' : ''}${pane.overlay ? ' docx-nav--overlay' : ''}${className ? ` ${className}` : ''}`}
         data-open={pane.open ? 'true' : 'false'}
+        dir={chromeDir}
         onKeyDown={focus.onKeyDown}
         style={
           {

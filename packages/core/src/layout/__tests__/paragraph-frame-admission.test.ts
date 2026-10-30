@@ -11,7 +11,7 @@ import type { ParagraphFragmentRecord } from '../semantic-records.ts';
 
 const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 const paragraph = (text: string, height = 20, props = '') =>
-  `<w:p><w:pPr><w:spacing w:line="${height * 20}" w:lineRule="exact"/>${props}</w:pPr><w:r><w:t>${text}</w:t></w:r></w:p>`;
+  `<w:p><w:pPr><w:spacing w:line="${height * 20}" w:lineRule="exact"/>${props}</w:pPr><w:r><w:t xml:space="preserve">${text}</w:t></w:r></w:p>`;
 function source(attributes: string, height = 20, members = 1) {
   const frame = `<w:framePr w:x="0" ${attributes}/>`;
   const body =
@@ -85,15 +85,25 @@ test('tall side-wrapped frames remain positioned when they leave a usable text l
   expect(layout.pages).toHaveLength(1);
 });
 
-test('negative text-relative vertical offsets fall back without overlapping earlier text', () => {
-  const part = source('w:y="-400" w:w="1600" w:vAnchor="text"');
-  const before = serializeOoxmlPart(part);
-  const blocks = paragraphs(layoutSemanticDocument(part, 0, options));
-  const lead = blocks[0]!;
-  const framed = blocks[1]!;
-  expect(framed.outOfFlow).toBeFalsy();
-  expect(framed.box.y).toBeGreaterThanOrEqual(lead.box.y + lead.box.height);
-  expect(serializeOoxmlPart(part)).toBe(before);
+test('negative text-relative vertical offsets raise the frame above its anchor, down to the page top', () => {
+  const margined = {
+    ...options,
+    geometry: { ...options.geometry, margin: { ...options.geometry.margin, top: 40 } },
+  };
+  for (const [offset, expected] of [
+    [-400, 0],
+    [-2000, -40],
+  ] as const) {
+    const part = source(`w:y="${offset}" w:w="1600" w:vAnchor="text"`);
+    const before = serializeOoxmlPart(part);
+    const blocks = paragraphs(layoutSemanticDocument(part, 0, margined));
+    const framed = blocks[1]!;
+    expect(framed.outOfFlow).toBe(true);
+    expect(framed.box.y).toBe(expected);
+    // The anchor keeps its flow position; the raised frame takes no flow space.
+    expect(blocks[2]!.box.y).toBe(20);
+    expect(serializeOoxmlPart(part)).toBe(before);
+  }
 });
 
 test('negative page-relative and margin-relative offsets remain authored', () => {

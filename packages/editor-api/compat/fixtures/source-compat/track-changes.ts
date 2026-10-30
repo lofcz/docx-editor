@@ -31,3 +31,13 @@ export async function acceptChangesInMatch(): Promise<void> {
     await context.sync();
   });
 }
+
+export async function proposeParagraphSplit(): Promise<void> {
+  await DocxEditor.run(async (context) => {
+    const paragraph = context.document.body.paragraphs.getFirst();
+    await context.sync();
+    context.document.changeTrackingMode = 'TrackMineOnly';
+    paragraph.split(['. ']);
+    await context.sync();
+  });
+}

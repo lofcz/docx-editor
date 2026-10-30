@@ -222,6 +222,11 @@ describe('Enter then Backspace, in suggesting mode', () => {
       surface.splitParagraph();
       expect(surface.session.paragraphIds()).toHaveLength(3);
 
+      // The new item is a list item, so the first Backspace removes its number.
+      surface.deleteBackward();
+      expect(surface.session.paragraphIds()).toHaveLength(3);
+      expect(surface.isListParagraph()).toBe(false);
+
       surface.deleteBackward();
       expect(surface.state().lastRejection).toBeNull();
       expect(surface.session.paragraphIds()).toHaveLength(2);
@@ -243,6 +248,9 @@ describe('Enter then Backspace, in suggesting mode', () => {
         listItem('Analysis'),
       (surface) => {
         caretTo(surface, 1, 0);
+        // The first Backspace removes the list number; the second reaches the break.
+        surface.deleteBackward();
+        expect(surface.isListParagraph()).toBe(false);
         surface.deleteBackward();
         expect(surface.state().lastRejection).toBeNull();
         expect(surface.session.paragraphIds()).toHaveLength(2);
@@ -487,7 +495,7 @@ describe('replacing a selection that spans paragraphs, in suggesting mode', () =
     });
   });
 
-  test('a range ENDING inside a removed table lands after the struck survivor', () => {
+  test('a range ENDING at the end of a table it encloses lands after the struck cell text', () => {
     const cell = (text: string) =>
       `<w:tc><w:tcPr><w:tcW w:w="4000" w:type="dxa"/></w:tcPr>${plainParagraph(text)}</w:tc>`;
     const table =
@@ -495,22 +503,20 @@ describe('replacing a selection that spans paragraphs, in suggesting mode', () =
       '<w:tblGrid><w:gridCol w:w="4000"/><w:gridCol w:w="4000"/></w:tblGrid>' +
       `<w:tr>${cell('CellA')}${cell('CellB')}</w:tr></w:tbl>`;
     withSurface(plainParagraph('Alpha one') + table + plainParagraph('Beta two'), (surface) => {
-      // Ends at the far edge of the LAST cell paragraph, so the table is fully covered and
-      // goes with the range — the last paragraph of the range does not survive. The
-      // replacement then belongs after the struck tail of the surviving start paragraph,
-      // in typing order.
+      // The table is fully covered, but removing it has no tracked form, so its cell text is
+      // struck and the table stays. The replacement follows the last struck paragraph.
       selectAcross(surface, 0, 0, 2, 'CellB'.length);
       typeEach(surface, 'New');
       expect(surface.state().lastRejection).toBeNull();
-      expect(paragraphTexts(surface)).toEqual(['Alpha oneNew', 'Beta two']);
+      expect(paragraphTexts(surface)).toEqual(['Alpha one', 'CellA', 'CellBNew', 'Beta two']);
       expect(surface.state().selection.head).toEqual({
-        paragraphId: surface.session.paragraphIds()[0]!,
-        offset: 'Alpha oneNew'.length,
+        paragraphId: surface.session.paragraphIds()[2]!,
+        offset: 'CellBNew'.length,
       });
     });
   });
 
-  test('a range that removes a table still lands after the last struck paragraph', () => {
+  test('a range that encloses a table still lands after the last struck paragraph', () => {
     const cell = (text: string) =>
       `<w:tc><w:tcPr><w:tcW w:w="4000" w:type="dxa"/></w:tcPr>${plainParagraph(text)}</w:tc>`;
     const table =
@@ -522,8 +528,8 @@ describe('replacing a selection that spans paragraphs, in suggesting mode', () =
       selectAcross(surface, 0, 0, last, 'Beta two'.length);
       typeEach(surface, 'New');
       expect(surface.state().lastRejection).toBeNull();
-      // The fully covered table goes; the last paragraph survives and hosts the replacement.
-      expect(paragraphTexts(surface)).toEqual(['Alpha one', 'Beta twoNew']);
+      // The enclosed table stays with its text struck; the last paragraph hosts the replacement.
+      expect(paragraphTexts(surface)).toEqual(['Alpha one', 'CellA', 'CellB', 'Beta twoNew']);
       expect(surface.state().selection.head.offset).toBe('Beta twoNew'.length);
     });
   });

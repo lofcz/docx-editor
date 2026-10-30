@@ -28,6 +28,12 @@ export interface QueuedAction {
   readonly sort: ActionSort;
   /** Paths that must resolve before this action can be planned. */
   readonly dependencies?: readonly ObjectPath[];
+  /**
+   * Paths a write names in its answer: the range an insertion wrote, the paragraph it created.
+   * A read in the same sync on one of these, or on a path derived from one, is answered after
+   * the writes, because the object has no value before them.
+   */
+  readonly produces?: readonly ObjectPath[];
   /** A scalar load on an OrNullObject proxy is skipped if its lookup resolves null. */
   readonly nullableLoad?: ObjectPath;
   /** The consumer-facing name of what this action is for, for errors. Never a handle. */
@@ -40,8 +46,11 @@ export interface QueuedAction {
   /**
    * The answer queues reads for the same sync: a listing whose items load properties named
    * with `items/`. A sync that writes sends such a listing, and those reads, before its writes.
+   *
+   * A function is asked when the sync takes the action: a collection load that a later load in
+   * the same sync joins can start naming item properties after it was queued.
    */
-  readonly continues?: boolean;
+  readonly continues?: boolean | (() => boolean);
   /** Detach coalesced setters when sync captures this action, before asynchronous reads. */
   capture?(): void;
   /** Release coalesced state when a batch completes or is discarded. */

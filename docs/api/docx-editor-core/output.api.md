@@ -32,7 +32,59 @@ export function collectPageChangeBars(page: PageRecord, scale: number, mode: Cha
 export const DEFAULT_FIELD_SHADING: FieldShadingMode;
 
 // @public
+export type DrawingGraphicKind = 'picture' | 'chart' | 'diagram' | 'shape' | 'group' | 'textbox' | 'canvas' | 'graphic';
+
+// @public
+export type DrawingSupport = 'native' | 'partial' | 'unrendered';
+
+// @public
+export interface DrawingSupportIssue {
+    readonly code: 'unsupported-effect' | 'renderer-required' | 'unverified-3d' | 'saved-fallback' | 'unplaced-drawing' | 'inspection-limit' | 'projection-diagnostic';
+    readonly detail: string;
+    readonly localName: string;
+    readonly namespaceUri: string;
+    readonly nodeId: string;
+}
+
+// @public
 export type FieldShadingMode = 'never' | 'when-selected' | 'always';
+
+// @internal
+export function followingGapPaint(span: GapSpan, next: GapSpan): 'wordSpacing' | 'letterSpacing' | null;
+
+// @internal
+export interface GapSpan {
+    // (undocumented)
+    readonly equation?: unknown;
+    // (undocumented)
+    readonly fieldAtom?: {
+        readonly resultStart?: number;
+    };
+    // (undocumented)
+    readonly glyphOffsetPt?: number;
+    // (undocumented)
+    readonly link?: {
+        readonly id: string;
+    };
+    // (undocumented)
+    readonly projected?: boolean;
+    // (undocumented)
+    readonly range: {
+        readonly end: number;
+        readonly paragraphId: string;
+        readonly start: number;
+    };
+    // (undocumented)
+    readonly style: {
+        readonly horizontalScalePercent: number;
+    };
+    // (undocumented)
+    readonly text: string;
+    // (undocumented)
+    readonly unsupported?: unknown;
+    // (undocumented)
+    readonly wrapAdvanceBefore?: number;
+}
 
 // @public
 export interface LumTransfer {
@@ -78,6 +130,9 @@ export interface PageChangeBars {
     readonly toggle: boolean;
 }
 
+// @internal
+export function paintedGapBetween(span: PlacedSpan, next: PlacedSpan): number;
+
 // @public
 export interface PaintOptions {
     readonly activeHeaderFooterPageIndex?: number;
@@ -106,6 +161,8 @@ export interface PaintOptions {
     readonly fontAlias?: (family: string) => string | undefined;
     // (undocumented)
     readonly imageUrlPort?: PaintImageUrlPort;
+    // (undocumented)
+    readonly includePartial?: boolean;
     readonly materialize?: ReadonlySet<number>;
     readonly readOnlyParagraphIds?: ReadonlySet<string>;
     // (undocumented)
@@ -127,6 +184,25 @@ export function paintSelectionOverlay(layer: HTMLElement, layout: SemanticLayout
 
 // @public
 export function paintSemanticLayout(container: HTMLElement, layout: SemanticLayout, options?: PaintOptions): void;
+
+// @internal
+export interface PlacedSpan {
+    // (undocumented)
+    readonly box: {
+        readonly width: number;
+        readonly x: number;
+    };
+    // (undocumented)
+    readonly style: {
+        readonly shaping?: {
+            readonly level?: number;
+        } | null;
+    };
+    // (undocumented)
+    readonly text: string;
+    // (undocumented)
+    readonly wrapAdvanceBefore?: number;
+}
 
 // @public
 export interface ReviewAuthorInfo {
@@ -165,23 +241,18 @@ export interface SelectionOverlayOptions {
 // @public
 export interface UnsupportedElement {
     readonly bounds?: LayoutBox;
-    // (undocumented)
     readonly drawing?: InlineDrawingRecord | AnchoredDrawingRecord;
-    // (undocumented)
+    readonly drawingIssues?: readonly DrawingSupportIssue[];
     readonly equation?: EquationSpanRecord;
-    // (undocumented)
+    readonly graphicKind?: DrawingGraphicKind;
     readonly label: string;
-    // (undocumented)
     readonly localName: string;
-    // (undocumented)
     readonly namespaceUri: string | null;
-    // (undocumented)
     readonly nodeId: string;
-    // (undocumented)
     readonly ownerPartName: string;
-    // (undocumented)
     readonly placement: 'inline' | 'block';
     readonly source: OoxmlElement | null;
+    readonly support?: Exclude<DrawingSupport, 'native'>;
 }
 
 // @public
@@ -200,17 +271,14 @@ export interface UnsupportedElementHost {
 
 // @public
 export interface UnsupportedElementLayout {
-    // (undocumented)
     readonly height: number;
-    // (undocumented)
     readonly width: number;
 }
 
 // @public
 export interface UnsupportedElementRule {
-    // (undocumented)
+    readonly includePartial?: boolean;
     readonly layout?: UnsupportedElementLayout;
-    // (undocumented)
     readonly match?: (element: UnsupportedElement) => boolean;
 }
 

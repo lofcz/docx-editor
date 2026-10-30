@@ -42,6 +42,7 @@ import { createDocumentRefresh } from '@docx-editor.dev/core/editor';
 import { createFontSource } from '@docx-editor.dev/core/editor';
 import { CSSProperties } from 'vue';
 import { DEFAULT_FONT } from '@docx-editor.dev/core/editor';
+import { deferFonts } from '@docx-editor.dev/core/editor';
 import { defineFontResolver } from '@docx-editor.dev/core/editor';
 import { DocumentChange } from '@docx-editor.dev/core/contracts/editor';
 import { DocumentHandle } from '@docx-editor.dev/core/contracts/editor';
@@ -60,6 +61,9 @@ import * as _docx_editor_dev_core_editor from '@docx-editor.dev/core/editor';
 import * as _docx_editor_dev_i18n from '@docx-editor.dev/i18n';
 import { DocxDocument } from '@docx-editor.dev/core/contracts/types';
 import { DocxEditorInstance } from '@docx-editor.dev/core/editor';
+import { DrawingGraphicKind } from '@docx-editor.dev/core/store';
+import { DrawingSupport } from '@docx-editor.dev/core/store';
+import { DrawingSupportIssue } from '@docx-editor.dev/core/store';
 import { Editor } from '@docx-editor.dev/core/contracts/editor';
 import { EditorCommand } from '@docx-editor.dev/core/contracts/editor';
 import { EditorCommandExecute } from '@docx-editor.dev/core/editor';
@@ -168,6 +172,7 @@ import { SupportedImageMime } from '@docx-editor.dev/core/editor';
 import { SurfaceFormatting } from '@docx-editor.dev/core/editor';
 import { SurfaceHyperlink } from '@docx-editor.dev/core/editor';
 import { TableChromeSlotId } from '@docx-editor.dev/core/editor';
+import { TableInteractionLabelKey } from '@docx-editor.dev/core/contracts/editor';
 import { TextFormFieldDialogSession } from '@docx-editor.dev/core/editor';
 import { TextMatch } from '@docx-editor.dev/core/contracts/editor';
 import { TextMeasurer } from '@docx-editor.dev/core/editor';
@@ -2220,6 +2225,110 @@ export const ContextMenuSelectAll: {
 };
 
 // @public
+export const ContextMenuSelectTable: {
+    new (...args: any[]): vue.CreateComponentPublicInstanceWithMixins<Readonly<vue.ExtractPropTypes<{
+        className: {
+            default: undefined;
+            type: StringConstructor;
+        };
+        destructive: {
+            default: undefined;
+            type: BooleanConstructor;
+        };
+        hidden: {
+            default: undefined;
+            type: BooleanConstructor;
+        };
+        icon: {
+            default: undefined;
+            type: PropType<VNode>;
+        };
+        labelKey: {
+            default: undefined;
+            type: StringConstructor;
+        };
+    }>> & Readonly<{}>, () => vue_jsx_runtime.JSX.Element | null, {}, {}, {}, vue.ComponentOptionsMixin, vue.ComponentOptionsMixin, {}, vue.PublicProps, {
+        className: string;
+        destructive: boolean;
+        hidden: boolean;
+        icon: VNode<vue.RendererNode, vue.RendererElement, {
+            [key: string]: any;
+        }>;
+        labelKey: string;
+    }, true, {}, {}, vue.GlobalComponents, vue.GlobalDirectives, string, {}, any, vue.ComponentProvideOptions, {
+        B: {};
+        C: {};
+        D: {};
+        Defaults: {};
+        M: {};
+        P: {};
+    }, Readonly<vue.ExtractPropTypes<{
+        className: {
+            default: undefined;
+            type: StringConstructor;
+        };
+        destructive: {
+            default: undefined;
+            type: BooleanConstructor;
+        };
+        hidden: {
+            default: undefined;
+            type: BooleanConstructor;
+        };
+        icon: {
+            default: undefined;
+            type: PropType<VNode>;
+        };
+        labelKey: {
+            default: undefined;
+            type: StringConstructor;
+        };
+    }>> & Readonly<{}>, () => vue_jsx_runtime.JSX.Element | null, {}, {}, {}, {
+        className: string;
+        destructive: boolean;
+        hidden: boolean;
+        icon: VNode<vue.RendererNode, vue.RendererElement, {
+            [key: string]: any;
+        }>;
+        labelKey: string;
+    }>;
+    __isFragment?: never;
+    __isTeleport?: never;
+    __isSuspense?: never;
+} & vue.ComponentOptionsBase<Readonly<vue.ExtractPropTypes<{
+    className: {
+        default: undefined;
+        type: StringConstructor;
+    };
+    destructive: {
+        default: undefined;
+        type: BooleanConstructor;
+    };
+    hidden: {
+        default: undefined;
+        type: BooleanConstructor;
+    };
+    icon: {
+        default: undefined;
+        type: PropType<VNode>;
+    };
+    labelKey: {
+        default: undefined;
+        type: StringConstructor;
+    };
+}>> & Readonly<{}>, () => vue_jsx_runtime.JSX.Element | null, {}, {}, {}, vue.ComponentOptionsMixin, vue.ComponentOptionsMixin, {}, string, {
+    className: string;
+    destructive: boolean;
+    hidden: boolean;
+    icon: VNode<vue.RendererNode, vue.RendererElement, {
+        [key: string]: any;
+    }>;
+    labelKey: string;
+}, {}, string, {}, vue.GlobalComponents, vue.GlobalDirectives, string, vue.ComponentProvideOptions> & vue.VNodeProps & vue.AllowedComponentProps & vue.ComponentCustomProps & {
+    docxRow: string;
+};
+
+// @public
 export const ContextMenuSplitCell: {
     new (...args: any[]): vue.CreateComponentPublicInstanceWithMixins<Readonly<vue.ExtractPropTypes<{
         className: {
@@ -2322,6 +2431,8 @@ export { DEFAULT_FONT }
 
 // @public
 export const DEFAULT_WATERMARK_PRESETS: readonly string[];
+
+export { deferFonts }
 
 export { defineFontResolver }
 
@@ -2838,6 +2949,8 @@ export interface DocxEditorContextMenuNamespace {
     readonly Row: typeof MenuRow;
     // (undocumented)
     readonly SelectAll: typeof ContextMenuSelectAll;
+    // (undocumented)
+    readonly SelectTable: typeof ContextMenuSelectTable;
     // (undocumented)
     readonly Separator: typeof MenuSeparator;
     // (undocumented)
@@ -4406,6 +4519,10 @@ export const DocxEditorRoot: vue.DefineComponent<vue.ExtractPropTypes<{
         default: undefined;
         type: StringConstructor;
     };
+    colorMode: {
+        default: undefined;
+        type: PropType<'light' | 'dark' | 'system'>;
+    };
     contentLockPolicy: {
         default: undefined;
         type: PropType<ContentLockPolicy>;
@@ -4477,6 +4594,10 @@ export const DocxEditorRoot: vue.DefineComponent<vue.ExtractPropTypes<{
         default: undefined;
         type: StringConstructor;
     };
+    colorMode: {
+        default: undefined;
+        type: PropType<'light' | 'dark' | 'system'>;
+    };
     contentLockPolicy: {
         default: undefined;
         type: PropType<ContentLockPolicy>;
@@ -4543,6 +4664,7 @@ export const DocxEditorRoot: vue.DefineComponent<vue.ExtractPropTypes<{
     onRevisionMarkupChange?: ((_settings: ResolvedRevisionMarkup) => any) | undefined;
 }>, {
     author: string;
+    colorMode: "dark" | "light" | "system";
     contentLockPolicy: ContentLockPolicy;
     document: DocumentSource;
     fieldResults: FieldResultsMode;
@@ -4553,7 +4675,7 @@ export const DocxEditorRoot: vue.DefineComponent<vue.ExtractPropTypes<{
     lockedControlNavigation: LockedControlNavigation;
     mode: "edit" | "suggesting" | "view";
     modules: readonly EditorModule[];
-    tableInteractionLabel: ((key: 'table.insertRowBelow' | 'table.insertColumnRight') => string) | undefined;
+    tableInteractionLabel: ((key: _docx_editor_dev_core.TableInteractionLabelKey) => string) | undefined;
     translate: ((key: string, params?: Record<string, string | number>) => string) | undefined;
     zoom: number;
     zoomMode: "auto" | ZoomMode;
@@ -4576,6 +4698,7 @@ export interface DocxEditorRootProps {
     author?: string;
     // (undocumented)
     children?: DocxEditorChildren;
+    colorMode?: 'light' | 'dark' | 'system';
     contentLockPolicy?: ContentLockPolicy;
     // (undocumented)
     document?: DocumentSource;
@@ -4600,7 +4723,7 @@ export interface DocxEditorRootProps {
     reviewDisplayMode?: ReviewDisplayMode;
     revisionMarkup?: RevisionMarkupOptions;
     // (undocumented)
-    tableInteractionLabel?: (key: 'table.insertRowBelow' | 'table.insertColumnRight') => string;
+    tableInteractionLabel?: (key: TableInteractionLabelKey) => string;
     translate?: (key: string, params?: Record<string, string | number>) => string;
     // (undocumented)
     zoom?: number;
@@ -4949,6 +5072,10 @@ export interface DocxEditorToolbarSlotProps {
 
 // @public
 export const DocxEditorUnsupportedElement: vue.DefineComponent<vue.ExtractPropTypes<{
+    includePartial: {
+        default: boolean;
+        type: BooleanConstructor;
+    };
     layout: {
         default: undefined;
         type: PropType<UnsupportedElementRule['layout']>;
@@ -4960,6 +5087,10 @@ export const DocxEditorUnsupportedElement: vue.DefineComponent<vue.ExtractPropTy
 }>, () => vue.VNode<vue.RendererNode, vue.RendererElement, {
     [key: string]: any;
 }>[], {}, {}, {}, vue.ComponentOptionsMixin, vue.ComponentOptionsMixin, {}, string, vue.PublicProps, Readonly<vue.ExtractPropTypes<{
+    includePartial: {
+        default: boolean;
+        type: BooleanConstructor;
+    };
     layout: {
         default: undefined;
         type: PropType<UnsupportedElementRule['layout']>;
@@ -4969,6 +5100,7 @@ export const DocxEditorUnsupportedElement: vue.DefineComponent<vue.ExtractPropTy
         type: PropType<UnsupportedElementRule['match']>;
     };
 }>> & Readonly<{}>, {
+    includePartial: boolean;
     layout: _docx_editor_dev_core_editor.UnsupportedElementLayout | undefined;
     match: ((element: UnsupportedElement) => boolean) | undefined;
 }, SlotsType<{
@@ -4979,6 +5111,7 @@ export const DocxEditorUnsupportedElement: vue.DefineComponent<vue.ExtractPropTy
 
 // @public
 export interface DocxEditorUnsupportedElementProps extends UnsupportedElementRule {
+    includePartial?: UnsupportedElementRule['includePartial'];
 }
 
 // @public (undocumented)
@@ -5267,6 +5400,12 @@ export type DocxFontsSource = DocxFontOrigin | readonly DocxFontOrigin[];
 
 // @public (undocumented)
 export type DocxSource = string | URL | Uint8Array | ArrayBuffer;
+
+export { DrawingGraphicKind }
+
+export { DrawingSupport }
+
+export { DrawingSupportIssue }
 
 export { Editor }
 
@@ -5867,6 +6006,10 @@ export { LOADING_SNAPSHOT }
 
 // @public (undocumented)
 export const LocaleProvider: vue.DefineComponent<vue.ExtractPropTypes<{
+    dir: {
+        default: undefined;
+        type: PropType<'ltr' | 'rtl'>;
+    };
     i18n: {
         default: undefined;
         type: PropType<Translations>;
@@ -5874,11 +6017,16 @@ export const LocaleProvider: vue.DefineComponent<vue.ExtractPropTypes<{
 }>, () => vue.VNode<vue.RendererNode, vue.RendererElement, {
     [key: string]: any;
 }>[] | undefined, {}, {}, {}, vue.ComponentOptionsMixin, vue.ComponentOptionsMixin, {}, string, vue.PublicProps, Readonly<vue.ExtractPropTypes<{
+    dir: {
+        default: undefined;
+        type: PropType<'ltr' | 'rtl'>;
+    };
     i18n: {
         default: undefined;
         type: PropType<Translations>;
     };
 }>> & Readonly<{}>, {
+    dir: "ltr" | "rtl";
     i18n: _docx_editor_dev_i18n.PartialLocaleStrings;
 }, {}, {}, {}, string, vue.ComponentProvideOptions, true, {}, any>;
 
@@ -5886,6 +6034,7 @@ export const LocaleProvider: vue.DefineComponent<vue.ExtractPropTypes<{
 export interface LocaleProviderProps {
     // (undocumented)
     children?: DocxEditorChildren;
+    dir?: 'ltr' | 'rtl';
     // (undocumented)
     i18n?: Translations;
 }
@@ -6794,6 +6943,9 @@ export { RefreshSubmission }
 
 export { RefreshUpdate }
 
+// @public
+export type ResolvedColorMode = 'light' | 'dark';
+
 export { ResolvedRevisionMarkup }
 
 // @public
@@ -7508,6 +7660,9 @@ export interface UseBookmarksReturn {
     readonly remove: (name: string) => ExecResult;
 }
 
+// @public
+export function useChromeDir(): Readonly<ShallowRef<'ltr' | 'rtl' | undefined>>;
+
 // @public (undocumented)
 export function useChromeTranslate(overrides?: ReadonlyMap<string, string>): ComputedRef<ChromeTranslate>;
 
@@ -7702,6 +7857,14 @@ export interface UseDocxSourceResult {
 // @public (undocumented)
 export function useEditorCaret(): ShallowRef<EditorCaret | null>;
 
+// @public
+export function useEditorColorMode(): UseEditorColorModeReturn;
+
+// @public
+export interface UseEditorColorModeReturn {
+    readonly colorMode: ComputedRef<ResolvedColorMode>;
+}
+
 // @public (undocumented)
 export function useEditorCommand(target: MaybeRefOrGetter<ChromeSlotId | EditorCommand>): EditorCommandState;
 
@@ -7793,7 +7956,7 @@ export interface UseHistoryGroupReturn {
     readonly ref: (element: HTMLElement | null) => void;
 }
 
-// @public (undocumented)
+// @public
 export function useHyperlinkPopup(): UseHyperlinkPopupResult;
 
 // @public (undocumented)
@@ -7978,8 +8141,8 @@ export interface UseRevisionMarkupDialogReturn extends UseDialogReturn<ResolvedR
     reset(): void;
 }
 
-// @public (undocumented)
-export function useScopeClassName(): '' | 'docx-editor ';
+// @public
+export function useScopeClassName(): '' | 'docx-editor ' | 'docx-editor dark ';
 
 // @public
 export function useScopedChromeAnchor(findAnchor: (viewport: HTMLElement) => HTMLElement | null, placement: ScopedChromeAnchorPlacement): ScopedChromeAnchor;
@@ -8014,6 +8177,7 @@ export function useToolbarLabelFor(t: ToolbarTranslate | undefined): (key: strin
 // @public
 export function useTranslation(): {
     catalogue: ShallowRef<LocaleStrings>;
+    dir: 'ltr' | 'rtl';
     lang: string;
     t: TFunction;
 };

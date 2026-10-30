@@ -2,6 +2,7 @@ import {
   editorHostElement,
   editorInstanceScope,
   hostDocumentOf,
+  hostWindowOf,
   isDomNode,
   listenForOutsidePress,
 } from '@docx-editor.dev/core/editor';
@@ -53,7 +54,7 @@ import {
 import { useDocxEditor } from '../context';
 import { useEditorState } from '../useEditorState';
 import type { EditorSnapshot } from '@docx-editor.dev/core/contracts/editor';
-import { useTranslation } from '../../i18n';
+import { useChromeDir, useTranslation } from '../../i18n';
 import type { TranslationKey } from '../../i18n';
 import { DocxEditorPageSetupDialog } from '../DocxEditorPageSetup';
 import { DocxEditorParagraphDialog } from '../DocxEditorParagraphDialog';
@@ -71,7 +72,7 @@ import {
   type MenuId,
   type MenuOverflowValue,
 } from './menu-context';
-import { FIXED_ATTRIBUTE, useToolbarOverflow } from '../toolbar/useToolbarOverflow';
+import { FIXED_ATTRIBUTE, useToolbarGroupOverflow } from '../toolbar/useToolbarOverflow';
 import { MORE_PATHS } from '../toolbar/ToolbarOverflow';
 import { download, downloadName } from './download';
 import { barTriggers, isPoppedOutEditorTarget, restoreExportFocus } from './menu-keyboard';
@@ -98,7 +99,7 @@ import {
   type MenuPartComponent,
 } from './parts';
 import { MenuHelp, MenuReportIssue } from './menu-help';
-import { useScopeClassName } from '../scope-context';
+import { useChromeScopeClassName } from '../color-mode-context';
 import { MenuReview, MenuReviewers } from './Reviewers';
 import { usePopupEscape } from '../toolbar/usePopupEscape';
 
@@ -241,7 +242,8 @@ function DocxEditorMenuRoot(props: DocxEditorMenuProps) {
   const dialogs = useDialogHost();
   const popups = usePopupConfig();
   // Skip the scope class when the packaged wrapper already carries it.
-  const scopeClassName = useScopeClassName();
+  const scopeClassName = useChromeScopeClassName();
+  const chromeDir = useChromeDir();
   const {
     className,
     t,
@@ -514,7 +516,7 @@ function DocxEditorMenuRoot(props: DocxEditorMenuProps) {
   }
   // The end of the bar leaves first: Help, then Review, and so on toward File.
   const collapseIds = [...menuIds].reverse();
-  const { attach, overflow } = useToolbarOverflow(overflowEnabled, menuIds, collapseIds);
+  const { attach, overflow } = useToolbarGroupOverflow(overflowEnabled, menuIds, collapseIds);
   const overflowValue = useMemo<MenuOverflowValue>(
     () => ({ measuring: overflowEnabled, overflow, inMore: false }),
     [overflowEnabled, overflow]
@@ -597,6 +599,7 @@ function DocxEditorMenuRoot(props: DocxEditorMenuProps) {
         // `docx-editor` self-emitted so a composed menu bar is styled outside the packaged
         // wrapper, as `DocxEditorLoading` and `DocxEditorViewport` already do.
         className={`${scopeClassName}docx-menubar${className ? ` ${className}` : ''}`}
+        dir={chromeDir}
         // Container-level caret guard (CLAUDE.md focus-stealing pitfall): a disabled row
         // never receives mousedown, so per-row handlers cannot cover it.
         onMouseDown={guardToolbarMousedown}
@@ -610,7 +613,8 @@ function DocxEditorMenuRoot(props: DocxEditorMenuProps) {
           const index = triggers.indexOf(hostDocumentOf(bar).activeElement as HTMLElement);
           if (index === -1) return;
           event.preventDefault();
-          const step = event.key === 'ArrowRight' ? 1 : -1;
+          const rtl = hostWindowOf(bar).getComputedStyle(bar).direction === 'rtl';
+          const step = (event.key === 'ArrowRight' ? 1 : -1) * (rtl ? -1 : 1);
           const next = triggers[(index + step + triggers.length) % triggers.length];
           const id = next?.closest('[data-menu]')?.getAttribute('data-menu');
           if (!id) return;
