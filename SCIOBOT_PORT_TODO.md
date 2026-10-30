@@ -2,9 +2,18 @@
 
 Port the production workspace editor to the DOCX fork. Keep AI editing, suggestions, and React blocks as required capabilities.
 
-The detailed inventory below is traceability, not the cutover gate. The initial replacement is viable when the six active gates below pass in `sciobot-next`; the remaining leaves track product parity and stay open until their implementation and verification pass.
+The detailed inventory below is traceability, not the cutover gate. The initial replacement is viable when the active gates below pass in `sciobot-next`; the remaining leaves track product parity and stay open until their implementation and verification pass.
 
 The React block proof supplies a tested starting point. It does not establish full application parity.
+
+## Scope decisions
+
+These decisions set the cutover scope. Change them here, not in individual leaves.
+
+- **Storage.** The DOCX package is the stored source of truth for documents that the native editor opens. Each save also writes the `markdown` projection, so server tools and VFS consumers keep their input.
+- **Creation.** Generated drafts and legacy documents enter through MDX conversion once, when they become DOCX. After that, edits change the canonical tree. This exception does not permit rebuilding an imported DOCX from Markdown.
+- **Collaboration.** The Plate editor has no collaboration, so collaboration does not block cutover. Shared document behavior stays supported and tested, but new collaboration edge-case leaves wait until after cutover.
+- **Application content.** The adapter reads application tags, storage names, and diff rules from an embedder registry. Sciobot registers its own components.
 
 ## Active cutover gates
 
@@ -12,12 +21,15 @@ Keep this list small and reviewable. Close a gate only with a command, fixture, 
 
 | Gate | Done when | Existing leaves |
 | --- | --- | --- |
-| **CUT-01 Integration shell** | `sciobot-next` can load, create, save, reopen, and export a DOCX through one private adapter; Plate is no longer on the DOCX path. | C03, C08, B01, B04, I01, I02, I03 |
+| **CUT-01 Integration shell** | `sciobot-next` can load, create, save, restore, reopen, and export a DOCX through one private adapter; each save publishes the Markdown projection; Plate is no longer on the DOCX path. | C03, C08, B01, B04, I01, I02, I03, I07, I08, I09, I10, I14, I19 |
 | **CUT-02 Word-first editing** | Native paragraphs, lists, tables, images, links, breaks, equations, and tracked changes round-trip through the adapter with undo/redo. | N01, N02, N03, N04, N05, N06, N07, N08, D34 |
 | **CUT-03 AI direct edits** | The existing AI tool contract can target a selection or block, stream progress, commit atomically, and survive save/reopen. | C01, C02, C07, D01, D02, D03, D04, D05, D06, D07, D08, D09, D10 |
-| **CUT-04 Suggestions and review** | AI suggestions preserve user edits, support accept/reject/undo, property changes, and reload without losing pending state. | C05, S01, S02, S03, S04, S05, S06, S07, S08, S09, S10, S11, S12, S13, S14, S15, R19 |
-| **CUT-05 Arbitrary React blocks** | A production React block can be inserted, edited, moved, persisted, restored, and collaborated on without Plate serializers. | C03, B01, B02, B03, B04, B05, B06, B07, B08, B09, B10, B11, B12, B13, B14, B15, B16, B17, B18, B19, B20, B21, B22, B23 |
-| **CUT-06 Collaboration and release evidence** | Two real sessions converge for concurrent edits and review waves; runtime dependencies and production coverage are verified. | V01, V02, V03, V04, V05, V06, V07, V08 |
+| **CUT-04 Suggestions and review** | AI suggestions preserve user edits, support accept/reject/undo, property changes, and reload without losing pending state. | C05, R14, R15, R16, R17, R18, R19, R21, I04, U09, V03 |
+| **CUT-05 Arbitrary React blocks** | A registered React block can be inserted, edited, moved, persisted, and restored without Plate serializers, and its definition comes from the embedder registry. | C03, B01, B02, B03, B04, B05, B06, B07, B08, B09, B10, B11, B12, B13, B14, B15, B16, B17, B18, B19, B20, B21, B22, M01, M02, M03, M04, M05, M06 |
+| **CUT-06 Content entry** | Generated drafts and legacy documents become DOCX with their blocks and pending suggestions. | I11, I12, I13, I18, I22, I23, I24, I25 |
+| **CUT-07 Release evidence** | Runtime dependencies, large-document performance, desktop Word files, and the AI fixtures are verified. | V02, V05, V06, V07 |
+
+After cutover, V04 (cross-feature collaboration convergence) and V08 (the full coverage ledger) close the remaining parity work. Editor UI leaves outside CUT-04, such as drag and drop, autoformat, and emoji, also follow cutover.
 
 The workstream tables retain the remaining implementation work. Do not create a new leaf for a cosmetic or domain-specific port unless it blocks a gate.
 
@@ -66,6 +78,7 @@ C03 opens C08, B01, and B04. C07 also needs C02. Each feature still needs its li
 | [Editor interactions and review presentation](docs/engineering/sciobot-port/09-editor-ui.md) | 16 | Connect existing application controls to native selection, commands, and private review state. |
 | [Application persistence and editor replacement](docs/engineering/sciobot-port/10-app-integration.md) | 25 | Work in isolated application branches. Keep unrelated dirty files intact. Preserve existing per-path tools and export workflows. |
 | [Cross-feature evidence and cutover gates](docs/engineering/sciobot-port/11-verification.md) | 8 | These leaves collect required evidence. Passing one gate does not replace focused checks on each feature. |
+| [Embedder MDX components](docs/engineering/sciobot-port/12-embedder-mdx.md) | 6 | Replace Sciobot constants in the adapter with a registry that the application supplies. |
 
 The essential integration path runs through shared contracts, mapped projections, pure plans, review operations, and FileExecutor integration.
 
