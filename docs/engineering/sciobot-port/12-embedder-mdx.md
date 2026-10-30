@@ -49,6 +49,8 @@ Unregistered tags that the projection allows keep the opaque MDX path. Existing 
 
 **Change:** Replace `DOMAIN_BLOCK_TAGS` and the `CUSTOM_*_TAGS` constants with registry reads passed through `projectBlocks` and `projectMdx`. Keep the opaque `shared_mdx_*` lane for allowed but unregistered tags.
 
+`planTargetDocument` already accepts `options.definitions`, but its helpers read `DOMAIN_BLOCK_TAGS` directly: `planInsertedBlocks`, `planTargetAtomic`, `planDomainProperties`, `planDomainContainers`, the inserted-cell and fragment-seed validators, and `external-review-state.ts`. Pass the registry through those calls. `insertedPayload` and `payloadMatches` hold per-type MDX parsing for code, equations, mentions, and images; add `fromMdx` and `matches` hooks to the component contract and move that logic into the Sciobot registration.
+
 **Close when:** The projection reads no module constant for application tags. Existing projection fixtures produce the same output with the Sciobot registration.
 
 **Check:** Run the projection and MDX suites. Add one fixture with a non-Sciobot component.
