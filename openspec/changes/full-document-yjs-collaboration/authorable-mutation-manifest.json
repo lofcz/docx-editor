@@ -7,8 +7,8 @@
   "baseGitCommitDate": "2026-08-24 14:45:47 +0200",
   "inventoryNote": "Kinds, reach, properties, chrome slots, and lifecycle sets are taken from the implementation after rebase onto origin/main. Main added replaceStoryBlocks, setMathEquation, removeMathEquation, and insertFragment (rich-clipboard-fidelity).",
   "counts": {
-    "treeDocOpKinds": 93,
-    "singlePartApply": 79,
+    "treeDocOpKinds": 94,
+    "singlePartApply": 80,
     "headerFooterLifecycle": 7,
     "noteLifecycle": 5,
     "treeDocOpUnsupported": 2,

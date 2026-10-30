@@ -198,7 +198,10 @@ test('maps table cell text, escaped pipes, and native hard breaks', async () => 
 
 test('keeps plain text maps compact and retains empty source paragraphs', async () => {
   const result = await project(
-    '<w:p/>' + '<w:p><w:r><w:t>' + 'abc '.repeat(200) + '</w:t></w:r></w:p><w:p/>'
+    '<w:p/>' +
+      '<w:p><w:r><w:t xml:space="preserve">' +
+      'abc '.repeat(200) +
+      '</w:t></w:r></w:p><w:p/>'
   );
   const map = result.sourceMap!;
   expect(map.paragraphs).toHaveLength(3);

@@ -61,16 +61,22 @@ export function pushDecidedContent(
 const JOINABLE_CONTENT = new Set(['text', 'deletedText', 'tab', 'hardBreak']);
 
 /** One run for two adjacent runs of the same format that hold only joinable content. */
+const hasForeignAttributes = (node: OoxmlNode): boolean =>
+  hasOriginMetadata(node) ||
+  (node.kind !== 'textValue' &&
+    node.attributes.some((attr) => attr.namespaceUri !== WML_NAMESPACE_URI));
+
 function joinedRuns(mint: () => string, left: OoxmlNode, right: OoxmlNode): OoxmlNode[] {
   if (left.kind !== 'run' || right.kind !== 'run') return [left, right];
   const leftContent = left.children.filter((child) => !isRunProperties(child));
   const rightContent = right.children.filter((child) => !isRunProperties(child));
   // Tracked run origins name each run and text node; joining them would drop the right one's.
+  // Other foreign run attributes are opaque, so the right run's copy cannot be dropped either.
   const joinable =
     leftContent.length > 0 &&
     rightContent.length > 0 &&
-    !hasOriginMetadata(left) &&
-    !hasOriginMetadata(right) &&
+    !hasForeignAttributes(left) &&
+    !hasForeignAttributes(right) &&
     [...leftContent, ...rightContent].every(
       (child) => JOINABLE_CONTENT.has(child.kind) && !hasOriginMetadata(child)
     ) &&

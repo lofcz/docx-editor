@@ -20,7 +20,7 @@ const run = '<w:r><w:rPr><w:color w:val="112233"/></w:rPr><w:t>label</w:t></w:r>
 const link = (content = run) =>
   `<w:hyperlink r:id="existing" w:history="1" w:tgtFrame="_blank">${content}</w:hyperlink>`;
 const paragraph = (content: string) =>
-  `<w:p><w:r><w:t>Keep. </w:t></w:r>${content}<w:r><w:t> End.</w:t></w:r></w:p>`;
+  `<w:p><w:r><w:t xml:space="preserve">Keep. </w:t></w:r>${content}<w:r><w:t xml:space="preserve"> End.</w:t></w:r></w:p>`;
 const control = (properties: string, content: string) =>
   `<w:sdt><w:sdtPr>${properties}</w:sdtPr><w:sdtContent>${content}</w:sdtContent></w:sdt>`;
 function load(body: string, name = '/word/document.xml') {

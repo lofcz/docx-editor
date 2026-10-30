@@ -120,7 +120,7 @@ test('coalescing an empty imported text element creates no nonexistent source wi
 
 test('coalescing native text preserves boundary spaces when imported xml:space is default', () => {
   const part = readOoxmlPart(
-    '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t xml:space="default"> left</w:t><w:t xml:space="default"> right </w:t></w:r></w:p></w:body></w:document>',
+    '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t xml:space="preserve"> left </w:t><w:t xml:space="default"> right </w:t></w:r></w:p></w:body></w:document>',
     {
       name: '/word/document.xml',
       contentType:
@@ -138,7 +138,8 @@ test('coalescing native text preserves boundary spaces when imported xml:space i
   const merged = inlineTextMerged(() => `joined-${next++}`, texts[0]!, texts[1]!);
   if (merged.kind === 'textValue' || merged.children[0]?.kind !== 'textValue')
     throw Error('Missing text');
-  expect(merged.children[0].value).toBe(' left right ');
+  // The reader drops the boundary spaces that Word does not show without xml:space="preserve".
+  expect(merged.children[0].value).toBe(' left right');
   expect(
     merged.attributes.some((attr) => attr.localName === 'space' && attr.value === 'default')
   ).toBe(false);

@@ -110,8 +110,10 @@ test('typing between two wrappers of one insertion lands as typing inside one wr
     const wrappers = typed(
       `<w:r><w:t>ab</w:t></w:r>${inControl(insertion('<w:r><w:t>cd</w:t></w:r>') + insertion(tail))}`
     );
-    // The typed text takes the format of the run before it, inside the change.
-    expect(one).toContain('<w:r><w:t>cdX</w:t></w:r>');
+    // The typed text takes the format of the run before it. This fork keeps untracked typing
+    // committed beside the insertion (see the Word.Range#insertText runtime note), so it splits
+    // the change instead of joining it.
+    expect(one).toContain('<w:t>cd</w:t></w:r></w:ins><w:r><w:t>X</w:t></w:r>');
     expect(wrappers).toBe(one);
   }
 });

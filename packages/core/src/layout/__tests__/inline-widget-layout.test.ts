@@ -17,6 +17,8 @@ import { paintSemanticLayout } from '../../output/semantic-paint.ts';
 
 const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 const run = (text: string) => `<w:r><w:rPr><w:sz w:val="22"/></w:rPr><w:t>${text}</w:t></w:r>`;
+// Word shows boundary spaces in w:t only with xml:space="preserve".
+const preserved = (xml: string) => xml.replaceAll('<w:t>', '<w:t xml:space="preserve">');
 const chip = `<w:sdt><w:sdtPr><w:tag w:val="chip:source"/></w:sdtPr><w:sdtContent>${run('source')}</w:sdtContent></w:sdt>`;
 function part(body = `<w:p>${run('A')}${chip}${run('B')}</w:p>`) {
   const result = readOoxmlPart(`<w:document xmlns:w="${W}"><w:body>${body}</w:body></w:document>`, {
@@ -146,7 +148,7 @@ test('paint reserves the same inline advance while native fallback and source fi
 test('RTL itemization and justification keep a measured whitespace-bearing chip whole', () => {
   for (const properties of ['<w:bidi/>', '<w:jc w:val="both"/>']) {
     const source = part(
-      `<w:p><w:pPr>${properties}</w:pPr>${run('אב')}${chip.replace('>source<', '>source <')}${run(' גד words words words')}</w:p>`
+      `<w:p><w:pPr>${properties}</w:pPr>${run('אב')}${preserved(chip.replace('>source<', '>source <'))}${preserved(run(' גד words words words'))}</w:p>`
     );
     const measured = layoutSemanticDocument(source, 1, { measurer: measure(40), geometry });
     const widgets = linesOf(measured)

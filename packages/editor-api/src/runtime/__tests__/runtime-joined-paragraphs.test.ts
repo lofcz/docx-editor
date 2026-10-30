@@ -152,7 +152,12 @@ test('replacing a complete joined paragraph keeps its logical proxy usable for l
 });
 
 test('a delimiter-free split trims its returned logical range without rewriting the document', async () => {
-  const runtime = createRuntime({ host: openHost(docx(joined(' Left') + p('Tail '))), save: true });
+  // Word keeps boundary spaces in w:t only with xml:space="preserve".
+  const preserved = (xml: string) => xml.replaceAll('<w:t>', '<w:t xml:space="preserve">');
+  const runtime = createRuntime({
+    host: openHost(docx(preserved(joined(' Left') + p('Tail ')))),
+    save: true,
+  });
   try {
     await runtime.run(async (c) => {
       const pieces = c.document.body.paragraphs.getFirst().split(['missing'], false, true);

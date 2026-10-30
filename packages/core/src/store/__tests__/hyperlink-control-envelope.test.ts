@@ -10,7 +10,8 @@ import {
   type OoxmlPart,
   type TreeDocOp,
 } from '../index.ts';
-const paragraph = '<w:p><w:r><w:t>A </w:t></w:r>CONTROL<w:r><w:t> Z</w:t></w:r></w:p>';
+const paragraph =
+  '<w:p><w:r><w:t xml:space="preserve">A </w:t></w:r>CONTROL<w:r><w:t xml:space="preserve"> Z</w:t></w:r></w:p>';
 const control = (properties: string, content = '<w:r><w:t>Atom</w:t></w:r>') =>
   `<w:sdt><w:sdtPr>${properties}</w:sdtPr><w:sdtContent>${content}</w:sdtContent></w:sdt>`;
 function load(body: string) {
