@@ -10,9 +10,12 @@ import { readEditorRevision } from '../../packages/sciobot/src/projection/revisi
 const previous = process.argv[2];
 if (!previous) throw Error('Pass the pinned previous adapter index.js path.');
 const old = await import(previous);
+const container = process.argv.includes('--container');
 const loaded = readOoxmlPackage(
   docxFixture(
-    '<w:p><w:r><w:t>Lead </w:t></w:r><w:sdt><w:sdtPr><w:tag w:val="scio:1:source"/></w:sdtPr><w:sdtContent><w:r><w:t>Book</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t> tail</w:t></w:r></w:p>'
+    container
+      ? '<w:p><w:r><w:t>Lead</w:t></w:r></w:p><w:sdt><w:sdtPr><w:tag w:val="scio:1:source"/></w:sdtPr><w:sdtContent><w:p><w:r><w:t>Quoted sentence.</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p><w:r><w:t>Tail</w:t></w:r></w:p>'
+      : '<w:p><w:r><w:t>Lead </w:t></w:r><w:sdt><w:sdtPr><w:tag w:val="scio:1:source"/></w:sdtPr><w:sdtContent><w:r><w:t>Book</w:t></w:r></w:sdtContent></w:sdt><w:r><w:t> tail</w:t></w:r></w:p>'
   )
 );
 if (!loaded.ok) throw Error(loaded.reason);
@@ -21,7 +24,7 @@ const stored = withPayloadRecord(
   {
     version: 1,
     id: 'source',
-    type: 'source',
+    type: container ? 'source_excerpt' : 'source',
     attributes: { title: 'Book', url: 'https://source.test', trust: 'verified' },
   },
   'Citation'
@@ -48,6 +51,7 @@ try {
     { revision: token(), targetMarkdown: target, ownership: [], contentProofs: [] },
     context,
     {
+      createPresenceProposalId: () => 'container-review',
       preparePayloads: (targets) => ({
         atomic: {
           proposalId: 'source-review',
@@ -76,7 +80,7 @@ try {
       throw Error('Earlier reader changed citation meaning');
   }
   console.log(
-    'Pinned previous reader preserves exact original and proposed citation views from the repaired writer.'
+    `Pinned previous reader preserves exact original and proposed ${container ? 'container' : 'inline citation'} views from the repaired writer.`
   );
 } finally {
   editor.destroy();
