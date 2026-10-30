@@ -107,9 +107,12 @@ export function planManualListSequences(
   const restart = (row: Description) => {
     const member = row.state.numbering;
     const native = member && reader.level(member.numId, member.level);
-    return native
-      ? (native.startOverride ?? (native.level.start !== 1 ? native.level.start : undefined))
-      : undefined;
+    if (!native) return undefined;
+    // A fresh instance over a reused definition restarts at the level's own start; only a
+    // different start is an explicit restart.
+    const start = native.level.start ?? 1;
+    const override = native.startOverride === start ? undefined : native.startOverride;
+    return override ?? (start !== 1 ? start : undefined);
   };
   const sameDefinition = (a: Description, b: Description) => {
     const first = numbered(a),

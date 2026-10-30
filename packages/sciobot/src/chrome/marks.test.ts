@@ -206,7 +206,7 @@ test('toolbar reports mixed state and shortcuts dispose without affecting foreig
   const editor = createDocxEditor({
     container,
     document: markDocument(
-      '<w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Alpha</w:t></w:r><w:r><w:t> beta</w:t></w:r></w:p>'
+      '<w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Alpha</w:t></w:r><w:r><w:t xml:space="preserve"> beta</w:t></w:r></w:p>'
     ),
   });
   const toolbar = createMarksToolbar(editor),

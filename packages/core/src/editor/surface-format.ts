@@ -570,8 +570,16 @@ export function createSurfaceFormat(deps: SurfaceFormatDeps): FormatMethods {
           deps.defaultFontFamily?.() ?? null,
           read.caretSpan
         ),
-        // The mark's face first, so an armed format still answers over it.
-        mergedProperties(read.markFace ?? [], pending ?? []),
+        // The mark's face first, so an armed format still answers over it. Pending clears
+        // stay in the list: they restore the inherited face, which `mergedProperties` drops.
+        read.markFace
+          ? [
+              ...read.markFace.filter(
+                (face) => !pending?.some((entry) => entry.localName === face.localName)
+              ),
+              ...(pending ?? []),
+            ]
+          : pending,
         inheritedFonts
           ? {
               ...inheritedFonts,

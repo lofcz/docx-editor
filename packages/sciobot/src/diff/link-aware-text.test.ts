@@ -25,7 +25,7 @@ for (const [label, outside, added, offset, target] of [
 ] as const)
   test(`link-aware text diff preserves exact native source ownership: ${target}`, () => {
     const loaded = readOoxmlPart(
-      `<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body><w:p><w:r><w:t>Keep. </w:t></w:r><w:hyperlink r:id="old" w:history="1"><w:r><w:t>${label}</w:t></w:r></w:hyperlink><w:r><w:t>${outside}</w:t></w:r></w:p></w:body></w:document>`,
+      `<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body><w:p><w:r><w:t xml:space="preserve">Keep. </w:t></w:r><w:hyperlink r:id="old" w:history="1"><w:r><w:t xml:space="preserve">${label}</w:t></w:r></w:hyperlink><w:r><w:t xml:space="preserve">${outside}</w:t></w:r></w:p></w:body></w:document>`,
       { name: '/word/document.xml', contentType: 'application/xml' }
     );
     if (!loaded.ok) throw Error(loaded.reason);
@@ -87,7 +87,7 @@ for (const [label, outside, added, offset, target] of [
 for (const side of ['left', 'right'] as const)
   test(`adjacent native links keep the explicit ${side} insertion owner`, () => {
     const loaded = readOoxmlPart(
-      '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body><w:p><w:r><w:t>Keep. </w:t></w:r><w:hyperlink r:id="left" w:history="1"><w:r><w:t>a</w:t></w:r></w:hyperlink><w:hyperlink r:id="right" w:tgtFrame="_blank"><w:r><w:t>b</w:t></w:r></w:hyperlink><w:r><w:t> End.</w:t></w:r></w:p></w:body></w:document>',
+      '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body><w:p><w:r><w:t xml:space="preserve">Keep. </w:t></w:r><w:hyperlink r:id="left" w:history="1"><w:r><w:t xml:space="preserve">a</w:t></w:r></w:hyperlink><w:hyperlink r:id="right" w:tgtFrame="_blank"><w:r><w:t xml:space="preserve">b</w:t></w:r></w:hyperlink><w:r><w:t xml:space="preserve"> End.</w:t></w:r></w:p></w:body></w:document>',
       { name: '/word/document.xml', contentType: 'application/xml' }
     );
     if (!loaded.ok) throw Error(loaded.reason);

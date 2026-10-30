@@ -76,7 +76,9 @@ export class NumberingUndoDependencies {
     this.after();
   }
   deleteFilter(): (item: Y.Item) => boolean {
-    const nodeFilter = nodeRecordDeleteFilter(this.registry.schema.nodes, this.registry.schema);
+    // No descriptor maps: keeping the attributes of nodes an undo un-creates leaves those nodes
+    // shown after the undo of a paste, a list, or a block birth in this fork's history.
+    const nodeFilter = nodeRecordDeleteFilter(this.registry.schema.nodes);
     return (item) =>
       !this.retains(item) &&
       !retainsNumberingInfrastructure(this.registry.schema, item) &&

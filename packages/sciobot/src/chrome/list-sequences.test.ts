@@ -17,8 +17,9 @@ import { setManualList, manualListMarker, manualListState } from './lists';
 const context = { documentId: 'list-sequences', epoch: 'mount' };
 const numbering = listNumbering.replace(
   '</w:numbering>',
-  '<w:num w:numId="4"><w:abstractNumId w:val="0"/></w:num>' +
-    '<w:num w:numId="5"><w:abstractNumId w:val="0"/></w:num>' +
+  // Every w:num over one definition shares its counter; a restart makes each a separate list.
+  '<w:num w:numId="4"><w:abstractNumId w:val="0"/><w:lvlOverride w:ilvl="0"><w:startOverride w:val="1"/></w:lvlOverride></w:num>' +
+    '<w:num w:numId="5"><w:abstractNumId w:val="0"/><w:lvlOverride w:ilvl="0"><w:startOverride w:val="1"/></w:lvlOverride></w:num>' +
     '<w:num w:numId="6"><w:abstractNumId w:val="0"/><w:lvlOverride w:ilvl="0"><w:startOverride w:val="5"/></w:lvlOverride></w:num></w:numbering>'
 );
 const heading = (text: string, numId?: string, level = 0, style = 'Heading1', indent = '') =>

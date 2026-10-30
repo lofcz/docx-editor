@@ -423,7 +423,7 @@ test('separate group records preserve original native compatibility attributes a
 test('independent parent and child records preserve nested native identities and original XML through save/reopen', () => {
   const read = readOoxmlPackage(
     docxFixture(
-      '<w:p><w:ins w:id="1" w:author="Alice"><w:r><w:t>Added </w:t></w:r><w:del w:id="2" w:author="Bob"><w:r><w:delText>struck</w:delText></w:r></w:del></w:ins></w:p>'
+      '<w:p><w:ins w:id="1" w:author="Alice"><w:r><w:t xml:space="preserve">Added </w:t></w:r><w:del w:id="2" w:author="Bob"><w:r><w:delText>struck</w:delText></w:r></w:del></w:ins></w:p>'
     )
   );
   if (!read.ok) throw new Error(read.reason);
