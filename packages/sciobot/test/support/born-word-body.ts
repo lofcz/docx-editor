@@ -39,6 +39,10 @@ export function bornWordBody(pkg: OoxmlPackage, imported: ReadonlySet<string>) {
     node.kind !== 'textValue'
       ? node.attributes.find((a) => a.namespaceUri === W && a.localName === name)?.value
       : undefined;
+  // Every w:num over one definition shares its counter, so a fresh instance carries a restart
+  // at each level's own start. On the first list of a definition in document order that restart
+  // changes nothing, and whether it is written depends only on allocation order.
+  const firstInstance = new Map<string, string>();
   const numberKey = (id: string): string => {
     if (id === '0') return 'none';
     const parts = [...saved.parts.values()].filter(
@@ -68,6 +72,27 @@ export function bornWordBody(pkg: OoxmlPackage, imported: ReadonlySet<string>) {
     expect(definitions).toHaveLength(1);
     const definition = definitions[0]!;
     if (definition.kind === 'textValue') throw Error('Invalid abstract numbering');
+    if (!firstInstance.has(abstractId!)) firstInstance.set(abstractId!, id);
+    const first = firstInstance.get(abstractId!) === id;
+    const levelStart = (level: string | undefined) => {
+      const lvl = definition.children.find(
+        (node) =>
+          node.kind !== 'textValue' && node.localName === 'lvl' && value(node, 'ilvl') === level
+      );
+      const start =
+        lvl && lvl.kind !== 'textValue'
+          ? lvl.children.find((node) => node.kind !== 'textValue' && node.localName === 'start')
+          : undefined;
+      return (start && value(start, 'val')) ?? '1';
+    };
+    const noOpRestart = (node: OoxmlNode) =>
+      first &&
+      node.kind !== 'textValue' &&
+      node.localName === 'lvlOverride' &&
+      node.children.length === 1 &&
+      node.children[0]!.kind !== 'textValue' &&
+      node.children[0]!.localName === 'startOverride' &&
+      value(node.children[0]!, 'val') === levelStart(value(node, 'ilvl'));
     const abstractKey = canonicalOoxmlFingerprint({
       ...numbering,
       root: {
@@ -84,16 +109,18 @@ export function bornWordBody(pkg: OoxmlPackage, imported: ReadonlySet<string>) {
         attributes: instance.attributes.filter(
           (a) => !(a.namespaceUri === W && a.localName === 'numId')
         ),
-        children: instance.children.map((node) =>
-          node === references[0] && node.kind !== 'textValue'
-            ? ({
-                ...node,
-                attributes: node.attributes.map((a) =>
-                  a.namespaceUri === W && a.localName === 'val' ? { ...a, value: abstractKey } : a
-                ),
-              } as OoxmlElement)
-            : node
-        ),
+        children: instance.children
+          .filter((node) => !noOpRestart(node))
+          .map((node) =>
+            node === references[0] && node.kind !== 'textValue'
+              ? ({
+                  ...node,
+                  attributes: node.attributes.map((a) =>
+                    a.namespaceUri === W && a.localName === 'val' ? { ...a, value: abstractKey } : a
+                  ),
+                } as OoxmlElement)
+              : node
+          ),
       } as OoxmlElement,
     });
   };
@@ -109,8 +136,10 @@ export function bornWordBody(pkg: OoxmlPackage, imported: ReadonlySet<string>) {
     const attributes = node.attributes.map((a) => {
       if (marker && a.namespaceUri === W14 && ['paraId', 'textId'].includes(a.localName))
         return { ...a, value: marker };
-      if (owned && node.localName === 'numId' && a.namespaceUri === W && a.localName === 'val')
-        return { ...a, value: numberKey(a.value) };
+      if (node.localName === 'numId' && a.namespaceUri === W && a.localName === 'val') {
+        const key = numberKey(a.value);
+        if (owned) return { ...a, value: key };
+      }
       if (owned && a.namespaceUri === R && a.localName === 'id') {
         const relationships = (saved.relationships.get(saved.mainDocumentPart) ?? []).filter(
           (entry) => entry.id === a.value

@@ -233,8 +233,8 @@ for (const headings of [false, true])
 
 test('counter bridges preserve unmatched native level extensions', () => {
   const customized = numbering.replace(
-    '<w:num w:numId="4"><w:abstractNumId w:val="0"/></w:num>',
-    '<w:num w:numId="4"><w:abstractNumId w:val="0"/><w:lvlOverride w:ilvl="0"><w:lvl w:ilvl="0"><w:start w:val="1"/><w:numFmt w:val="decimal"/><w:lvlText w:val="%1."/><w:pPr><w:ind w:left="720" w:hanging="360"/></w:pPr><w:futureLevel w:val="keep"/></w:lvl></w:lvlOverride></w:num>'
+    '<w:num w:numId="4"><w:abstractNumId w:val="0"/><w:lvlOverride w:ilvl="0"><w:startOverride w:val="1"/></w:lvlOverride></w:num>',
+    '<w:num w:numId="4"><w:abstractNumId w:val="0"/><w:lvlOverride w:ilvl="0"><w:startOverride w:val="1"/><w:lvl w:ilvl="0"><w:start w:val="1"/><w:numFmt w:val="decimal"/><w:lvlText w:val="%1."/><w:pPr><w:ind w:left="720" w:hanging="360"/></w:pPr><w:futureLevel w:val="keep"/></w:lvl></w:lvlOverride></w:num>'
   );
   const editor = createDocxEditor({
     container: document.createElement('div'),
@@ -269,8 +269,8 @@ test('counter bridges preserve unknown abstract numbering metadata', () => {
     .replace('</w:abstractNum>', '<w:futureTemplate w:val="keep"/></w:abstractNum>');
   const customized = numbering
     .replace(
-      '<w:num w:numId="4"><w:abstractNumId w:val="0"/></w:num>',
-      '<w:num w:numId="4"><w:abstractNumId w:val="99"/></w:num>'
+      '<w:num w:numId="4"><w:abstractNumId w:val="0"/><w:lvlOverride w:ilvl="0"><w:startOverride w:val="1"/></w:lvlOverride></w:num>',
+      '<w:num w:numId="4"><w:abstractNumId w:val="99"/><w:lvlOverride w:ilvl="0"><w:startOverride w:val="1"/></w:lvlOverride></w:num>'
     )
     .replace('</w:numbering>', copy + '</w:numbering>');
   const editor = createDocxEditor({

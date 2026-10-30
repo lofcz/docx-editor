@@ -25,41 +25,6 @@ function counter(pkg: OoxmlPackage, id: string) {
     throw new Error('The numbering instance is missing or ambiguous.');
   return { part, node: found[0]! as OoxmlElement };
 }
-const levelOf = (node: OoxmlNode) =>
-  named(node, 'lvlOverride') ? value(node, 'ilvl')?.trim() : undefined;
-/**
- * Every `w:num` over one abstract definition counts on one shared counter, so a fresh
- * instance restarts each level with a start-only override. A copied template keeps those
- * restarts for the levels where it does not set its own start.
- */
-function withRestarts(
-  copied: readonly OoxmlNode[],
-  fresh: readonly OoxmlNode[],
-  copy: (node: OoxmlNode) => OoxmlNode
-): OoxmlNode[] {
-  const restarts = new Map<string, OoxmlElement>();
-  for (const node of fresh) {
-    const level = levelOf(node);
-    const start = named(node, 'lvlOverride')
-      ? node.children.find((c) => named(c, 'startOverride'))
-      : undefined;
-    if (level !== undefined && start && named(start, 'startOverride')) restarts.set(level, start);
-  }
-  const covered = new Set<string>();
-  const out = copied.map((node) => {
-    const level = levelOf(node);
-    if (level === undefined || !named(node, 'lvlOverride')) return node;
-    covered.add(level);
-    const restart = restarts.get(level);
-    if (!restart || node.children.some((child) => named(child, 'startOverride'))) return node;
-    return { ...node, children: [copy(restart), ...node.children] } as OoxmlElement;
-  });
-  for (const node of fresh) {
-    const level = levelOf(node);
-    if (level !== undefined && restarts.has(level) && !covered.has(level)) out.push(copy(node));
-  }
-  return out;
-}
 /** Fork a counter without replacing its imported abstract or level formatting. */
 export function copyListInstanceTemplate(
   pkg: OoxmlPackage,
@@ -81,7 +46,7 @@ export function copyListInstanceTemplate(
         ? { ...attribute, value: destinationId }
         : attribute
     ),
-    children: withRestarts(source.node.children.map(copy), destination.node.children, copy),
+    children: source.node.children.map(copy),
   };
   const result = replaceNode(destination.part, destination.node.id, replacement as OoxmlElement);
   if (!result.ok) throw new Error('The imported counter template cannot be copied.');

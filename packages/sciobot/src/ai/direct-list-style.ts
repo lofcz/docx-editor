@@ -1,5 +1,6 @@
 import {
   createNodeIdAllocator,
+  insertChildren,
   readOoxmlPart,
   replaceNode,
   withPart,
@@ -20,7 +21,15 @@ const formats: Readonly<Record<ListStyle, string>> = {
   'upper-roman': 'upperRoman',
 };
 const bullets: Readonly<Record<string, string>> = { disc: '•', circle: '○', square: '■' };
-/** Override only the new counter instance. Imported abstract definitions and counters stay intact. */
+/**
+ * Give the new counter instance its own styled definition. Imported abstract definitions and
+ * counters stay intact.
+ *
+ * Every `w:num` over one `w:abstractNum` counts on one shared counter, so styling a fresh
+ * instance through level overrides on a reused definition would still advance, and be advanced
+ * by, the other lists over that definition. A definition of its own keeps the styled list
+ * separate, as Word does when a selection takes a different list format.
+ */
 export function styleListInstance(
   pkg: OoxmlPackage,
   numId: string,
@@ -30,53 +39,63 @@ export function styleListInstance(
     throw new Error('Invalid new list style.');
   const part = pkg.parts.get('/word/numbering.xml');
   if (!part) throw new Error('The list numbering part is missing.');
-  const num = part.root.children.find(
-    (n) =>
-      n.kind !== 'textValue' &&
-      n.localName === 'num' &&
-      n.attributes.some((a) => a.namespaceUri === W && a.localName === 'numId' && a.value === numId)
-  );
-  if (!num || num.kind === 'textValue') throw new Error('The list counter is missing.');
-  // A fresh counter over a reused definition already restarts each level with a start-only
-  // override. The style override for a level replaces it and keeps its restart.
-  const restarts = new Map<string, string>();
-  const startOnly = (child: OoxmlNode) =>
-    child.kind !== 'textValue' &&
-    child.namespaceUri === W &&
-    child.localName === 'lvlOverride' &&
-    child.children.length === 1 &&
-    child.children[0]!.kind !== 'textValue' &&
-    child.children[0]!.localName === 'startOverride';
-  for (const child of num.children) {
-    if (!startOnly(child) || child.kind === 'textValue') continue;
-    const level = child.attributes.find((a) => a.localName === 'ilvl')?.value;
-    const start = (child.children[0] as OoxmlElement).attributes.find(
-      (a) => a.localName === 'val'
-    )?.value;
-    if (level !== undefined && start !== undefined && /^\d{1,4}$/.test(start))
-      restarts.set(level, start);
+  const wml = (n: OoxmlNode, name: string): n is OoxmlElement =>
+    n.kind !== 'textValue' && n.namespaceUri === W && n.localName === name;
+  const attribute = (n: OoxmlElement, name: string) =>
+    n.attributes.find((a) => a.namespaceUri === W && a.localName === name)?.value;
+  const num = part.root.children.find((n) => wml(n, 'num') && attribute(n, 'numId') === numId);
+  if (!num || !wml(num, 'num')) throw new Error('The list counter is missing.');
+  const abstracts = part.root.children.filter((n) => wml(n, 'abstractNum'));
+  // The core allocator stripes w:numId by actor, so reusing that number keeps two peers that
+  // style lists at the same time from minting one shared definition ID.
+  const used = new Set<number>();
+  let next = 0;
+  for (const abstract of abstracts) {
+    const id = attribute(abstract as OoxmlElement, 'abstractNumId');
+    if (id === undefined || !/^\d{1,9}$/.test(id)) continue;
+    used.add(Number(id));
+    next = Math.max(next, Number(id) + 1);
   }
+  const abstractId = used.has(Number(numId)) ? next : Number(numId);
+  if (abstractId > 2147483647) throw new Error('No list definition identity is free.');
   const levels = Array.from(
     { length: 9 },
     (_, level) =>
-      `<w:lvlOverride w:ilvl="${level}">${restarts.has(String(level)) ? `<w:startOverride w:val="${restarts.get(String(level))}"/>` : ''}<w:lvl w:ilvl="${level}"><w:start w:val="1"/><w:numFmt w:val="${formats[style]}"/><w:lvlText w:val="${bullets[style] ?? '%' + (level + 1) + '.'}"/><w:lvlJc w:val="left"/><w:pPr><w:ind w:left="${720 * (level + 1)}" w:hanging="360"/></w:pPr>${bullets[style] ? '<w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/></w:rPr>' : ''}</w:lvl></w:lvlOverride>`
+      `<w:lvl w:ilvl="${level}"><w:start w:val="1"/><w:numFmt w:val="${formats[style]}"/><w:lvlText w:val="${bullets[style] ?? '%' + (level + 1) + '.'}"/><w:lvlJc w:val="left"/><w:pPr><w:ind w:left="${720 * (level + 1)}" w:hanging="360"/></w:pPr>${bullets[style] ? '<w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/></w:rPr>' : ''}</w:lvl>`
   ).join('');
   const read = readOoxmlPart(
-    `<w:numbering xmlns:w="${W}"><w:num w:numId="${numId}">${levels}</w:num></w:numbering>`,
+    `<w:numbering xmlns:w="${W}"><w:abstractNum w:abstractNumId="${abstractId}"><w:multiLevelType w:val="hybridMultilevel"/>${levels}</w:abstractNum><w:abstractNumId w:val="${abstractId}"/></w:numbering>`,
     { name: '/manual-list-style.xml', contentType: part.contentType }
   );
   if (!read.ok) throw new Error('The list style seed is invalid.');
-  const seed = read.part.root.children[0]!;
-  if (seed.kind === 'textValue') throw new Error('The list seed is missing.');
+  const [seed, reference] = read.part.root.children;
+  if (!seed || !reference || seed.kind === 'textValue' || reference.kind === 'textValue')
+    throw new Error('The list seed is missing.');
   const mint = createNodeIdAllocator(part);
   const copy = (node: OoxmlNode): OoxmlNode =>
     node.kind === 'textValue'
       ? { ...node, id: mint() }
       : ({ ...node, id: mint(), children: node.children.map(copy) } as OoxmlNode);
-  const result = replaceNode(part, num.id, {
-    ...num,
-    children: [...num.children.filter((child) => !startOnly(child)), ...seed.children.map(copy)],
+  // Only the definition reference changes; the fresh instance keeps its restart overrides.
+  const current = num.children.find((child) => wml(child, 'abstractNumId'));
+  if (!current) throw new Error('The list counter has no definition.');
+  let lastAbstract = -1;
+  part.root.children.forEach((n, index) => {
+    if (wml(n, 'abstractNum')) lastAbstract = index;
+  });
+  const after =
+    lastAbstract >= 0
+      ? lastAbstract + 1
+      : Math.max(
+          0,
+          part.root.children.findIndex((n) => wml(n, 'num'))
+        );
+  const inserted = insertChildren(part, part.root.id, after, [copy(seed)]);
+  if (!inserted.ok) throw new Error('The list style definition was refused.');
+  const result = replaceNode(inserted.part, current.id, {
+    ...reference,
+    id: current.id,
   } as OoxmlElement);
-  if (!result.ok) throw new Error('The list style override was refused.');
+  if (!result.ok) throw new Error('The list style definition was refused.');
   return withPart(pkg, result.part);
 }
