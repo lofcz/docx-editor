@@ -21,7 +21,7 @@ Unregistered tags that the projection allows keep the opaque MDX path. Existing 
 
 ## M01
 
-- [ ] Define the embedder MDX component contract
+- [x] Define the embedder MDX component contract
 
 **Depends:** [B01](02-react-blocks.md#b01), [B22](02-react-blocks.md#b22)
 
@@ -35,7 +35,7 @@ Unregistered tags that the projection allows keep the opaque MDX path. Existing 
 
 **Check:** Add focused registry construction tests, including hostile names and prefixes.
 
-**Claim:** Unclaimed. **Evidence:** Pending.
+**Claim:** claude, branch `codex/react-block-proof`. **Evidence:** `packages/sciobot/src/registry/contract.ts` adds `createMdxComponentRegistry`, which returns a frozen registry or refuses with `invalid-storage`, `invalid-component`, `duplicate-component`, `duplicate-tag`, or `invalid-opaque-tag`. `packages/sciobot/src/registry/sciobot.ts` builds `SCIOBOT_MDX_REGISTRY` from the existing constants, so stored names do not change. `bun test packages/sciobot/src/registry/contract.test.ts` passes 5 cases: indexing, hostile storage names, hostile and duplicate components, opaque tag rules, and identity with `DOMAIN_BLOCK_TAGS` and the diff strategies. A pure registry needs no session test. Limit: no adapter module reads the registry yet; M02 to M05 connect it.
 
 ## M02
 

@@ -24,7 +24,8 @@ import {
 
 export const PAYLOAD_NAMESPACE = 'urn:sciobot:docx:blocks:1';
 export const PAYLOAD_ROOT = 'blocks';
-const NODE_PREFIX = 'scio_';
+export const PAYLOAD_NODE_PREFIX = 'scio_';
+const NODE_PREFIX = PAYLOAD_NODE_PREFIX;
 const MAX_STORE_NODES = 10000;
 
 export function blockTag(id: string): string {
