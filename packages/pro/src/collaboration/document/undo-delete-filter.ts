@@ -40,6 +40,11 @@ export function whileUndoingCreations<Result>(
   }
 }
 
+/** The nodes the running undo un-creates, while it runs. */
+export function creationsBeingUndone(maps: NodeDescriptorMaps): ReadonlySet<string> | undefined {
+  return undoingCreations.get(maps.attributes);
+}
+
 /** Whether `item` is an attribute or binding of a node the running undo un-creates. */
 function describesUndoneCreation(item: Y.Item, maps: NodeDescriptorMaps | undefined): boolean {
   if (!maps || item.parentSub === null) return false;

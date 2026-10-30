@@ -83,7 +83,58 @@ function unnested(node: OoxmlNode, inside = false): void {
   if (revision) expect(inside).toBe(false);
   for (const child of node.children) unnested(child, inside || revision);
 }
-const fingerprint = canonicalOoxmlFingerprint;
+type Print = string | Print[];
+const JOINABLE = new Set(['t', 'delText', 'tab', 'br']);
+const named = (node: Print, name: string): node is Print[] =>
+  Array.isArray(node) && node[0] === 'element' && node[1] === W && node[2] === name;
+const plain = (run: Print): run is Print[] =>
+  named(run, 'r') &&
+  (run[3] as Print[]).length === 0 &&
+  (run[4] as Print[]).every((part) => named(part, 'rPr') || JOINABLE.has(String(part[2])));
+const props = (run: Print[]) =>
+  JSON.stringify((run[4] as Print[]).filter((part) => named(part, 'rPr')));
+const textOf = (node: Print[]) =>
+  String(((node[4] as Print[])[0] as Print[] | undefined)?.[1] ?? '');
+/** One text element per text kind and stretch; `xml:space` follows from the joined text. */
+function joinText(content: readonly Print[]): Print[] {
+  const out: Print[] = [];
+  for (const part of content) {
+    const last = out.at(-1);
+    const text = (node: Print | undefined): node is Print[] =>
+      Array.isArray(node) && (node[2] === 't' || node[2] === 'delText');
+    if (text(part) && text(last) && last[2] === part[2])
+      out[out.length - 1] = [...last.slice(0, 3), [], [['text', textOf(last) + textOf(part)]]];
+    else if (text(part)) out.push([...part.slice(0, 3), [], part[4]!]);
+    else out.push(part);
+  }
+  return out;
+}
+/** Join adjacent same-format plain runs and their text, as a decision joins them. */
+function joinRuns(node: Print): Print {
+  if (!Array.isArray(node) || node[0] !== 'element') return node;
+  const out: Print[] = [];
+  for (const child of (node[4] as Print[]).map(joinRuns)) {
+    const previous = out.at(-1);
+    if (previous && plain(previous) && plain(child) && props(previous) === props(child))
+      out[out.length - 1] = [
+        ...previous.slice(0, 4),
+        [
+          ...(previous[4] as Print[]),
+          ...(child[4] as Print[]).filter((part) => !named(part, 'rPr')),
+        ],
+      ];
+    else out.push(child);
+  }
+  return [
+    ...node.slice(0, 4),
+    out.map((child) =>
+      plain(child) ? [...child.slice(0, 4), joinText(child[4] as Print[])] : child
+    ),
+  ];
+}
+// Decisions join adjacent same-format runs, so the structural oracle compares joined runs.
+const fingerprint = (part: Parameters<typeof canonicalOoxmlFingerprint>[0]) =>
+  JSON.stringify(joinRuns(JSON.parse(canonicalOoxmlFingerprint(part)) as Print));
 
 for (const separator of ['', '<w:proofErr w:type="spellStart"/>'])
   test(`tracked link groups deletion wrappers without merging source runs: ${separator || 'adjacent'}`, () => {

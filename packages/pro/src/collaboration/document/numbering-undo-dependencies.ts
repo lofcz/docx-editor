@@ -76,8 +76,7 @@ export class NumberingUndoDependencies {
     this.after();
   }
   deleteFilter(): (item: Y.Item) => boolean {
-    // No descriptor maps: keeping the attributes of nodes an undo un-creates leaves those nodes
-    // shown after the undo of a paste, a list, or a block birth in this fork's history.
+    // Created-node descriptors follow the fork's rule in `undo-created-descriptors.ts`.
     const nodeFilter = nodeRecordDeleteFilter(this.registry.schema.nodes);
     return (item) =>
       !this.retains(item) &&

@@ -3,6 +3,7 @@ Copyright (c) 2026 EigenPal, Inc. All rights reserved.
 Licensed under the EigenPal Pro Evaluation License 1.0 — see packages/pro/LICENSE.md.
 Production use requires a commercial agreement: licensing@eigenpal.com
 */
+import { retainsCreatedDescriptor } from './undo-created-descriptors.ts';
 import * as resourceRecords from './registry-resource-records.ts';
 import { BirthUndoDependencies } from './birth-undo-dependencies.ts';
 import { subscribeTextReads } from './registry-text-reads.ts';
@@ -246,7 +247,9 @@ export class DocumentRegistry {
   /** Retain node records, shared containers and table ancestry needed by peer edits. */
   undoDeleteFilter(): (item: Y.Item) => boolean {
     const filter = this.numberingDependencies.deleteFilter();
-    return (item) => !this.birthDependencies.retains(item) && filter(item);
+    const births = this.birthDependencies;
+    return (item) =>
+      !births.retains(item) && !retainsCreatedDescriptor(this, births, item) && filter(item);
   }
 
   encodeSnapshot(): Uint8Array {

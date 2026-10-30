@@ -169,6 +169,21 @@ export class BirthUndoDependencies {
       }
     }
   };
+  /** Whether `id` or one of its ancestors is a birth that the running undo marks undone. */
+  covers(id: LogicalId): boolean {
+    if (!this.born.size) return false;
+    const seen = new Set<LogicalId>();
+    for (
+      let at: LogicalId | null = id;
+      at && seen.size < this.registry.limits.maxTreeDepth;
+      at = this.registry.parentOf(at)
+    ) {
+      if (this.born.has(at)) return true;
+      if (seen.has(at)) return false;
+      seen.add(at);
+    }
+    return false;
+  }
   retains(item: Y.Item): boolean {
     if (!this.born.size) return false;
     if (item.parent instanceof Y.Array) {
