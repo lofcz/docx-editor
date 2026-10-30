@@ -252,8 +252,10 @@ for (const clients of [
       const published = () => publications++;
       pair.documents[0]!.on('update', published);
       try {
+        // Word allows alignment inside a content-locked control, so only Bot's mark group,
+        // which is not alignment, stays locked.
         for (const group of groups.groups.filter(
-          (group) => group.native[0]?.address.author !== 'Peer'
+          (group) => group.native[0]?.address.author === 'Bot'
         )) {
           const result = rejectReviewGroup(
             alice!,

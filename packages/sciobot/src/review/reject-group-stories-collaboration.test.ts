@@ -37,7 +37,7 @@ for (const mode of ['body-header', 'imported-middle'] as const)
                 ['Before', 'Middle', 'After']
                   .map(
                     (author, index) =>
-                      `<w:p><w:r><w:t>${author} </w:t></w:r><w:ins w:id="${index + 1}" w:author="${author}"><w:r><w:t>Pending</w:t></w:r></w:ins></w:p>`
+                      `<w:p><w:r><w:t xml:space="preserve">${author} </w:t></w:r><w:ins w:id="${index + 1}" w:author="${author}"><w:r><w:t>Pending</w:t></w:r></w:ins></w:p>`
                   )
                   .join('')
               );

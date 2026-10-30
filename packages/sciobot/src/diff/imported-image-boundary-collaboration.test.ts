@@ -39,7 +39,7 @@ for (const clients of [
   for (const receiver of [0, 1] as const)
     test(`imported image boundary keeps foreign text outside the exact native link through both histories ${clients}/${receiver}`, async () => {
       const initial = docxFixture(
-        '<w:p><w:r><w:t xml:space="preserve">Keep. </w:t></w:r><w:hyperlink r:id="existing" w:tooltip="Read" w:history="1" w:tgtFrame="_blank"><w:r><w:rPr xmlns:proof="urn:sciobot:proof"><w:rStyle w:val="ImportedBase"/><w:color w:val="112233"/><proof:metadata proof:keep="yes"/></w:rPr><w:t>label</w:t></w:r></w:hyperlink><w:r><w:t> End.</w:t></w:r></w:p>',
+        '<w:p><w:r><w:t xml:space="preserve">Keep. </w:t></w:r><w:hyperlink r:id="existing" w:tooltip="Read" w:history="1" w:tgtFrame="_blank"><w:r><w:rPr xmlns:proof="urn:sciobot:proof"><w:rStyle w:val="ImportedBase"/><w:color w:val="112233"/><proof:metadata proof:keep="yes"/></w:rPr><w:t>label</w:t></w:r></w:hyperlink><w:r><w:t xml:space="preserve"> End.</w:t></w:r></w:p>',
         {
           relationships:
             '<Relationship Id="existing" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="https://outer.test" TargetMode="External"/>',

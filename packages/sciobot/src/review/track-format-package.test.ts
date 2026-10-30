@@ -120,7 +120,14 @@ for (const fresh of [false, true])
         let expectedNumbering = originalNumbering;
         if (fresh) {
           const seed = readOoxmlPart(
-            '<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:num w:numId="4"><w:abstractNumId w:val="0"/><w:lvlOverride w:ilvl="2"><w:startOverride w:val="5"/></w:lvlOverride></w:num></w:numbering>',
+            // A fresh w:num over a reused definition restarts every level at its own start.
+            '<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:num w:numId="4"><w:abstractNumId w:val="0"/>' +
+              Array.from(
+                { length: 9 },
+                (_, level) =>
+                  `<w:lvlOverride w:ilvl="${level}"><w:startOverride w:val="${level === 2 ? 5 : 1}"/></w:lvlOverride>`
+              ).join('') +
+              '</w:num></w:numbering>',
             { name: '/r06-resource-oracle.xml', contentType: originalNumbering.contentType }
           );
           if (!seed.ok) throw Error(seed.reason);

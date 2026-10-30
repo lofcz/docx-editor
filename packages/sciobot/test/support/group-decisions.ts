@@ -103,7 +103,7 @@ export function crossStoryGroupFixture() {
   const revision = '<w:ins w:id="7" w:author="Teacher"><w:r><w:t>Pending</w:t></w:r></w:ins>',
     entries = unzipSync(
       docxFixture(
-        '<w:p><w:r><w:t>Body </w:t></w:r>' +
+        '<w:p><w:r><w:t xml:space="preserve">Body </w:t></w:r>' +
           revision +
           '</w:p><w:p><w:ins w:id="8" w:author="Peer"><w:r><w:t>Other</w:t></w:r></w:ins></w:p><w:sectPr><w:headerReference w:type="default" r:id="header"/></w:sectPr>',
         {

@@ -48,7 +48,9 @@ for (const variant of ['distinct', 'same', 'mixed-space'] as const)
       test(`${variant} imported text shells survive ${action}${saved ? ' after reopen' : ''}`, async () => {
         const body = paragraph(
           '<w:r xmlns:keep="urn:keep" keep:run="original"><w:rPr/>' +
-            `<w:t keep:text="first"${variant === 'mixed-space' ? ' xml:space="preserve"' : ''}>Alpha </w:t><w:t keep:text="${variant === 'same' ? 'first' : 'second'}">end</w:t></w:r>`
+            // Word drops the trailing space without xml:space="preserve"; only mixed-space
+            // leaves the second shell without it.
+            `<w:t keep:text="first" xml:space="preserve">Alpha </w:t><w:t keep:text="${variant === 'same' ? 'first' : 'second'}"${variant === 'mixed-space' ? '' : ' xml:space="preserve"'}>end</w:t></w:r>`
         );
         let editor = mount(body);
         const direct = mount(body);
