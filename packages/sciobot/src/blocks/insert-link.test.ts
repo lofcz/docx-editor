@@ -1,5 +1,9 @@
 import { expect, test } from 'bun:test';
-import { createDocxEditor, type DocxEditorInstance } from '@docx-editor.dev/core/editor';
+import {
+  blankDocumentBytes,
+  createDocxEditor,
+  type DocxEditorInstance,
+} from '@docx-editor.dev/core/editor';
 import { paragraphTextOf, readOoxmlPackage, writeOoxmlPackage } from '@docx-editor.dev/core/store';
 import { targetDocumentInput } from '../../test/support/target-document';
 import { projectSourcePackage } from '../../test/support/target-source-fixture';
@@ -65,6 +69,28 @@ test('a linked block writes a Word hyperlink to its source; undo removes it', as
         })
       ).toMatchObject({ success: false, code: 'invalid-input' });
     expect(texts(editor)).toEqual(['Intro', 'After']);
+  } finally {
+    editor.destroy();
+    container.remove();
+  }
+});
+
+test('the link works in a part that does not declare the relationship prefix', async () => {
+  const container = document.createElement('div');
+  document.body.append(container);
+  // The packaged blank template has no `xmlns:r` on its root.
+  const editor = createDocxEditor({ container, document: new Uint8Array(blankDocumentBytes()) });
+  try {
+    const inserted = insertBlock(editor, {
+      parentControlId: null,
+      beforeId: null,
+      payload: VIDEO,
+      label: 'Video',
+      paragraphs: ['clip.webm'],
+      link: URL_,
+    });
+    if (!inserted.success) throw new Error(inserted.error);
+    expect(await markdown(editor)).toContain(`[clip\\.webm](${URL_})`);
   } finally {
     editor.destroy();
     container.remove();

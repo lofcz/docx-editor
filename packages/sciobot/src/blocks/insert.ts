@@ -84,7 +84,8 @@ function blockXml(
     paragraphs
       .map((text, index) =>
         index === 0 && linkId !== null
-          ? `<w:p><w:hyperlink r:id="${escapeXml(linkId)}">${run(text)}</w:hyperlink></w:p>`
+          ? // The hyperlink declares its own `r` prefix: the target part may not.
+            `<w:p><w:hyperlink xmlns:r="${R_NAMESPACE}" r:id="${escapeXml(linkId)}">${run(text)}</w:hyperlink></w:p>`
           : `<w:p>${run(text)}</w:p>`
       )
       .join('') +
@@ -196,7 +197,7 @@ export function insertBlock(
     return failure('invalid-input', 'A linked block needs text in its first paragraph.');
   const templateFor = (linkId: string | null): OoxmlNode | string => {
     const parsed = readOoxmlPart(
-      `<w:document xmlns:w="${WML_NAMESPACE_URI}" xmlns:r="${R_NAMESPACE}"><w:body>${blockXml(insertion, paragraphs, linkId)}</w:body></w:document>`,
+      `<w:document xmlns:w="${WML_NAMESPACE_URI}"><w:body>${blockXml(insertion, paragraphs, linkId)}</w:body></w:document>`,
       { name: '/sciobot-insert-block.xml', contentType: part.contentType }
     );
     if (!parsed.ok) return `The new block was refused: ${parsed.reason}.`;
@@ -243,7 +244,10 @@ export function insertBlock(
       seed: `scio-block:${insertion.payload.id}`,
     });
     const placed = insertChildren(live, target.id, at, [node]);
-    if (!placed.ok) throw new Error('The new block was refused by the native store.');
+    if (!placed.ok)
+      throw new Error(
+        `The new block was refused by the native store (${placed.issues.map((issue) => issue.code).join(', ')}).`
+      );
     if (!editableParagraphs(node).length)
       throw new Error('The new block has no editable paragraph.');
     const stored = withPayloadRecord(
