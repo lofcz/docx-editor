@@ -148,4 +148,4 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Validate every referenced file, task ID, and required coverage row.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** claude, branch `codex/react-block-proof`. **Evidence:** Progress, not closure. Every row of `coverage.md` now starts with a status computed from the checkbox of each required leaf; earlier checkpoint text follows it. 41 of 50 rows are complete. Nine rows stay open on these leaves, and each one prevents cutover until it closes or the scope decision is accepted: U13, X20, and X22 (out of the cutover scope, with recorded differences); I24 (one block removal and insertion under one Plate ID); B23 and V06 (need a supported desktop and desktop Word); I16 (needs the production PDF conversion service); and V08 itself. `bun scripts/sciobot-port/check-production-coverage.mjs` with `SCIOBOT_REFERENCE_APP` set to the cutover worktree validates every mapped leaf and 202 source hashes after a fresh `--capture` at application `072929774`.

@@ -39,22 +39,32 @@
     "CodeBlockKit": {
       "behavior": "Code editing, language choice, syntax display and mod+alt+8.",
       "savedData": "code_block, code_line, code_syntax, lang and whitespace.",
-      "routeSources": ["src/components/ui/code-block-node.tsx"]
+      "routeSources": [
+        "src/components/ui/code-block-node.tsx"
+      ]
     },
     "TableKit": {
       "behavior": "Cell editing, row/column insertion controls, selection, resizing and native table operations.",
       "savedData": "table, tr, td, th, widths, spans, borders and cell children.",
-      "routeSources": ["src/components/ui/table-node.tsx", "src/components/plate-types.ts"]
+      "routeSources": [
+        "src/components/ui/table-node.tsx",
+        "src/components/plate-types.ts"
+      ]
     },
     "ToggleKit": {
       "behavior": "Collapse, expand, indent and reveal nested content.",
       "savedData": "toggle, nesting and editable children.",
-      "routeSources": ["src/components/ui/toggle-node.tsx", "src/components/indent-kit.tsx"]
+      "routeSources": [
+        "src/components/ui/toggle-node.tsx",
+        "src/components/indent-kit.tsx"
+      ]
     },
     "TocKit": {
       "behavior": "Build heading navigation and scroll with top offset 80.",
       "savedData": "toc and configured depth; entries derive from headings.",
-      "routeSources": ["src/components/ui/toc-node.tsx"]
+      "routeSources": [
+        "src/components/ui/toc-node.tsx"
+      ]
     },
     "MediaKit": {
       "behavior": "Upload placeholders, image preview and resize, gallery, audio, video, files, embeds and captions.",
@@ -76,7 +86,10 @@
     "CalloutKit": {
       "behavior": "Edit callout content and presentation.",
       "savedData": "callout wrapper properties and native children.",
-      "routeSources": ["src/components/ui/callout-node.tsx", "src/components/callout-md-rules.ts"]
+      "routeSources": [
+        "src/components/ui/callout-node.tsx",
+        "src/components/callout-md-rules.ts"
+      ]
     },
     "StoryKit": {
       "behavior": "Edit story metadata and native body.",
@@ -99,7 +112,9 @@
     "ColumnKit": {
       "behavior": "Insert column groups, resize widths and edit nested columns.",
       "savedData": "column_group, column, widths and child blocks.",
-      "routeSources": ["src/components/ui/column-node.tsx"]
+      "routeSources": [
+        "src/components/ui/column-node.tsx"
+      ]
     },
     "LessonPlanKit": {
       "behavior": "Title, recap, curriculum, phase, activity timing, retiming, lesson visual and listening controls.",
@@ -121,17 +136,24 @@
     "MathKit": {
       "behavior": "Inline and block LaTeX editing, dollar input rules and previews.",
       "savedData": "equation, inline_equation and LaTeX source. Imported OMML stays native.",
-      "routeSources": ["src/components/ui/equation-node.tsx"]
+      "routeSources": [
+        "src/components/ui/equation-node.tsx"
+      ]
     },
     "SmilesKit": {
       "behavior": "Edit and render chemistry sources.",
       "savedData": "smiles source and native image fallback.",
-      "routeSources": ["src/components/ui/smiles-node.tsx", "src/components/smiles/md-rules.ts"]
+      "routeSources": [
+        "src/components/ui/smiles-node.tsx",
+        "src/components/smiles/md-rules.ts"
+      ]
     },
     "DateKit": {
       "behavior": "Pick a date and display it in the current locale.",
       "savedData": "date stored by the picker; locale display is derived.",
-      "routeSources": ["src/components/ui/date-node.tsx"]
+      "routeSources": [
+        "src/components/ui/date-node.tsx"
+      ]
     },
     "LinkKit": {
       "behavior": "Link insertion/editing, cursor overlay and mod+k.",
@@ -145,7 +167,10 @@
     "MentionKit": {
       "behavior": "Mention suggestions and insertion; document mentions can be selected.",
       "savedData": "mention key, coverImage, icon and label. mention_input is transient.",
-      "routeSources": ["src/components/ui/mention-node.tsx", "src/components/plate-types.ts"]
+      "routeSources": [
+        "src/components/ui/mention-node.tsx",
+        "src/components/plate-types.ts"
+      ]
     },
     "SourceKit": {
       "behavior": "Citation and source excerpt rendering with provenance services.",
@@ -160,12 +185,18 @@
     "BasicMarksKit": {
       "behavior": "Bold, italic, underline, code, strike, subscript, superscript and configured shortcuts/input rules.",
       "savedData": "Seven independent text marks.",
-      "routeSources": ["src/components/ui/code-node.tsx", "src/components/plate-types.ts"]
+      "routeSources": [
+        "src/components/ui/code-node.tsx",
+        "src/components/plate-types.ts"
+      ]
     },
     "FontKit": {
       "behavior": "Set font family, size, foreground and background colors.",
       "savedData": "fontFamily, fontSize, color and backgroundColor on text.",
-      "routeSources": ["src/components/font-base-kit.tsx", "src/components/plate-types.ts"]
+      "routeSources": [
+        "src/components/font-base-kit.tsx",
+        "src/components/plate-types.ts"
+      ]
     },
     "ListKit": {
       "behavior": "Bullets, numbering, checklists, indent/outdent and input rules.",
@@ -179,12 +210,16 @@
     "AlignKit": {
       "behavior": "Start, left, center, right, end and justified alignment.",
       "savedData": "align on headings, paragraphs, images and media embeds.",
-      "routeSources": ["src/components/ui/media-toolbar.tsx"]
+      "routeSources": [
+        "src/components/ui/media-toolbar.tsx"
+      ]
     },
     "LineHeightKit": {
       "behavior": "Choose line height 1, 1.2, 1.5, 2 or 3.",
       "savedData": "lineHeight on headings and paragraphs.",
-      "routeSources": ["src/components/line-height-base-kit.tsx"]
+      "routeSources": [
+        "src/components/line-height-base-kit.tsx"
+      ]
     },
     "SuggestionKit": {
       "behavior": "Select and review native and application proposals, including block changes.",
@@ -208,7 +243,9 @@
     "AutoformatKit": {
       "behavior": "Configured text substitutions, smart quotes and fractions; suppress these inside code.",
       "savedData": "Substitution results become native text. Rule state is transient.",
-      "routeSources": ["src/components/autoformat-kit.tsx"]
+      "routeSources": [
+        "src/components/autoformat-kit.tsx"
+      ]
     },
     "CursorOverlayKit": {
       "behavior": "Render AI presentation cursors and optional remote selections.",
@@ -221,17 +258,24 @@
     "DndKit": {
       "behavior": "Move blocks, auto-scroll and drop files through media placeholders.",
       "savedData": "Block identity survives moves. New uploads use placeholder identities.",
-      "routeSources": ["src/components/ui/block-draggable.tsx", "src/components/dnd-kit.tsx"]
+      "routeSources": [
+        "src/components/ui/block-draggable.tsx",
+        "src/components/dnd-kit.tsx"
+      ]
     },
     "EmojiKit": {
       "behavior": "Search and insert emoji with keyboard navigation.",
       "savedData": "Emoji inserts text. emoji_input is transient.",
-      "routeSources": ["src/components/ui/emoji-node.tsx"]
+      "routeSources": [
+        "src/components/ui/emoji-node.tsx"
+      ]
     },
     "ExitBreakKit": {
       "behavior": "mod+enter inserts after; mod+shift+enter inserts before.",
       "savedData": "Native paragraph insertion outside the current block.",
-      "routeSources": ["src/components/exit-break-kit.tsx"]
+      "routeSources": [
+        "src/components/exit-break-kit.tsx"
+      ]
     },
     "DocxKit": {
       "behavior": "Import DOCX and styled clipboard content through existing workspace routes.",
@@ -265,7 +309,9 @@
     "BlockPlaceholderKit": {
       "behavior": "Show the paragraph hint only at the document top level.",
       "savedData": "Placeholder text is presentation only.",
-      "routeSources": ["src/components/block-placeholder-kit.tsx"]
+      "routeSources": [
+        "src/components/block-placeholder-kit.tsx"
+      ]
     },
     "FloatingToolbarKit": {
       "behavior": "Show Add to chat for selected text. Resolve working-view quote lines, preserve selection and reuse eligibility checks.",
@@ -282,11 +328,13 @@
     "TrailingBlockPlugin": {
       "behavior": "Keep an editable trailing paragraph after terminal blocks.",
       "savedData": "Trailing native paragraph, without repeated empty blocks.",
-      "routeSources": ["src/components/workspace/WorkspaceEditorKit.ts"]
+      "routeSources": [
+        "src/components/workspace/WorkspaceEditorKit.ts"
+      ]
     }
   },
   "snapshot": {
-    "applicationRevision": "686f2b973e1ec1980e43e15953b342970337d93e",
+    "applicationRevision": "072929774e1ef48979a3b622f62314d5aefa1061",
     "workspace": [
       {
         "name": "AIKit",
@@ -389,7 +437,12 @@
           "exported": "BlockMenuKit"
         },
         "renderers": [],
-        "leaves": ["U03", "B11", "B12", "B13"],
+        "leaves": [
+          "U03",
+          "B11",
+          "B12",
+          "B13"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -414,7 +467,18 @@
             }
           }
         ],
-        "leaves": ["N01", "N02", "P02", "P14", "P15", "P16", "P17", "I11", "R37", "R38"],
+        "leaves": [
+          "N01",
+          "N02",
+          "P02",
+          "P14",
+          "P15",
+          "P16",
+          "P17",
+          "I11",
+          "R37",
+          "R38"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -439,7 +503,10 @@
             }
           }
         ],
-        "leaves": ["X16", "P04"],
+        "leaves": [
+          "X16",
+          "P04"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -525,7 +592,11 @@
             }
           }
         ],
-        "leaves": ["X17", "U07", "U12"],
+        "leaves": [
+          "X17",
+          "U07",
+          "U12"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -543,7 +614,9 @@
             }
           }
         ],
-        "leaves": ["X18"],
+        "leaves": [
+          "X18"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -582,7 +655,16 @@
             }
           }
         ],
-        "leaves": ["X26", "X27", "X28", "X29", "X30", "X31", "X32", "X33"],
+        "leaves": [
+          "X26",
+          "X27",
+          "X28",
+          "X29",
+          "X30",
+          "X31",
+          "X32",
+          "X33"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -600,7 +682,10 @@
             }
           }
         ],
-        "leaves": ["X13", "X37"],
+        "leaves": [
+          "X13",
+          "X37"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -618,7 +703,10 @@
             }
           }
         ],
-        "leaves": ["X14", "X37"],
+        "leaves": [
+          "X14",
+          "X37"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -636,7 +724,10 @@
             }
           }
         ],
-        "leaves": ["X15", "X37"],
+        "leaves": [
+          "X15",
+          "X37"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -661,7 +752,10 @@
             }
           }
         ],
-        "leaves": ["X19", "X20"],
+        "leaves": [
+          "X19",
+          "X20"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -784,7 +878,10 @@
           "exported": "MathKit"
         },
         "renderers": [],
-        "leaves": ["X23", "X24"],
+        "leaves": [
+          "X23",
+          "X24"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -794,7 +891,9 @@
           "exported": "SmilesKit"
         },
         "renderers": [],
-        "leaves": ["X25"],
+        "leaves": [
+          "X25"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -812,7 +911,13 @@
             }
           }
         ],
-        "leaves": ["B18", "B19", "B20", "B21", "X21"],
+        "leaves": [
+          "B18",
+          "B19",
+          "B20",
+          "B21",
+          "X21"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -822,7 +927,15 @@
           "exported": "LinkKit"
         },
         "renderers": [],
-        "leaves": ["N10", "D03", "R26", "R27", "R42", "R43", "P22"],
+        "leaves": [
+          "N10",
+          "D03",
+          "R26",
+          "R27",
+          "R42",
+          "R43",
+          "P22"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -847,7 +960,14 @@
             }
           }
         ],
-        "leaves": ["B18", "B19", "B20", "B21", "X22", "X38"],
+        "leaves": [
+          "B18",
+          "B19",
+          "B20",
+          "B21",
+          "X22",
+          "X38"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -872,7 +992,13 @@
             }
           }
         ],
-        "leaves": ["X11", "X12", "C08", "D12", "D14"],
+        "leaves": [
+          "X11",
+          "X12",
+          "C08",
+          "D12",
+          "D14"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -882,7 +1008,12 @@
           "exported": "BasicMarksKit"
         },
         "renderers": [],
-        "leaves": ["N03", "D03", "R38", "N18"],
+        "leaves": [
+          "N03",
+          "D03",
+          "R38",
+          "N18"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -892,7 +1023,10 @@
           "exported": "FontKit"
         },
         "renderers": [],
-        "leaves": ["N04", "N05"],
+        "leaves": [
+          "N04",
+          "N05"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -902,7 +1036,13 @@
           "exported": "ListKit"
         },
         "renderers": [],
-        "leaves": ["N08", "D06", "P21", "R30", "I22"],
+        "leaves": [
+          "N08",
+          "D06",
+          "P21",
+          "R30",
+          "I22"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -912,7 +1052,10 @@
           "exported": "AlignKit"
         },
         "renderers": [],
-        "leaves": ["N06", "D04"],
+        "leaves": [
+          "N06",
+          "D04"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -922,7 +1065,10 @@
           "exported": "LineHeightKit"
         },
         "renderers": [],
-        "leaves": ["N07", "D04"],
+        "leaves": [
+          "N07",
+          "D04"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -1007,7 +1153,9 @@
             }
           }
         ],
-        "leaves": ["U02"],
+        "leaves": [
+          "U02"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -1017,7 +1165,9 @@
           "exported": "AutoformatKit"
         },
         "renderers": [],
-        "leaves": ["U05"],
+        "leaves": [
+          "U05"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -1027,7 +1177,10 @@
           "exported": "CursorOverlayKit"
         },
         "renderers": [],
-        "leaves": ["U14", "A04"],
+        "leaves": [
+          "U14",
+          "A04"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -1037,7 +1190,11 @@
           "exported": "DndKit"
         },
         "renderers": [],
-        "leaves": ["U03", "U04", "B13"],
+        "leaves": [
+          "U03",
+          "U04",
+          "B13"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -1055,7 +1212,9 @@
             }
           }
         ],
-        "leaves": ["U06"],
+        "leaves": [
+          "U06"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -1065,7 +1224,9 @@
           "exported": "ExitBreakKit"
         },
         "renderers": [],
-        "leaves": ["U07"],
+        "leaves": [
+          "U07"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -1075,7 +1236,9 @@
           "exported": "TrailingBlockPlugin"
         },
         "renderers": [],
-        "leaves": ["U07"],
+        "leaves": [
+          "U07"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -1085,7 +1248,11 @@
           "exported": "DocxKit"
         },
         "renderers": [],
-        "leaves": ["I10", "I14", "B10"],
+        "leaves": [
+          "I10",
+          "I14",
+          "B10"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -1103,7 +1270,15 @@
             }
           }
         ],
-        "leaves": ["P05", "P18", "X09", "X34", "X35", "X36", "I12"],
+        "leaves": [
+          "P05",
+          "P18",
+          "X09",
+          "X34",
+          "X35",
+          "X36",
+          "I12"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -1138,7 +1313,9 @@
           "exported": "BlockPlaceholderKit"
         },
         "renderers": [],
-        "leaves": ["U08"],
+        "leaves": [
+          "U08"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -1148,7 +1325,12 @@
           "exported": "FloatingToolbarKit"
         },
         "renderers": [],
-        "leaves": ["U01", "P20", "U15", "U16"],
+        "leaves": [
+          "U01",
+          "P20",
+          "U15",
+          "U16"
+        ],
         "verification": "Pending production verification"
       }
     ],
@@ -1252,7 +1434,12 @@
         ],
         "workspaceFeature": "CodeBlockKit",
         "savedData": "code_block, code_line, code_syntax, lang and whitespace.",
-        "leaves": ["I17", "I21", "X16", "P04"],
+        "leaves": [
+          "I17",
+          "I21",
+          "X16",
+          "P04"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -1344,7 +1531,13 @@
         ],
         "workspaceFeature": "ToggleKit",
         "savedData": "toggle, nesting and editable children.",
-        "leaves": ["I17", "I21", "X17", "U07", "U12"],
+        "leaves": [
+          "I17",
+          "I21",
+          "X17",
+          "U07",
+          "U12"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -1364,7 +1557,11 @@
         ],
         "workspaceFeature": "TocKit",
         "savedData": "toc and configured depth; entries derive from headings.",
-        "leaves": ["I17", "I21", "X18"],
+        "leaves": [
+          "I17",
+          "I21",
+          "X18"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -1412,7 +1609,18 @@
         ],
         "workspaceFeature": "MediaKit",
         "savedData": "img, image_gallery, audio, video, file, media_embed, placeholder, URLs, dimensions, captions and asset metadata.",
-        "leaves": ["I17", "I21", "X26", "X27", "X28", "X29", "X30", "X31", "X32", "X33"],
+        "leaves": [
+          "I17",
+          "I21",
+          "X26",
+          "X27",
+          "X28",
+          "X29",
+          "X30",
+          "X31",
+          "X32",
+          "X33"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -1432,7 +1640,12 @@
         ],
         "workspaceFeature": "CalloutKit",
         "savedData": "callout wrapper properties and native children.",
-        "leaves": ["I17", "I21", "X13", "X37"],
+        "leaves": [
+          "I17",
+          "I21",
+          "X13",
+          "X37"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -1452,7 +1665,12 @@
         ],
         "workspaceFeature": "StoryKit",
         "savedData": "story properties and native children.",
-        "leaves": ["I17", "I21", "X14", "X37"],
+        "leaves": [
+          "I17",
+          "I21",
+          "X14",
+          "X37"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -1472,7 +1690,12 @@
         ],
         "workspaceFeature": "SolutionKit",
         "savedData": "solution properties and native children; reveal state stays transient.",
-        "leaves": ["I17", "I21", "X15", "X37"],
+        "leaves": [
+          "I17",
+          "I21",
+          "X15",
+          "X37"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -1499,7 +1722,12 @@
         ],
         "workspaceFeature": "ColumnKit",
         "savedData": "column_group, column, widths and child blocks.",
-        "leaves": ["I17", "I21", "X19", "X20"],
+        "leaves": [
+          "I17",
+          "I21",
+          "X19",
+          "X20"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -1643,7 +1871,12 @@
         ],
         "workspaceFeature": "MathKit",
         "savedData": "equation, inline_equation and LaTeX source. Imported OMML stays native.",
-        "leaves": ["I17", "I21", "X23", "X24"],
+        "leaves": [
+          "I17",
+          "I21",
+          "X23",
+          "X24"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -1663,7 +1896,11 @@
         ],
         "workspaceFeature": "SmilesKit",
         "savedData": "smiles source and native image fallback.",
-        "leaves": ["I17", "I21", "X25"],
+        "leaves": [
+          "I17",
+          "I21",
+          "X25"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -1683,7 +1920,15 @@
         ],
         "workspaceFeature": "DateKit",
         "savedData": "date stored by the picker; locale display is derived.",
-        "leaves": ["I17", "I21", "B18", "B19", "B20", "B21", "X21"],
+        "leaves": [
+          "I17",
+          "I21",
+          "B18",
+          "B19",
+          "B20",
+          "B21",
+          "X21"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -1703,7 +1948,17 @@
         ],
         "workspaceFeature": "LinkKit",
         "savedData": "a, URL, title, icon, stable ID and rich text.",
-        "leaves": ["I17", "I21", "N10", "D03", "R26", "R27", "R42", "R43", "P22"],
+        "leaves": [
+          "I17",
+          "I21",
+          "N10",
+          "D03",
+          "R26",
+          "R27",
+          "R42",
+          "R43",
+          "P22"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -1723,7 +1978,16 @@
         ],
         "workspaceFeature": "MentionKit",
         "savedData": "mention key, coverImage, icon and label. mention_input is transient.",
-        "leaves": ["I17", "I21", "B18", "B19", "B20", "B21", "X22", "X38"],
+        "leaves": [
+          "I17",
+          "I21",
+          "B18",
+          "B19",
+          "B20",
+          "B21",
+          "X22",
+          "X38"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -1750,7 +2014,15 @@
         ],
         "workspaceFeature": "SourceKit",
         "savedData": "source and source_excerpt identity, URL, author, title, type, bookId, trust and children.",
-        "leaves": ["I17", "I21", "X11", "X12", "C08", "D12", "D14"],
+        "leaves": [
+          "I17",
+          "I21",
+          "X11",
+          "X12",
+          "C08",
+          "D12",
+          "D14"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -1770,7 +2042,14 @@
         ],
         "workspaceFeature": "BasicMarksKit",
         "savedData": "Seven independent text marks.",
-        "leaves": ["I17", "I21", "N03", "D03", "R38", "N18"],
+        "leaves": [
+          "I17",
+          "I21",
+          "N03",
+          "D03",
+          "R38",
+          "N18"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -1782,7 +2061,12 @@
         "renderers": [],
         "workspaceFeature": "FontKit",
         "savedData": "fontFamily, fontSize, color and backgroundColor on text.",
-        "leaves": ["I17", "I21", "N04", "N05"],
+        "leaves": [
+          "I17",
+          "I21",
+          "N04",
+          "N05"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -1794,7 +2078,15 @@
         "renderers": [],
         "workspaceFeature": "ListKit",
         "savedData": "listStyleType, indent, checked and explicit list starts; automatic listStart is derived.",
-        "leaves": ["I17", "I21", "N08", "D06", "P21", "R30", "I22"],
+        "leaves": [
+          "I17",
+          "I21",
+          "N08",
+          "D06",
+          "P21",
+          "R30",
+          "I22"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -1806,7 +2098,12 @@
         "renderers": [],
         "workspaceFeature": "AlignKit",
         "savedData": "align on headings, paragraphs, images and media embeds.",
-        "leaves": ["I17", "I21", "N06", "D04"],
+        "leaves": [
+          "I17",
+          "I21",
+          "N06",
+          "D04"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -1818,7 +2115,12 @@
         "renderers": [],
         "workspaceFeature": "LineHeightKit",
         "savedData": "lineHeight on headings and paragraphs.",
-        "leaves": ["I17", "I21", "N07", "D04"],
+        "leaves": [
+          "I17",
+          "I21",
+          "N07",
+          "D04"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -1838,7 +2140,10 @@
         ],
         "workspaceFeature": null,
         "savedData": "Stored comment marks and IDs; no live comment composer requirement.",
-        "leaves": ["I17", "I21"],
+        "leaves": [
+          "I17",
+          "I21"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -1937,7 +2242,17 @@
         ],
         "workspaceFeature": "SharedMdxKit",
         "savedData": "shared_mdx_inline, shared_mdx_block and complete mdast.",
-        "leaves": ["I17", "I21", "P05", "P18", "X09", "X34", "X35", "X36", "I12"],
+        "leaves": [
+          "I17",
+          "I21",
+          "P05",
+          "P18",
+          "X09",
+          "X34",
+          "X35",
+          "X36",
+          "I12"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -1982,7 +2297,11 @@
           "path": "src/components/lesson-plan/lesson-plan-export-static.tsx",
           "exported": "LessonTitleElementExport"
         },
-        "leaves": ["I16", "I17", "X01"],
+        "leaves": [
+          "I16",
+          "I17",
+          "X01"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -1996,7 +2315,11 @@
           "path": "src/components/lesson-plan/lesson-plan-export-static.tsx",
           "exported": "PreparationRecapElementExport"
         },
-        "leaves": ["I16", "I17", "X02"],
+        "leaves": [
+          "I16",
+          "I17",
+          "X02"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -2010,7 +2333,11 @@
           "path": "src/components/lesson-plan/lesson-plan-export-static.tsx",
           "exported": "RecapGoalsElementExport"
         },
-        "leaves": ["I16", "I17", "X02"],
+        "leaves": [
+          "I16",
+          "I17",
+          "X02"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -2024,7 +2351,11 @@
           "path": "src/components/lesson-plan/lesson-plan-export-static.tsx",
           "exported": "RecapCurriculumElementExport"
         },
-        "leaves": ["I16", "I17", "X03"],
+        "leaves": [
+          "I16",
+          "I17",
+          "X03"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -2038,7 +2369,11 @@
           "path": "src/components/lesson-plan/lesson-plan-export-static.tsx",
           "exported": "RecapMaterialsElementExport"
         },
-        "leaves": ["I16", "I17", "X02"],
+        "leaves": [
+          "I16",
+          "I17",
+          "X02"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -2052,7 +2387,11 @@
           "path": "src/components/lesson-plan/lesson-plan-export-static.tsx",
           "exported": "RecapAdaptationsElementExport"
         },
-        "leaves": ["I16", "I17", "X02"],
+        "leaves": [
+          "I16",
+          "I17",
+          "X02"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -2066,7 +2405,11 @@
           "path": "src/components/lesson-plan/lesson-plan-export-static.tsx",
           "exported": "RecapPhaseElementExport"
         },
-        "leaves": ["I16", "I17", "X04"],
+        "leaves": [
+          "I16",
+          "I17",
+          "X04"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -2080,7 +2423,11 @@
           "path": "src/components/lesson-plan/lesson-plan-export-static.tsx",
           "exported": "PhaseElementExport"
         },
-        "leaves": ["I16", "I17", "X04"],
+        "leaves": [
+          "I16",
+          "I17",
+          "X04"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -2094,7 +2441,11 @@
           "path": "src/components/lesson-plan/lesson-plan-export-static.tsx",
           "exported": "ActivityElementExport"
         },
-        "leaves": ["I16", "I17", "X05"],
+        "leaves": [
+          "I16",
+          "I17",
+          "X05"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -2108,7 +2459,11 @@
           "path": "src/components/lesson-plan/media-export-static.tsx",
           "exported": "LessonVisualElementExport"
         },
-        "leaves": ["I16", "I17", "X08"],
+        "leaves": [
+          "I16",
+          "I17",
+          "X08"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -2122,7 +2477,12 @@
           "path": "src/components/lesson-plan/media-export-static.tsx",
           "exported": "ListeningElementExport"
         },
-        "leaves": ["I16", "I17", "X09", "X10"],
+        "leaves": [
+          "I16",
+          "I17",
+          "X09",
+          "X10"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -2136,7 +2496,11 @@
           "path": "src/components/lesson-plan/media-export-static.tsx",
           "exported": "ImageElementExport"
         },
-        "leaves": ["I16", "I17", "X26"],
+        "leaves": [
+          "I16",
+          "I17",
+          "X26"
+        ],
         "verification": "Pending production verification"
       },
       {
@@ -2150,7 +2514,11 @@
           "path": "src/components/lesson-plan/media-export-static.tsx",
           "exported": "GalleryElementExport"
         },
-        "leaves": ["I16", "I17", "X27"],
+        "leaves": [
+          "I16",
+          "I17",
+          "X27"
+        ],
         "verification": "Pending production verification"
       }
     ],
@@ -2158,205 +2526,205 @@
       "node_modules/@platejs/media/dist/index.js": "917e0595981d0e3e223a86cdc6a25a5e1933eeef3207ceeeb4591c2a49fb4c03",
       "node_modules/platejs/dist/index.js": "f5c98fbb9dd6c6bb99cbfc937dffbb4d3dfb5618924602e5f3147191f3607bcf",
       "src/components/ai-kit.tsx": "805d79810fda93615ce71e0822a3c3efdb0d4430ed8f1876e08d38495e120a62",
-      "src/components/align-base-kit.tsx": "6c21547a2f518eafe00bb7f093c69482658f0b2d2bd1953b8479c9d0433ca60e",
-      "src/components/align-kit.tsx": "2abdd89921d4f197b76624275a5246b4996e038e5232e8543569be43418d4714",
-      "src/components/autoformat-kit.tsx": "414ac95f3054c9bab0071a284d8d779f918e335f7744603093acd405709e08a8",
-      "src/components/basic-blocks-base-kit.tsx": "25f9be4058ae5a89f8a131f1eb25e87339f8f2d22720846a1134fa9402dbd1a7",
-      "src/components/basic-blocks-kit.tsx": "cc0eae54fd3d7fb5db582709da4f6a9f856ce45cad0ad26fb96c14501b584b3b",
-      "src/components/basic-marks-base-kit.tsx": "94b9a089c05045f920af04e5b76187934cc104b335aa2ab2e4f364dc2a461e51",
-      "src/components/basic-marks-kit.tsx": "171ac49afa9907d68700dac048f2a4279aef0e0c6d08d7e5c7cc3970dcce0905",
-      "src/components/block-menu-kit.tsx": "7270ad6c385ec1e2a83875e0c68e5939d4ad3be60be316f5fd0ae52244d9cbb1",
-      "src/components/block-placeholder-kit.tsx": "d5f5d8fdbf38a2e6b701c9c649b0169d70a9e16828a8214ea12f5a0122a506d8",
-      "src/components/block-selection-kit.tsx": "2eb47e4c7c17ed670db652036a52cef0c29dd3546f07933cbc921b33f67f1104",
-      "src/components/callout-base-kit.tsx": "7e3df66701fa92cfdad15cb6b293ca4180a4a5b18c0190be6cb24b431ae45831",
-      "src/components/callout-kit.tsx": "22e5a451888859d1b818ab0f32e6196c7fda9fad2a601c9ff7d8a9cbb1f7ded1",
-      "src/components/callout-md-rules.ts": "87e8eecd33aa2a303137d760a66810c11d357d14253a59fedb6a31aeb5817051",
-      "src/components/chat/chat-input/EdixTextarea.tsx": "8a123f316e3d74de8228458ead900dd1e2adf6fb263163582e478b364e584fd8",
+      "src/components/align-base-kit.tsx": "f02c81d46bd462437cab8728f09968fb4de638aca3d1f117bde6863c2bc9f817",
+      "src/components/align-kit.tsx": "132964dd3018cc94124737018625e679333d1cf0abbd7fae4021e0c6c95673ae",
+      "src/components/autoformat-kit.tsx": "92a8d958dbb60750173a7327f807af56c013a7be16c42e0157df1c1dba46ad5f",
+      "src/components/basic-blocks-base-kit.tsx": "931b549ca5d55136010eb6bcd34f076e702d0cff5583691d74d57db941ae6f23",
+      "src/components/basic-blocks-kit.tsx": "1933853a1657ba9fdbd75b7540cad1d31cd4e2f05990fe86f61de7d774c0ddbb",
+      "src/components/basic-marks-base-kit.tsx": "5a3852fb993514c107695ab00d025955efe7fec2e64a2d4ec5dafdea47f44ea4",
+      "src/components/basic-marks-kit.tsx": "df9897572347bb99ffc006fbb823e44de0c7a9bb25c3c7393c3baad9e91416d9",
+      "src/components/block-menu-kit.tsx": "c747bafb460a3a7ef7003eadf0fe5f5e5d957ce78f9a41da352985bb6aec35d3",
+      "src/components/block-placeholder-kit.tsx": "c27fe423d7d132800284c31cc97fe34adf1397cb9c7008552c16c0fd8d1b575c",
+      "src/components/block-selection-kit.tsx": "18c3d2329dcb5a24b0095f1669d7120b757ee341a73e865b2294db217d3e5d20",
+      "src/components/callout-base-kit.tsx": "90039d4fad0843e63e04e25f15de86fc3d5cc2d599c5b5feb2dac4561e3c3021",
+      "src/components/callout-kit.tsx": "71a7218ae457857207acfb023f85c6246572f62d94de3fd41993697b5ccff66f",
+      "src/components/callout-md-rules.ts": "a686b9a0a053048ffbd6fb8fb99eb70631aea83d250e829e5e1f0a68d1c1c595",
+      "src/components/chat/chat-input/EdixTextarea.tsx": "3bc5db8e35d036d17110ba36dff2afa6f208aec8de33ae98aa5837300f0fce9e",
       "src/components/chat/mdx-tags.ts": "00b03405797d4c125734449b717eea05f2766008e3829e3359380d2c4e03467c",
-      "src/components/chat/MessageContent.tsx": "f7941936953a3d121f15df2b217c2c100500e56dd384eb0b9a7f367295447937",
-      "src/components/chat/renderer/UserMessageWithInlineMarkers.tsx": "9d5e38ce44bd8825b69c8e997b28726e479185a64bd6d6297d402688c1a72e89",
-      "src/components/code-block-base-kit.tsx": "81ae4c0d472f4451c69572290fe2f1de87caf7c332fc86c0cb9734ac55a28a60",
-      "src/components/code-block-kit.tsx": "306dcd52fc9c9192eede5f280b4bbbf2a022a1524b7270be7a98a97d23fe4579",
-      "src/components/column-base-kit.tsx": "fc03ca755bc9918a5f80670f282a3f18cca215518082309ce5c957dab915a428",
-      "src/components/column-kit.tsx": "8828e05aba83cf7a0b47507490501a11c4d016fba1baf52e4d73d9e33d037f6b",
-      "src/components/comment-base-kit.tsx": "98a09f110ee170f76607552792b6471b3c37c2529530939d7f071ad5a3b956bc",
-      "src/components/cursor-overlay-kit.tsx": "a7a5f425c424a033213dfc85ab1e113368422086642d9b4a2d09f691a113cc5b",
-      "src/components/date-base-kit.tsx": "0f0e63d40dabd638ae06791313058a88cdee8e6fc02de361c7bbaec1febdd1f9",
-      "src/components/date-kit.tsx": "5e1122a7f2a49fafbdbe9f5ded7e9a72f6289303ae68e6be908ed6c01d6cab04",
-      "src/components/dnd-kit.tsx": "b8f1875df7cfa5424f60df8e2520f472f8a7d5ff96a9c8fa801c820ef76b9f32",
-      "src/components/docx-kit.tsx": "823a1a7d8916c0c14d81daba9b45a7212d41eafcf7a47f9113b376d5c701885c",
-      "src/components/editor-base-kit.tsx": "ab4255a81d46dffad12efc5a889bf0ffa5b343b0ea864c64f43d51ee3848783c",
-      "src/components/emoji-kit.tsx": "ec8a975cde390f44ab0678ebd0e35eb070852e6e6f65cc2a678c1548a9216d12",
-      "src/components/exit-break-kit.tsx": "14ce5c564c544442e7a370bba7e36a7ac17065e8ea253d4d5231c3643b0567b6",
-      "src/components/floating-toolbar-kit.tsx": "6e70053b6d9f2972190c8cafd9c4851aee25ac335a8d9f00a3c0fbf1cfb5cf39",
-      "src/components/font-base-kit.tsx": "025529fdd6ebb77a2d6af44b3bcb4b0f82f6acc62a946a8b0d481159bfdbe00a",
-      "src/components/font-kit.tsx": "b9c7696d5212519c0bc502b561617a4cd4acab16ffa5a968b2f694dc150289a8",
-      "src/components/gallery-kit.ts": "585fde51723a5dce344d3244d616537e244cb867e0863533fe0c6bca9d7eca1f",
-      "src/components/gallery-md-rules.ts": "11800e14272e024c766a6f9442a8f4cba7c22765d785f8bc1027b3286541fc0e",
+      "src/components/chat/MessageContent.tsx": "fd904f289356d62477c74b3afa8f4863ffe5bdb7f531fb21b75d517ca921b570",
+      "src/components/chat/renderer/UserMessageWithInlineMarkers.tsx": "d2da73c09787b3bdaf726918452ca781b219dbabad0c64726e90eb9d48c3ad8d",
+      "src/components/code-block-base-kit.tsx": "8e4761a407fd7ca60ac0c1acd14c3d796e19030d9f3729e6cdd2d9103c15623b",
+      "src/components/code-block-kit.tsx": "3e5f4ca411d15f185c38422aabb939797dd467bfc113eb06416651e43792654b",
+      "src/components/column-base-kit.tsx": "6692ba6c4e83af50458ba85098df8273e9e870995589ddde0a3cf2d54df166ef",
+      "src/components/column-kit.tsx": "8ab4aab154de7f3ea858d3954442c45489302bb92e05520a79737483ce0bfaae",
+      "src/components/comment-base-kit.tsx": "64086e083227eb4d6e41a5a01200f459bf7bb8f03229d79dcf2e33df0d177fe7",
+      "src/components/cursor-overlay-kit.tsx": "92313cfc26d23744eed32daaf01687007e5bb76906f9fc57974a3bfb6a212de1",
+      "src/components/date-base-kit.tsx": "c8331d9d55e202a62969f6673fffef55503fa6ab1cf10a7d5d377e7f41903129",
+      "src/components/date-kit.tsx": "a2a572998ec5766da4b970c43cf51c8a6d326eb593992921759f3e621d6929cd",
+      "src/components/dnd-kit.tsx": "04c15e140b0e4d6af6dd6e8f4cbe0f6bbee379ee2f0c36714e607ed042bb2092",
+      "src/components/docx-kit.tsx": "d873b511593100ce3aad00f44f06cafbd98eae1952800f8a31204d821d598bc5",
+      "src/components/editor-base-kit.tsx": "4c415c74aa5b775813e26d316526b95b872ef0a1c5cb0fb4140cec67e76eda69",
+      "src/components/emoji-kit.tsx": "3fab2b7709b909d59e8f29c360fa9b3ba4243fdb8c87402fd78cb3c4461fe27d",
+      "src/components/exit-break-kit.tsx": "6576cd4bec31050cf9f390517cb94dfe7829dcf675a5413258b5c3123773a360",
+      "src/components/floating-toolbar-kit.tsx": "76b4e20e4bd9297478442821d95f30356d993c4c154b551a5eb7698ec4cefd2b",
+      "src/components/font-base-kit.tsx": "c95724276bd0dfe43e737340192ad5c72f3d0fe463f8d256cd3b8fc612f56814",
+      "src/components/font-kit.tsx": "d17914b69c1abf53935c80f47214a5717612e05f984b9553db1aede22f0f1a9b",
+      "src/components/gallery-kit.ts": "4c3c5f9b84c446286976196f242883b14900e63dcb79211c382557b156a9bada",
+      "src/components/gallery-md-rules.ts": "cbbd9a9eee095ca4f6da5ac1ceefc71932d544535c3a634f7fdef4db78bf29af",
       "src/components/gallery-remark-plugin.ts": "13b18659ef5c521c056346a12318c9123eeed0e90492ec8e6373d5611d33cbd4",
-      "src/components/gallery-types.ts": "2217e9bf31b78a06288b3d7b6890a1f67f53b03aac4ff5b0ae639a9cbfe453fe",
-      "src/components/indent-kit.tsx": "89c2520815290b369fb983fe985b3e526bcdb83b0151234588ed9e94c3c4cd47",
+      "src/components/gallery-types.ts": "1a09c959d2bd147bb11f391ec50db7adc3329e5f5343e598c2029cb1eaeb44e8",
+      "src/components/indent-kit.tsx": "5843326852f8d1faa5bcf14d114f0d5ae64d79ba2617929ab01e50cf94de37f3",
       "src/components/lesson-plan/lesson-plan-base-kit.tsx": "0511fd7f568ae7758b158b8267161bce249a85782676527d943f73d016292a53",
       "src/components/lesson-plan/lesson-plan-export-kit.tsx": "51671f590f0b63828f158bc1eb02717fc2ada109ba73f1288160da9cc7ab0c0c",
-      "src/components/lesson-plan/lesson-plan-export-static.tsx": "39747e4ba0210c27825fb8745e742adbe12a4fbae401f24a581b65c6b2fedb07",
-      "src/components/lesson-plan/lesson-plan-kit.tsx": "f44da14d226628c01785b5c937c50e47311c2e321981da910ce0176ca370f875",
+      "src/components/lesson-plan/lesson-plan-export-static.tsx": "95f23823a53fec0a2150d152cbd9f4922017f2189a9723c7d91a66279d7b570c",
+      "src/components/lesson-plan/lesson-plan-kit.tsx": "08215d97bcb248b56490c548e22a1dcf452349a666a0f7c08ff56dbd64bbdfbe",
       "src/components/lesson-plan/md-rules.ts": "62cb5ac18e0ba83e0be143a723fca69226487cd460938b8a4dabc6b2603d21a3",
       "src/components/lesson-plan/media-export-static.tsx": "08499fc5214ed39e4aaa2fffe1dd4f2d091c4c4b024c91bb064219fdad4447fe",
       "src/components/lesson-plan/plugins.ts": "feaa13510fcab14fffbad548031bb81dab31bb5b34c9766027f86908c75a45b7",
-      "src/components/lesson-plan/replace-visual.ts": "614dc0b9044aa8294b6bdc66947f7659d774065d4d4d495bbe4812235dcf7fa2",
-      "src/components/lesson-plan/retime-document.ts": "910124f06a50351393cc57367d5f80f1cd0292f5b573b4b6c29d9c2fff0b065a",
+      "src/components/lesson-plan/replace-visual.ts": "9443c815711af0a1fb86e88157571266b18a220cb90a1da05ba1ab3364639531",
+      "src/components/lesson-plan/retime-document.ts": "a849edd92e596dea7f0e503ecf7dc185cf859ce33a8c6b17d44565934f07e435",
       "src/components/lesson-plan/types.ts": "60b3c20a7d65b7e984cb27ee73411ad8f4e6ca68ddf9333941e794cf5d9ea72d",
-      "src/components/line-height-base-kit.tsx": "b6df2c18f3b1fe525bb9b9e5b10c9cb4c5954413878ac33eb32b1ebc5d829f11",
-      "src/components/line-height-kit.tsx": "3f8a7701520e776fbcecadc149104c4add698b9107592c6dc14a25d8ae62882c",
-      "src/components/link-base-kit.tsx": "695ac205b8eb313c52e49773705cb3d7f39dc04f8e52eb82a64d2509d8bd635b",
-      "src/components/link-kit.tsx": "f40990f730553b1097c416a86491a2ac01abafeb472666b86cdf1205a90a02f7",
-      "src/components/list-base-kit.tsx": "e49b5981b9c973c0ad02361cac307f5dc4b37518611a31401c718b86b043181e",
-      "src/components/list-kit.tsx": "a0a7aab10f69effddbc6aabb1e0c192e6e07ca5f0204a540a4d2268bf977d05a",
-      "src/components/markdown-kit.tsx": "2ed49ab05f0a79b91f57f30cf7bd45fd7c037c50bde663a95d34f2717c15d73a",
-      "src/components/math-base-kit.tsx": "79c5dc2ea5032ee4e544638617eac3332d968e4103eff8a125da7df48c58bafa",
-      "src/components/math-kit.tsx": "8a95f0cdf0cd4064bab78d7b57537105a43c12d541e40860cbb402e00615206d",
-      "src/components/mdx/base-kit.tsx": "0d3f712ac538994ec043f1fde613504b031ad4e7a017c98278078c38f2aaac07",
-      "src/components/mdx/kit.tsx": "4ce16ea44b0308589a298f0982d4bebaccde496c519eb1c8c5bb0aef467c0497",
-      "src/components/mdx/nodes.tsx": "081c82b3d3b801c6968a9cf68de3df47c84a0842213a02480595af5182521eca",
-      "src/components/mdx/rules.ts": "b058e3cfad2a31ade1d2f22e45489b3794ac273b2970cc6a6d0de70ee321d433",
-      "src/components/media-base-kit.tsx": "3a2e4a96f8eb7ab355109bf2d0069e65a105693b5f4aea4ff2703c170f5a9274",
-      "src/components/media-kit.tsx": "7f755401cf0a4ee9f285d4f88a583605f0159b276ae150f6b8f3e2cd11d38e85",
-      "src/components/mention-base-kit.tsx": "69406e9ae52e38ce2e6a72ea4eab4bc91908d0d78ea737e2354a91b46bd9b697",
-      "src/components/mention-kit.tsx": "a63cd570217286970361e460b1be7171fa3aced753bed6e24064c7ae83780596",
-      "src/components/page-break/element.tsx": "55370a406c59d4b0285c0e6f1efa41d536c037597ae63f824068bdd17d2d6486",
-      "src/components/page-break/markdown.ts": "0da186fdb1733abb38bf4c5532f8a39a9ab0bed0e915dde147bcffff96fdd496",
-      "src/components/page-break/plugin.ts": "bfc1029ccf83943b0cf9c2b75f4c802d8fecb3b537c2bb725aa75cb1fb988c20",
+      "src/components/line-height-base-kit.tsx": "fb32d670ca8465f07b182373feca72cfa0ad83ba5b07207ddcc590291c57474a",
+      "src/components/line-height-kit.tsx": "af441d214904ddd4cb61127859897d3e8857b8a0c708b1ea9328fd9e2a14a2d1",
+      "src/components/link-base-kit.tsx": "d53ec9eb82437abef84166f109f80b75080f48ab1ec168490c991e29cb65eba5",
+      "src/components/link-kit.tsx": "194689564d15358a8b3dfc01ebc771c1fb3be66bc6fe48ff267f2fbd41a79933",
+      "src/components/list-base-kit.tsx": "1a933e4d8b894c2018e33282cb64560674f9e3fb43d10716b929cbb3cb3ea742",
+      "src/components/list-kit.tsx": "f2bda1caa35cb4521d35a2f652f263f1a6410d8f9da853d6670ae8890f5682c2",
+      "src/components/markdown-kit.tsx": "ad776af61968f1f7324f708e9692292d7f1606c1b39a5a55fea8b354fb21c237",
+      "src/components/math-base-kit.tsx": "28a010ea6f92447aee30522c8334aae78b9129f8950771f87e375dc0f66cce7f",
+      "src/components/math-kit.tsx": "f1847add73f5f827ae29deca60962ca45a7f704c3ef11bc06c39381a013218f1",
+      "src/components/mdx/base-kit.tsx": "4ca64de8eca0abba13b55f6c7b5362c7ad490701073b03cc31a4b4b41a563307",
+      "src/components/mdx/kit.tsx": "278096844ff661a1f26d2c9e911f8b147184c0b0e262b35b0518b4c223855505",
+      "src/components/mdx/nodes.tsx": "e255f559adcc2484e16ee3d12d6c491898284c08de1004824117dc63c32d31bb",
+      "src/components/mdx/rules.ts": "50b425d25145d9b338c78f1dfee25d8589684f9d14c630ed8d3d91e6c3087860",
+      "src/components/media-base-kit.tsx": "8dc07a623478efe753fff0d31c94a202d0cb3e8f5c42f9adc034fd6f6fc06025",
+      "src/components/media-kit.tsx": "ed6eaed3a6dd8543f9f713f3f532b39bdd9619eab78dc24afcf2d5391e0e1cc6",
+      "src/components/mention-base-kit.tsx": "4a8e7966be9063556bdf3dfd6efcd9f004054c149d44782f43abf2119bfbd13e",
+      "src/components/mention-kit.tsx": "15b9c5418c4ec718d70074494d8e1f1d2980b41fb673676d6e8e01988287ed24",
+      "src/components/page-break/element.tsx": "8ad543bec92a328752e57e7aeb2f7af60852ecd8fd9e5a5ccee530ef5afe92e8",
+      "src/components/page-break/markdown.ts": "d63c93cf8ebe31c2045049e990249346c50172c27e1854ca261b88cebc6cf652",
+      "src/components/page-break/plugin.ts": "868f7eda9850bb6efbddf333e6d438a187c4b9ca57d4827246ca8839bb80c83f",
       "src/components/plate-types.ts": "b3f70b4fb6c1e0321d7de798dcbccc13cfa79ead540518866ea87692f14e63a4",
-      "src/components/shared-material/SharedLessonDocView.tsx": "598bea0d0c5b54d53b1b1f6bb010f86a14f51ed73ac91ceb4760c221b5ea012a",
-      "src/components/slash-kit.tsx": "7bb09badc177818ef4329c29336ad0693686c044e7f3ff13fb5927865384e76c",
-      "src/components/smiles-base-kit.tsx": "9e9efe5c54d38fbcd4c47457a5d60afdf59f0dd7169fcc27fa207277a04a7ada",
-      "src/components/smiles-kit.tsx": "b3d3cfdfb1daa672d02a70aea1ecba3055dabccc809f5d56e8cb83dbef8846b8",
-      "src/components/smiles/md-rules.ts": "ea0c4ca7003691cef4cdda2fcd72ec299e82e55c05ba1008a77cc80b8016fd3c",
-      "src/components/solution/md-rules.ts": "465016c3ec63979c90a493e0bd4a3402489e0bceddda0445892cedf31202f461",
-      "src/components/solution/plugins.ts": "e97a43f0f584c406233b46f56f80c8f96e84ec68f5fbe6c243c44e3c10c0289d",
-      "src/components/solution/solution-base-kit.tsx": "a3f3bf1cf727e6fb1d53990e20c31676465d69443a80f2662a2ff3a2458cd64f",
-      "src/components/solution/solution-kit.tsx": "4f43346f85a0c11409f001b17f0e31e3662dd5942f41c342c253c47aa9b4205b",
+      "src/components/shared-material/SharedLessonDocView.tsx": "cf5c4369b9e93dac3e77c8e1ef3e90b1e933f72cf709bdaef054032f42de11cf",
+      "src/components/slash-kit.tsx": "937f6453ef898f2805503d1a91ee25e998f29b8ae7e0a5cb705853c1d78d95f4",
+      "src/components/smiles-base-kit.tsx": "84f6da90eff903cc20cba1d79be3495ca13444bd97cf3c2288cf985b577dd1fc",
+      "src/components/smiles-kit.tsx": "ad983ffa846e25ed64c646a97ccd2cb822fe2dd5b8593a26ff64a23294f375bf",
+      "src/components/smiles/md-rules.ts": "e8a35ab40471af082aadb76291e30926fc66bd64337f0bc003647257c9180770",
+      "src/components/solution/md-rules.ts": "3d24b9687bedfe812521753084a3510c72d6acaec36a1d84b947609000507b2c",
+      "src/components/solution/plugins.ts": "5cf52fd8cbff2d9c149a85a0b14b4e9e44e70c1c509fae0269e850493460c524",
+      "src/components/solution/solution-base-kit.tsx": "7bfe543ad903f78bd4c67a87fb15dae27220c4dc76c1de79beae7c80aee8f8dd",
+      "src/components/solution/solution-kit.tsx": "2a0692f0908b9ab3ec9cab16991aa8a7badb8a6f87bf0b324efd3e885436460f",
       "src/components/source/md-rules.ts": "188ecb608c5961b081781f505de80f339c9730563c96e0cd390fa213139ddc4e",
-      "src/components/source/plugins.ts": "cdb80e4bfd111433fd91e0a578bebf0a3460669570216c7eb6736e3b6b32429e",
-      "src/components/source/source-base-kit.tsx": "c1262ca6d524e1f504589ec670ab61e61732c04482f222fcdcce5d36fd9e99ef",
-      "src/components/source/source-kit.tsx": "c10de5c698e67789c1b7d419628d199b6f30c8511ac9e02218cad698927675fc",
-      "src/components/story/md-rules.ts": "b0fe353a36294d02ef44652a1b6cc8235eb5f8c68c3984ae112d27e332f8d959",
-      "src/components/story/plugins.ts": "650e4c29f677a65bf7ebcfeeec02c10ac98655bc4171b81be8ac73286872d6b7",
-      "src/components/story/story-base-kit.tsx": "7c07b0fefbe9e19d3d667d86bbe67c119bcc8489572a7ce00d4741fb593e9f74",
-      "src/components/story/story-kit.tsx": "adb5d3bc47ac94d3e6c8a46d110d358f0758c4f3c894211a830f31349e81ad83",
-      "src/components/suggestion-base-kit.tsx": "f64f131a8c77e182df33deb4b86c919cde954c8a0472af646b947ec136089434",
-      "src/components/suggestion-kit.tsx": "a4dc94a226b195a0acd8c3ff621208250e34cecc5725d562807796e7dfdbef1e",
-      "src/components/table-base-kit.tsx": "6bb98fd84029d0e6ae51637d67a2bde3c819333fe7b8d2037df73c2221211814",
-      "src/components/table-kit.tsx": "abe5f4853f722bda4b04f60a4f796d52859f3f7cbf7a045c0280eeae18b1d9eb",
-      "src/components/toc-base-kit.tsx": "cc8f839ca200dde8c1b49fa1cb9d6a0310e1e5fb2d894e6d501df16ddf7ab824",
-      "src/components/toc-kit.tsx": "5c3df4fc77cf27565e2e5864f3b3f6db399ebafee9941b7d52cc191d5c3b4d4a",
-      "src/components/toggle-base-kit.tsx": "36c4da2413ae4bbd290fb6611cad97b4a54784c48dc511cf91e2da5637ff74cb",
-      "src/components/toggle-kit.tsx": "ce4a572fe3b526ff8d1f25062bc8aa53ec25b6cbe1827b31bc533640b79dd8c6",
+      "src/components/source/plugins.ts": "ea10d619a8440c641a98874a5f5c1fcca929dc28a42a970383b4cce1fedc610d",
+      "src/components/source/source-base-kit.tsx": "accac6c0b305fa59343b5c23802391ae099f3fdf16894251e67af99b072a5a7f",
+      "src/components/source/source-kit.tsx": "c1ce2f2032b91200cca1acf31c1ad755f07383cad561a2281b0c6587e669aef3",
+      "src/components/story/md-rules.ts": "e0ff3582386fb972b1a531df35dbcceac9a63e9720864050ead0b6e33053d47a",
+      "src/components/story/plugins.ts": "e7bbe4b0e55ea6e198e13733470a1d5c7bd4ef20d371bea8a030d365fa952432",
+      "src/components/story/story-base-kit.tsx": "6715da6fdf780f4927be9121319a5c22b6266aa999d1de457ee77502315812bd",
+      "src/components/story/story-kit.tsx": "88417c470e457f2fec8dd27af9d78da2fe6eecbee7252c3bb3f992ad6b63d582",
+      "src/components/suggestion-base-kit.tsx": "33d6f0517a46a12a79da9387acfecbd6c7b9e001ffeb23b7241e6b5b6f456953",
+      "src/components/suggestion-kit.tsx": "533e79dacf05c8b20384cad42778e871538af6312f8dab53dfe1eb2a7b006e1d",
+      "src/components/table-base-kit.tsx": "fe9633ef5dc4e58a6a131f3b87ba9690f4fa5eab9f84a19a821c05ad3ab546b2",
+      "src/components/table-kit.tsx": "0b6b0ad1285708074e1770c169c224a0fef653b5c5e1f73ae5dc3147ced7bb96",
+      "src/components/toc-base-kit.tsx": "ee3534422df8d8beb586aa917fa09ca74cad5d56e8d02acd60bfbf05bb09463c",
+      "src/components/toc-kit.tsx": "a2339f414403416a31733cf5974b70350fb94f47208fc47be8dd4a7d423e984a",
+      "src/components/toggle-base-kit.tsx": "5b828627fd6e359c7e3aa44f94287415bfe46760db0f6616615cc68d3c867022",
+      "src/components/toggle-kit.tsx": "4b14cb2d255741c4231413dd851b9ceba18c2bd9aac5945e349791a351b89f2f",
       "src/components/transforms.ts": "64b0888f70de9b4683966069f89db67b660f6715ac2c69356ae97cec6e57c833",
       "src/components/ui/activity-node-static.tsx": "9b56d22c59edfe3c8c9af051614707790f28ea24fac5eb97434e5c72c51319a4",
       "src/components/ui/activity-node.tsx": "0e8c94e976adea50d932ea17eb560f09958106e5885843d1f345e776f004bad6",
       "src/components/ui/ai-menu.tsx": "7eba49abb3a2b57be5b2659b02090ef0276d2806987c120c49393f22da50af71",
-      "src/components/ui/ai-node.tsx": "1de9cd1638bf9423854fa466ea01cab449130e957acc2a5cdaf029a4c803a7f0",
+      "src/components/ui/ai-node.tsx": "04188bbaab8bf8481bb87fb444a955b283f290e064b9e9db5e7681798830d2f9",
       "src/components/ui/block-draggable.tsx": "296e42e1c09cd2550e4123d1f91af7a8cb2240aa1453ca1cd807273cd23d2d7e",
-      "src/components/ui/block-list.tsx": "3055d2c868b91970934e46ba67810dd1cf06741e4349f8c94e575d8ef2cc6cd7",
-      "src/components/ui/block-selection.tsx": "afb8bdf04c931f4310ef913cd2bb8c1769b3f3ffb2556420f88581bb6117953b",
-      "src/components/ui/blockquote-node-static.tsx": "b72c866385705e11253b0e1900cdea92e5c65ca4471f42ecb4a10d5a1fe2f9f5",
-      "src/components/ui/blockquote-node.tsx": "73c04a4100f35e935ca32aebd6e5360ee58975120072d9521549432541cd5d2a",
-      "src/components/ui/callout-node-static.tsx": "9c65d38fb834d0bba5ab4ee44afae7e20d424dacbd45982a57daedb119399802",
-      "src/components/ui/callout-node.tsx": "2472d464272f0d51c7a90d107a514b47d3e38aff3fccba39c3cff5a29c2170d1",
-      "src/components/ui/code-block-node-static.tsx": "b7454b5119cfffe65207c274bdd21291dcb731fe8ae20e89d7517cb57a9dc6ca",
-      "src/components/ui/code-block-node.tsx": "acfb9e8b03d0f350e900f096560ff28a0fb7d152c5141b88b750b87e884c0b8b",
-      "src/components/ui/code-node-static.tsx": "403288933e03de6bfe04d4cfd43360e494ca6aff447be85912704817ade15aa9",
-      "src/components/ui/code-node.tsx": "eef275e98f9960ba65c73901cb474c2ec2fa9e7eac534bf562cae7aecd302631",
-      "src/components/ui/column-node-static.tsx": "aa9e54b2c05fcc3e9c5692b0d7d1fad4304ed2d84861ad9999358dcb3b24684e",
-      "src/components/ui/column-node.tsx": "9f501f8bae27f108018a8c7ab13fcc105a7d747f734acbc30b74dcac5c68cb5f",
-      "src/components/ui/comment-node-static.tsx": "f427fa83eb0c9bb9aa228121c0135f516f484c5c0b004bf43b2bea621fb0dd7b",
-      "src/components/ui/cursor-overlay-utils.ts": "e657dc1071fa79d7c07ea37d3f5203a9cf92e0152fd4ca1321961b6b0250addf",
-      "src/components/ui/cursor-overlay.tsx": "f5bef88d4605f3c5dfd404a327fbe1d55cb102a7050ee3ced2ef25acddab3b7b",
-      "src/components/ui/date-node-static.tsx": "07936b1b449da781cd323ea83898a97049c231ee5728fd6783b48e1aea7d87f9",
-      "src/components/ui/date-node.tsx": "5f9079d20cbe73de75dd968b82297dfc7d8ae8f65fd9bb9085542bc0052961ad",
-      "src/components/ui/emoji-node.tsx": "dc07360b3c17d1cf1ba6a02d28ce40c9e865d4842bd063dd0861211d4db65ab6",
+      "src/components/ui/block-list.tsx": "2673017710ef2607649ea2b25c3c1e6a1e15d2724f9ed74d12cbd13b0e71d6c6",
+      "src/components/ui/block-selection.tsx": "e14a340a8be4ebb39e449a17b0210562af4d419cbcb370a2c74eb9008fd6cc05",
+      "src/components/ui/blockquote-node-static.tsx": "4ed51f224f8a11ecb30d936ece89ba9e1c94a05377155a530437538da978955b",
+      "src/components/ui/blockquote-node.tsx": "a55bb83a8e9d030682e7eb35e8a22fe3abb32abfae12651865b91e94e383cfed",
+      "src/components/ui/callout-node-static.tsx": "a51f44de389fae7e6bf5676769974e3a88a4b418d51acec4c6482683ebc7bbeb",
+      "src/components/ui/callout-node.tsx": "f864d39b62f1ec7ef0e31508cdf93326f6a435c1287bc11d0dbcfd4b0c900fc0",
+      "src/components/ui/code-block-node-static.tsx": "808e699fedfd83fdf72abe2e1aaa3da75499fa45d522760e5f3b1d6101d742a5",
+      "src/components/ui/code-block-node.tsx": "cef5c1b675a8a8bde207b939a8c662c693ecc0d57af4b265f6b0371ee1052f64",
+      "src/components/ui/code-node-static.tsx": "a0e70755958d2cbff3f96c926e147f7344df866f2e65f68accfcf5495b3279fe",
+      "src/components/ui/code-node.tsx": "5e31bcc09df33d5cde05599e87c25cab40bce07bad252b082512c952390e71b3",
+      "src/components/ui/column-node-static.tsx": "d9d4d375d2c795e70698561ca3fc990f539afd587fa740dc12d33c7d5934ee7f",
+      "src/components/ui/column-node.tsx": "0e4de6958d35d76f9c3320d7cfa49db1023c234a6fd12632869ca062ac0a64f6",
+      "src/components/ui/comment-node-static.tsx": "5f1b4a8cd913d29780fa0433c97b19bb7536491af6873361d0447f9298cc5475",
+      "src/components/ui/cursor-overlay-utils.ts": "5328632716c3155fdd066e5e7cd7a7958cf0ee450316275c84cd33b4881f9d5b",
+      "src/components/ui/cursor-overlay.tsx": "45e497529fbf0cae66b6aaf235b91f15903eae613cc4616cc900f9b657739011",
+      "src/components/ui/date-node-static.tsx": "4418810df76388ab844b242aa22cec89db39ae8a7de1a840ba7c1eac1e4437f0",
+      "src/components/ui/date-node.tsx": "531258b5d5b5df9654bb8257ab591df4bd97e08597c83494c99c32589ae87781",
+      "src/components/ui/emoji-node.tsx": "b75c717a53404bd5cc6c72c441c9049aa9b910b58c0d02620330245b1e145e95",
       "src/components/ui/equation-node-static.tsx": "5dd0b663aed279bc906f6d155b103775939578e6200715cfba20481e476af19b",
-      "src/components/ui/equation-node.tsx": "3df224e22ac1566e7322d95e34f01f2a773549734e07f2687ffe0aea033c2afb",
+      "src/components/ui/equation-node.tsx": "d01818b7be709abd6a30d67dc20993f7c74ca292d5083b1df2a30620df784571",
       "src/components/ui/floating-toolbar-buttons.tsx": "cb5ff405f9758ab98d7f69a7c2938779741a32f7b5c51929fe310552262ccb73",
-      "src/components/ui/floating-toolbar.tsx": "c37800a07b36b95740c4201732c24c233bd2487390daa5b75511debb44e25395",
+      "src/components/ui/floating-toolbar.tsx": "ac5db51020e6d8168103c971f3030dc04efea3052a4b9e9c3bb51a0a92d9fe7b",
       "src/components/ui/gallery-node-static.tsx": "2ad5a9fb504df2fe17a7a4ff79bb4e9757df0e3533172a67348e1887c40cf3e3",
       "src/components/ui/heading-node-static.tsx": "e240f84bbf0684cb8fc3e785f589aac3553d37679aeb9f3105eaec40f5d9c323",
-      "src/components/ui/heading-node.tsx": "aa708dedf637f78974a9d93433d7334e78a9c174969422b136fd0ef6cb222d58",
-      "src/components/ui/hr-node-static.tsx": "d9cb9055d7c4035f320084b17ee650fae6d589e2f4099faa6331dbc99052145d",
-      "src/components/ui/hr-node.tsx": "45c2a1ab3fcb71dc384a2714e07facf304f2e47745dde5354db92a033e9d3a7a",
-      "src/components/ui/lesson-title-node-static.tsx": "394511fdf39afe1b91c497c0378f21f66ce993ee533e3c1902411d336a012152",
-      "src/components/ui/lesson-title-node.tsx": "8a94578826efcf6b77b5252f4b26ded11477b878c9bdd5bbda6110894c51826d",
+      "src/components/ui/heading-node.tsx": "691285b6070acf70d59c9654d8fcd6d677bdf86003122b1d7671b2b9bb104765",
+      "src/components/ui/hr-node-static.tsx": "81987a0a8459992e42259cfbf9c18fd494e350fc4175e6ffa2a246d86060f0e5",
+      "src/components/ui/hr-node.tsx": "edf63f10a27d2ca8059a249e146ede33bc8589644d35e22f2bb8a30f5de66c97",
+      "src/components/ui/lesson-title-node-static.tsx": "3bd3a14ae425e5a459a4bd8c9969b7efb8ab025506a92376bef32efa8e9fac7d",
+      "src/components/ui/lesson-title-node.tsx": "6023e7d66b5a793d71954a26efced39433c30c2c11047072000a59e33da38ab5",
       "src/components/ui/lesson-visual-node-static.tsx": "6a7564f6332a335e6b0d08d2d93bee7b149f845fb326c0f9bbfd7479c2839ce5",
-      "src/components/ui/lesson-visual-node.tsx": "70d03311abc18d491968ac4310bbf05b659c8b67cab017a35f1f6219cc158231",
-      "src/components/ui/link-node-static.tsx": "5e5715bb6c5ad9bfa5cbcc712dceea60b5a71661e5a0e1389792ea3b6d0f68f1",
+      "src/components/ui/lesson-visual-node.tsx": "890ab8299a9a7b37ccb07b8de8fe03bff36bd810349e07aad600d7b8d7bd0837",
+      "src/components/ui/link-node-static.tsx": "ea2d42e4374f3336346b696078fef6fa41f93f4e0182d4639db7c43e37e10cba",
       "src/components/ui/link-node.tsx": "deddcb45590fffa530b612e6c35d2325fd48b60d635129f30c8881e8dad219cc",
       "src/components/ui/link-toolbar.tsx": "8f0b2fa3a9f15a746ee5c3bc1fb21a853054e7ca2f70e6949b326621c8db5f79",
-      "src/components/ui/listening-node-static.tsx": "e970e2ed7413f494754eb86deb4cf37fdda6a4ceb5bee926911762f5f5599099",
-      "src/components/ui/listening-node.tsx": "50cc4ea88467626906d9ed117ec1802d7ffc2d1e54a31866c23904639202f8e3",
-      "src/components/ui/media-audio-node-static.tsx": "0f8039f357d8e7e843fa446f54d7ed7e64cc061be2511b97f264e200ad940d51",
-      "src/components/ui/media-audio-node.tsx": "8d4dd15aeb4ebeb740a16384819a762751a94ad83b732a43e238715b834f3dd5",
-      "src/components/ui/media-embed-node.tsx": "619ad1afcac1bf562a84c859980cdfbf5ed43dced8ea93f3b483684e6aac1ff8",
-      "src/components/ui/media-file-node-static.tsx": "e87d34388f523fb47c70c545894ae57fcc575d748c7b3686d91fd93e6852985b",
-      "src/components/ui/media-file-node.tsx": "c47b5bf33f2e0da89605a2ce82c9dcad78fc28e9c4e3b004e63c8029ed2db461",
-      "src/components/ui/media-image-node-static.tsx": "1897ff509efec74b874d2ce3e54802f8583e54be85311083b608450c65c8f674",
+      "src/components/ui/listening-node-static.tsx": "1a897ccc57d0ee184efaa6740d9977b7c20beec6c9a0ed7939764bb092fcf6be",
+      "src/components/ui/listening-node.tsx": "59b0142038528568c66da83b1ecc40a14990e1711d87824a5d247be5b9324a33",
+      "src/components/ui/media-audio-node-static.tsx": "1349970ddbd049646f5eb0724dc59b5e23860f506df97d2afa72e02fd3890c69",
+      "src/components/ui/media-audio-node.tsx": "6c3959a5381dffb271766150c6c14305e970942a42e785dd77c4e318f2ddf490",
+      "src/components/ui/media-embed-node.tsx": "00618e4088355ce35e7471285ac8b588a5f99bb8486ed22d6a8fe2c2f79445f9",
+      "src/components/ui/media-file-node-static.tsx": "4d5f3adc18d63f3045571b5f7d7bacd17a1ba207593c2d1d28a7e28bf7d962be",
+      "src/components/ui/media-file-node.tsx": "7e6a83ea81ad96c17941007392d206213e9825443f676bb251522a1e0336ebec",
+      "src/components/ui/media-image-node-static.tsx": "fc5603cbc970f4f68f17604ade43fd1b003f3bb6b93c682b1b672ee8978b1be6",
       "src/components/ui/media-image-node.tsx": "ae0a7cc3cb95d10493070287c3f325724c8b2d9c36df2eba98fea5b3cb221e1c",
       "src/components/ui/media-placeholder-node.tsx": "e2eafd1a1d749b9039a30e2a8e1f1528ed18c683d0ac250468f8c028b084f8ca",
-      "src/components/ui/media-preview-dialog.tsx": "22c47d0e6e6502fa07450e0290ed6e5960b081eb83db941546ace300a0fa7544",
+      "src/components/ui/media-preview-dialog.tsx": "71929f4d39d6d9bc69919c7801b286c369342f1b9dc94682dd4d12314b5fa571",
       "src/components/ui/media-toolbar.tsx": "c2b7413c0d5802be1dc9603c25f966dada18e402e42f561ffd5852c554bcf792",
       "src/components/ui/media-upload-toast.tsx": "a65b36150ea4ee56db8adb778ea5c71b6b9aead3358204d0a39200f6da403a85",
-      "src/components/ui/media-video-node-static.tsx": "01572fa25dad86b7b433420f307dbe54476835e0cc15922c9ed331d6dcb4f189",
-      "src/components/ui/media-video-node.tsx": "5792e2e2d343fe0afab73e34fede34569d8763a4fd658e8925e98306d384c7af",
-      "src/components/ui/mention-node-static.tsx": "f827aa401861345d487d9394a9afece247fb87fd12b95341edc3c4c9dff87705",
+      "src/components/ui/media-video-node-static.tsx": "b28ffd7130da9a96dfc7d7a60a80dda49bd745f1e9168c4c8e44c0748f000058",
+      "src/components/ui/media-video-node.tsx": "64919a992dc56810360f48de2fe47cbc225c5de9cbfdeee141a70256c14fd8af",
+      "src/components/ui/mention-node-static.tsx": "9416c7472ad08f38bda04c781b6460345dfa83d1e8e6209a06b72223ca2ded36",
       "src/components/ui/mention-node.tsx": "17459e1895868cc50142628c5522d3663ed89a0f129386ede819453e91adee2d",
-      "src/components/ui/more-toolbar-button.tsx": "00b35e8cc57170c26a8715e3bbe2c2e0e47c52750e35b1d64f4805225a8e0762",
+      "src/components/ui/more-toolbar-button.tsx": "8a414102a24f26e7afccb951bdd6a2ea8e5a4450f72527fc639495da70f14e62",
       "src/components/ui/paragraph-node-static.tsx": "be6956610ff84d84968ad8b42dce45f8b46ec100fdad054c88d5f0a52bb9df3e",
-      "src/components/ui/paragraph-node.tsx": "5360e952d50c3548eb30b42214431168374363ef8028aeb4d9b8b8b813280aaf",
+      "src/components/ui/paragraph-node.tsx": "ea1e1f918ee31b679ba784b791b6db35c449cdb4d5f639a087a5ba624220303b",
       "src/components/ui/phase-node-static.tsx": "1746abec255dd96926c27a1e69bb7fb228cd6a153a778d5fe80eb370b90ee46b",
       "src/components/ui/phase-node.tsx": "4414a632976085f5ef359db3def0cb958edf9bf6a246f774bbfad186bebcbdfa",
       "src/components/ui/preparation-recap-node-static.tsx": "893457994680b0bf4e7a710ab212cb4c4ab16acdd3411087da523b9c3fa175b1",
-      "src/components/ui/preparation-recap-node.tsx": "8b35edf422f4e37b8c6c4395fd427987e7b7f583f6c095b7dfc5a806b717d630",
-      "src/components/ui/slash-catalog.ts": "280ab9a04143da7c5ea17d4bc2140c2ca73637bc132d578300d575c49a8617a1",
+      "src/components/ui/preparation-recap-node.tsx": "f1ada13be23204be9078a912c36e5741aa41fb8c2f20b55a0128f90faf09baf7",
+      "src/components/ui/slash-catalog.ts": "eb6df6bd5f696aa46f63c058c83aceb249db8a00d55838b0eb1c40aad09f27dc",
       "src/components/ui/slash-node.tsx": "52cccdf36a87d5afcba34f19208487b4c8200c18e72d649096967fa048cc313f",
-      "src/components/ui/smiles-node-static.tsx": "afbe862f3e4bb15de9db6cae78f898f5ba071efbae5b506b076f7d1230392250",
-      "src/components/ui/smiles-node.tsx": "edcb2109fc49b48a22c59df273aa1da6513e6dee116b7e2a76476890d94dfe08",
-      "src/components/ui/solution-node-static.tsx": "f6e459043f7fa61c64fd0c483577cabdaef774a6c3a64fed978d1890aeaaef0f",
-      "src/components/ui/solution-node.tsx": "492c80e6fed752b121130d94a848d78246a82f7ffdcaa5dfe2f24a98dc630991",
+      "src/components/ui/smiles-node-static.tsx": "3c56dea994fc950dae50f278bbe7cd21fbf83424cd22f0a7dd083210e925e089",
+      "src/components/ui/smiles-node.tsx": "1695f9b90dc4e4e9d7e4f7b87a69c7a5dd349b6bace785b4df163a7123b65c9e",
+      "src/components/ui/solution-node-static.tsx": "23ed386bda1f2f936459208b3df3bda0d372939e2089fdf266019873cb3b8a6d",
+      "src/components/ui/solution-node.tsx": "30379eff0d1c0f5cb9773eccda56348ba76c1f945f6b9965c2e70f87e912de64",
       "src/components/ui/source-excerpt-node-static.tsx": "122d9919aa5538ec3747760aba4f33521670cf9ef668906ce5317b7222f71640",
       "src/components/ui/source-excerpt-node.tsx": "63894f27a0122e114345475bbd168c9d3791200a4329a6224a27ee1820cd9f31",
-      "src/components/ui/source-node-static.tsx": "fca79201dd7c5db10bae3fc043ffd2905681101fb56d40a47b196374ae71a1b5",
+      "src/components/ui/source-node-static.tsx": "d4ef20bcf5de0d97e51d882b05ccc8a3a41232bd790716bc6491d30b5a4badd2",
       "src/components/ui/source-node.tsx": "819a64df9d9bd35862e4770df4eeda596c8f3bd6721101e2b6611e6162ed1e64",
       "src/components/ui/story-node-static.tsx": "6d65492779099700d142efce378c72bcf4df83f2e42bde7a3819439e00e28b80",
-      "src/components/ui/story-node.tsx": "2a43f09976ceb8ec60866aa7a003cb7b1295382a27cb35322ec6f12b05b47042",
-      "src/components/ui/suggestion-node-static.tsx": "25635ddb3a5fc3235ea234a4cdc898a1cbf70ee506abadffeedda1f7fd6b9aae",
-      "src/components/ui/suggestion-node.tsx": "914745d9854d169ad924b8a598dd742c0ca896f43c3bd57ca82e2800d299f903",
-      "src/components/ui/table-node-static.tsx": "2adffacf9e52085900bacd3ae030fa922adc93c72b17207394106c09c7d16b2e",
-      "src/components/ui/table-node.tsx": "444c8251b3bc4a0312cac1cc91b208f0475d7582a18b554ca834a7c0966d5254",
-      "src/components/ui/toc-node-static.tsx": "7de344e1358841e3e42edd0a1698483cf21e0f9889a5c07e17928a6a783b7435",
-      "src/components/ui/toc-node.tsx": "481c28c008c47081cb67982e78325fadb744f93ab3e73a1061aba13743bc1610",
+      "src/components/ui/story-node.tsx": "57d43ae51ad24e0368c1a69c5512f86e56d5a1c5d8df3b6b6df68d4da28ac420",
+      "src/components/ui/suggestion-node-static.tsx": "4155e4bd94a33c5a1dad4a7521e2cb51db0d824ff534ecb93c52364c9e3ab928",
+      "src/components/ui/suggestion-node.tsx": "3f09bc0748a914bb7db503544f921ead6e45e697de5a983a731bcb007a8f595c",
+      "src/components/ui/table-node-static.tsx": "1641d7ff3a2f1106a90f812e4d88c52ceec151541b5f8e902ddcf69a82d43347",
+      "src/components/ui/table-node.tsx": "a6b0f2099d15e41fb2e83e5430fedd8dbd26d9ea910cb20defb534b820b26452",
+      "src/components/ui/toc-node-static.tsx": "1dcbec15701a76a60bf137d2d1d03c6fcf2023ab1ca36a68eba8889a8a0e0999",
+      "src/components/ui/toc-node.tsx": "ac40f69c4f433b44bc1d63e38a1cabb0249fca9e65fad60300ca43843223190a",
       "src/components/ui/toggle-node-static.tsx": "c94eeefdde5ea0d7372d2d3f365f7a450b2a476fa7d9d29862c8b7eca4ee8908",
       "src/components/ui/toggle-node.tsx": "b7885ff0fbac7df7fb95da45a631a711c9445c82ca1d8fe5b8bcc2f50c3f9175",
       "src/components/use-chat.ts": "1ba56c33606160c68ecfef95f2b8379bf006605337e4563ee88c2ea6d7d662b6",
-      "src/components/workspace/ExportMaterialPicker.tsx": "c3a6bab3442c90dd2dc8c8dbfbd0336f05c5fc806cf5d38360b268667774fdcf",
-      "src/components/workspace/LinkedLessonEditor.tsx": "d367ddfb7d8dee2610e67821075296468f217094a58b17facd53e6b92c50a130",
+      "src/components/workspace/ExportMaterialPicker.tsx": "f84c995d90f5b339a666e20c07b42206cdf24361a41a0d1107c19c4c8c79fb4f",
+      "src/components/workspace/LinkedLessonEditor.tsx": "b797934952439ee3330c90bb968f6bcd4d04dff7356839be9d1939fc333c9b89",
       "src/components/workspace/WorkspaceEditorKit.ts": "5ba8b90acdf39bd700a83d5eaf4aca024f5e7efcc71569f79a116f55a6a7aa8c",
-      "src/components/workspace/WorkspaceExportModal.tsx": "7e3c2cab950073c5478fef50afae4ed7b2b6e7f9e14266fba4fafb0d19f2886e",
-      "src/components/workspace/WorkspacePanel.tsx": "eb873d254b8af19d1301142f0d45e462b7b45ddd9d478526dd84cb3654100acb",
-      "src/hooks/chat/useWorkspaceEditBridge.ts": "cbfec4099d903d776667d56afa433a2dcfc64b9100efc2e7828b2f7d36ed5152",
+      "src/components/workspace/WorkspaceExportModal.tsx": "db32202bf3ba35dee192941e4a8e574750f5af6ea43c32e46aede930480795d2",
+      "src/components/workspace/WorkspacePanel.tsx": "1a8a2fc6ff0fd8f4dcea00e1cb42c8404f168df03936bbe70ab1bbf98811ee23",
+      "src/hooks/chat/useWorkspaceEditBridge.ts": "b8717d2e91e467ac8a316e5ae560a48c74cfd1a5626ab894ff416db8101e34ec",
       "src/lib/ai-review-diff.ts": "5233a070f764270172fdc03ca7df564e16483aac958acfce42748ebf1fa7d701",
-      "src/lib/attemptAddToChat.ts": "48bba3c1edd55149746e1b93c71a5618b754d31e62d6c14fbfc3632f58976e41",
-      "src/lib/documentTextExport.ts": "99624032c656380d2545ef28625211ab7ed56348bdbb81a834142efc16c85d2b",
+      "src/lib/attemptAddToChat.ts": "836885a47b8f579211e9ef3cebb7cd7053a330e68f14a94c7605a2a66cd087db",
+      "src/lib/documentTextExport.ts": "7ebd6f8880321b8ebdf27209b3b0c3f6766f0314e154f4fae30c8b7967682849",
       "src/lib/lesson-plan-deserialize.ts": "6293cee4ca05d2c8a43fdf7f1cc7407aed3792623fe1571d1c959a7376107700",
-      "src/lib/quote-focus.ts": "36adb76ec6510af621758673865f72887b1281ece77747533ad6760fdb615cb9",
-      "src/lib/suggestion-groups.ts": "36a044d291c18da1e54aa7d6ed4391de59839143808191ef38e2a758a1392912",
-      "src/lib/suggestion-views.ts": "671fb63d75f06d7264f4ba3a309f131e1a7e1d0d0fbe4fe48722028dced63c31",
-      "src/lib/workspace-lesson-serialize.tsx": "3c02595852688022a22e9f643c4b7181f47cecf037b5e520da6c4d6822aedb45",
-      "src/lib/workspaceClientTools.ts": "4b8345af57f72655e5d356c1344bf895ae84a94b8f5f00650c3e24ce5b49f3f0",
-      "src/lib/workspaceExportArchive.ts": "86105d64ee9255fa2f952c0e0819f7eb371e97eb8d8426170aa932af7b47e485",
-      "src/lib/workspaceExportSnapshot.ts": "5988c1d6f5179c86c24364aa1d45239ca5112e2d89465a4c8c3123d5aa370462",
-      "src/stores/quoteStore.ts": "52d35560af0897e60552db15b34705151bb2c2537b91300c113671d32482e1a8",
-      "src/stores/workspaceStore.ts": "ad2c0955ae935801a606c55c95c67381a5fad4da97cd7a0d9e758c4e942739a6",
-      "src/types/chat.ts": "c2de409d23c0cb80d9464ce0f2d35fc74ffe0b871618cf865ca04a7453231f46"
+      "src/lib/quote-focus.ts": "d70fb13e6d4ff8c5fa7e249f59c9dbc6543ffdb4328f35ea5c470e4b03f60350",
+      "src/lib/suggestion-groups.ts": "34c68af2f3a3405dc33e52c6b618ad301e16d08401d3dae80cef90ceb415fcfd",
+      "src/lib/suggestion-views.ts": "ae9b42b03ac4627c513e1b315fd0ec6bbaa3e62832564b9749e83bce170965ac",
+      "src/lib/workspace-lesson-serialize.tsx": "9e959995b7b03d1bfcd36e8606110dfd701575c9b42320f12bba8827219059ce",
+      "src/lib/workspaceClientTools.ts": "4951e0d4c5ce3f031e463934fd5a5b17f341de008a8300d96310a989f7b26597",
+      "src/lib/workspaceExportArchive.ts": "dc286c41a993b7b16c25fd25a03771289a7a3b6ed10f0201a10952eec324ef2e",
+      "src/lib/workspaceExportSnapshot.ts": "eb41286b9418e9228fa0910a9f11e33e1a2487f709655141f685d323914d85ff",
+      "src/stores/quoteStore.ts": "d85272973d43c9a306578f5776a69a1d2a8b2a6fb14a8f5ed947d952a007b582",
+      "src/stores/workspaceStore.ts": "e35c3b667dac4e5b6aea31e3db54aef23902b040a18b54062d8703f930ad4334",
+      "src/types/chat.ts": "febb3a7f0847b300b28afb8c9ba5b2a1ce8cd5c4912607785525aea42ebc6e16"
     }
   }
 }
