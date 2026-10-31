@@ -278,7 +278,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 ## U16
 
-- [ ] Focus native document content from chat quotes
+- [x] Focus native document content from chat quotes
 
 **Depends:** [P11](03-agent-projection.md#p11), [I06](10-app-integration.md#i06), [U07](09-editor-ui.md#u07), [V01](11-verification.md#v01)
 
@@ -292,4 +292,4 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Cover the chat caller, same and different material routes, nested blocks, missing lines, two-session changes, and saved native reopen. Read or selection actions must not change document history.
 
-**Claim:** claude, application branch `claude/docx-native-cutover`. **Evidence:** Progress, not closure. Application commit `da8b42214`. `quote-focus.ts` routes document quote clicks to `native-quote-focus.ts` when a native document is open. It reads the working view, maps the quoted lines through the projection source map (`quote-target.ts`, exact offsets through the fork `sourceOffsetsAt`), selects the native range, reveals it, and focuses the editor. A stale read after a document switch never moves focus. The native panel consumes a pending focus once its session is ready. Chromium `floating-toolbar.test.ts` adds a case: a quote click selects content that quotes back to the identical quote, and a pending focus selects line 1 once ready. Remaining: a cross-material click that waits for native hydration.
+**Claim:** claude, application branch `claude/docx-native-cutover`. **Evidence:** Application commits `da8b42214`, `b83ab4805`, and `b8592486d`. `quote-focus.ts` routes document quote clicks to `native-quote-focus.ts` when a native document is open. It reads the working view, maps the quoted lines through the projection source map (`quote-target.ts`, exact offsets through the fork `sourceOffsetsAt`), selects the native range, reveals it, and focuses the editor. A stale read after a document switch never moves focus. Two defects surfaced and are fixed for the native and Plate routes: a quote of another material set its pending focus before `hydrateFromMaterial`, which clears it, so the focus was lost; and a slow material load could switch the workspace after a later click. The pending focus now carries its material, is set after hydration, and only that material's native editor applies it; a click counter drops overtaken loads. Chromium cases: in `floating-toolbar.test.ts`, a quote click selects content that quotes back to the identical quote, a pending focus applies once ready, and a quote of pending suggested text selects that text and scrolls it into view; in `native-persistence.test.ts`, a quote of another saved native material opens it and selects its line once, and an overtaken load neither switches the material nor leaves a pending focus.
