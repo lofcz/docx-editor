@@ -116,6 +116,7 @@ export * from './chrome/block-type';
 export * from './chrome/block-styles';
 export { insertBlock as insertTextBlock, type InsertBlockType } from './chrome/insert-block';
 export * from './chrome/block-input';
+export * from './chrome/exit-break';
 export * from './chrome/block-toolbar';
 export * from './chrome/marks';
 export * from './chrome/marks-toolbar';
