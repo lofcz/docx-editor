@@ -52,6 +52,12 @@ for (const [name, markdown, inside, structure] of [
   ['table', '| Cell A | Cell B |\n| --- | --- |\n| One | Two |', 'One', 'tbl'],
   ['code block', '```python\nprint(1)\n```', 'print(1)', 'sdt'],
   ['callout', '<callout>\n\nInside callout\n\n</callout>', 'Inside callout', 'sdt'],
+  [
+    'activity',
+    '<activity name="Warm up" duration="5">\n\nActivity body\n\n</activity>',
+    'Activity body',
+    'sdt',
+  ],
 ] as const)
   test(`exit break leaves a ${name} after and before, with history and reopen`, async () => {
     const container = document.createElement('div');
