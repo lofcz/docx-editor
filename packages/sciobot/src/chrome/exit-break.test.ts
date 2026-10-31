@@ -8,6 +8,7 @@ import {
   writeOoxmlPackage,
 } from '@docx-editor.dev/core/store';
 import { targetDocumentInput } from '../../test/support/target-document';
+import { projectSourcePackage, sourceRevision } from '../../test/support/target-source-fixture';
 import { createTwoEditorFixture } from '../../test/support/collaboration';
 import { previewDirectPlan } from '../ai/apply-direct';
 import { planTargetDocument } from '../diff/plan-target';
@@ -139,5 +140,63 @@ for (const first of [0, 1] as const)
       expect(saved[0]).toEqual(saved[1]);
     } finally {
       pair.destroy();
+    }
+  });
+
+async function plannedPackage(markdown: string) {
+  const input = await targetDocumentInput('<w:p><w:r><w:t>Seed text</w:t></w:r></w:p>');
+  const planned = planTargetDocument(input, markdown, { allocateBlockId: () => `block-${++ids}` });
+  if (!planned.success) throw new Error(planned.error);
+  const applied = previewDirectPlan(input.pkg, planned.plan);
+  if (!applied.success) throw new Error(applied.error);
+  return writeOoxmlPackage(applied.pkg);
+}
+
+async function sourceOf(editor: DocxEditorInstance) {
+  const read = readOoxmlPackage(new Uint8Array(await editor.save()));
+  if (!read.ok) throw new Error(read.reason);
+  return {
+    revision: sourceRevision,
+    pkg: read.package,
+    projection: await projectSourcePackage(read.package),
+  };
+}
+
+for (const fence of ['```', '```python'])
+  test(`typing after a last empty ${fence} block makes one paragraph; empty exits plan no edit`, async () => {
+    const original = `Intro\n\n${fence}\n\`\`\``;
+    const container = document.createElement('div');
+    document.body.append(container);
+    const editor = createDocxEditor({ container, document: await plannedPackage(original) });
+    try {
+      const before = await sourceOf(editor);
+      // The tag starts its own block although its empty fallback exports no text.
+      expect(before.projection.text).toBe(`Intro\n\n${fence}\n\n\`\`\``);
+      const code = editor.surface!.session.paragraphIds().at(-1)!;
+      editor.surface!.setSelection({
+        anchor: { paragraphId: code, offset: 0 },
+        head: { paragraphId: code, offset: 0 },
+      });
+      const exit = exitBlock(editor, 'after');
+      if (!exit.success) throw new Error(exit.error);
+      expect(exitBlock(editor, 'after').success).toBe(true);
+      // Empty paragraphs after the last block do not make an agent edit.
+      const empty = await sourceOf(editor);
+      for (const target of [original, before.projection.text]) {
+        const planned = planTargetDocument(empty, target, { allocateBlockId: () => 'unused' });
+        if (!planned.success) throw new Error(planned.error);
+        expect(planned.plan.operations).toHaveLength(0);
+      }
+      expect(
+        editor.surface!.applyAutomationOps(() => [
+          { op: 'insertText', paragraphId: exit.paragraphId, offset: 0, text: 'Next' },
+        ]).committed
+      ).toBe(true);
+      expect(bodyShape(editor).slice(-3)).toEqual(['sdt', 'P:Next', 'P:']);
+      const typed = await sourceOf(editor);
+      expect(typed.projection.text.trimEnd()).toBe(`Intro\n\n${fence}\n\n\`\`\`\n\nNext`);
+    } finally {
+      editor.destroy();
+      container.remove();
     }
   });

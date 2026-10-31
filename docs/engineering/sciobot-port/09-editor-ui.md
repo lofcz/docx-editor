@@ -8,7 +8,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 ## U01
 
-- [ ] Connect the floating selection toolbar
+- [x] Connect the floating selection toolbar
 
 **Depends:** [C03](01-contracts.md#c03), [B07](02-react-blocks.md#b07), [V01](11-verification.md#v01)
 
@@ -22,7 +22,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** claude, application branch `claude/docx-native-cutover`. **Evidence:** Progress, not closure. Application commit `d9476aac9`. `chrome/floating-toolbar.tsx` shows the production toolbar (the Add to chat action) above a native range selection. It tracks `selectionChange`, scroll, and resize; collapsed selections, view mode, and selections that start inside block widgets show nothing. Button presses keep the native selection. Chromium `floating-toolbar.test.ts` passes 3 cases: keyboard range selection, position above the selection, position after scrolling, hiding after the action and in view mode, and two sessions in both client orders with peer typing during a held selection and equal saved digests. Remaining: editor zoom and a widget form selection case.
+**Claim:** claude, application branch `claude/docx-native-cutover`. **Evidence:** Application commits `d9476aac9` and `f022a7bab`. `chrome/floating-toolbar.tsx` shows the production toolbar (the Add to chat action) above a native range selection. It tracks `selectionChange`, scroll, resize, and the document `selectionchange` event. Collapsed selections, view mode, and selections inside block widgets show nothing. The document event closes a defect: a selection in widget chrome does not move the editor selection, so the toolbar stayed open over it. Button presses keep the native selection. Chromium `floating-toolbar.test.ts` passes 7 cases: keyboard range selection, position above the selection, position after scrolling, hiding after the action and in view mode; position above and inside the selected line at editor zoom 1.5 and 0.75; hiding for a selection in activity widget chrome (fails without the fix); quote focus; and two sessions in both client orders with peer typing during a held selection and equal saved digests.
 
 ## U02
 
@@ -98,7 +98,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 ## U06
 
-- [ ] Connect emoji insertion
+- [x] Connect emoji insertion
 
 **Depends:** [N03](07-native-content.md#n03), [V01](11-verification.md#v01)
 
@@ -112,7 +112,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** claude, application branch `claude/docx-native-cutover`, fork `4bd80ef8`. **Evidence:** Application commit `ff0f00ef3`. `chrome/emoji-menu.tsx` opens on `:` plus a query, searches `@emoji-mart/data` names and keywords, and inserts the native emoji through ordinary text input. `chrome/trigger-menu.ts` is the shared trigger lifecycle for the emoji and slash menus. A colon inside a word, an unmatched query, and Enter on a bare `:` stay literal text. A core defect surfaced: Backspace and Delete removed one UTF-16 unit, which splits a surrogate pair, so the store refused the edit and the key did nothing after an emoji. Fork commit `4bd80ef8` removes one grapheme (`editor/grapheme-step.ts`), with `editor/__tests__/grapheme-deletion.test.ts` (9 cases: rocket, rainbow flag, skin tone, and accented letter in both directions, undo). Chromium `emoji-menu.test.ts` passes 3 cases: a rainbow flag inserted at the caret between text, arrow keys and Backspace across it, keyboard choice, literal colons, and two sessions in both client orders with peer typing and equal saved digests.
 
 ## U07
 

@@ -389,6 +389,15 @@ export function projectBlocks(
     function render(anchor: Anchor): void {
       const atomic = anchor.definition.kind === 'atomic';
       const opening = tag(anchor, atomic);
+      // An empty fallback paragraph at the end of the body exports no text, so its range sits
+      // right after the previous block. The tag still starts its own block.
+      if (
+        atomic &&
+        anchor.range!.start === anchor.range!.end &&
+        writer.offset > 0 &&
+        !writer.endsWithParagraphBreak
+      )
+        writer.generated('\n\n');
       const start = writer.offset;
       for (const span of opening.properties)
         attributes.push(
