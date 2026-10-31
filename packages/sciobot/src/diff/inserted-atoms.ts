@@ -1,5 +1,7 @@
 import type { OoxmlPackage } from '@docx-editor.dev/core/store';
-import type { MdxComponentRegistry } from '../registry/contract';
+import type { MdxComponentRegistry, MdxInlineBinding } from '../registry/contract';
+import type { JsonObject } from '../data/json';
+import { MDX_INLINE } from '../projection/mdx';
 import { activeMdxRegistry } from '../registry/active';
 import { MdxRefusal, astFields as fields, xmlText } from '../registry/mdx-fields';
 import { encodeBlockPayload, type BlockPayload } from '../blocks/payload-schema';
@@ -161,7 +163,13 @@ export function compileInsertedAtoms(
           );
         created = insertedPayload(ast, id, registry);
       }
-      const binding = created ? registry.components.get(created.type)?.inline : undefined;
+      if (!created && ast.type === 'mdxJsxTextElement') created = rawInlinePayload(ast, id);
+      const binding =
+        created?.type === MDX_INLINE
+          ? RAW_INLINE
+          : created
+            ? registry.components.get(created.type)?.inline
+            : undefined;
       if (!created || !binding)
         return fail(
           `Inserted ${ast.type} atoms need their own native representation.`,
@@ -190,6 +198,30 @@ export function compileInsertedAtoms(
     return fail(error instanceof Error ? error.message : 'The inline atom plan was refused.');
   }
 }
+
+/**
+ * An inline JSX element without a registered component keeps its complete MDX tree as an opaque
+ * payload. Word shows a readable label: its `label`, `title`, `name`, or `text` attribute, or
+ * else the tag name.
+ */
+function rawInlinePayload(ast: TargetAstNode, id: string): BlockPayload | null {
+  if (typeof ast.name !== 'string' || !ast.name || ast.name.length > 256) return null;
+  return { version: 1, id, type: MDX_INLINE, attributes: {}, mdast: ast as JsonObject };
+}
+
+const RAW_INLINE: MdxInlineBinding = {
+  atom: 'mdx',
+  fallback(payload) {
+    const ast = payload.mdast as TargetAstNode;
+    const attributes = Array.isArray(ast.attributes) ? (ast.attributes as JsonObject[]) : [];
+    const named = ['label', 'title', 'name', 'text']
+      .map((name) => attributes.find((attribute) => attribute.name === name)?.value)
+      .find((value) => typeof value === 'string' && value.trim().length > 0);
+    const text = (typeof named === 'string' ? named : String(ast.name)).replace(/[\r\n]+/g, ' ');
+    if (!xmlText(text)) throw new MdxRefusal('An inline MDX element needs a readable label.');
+    return { payload, text };
+  },
+};
 
 /** Validate compiled atom ownership against the immutable source package before planning writes. */
 export function planInsertedAtoms(
