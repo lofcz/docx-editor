@@ -17,7 +17,8 @@ export function seedReviewFieldCapacity(
   const targets = doc.getMap<string>(REVIEW_FIELD_TARGETS),
     intents = doc.getMap<string>(REVIEW_FIELD_INTENTS);
   doc.transact(() => {
-    targets.set('protocol', '1');
+    // The rows are valid under any field protocol. Keep the header the room installed.
+    if (!targets.has('protocol')) targets.set('protocol', '1');
     const target = { root: 'sciobot-test-inert-fields', key: 'retired', baseline: null },
       address = fieldAddress(target);
     if (kind === 'targets') {
