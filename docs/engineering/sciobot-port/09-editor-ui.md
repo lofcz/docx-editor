@@ -292,4 +292,4 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Cover the chat caller, same and different material routes, nested blocks, missing lines, two-session changes, and saved native reopen. Read or selection actions must not change document history.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** claude, application branch `claude/docx-native-cutover`. **Evidence:** Progress, not closure. Application commit `da8b42214`. `quote-focus.ts` routes document quote clicks to `native-quote-focus.ts` when a native document is open. It reads the working view, maps the quoted lines through the projection source map (`quote-target.ts`, exact offsets through the fork `sourceOffsetsAt`), selects the native range, reveals it, and focuses the editor. A stale read after a document switch never moves focus. The native panel consumes a pending focus once its session is ready. Chromium `floating-toolbar.test.ts` adds a case: a quote click selects content that quotes back to the identical quote, and a pending focus selects line 1 once ready. Remaining: a cross-material click that waits for native hydration.
