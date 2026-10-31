@@ -1,11 +1,5 @@
 import { expect, test } from 'bun:test';
-import {
-  canonicalOoxmlFingerprint,
-  readOoxmlPackage,
-  readOoxmlPart,
-  findNode,
-  replaceChildren,
-} from '@docx-editor.dev/core/store';
+import { canonicalOoxmlFingerprint, readOoxmlPackage } from '@docx-editor.dev/core/store';
 import { propertyEditor } from '../../test/support/property-execution';
 import { listDocument, listParagraph, checklistParagraph } from '../../test/support/list-document';
 import { readEditorRevision } from '../projection/revision-cache';
@@ -158,28 +152,10 @@ for (const [name, property] of [...marks, ['heading', null] as const])
         canonicalOoxmlFingerprint(value.surface!.session.part());
       try {
         const before = fingerprint(editor);
-        // Native range formatting partitions a run at the selected boundaries. Spell out
-        // the complete rejected tree independently, including its empty property container.
-        const part = editor.surface!.session.part();
-        const id = editor.surface!.session.paragraphIds()[0]!;
-        const originalParagraph = findNode(part, id)!;
-        if (originalParagraph.kind !== 'paragraph') throw Error('Expected paragraph');
-        const split = readOoxmlPart(
-          '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>Before </w:t></w:r><w:r><w:rPr/><w:t>Item</w:t></w:r><w:r><w:t> After</w:t></w:r></w:p></w:body></w:document>',
-          { name: '/sciobot-r06-rejected.xml', contentType: part.contentType }
-        );
-        if (!split.ok) throw Error(split.reason);
-        const splitBody = split.part.root.children[0]!;
-        if (splitBody.kind === 'textValue') throw Error('Expected body');
-        const splitParagraph = splitBody.children[0]!;
-        if (splitParagraph.kind !== 'paragraph') throw Error('Expected paragraph');
-        const expectedRejected = replaceChildren(part, id, [
-          ...originalParagraph.children.filter((child) => child.kind === 'paragraphProperties'),
-          ...splitParagraph.children,
-        ]);
-        if (!expectedRejected.ok) throw Error(JSON.stringify(expectedRejected.issues));
-        const rejected =
-          name === 'heading' ? before : canonicalOoxmlFingerprint(expectedRejected.part);
+        // Native range formatting partitions a run at the selected boundaries. The partitions
+        // keep source provenance, so a rejection restores the one original run exactly,
+        // without an empty property container.
+        const rejected = before;
         const applied = applyDirectPlan(direct, await plan(direct), context);
         if (!applied.success) throw Error(applied.error);
         const expected = fingerprint(direct);
