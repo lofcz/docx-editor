@@ -19,6 +19,7 @@ export const SCIOBOT_DIFF_STRATEGIES: Readonly<Record<string, DomainDiffStrategy
   story: { kind: 'container' },
   solution: { kind: 'container' },
   toggle: { kind: 'container' },
+  date: { kind: 'atomic' },
   source: { kind: 'atomic' },
   source_excerpt: {
     kind: 'container',

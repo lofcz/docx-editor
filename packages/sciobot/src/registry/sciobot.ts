@@ -10,7 +10,12 @@ import { SCIOBOT_PARSERS } from './sciobot-parse';
 import { INLINE_IMAGE } from '../blocks/inline-image-codec';
 import { SCIOBOT_VALIDATORS } from './sciobot-valid';
 import { SCIOBOT_WORD_FALLBACKS } from './sciobot-fallback';
-import { INLINE_EQUATION_INLINE, MENTION_INLINE, SOURCE_INLINE } from './sciobot-inline';
+import {
+  DATE_INLINE,
+  INLINE_EQUATION_INLINE,
+  MENTION_INLINE,
+  SOURCE_INLINE,
+} from './sciobot-inline';
 import {
   BLOCK_EQUATION_MARKDOWN,
   CODE_BLOCK_MARKDOWN,
@@ -25,7 +30,7 @@ import {
 } from './contract';
 
 /** Payload types that sit inside a paragraph as one native atom. */
-const INLINE_TYPES = new Set(['inline_equation', 'mention', 'inline_image', 'source']);
+const INLINE_TYPES = new Set(['inline_equation', 'mention', 'inline_image', 'source', 'date']);
 /** Payload types without MDX syntax of their own, kept as opaque application data. */
 const OPAQUE_TYPES = ['listening'];
 const MARKDOWN: Readonly<Record<string, MdxMarkdownBinding>> = {
@@ -37,6 +42,7 @@ const INLINE: Readonly<Record<string, MdxInlineBinding>> = {
   inline_equation: INLINE_EQUATION_INLINE,
   mention: MENTION_INLINE,
   source: SOURCE_INLINE,
+  date: DATE_INLINE,
 };
 /** An inline image owns the media part its payload names. */
 const imageMedia = (payload: { readonly attributes: Readonly<Record<string, unknown>> }) =>

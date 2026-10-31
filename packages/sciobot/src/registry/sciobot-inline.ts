@@ -105,6 +105,19 @@ export const MENTION_INLINE: MdxInlineBinding = {
   },
 };
 
+/** A calendar date chip (`<date value="YYYY-MM-DD" />`); Word shows the ISO date. */
+export const DATE_INLINE: MdxInlineBinding = {
+  atom: 'date',
+  updatable: true,
+  fallback(payload) {
+    const value = payload.attributes.value;
+    if (typeof value !== 'string' || !ISO_DATE.test(value))
+      throw new MdxRefusal('A date needs an ISO calendar value.');
+    return { payload, text: value };
+  },
+};
+export const ISO_DATE = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
+
 /** An inline citation; Word shows its title, author, or URL. */
 export const SOURCE_INLINE: MdxInlineBinding = {
   atom: 'source',
