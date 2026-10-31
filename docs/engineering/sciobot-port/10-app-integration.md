@@ -330,7 +330,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** claude, application branch `claude/docx-native-cutover`. **Evidence:** Progress, not closure. Application commit `3913c0c2e`. While the workspace draft phase or the file status says a generation writes the material, or the row reports `generation_status = generating`, the native route opens nothing and saves nothing; it reads the row again every 3 seconds until it is final. The final Markdown converts once through the I11 conversion and saves one revision; later loads open that revision. Switching material cancels the pending load. A defect surfaced and is fixed: a row with Markdown but no content loaded as an empty document, so a generated lesson would have opened blank. Checks: `native-load.test.ts` (7 cases, including Markdown-only and generating rows); Chromium `native-persistence.test.ts` (12 cases): nothing opens or writes during generation, the final lesson opens with its heading and body and saves exactly one reference, and switching to another material during generation keeps that material after the first generation finishes. Open: the native route shows no streamed draft and accepts no typing during generation, so the criterion that typing during generation survives a delayed completion is not met; a late hydration of an open material never replaces typing (I09).
 
 ## I19
 
