@@ -56,7 +56,8 @@ for (const location of [
         id: 'atom-3',
         type: 'source',
         version: 1,
-        attributes: { title: 'Paper', url: 'https://x.test' },
+        // The source grammar infers web media chrome from an ordinary URL.
+        attributes: { title: 'Paper', url: 'https://x.test', sourceType: 'web' },
       },
     ]);
     expect(controls.map((op) => op.fallback)).toEqual(['x^2', 'Ada Lovelace', 'Paper']);
