@@ -298,7 +298,7 @@ Final verification against installed fork `929e0ea4a9bf68f3a4c9a7c133e55bc76b76d
 
 ## X16
 
-- [ ] Render editable code blocks
+- [x] Render editable code blocks
 
 **Depends:** [B05](02-react-blocks.md#b05), [B06](02-react-blocks.md#b06), [P04](03-agent-projection.md#p04), [V01](11-verification.md#v01)
 
@@ -312,7 +312,7 @@ Final verification against installed fork `929e0ea4a9bf68f3a4c9a7c133e55bc76b76d
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** claude, application branch `claude/docx-native-cutover`, fork `62c7e8ef`. **Evidence:** The `code_block` view (`src/components/workspace/docx/blocks/code.tsx`) adds a language selector, an edit dialog, and a copy button over the native Word fallback, which paints one code-styled line per source line. Saves go through the new fork API `updateAtomicBlock`, which replaces the payload and regenerates the fallback in one undo unit, keeps the block ID, and refuses suggest and view mode. The dialog inserts a tab for Tab and keeps Enter and paste as plain text. Fork `blocks/update-atomic.test.ts` passes 3 cases, including two real collaboration sessions in both receiver orders. Chromium `code-blocks.test.ts` passes 3 cases: Enter, Tab, clipboard paste, language change, exact payload, Word lines, saved `w:tab` and repeated spaces, Markdown export, undo and redo, suggest-mode refusal, and two sessions with peer typing, history, equal saved digests, and equal Markdown. Pages show the code style without syntax colors. See [native code blocks](evidence/native-code-blocks.md).
 
 ## X17
 
