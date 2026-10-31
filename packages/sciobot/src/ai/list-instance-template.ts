@@ -87,7 +87,7 @@ export function setListInstanceStart(
     namespaceUri: W,
     prefix: 'w',
     localName,
-    namespaceBindings: [{ prefix: 'w', namespaceUri: W }],
+    namespaceBindings: [],
     attributes,
     children,
   });
