@@ -178,7 +178,7 @@ export const DOMAIN_BLOCK_TAGS: ReadonlyMap<string, BlockTagDefinition> = new Ma
     },
   ],
   ['callout', { tag: 'callout', kind: 'container', attributes: callout }],
-  ...['story', 'solution'].map(
+  ...['story', 'solution', 'toggle'].map(
     (tag) => [tag, { tag, kind: 'container', attributes: containerAttributes }] as const
   ),
   [
