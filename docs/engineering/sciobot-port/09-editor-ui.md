@@ -26,7 +26,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 ## U02
 
-- [ ] Connect the slash insertion menu
+- [x] Connect the slash insertion menu
 
 **Depends:** [B11](02-react-blocks.md#b11), [N02](07-native-content.md#n02), [N08](07-native-content.md#n08), [N09](07-native-content.md#n09), [V01](11-verification.md#v01)
 
@@ -40,7 +40,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** claude, application branch `claude/docx-native-cutover`. **Evidence:** Progress, not closure. Earlier: application commits `4ae32fc5f` and `287114e8d` (catalog, filtering, keyboard, Escape, 15 Chromium cases). Since then the native commands also cover toggle, table of contents, image, date, molecule (`c479c00df`, the shared SMILES dialog), and video, audio, and file (`ff610b296`, upload or link). The harness scenario takes `features=chemistry` for the gated molecule entry. Chromium `slash-menu.test.ts` and `smiles.test.ts`: 20 pass; `media-insert.test.ts`: 2 pass. Remaining: listening and three columns.
+**Claim:** claude, application branch `claude/docx-native-cutover`. **Evidence:** Application commits `4ae32fc5f` and `287114e8d` (catalog, localized filtering, keyboard, Escape) and the per-entry commands after them: toggle, table of contents, image, date, molecule (`c479c00df`, shared SMILES dialog), video, audio, and file (`ff610b296`, upload or link), listening (`3697fc634`, the shared `DialogueEditor` in a dialog; the stored listening markup and the complete transcript as the Word fallback), and three columns (`6f3871fe4`, one undo unit through `beginMarkdownInsertion`, caret in the first column). Every production slash entry now has a native command. The inferred-feature gates stay (math, chemistry, foreign language); the harness scenario takes `features=` to open them. Chromium, in both client orders where the case has two sessions: `slash-menu.test.ts` 18 pass (each base entry, keyboard, Escape with an unchanged revision, text fallbacks); `smiles.test.ts` 2 pass; `media-insert.test.ts` 2 pass; `listening-insert.test.ts` 2 pass (an empty script is refused visibly; the transcript replaces the empty line; undo, redo, reopen, equal digests); `columns-insert.test.ts` 2 pass (typing lands in the first column; peer text survives two undos; redo; reopen; equal digests).
 
 ## U03
 
