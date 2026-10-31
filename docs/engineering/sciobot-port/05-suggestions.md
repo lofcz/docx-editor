@@ -384,7 +384,7 @@ Runtime `refs/backup/codex-r18-runtime` is commit `4f85f1889db04026f871cfd3a102f
 
 ## R19
 
-- [ ] Replace earlier pending proposals in a later AI wave
+- [x] Replace earlier pending proposals in a later AI wave
 
 **Depends:** [R25](05-suggestions.md#r25), [R15](05-suggestions.md#r15), [R16](05-suggestions.md#r16), [V01](11-verification.md#v01)
 
@@ -439,6 +439,8 @@ The born-table Original recovery checkpoint makes Original retain the independen
 **Styled peer continuation checkpoint:** The writer now retains unchanged bold and mixed-style collaborator tails through replacement of owned atom-bearing tables. Matching native property spans preserve original runs and character identities. Semantic no-op checks use the actual proposed property/presence package, so equivalent targets avoid redundant waves without breaking property resets. Eight new two-editor cases retain independent Word decisions, Original view, both actors' histories, caret geometry, media, payloads, and cold reopening. The final seven-file batch passes 47 cases and 4,675 assertions. Private types and scoped checks pass. The native format stays `1.9.15.1`; production imports remain private/core only. R19 stays open for its remaining ownership routes and application verification. See [styled peer evidence](evidence/styled-peer-continuation.md).
 
 **Installed styled-peer and tool ownership checkpoint:** Runtime `38d620acce8aec9678de93ea5871ba4e10dc8f1b` is pinned by application `01ef1c5e62574cfbba935c6e373c71d545163aa7`. The built styled-peer file passes eight cases and 1,288 assertions under unchanged deadlines; all eight original linked-image shared cases also pass. The application now retains exact ownership and content proofs across separately constructed tool executors, successful waves, decisions, and undo. Two new browser cases pass both client orders with 62 assertions. Earlier owned group identities withdraw while same-author foreign groups remain; four tool waves and native history retain exact working content and saved convergence. Sixteen original browser cases, eleven unit cases, both typechecks, archive hashes, frozen installation, and one-core resolution pass. R19 remains open for the remaining native recovery and integration work. See [installed evidence](evidence/styled-peer-continuation.md#installed-runtime-and-application-ownership).
+
+**Remount ownership closure:** claude, application commit `50ea18a7f`. The suggestion executor stores the ownership ledger and content proofs per document after each successful wave, and a new mount of the same document restores them. The Word revision addresses and semantic content proofs survive save and reopen, and the composer verifies both again. A restored ledger that no longer matches the document owns nothing: the wave runs again with an empty ledger, so the earlier proposals stay as ordinary content. Chromium `direct-edits.test.ts` adds a case: a first AI wave, a saved reopen that claims the workspace, then a second wave that changes the first wave's text; the first wave's groups withdraw, and no nested or duplicated owned revisions remain. The file passes 24 cases, including the two-client ownership waves with peer input, native undo and redo, and saved convergence. Mixed accept, reject, and manual edits across waves pass in `review-waves.test.ts` (V03). R19 is complete.
 
 ## R20
 
