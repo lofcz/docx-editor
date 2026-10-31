@@ -40,7 +40,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** claude, application branch `claude/docx-native-cutover`. **Evidence:** Progress, not closure. Application commits `4ae32fc5f` and `287114e8d`. `ui/slash-catalog-data.ts` now holds the production entries without Plate. `chrome/slash-menu.tsx` opens on "/" at a paragraph start or after whitespace, as Plate does; the slash and the query never enter the document, so Escape leaves no text and no history entry, and a query with no match lands as typed text. It filters with the production matcher and the same inferred-feature gates, navigates with arrows, and chooses with Enter, Tab, or a click. Native commands cover text, three headings, quote, bullet, numbered, and to-do lists, table, code block, callout, story, solution, block equation, and inline equation. Chromium `slash-menu.test.ts` passes 15 cases: each entry inserts its block, keyboard choice, Escape with an unchanged revision, Backspace past the slash, "km/h" and an unmatched query as text, and two sessions in both client orders with peer typing, undo, and equal saved digests. The full harness passes 248 cases. Remaining: image, video, audio, file, listening, table of contents, molecule, three columns, toggle, and date entries (they do not appear until the native editor can insert them).
 
 ## U03
 
@@ -80,7 +80,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 ## U05
 
-- [ ] Connect Markdown autoformat shortcuts
+- [x] Connect Markdown autoformat shortcuts
 
 **Depends:** [N02](07-native-content.md#n02), [N03](07-native-content.md#n03), [N08](07-native-content.md#n08), [V01](11-verification.md#v01)
 
@@ -94,7 +94,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** claude, application branch `claude/docx-native-cutover`, fork `96c45407`. **Evidence:** Application commit `017b84942` installs the fork's input rules in every native workspace editor: `installBlockInputRules` (`#`, `##`, `###`, `>`, and the heading and quote chords), `installListEditing` (bullet, ordered, and checklist triggers and list keys), `installMarkShortcuts`, and `installTableNavigation`. A defect surfaced and is fixed in the fork: the rules excluded widget furniture by `[data-docx-block-ui]`, which no element carries, so keys typed in widget forms could reach document shortcuts; they now use `[data-sciobot-block-ui]`, and `chrome/marks.test.ts` adds a regression that fails without the fix. Chromium `autoformat.test.ts` passes 7 cases on the packaged blank template: heading, quote, bullet, and ordered triggers, each with undo of the typed word and then of the shortcut back to the literal trigger; bold and italic chords; and two sessions in both client orders with peer typing and equal saved digests. The `---` rule trigger did not fire in the browser case and is not claimed. The full harness passes 233 cases; widget suites pass 60 cases on the vendored fix.
 
 ## U06
 
