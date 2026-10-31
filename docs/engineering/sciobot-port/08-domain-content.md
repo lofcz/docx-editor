@@ -388,7 +388,7 @@ Final verification against installed fork `929e0ea4a9bf68f3a4c9a7c133e55bc76b76d
 
 ## X21
 
-- [ ] Render and edit date chips
+- [x] Render and edit date chips
 
 **Depends:** [B05](02-react-blocks.md#b05), [B20](02-react-blocks.md#b20), [B21](02-react-blocks.md#b21), [V01](11-verification.md#v01)
 
@@ -402,7 +402,7 @@ Final verification against installed fork `929e0ea4a9bf68f3a4c9a7c133e55bc76b76d
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** claude, application branch `claude/docx-native-cutover`, fork `e8b1de3f`. **Evidence:** Plate stores a date as a canonical `YYYY-MM-DD` value and serializes `<date value="…" />`. Fork `9aa94bd1` registers `date` as an inline component with that tag, a validator for ISO calendar values, an in-place update strategy, and the ISO value as its Word text; `blocks/inline-insert.ts` adds `insertInlineComponent`, a registry-driven inline insertion. Fork `e8b1de3f` lets `updateAtomicBlock` update inline components through their inline fallback. Fork `blocks/date-inline.test.ts` passes 5 cases: exact projection and Word text, an agent value change that updates the same chip, invalid values refused, insertion as one undo step with reopen, an update as one undo step, and two sessions in both receiver orders with peer typing, undo, and equal saved digests. Application commit `ec06015da` adds `blocks/date.tsx` (the chip shows the date in the reader's locale; the existing `Calendar` popover changes it) and the slash entry, which inserts today. Chromium `date-chips.test.ts` passes 3 cases: insertion from the slash menu with the ISO value in Markdown and Word text and a localized chip, a calendar change and its undo, and two sessions in both client orders with peer typing and equal saved digests. Not covered: copying a chip through the clipboard.
 
 ## X22
 
@@ -420,7 +420,7 @@ Final verification against installed fork `929e0ea4a9bf68f3a4c9a7c133e55bc76b76d
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** claude, application branch `claude/docx-native-cutover`. **Evidence:** Not ported; recorded as out of the cutover scope. The Plate mention input in the workspace (`src/components/ui/mention-node.tsx`) suggests only hard-coded placeholder people (`mockUsers`, such as john@example.com) and placeholder documents (`mockMentionDocuments`); no application service backs it. Mentions that a document already holds are preserved: the fork stores them as inline atoms with their identifier and label (`blocks/mention-codec.ts`, `blocks/mention-insert.ts`, mention projection and collaboration suites), and Word and the native page show the label. Reopen this leaf when the application has a real mention source; the native `@` trigger can reuse `chrome/trigger-menu.ts` and `insertMention`.
 
 ## X23
 
