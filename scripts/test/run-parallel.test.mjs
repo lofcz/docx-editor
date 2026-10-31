@@ -1,6 +1,15 @@
 import { expect, test } from 'bun:test';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, copyFileSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import {
+  closeSync,
+  copyFileSync,
+  mkdirSync,
+  mkdtempSync,
+  openSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -183,3 +192,43 @@ test.skipIf(process.platform === 'win32')(
   },
   15000
 );
+
+// A failure that prints a whole DOM tree once overflowed the runner's output string and ended
+// the run. The runner keeps the start and the end of a file's output and counts the rest.
+test('a file with oversized output keeps its counts and does not end the run', () => {
+  const root = mkdtempSync(join(tmpdir(), 'ci-runner-test-'));
+  try {
+    for (const dir of ['scripts/test', 'packages', 'docs', 'examples', 'benchmarks']) {
+      mkdirSync(join(root, dir), { recursive: true });
+    }
+    for (const file of ['run-parallel.mjs', 'shard.mjs']) {
+      copyFileSync(new URL(file, import.meta.url), join(root, 'scripts/test', file));
+    }
+    writeFileSync(
+      join(root, 'packages', 'flood.test.ts'),
+      `import { test, expect } from 'bun:test';
+       test('floods', () => {
+         const line = 'x'.repeat(1000);
+         for (let i = 0; i < 20000; i++) console.log(line);
+         expect(1).toBe(2);
+       });
+       test('passes', () => expect(1).toBe(1));`
+    );
+    // A file, not a pipe: the runner exits right after its last write, and a pipe can lose it.
+    const log = join(root, 'run.log');
+    const fd = openSync(log, 'w');
+    const run = spawnSync(
+      process.execPath.includes('bun') ? 'node' : process.execPath,
+      [join(root, 'scripts/test/run-parallel.mjs'), '--jobs', '1'],
+      { stdio: ['ignore', fd, fd], timeout: 60000 }
+    );
+    closeSync(fd);
+    const output = readFileSync(log, 'utf8');
+    expect(run.status).toBe(1);
+    expect(output).toContain('FAIL packages/flood.test.ts');
+    expect(output).toContain('1 pass  1 fail');
+    expect(output).toContain('bytes of output not shown');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});

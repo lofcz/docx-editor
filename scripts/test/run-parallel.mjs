@@ -78,6 +78,9 @@ const TEST_FILE = /\.(test|spec)\.(ts|tsx|js|jsx|mjs|cjs)$/;
  * for everything else, generous enough to survive contention and short enough to catch a hang.
  */
 const DEFAULT_TIMEOUT_MS = 30_000;
+/** The output kept per file; the rest is counted, not held. */
+const MAX_FILE_OUTPUT = 16 * 1024 * 1024;
+const MAX_FILE_OUTPUT_TAIL = 1024 * 1024;
 
 const GiB = 1024 ** 3;
 
@@ -389,9 +392,25 @@ function runFile(file, passthrough, failFast, onRss) {
         onRss(rss);
       });
     }, PEAK_SAMPLE_INTERVAL_MS);
+    // A failure can print a whole DOM tree; past the cap, keep the start and the end (Bun's
+    // counts) and count the rest, or one file's output exceeds the longest string the runner
+    // can hold and ends the run.
     let output = '';
-    child.stdout.on('data', (chunk) => (output += chunk));
-    child.stderr.on('data', (chunk) => (output += chunk));
+    let tail = '';
+    let dropped = 0;
+    const take = (chunk) => {
+      if (output.length < MAX_FILE_OUTPUT) {
+        output += chunk;
+        return;
+      }
+      tail += chunk;
+      if (tail.length > MAX_FILE_OUTPUT_TAIL) {
+        dropped += tail.length - MAX_FILE_OUTPUT_TAIL;
+        tail = tail.slice(-MAX_FILE_OUTPUT_TAIL);
+      }
+    };
+    child.stdout.on('data', take);
+    child.stderr.on('data', take);
     child.on('error', (error) => {
       children.delete(child);
       clearInterval(sampler);
@@ -415,7 +434,10 @@ function runFile(file, passthrough, failFast, onRss) {
       // A file that finished before the sampler ever fired cannot have grown large; record the
       // floor so it is charged as small next time instead of falling back to "unknown" forever.
       if (peak === 0 && code !== null && ms <= PEAK_SAMPLE_INTERVAL_MS * 2) peak = PEAK_FLOOR_BYTES;
-      settle({ file, output, code: code ?? 1, ms, peak });
+      const shown = dropped
+        ? `${output}\n[${dropped} bytes of output not shown]\n${tail}`
+        : output + tail;
+      settle({ file, output: shown, code: code ?? 1, ms, peak });
     });
   });
 }
