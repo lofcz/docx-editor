@@ -604,7 +604,7 @@ Final verification against installed fork `929e0ea4a9bf68f3a4c9a7c133e55bc76b76d
 
 ## X33
 
-- [ ] Connect media caption editing
+- [x] Connect media caption editing
 
 **Depends:** [X26](08-domain-content.md#x26), [X29](08-domain-content.md#x29), [X30](08-domain-content.md#x30), [V01](11-verification.md#v01)
 
@@ -618,7 +618,7 @@ Final verification against installed fork `929e0ea4a9bf68f3a4c9a7c133e55bc76b76d
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** claude, app branch `claude/docx-native-cutover` commit `47d4828b5`. **Evidence:** A caption is the Word `Caption` paragraph directly after its media, so it is ordinary native text for editing, undo, collaboration, review, and export (`chrome/caption.ts`). The image toolbar gains a caption button; media and gallery blocks gain the block handle, whose menu has the caption item. The command reuses an existing caption paragraph, or inserts one: `insertParagraphs` plus a dependent `setParagraphProperties` stage set the style in the same transaction and undo unit (new paragraphs cannot carry a style reference). Gallery image captions stay in the gallery payload and edit in the gallery view. Chromium command `bun test --timeout 600000 scripts/docx-native/harness/captions.test.ts`: 3 pass; the two-session case passed 8 of 9 runs, and the one failure was a click that missed the picture during a repaint (the test now retries that click). Cases: a picture caption is added after the picture paragraph, reused on a second request, edited by both sessions offline, converges in both client orders, and undoes Alice's text while the picture and Bob's text stay; reopen and saved digests match. A video block caption lands after the block and before the next block, and two undos remove it. Export renders the saved DOCX, so captions keep their document order there.
 
 ## X34
 
