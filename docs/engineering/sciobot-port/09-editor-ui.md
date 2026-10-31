@@ -22,7 +22,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** claude, application branch `claude/docx-native-cutover`. **Evidence:** Progress, not closure. Application commit `d9476aac9`. `chrome/floating-toolbar.tsx` shows the production toolbar (the Add to chat action) above a native range selection. It tracks `selectionChange`, scroll, and resize; collapsed selections, view mode, and selections that start inside block widgets show nothing. Button presses keep the native selection. Chromium `floating-toolbar.test.ts` passes 3 cases: keyboard range selection, position above the selection, position after scrolling, hiding after the action and in view mode, and two sessions in both client orders with peer typing during a held selection and equal saved digests. Remaining: editor zoom and a widget form selection case.
 
 ## U02
 
@@ -274,7 +274,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Exercise the real button, eligibility result, and quote store in Chromium. Check document switches during eligibility waits and two-session pending text selection.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** claude, application branch `claude/docx-native-cutover`. **Evidence:** Progress, not closure. Application commit `d9476aac9`. The native Add to chat action reads the working view, maps the selection with the fork `resolveQuoteSelection`, refuses unresolved or empty quotes, calls `attemptAddToChat`, and writes `documentTitle`, `materialId`, line numbers, text, and `containsMdx` to the quote store. It then collapses the selection. The browser case checks that the quote text equals its lines in the working view that `read_document` returns. Remaining: a denied `attemptAddToChat` case.
 
 ## U16
 
