@@ -4,6 +4,7 @@ import {
   bodyStoryRoot,
   contentControlPropertiesOf,
   createNodeIdAllocator,
+  ensureHyperlinkRelationship,
   escapeXml,
   findNode,
   insertChildren,
@@ -35,6 +36,11 @@ export interface BlockInsertion {
   readonly generatedLabel?: string;
   /** Initial editable paragraphs. Defaults to one empty paragraph, which receives the caret. */
   readonly paragraphs?: readonly string[];
+  /**
+   * An external URL the first paragraph links to, so Word readers can open a media block's
+   * source. It must be an absolute URL that `sanitizeHref` admits.
+   */
+  readonly link?: string;
   readonly expectedRevision?: number;
 }
 
@@ -59,7 +65,13 @@ const failure = (code: NativeEditFailure['code'], error: string): NativeEditFail
 const run = (text: string) =>
   text ? `<w:r><w:t xml:space="preserve">${escapeXml(text)}</w:t></w:r>` : '';
 
-function blockXml(insertion: BlockInsertion, paragraphs: readonly string[]): string {
+const R_NAMESPACE = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+
+function blockXml(
+  insertion: BlockInsertion,
+  paragraphs: readonly string[],
+  linkId: string | null
+): string {
   const label =
     insertion.generatedLabel === undefined
       ? ''
@@ -69,7 +81,13 @@ function blockXml(insertion: BlockInsertion, paragraphs: readonly string[]): str
     `<w:sdt><w:sdtPr><w:alias w:val="${escapeXml(insertion.label)}"/>` +
     `<w:tag w:val="${escapeXml(blockTag(insertion.payload.id))}"/></w:sdtPr><w:sdtContent>` +
     label +
-    paragraphs.map((text) => `<w:p>${run(text)}</w:p>`).join('') +
+    paragraphs
+      .map((text, index) =>
+        index === 0 && linkId !== null
+          ? `<w:p><w:hyperlink r:id="${escapeXml(linkId)}">${run(text)}</w:hyperlink></w:p>`
+          : `<w:p>${run(text)}</w:p>`
+      )
+      .join('') +
     '</w:sdtContent></w:sdt>'
   );
 }
@@ -174,18 +192,37 @@ export function insertBlock(
   )
     return failure('invalid-input', 'The insertion anchor is not a child of the parent block.');
 
-  const parsed = readOoxmlPart(
-    `<w:document xmlns:w="${WML_NAMESPACE_URI}"><w:body>${blockXml(insertion, paragraphs)}</w:body></w:document>`,
-    { name: '/sciobot-insert-block.xml', contentType: part.contentType }
-  );
-  if (!parsed.ok) return failure('invalid-input', `The new block was refused: ${parsed.reason}.`);
-  const body = bodyStoryRoot(parsed.part);
-  if (!body || body.kind === 'textValue' || body.children.length !== 1)
-    return failure('apply-failed', 'The new block did not produce one native control.');
-  const template = body.children[0]!;
+  if (insertion.link !== undefined && !paragraphs[0])
+    return failure('invalid-input', 'A linked block needs text in its first paragraph.');
+  const templateFor = (linkId: string | null): OoxmlNode | string => {
+    const parsed = readOoxmlPart(
+      `<w:document xmlns:w="${WML_NAMESPACE_URI}" xmlns:r="${R_NAMESPACE}"><w:body>${blockXml(insertion, paragraphs, linkId)}</w:body></w:document>`,
+      { name: '/sciobot-insert-block.xml', contentType: part.contentType }
+    );
+    if (!parsed.ok) return `The new block was refused: ${parsed.reason}.`;
+    const body = bodyStoryRoot(parsed.part);
+    if (!body || body.kind === 'textValue' || body.children.length !== 1)
+      return 'The new block did not produce one native control.';
+    return body.children[0]!;
+  };
+  const unlinked = templateFor(null);
+  if (typeof unlinked === 'string') return failure('invalid-input', unlinked);
+  if (insertion.link !== undefined && !ensureHyperlinkRelationship(pkg, insertion.link, part.name))
+    return failure('invalid-input', 'The block link is not an allowed absolute URL.');
   let placedOnce = false;
 
-  const place = (working: OoxmlPackage): OoxmlPackage => {
+  const place = (start: OoxmlPackage): OoxmlPackage => {
+    let working = start;
+    let template = unlinked;
+    if (insertion.link !== undefined) {
+      // The relationship ID depends on the package the transform runs on.
+      const ensured = ensureHyperlinkRelationship(working, insertion.link, part.name);
+      if (!ensured) throw new Error('The block link relationship was refused.');
+      working = ensured.pkg;
+      const linked = templateFor(ensured.relationshipId);
+      if (typeof linked === 'string') throw new Error(linked);
+      template = linked;
+    }
     const live = working.parts.get(part.name);
     if (!live) throw new Error('The document part disappeared during the insertion.');
     const target = containerOf(live, insertion.parentControlId);
