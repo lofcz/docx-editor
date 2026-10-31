@@ -514,7 +514,7 @@ Final verification against installed fork `929e0ea4a9bf68f3a4c9a7c133e55bc76b76d
 
 ## X28
 
-- [ ] Connect uploads and media placeholders
+- [x] Connect uploads and media placeholders
 
 **Depends:** [X26](08-domain-content.md#x26), [V01](11-verification.md#v01)
 
@@ -528,7 +528,7 @@ Final verification against installed fork `929e0ea4a9bf68f3a4c9a7c133e55bc76b76d
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** claude, fork commits `90a24a5b` and `eabc21fb`, app branch `claude/docx-native-cutover` commit `ff610b296`. **Evidence:** The slash entries `video`, `audio`, and `file` open `DocxMediaDialog` (`chrome/media-insert.tsx`) with the Plate placeholder's two paths: upload through the editor upload route (`uploadFiles("editorUploader")`) with a progress bar, or a link. The request is bound to its editor and document identity (`documentId`, `epoch`); a document switch cancels it, and a finished upload inserts only if its own request is still open there. The fork `insertBlock` gained `link`, so the Word fallback paragraph is a hyperlink to the source; `sanitizeHref`-refused and relative targets are refused (`blocks/insert-link.test.ts`: 4 pass, including the packaged blank template without an `xmlns:r` root declaration and two sessions in both receiver orders). A failed upload shows an error and inserts nothing; it never stores the Plate placeholder's `blob:` fallback URL. Chromium command `bun test --timeout 600000 scripts/docx-native/harness/media-insert.test.ts` (fake upload service with a release gate): 2 pass, run twice. Each run: an upload shows 50 % progress and then inserts one video; a file upload cancelled with Escape and released later inserts nothing; a linked audio converges beside offline peer typing; undo removes it and keeps the peer text; reopen and saved digests match, in both client orders. A document switch during an upload is covered by the identity check in code, not by a browser case.
 
 ## X29
 
