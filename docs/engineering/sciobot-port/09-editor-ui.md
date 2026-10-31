@@ -44,7 +44,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 ## U03
 
-- [ ] Connect block menus and block selection
+- [x] Connect block menus and block selection
 
 **Depends:** [B07](02-react-blocks.md#b07), [B12](02-react-blocks.md#b12), [B13](02-react-blocks.md#b13), [V01](11-verification.md#v01)
 
@@ -58,7 +58,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** claude, application branch `claude/docx-native-cutover`, fork `00c33e27`. **Evidence:** Fork `blocks/remove.ts` adds `removeBlocks`, which removes several registered wrappers and their payload records (nested ones included) as one native undo unit and refuses a wrapper inside another selected one. Fork `blocks/duplicate.ts` adds `duplicateBlock`: the copy lands after the original, every copied block gets a fresh payload ID and tag, control `w:id` values and paragraph `w14` identities are re-minted, and edit mode is required. Fork `blocks/block-selection.test.ts` passes 4 cases: two adjacent activities (one with a nested callout) deleted in one step with undo, redo, and reopen; nested-selection refusal; duplication with fresh IDs, independent edits, reopen, undo, and refusals; and two sessions in both receiver orders with peer typing, author undo, and equal saved digests. Application commit `1f92a7d1f` adds a block handle in the left margin of activities and container blocks (`blocks/block-handle.tsx`): click selects, Shift+click extends over sibling blocks, and the first selected block shows Duplicate and Delete. `blocks/block-selection.ts` maps Delete, Backspace, Mod+D, and Escape, and a caret move clears the selection. Chromium `block-selection.test.ts` passes 4 cases: two adjacent activities deleted with Delete and restored by one undo with their payloads; menu deletion and Escape; duplication with a fresh payload ID, Mod+D, and undo; and two sessions in both client orders with peer typing, author undo, and equal saved digests.
 
 ## U04
 
