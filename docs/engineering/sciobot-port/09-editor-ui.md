@@ -188,7 +188,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 ## U11
 
-- [ ] Render granular property review controls
+- [x] Render granular property review controls
 
 **Depends:** [R12](05-suggestions.md#r12), [U09](09-editor-ui.md#u09), [V01](11-verification.md#v01)
 
@@ -202,7 +202,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** claude, application branch `claude/docx-native-cutover`. **Evidence:** Application commit `ed2c37735`. `review/property-preview.tsx` compares an activity's committed payload with its working projection and, for the activity's pending property groups, shows only the changed properties (name, duration, resource) with the old value struck and the proposed value inserted, plus accept and reject. It sits beside the activity, outside the native body. Decisions go through the fork group decisions. Chromium `property-review.test.ts` passes 4 cases: a duration proposal beside a text proposal in the same activity body shows one change (10 to 25); accept and reject each leave the text group and the native body fingerprint unchanged and update the payload; undo restores both groups and the original attributes; and two sessions in both client orders accept the property while the peer types, with equal Markdown, no panel for the peer after the decision, and equal saved digests.
 
 ## U12
 
