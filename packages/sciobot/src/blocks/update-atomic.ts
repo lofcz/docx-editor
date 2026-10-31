@@ -43,6 +43,17 @@ const fail = (code: NativeEditFailure['code'], error: string): NativeEditFailure
 });
 
 /**
+ * The Word line of a block without its own fallback: the first of `alt`, `title`, `prompt`,
+ * `name`, or `url`, as a new block of the type shows (`fragment-seeds.ts`), else its type.
+ */
+function defaultFallback(payload: BlockPayload): { readonly lines: readonly string[] } {
+  const line = ['alt', 'title', 'prompt', 'name', 'url']
+    .map((name) => payload.attributes[name])
+    .find((value): value is string => typeof value === 'string' && value.length > 0);
+  return { lines: [line ?? payload.type] };
+}
+
+/**
  * Replace an atomic block's payload and regenerate its Word fallback in one native undo unit.
  * Block controls get one paragraph per fallback line; inline controls get plain runs that keep
  * the formatting of their first run.
@@ -73,12 +84,12 @@ export function updateAtomicBlock(
   const shown = registry.components.get(block.payload.type)?.wordFallback;
   const binding = registry.components.get(block.payload.type)?.inline;
   // Inline components need only their inline fallback; block controls need the block one.
-  if (registry.blockTags.get(block.payload.type)?.kind !== 'atomic' || (!shown && !binding))
-    return fail('unsupported-operation', 'Only atomic blocks with a Word fallback update here.');
+  if (registry.blockTags.get(block.payload.type)?.kind !== 'atomic')
+    return fail('unsupported-operation', 'Only atomic blocks update here.');
   const payload: BlockPayload = { ...block.payload, attributes: { ...update.attributes } };
   let fallback: ReturnType<NonNullable<typeof shown>> | null = null;
   try {
-    fallback = shown ? shown(payload) : null;
+    fallback = shown ? shown(payload) : binding ? null : defaultFallback(payload);
   } catch (error) {
     if (error instanceof MdxRefusal) return fail('invalid-input', error.message);
     throw error;
@@ -95,8 +106,7 @@ export function updateAtomicBlock(
   );
   if (inline && (!binding || liveContent.children.some((child) => child.kind === 'hyperlink')))
     return fail('unsupported-operation', 'This inline control has no plain-run fallback.');
-  if (!inline && !fallback)
-    return fail('unsupported-operation', 'Only atomic blocks with a Word fallback update here.');
+  if (!inline && !fallback) fallback = defaultFallback(payload);
   let inlineText = '';
   if (inline)
     try {
