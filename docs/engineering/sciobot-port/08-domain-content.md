@@ -44,7 +44,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 ## X03
 
-- [ ] Render curriculum recap blocks
+- [x] Render curriculum recap blocks
 
 **Depends:** [X02](08-domain-content.md#x02), [B20](02-react-blocks.md#b20), [V01](11-verification.md#v01)
 
@@ -58,7 +58,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** claude, application branch `claude/docx-native-cutover`. **Evidence:** Application commits `b81d20862` and `a7b7becdf`. `blocks/curriculum.tsx` keeps framework and source in the payload and competence rows as native paragraphs (`code: text`, or `legacy-id-N: text` for catalogue IDs without a code). Catalogue rows use the existing `ResolvedCurriculumCompetenceRow` and open the competence detail through `useOpenCurriculumDetail`; school (ŠVP) rows use `CurriculumCompetenceRow` without a catalogue action, as Plate does. Catalogue recaps keep the existing `CurriculumAddPopover`; an added row and a removed row are each one native undo step (`blocks/curriculum-rows.ts`). Two defects surfaced and are fixed: block roots had no React Query client, so every catalogue row threw `No QueryClient set` and its recap did not render (block roots now share the application query client); and the framework label sat above the block, where it covered the last row of a neighbouring recap (it is now in the page margin). Chromium `curriculum.test.ts` passes 3 cases: a coded row opens the detail with its code, framework, and label, a `legacy-id-42` row with ID 42, and a school row has no action; and two sessions in both client orders add and remove rows, converge, undo, and reopen with `framework` and `source` unchanged and equal saved digests. The catalogue search itself needs the backend and is not exercised; the test calls the popover's add action directly. Difference: the RVP/ŠVP segmented toggle is not ported; both recaps show.
 
 ## X04
 
