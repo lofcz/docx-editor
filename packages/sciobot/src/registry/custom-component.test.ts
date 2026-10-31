@@ -18,6 +18,8 @@ function registry(): MdxComponentRegistry {
       nodePrefix: 'acme_',
       reviewNodePrefix: 'acme-review_',
       labelTag: 'acme:label',
+      adapterPrefix: 'acme',
+      adapterNamespace: 'urn:acme:docx',
     },
     components: [
       {

@@ -1,11 +1,10 @@
+import { MdxRefusal } from '../registry/mdx-fields';
 import type { MdxComponentRegistry } from '../registry/contract';
 import { activeMdxRegistry } from '../registry/active';
 import { completeInlineAtomPayloads } from '../native/inline-atom-payloads';
 import type { InlineImageRuntime } from '../native/inline-image-runtime';
 import { inlineAtomXml, inlineAtomKey, inlineAtomsByPath } from './inline-atom-xml';
 import type { InsertedInlineAtom } from './inserted-atoms';
-import { BLOCK_MATH, INLINE_MATH, decodeMathPayload, mathWordFallback } from '../blocks/math-codec';
-import { encodeBlockPayload } from '../blocks/payload-schema';
 import { MDX_BLOCK } from '../projection/mdx';
 import { applyNewCellProperties, type NewCellProperties } from './new-cell-properties';
 import {
@@ -606,29 +605,26 @@ function blockXml(node: TargetAstNode, path: readonly number[], context: RenderC
     binding.payload.type === MDX_BLOCK ||
     (context.registry ?? activeMdxRegistry()).blockTags.get(binding.payload.type)?.kind === 'atomic'
   ) {
-    if (binding.payload.type === 'code_block') {
-      const language = binding.payload.attributes.language,
-        value = binding.payload.attributes.value;
-      if (typeof language !== 'string' || typeof value !== 'string' || language.length > 128)
-        refuseWrite('A new code block needs bounded language and text values.');
-      const styled = withInlineCodeStyle(context.pkg);
-      if (!styled)
-        refuseWrite('The document cannot gain the inline code style.', 'unsupported-operation');
-      context.pkg = styled!;
-      const content = value.split('\n').map((line) => {
-        context.paragraphs.push('');
-        return `<w:p>${runXml(line, ['code'])}</w:p>`;
-      });
-      return `<w:sdt>${properties}<w:sdtContent>${content.join('')}</w:sdtContent></w:sdt>`;
-    }
-    if (binding.payload.type === BLOCK_MATH || binding.payload.type === INLINE_MATH) {
-      const math = decodeMathPayload(encodeBlockPayload(binding.payload));
-      if (math.status !== 'supported') refuseWrite('A new equation needs a valid original source.');
-      const lines = mathWordFallback(math.payload).paragraphs;
-      const content = lines
+    const registry = context.registry ?? activeMdxRegistry();
+    const shown = registry.components.get(binding.payload.type)?.wordFallback;
+    if (shown) {
+      let fallback: ReturnType<typeof shown>;
+      try {
+        fallback = shown(binding.payload);
+      } catch (error) {
+        if (error instanceof MdxRefusal) refuseWrite(error.message, error.code);
+        throw error;
+      }
+      if (fallback.code) {
+        const styled = withInlineCodeStyle(context.pkg);
+        if (!styled)
+          refuseWrite('The document cannot gain the inline code style.', 'unsupported-operation');
+        context.pkg = styled!;
+      }
+      const content = fallback.lines
         .map((line) => {
           seedParagraph(context);
-          return `<w:p>${runXml(line, [])}</w:p>`;
+          return `<w:p>${runXml(line, fallback.code ? ['code'] : [])}</w:p>`;
         })
         .join('');
       return `<w:sdt>${properties}<w:sdtContent>${content}</w:sdtContent></w:sdt>`;

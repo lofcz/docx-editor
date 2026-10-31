@@ -1,3 +1,4 @@
+import { adapterTagPrefix } from '../registry/adapter-names';
 import { beginHistoryGroupFrames, type DocxEditorInstance } from '@docx-editor.dev/core/editor';
 import type { HistoryGroupOutcome } from '@docx-editor.dev/core/contracts/editor';
 import {
@@ -49,7 +50,7 @@ const rootKeys = (nodes: readonly OoxmlNode[]) =>
     if (node.kind === 'paragraph') return `paragraph:${paraIdOf(node) ?? node.id}`;
     if (node.kind === 'contentControl') {
       const tag = contentControlPropertiesOf(node).tag;
-      if (tag?.startsWith('scio:')) return `control:${tag}`;
+      if (tag?.startsWith(adapterTagPrefix())) return `control:${tag}`;
     }
     return `${node.kind}:${node.id}`;
   });

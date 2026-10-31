@@ -1,3 +1,4 @@
+import { checklistTag } from '../registry/adapter-names';
 import { activeStorage } from '../registry/active';
 import {
   bodyStoryRoot,
@@ -12,7 +13,6 @@ import type { MarkdownSourceSlice } from '@docx-editor.dev/docx-to-markdown';
 import { buildBlockIndex } from '../blocks/block-index';
 import { sameRevision, type NativeEditFailure } from '../contracts/document';
 import { copyBoundedJson } from '../data/json';
-import { SCIOBOT_CHECKLIST_TAG } from './lists';
 import { MDX_INLINE, MDX_BLOCK } from '../projection/mdx';
 import { createEditPlan, EDIT_PLAN_LIMITS } from './plan';
 import { jsonDataKey } from './target-key';
@@ -352,7 +352,7 @@ export function indexTargetSource(source: TargetSourceInput): TargetSourceResult
       control?.node.kind !== 'contentControl' ||
       control.paragraphId !== task.paragraphId ||
       task.partName !== part.name ||
-      contentControlPropertiesOf(control.node).tag !== SCIOBOT_CHECKLIST_TAG ||
+      contentControlPropertiesOf(control.node).tag !== checklistTag() ||
       !contentControlPropertiesOf(control.node).checkbox ||
       typeof task.checked !== 'boolean' ||
       typeof task.writable !== 'boolean' ||

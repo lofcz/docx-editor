@@ -1,3 +1,4 @@
+import { checklistTag } from '../registry/adapter-names';
 import { readDormantListState } from './list-metadata';
 import {
   buildNumberingIndex,
@@ -27,7 +28,6 @@ import { isListTarget, type ListSourceState, type ListTarget } from './list-type
 import { createEditPlan, type CanonicalEdit, type EditPlanResult } from './plan';
 
 export type { ListInstance, ListSourceState, ListTarget } from './list-types';
-export const SCIOBOT_CHECKLIST_TAG = 'scio:list-checkbox';
 export interface ListPlanSource {
   readonly revision: RevisionToken;
   readonly pkg: OoxmlPackage;
@@ -71,10 +71,7 @@ function ownedMarkers(paragraph: OoxmlNode): readonly OoxmlNode[] | null {
       node.kind === 'revisionMoveFrom'
     )
       continue;
-    if (
-      node.kind === 'contentControl' &&
-      contentControlPropertiesOf(node).tag === SCIOBOT_CHECKLIST_TAG
-    ) {
+    if (node.kind === 'contentControl' && contentControlPropertiesOf(node).tag === checklistTag()) {
       found.push(node);
       continue;
     }

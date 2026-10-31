@@ -1,3 +1,4 @@
+import { listStateNamespace } from '../registry/adapter-names';
 import {
   createNodeIdAllocator,
   findNode,
@@ -7,11 +8,10 @@ import {
   type OoxmlNode,
   type OoxmlPart,
 } from '@docx-editor.dev/core/store';
-export const LIST_STATE_NAMESPACE = 'urn:sciobot:docx:lists:1';
 const MC = 'http://schemas.openxmlformats.org/markup-compatibility/2006';
 const owned = (node: OoxmlNode) =>
   node.kind !== 'textValue' &&
-  node.namespaceUri === LIST_STATE_NAMESPACE &&
+  node.namespaceUri === listStateNamespace() &&
   node.localName === 'state';
 
 /** Dormant source check state does not turn a native bullet into a visible Word checkbox. */
@@ -68,11 +68,11 @@ export function writeDormantListState(
       : {
           id: current.node?.id ?? createNodeIdAllocator(part)(),
           kind: 'generic',
-          namespaceUri: LIST_STATE_NAMESPACE,
+          namespaceUri: listStateNamespace(),
           localName: 'state',
           prefix: 'scioList',
           namespaceBindings: [
-            { prefix: 'scioList', namespaceUri: LIST_STATE_NAMESPACE },
+            { prefix: 'scioList', namespaceUri: listStateNamespace() },
             { prefix: 'mc', namespaceUri: MC },
           ],
           attributes: [

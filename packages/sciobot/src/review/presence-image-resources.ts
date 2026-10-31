@@ -1,3 +1,5 @@
+import type { BlockPayload } from '../blocks/payload-schema';
+import { activeMdxRegistry } from '../registry/active';
 import {
   cleanupOrphanImageMedia,
   findNode,
@@ -33,7 +35,9 @@ export function presenceImageResources(
   pkg: OoxmlPackage,
   block: BlockPresenceChange
 ): readonly Resource[] {
-  const members = block.members.filter((member) => member.payload.type === 'inline_image');
+  const registry = activeMdxRegistry();
+  const owns = (payload: BlockPayload) => registry.components.get(payload.type)?.mediaPart;
+  const members = block.members.filter((member) => owns(member.payload));
   if (!members.length) return [];
   const index = buildBlockIndex(pkg);
   return members.map((member) => {
@@ -41,7 +45,7 @@ export function presenceImageResources(
     const part = bound && pkg.parts.get(bound.partName);
     const control = part && bound && findNode(part, bound.controlId);
     const ids = control ? relationshipsIn(control) : [];
-    const media = member.payload.attributes.mediaPartName;
+    const media = owns(member.payload)?.(member.payload);
     const related =
       part &&
       ids.length === 1 &&

@@ -1,6 +1,6 @@
+import { activeMdxRegistry } from '../registry/active';
+import { isInlineComponentPayload } from '../registry/mdx-read';
 import { parentNodeOf } from '@docx-editor.dev/core/store';
-import { decodeMathPayload } from './math-codec';
-import { decodeMentionPayload } from './mention-codec';
 import { encodeBlockPayload } from './payload-schema';
 import type { DocxEditorInstance } from '@docx-editor.dev/core/editor';
 import {
@@ -120,14 +120,12 @@ export function removeBlock(editor: DocxEditorInstance, request: BlockRemoval): 
   let preview = part;
   // The host owns these immutable inline atoms. Ordinary text editing retains their lock.
   // Delete only registered native atom controls; explicit user locks on other blocks still refuse.
-  const encoded = encodeBlockPayload(block.payload);
-  const math = decodeMathPayload(encoded);
-  const mention = decodeMentionPayload(encoded);
+  encodeBlockPayload(block.payload);
   const ownedInline =
     parentNodeOf(part, control.id)?.kind === 'paragraph' &&
-    ((math.status === 'supported' && math.payload.type === 'inline_equation') ||
-      mention.status === 'supported' ||
-      block.payload.type === 'source');
+    // Inline controls: images are drawings, so only components with an inline binding count.
+    !!activeMdxRegistry().components.get(block.payload.type)?.inline &&
+    isInlineComponentPayload(block.payload, activeMdxRegistry());
   if (
     request.mode === 'delete' &&
     ownedInline &&

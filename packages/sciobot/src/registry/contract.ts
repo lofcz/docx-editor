@@ -38,6 +38,11 @@ export interface MdxMarkdownBinding {
 export interface MdxInlineBinding {
   /** The atom name plans record for this control. */
   readonly atom: string;
+  /**
+   * A changed element updates the retained control's attributes in place, instead of removing
+   * the control and inserting a new one. Attribute order does not distinguish two elements.
+   */
+  readonly updatable?: boolean;
   /** Markdown node types that write this atom inside a paragraph, such as `inlineMath`. */
   readonly types?: readonly string[];
   /** The payload of a new Markdown node of one of `types`. */
@@ -65,6 +70,35 @@ export interface MdxComponentDefinition {
   readonly parse?: MdxComponentParser;
   readonly markdown?: MdxMarkdownBinding;
   readonly inline?: MdxInlineBinding;
+  /**
+   * Sample values the MDX serializer keeps, by payload attribute. The property planners ask the
+   * serializer which attributes it writes; a sample value avoids one it drops as invalid.
+   * Unlisted attributes use the string `probe`.
+   */
+  readonly propertyProbe?: Readonly<Record<string, JsonValue>>;
+  /** How a native container reads the MDX inside it. */
+  readonly contentRules?: {
+    /** Lists inside are the component's own presentation, not native Word lists. */
+    readonly suppressLists?: boolean;
+    /** A leading `1. ` typed into a paragraph is presentation, not text. */
+    readonly stripNumberPrefix?: boolean;
+  };
+  /**
+   * The Word-readable paragraphs that stand for a new atomic block. `code` sets them in the
+   * document's inline code style. Throw `MdxRefusal` for a payload that cannot show. Unset
+   * shows one paragraph with the first of `alt`, `title`, `prompt`, `name`, or `url`.
+   */
+  readonly wordFallback?: (payload: BlockPayload) => {
+    readonly lines: readonly string[];
+    readonly code?: boolean;
+  };
+  /**
+   * The package part a payload owns, such as an image's media part, or null. The adapter checks
+   * that part's provenance when it removes the component.
+   */
+  readonly mediaPart?: (payload: BlockPayload) => string | null;
+  /** Whether a stored payload of this type is well formed. Unset accepts every payload. */
+  readonly valid?: (payload: BlockPayload) => boolean;
   readonly diff?: DomainDiffStrategy;
 }
 
@@ -82,6 +116,10 @@ export interface MdxComponentStorage {
   readonly reviewNodePrefix: string;
   /** The content-control tag of generated fallback label paragraphs. */
   readonly labelTag: string;
+  /** The prefix of the adapter's own content-control tags, such as checklist boxes. */
+  readonly adapterPrefix: string;
+  /** The URI the adapter's own custom XML namespaces extend, such as list state. */
+  readonly adapterNamespace: string;
 }
 
 /** MDX tags the projection keeps as opaque source, by tag name and allowed attributes. */
@@ -144,6 +182,7 @@ const TAG = /^[A-Za-z][A-Za-z0-9_-]*$/;
 const ATTRIBUTE = /^[A-Za-z][A-Za-z0-9_-]*$/;
 const TAG_PREFIX = /^[a-z][a-z0-9-]{0,15}:[0-9]{1,4}:$/;
 const ID_PREFIX = /^[a-z][a-z0-9_-]{0,15}[_-]$/;
+const ADAPTER_PREFIX = /^[a-z][a-z0-9-]{0,15}$/;
 const LABEL = /^[a-z][a-z0-9-]{0,15}:[a-z][a-z0-9-]{0,31}$/;
 const NAMESPACE = /^(urn:[a-z0-9][a-z0-9-]{0,31}(:[A-Za-z0-9._~-]+)+|https?:\/\/[^\s"'<>]+)$/;
 
@@ -171,6 +210,14 @@ function storageProblem(storage: MdxComponentStorage): string | null {
     return 'reviewNodePrefix';
   if (!named(storage.labelTag, LABEL) || storage.labelTag.startsWith(storage.tagPrefix))
     return 'labelTag';
+  if (!named(storage.adapterPrefix, ADAPTER_PREFIX)) return 'adapterPrefix';
+  if (
+    typeof storage.adapterNamespace !== 'string' ||
+    storage.adapterNamespace.length > 200 ||
+    !NAMESPACE.test(storage.adapterNamespace) ||
+    storage.adapterNamespace === storage.namespace
+  )
+    return 'adapterNamespace';
   return null;
 }
 
@@ -197,6 +244,11 @@ function componentProblem(component: MdxComponentDefinition): string | null {
     if (typeof binding.fromMarkdown !== 'function' || typeof binding.matches !== 'function')
       return 'markdown.hooks';
   }
+  if (component.valid !== undefined && typeof component.valid !== 'function') return 'valid';
+  if (component.wordFallback !== undefined && typeof component.wordFallback !== 'function')
+    return 'wordFallback';
+  if (component.mediaPart !== undefined && typeof component.mediaPart !== 'function')
+    return 'mediaPart';
   if (component.inline) {
     const binding = component.inline;
     if (component.kind !== 'inline') return 'inline.kind';

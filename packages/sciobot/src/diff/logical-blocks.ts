@@ -31,12 +31,6 @@ export const LOGICAL_BLOCK_LIMITS = Object.freeze({
 type Definition = Pick<BlockTagDefinition, 'tag' | 'kind'>;
 type Scope = { stripLists: boolean; stripPrefix: boolean };
 const ordinary: Scope = { stripLists: false, stripPrefix: false };
-const stripped = new Set([
-  'recap_goals',
-  'recap_curriculum',
-  'recap_materials',
-  'recap_adaptations',
-]);
 const blockTypes = new Set([
   'paragraph',
   'heading',
@@ -455,9 +449,10 @@ export function normalizeLogicalBlocks(
       }
       if (definition?.kind === 'container') {
         budget(depth);
+        const rules = registry.components.get(definition.type ?? '')?.contentRules;
         const next = {
-          stripLists: stripped.has(definition.type ?? ''),
-          stripPrefix: definition.type === 'recap_goals',
+          stripLists: !!rules?.suppressLists,
+          stripPrefix: !!rules?.stripNumberPrefix,
         };
         return [
           group(
@@ -470,10 +465,9 @@ export function normalizeLogicalBlocks(
         ];
       }
       if (definition?.kind === 'atomic') {
-        if (
-          (ast.name === 'source' && definition.type === 'source') ||
-          (ast.name === 'scio-inline-equation' && definition.type === 'inline_equation')
-        )
+        // An inline component written at block level reads as a paragraph that holds it.
+        const component = registry.components.get(definition.type ?? '');
+        if (component?.kind === 'inline' && component.parse?.tag === ast.name)
           return [
             paragraph(
               { type: 'paragraph', children: [{ ...ast, type: 'mdxJsxTextElement' }] },

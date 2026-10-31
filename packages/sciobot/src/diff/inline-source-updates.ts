@@ -1,3 +1,5 @@
+import { activeMdxRegistry } from '../registry/active';
+import { updatableInlineComponent } from '../registry/mdx-read';
 import { buildBlockIndex } from '../blocks/block-index';
 import { targetSourceRangeAt, type TargetAstNode } from '../projection/parse-target';
 import { planAtomicBlock } from './atomic-blocks';
@@ -18,13 +20,15 @@ export function planInlineSourceUpdates(
   if (context.nativeRange) return null;
   const old = before.tokens.filter((token) => token.kind === 'atom'),
     next = after.tokens.filter((token) => token.kind === 'atom');
-  if (!old.some((token) => token.ast.name === 'source')) return null;
+  const registry = activeMdxRegistry();
+  const updatable = (ast: TargetAstNode) => updatableInlineComponent(ast, registry);
+  if (!old.some((token) => updatable(token.ast))) return null;
   const keys = new Map<string, number>();
   for (const token of next)
     keys.set(retainedAtomKey(token.ast), (keys.get(retainedAtomKey(token.ast)) ?? 0) + 1);
   let changed = false;
   for (const token of old)
-    if (token.ast.name === 'source') {
+    if (updatable(token.ast)) {
       const key = retainedAtomKey(token.ast),
         count = keys.get(key) ?? 0;
       if (count) keys.set(key, count - 1);
@@ -45,10 +49,11 @@ export function planInlineSourceUpdates(
   for (let i = 0; i < old.length; i++) {
     const atom = old[i]!,
       target = next[alignment[i]!];
+    const component = updatable(atom.ast);
     if (
-      atom.ast.name !== 'source' ||
+      !component ||
       !target ||
-      target.ast.name !== 'source' ||
+      updatable(target.ast) !== component ||
       retainedAtomKey(atom.ast) === retainedAtomKey(target.ast)
     )
       continue;
@@ -70,9 +75,14 @@ export function planInlineSourceUpdates(
     if (!bindings || bindings.length !== 1)
       return fail('The changed source has no unique native control.');
     const block = blocks.byId.get(bindings[0]!.blockId),
-      a = domainNodeFromAst(atom.ast),
-      b = domainNodeFromAst(target.ast);
-    if (!block || block.payload.type !== 'source' || a?.type !== 'source' || b?.type !== 'source')
+      a = domainNodeFromAst(atom.ast, registry),
+      b = domainNodeFromAst(target.ast, registry);
+    if (
+      !block ||
+      block.payload.type !== component.type ||
+      a?.type !== component.type ||
+      b?.type !== component.type
+    )
       return fail('The changed source needs its registered native codec.');
     const attributes = { ...block.payload.attributes };
     for (const name of new Set([...Object.keys(a), ...Object.keys(b)])) {
@@ -93,7 +103,8 @@ export function planInlineSourceUpdates(
     }
     const planned = planAtomicBlock(
       { revision: context.source.index.revision, pkg: context.input.pkg, blockId: block.id },
-      { ...block.payload, attributes }
+      { ...block.payload, attributes },
+      registry
     );
     if (!planned.success) return planned;
     edits.push(...planned.plan.operations);

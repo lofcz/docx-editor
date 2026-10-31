@@ -1,3 +1,5 @@
+import { activeMdxRegistry } from '../registry/active';
+import { updatableInlineComponent } from '../registry/mdx-read';
 import { targetSourceRangeAt, type TargetAstNode } from '../projection/parse-target';
 import { paragraphTextOf, type OoxmlPart } from '@docx-editor.dev/core/store';
 import type { BoundLogicalSource, BoundSourceBlock } from './bound-source-types';
@@ -5,7 +7,7 @@ import type { CompiledInlineTarget, InlineTargetToken } from './inline-target';
 import { targetAstKey } from './target-key';
 
 export function retainedAtomKey(ast: TargetAstNode): string {
-  if (ast.name === 'source' && Array.isArray(ast.attributes)) {
+  if (updatableInlineComponent(ast, activeMdxRegistry()) && Array.isArray(ast.attributes)) {
     const attributes = ast.attributes as { type?: unknown; name?: unknown; value?: unknown }[];
     if (
       attributes.every(

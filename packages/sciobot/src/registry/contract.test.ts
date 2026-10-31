@@ -16,6 +16,8 @@ const storage: MdxComponentStorage = {
   nodePrefix: 'acme_',
   reviewNodePrefix: 'acme-review_',
   labelTag: 'acme:label',
+  adapterPrefix: 'acme',
+  adapterNamespace: 'urn:acme:docx',
 };
 const card: MdxComponentDefinition = {
   type: 'card',
@@ -59,6 +61,8 @@ test('invalid storage names refuse before any component is read', () => {
     ['nodePrefix', 'acme'],
     ['reviewNodePrefix', 'acme_'],
     ['labelTag', 'acme:1:label'],
+    ['adapterPrefix', 'Acme:'],
+    ['adapterNamespace', 'urn:acme:docx:components:1'],
   ] as const) {
     const result = createMdxComponentRegistry({
       storage: { ...storage, [field]: value },
@@ -119,6 +123,8 @@ test('the Sciobot registry keeps the stored names and every existing mapping', (
     nodePrefix: 'scio_',
     reviewNodePrefix: 'scio-review_',
     labelTag: 'scio:label',
+    adapterPrefix: 'scio',
+    adapterNamespace: 'urn:sciobot:docx',
   });
   expect([...registry.blockTags]).toEqual([...DOMAIN_BLOCK_TAGS]);
   for (const type of [...registry.components.keys()])

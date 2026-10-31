@@ -1,3 +1,4 @@
+import { activeMdxRegistry } from '../registry/active';
 import {
   applyTreeOp,
   canonicalOoxmlFingerprint,
@@ -79,7 +80,8 @@ export function validateInlineRemovalSource(
           )
           .map((a) => a.value)
   );
-  const media = edit.before.type === 'inline_image' ? edit.before.attributes.mediaPartName : null;
+  const media =
+    activeMdxRegistry().components.get(edit.before.type)?.mediaPart?.(edit.before) ?? null;
   if (typeof media === 'string') {
     const resolved =
       relationships.length === 1 &&

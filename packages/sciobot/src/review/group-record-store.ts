@@ -1,3 +1,4 @@
+import { reviewGroupNamespace } from '../registry/adapter-names';
 import { REVIEW_GROUP_STORE_LIMITS } from './group-record-limits';
 export { REVIEW_GROUP_STORE_LIMITS } from './group-record-limits';
 import {
@@ -21,7 +22,6 @@ import {
   type PayloadGroupDecisionRecord,
 } from './payload-group-decision-schema';
 
-export const REVIEW_GROUP_STORE_NAMESPACE = 'urn:sciobot:docx:review-groups:1';
 export const REVIEW_GROUP_STORE_ROOT = 'groups';
 
 const REMOVED = 'removed';
@@ -50,7 +50,7 @@ export type ReviewGroupStoreWrite =
 /** One independent record per native node. The store is not a bound application block payload. */
 export function readReviewGroupStore(pkg: OoxmlPackage): ReviewGroupStoreRead {
   const parts = customXmlDataParts(pkg, pkg.mainDocumentPart).filter(
-    (part) => part.namespaceUri === REVIEW_GROUP_STORE_NAMESPACE
+    (part) => part.namespaceUri === reviewGroupNamespace()
   );
   if (!parts.length) return { status: 'absent' };
   if (parts.length !== 1) return { status: 'invalid', reason: 'duplicate-review-group-store' };
@@ -58,7 +58,7 @@ export function readReviewGroupStore(pkg: OoxmlPackage): ReviewGroupStoreRead {
     part = pkg.parts.get(descriptor.partName);
   if (
     !part ||
-    part.root.namespaceUri !== REVIEW_GROUP_STORE_NAMESPACE ||
+    part.root.namespaceUri !== reviewGroupNamespace() ||
     part.root.localName !== REVIEW_GROUP_STORE_ROOT
   )
     return { status: 'invalid', reason: 'invalid-review-group-store-root' };
@@ -67,7 +67,7 @@ export function readReviewGroupStore(pkg: OoxmlPackage): ReviewGroupStoreRead {
   const authored = part.root.children.filter(
       (node) =>
         node.kind !== 'textValue' &&
-        node.namespaceUri === REVIEW_GROUP_STORE_NAMESPACE &&
+        node.namespaceUri === reviewGroupNamespace() &&
         node.localName === 'node' &&
         (node.attributes.length || node.children.length)
     ),
@@ -82,7 +82,7 @@ export function readReviewGroupStore(pkg: OoxmlPackage): ReviewGroupStoreRead {
       const fields = node.children.filter(
         (child) =>
           child.kind !== 'textValue' &&
-          child.namespaceUri === REVIEW_GROUP_STORE_NAMESPACE &&
+          child.namespaceUri === reviewGroupNamespace() &&
           child.localName === name
       );
       if (
@@ -139,7 +139,7 @@ export function withInitializedReviewGroupStore(pkg: OoxmlPackage): ReviewGroupS
   const created = withCustomXmlDataPart(
     pkg,
     pkg.mainDocumentPart,
-    REVIEW_GROUP_STORE_NAMESPACE,
+    reviewGroupNamespace(),
     REVIEW_GROUP_STORE_ROOT
   );
   if (!created.part || readReviewGroupStore(created.pkg).status !== 'ready')

@@ -32,7 +32,7 @@ export interface BlockInsertion {
   readonly payload: BlockPayload;
   /** Readable control alias and payload record label. */
   readonly label: string;
-  /** Word-readable generated label, kept in a `scio:label` control the projector removes. */
+  /** Word-readable generated label, kept in the storage label control the projector removes. */
   readonly generatedLabel?: string;
   /** Initial editable paragraphs. Defaults to one empty paragraph, which receives the caret. */
   readonly paragraphs?: readonly string[];

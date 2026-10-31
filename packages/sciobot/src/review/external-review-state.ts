@@ -1,3 +1,4 @@
+import { propertyProbe } from '../registry/mdx-read';
 import type { MdxComponentRegistry } from '../registry/contract';
 import { activeMdxRegistry } from '../registry/active';
 import { payloadFallback, payloadFallbackContains, type PayloadFallback } from './payload-fallback';
@@ -161,12 +162,7 @@ function validPayloadChange(
       strategy = domainDiffStrategy({ type: block.type }, registry);
     if (definition?.kind !== 'container' || strategy?.kind !== 'container') return false;
     const names = new Set(block.changes.map((change) => change.name)),
-      probe = Object.fromEntries(
-        [...names].map((name) => [
-          name,
-          name === 'bookId' ? 1 : name === 'trust' ? 'verified' : 'probe',
-        ])
-      ),
+      probe = propertyProbe(registry, block.type, names),
       supported = new Set(
         definition.attributes({ ...payload, attributes: probe }).map((binding) => binding.property)
       );

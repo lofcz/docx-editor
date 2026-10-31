@@ -1,3 +1,4 @@
+import { activeMdxRegistry } from '../registry/active';
 import {
   canonicalOoxmlFingerprint,
   contentControlPropertiesOf,
@@ -11,7 +12,9 @@ import {
 import { blockIdFromTag } from '../blocks/payload-opc-codec';
 import { refuseWrite } from '../diff/fragment-seeds';
 
-const ATOMS = new Set(['inline_equation', 'inline_image', 'mention', 'source']);
+/** Inline components are the atoms a paragraph's text gaps sit between. */
+const isAtom = (type: string | undefined) =>
+  type !== undefined && activeMdxRegistry().components.get(type)?.kind === 'inline';
 type Text = Extract<OoxmlNode, { kind: 'text' }>;
 interface Inventory {
   readonly atoms: readonly string[];
@@ -33,7 +36,7 @@ export function ownedAtomGapInventory(
       if (
         id === null ||
         !type ||
-        !ATOMS.has(type) ||
+        !isAtom(type) ||
         contentControlLevelOf(node) !== 'inline' ||
         (selected && !selected.has(id))
       )

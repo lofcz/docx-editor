@@ -1,3 +1,4 @@
+import { checklistTag } from '../registry/adapter-names';
 import type { ExportSemanticLayout } from '@docx-editor.dev/core/export';
 import type {
   BlockFragmentRecord,
@@ -13,7 +14,6 @@ import {
   type OoxmlPackage,
   type OoxmlParagraphNode,
 } from '@docx-editor.dev/core/store';
-import { SCIOBOT_CHECKLIST_TAG } from '../diff/lists';
 
 export interface NativeChecklistRecord {
   readonly partName: string;
@@ -56,7 +56,7 @@ export function checklistRecords(
   if (controls.length > LIMIT) throw new Error('Checklist control limit exceeded.');
   for (const control of controls) {
     if (
-      control.tag !== SCIOBOT_CHECKLIST_TAG ||
+      control.tag !== checklistTag() ||
       deleted.has(control.id) ||
       !control.fragments.length ||
       !control.range ||
@@ -70,7 +70,7 @@ export function checklistRecords(
     const props = contentControlPropertiesOf(node),
       range = paragraphOffsetIndex(paragraph as OoxmlParagraphNode).spanOf(node);
     if (
-      props.tag !== SCIOBOT_CHECKLIST_TAG ||
+      props.tag !== checklistTag() ||
       !props.checkbox ||
       control.level !== 'inline' ||
       !range ||

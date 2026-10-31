@@ -1,11 +1,11 @@
+import type { MdxComponentRegistry } from '../registry/contract';
+import { activeMdxRegistry } from '../registry/active';
+import { isInlineComponentPayload } from '../registry/mdx-read';
 import {
   decodeBlockPayload,
   encodeBlockPayload,
   type BlockPayload,
 } from '../blocks/payload-schema';
-import { decodeMathPayload } from '../blocks/math-codec';
-import { decodeMentionPayload } from '../blocks/mention-codec';
-import { decodeInlineImagePayload } from '../blocks/inline-image-codec';
 
 /** Explicit native atom deletion. The executor verifies both payload and native subtree. */
 export interface InlineRemoval {
@@ -17,15 +17,12 @@ export interface InlineRemoval {
   readonly fingerprint: string;
 }
 
-export function removableInlinePayload(payload: BlockPayload): boolean {
-  const raw = encodeBlockPayload(payload),
-    math = decodeMathPayload(raw);
-  return (
-    (math.status === 'supported' && math.payload.type === 'inline_equation') ||
-    decodeMentionPayload(raw).status === 'supported' ||
-    !!decodeInlineImagePayload(raw) ||
-    payload.type === 'source'
-  );
+export function removableInlinePayload(
+  payload: BlockPayload,
+  registry: MdxComponentRegistry = activeMdxRegistry()
+): boolean {
+  encodeBlockPayload(payload);
+  return isInlineComponentPayload(payload, registry);
 }
 
 export function isInlineRemoval(value: Record<string, unknown>): boolean {

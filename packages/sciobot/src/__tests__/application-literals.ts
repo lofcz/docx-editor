@@ -8,8 +8,22 @@ import { join, relative } from 'node:path';
 export const APPLICATION_LITERAL =
   /(['"`])(?:lesson_(?:title|phase|activity|visual)|recap_(?:phase|goals|curriculum|materials|adaptations)|preparation_recap|callout|story|solution|code_block|inline_equation|equation|mention|inline_image|source|source_excerpt|listening|scio-[a-z-]+|scio:[^'"`]*|urn:sciobot:[^'"`]*)\1/g;
 
-/** Files that may name Sciobot components: the registration and its parts. */
-const OWNERS = /^registry\/sciobot[\w-]*\.ts$/;
+/**
+ * Files that may name Sciobot components: the registration, and the codecs, serializers, and
+ * tool contract of the Sciobot components it registers.
+ */
+const OWNERS = new RegExp(
+  '^(?:' +
+    [
+      'registry/sciobot[\\w-]*\\.ts',
+      'projection/(?:block-tags|mdx-tags|math|mention|mention-literal|target-mentions|inline-image|native-image|native-math)\\.ts',
+      'blocks/(?:math-codec|mention-codec|inline-image-codec|payload-schema|payload-opc-codec)\\.ts',
+      'tools/validation/(?:lesson-plan-schema|schema-engine)\\.ts',
+    ].join('|') +
+    ')$'
+);
+/** A line that uses one of these words for something else marks it with this comment. */
+const NOT_A_COMPONENT = '// not-a-component:';
 
 /** Literal counts per adapter source file, outside tests and the registration. */
 export function applicationLiteralCounts(root: string): Record<string, number> {
@@ -23,7 +37,10 @@ export function applicationLiteralCounts(root: string): Record<string, number> {
       }
       const name = relative(root, path);
       if (!/\.tsx?$/.test(name) || /\.test\.tsx?$/.test(name) || OWNERS.test(name)) continue;
-      const found = readFileSync(path, 'utf8').match(APPLICATION_LITERAL)?.length ?? 0;
+      const found = readFileSync(path, 'utf8')
+        .split('\n')
+        .filter((line) => !line.includes(NOT_A_COMPONENT))
+        .reduce((sum, line) => sum + (line.match(APPLICATION_LITERAL)?.length ?? 0), 0);
       if (found) counts[name] = found;
     }
   };

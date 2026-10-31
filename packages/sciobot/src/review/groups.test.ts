@@ -47,7 +47,8 @@ import { trackTableColumnPlan } from './track-table-columns';
 import { trackTableMergePlan } from './track-table-merges';
 import { trackTableFormatPlan } from './track-table-format';
 import { readReviewGroups, type NativeReviewGroup } from './groups';
-import { reviewGroupMarker, REVIEW_GROUP_NAMESPACE } from './group-markers';
+import { reviewGroupMarker } from './group-markers';
+import { reviewGroupNamespace } from '../registry/adapter-names';
 import {
   readReviewGroupStore,
   withInitializedReviewGroupStore,
@@ -293,7 +294,7 @@ test('namespace prefix collisions retain foreign bindings and unknown native att
     expect(editor.surface!.session.part().root.namespaceBindings).toEqual(root);
     for (const site of collectRevisionSites(editor.surface!.session.part())) {
       expect(
-        site.node.attributes.find((attribute) => attribute.namespaceUri === REVIEW_GROUP_NAMESPACE)
+        site.node.attributes.find((attribute) => attribute.namespaceUri === reviewGroupNamespace())
       ).toBeUndefined();
     }
     const reopened = propertyEditor(editor.surface!.session.currentPackage());
@@ -369,7 +370,7 @@ test('a grapheme plan with two separated replacements keeps two independently pa
 test('an unsupported persisted group marker refuses a new transaction without changing content or history', () => {
   const read = readOoxmlPackage(
     docxFixture(
-      `<w:p><w:ins w:id="9" w:author="Teacher" xmlns:g="${REVIEW_GROUP_NAMESPACE}" g:group="g2:future"><w:r><w:t>Peer</w:t></w:r></w:ins></w:p><w:p><w:r><w:t>The cat sat.</w:t></w:r></w:p>`
+      `<w:p><w:ins w:id="9" w:author="Teacher" xmlns:g="${reviewGroupNamespace()}" g:group="g2:future"><w:r><w:t>Peer</w:t></w:r></w:ins></w:p><w:p><w:r><w:t>The cat sat.</w:t></w:r></w:p>`
     )
   );
   if (!read.ok) throw new Error(read.reason);

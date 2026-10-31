@@ -8,6 +8,9 @@ import {
 import { BLOCK_TAG_PREFIX, PROPERTY_REVIEW_NODE_PREFIX } from '../blocks/payload-schema';
 import { PAYLOAD_NAMESPACE, PAYLOAD_ROOT, PAYLOAD_NODE_PREFIX } from '../blocks/payload-opc-codec';
 import { SCIOBOT_PARSERS } from './sciobot-parse';
+import { INLINE_IMAGE } from '../blocks/inline-image-codec';
+import { SCIOBOT_VALIDATORS } from './sciobot-valid';
+import { SCIOBOT_WORD_FALLBACKS } from './sciobot-fallback';
 import { INLINE_EQUATION_INLINE, MENTION_INLINE, SOURCE_INLINE } from './sciobot-inline';
 import {
   BLOCK_EQUATION_MARKDOWN,
@@ -36,7 +39,26 @@ const INLINE: Readonly<Record<string, MdxInlineBinding>> = {
   mention: MENTION_INLINE,
   source: SOURCE_INLINE,
 };
+/** An inline image owns the media part its payload names. */
+const imageMedia = (payload: { readonly attributes: Readonly<Record<string, unknown>> }) =>
+  typeof payload.attributes.mediaPartName === 'string' ? payload.attributes.mediaPartName : null;
+/** Recap sections list their entries in the application's own style. */
+const RECAP_RULES: Readonly<Record<string, MdxComponentDefinition['contentRules']>> = {
+  recap_goals: { suppressLists: true, stripNumberPrefix: true },
+  recap_curriculum: { suppressLists: true },
+  recap_materials: { suppressLists: true },
+  recap_adaptations: { suppressLists: true },
+};
+/** Citation serializers drop a book reference or trust level they cannot read. */
+const SOURCE_PROBE = { bookId: 1, trust: 'verified' } as const;
 const extras = (type: string) => ({
+  ...(type === 'source' || type === 'source_excerpt' ? { propertyProbe: SOURCE_PROBE } : {}),
+  ...(Object.hasOwn(RECAP_RULES, type) ? { contentRules: RECAP_RULES[type]! } : {}),
+  ...(Object.hasOwn(SCIOBOT_WORD_FALLBACKS, type)
+    ? { wordFallback: SCIOBOT_WORD_FALLBACKS[type]! }
+    : {}),
+  ...(type === INLINE_IMAGE ? { mediaPart: imageMedia } : {}),
+  ...(Object.hasOwn(SCIOBOT_VALIDATORS, type) ? { valid: SCIOBOT_VALIDATORS[type]! } : {}),
   ...(Object.hasOwn(INLINE, type) ? { inline: INLINE[type]! } : {}),
   ...(Object.hasOwn(SCIOBOT_DIFF_STRATEGIES, type) ? { diff: SCIOBOT_DIFF_STRATEGIES[type]! } : {}),
   ...(Object.hasOwn(SCIOBOT_PARSERS, type) ? { parse: SCIOBOT_PARSERS[type]! } : {}),
@@ -69,6 +91,8 @@ function build(): MdxComponentRegistry {
       nodePrefix: PAYLOAD_NODE_PREFIX,
       reviewNodePrefix: PROPERTY_REVIEW_NODE_PREFIX,
       labelTag: GENERATED_LABEL_TAG,
+      adapterPrefix: 'scio',
+      adapterNamespace: 'urn:sciobot:docx',
     },
     components: definitions(),
     opaque: {

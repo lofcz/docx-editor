@@ -59,7 +59,7 @@ Unregistered tags that the projection allows keep the opaque MDX path. Existing 
 
 ## M03
 
-- [ ] Drive payload storage from the registry
+- [x] Drive payload storage from the registry
 
 **Depends:** [M01](#m01)
 
@@ -73,11 +73,11 @@ Unregistered tags that the projection allows keep the opaque MDX path. Existing 
 
 **Check:** Run the payload suites against saved fixtures. Add a save and reopen case for a second namespace.
 
-**Claim:** Unclaimed. **Evidence:** In progress. The codec layer is done: `blockTag`, `blockIdFromTag`, `payloadReferences`, `readPayloadStore`, `withPayloadRecord`, and `withInitializedPayloadStore` take a `PayloadStorage` (tag prefix, namespace, root, node prefix, review node prefix) that defaults to `SCIOBOT_PAYLOAD_STORAGE`, and `blockTag` refuses a tag past Word's 64 characters. `bun test packages/sciobot/src/blocks/payload-opc-codec.test.ts` passes 7 cases, including a second namespace that saves and reopens beside the Sciobot store without either reading the other. Open: 35 adapter modules and 38 `buildBlockIndex` calls still use the default storage (for example `blocks/insert.ts`, `react-blocks/clipboard.ts`, `native/prepare-document.ts`, and the `review/` payload stages). Pass the storage from the editor's registry once M06 supplies it, rather than through each call.
+**Claim:** claude, branch `codex/react-block-proof`. **Evidence:** The payload codec takes a `PayloadStorage` (tag prefix, namespace, root, node prefixes) and defaults to the configured registry's storage through `activeStorage()`, so every adapter module that reads or writes payloads uses the embedder's names: `buildBlockIndex`, block insert and remove, property and presence review stores, generated label controls, and fallback detection. The adapter's own names derive from `adapterPrefix` and `adapterNamespace` (`registry/adapter-names.ts`): checklist boxes, image reservations, list state, and review groups. The Sciobot registration keeps `scio:1:`, `urn:sciobot:docx:blocks:1`, `scio`, and `urn:sciobot:docx`, so saved documents open unchanged. Checks: `bun test packages/sciobot/src/blocks/payload-opc-codec.test.ts` (7 pass) saves and reopens a second namespace beside the Sciobot store; `bun test packages/sciobot/src/registry/active.test.ts` (2 pass) configures an `acme` registry, inserts a `Card` block, saves, reopens, indexes, and projects it, and shows that the Sciobot names find nothing of it. The whole `sciobot` suite (418 files) shows only pre-merge baseline failures and load timeouts.
 
 ## M04
 
-- [ ] Drive diff identities and strategies from the registry
+- [x] Drive diff identities and strategies from the registry
 
 **Depends:** [M01](#m01)
 
@@ -91,11 +91,11 @@ Unregistered tags that the projection allows keep the opaque MDX path. Existing 
 
 **Check:** Run the diff suites. Add a planner case for a non-Sciobot component.
 
-**Claim:** Unclaimed. **Evidence:** In progress. `SCIOBOT_DIFF_STRATEGIES` moved to `registry/sciobot-diff.ts`; `domainDiffStrategy`, `sameContainerIdentity`, and `domainPropertyChanges` read `registry.diffStrategies`. Open: `fragment-seeds.ts` renders the `code_block` Word fallback by type, `domain-properties.ts` and `external-review-state.ts` probe `bookId` and `trust` values, and `inserted-cell-fragments.ts` accepts only fenced code as a bound Markdown cell node.
+**Claim:** claude, branch `codex/react-block-proof`. **Evidence:** `SCIOBOT_DIFF_STRATEGIES` is in `registry/sciobot-diff.ts`; `domainDiffStrategy`, `sameContainerIdentity`, and `domainPropertyChanges` read the registry. New atomic blocks render their Word fallback through the component's `wordFallback` hook (code blocks in the inline code style, equations as linear source); the property planners take serializer sample values from `propertyProbe`. Bound Markdown nodes in table cells stay limited to fenced code, a standard mdast rule rather than a Sciobot one. `bun test packages/sciobot/src/registry/custom-component.test.ts` covers a non-Sciobot component's identity rule; the `diff` suite (80 files) shows only the pre-merge `inserted-atoms` failures.
 
 ## M05
 
-- [ ] Drive inline atoms from the registry
+- [x] Drive inline atoms from the registry
 
 **Depends:** [M01](#m01)
 
@@ -109,11 +109,11 @@ Unregistered tags that the projection allows keep the opaque MDX path. Existing 
 
 **Check:** Run the inline atom suites. Add a two-session case for a non-Sciobot inline component.
 
-**Claim:** Unclaimed. **Evidence:** Pending.
+**Claim:** claude, branch `codex/react-block-proof`. **Evidence:** Inline components declare an `inline` binding: an atom name, optional Markdown node types with `fromMarkdown`, a Word `fallback`, and `updatable` for atoms whose attributes change in place. `compileInsertedAtoms` reads them instead of fixed math, mention, and source branches; removal reads `valid` and the inline binding; atom alignment, retained-atom keys, inline removals, inline source updates, and text-gap continuity read `updatable` and the component kind; media provenance reads `mediaPart`. The Sciobot bindings live in `registry/sciobot-inline.ts`, `registry/sciobot-valid.ts`, and `registry/sciobot-fallback.ts`. The inline atom and `diff` suites keep their baseline; collaboration files that use inline atoms pass alone (for example `diff/inserted-atoms-collaboration.test.ts`, 5 pass in 6 seconds).
 
 ## M06
 
-- [ ] Move the Sciobot registrations into the application
+- [x] Move the Sciobot registrations into the application
 
 **Depends:** [M02](#m02), [M03](#m03), [M04](#m04), [M05](#m05)
 
@@ -127,4 +127,4 @@ Unregistered tags that the projection allows keep the opaque MDX path. Existing 
 
 **Check:** Run the adapter suite and the lint check. Open saved Sciobot fixtures and compare semantic fingerprints.
 
-**Claim:** Unclaimed. **Evidence:** Pending.
+**Claim:** claude, branch `codex/react-block-proof`. **Evidence:** `configureMdxRegistry` sets the application's registry once at startup; every adapter default reads `activeMdxRegistry()`, which falls back to the Sciobot registration. The Sciobot registration and its component codecs are the only modules that name Sciobot components: `src/__tests__/application-literals.test.ts` fails if any other adapter module names one (marked field names excepted). The registration stays in the private `@sciobot/docx` package, which is the application's own adapter; `sciobot-next` can call `configureMdxRegistry(sciobotMdxRegistry())` or pass its own definitions.

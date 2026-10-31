@@ -1,3 +1,5 @@
+import { activeMdxRegistry } from '../registry/active';
+import { updatableInlineComponent } from '../registry/mdx-read';
 import {
   canonicalOoxmlFingerprint,
   findNode,
@@ -27,8 +29,13 @@ export function planInlineRemovals(
   if (context.nativeRange || context.retainedAtomAlignment || before.plainText !== null)
     return null;
   const oldAtoms = before.tokens.filter((token) => token.kind === 'atom');
-  const key = (ast: TargetAstNode) =>
-    ast.type === 'image' ? 'image' : ast.name === 'source' ? 'source' : retainedAtomKey(ast);
+  const registry = activeMdxRegistry();
+  // Atoms that update in place count by component, so a changed one is not a removal.
+  const key = (ast: TargetAstNode) => {
+    if (ast.type === 'image') return 'image';
+    const updatable = updatableInlineComponent(ast, registry);
+    return updatable ? `updatable:${updatable.type}` : retainedAtomKey(ast);
+  };
   const remaining = new Map<string, number>();
   for (const token of after.tokens)
     if (token.kind === 'atom')

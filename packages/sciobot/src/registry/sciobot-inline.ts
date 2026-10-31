@@ -108,6 +108,7 @@ export const MENTION_INLINE: MdxInlineBinding = {
 /** An inline citation; Word shows its title, author, or URL. */
 export const SOURCE_INLINE: MdxInlineBinding = {
   atom: 'source',
+  updatable: true,
   fallback(payload) {
     const attrs = payload.attributes;
     const text =

@@ -1,3 +1,4 @@
+import { checklistTag } from '../registry/adapter-names';
 import { copyListInstanceTemplate, setListInstanceStart } from './list-instance-template';
 import { writeDormantListState } from '../diff/list-metadata';
 import { styleListInstance } from './direct-list-style';
@@ -16,7 +17,6 @@ import {
   type OoxmlPart,
   type TreeDocOp,
 } from '@docx-editor.dev/core/store';
-import { SCIOBOT_CHECKLIST_TAG } from '../diff/lists';
 import type { ListSourceState, ListTarget } from '../diff/list-types';
 
 const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
@@ -158,7 +158,7 @@ export function applyDirectListAssignments(
       } else {
         const marker = seedNodes(
           part(),
-          `<w:p><w:sdt xmlns:w14="${W14}"><w:sdtPr><w:tag w:val="${SCIOBOT_CHECKLIST_TAG}"/><w14:checkbox><w14:checked w14:val="${target.checked ? 1 : 0}"/></w14:checkbox></w:sdtPr><w:sdtContent><w:r><w:t>${target.checked ? '☒' : '☐'}</w:t></w:r></w:sdtContent></w:sdt></w:p>`,
+          `<w:p><w:sdt xmlns:w14="${W14}"><w:sdtPr><w:tag w:val="${checklistTag()}"/><w14:checkbox><w14:checked w14:val="${target.checked ? 1 : 0}"/></w14:checkbox></w:sdtPr><w:sdtContent><w:r><w:t>${target.checked ? '☒' : '☐'}</w:t></w:r></w:sdtContent></w:sdt></w:p>`,
           `/sciobot-direct-list-${++seeds}.xml`
         )[0];
         const control =

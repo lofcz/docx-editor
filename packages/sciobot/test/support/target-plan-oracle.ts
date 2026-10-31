@@ -16,7 +16,7 @@ import {
 import type { CanonicalEditPlan } from '../../src/diff/plan';
 import type { ListTarget } from '../../src/diff/list-types';
 import type { TargetAstNode } from '../../src/projection/parse-target';
-import { SCIOBOT_CHECKLIST_TAG } from '../../src/diff/lists';
+import { checklistTag } from '../../src/registry/adapter-names';
 import { W } from './document';
 import { applyTargetRetained } from './target-document';
 import { materializeInsertedRow } from './inserted-row-oracle';
@@ -88,7 +88,7 @@ export function applyTargetPlanOracle(input: OoxmlPackage, plan: CanonicalEditPl
         ? `<w:ind w:left="${720 * (target.level + 1)}" w:hanging="360"/>`
         : '';
   const marker = (checked: boolean) =>
-    `<w:sdt><w:sdtPr><w:tag w:val="${SCIOBOT_CHECKLIST_TAG}"/><w14:checkbox xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml"><w14:checked w14:val="${checked ? 1 : 0}"/></w14:checkbox></w:sdtPr><w:sdtContent><w:r><w:t>${checked ? '☒' : '☐'}</w:t></w:r></w:sdtContent></w:sdt>`;
+    `<w:sdt><w:sdtPr><w:tag w:val="${checklistTag()}"/><w14:checkbox xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml"><w14:checked w14:val="${checked ? 1 : 0}"/></w14:checkbox></w:sdtPr><w:sdtContent><w:r><w:t>${checked ? '☒' : '☐'}</w:t></w:r></w:sdtContent></w:sdt>`;
   const render = (node: TargetAstNode, partName: string, marks = ''): string => {
     const children = () =>
       ((node.children as TargetAstNode[]) ?? [])

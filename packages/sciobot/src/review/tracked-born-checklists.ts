@@ -1,3 +1,4 @@
+import { checklistTag } from '../registry/adapter-names';
 import {
   contentControlPropertiesOf,
   createNodeIdAllocator,
@@ -11,7 +12,6 @@ import {
   type OoxmlNode,
 } from '@docx-editor.dev/core/store';
 import { refuseWrite } from '../diff/fragment-seeds';
-import { SCIOBOT_CHECKLIST_TAG } from '../diff/lists';
 
 const childElement = (node: OoxmlNode | undefined, name: string): OoxmlNode | undefined =>
   node && node.kind !== 'textValue'
@@ -38,8 +38,7 @@ export function withBornChecklistOwnership(
       refuseWrite('The born checklist paragraph disappeared.', 'apply-failed');
     const controls = paragraph.children.filter(
       (child) =>
-        child.kind === 'contentControl' &&
-        contentControlPropertiesOf(child).tag === SCIOBOT_CHECKLIST_TAG
+        child.kind === 'contentControl' && contentControlPropertiesOf(child).tag === checklistTag()
     );
     if (!controls.length) continue;
     const mark = childElement(childElement(childElement(paragraph, 'pPr'), 'rPr'), 'ins');

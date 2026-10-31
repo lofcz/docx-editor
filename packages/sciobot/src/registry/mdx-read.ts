@@ -1,4 +1,5 @@
 import type { JsonObject, JsonValue } from '../data/json';
+import type { BlockPayload } from '../blocks/payload-schema';
 import type { TargetAstNode } from '../projection/parse-target';
 import { IGNORED_DIFF_PROPERTIES, type DomainNode } from '../diff/domain-strategies';
 import type { MdxAttribute, MdxComponentDefinition, MdxComponentRegistry } from './contract';
@@ -90,4 +91,34 @@ export function readMdxComponent(
   if (!component?.parse) return null;
   const props = component.parse.read(mdxAttributes(ast), ast);
   return props ? { ...props, type: component.type } : null;
+}
+
+/** Whether a stored payload is a well-formed inline component of the registry. */
+export function isInlineComponentPayload(
+  payload: BlockPayload,
+  registry: MdxComponentRegistry
+): boolean {
+  const component = registry.components.get(payload.type);
+  return component?.kind === 'inline' && (component.valid?.(payload) ?? true);
+}
+
+/** The inline component an element names when its attributes update in place, or null. */
+export function updatableInlineComponent(
+  ast: TargetAstNode,
+  registry: MdxComponentRegistry
+): MdxComponentDefinition | null {
+  const component = componentForAst(registry, ast);
+  return component?.inline?.updatable ? component : null;
+}
+
+/** Sample attribute values that the component's serializer keeps; see `propertyProbe`. */
+export function propertyProbe(
+  registry: MdxComponentRegistry,
+  type: string,
+  names: Iterable<string>
+): Record<string, JsonValue> {
+  const samples = registry.components.get(type)?.propertyProbe ?? {};
+  return Object.fromEntries(
+    [...names].map((name) => [name, Object.hasOwn(samples, name) ? samples[name]! : 'probe'])
+  );
 }

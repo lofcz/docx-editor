@@ -1,3 +1,5 @@
+import { activeMdxRegistry } from '../registry/active';
+import { updatableInlineComponent } from '../registry/mdx-read';
 import { planInlineSourceUpdates } from './inline-source-updates';
 import { planInlineRemovals } from './inline-removals';
 import { planImageReplacements } from './image-replacements';
@@ -327,14 +329,17 @@ export function planTargetParagraph(context: TargetParagraphSource): EditPlanRes
         binding.inline.filter((item) => item.start === range.start && item.end === range.end);
       if (!inline || inline.length !== 1)
         return fail('The changed atom has no unique native control.');
+      const registry = activeMdxRegistry(),
+        component = updatableInlineComponent(old.ast, registry);
       const block = blocks.byId.get(inline[0]!.blockId),
-        decodedBefore = domainNodeFromAst(old.ast),
-        decodedAfter = domainNodeFromAst(next.ast);
+        decodedBefore = domainNodeFromAst(old.ast, registry),
+        decodedAfter = domainNodeFromAst(next.ast, registry);
       if (
         !block ||
-        block.payload.type !== 'source' ||
-        decodedBefore?.type !== 'source' ||
-        decodedAfter?.type !== 'source'
+        !component ||
+        block.payload.type !== component.type ||
+        decodedBefore?.type !== component.type ||
+        decodedAfter?.type !== component.type
       )
         return fail('This atomic payload needs its application reconciliation codec.');
       const attributes = { ...block.payload.attributes };

@@ -1,3 +1,4 @@
+import { reviewGroupNamespace } from '../registry/adapter-names';
 import { expect, test } from 'bun:test';
 import {
   customXmlNodes,
@@ -21,7 +22,6 @@ import {
 import {
   readReviewGroupStore,
   REVIEW_GROUP_STORE_LIMITS,
-  REVIEW_GROUP_STORE_NAMESPACE,
   REVIEW_GROUP_STORE_ROOT,
   withInitializedReviewGroupStore,
   withReviewGroupRecord,
@@ -64,7 +64,7 @@ const node = (id: string, raw: string, extra = '') =>
   `<node id="${id}"><label/><data>${escapeXml(raw)}</data>${extra}</node>`;
 function replaceStore(pkg: OoxmlPackage, children: string, root = REVIEW_GROUP_STORE_ROOT) {
   const part = pkg.parts.get(store(pkg).part.partName)!,
-    read = readOoxmlPart(`<${root} xmlns="${REVIEW_GROUP_STORE_NAMESPACE}">${children}</${root}>`, {
+    read = readOoxmlPart(`<${root} xmlns="${reviewGroupNamespace()}">${children}</${root}>`, {
       name: part.name,
       contentType: part.contentType,
     });
@@ -332,7 +332,7 @@ test('duplicate store relationships, wrong roots, and invalid byte inputs never 
   const pkg = initialized(),
     other = withCustomXmlDataPart(pkg, pkg.mainDocumentPart, 'urn:other', 'groups');
   if (!other.part) throw new Error('Missing second store');
-  const read = readOoxmlPart(`<groups xmlns="${REVIEW_GROUP_STORE_NAMESPACE}"/>`, {
+  const read = readOoxmlPart(`<groups xmlns="${reviewGroupNamespace()}"/>`, {
     name: other.part.partName,
     contentType: other.pkg.parts.get(other.part.partName)!.contentType,
   });

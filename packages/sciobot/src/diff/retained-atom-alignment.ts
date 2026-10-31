@@ -1,3 +1,5 @@
+import { activeMdxRegistry } from '../registry/active';
+import { updatableInlineComponent } from '../registry/mdx-read';
 import { segmentGraphemes } from '@docx-editor.dev/core/layout';
 import { DEFAULT_TARGET_PARSE_LIMITS } from '../projection/parse-target';
 import type { CompiledInlineTarget } from './inline-target';
@@ -8,7 +10,8 @@ interface Unit {
   readonly key: string;
   readonly atom?: number;
   readonly image?: boolean;
-  readonly source?: boolean;
+  /** The component type of an atom that updates in place. */
+  readonly source?: string;
 }
 interface Trace {
   readonly old: number;
@@ -34,7 +37,7 @@ function units(target: CompiledInlineTarget): Unit[] {
             key: 'atom:' + retainedAtomKey(token.ast),
             atom: atom++,
             image: token.ast.type === 'image',
-            source: token.ast.name === 'source',
+            source: updatableInlineComponent(token.ast, activeMdxRegistry())?.type,
           },
         ]
   );
@@ -140,7 +143,7 @@ export function alignRetainedAtoms(
         old.key === next.key
           ? 0
           : (replaceImages && old.image && next.image) ||
-              (replaceSources && old.source && next.source)
+              (replaceSources && !!old.source && old.source === next.source)
             ? 1
             : null;
       if (replacement !== null)

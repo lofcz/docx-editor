@@ -1,3 +1,4 @@
+import { propertyProbe } from '../registry/mdx-read';
 import type { OoxmlPackage } from '@docx-editor.dev/core/store';
 import type { MdxComponentRegistry } from '../registry/contract';
 import { activeMdxRegistry } from '../registry/active';
@@ -81,9 +82,7 @@ export function planDomainProperties(
       'unsupported-operation'
     );
   // Query the registered serializer for canonical property ownership. Probe values expose optional fields.
-  const probe = Object.fromEntries(
-    names.map((name) => [name, name === 'bookId' ? 1 : name === 'trust' ? 'verified' : 'probe'])
-  );
+  const probe = propertyProbe(registry, block.payload.type, names);
   const supported = new Set(
     definition
       .attributes({ ...block.payload, attributes: probe })

@@ -97,7 +97,7 @@ export function decodeLineage(input: unknown): Lineage {
   }
   if (
     !record(item) ||
-    !known(item, ['source', 'length']) ||
+    !known(item, ['source', 'length']) || // not-a-component: a record field name
     !Array.isArray(item.source) ||
     item.source.length !== 2 ||
     !item.source.every(number) ||

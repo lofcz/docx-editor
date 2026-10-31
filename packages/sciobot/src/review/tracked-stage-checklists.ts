@@ -1,3 +1,4 @@
+import { checklistTag } from '../registry/adapter-names';
 import {
   canonicalOoxmlFingerprint,
   collectRevisionSites,
@@ -103,7 +104,7 @@ export function stageTrackedChecklist(
     : paragraph.children.find(
         (child) =>
           child.kind === 'contentControl' &&
-          contentControlPropertiesOf(child).tag === 'scio:list-checkbox'
+          contentControlPropertiesOf(child).tag === checklistTag()
       );
   const changed =
     !old || !next || canonicalOoxmlFingerprint(old) !== canonicalOoxmlFingerprint(next);

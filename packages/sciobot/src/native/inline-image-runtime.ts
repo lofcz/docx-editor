@@ -1,3 +1,4 @@
+import { imageReservationPrefix } from '../registry/adapter-names';
 import { materializeImageReservation } from './inline-image-reservation';
 import { embedInlineImage } from './inline-image-media';
 import { inlinePicture } from './inline-picture';
@@ -28,7 +29,6 @@ export interface InlineImageRuntime {
   ): Extract<TreeDocOp, { op: 'insertInlineContentControl' }>;
   complete(pkg: OoxmlPackage): OoxmlPackage;
 }
-const PREFIX = 'scio:image-reservation:';
 export function createInlineImageRuntime(
   plan: CanonicalEditPlan,
   handle?: PreparedInlineImages
@@ -62,7 +62,7 @@ export function createInlineImageRuntime(
         if (atom.kind !== 'drawing') return null;
         const binding = bindingOf(atom);
         return {
-          xml: `<w:sdt><w:sdtPr><w:tag w:val="${escapeXml(PREFIX + binding.id)}"/></w:sdtPr><w:sdtContent><w:r><w:t>\uFFFC</w:t></w:r></w:sdtContent></w:sdt>`,
+          xml: `<w:sdt><w:sdtPr><w:tag w:val="${escapeXml(imageReservationPrefix() + binding.id)}"/></w:sdtPr><w:sdtContent><w:r><w:t>\uFFFC</w:t></w:r></w:sdtContent></w:sdt>`,
           length: 1,
         };
       },
@@ -71,7 +71,7 @@ export function createInlineImageRuntime(
           op: 'insertInlineContentControl',
           paragraphId,
           offset: atom.offset,
-          tag: PREFIX + bindingOf(atom).id,
+          tag: imageReservationPrefix() + bindingOf(atom).id,
           text: '\uFFFC',
           alias: 'Image',
         };
@@ -82,7 +82,7 @@ export function createInlineImageRuntime(
         for (const { atom, id } of bindings) {
           const part = next.parts.get(partName)!;
           const controls = contentControlsIn(part.root).filter(
-            ({ node }) => contentControlPropertiesOf(node).tag === PREFIX + id
+            ({ node }) => contentControlPropertiesOf(node).tag === imageReservationPrefix() + id
           );
           if (controls.length !== 1)
             throw Error('The image reservation must resolve to exactly one native control.');
@@ -107,7 +107,7 @@ export function createInlineImageRuntime(
             next,
             partName,
             control.id,
-            PREFIX + id,
+            imageReservationPrefix() + id,
             id,
             drawing,
             atom.marks
