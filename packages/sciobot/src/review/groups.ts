@@ -1,5 +1,5 @@
 import { payloadFallback } from './payload-fallback';
-import { decodeBlockPresenceRecord } from './block-presence-schema';
+import { decodeBlockPresenceRecord, type BlockPresenceChange } from './block-presence-schema';
 import { bindBlockPresenceRecord } from './block-presence-plan';
 import {
   collectRevisionSites,
@@ -104,6 +104,40 @@ function groupAddress(node: OoxmlElement): RevisionAddress | null {
     (attribute) => attribute.namespaceUri === WML_NAMESPACE_URI && attribute.localName === 'id'
   )?.value;
   return id === undefined ? null : { id, author: '' };
+}
+
+type PresenceSite = { partName: string; type: string; path: readonly number[] };
+/**
+ * Pair each pending removal with the adjacent sibling insertion of the same block type in the same
+ * presence record. One replacement is one review decision; both blocks keep their own stored
+ * decision keys, so readers that derive the pair as two groups stay consistent with it.
+ */
+function replacementPartners(
+  blocks: readonly BlockPresenceChange[],
+  locate: (blockId: string) => PresenceSite | null
+): ReadonlyMap<string, string> {
+  const partners = new Map<string, string>();
+  const adjacent = (a: PresenceSite, b: PresenceSite) =>
+    a.partName === b.partName &&
+    a.type === b.type &&
+    a.path.length === b.path.length &&
+    a.path.every((step, index) =>
+      index === a.path.length - 1 ? Math.abs(step - b.path[index]!) === 1 : step === b.path[index]
+    );
+  for (const removal of blocks) {
+    if (!removal.before.present || removal.after.present) continue;
+    const removed = locate(removal.blockId);
+    if (!removed) continue;
+    const insertion = blocks.find((block) => {
+      if (block.before.present || !block.after.present || partners.has(block.blockId)) return false;
+      const born = locate(block.blockId);
+      return !!born && adjacent(removed, born);
+    });
+    if (!insertion) continue;
+    partners.set(removal.blockId, insertion.blockId);
+    partners.set(insertion.blockId, removal.blockId);
+  }
+  return partners;
 }
 
 /** Native reading only. No display mode, document content, metadata, or history mutation. */
@@ -283,7 +317,15 @@ function derive(
             : null;
         if (completeBirth && !completeBirth.success)
           throw Error('Paragraph birth ownership needs reconciliation: ' + completeBirth.error);
-        const bornBuckets = new Map<string, Bucket>();
+        const bornBuckets = new Map<string, Bucket>(),
+          partners = replacementPartners(pendingBirths, (blockId) => {
+            const native = index.byId.get(blockId),
+              path = native && paths.get(keyOf(native.partName, native.controlId));
+            return native && path
+              ? { partName: native.partName, type: native.payload.type, path }
+              : null;
+          }),
+          pairBuckets = new Map<string, Bucket>();
         for (const block of presence.value.blocks) {
           const disposition = decisions.decisions.get(
             payloadGroupDecisionKey(entry.id, block.blockId)
@@ -308,9 +350,12 @@ function derive(
               )
             : null;
           const bucket =
+            pairBuckets.get(block.blockId) ||
             (bornKey && bornBuckets.get(bornKey)) ||
             newBucket(payloadGroupId(entry.id, block.blockId));
           if (bornKey) bornBuckets.set(bornKey, bucket);
+          const partner = partners.get(block.blockId);
+          if (partner) pairBuckets.set(partner, bucket);
           bucket.properties.push({ proposalId: entry.id, blockId: block.blockId });
           if (inlineNative) {
             const members = addressedSites(
@@ -339,6 +384,11 @@ function derive(
             pkg.parts.get(native.partName)!,
             native.controlId
           );
+          // A replacement pair anchors at its first block in document order.
+          if (partner && bucket.anchor && pathCompare(bucket.anchor.path, path) < 0) {
+            marked.set(bucket.id!, bucket);
+            continue;
+          }
           bucket.anchor = {
             partName: native.partName,
             nodeId: native.controlId,
