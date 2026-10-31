@@ -154,7 +154,7 @@ Final verification against installed fork `929e0ea4a9bf68f3a4c9a7c133e55bc76b76d
 
 ## X08
 
-- [ ] Render and replace lesson visuals
+- [x] Render and replace lesson visuals
 
 **Depends:** [B05](02-react-blocks.md#b05), [B11](02-react-blocks.md#b11), [D14](04-edit-planner.md#d14), [V01](11-verification.md#v01)
 
@@ -168,7 +168,7 @@ Final verification against installed fork `929e0ea4a9bf68f3a4c9a7c133e55bc76b76d
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** claude, fork commit `66bb708df`, app branch `claude/docx-native-cutover` commit `975a53136`. **Evidence:** The Plate lesson visual splits into a Plate-free `LessonVisualView` (`ui/lesson-visual-node.tsx`) that `LessonVisualElement` and the native `LessonVisualBlock` share: the entitlement-resolved display variant through `resolveLessonVisual`, the change-request popover, and the progress veil. A replacement writes `src`, the pristine `fileId`, and `prompt` in one `updateAtomicBlock` undo unit, and only when the stored visual did not change while the picture was generated; kind, phase, and alt stay. The fork now updates atomic blocks that show the default Word line (`blocks/update-atomic-default.test.ts`). Export: `withExportVisuals` (`lib/docx/export-visuals.ts`) builds an export copy in which each visual shows its resolved picture (alt text as the description) in place of its alt-text line; the workspace export uses that copy for the DOCX and the PDF. The stored DOCX and its payload references do not change, and a visual that cannot resolve keeps its alt text. Chromium command `bun test --timeout 600000 scripts/docx-native/harness/lesson-visual.test.ts` (routed `lesson-visual-image` function): 2 pass, both client orders. Each run: the signed display URL never enters the Markdown; one change request replaces the reference once and the peer shows the new variant; Alice's undo restores `leaf-1`/`file-1` beside Bob's offline typing; the export copy has one media part with `descr="Leaf diagram"` while its payload keeps `visuals/leaf-1.png` and no signed URL; reopen and saved digests match. `native-export.test.ts` 2 pass; `workspaceExportArchive.pipeline.test.ts` 5 pass.
 
 ## X09
 
