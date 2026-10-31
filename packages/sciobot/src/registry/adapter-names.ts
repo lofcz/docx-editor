@@ -1,4 +1,4 @@
-import { activeStorage } from './active';
+import { activeStorage } from './storage';
 
 // The adapter's own content-control tags and custom XML namespaces. Each derives from the
 // configured storage, so another embedder's documents never carry these Sciobot names.

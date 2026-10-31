@@ -6,8 +6,10 @@ import {
   type MdxOpaqueTags,
 } from './contract';
 import { sciobotMdxRegistry } from './sciobot';
-import { DOMAIN_BLOCK_TAGS } from '../projection/block-tags';
+import { DOMAIN_BLOCK_TAGS, GENERATED_LABEL_TAG } from '../projection/block-tags';
 import { SCIOBOT_DIFF_STRATEGIES } from './sciobot-diff';
+import { SCIOBOT_STORAGE } from './storage';
+import { SCIOBOT_PAYLOAD_STORAGE } from '../blocks/payload-opc-codec';
 
 const storage: MdxComponentStorage = {
   tagPrefix: 'acme:1:',
@@ -133,4 +135,14 @@ test('the Sciobot registry keeps the stored names and every existing mapping', (
   expect(registry.components.get('mention')).toMatchObject({ kind: 'inline', content: 'none' });
   expect(registry.components.get('callout')).toMatchObject({ kind: 'block', content: 'native' });
   expect(registry.opaque.dataOnly.has('listening')).toBe(true);
+});
+
+test('the dependency-free Sciobot storage names equal the codec constants', () => {
+  expect(SCIOBOT_STORAGE).toEqual({
+    ...SCIOBOT_PAYLOAD_STORAGE,
+    labelTag: GENERATED_LABEL_TAG,
+    adapterPrefix: 'scio',
+    adapterNamespace: 'urn:sciobot:docx',
+  });
+  expect(sciobotMdxRegistry().storage).toEqual(SCIOBOT_STORAGE);
 });

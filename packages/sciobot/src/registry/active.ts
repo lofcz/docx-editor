@@ -1,5 +1,8 @@
 import type { MdxComponentRegistry } from './contract';
 import { sciobotMdxRegistry } from './sciobot';
+import { activeStorage, setActiveStorage } from './storage';
+
+export { activeStorage };
 
 let active: MdxComponentRegistry | undefined;
 
@@ -12,6 +15,7 @@ let active: MdxComponentRegistry | undefined;
  */
 export function configureMdxRegistry(registry: MdxComponentRegistry): void {
   active = registry;
+  setActiveStorage(registry.storage);
 }
 
 /** The configured registry, or the Sciobot registration when none is configured. */
@@ -23,14 +27,11 @@ export function activeMdxRegistry(): MdxComponentRegistry {
 export function withMdxRegistry<Result>(registry: MdxComponentRegistry, fn: () => Result): Result {
   const previous = active;
   active = registry;
+  setActiveStorage(registry.storage);
   try {
     return fn();
   } finally {
     active = previous;
+    setActiveStorage(previous?.storage);
   }
-}
-
-/** The configured payload storage names. */
-export function activeStorage(): MdxComponentRegistry['storage'] {
-  return activeMdxRegistry().storage;
 }

@@ -1,12 +1,11 @@
-import { DOMAIN_BLOCK_TAGS, GENERATED_LABEL_TAG } from '../projection/block-tags';
+import { DOMAIN_BLOCK_TAGS } from '../projection/block-tags';
 import { SCIOBOT_DIFF_STRATEGIES } from './sciobot-diff';
 import {
   CUSTOM_ALLOWED_TAGS,
   CUSTOM_DATA_ONLY_TAGS,
   CUSTOM_LITERAL_TAGS,
 } from '../projection/mdx-tags';
-import { BLOCK_TAG_PREFIX, PROPERTY_REVIEW_NODE_PREFIX } from '../blocks/payload-schema';
-import { PAYLOAD_NAMESPACE, PAYLOAD_ROOT, PAYLOAD_NODE_PREFIX } from '../blocks/payload-opc-codec';
+import { SCIOBOT_STORAGE } from './storage';
 import { SCIOBOT_PARSERS } from './sciobot-parse';
 import { INLINE_IMAGE } from '../blocks/inline-image-codec';
 import { SCIOBOT_VALIDATORS } from './sciobot-valid';
@@ -84,16 +83,7 @@ function definitions(): MdxComponentDefinition[] {
 
 function build(): MdxComponentRegistry {
   const result = createMdxComponentRegistry({
-    storage: {
-      tagPrefix: BLOCK_TAG_PREFIX,
-      namespace: PAYLOAD_NAMESPACE,
-      root: PAYLOAD_ROOT,
-      nodePrefix: PAYLOAD_NODE_PREFIX,
-      reviewNodePrefix: PROPERTY_REVIEW_NODE_PREFIX,
-      labelTag: GENERATED_LABEL_TAG,
-      adapterPrefix: 'scio',
-      adapterNamespace: 'urn:sciobot:docx',
-    },
+    storage: SCIOBOT_STORAGE,
     components: definitions(),
     opaque: {
       allowed: CUSTOM_ALLOWED_TAGS,
