@@ -71,12 +71,14 @@ export function updateAtomicBlock(
   if (!block) return fail('invalid-input', 'The block no longer exists.');
   const registry = activeMdxRegistry();
   const shown = registry.components.get(block.payload.type)?.wordFallback;
-  if (registry.blockTags.get(block.payload.type)?.kind !== 'atomic' || !shown)
+  const binding = registry.components.get(block.payload.type)?.inline;
+  // Inline components need only their inline fallback; block controls need the block one.
+  if (registry.blockTags.get(block.payload.type)?.kind !== 'atomic' || (!shown && !binding))
     return fail('unsupported-operation', 'Only atomic blocks with a Word fallback update here.');
   const payload: BlockPayload = { ...block.payload, attributes: { ...update.attributes } };
-  let fallback: ReturnType<typeof shown>;
+  let fallback: ReturnType<NonNullable<typeof shown>> | null = null;
   try {
-    fallback = shown(payload);
+    fallback = shown ? shown(payload) : null;
   } catch (error) {
     if (error instanceof MdxRefusal) return fail('invalid-input', error.message);
     throw error;
@@ -91,9 +93,10 @@ export function updateAtomicBlock(
   const inline = liveContent.children.some(
     (child) => child.kind === 'run' || child.kind === 'hyperlink'
   );
-  const binding = registry.components.get(block.payload.type)?.inline;
   if (inline && (!binding || liveContent.children.some((child) => child.kind === 'hyperlink')))
     return fail('unsupported-operation', 'This inline control has no plain-run fallback.');
+  if (!inline && !fallback)
+    return fail('unsupported-operation', 'Only atomic blocks with a Word fallback update here.');
   let inlineText = '';
   if (inline)
     try {
@@ -108,8 +111,8 @@ export function updateAtomicBlock(
   const tag = blockTag(block.payload.id);
   const paragraphs = inline
     ? `<w:p>${runXml(inlineText, [])}</w:p>`
-    : fallback.lines
-        .map((line) => `<w:p>${runXml(line, fallback.code ? ['code'] : [])}</w:p>`)
+    : fallback!.lines
+        .map((line) => `<w:p>${runXml(line, fallback!.code ? ['code'] : [])}</w:p>`)
         .join('');
   const parsed = readOoxmlPart(
     `<w:document xmlns:w="${WML_NAMESPACE_URI}"><w:body>${paragraphs}</w:body></w:document>`,
@@ -135,7 +138,7 @@ export function updateAtomicBlock(
 
   const replace = (working: OoxmlPackage): OoxmlPackage => {
     let next = working;
-    if (fallback.code && !inline) {
+    if (fallback?.code && !inline) {
       const styled = withInlineCodeStyle(next);
       if (!styled) throw new Error('The document cannot gain the inline code style.');
       next = styled;

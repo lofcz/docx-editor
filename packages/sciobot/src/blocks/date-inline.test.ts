@@ -10,6 +10,7 @@ import { readEditorRevision } from '../projection/revision-cache';
 import { readWorkingView } from '../review/working-view';
 import { buildBlockIndex } from './block-index';
 import { insertInlineComponent } from './inline-insert';
+import { updateAtomicBlock } from './update-atomic';
 
 const MARKDOWN = 'Meeting on <date value="2024-05-01" /> in class';
 
@@ -143,3 +144,26 @@ for (const first of [0, 1] as const)
       pair.destroy();
     }
   });
+
+test('a date chip update changes its payload and Word text in one undo step', async () => {
+  const container = document.createElement('div');
+  document.body.append(container);
+  const editor = createDocxEditor({ container, document: await dated() });
+  try {
+    const updated = updateAtomicBlock(editor, {
+      blockId: 'date-1',
+      attributes: { value: '2024-12-24' },
+    });
+    if (!updated.success) throw new Error(updated.error);
+    expect(texts(editor)).toEqual(['Meeting on 2024-12-24 in class']);
+    expect(await markdownOf(editor)).toBe(MARKDOWN.replace('2024-05-01', '2024-12-24'));
+    expect(
+      updateAtomicBlock(editor, { blockId: 'date-1', attributes: { value: 'tomorrow' } })
+    ).toMatchObject({ success: false, code: 'invalid-input' });
+    expect(editor.exec({ type: 'undo' }).ok).toBe(true);
+    expect(await markdownOf(editor)).toBe(MARKDOWN);
+  } finally {
+    editor.destroy();
+    container.remove();
+  }
+});
