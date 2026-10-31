@@ -238,11 +238,11 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** claude, application branch `claude/docx-native-cutover`. **Evidence:** Not ported; recorded as out of the cutover scope. The Plate AI menu (Mod+J, `src/components/ui/ai-menu.tsx`) posts to `/api/ai/command`, but the application has no such route: neither `vercel.json`, `rsbuild.config.ts`, nor `supabase/functions` serves it, and `src/components/use-chat.ts` answers every failed request with a generated placeholder stream (`fakeStreamText`, faker text). Porting that path would ship placeholder text. The production AI path is the chat panel, which reaches native documents through `edit_document`, `set_document`, suggestions, and quotes (I-leaves, U15, U16). The fork primitives for a future menu exist and are verified: `ai/stream-anchor.ts` and `ai/stream-insert.ts` (A05), and block selection scope (U03). Reopen this leaf when the application gets a real AI command backend.
 
 ## U14
 
-- [ ] Connect AI and remote cursor presentation
+- [x] Connect AI and remote cursor presentation
 
 **Depends:** [B07](02-react-blocks.md#b07), [A04](06-direct-ai.md#a04), [V01](11-verification.md#v01)
 
@@ -256,7 +256,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** claude, application branch `claude/docx-native-cutover`. **Evidence:** Application commit `ec27f1260`. Chat-driven direct edits now play through the fork playback: `src/lib/docx/ai-playback.ts` runs `applyDirectPlan` inside a `DirectChangeLedger` mute, records the changes for the request, and starts `playDirectChanges` with the ScioBot label. The AI caret and tints come from the painted line rectangles of the native fragments, and the core paints remote carets and selections from layout geometry (`surface-remote-selection.ts`), so both follow zoom and repagination. The AI caret is presentation only; collaboration presence stays the optional collaboration module's. Chromium `ai-cursors.test.ts` passes 2 cases at 150% zoom in two sessions: an AI edit inside a nested activity is readable at once, its labelled caret lies on the edited fragment, and playback ends within the cap; and a peer's caret lies on its paragraph, moves with it when Alice inserts paragraphs above, and disappears when the peer leaves the room (awareness removal). The U12 cases wait for playback to end before they reset the scroll position, because playback reveals its targets by design.
 
 ## U15
 
