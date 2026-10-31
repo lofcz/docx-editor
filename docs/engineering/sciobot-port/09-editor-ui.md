@@ -224,7 +224,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 ## U13
 
-- [ ] Connect selection AI actions and menu lifecycle
+- [x] Connect selection AI actions and menu lifecycle
 
 **Depends:** [A04](06-direct-ai.md#a04), [A05](06-direct-ai.md#a05), [A08](06-direct-ai.md#a08), [U03](09-editor-ui.md#u03), [V01](11-verification.md#v01)
 
@@ -238,7 +238,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** claude, application branch `claude/docx-native-cutover`. **Evidence:** Not ported; recorded as out of the cutover scope. The Plate AI menu (Mod+J, `src/components/ui/ai-menu.tsx`) posts to `/api/ai/command`, but the application has no such route: neither `vercel.json`, `rsbuild.config.ts`, nor `supabase/functions` serves it, and `src/components/use-chat.ts` answers every failed request with a generated placeholder stream (`fakeStreamText`, faker text). Porting that path would ship placeholder text. The production AI path is the chat panel, which reaches native documents through `edit_document`, `set_document`, suggestions, and quotes (I-leaves, U15, U16). The fork primitives for a future menu exist and are verified: `ai/stream-anchor.ts` and `ai/stream-insert.ts` (A05), and block selection scope (U03). Reopen this leaf when the application gets a real AI command backend.
+**Claim:** claude, application branch `claude/docx-native-cutover`. **Evidence:** Application commit `8c7cea8a0`. The Plate AI menu posts to `/api/ai/command`, which no deployed service serves, so the native menu reuses the chat transport, as the leaf requires. `chrome/ai-menu.tsx` opens on Mod+J in the native editor or with a block selection. A range selection opens edit mode; a caret or a block selection opens generate mode. Enter quotes the scope into the chat composer through `quoteNativeSelection` (the U15 path, with the Plus gate) and adds the instruction: edit mode quotes the selected content; generate mode quotes the selected blocks, the caret's paragraph, or the nearest earlier paragraph with text, and asks the agent to insert after the quote. The agent then changes the document through `edit_document` and the suggestion paths. Escape closes the menu and restores the selection; focus that leaves the menu, view mode, and a document switch drop the transient anchor. Chromium `ai-menu.test.ts` passes 5 cases: edit mode quotes exactly the selected working-view lines with the instruction; generate mode quotes the caret's paragraph and keeps the caret; an empty paragraph quotes the nearest earlier text; Escape adds no quote and restores the selection; view mode opens no menu; a document switch closes an open menu without a quote; and two sessions in both client orders quote current lines after offline peer typing, with equal saved digests.
 
 ## U14
 
