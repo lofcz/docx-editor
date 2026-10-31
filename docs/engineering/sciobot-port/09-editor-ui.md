@@ -170,7 +170,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 ## U10
 
-- [ ] Render old and proposed review content with word hints
+- [x] Render old and proposed review content with word hints
 
 **Depends:** [R14](05-suggestions.md#r14), [B06](02-react-blocks.md#b06), [V01](11-verification.md#v01)
 
@@ -184,7 +184,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** claude, application branch `claude/docx-native-cutover`. **Evidence:** Application commit `e4957a23e`. The native pages paint tracked changes where they are in the document, which can interleave old and new characters of one word. `review/group-preview.tsx` adds a preview of the active group in the review bar: for each paragraph the group touches, its old words from the first to the last change are struck, then the proposed words over the same span, with up to four unchanged words of context on each side. The word diff makes both sides whole words. Other groups' changes keep their current state, so each group previews only its own change. The preview is review chrome outside the pages with `user-select: none`, so its text never enters the native selection, agent reads, or saved DOCX. Unit `group-preview.test.ts` passes 4 cases (word replacement, scattered changes as one hunk, context trimming, no change). Chromium `direct-edits.test.ts` adds a case: an AI suggestion that inserts two words previews each of its two groups separately; a replaced word is one group with the old word before the new word; the preview is outside the paginated surface and not selectable; Markdown keeps only document text; and in two sessions the peer's typing keeps the preview, with equal saved digests. Difference: the hunk is computed per paragraph; a group across several paragraphs shows one hunk for each.
 
 ## U11
 
