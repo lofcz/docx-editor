@@ -86,7 +86,6 @@ export function updateAtomicBlock(
       : undefined;
   if (
     !liveContent ||
-    liveContent.kind === 'textValue' ||
     liveContent.children.some((child) => child.kind === 'run' || child.kind === 'hyperlink')
   )
     return fail('unsupported-operation', 'Only block-level atomic controls update here.');
