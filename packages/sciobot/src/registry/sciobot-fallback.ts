@@ -3,6 +3,8 @@ import { encodeBlockPayload, type BlockPayload } from '../blocks/payload-schema'
 import type { MdxComponentDefinition } from './contract';
 import { MdxRefusal } from './mdx-fields';
 import { SMILES } from './sciobot-valid';
+import { validGallery } from '../projection/gallery';
+import type { JsonObject } from '../data/json';
 
 type WordFallback = NonNullable<MdxComponentDefinition['wordFallback']>;
 
@@ -33,10 +35,22 @@ const smiles: WordFallback = (payload: BlockPayload) => {
   return { lines: [payload.attributes.smiles as string], code: true };
 };
 
+/** A gallery shows one line per image: its caption, or its address. */
+const gallery: WordFallback = (payload: BlockPayload) => {
+  if (!validGallery(payload))
+    throw new MdxRefusal('A gallery needs one to 100 images with http(s) addresses.');
+  return {
+    lines: (payload.attributes.images as JsonObject[]).map(
+      (image) => (image.caption as string | undefined) || (image.url as string)
+    ),
+  };
+};
+
 export const SCIOBOT_WORD_FALLBACKS: Readonly<Record<string, WordFallback>> = {
   code_block: code,
   toc,
   smiles,
+  image_gallery: gallery,
   equation,
   inline_equation: equation,
 };

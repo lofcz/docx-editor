@@ -2,6 +2,7 @@ import { serializeInlineImage } from './inline-image';
 import { serializeMath } from './math';
 import { serializeMention } from './mention';
 import { serializeCodeBlock } from './code-block';
+import { serializeGallery } from './gallery';
 import type { BlockPayload, JsonValue } from '../blocks/payload-schema';
 
 export interface BlockAttributeBinding {
@@ -231,6 +232,15 @@ export const DOMAIN_BLOCK_TAGS: ReadonlyMap<string, BlockTagDefinition> = new Ma
   [
     'smiles',
     { tag: 'smiles', kind: 'atomic', attributes: (payload) => ordered(payload, ['smiles']) },
+  ],
+  [
+    'image_gallery',
+    {
+      tag: 'image_gallery',
+      kind: 'atomic',
+      attributes: (payload) => ordered(payload, ['layout', 'align', 'images']),
+      serialize: serializeGallery,
+    },
   ],
   [
     'inline_equation',

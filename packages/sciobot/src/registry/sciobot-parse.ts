@@ -1,6 +1,7 @@
 import type { JsonObject, JsonValue } from '../data/json';
 import type { MdxAttribute, MdxComponentParser } from './contract';
 import { mdxProps } from './mdx-read';
+import { galleryImages } from '../projection/gallery';
 
 const plain = (tag: string): MdxComponentParser => ({
   tag,
@@ -105,6 +106,23 @@ const smiles: MdxComponentParser = {
   },
 };
 
+/** A gallery reads `images` from its JSON expression; Markdown images become galleries too. */
+const gallery: MdxComponentParser = {
+  tag: 'image_gallery',
+  read(attributes) {
+    const props: Record<string, JsonValue> = {};
+    for (const { name, value } of attributes) {
+      if (name === 'images') {
+        const images = galleryImages(value);
+        if (images !== null) props.images = images;
+      } else if ((name === 'layout' || name === 'align') && typeof value === 'string')
+        props[name] = value;
+    }
+    props.layout ??= 'row-fit';
+    return props as JsonObject;
+  },
+};
+
 /** How each Sciobot payload type reads its MDX element, keyed by payload type. */
 export const SCIOBOT_PARSERS: Readonly<Record<string, MdxComponentParser>> = {
   lesson_phase: phase('phase'),
@@ -136,6 +154,7 @@ export const SCIOBOT_PARSERS: Readonly<Record<string, MdxComponentParser>> = {
   date: plain('date'),
   toc: plain('toc'),
   smiles,
+  image_gallery: gallery,
   inline_equation: equation('scio-inline-equation'),
   equation: equation('scio-equation'),
   source: source('source'),
