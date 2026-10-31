@@ -260,7 +260,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 ## U15
 
-- [ ] Connect the Add to chat quote action
+- [x] Connect the Add to chat quote action
 
 **Depends:** [U01](09-editor-ui.md#u01), [P20](03-agent-projection.md#p20), [I01](10-app-integration.md#i01), [V01](11-verification.md#v01)
 
@@ -274,7 +274,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Exercise the real button, eligibility result, and quote store in Chromium. Check document switches during eligibility waits and two-session pending text selection.
 
-**Claim:** claude, application branch `claude/docx-native-cutover`. **Evidence:** Progress, not closure. Application commit `d9476aac9`. The native Add to chat action reads the working view, maps the selection with the fork `resolveQuoteSelection`, refuses unresolved or empty quotes, calls `attemptAddToChat`, and writes `documentTitle`, `materialId`, line numbers, text, and `containsMdx` to the quote store. It then collapses the selection. The browser case checks that the quote text equals its lines in the working view that `read_document` returns. Remaining: a denied `attemptAddToChat` case.
+**Claim:** claude, application branch `claude/docx-native-cutover`. **Evidence:** Application commits `d9476aac9` and `b836ed92a`. `quoteNativeSelection` (in `chrome/floating-toolbar.tsx`) reads the working view, maps the selection with the fork `resolveQuoteSelection`, refuses a caret, unresolved, or empty quote, asks the Plus gate (`attemptAddToChat`), and writes `documentTitle`, `materialId`, line numbers, text, and `containsMdx` to the quote store. It then collapses the selection. A denied add keeps the selection and adds nothing. A defect surfaced and is fixed: a caret quoted its whole line. Chromium `floating-toolbar.test.ts` checks that an allowed click adds one quote equal to its lines in the working view that `read_document` returns and deselects the editor; a caret and a denied gate add nothing (the case fails without the fix); and two sessions in both client orders quote current lines after peer typing.
 
 ## U16
 
