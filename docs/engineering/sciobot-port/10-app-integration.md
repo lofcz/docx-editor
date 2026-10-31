@@ -82,7 +82,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 ## I05
 
-- [ ] Connect set_document with material-specific validation
+- [x] Connect set_document with material-specific validation
 
 **Depends:** [I03](10-app-integration.md#i03), [I04](10-app-integration.md#i04), [D15](04-edit-planner.md#d15), [D26](04-edit-planner.md#d26), [D27](04-edit-planner.md#d27), [D28](04-edit-planner.md#d28), [D29](04-edit-planner.md#d29), [D30](04-edit-planner.md#d30), [D31](04-edit-planner.md#d31), [D32](04-edit-planner.md#d32), [D33](04-edit-planner.md#d33), [D34](04-edit-planner.md#d34), [D35](04-edit-planner.md#d35), [D36](04-edit-planner.md#d36), [D37](04-edit-planner.md#d37), [D38](04-edit-planner.md#d38), [D39](04-edit-planner.md#d39), [P23](03-agent-projection.md#p23), [P11](03-agent-projection.md#p11), [V01](11-verification.md#v01)
 
@@ -96,7 +96,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** claude, application branch `claude/docx-native-cutover`. **Evidence:** Application commit `78e7b9b90`. Native `set_document` no longer refuses. The bridge rewrites artifact paths, then calls the native executor's new `set`. Direct sets run the same planner, validation, and executor as `edit_document`; `validateTargetMarkdown` with `operation: "set"` enforces the lesson schema only when the material is a `lesson_plan`. `is_suggesion: true` routes to the owned-proposal executor, which validates the same way. Chromium `direct-edits.test.ts` adds 4 cases: a generic document accepts ordinary Markdown, undo restores it, a suggested set creates pending review, invalid and empty targets leave the state unchanged, a malformed lesson set fails with the schema rejection, and two sessions in both client orders converge with peer typing, undo, redo, and equal saved digests. Untouched parts: the fork `diff/target-c01-matrix.test.ts` checks that the C01 complete rewrite keeps every other imported part byte-identical. The full harness passes 216 cases.
 
 ## I06
 
@@ -294,7 +294,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** claude, application branch `claude/docx-native-cutover`. **Evidence:** Progress, not closure. Application commit `21b613e18`. A native document's PDF now renders the exported Word bytes through the existing `convert-to-pdf` service (`src/lib/docx/native-pdf.ts`); no print document is built from its Markdown. A conversion failure keeps the DOCX and reports the file as failed. The export summary counts native Word files. Chromium `native-export.test.ts` checks, with a stand-in converter, that each PDF receives the SHA-256 of its exported DOCX, that the archive holds `DOCX/` and `PDF/` files, and that no print document is created. `workspaceExportStore.test.ts` adds the format case. Remaining: verify the real `convert-to-pdf` service output for block fallbacks, captions, page order, and listening text, and the two-session scenario.
 
 ## I17
 
@@ -352,7 +352,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 ## I20
 
-- [ ] Add reversible workspace editor selection
+- [x] Add reversible workspace editor selection
 
 **Depends:** [I09](10-app-integration.md#i09), [I11](10-app-integration.md#i11), [I12](10-app-integration.md#i12), [I13](10-app-integration.md#i13), [I24](10-app-integration.md#i24), [I25](10-app-integration.md#i25), [V01](11-verification.md#v01)
 
@@ -366,11 +366,11 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** claude, application branch `claude/docx-native-cutover`. **Evidence:** Application commit `4711adfaa`. The native snapshot gains `legacyRevision`: the stored revision that a conversion of `legacy` produced. The autosave records it on the first save of a fresh conversion when no edit happened first, and keeps it on later revisions. `src/lib/docx/editor-selection.ts` decides what the Plate editor opens when the native route is off: Plate content as itself, the preserved Plate value while `legacyRevision` equals the current revision, and the current Markdown projection after native edits. `LinkedLessonEditor` uses it for final hydration. A failed conversion keeps the Plate row with the legacy editor and saves nothing (I11 case "saved Plate content the conversion cannot represent stays with the legacy editor"). Checks: `editor-selection.test.ts` (4 cases), `native-autosave.test.ts` (3 new cases), `LinkedLessonEditor.test.tsx` (1 new case, 15 total), and the Chromium conversion case in `native-persistence.test.ts`, which now checks `legacyRevision` after conversion and after a typed native edit. The full harness passes 216 cases.
 
 ## I21
 
-- [ ] Isolate retained Plate consumers from the native editor
+- [x] Isolate retained Plate consumers from the native editor
 
 **Depends:** [I06](10-app-integration.md#i06), [I17](10-app-integration.md#i17), [I18](10-app-integration.md#i18), [I20](10-app-integration.md#i20)
 
@@ -384,7 +384,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Run scoped build and typecheck checks. Save the inspected dependency or bundle evidence.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** claude, application branch `claude/docx-native-cutover`. **Evidence:** `WorkspacePanel.tsx` is now a small entry that selects the route; the Plate workspace moved to `LegacyWorkspacePanel.tsx` and loads through `lazy()` only for the legacy route. Native block views no longer import Plate: the code-block language list moved to `ui/code-block-languages.ts`, and `src/lib/media-embed-url.ts` ports the two `@platejs/media` URL parsers (parity test on 13 URLs). A `bun build --metafile` walk finds no Plate module in the native panel graph (730 modules, before 1077 with 18 Plate packages) or in the entry's static graph (188 modules). [plate-consumers.json](evidence/plate-consumers.json) lists all 289 retained Plate importers with a category and reason. Typechecks pass except the known unrelated `useRoomStudents.ts` error. See [Plate isolation](evidence/plate-isolation.md).
 
 ## I22
 
