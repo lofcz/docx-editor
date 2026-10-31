@@ -25,30 +25,54 @@ import {
 export const PAYLOAD_NAMESPACE = 'urn:sciobot:docx:blocks:1';
 export const PAYLOAD_ROOT = 'blocks';
 export const PAYLOAD_NODE_PREFIX = 'scio_';
-const NODE_PREFIX = PAYLOAD_NODE_PREFIX;
 const MAX_STORE_NODES = 10000;
+/** Word limits a content-control tag to 64 characters. */
+const MAX_TAG_LENGTH = 64;
 
-export function blockTag(id: string): string {
-  if (!isBlockId(id)) throw new TypeError('Invalid block ID');
-  return BLOCK_TAG_PREFIX + id;
+/** Where one embedder keeps its block payloads: names from its component registry storage. */
+export interface PayloadStorage {
+  readonly tagPrefix: string;
+  readonly namespace: string;
+  readonly root: string;
+  readonly nodePrefix: string;
+  readonly reviewNodePrefix: string;
 }
 
-export function blockIdFromTag(tag: string): string | null {
-  if (!tag.startsWith(BLOCK_TAG_PREFIX)) return null;
-  const id = tag.slice(BLOCK_TAG_PREFIX.length);
+/** The Sciobot storage names. Documents saved with them keep opening unchanged. */
+export const SCIOBOT_PAYLOAD_STORAGE: PayloadStorage = Object.freeze({
+  tagPrefix: BLOCK_TAG_PREFIX,
+  namespace: PAYLOAD_NAMESPACE,
+  root: PAYLOAD_ROOT,
+  nodePrefix: PAYLOAD_NODE_PREFIX,
+  reviewNodePrefix: PROPERTY_REVIEW_NODE_PREFIX,
+});
+
+export function blockTag(id: string, storage: PayloadStorage = SCIOBOT_PAYLOAD_STORAGE): string {
+  if (!isBlockId(id) || storage.tagPrefix.length + id.length > MAX_TAG_LENGTH)
+    throw new TypeError('Invalid block ID');
+  return storage.tagPrefix + id;
+}
+
+export function blockIdFromTag(
+  tag: string,
+  storage: PayloadStorage = SCIOBOT_PAYLOAD_STORAGE
+): string | null {
+  if (!tag.startsWith(storage.tagPrefix)) return null;
+  const id = tag.slice(storage.tagPrefix.length);
   return isBlockId(id) ? id : null;
 }
 
 export function payloadReferences(
-  tags: Iterable<string>
+  tags: Iterable<string>,
+  storage: PayloadStorage = SCIOBOT_PAYLOAD_STORAGE
 ):
   | { readonly ok: true; readonly ids: ReadonlySet<string> }
   | { readonly ok: false; readonly reason: string } {
   const ids = new Set<string>();
   for (const tag of tags) {
-    const id = blockIdFromTag(tag);
+    const id = blockIdFromTag(tag, storage);
     if (id === null) {
-      if (tag.startsWith(BLOCK_TAG_PREFIX)) return { ok: false, reason: 'malformed-reference' };
+      if (tag.startsWith(storage.tagPrefix)) return { ok: false, reason: 'malformed-reference' };
       continue;
     }
     if (ids.has(id)) return { ok: false, reason: `duplicate-reference:${id}` };
@@ -107,35 +131,39 @@ export type PayloadStoreRead =
 
 /** Initialize before room bootstrap so no actor owns the shared store lifetime. */
 export function withInitializedPayloadStore(
-  pkg: OoxmlPackage
+  pkg: OoxmlPackage,
+  storage: PayloadStorage = SCIOBOT_PAYLOAD_STORAGE
 ):
   | { readonly ok: true; readonly pkg: OoxmlPackage }
   | { readonly ok: false; readonly pkg: OoxmlPackage; readonly reason: string } {
-  const current = readPayloadStore(pkg);
+  const current = readPayloadStore(pkg, storage);
   if (current.status === 'invalid') return { ok: false, pkg, reason: current.reason };
   if (current.status === 'ready') return { ok: true, pkg };
-  const created = withCustomXmlDataPart(pkg, pkg.mainDocumentPart, PAYLOAD_NAMESPACE, PAYLOAD_ROOT);
-  if (!created.part || readPayloadStore(created.pkg).status !== 'ready')
+  const created = withCustomXmlDataPart(pkg, pkg.mainDocumentPart, storage.namespace, storage.root);
+  if (!created.part || readPayloadStore(created.pkg, storage).status !== 'ready')
     return { ok: false, pkg, reason: 'payload-store-initialization-refused' };
   return { ok: true, pkg: created.pkg };
 }
 
-export function readPayloadStore(pkg: OoxmlPackage): PayloadStoreRead {
+export function readPayloadStore(
+  pkg: OoxmlPackage,
+  storage: PayloadStorage = SCIOBOT_PAYLOAD_STORAGE
+): PayloadStoreRead {
   const stores = customXmlDataParts(pkg, pkg.mainDocumentPart).filter(
-    (part) => part.namespaceUri === PAYLOAD_NAMESPACE
+    (part) => part.namespaceUri === storage.namespace
   );
   if (!stores.length) return { status: 'absent' };
   if (stores.length !== 1) return { status: 'invalid', reason: 'duplicate-store' };
   const descriptor = stores[0]!;
   const part = pkg.parts.get(descriptor.partName);
-  if (!part || part.root.localName !== PAYLOAD_ROOT)
+  if (!part || part.root.localName !== storage.root)
     return { status: 'invalid', reason: 'invalid-store-root' };
   if (part.root.children.length > 50_000) return { status: 'invalid', reason: 'store-node-limit' };
   const nodes = customXmlNodes(pkg, descriptor.partName);
   const authoredCount = part.root.children.filter(
     (node) =>
       node.kind !== 'textValue' &&
-      node.namespaceUri === PAYLOAD_NAMESPACE &&
+      node.namespaceUri === storage.namespace &&
       node.localName === 'node' &&
       // Peer-preserving undo can retain an empty native wrapper without a payload or identity.
       (node.attributes.length !== 0 || node.children.length !== 0)
@@ -146,8 +174,10 @@ export function readPayloadStore(pkg: OoxmlPackage): PayloadStoreRead {
   const elements = recordElements(part);
   for (const node of nodes) {
     // This separate record family has its own bounded review reader and no block binding.
-    if (node.id.startsWith(PROPERTY_REVIEW_NODE_PREFIX)) continue;
-    const id = node.id.startsWith(NODE_PREFIX) ? node.id.slice(NODE_PREFIX.length) : null;
+    if (node.id.startsWith(storage.reviewNodePrefix)) continue;
+    const id = node.id.startsWith(storage.nodePrefix)
+      ? node.id.slice(storage.nodePrefix.length)
+      : null;
     if (!isBlockId(id)) return { status: 'invalid', reason: 'invalid-node-id' };
     if (entries.has(id)) return { status: 'invalid', reason: `duplicate-node:${id}` };
     const effective = effectiveRaw(elements.get(node.id), node.data);
@@ -181,11 +211,12 @@ export type PayloadStoreWrite =
 export function withPayloadRecord(
   pkg: OoxmlPackage,
   payload: BlockPayload,
-  label: string
+  label: string,
+  storage: PayloadStorage = SCIOBOT_PAYLOAD_STORAGE
 ): PayloadStoreWrite {
   const refuse = (reason: string): PayloadStoreWrite => ({ ok: false, pkg, reason });
   if (!isPayloadLabel(label)) return refuse('invalid-label');
-  const existing = readPayloadStore(pkg);
+  const existing = readPayloadStore(pkg, storage);
   if (existing.status === 'invalid') return refuse(existing.reason);
   if (
     existing.status === 'ready' &&
@@ -206,10 +237,11 @@ export function withPayloadRecord(
       current.decoded.value,
       current.label,
       payload,
-      label
+      label,
+      storage
     );
     if (!updated) return refuse('payload-write-refused');
-    const reopened = readPayloadStore(updated);
+    const reopened = readPayloadStore(updated, storage);
     const stored = reopened.status === 'ready' ? reopened.entries.get(payload.id) : undefined;
     if (
       stored?.decoded.status !== 'supported' ||
@@ -217,19 +249,19 @@ export function withPayloadRecord(
       fieldChanges(stored.decoded.value, payload).length
     )
       return refuse('payload-write-refused');
-    return { ok: true, pkg: updated, part: existing.part, tag: blockTag(payload.id) };
+    return { ok: true, pkg: updated, part: existing.part, tag: blockTag(payload.id, storage) };
   }
-  const created = withCustomXmlDataPart(pkg, pkg.mainDocumentPart, PAYLOAD_NAMESPACE, PAYLOAD_ROOT);
+  const created = withCustomXmlDataPart(pkg, pkg.mainDocumentPart, storage.namespace, storage.root);
   if (!created.part) return refuse('store-creation-refused');
   const next = withCustomXmlNode(created.pkg, created.part.partName, {
-    id: NODE_PREFIX + payload.id,
+    id: storage.nodePrefix + payload.id,
     label,
     data: raw,
   });
-  const reopened = readPayloadStore(next);
+  const reopened = readPayloadStore(next, storage);
   if (reopened.status !== 'ready' || reopened.entries.get(payload.id)?.raw !== raw)
     return refuse('payload-write-refused');
-  return { ok: true, pkg: next, part: created.part, tag: blockTag(payload.id) };
+  return { ok: true, pkg: next, part: created.part, tag: blockTag(payload.id, storage) };
 }
 
 /**
@@ -242,10 +274,11 @@ function withFieldRegisters(
   current: BlockPayload,
   currentLabel: string,
   payload: BlockPayload,
-  label: string
+  label: string,
+  storage: PayloadStorage
 ): OoxmlPackage | null {
   const partName = store.part.partName;
-  const nodeId = NODE_PREFIX + payload.id;
+  const nodeId = storage.nodePrefix + payload.id;
   const updates = fieldChanges(current, payload);
   if (!updates.length && currentLabel === label) return pkg;
   const part = pkg.parts.get(partName);

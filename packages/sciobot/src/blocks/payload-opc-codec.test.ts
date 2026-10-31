@@ -177,3 +177,37 @@ test('pre-bootstrap payload storage is empty, stable, and preserves populated an
     reason: 'invalid-store-root',
   });
 });
+
+test('a second embedder stores payloads under its own names and survives save and reopen', () => {
+  const acme = {
+    tagPrefix: 'acme:1:',
+    namespace: 'urn:acme:docx:components:1',
+    root: 'components',
+    nodePrefix: 'acme_',
+    reviewNodePrefix: 'acme-review_',
+  };
+  const value = payload();
+  const sciobot = write();
+  const written = withPayloadRecord(sciobot.pkg, value, 'Acme copy', acme);
+  if (!written.ok) throw new Error(written.reason);
+  expect(written.tag).toBe(`acme:1:${value.id}`);
+  expect(blockIdFromTag(written.tag, acme)).toBe(value.id);
+  expect(blockIdFromTag(written.tag)).toBeNull();
+  const saved = writeOoxmlPackage(written.pkg);
+  const reopened = readOoxmlPackage(saved);
+  if (!reopened.ok) throw new Error(reopened.reason);
+  const own = readPayloadStore(reopened.package, acme);
+  if (own.status !== 'ready') throw new Error(own.status);
+  expect(own.part.partName).not.toBe(sciobot.part.partName);
+  expect(own.entries.get(value.id)?.label).toBe('Acme copy');
+  expect(own.entries.get(value.id)?.decoded).toEqual({ status: 'supported', value });
+  // The Sciobot store keeps its own record and never reads the other namespace.
+  const other = readPayloadStore(reopened.package);
+  if (other.status !== 'ready') throw new Error(other.status);
+  expect(other.part.partName).toBe(sciobot.part.partName);
+  expect(other.entries.get(value.id)?.label).toBe('Warmup <teacher> & Žák 😀');
+  expect(payloadReferences([written.tag, `acme:1:bad id`], acme)).toEqual({
+    ok: false,
+    reason: 'malformed-reference',
+  });
+});

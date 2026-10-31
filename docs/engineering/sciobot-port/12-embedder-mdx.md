@@ -73,7 +73,7 @@ Unregistered tags that the projection allows keep the opaque MDX path. Existing 
 
 **Check:** Run the payload suites against saved fixtures. Add a save and reopen case for a second namespace.
 
-**Claim:** Unclaimed. **Evidence:** Pending.
+**Claim:** Unclaimed. **Evidence:** In progress. The codec layer is done: `blockTag`, `blockIdFromTag`, `payloadReferences`, `readPayloadStore`, `withPayloadRecord`, and `withInitializedPayloadStore` take a `PayloadStorage` (tag prefix, namespace, root, node prefix, review node prefix) that defaults to `SCIOBOT_PAYLOAD_STORAGE`, and `blockTag` refuses a tag past Word's 64 characters. `bun test packages/sciobot/src/blocks/payload-opc-codec.test.ts` passes 7 cases, including a second namespace that saves and reopens beside the Sciobot store without either reading the other. Open: 35 adapter modules and 38 `buildBlockIndex` calls still use the default storage (for example `blocks/insert.ts`, `react-blocks/clipboard.ts`, `native/prepare-document.ts`, and the `review/` payload stages). Pass the storage from the editor's registry once M06 supplies it, rather than through each call.
 
 ## M04
 
