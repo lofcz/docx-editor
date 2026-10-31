@@ -11,6 +11,7 @@ import {
   w14RootPrefix,
   withPart,
   WML_NAMESPACE_URI,
+  type OoxmlNode,
   type OoxmlPackage,
 } from '@docx-editor.dev/core/store';
 import type { NativeEditFailure } from '../contracts/document';
@@ -43,6 +44,8 @@ const fail = (code: NativeEditFailure['code'], error: string): NativeEditFailure
 
 /**
  * Replace an atomic block's payload and regenerate its Word fallback in one native undo unit.
+ * Block controls get one paragraph per fallback line; inline controls get plain runs that keep
+ * the formatting of their first run.
  * The block keeps its ID and control, so renderers and peers keep their identity. Atomic
  * blocks have no editable native text: this is their only content write. Suggestion mode
  * refuses, because a tracked atomic replacement belongs to the review executors.
@@ -78,36 +81,61 @@ export function updateAtomicBlock(
     if (error instanceof MdxRefusal) return fail('invalid-input', error.message);
     throw error;
   }
-  // An inline control holds runs, not paragraphs: its fallback is part of a sentence.
   const live = findNode(surface.session.part(), block.controlId);
   const liveContent =
     live?.kind === 'contentControl'
       ? live.children.find((child) => child.kind === 'contentControlContent')
       : undefined;
-  if (
-    !liveContent ||
-    liveContent.children.some((child) => child.kind === 'run' || child.kind === 'hyperlink')
-  )
-    return fail('unsupported-operation', 'Only block-level atomic controls update here.');
+  if (!liveContent) return fail('invalid-document', 'The block control is missing.');
+  // An inline control holds runs, not paragraphs: its fallback is part of a sentence.
+  const inline = liveContent.children.some(
+    (child) => child.kind === 'run' || child.kind === 'hyperlink'
+  );
+  const binding = registry.components.get(block.payload.type)?.inline;
+  if (inline && (!binding || liveContent.children.some((child) => child.kind === 'hyperlink')))
+    return fail('unsupported-operation', 'This inline control has no plain-run fallback.');
+  let inlineText = '';
+  if (inline)
+    try {
+      inlineText = binding!.fallback(payload).text;
+    } catch (error) {
+      if (error instanceof MdxRefusal) return fail('invalid-input', error.message);
+      throw error;
+    }
   const store = readPayloadStore(pkg);
   if (store.status !== 'ready') return fail('invalid-document', 'The block payloads are missing.');
   const label = store.entries.get(block.payload.id)?.label ?? block.payload.type;
   const tag = blockTag(block.payload.id);
+  const paragraphs = inline
+    ? `<w:p>${runXml(inlineText, [])}</w:p>`
+    : fallback.lines
+        .map((line) => `<w:p>${runXml(line, fallback.code ? ['code'] : [])}</w:p>`)
+        .join('');
   const parsed = readOoxmlPart(
-    `<w:document xmlns:w="${WML_NAMESPACE_URI}"><w:body>${fallback.lines
-      .map((line) => `<w:p>${runXml(line, fallback.code ? ['code'] : [])}</w:p>`)
-      .join('')}</w:body></w:document>`,
+    `<w:document xmlns:w="${WML_NAMESPACE_URI}"><w:body>${paragraphs}</w:body></w:document>`,
     { name: '/sciobot-update-block.xml', contentType: surface.session.part().contentType }
   );
   const body = parsed.ok ? bodyStoryRoot(parsed.part) : null;
   if (!body || body.kind === 'textValue' || !body.children.length)
     return fail('invalid-input', 'The block fallback was refused.');
-  const template = body.children;
+  let template: readonly OoxmlNode[] = body.children;
+  if (inline) {
+    // The new runs keep the formatting of the first existing run.
+    const first = liveContent.children.find((child) => child.kind === 'run');
+    const properties = first?.children.find((child) => child.kind === 'runProperties');
+    const runs = body.children[0]!.kind === 'textValue' ? [] : body.children[0]!.children;
+    template = runs.map((run) =>
+      properties && run.kind !== 'textValue'
+        ? ({ ...run, children: [properties, ...run.children] } as OoxmlNode)
+        : run
+    );
+    if (!template.length) return fail('invalid-input', 'An inline control needs fallback text.');
+  }
   let committed = false;
 
   const replace = (working: OoxmlPackage): OoxmlPackage => {
     let next = working;
-    if (fallback.code) {
+    if (fallback.code && !inline) {
       const styled = withInlineCodeStyle(next);
       if (!styled) throw new Error('The document cannot gain the inline code style.');
       next = styled;

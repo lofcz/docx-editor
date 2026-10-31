@@ -86,9 +86,9 @@ test('an atomic code block update keeps its ID, exact whitespace, Word lines, an
   }
 });
 
-test('an inline atomic control refuses a paragraph fallback update', async () => {
+test('an inline equation update keeps its sentence, run formatting, and history', async () => {
   const input = await targetDocumentInput('<w:p><w:r><w:t>Seed text</w:t></w:r></w:p>');
-  const planned = planTargetDocument(input, 'Area $a^2$ here.\n\nSeed text', {
+  const planned = planTargetDocument(input, 'Area **$a^2$** here.\n\nSeed text', {
     allocateBlockId: () => 'math-1',
   });
   if (!planned.success) throw new Error(planned.error);
@@ -102,11 +102,27 @@ test('an inline atomic control refuses a paragraph fallback update', async () =>
     author: 'Ann',
   });
   try {
-    const before = editor.surface!.session.packageRevision();
+    const surface = editor.surface!;
+    const before = texts(editor);
+    expect(before[0]).toBe('Area a^2 here.');
     expect(
-      updateAtomicBlock(editor, { blockId: 'math-1', attributes: { texExpression: 'b^2' } })
-    ).toMatchObject({ success: false, code: 'unsupported-operation' });
-    expect(editor.surface!.session.packageRevision()).toBe(before);
+      updateAtomicBlock(editor, { blockId: 'math-1', attributes: { texExpression: 'b_{1}^2' } })
+    ).toMatchObject({ success: true });
+    expect(texts(editor)).toEqual(['Area b_{1}^2 here.', 'Seed text']);
+    const reopened = readOoxmlPackage(new Uint8Array(await editor.save()));
+    if (!reopened.ok) throw new Error(reopened.reason);
+    expect(buildBlockIndex(reopened.package).byId.get('math-1')?.payload.attributes).toEqual({
+      texExpression: 'b_{1}^2',
+    });
+    expect((await projectSourcePackage(reopened.package)).text).toContain('**$b_{1}^2$**');
+    // The replacement run keeps the bold formatting of the run it replaces.
+    const xml = new TextDecoder().decode(reopened.package.partBytes.get('/word/document.xml'));
+    expect(xml).toMatch(/<w:rPr><w:b\/><\/w:rPr><w:t[^>]*>b_\{1\}\^2</);
+    expect(editor.exec({ type: 'undo' }).ok).toBe(true);
+    expect(texts(editor)).toEqual(before);
+    expect(
+      buildBlockIndex(surface.session.currentPackage()).byId.get('math-1')?.payload.attributes
+    ).toEqual({ texExpression: 'a^2' });
   } finally {
     editor.destroy();
     container.remove();
