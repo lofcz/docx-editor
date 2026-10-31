@@ -190,7 +190,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 ## I11
 
-- [ ] Convert legacy paragraphs, marks, and links
+- [x] Convert legacy paragraphs, marks, and links
 
 **Depends:** [I07](10-app-integration.md#i07), [N02](07-native-content.md#n02), [N03](07-native-content.md#n03), [N08](07-native-content.md#n08), [N09](07-native-content.md#n09), [N10](07-native-content.md#n10), [V01](11-verification.md#v01)
 
@@ -204,7 +204,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** claude, application branch `claude/docx-native-cutover`. **Evidence:** application branch `claude/docx-native-cutover`, commit `193245971`. `src/lib/docx/legacy-conversion.ts` serializes the saved Plate value with the application's own `BaseEditorKit` Markdown rules (`serializeLegacyValue`), then builds a new native document in an offscreen editor through `planTargetDocument` and `applyDirectPlan`, the same path as agent edits. The native working view must have the same Markdown content as the Plate serialization (`markdownContent`: parsed tree without positions, escapes, markers, or list spacing); otherwise the conversion refuses. `NativeWorkspaceRoute` converts a saved Plate value when the native route opens it; a refusal keeps the Plate editor and writes nothing. Every later snapshot keeps the original value as `legacy`, so the source survives as a fallback. Chromium `bun test --timeout 600000 scripts/docx-native/harness/legacy-conversion.test.ts` passes 13 cases. The seven captured C01 Plate values (`legacy-values.json`, copied from `packages/sciobot/src/__tests__/fixtures/ai-pairs.json`) convert with equal content: marks, ordered and bullet lists, links, paragraph text with escaped pipes, nested lesson MDX, sources, and multi-paragraph documents. A value with a pending suggestion refuses with `unsupported-content`. `native-persistence.test.ts` (9 cases) opens a saved Plate value with a heading, bold text, and a link: the route converts it, saves without an edit, keeps the original value in `content.legacy`, and publishes Markdown with `## Plate lesson`, `**bold**`, and the link. Reopening loads the saved revision with identical text and no second conversion; the revision stays the same. A value the conversion cannot represent opens in the Plate editor and nothing is written. The legacy lesson schema (`BaseEditorKit`) has no page-break node, so no explicit page break exists to convert. Finding: the converted document keeps the blank template's final empty paragraph. Collaboration: conversion runs once in an offscreen single-user editor before any session opens; it adds no shared operation.
 
 ## I12
 
@@ -388,7 +388,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 ## I22
 
-- [ ] Convert legacy list structure
+- [x] Convert legacy list structure
 
 **Depends:** [I11](10-app-integration.md#i11), [V01](11-verification.md#v01)
 
@@ -402,11 +402,11 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** claude, application branch `claude/docx-native-cutover`. **Evidence:** application branch `claude/docx-native-cutover`, commit `193245971`. `src/lib/docx/legacy-conversion.ts` serializes the saved Plate value with the application's own `BaseEditorKit` Markdown rules (`serializeLegacyValue`), then builds a new native document in an offscreen editor through `planTargetDocument` and `applyDirectPlan`, the same path as agent edits. The native working view must have the same Markdown content as the Plate serialization (`markdownContent`: parsed tree without positions, escapes, markers, or list spacing); otherwise the conversion refuses. `NativeWorkspaceRoute` converts a saved Plate value when the native route opens it; a refusal keeps the Plate editor and writes nothing. Every later snapshot keeps the original value as `legacy`, so the source survives as a fallback. The list cases build their Plate values with the application's own deserializer (`deserializeLessonMarkdown`), which is how Plate stores them. Chromium `legacy-conversion.test.ts`: nested ordered lists, a list restarted at 3 after a paragraph, and nested bullets convert to native numbering with equal content (the ordered `start` and nesting are part of the compared tree); a checklist keeps `[ ] Open task` and `[x] Done task`. The C01 `formatting and lists` value converts too. Finding: the native projection writes lists loose and the planner refuses a tight-list target against them, so replanning cannot be the conversion oracle; the content comparison ignores list spacing. Collaboration: conversion runs once in an offscreen single-user editor before any session opens; it adds no shared operation.
 
 ## I23
 
-- [ ] Convert legacy tables and spans
+- [x] Convert legacy tables and spans
 
 **Depends:** [I11](10-app-integration.md#i11), [V01](11-verification.md#v01)
 
@@ -420,7 +420,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** claude, application branch `claude/docx-native-cutover`. **Evidence:** application branch `claude/docx-native-cutover`, commit `193245971`. Plate's Markdown serializer drops cell spans and, for a row span, moves later cells into the wrong column. The conversion therefore checks span geometry (equal row widths, spans inside the table, no overlap, positive integer spans) and refuses invalid geometry with `invalid-table-geometry`, keeping the source. A valid merged table first inserts as a regular GFM grid with empty covered slots, then an explicit JSX `<table>` target with `colspan`/`rowspan` merges the cells through the native merge planner; the check reads the working view with `tableSyntax: "auto"`. Chromium `legacy-conversion.test.ts`: a table with a two-column head span and a two-row span saves `w:gridSpan w:val="2"` and `w:vMerge w:val="restart"` with text order Merged head, C, Tall, B2, C2, B3, C3; three invalid tables (too wide, too tall, zero span) refuse. A GFM table with bold text and a link converts with equal content. Limits: merged-table cells hold one paragraph each (more refuses), and saved column widths and borders are not converted. Collaboration: conversion runs once in an offscreen single-user editor before any session opens; it adds no shared operation.
 
 ## I24
 
