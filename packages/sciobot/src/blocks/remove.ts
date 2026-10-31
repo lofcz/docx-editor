@@ -14,11 +14,12 @@ import {
   storyParagraphs,
   withoutCustomXmlNode,
   withPart,
+  type OoxmlNode,
   type OoxmlPackage,
   type TreeDocOp,
 } from '@docx-editor.dev/core/store';
 import type { NativeEditFailure } from '../contracts/document';
-import { buildBlockIndex } from './block-index';
+import { buildBlockIndex, type IndexedBlock } from './block-index';
 import { blockIdFromTag, readPayloadStore } from './payload-opc-codec';
 
 export interface BlockRemoval {
@@ -39,8 +40,32 @@ const fail = (code: NativeEditFailure['code'], error: string): NativeEditFailure
   error,
 });
 
+/** Several registered wrappers removed together, as one block selection. */
+export interface BlocksRemoval {
+  readonly controlIds: readonly string[];
+  readonly mode: 'delete' | 'unwrap';
+  readonly expectedRevision?: number;
+}
+
 /** Remove a registered wrapper and its own metadata in one native undo unit. */
 export function removeBlock(editor: DocxEditorInstance, request: BlockRemoval): BlockRemoveResult {
+  return removeBlocks(editor, {
+    controlIds: [request.controlId],
+    mode: request.mode,
+    ...(request.expectedRevision === undefined
+      ? {}
+      : { expectedRevision: request.expectedRevision }),
+  });
+}
+
+/**
+ * Remove registered wrappers and their own metadata in one native undo unit. A wrapper inside
+ * another selected wrapper is refused: removing the outer one already removes it.
+ */
+export function removeBlocks(
+  editor: DocxEditorInstance,
+  request: BlocksRemoval
+): BlockRemoveResult {
   const surface = editor.surface;
   if (!surface) return fail('document-not-ready', 'The document is not attached.');
   surface.flushPendingInput();
@@ -51,24 +76,56 @@ export function removeBlock(editor: DocxEditorInstance, request: BlockRemoval): 
     return fail('stale-revision', 'Read the current document before removing this block.');
   if (request.mode !== 'delete' && request.mode !== 'unwrap')
     return fail('invalid-input', 'Choose delete or unwrap.');
+  if (!request.controlIds.length || new Set(request.controlIds).size !== request.controlIds.length)
+    return fail('invalid-input', 'Choose distinct blocks to remove.');
   if (surface.editingMode() === 'suggest')
     return fail('unsupported-operation', 'Tracked block removal requires a review transaction.');
   const pkg = surface.session.currentPackage(),
     part = surface.session.part();
   const index = buildBlockIndex(pkg);
-  const block = [...index.byId.values()].find((entry) => entry.controlId === request.controlId);
-  const control = findNode(part, request.controlId);
-  if (!block || block.partName !== part.name || !control || control.kind !== 'contentControl')
-    return fail('invalid-input', 'The registered block is missing from the active story.');
+  const targets: { block: IndexedBlock; control: OoxmlNode & { kind: 'contentControl' } }[] = [];
+  for (const controlId of request.controlIds) {
+    const block = [...index.byId.values()].find((entry) => entry.controlId === controlId);
+    const control = findNode(part, controlId);
+    if (!block || block.partName !== part.name || !control || control.kind !== 'contentControl')
+      return fail('invalid-input', 'The registered block is missing from the active story.');
+    targets.push({ block, control });
+  }
+  for (const { control } of targets)
+    for (
+      let parent = parentNodeOf(part, control.id);
+      parent;
+      parent = parentNodeOf(part, parent.id)
+    )
+      if (request.controlIds.includes(parent.id))
+        return fail('invalid-input', 'A selected block is inside another selected block.');
   const store = readPayloadStore(pkg);
   if (store.status !== 'ready')
     return fail('invalid-document', 'The block payload store is unavailable.');
-  const ids = new Set([block.id]);
-  if (request.mode === 'delete')
-    for (const { node } of contentControlsIn(control)) {
-      const id = blockIdFromTag(contentControlPropertiesOf(node).tag ?? '');
-      if (id !== null) ids.add(id);
+  const ids = new Set<string>();
+  // Payload IDs removed with a host-owned inline atom; their records retire in collaboration.
+  const inlineIds = new Set<string>();
+  const ownsInline = new Map<string, boolean>();
+  for (const { block, control } of targets) {
+    encodeBlockPayload(block.payload);
+    // The host owns these immutable inline atoms. Ordinary text editing retains their lock.
+    const ownedInline =
+      parentNodeOf(part, control.id)?.kind === 'paragraph' &&
+      // Inline controls: images are drawings, so only components with an inline binding count.
+      !!activeMdxRegistry().components.get(block.payload.type)?.inline &&
+      isInlineComponentPayload(block.payload, activeMdxRegistry());
+    ownsInline.set(control.id, ownedInline);
+    const owned = [block.id];
+    if (request.mode === 'delete')
+      for (const { node } of contentControlsIn(control)) {
+        const id = blockIdFromTag(contentControlPropertiesOf(node).tag ?? '');
+        if (id !== null) owned.push(id);
+      }
+    for (const id of owned) {
+      ids.add(id);
+      if (ownedInline) inlineIds.add(id);
     }
+  }
   // Never delete a payload used by a second control, including one in another story.
   const counts = new Map<string, number>();
   for (const story of pkg.parts.values()) {
@@ -84,7 +141,7 @@ export function removeBlock(editor: DocxEditorInstance, request: BlockRemoval): 
   const cleanup = (working: OoxmlPackage) => {
     let next = working;
     for (const id of removedPayloadIds) {
-      if (!ownedInline || editor.snapshot().collaborationStatus === 'inactive') {
+      if (!inlineIds.has(id) || editor.snapshot().collaborationStatus === 'inactive') {
         next = withoutCustomXmlNode(next, store.part.partName, `scio_${id}`);
         continue;
       }
@@ -111,39 +168,40 @@ export function removeBlock(editor: DocxEditorInstance, request: BlockRemoval): 
       throw new Error('The removed block payloads remain in the native store.');
     return next;
   };
-  const op = {
-    op: 'removeContentControl' as const,
-    controlId: control.id,
-    keepContent: request.mode === 'unwrap',
-  };
   const ops: TreeDocOp[] = [];
   let preview = part;
-  // The host owns these immutable inline atoms. Ordinary text editing retains their lock.
-  // Delete only registered native atom controls; explicit user locks on other blocks still refuse.
-  encodeBlockPayload(block.payload);
-  const ownedInline =
-    parentNodeOf(part, control.id)?.kind === 'paragraph' &&
-    // Inline controls: images are drawings, so only components with an inline binding count.
-    !!activeMdxRegistry().components.get(block.payload.type)?.inline &&
-    isInlineComponentPayload(block.payload, activeMdxRegistry());
-  if (
-    request.mode === 'delete' &&
-    ownedInline &&
-    contentControlPropertiesOf(control).lock === 'sdtContentLocked'
-  ) {
-    const unlock: TreeDocOp = {
-      op: 'setContentControlProperties',
+  for (const { control } of targets) {
+    // Delete only registered native atom controls; explicit user locks on other blocks still
+    // refuse.
+    if (
+      request.mode === 'delete' &&
+      ownsInline.get(control.id) &&
+      contentControlPropertiesOf(control).lock === 'sdtContentLocked'
+    ) {
+      const unlock: TreeDocOp = {
+        op: 'setContentControlProperties',
+        controlId: control.id,
+        lock: 'unlocked',
+      };
+      const result = applyTreeOp(preview, unlock);
+      if (!result.ok) return fail('apply-failed', `Native atom unlock refused: ${result.reason}`);
+      preview = result.part;
+      ops.push(unlock);
+    }
+    const op: TreeDocOp = {
+      op: 'removeContentControl',
       controlId: control.id,
-      lock: 'unlocked',
+      keepContent: request.mode === 'unwrap',
     };
-    const result = applyTreeOp(preview, unlock);
-    if (!result.ok) return fail('apply-failed', `Native atom unlock refused: ${result.reason}`);
-    preview = result.part;
-    ops.push(unlock);
+    const removed = applyTreeOp(preview, op);
+    if (!removed.ok) return fail('apply-failed', `Native block removal refused: ${removed.reason}`);
+    preview = removed.part;
+    ops.push(op);
   }
-  let prepared = applyTreeOp(preview, op);
-  if (!prepared.ok) return fail('apply-failed', `Native block removal refused: ${prepared.reason}`);
-  ops.push(op);
+  let prepared: { ok: true; part: typeof part } | { ok: false; reason: string } = {
+    ok: true,
+    part: preview,
+  };
   const body = bodyStoryRoot(prepared.part);
   const needsParagraph = body !== null && storyParagraphs(body).length === 0;
   if (needsParagraph) {
