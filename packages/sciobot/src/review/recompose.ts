@@ -77,6 +77,8 @@ export interface RecomposeOptions {
   readonly preparePayloads?: (
     targets: readonly RecomposePayloadTarget[]
   ) => RecomposePayloadOptions | Promise<RecomposePayloadOptions>;
+  /** Couple every native change of this target into one review decision per story. */
+  readonly groupNativeChanges?: boolean;
 }
 
 const active = new WeakSet<DocxEditorInstance>();
@@ -333,7 +335,8 @@ export async function recomposeOwnedProposals(
       planned.plan,
       input.context,
       payloads,
-      preparedImages?.images
+      preparedImages?.images,
+      options.groupNativeChanges ?? false
     );
     if (!result.success) return result;
     const ledger = new Map(input.request.ownership.map((group) => [group.groupId, group]));

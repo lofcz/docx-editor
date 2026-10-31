@@ -338,11 +338,35 @@ function commit(
           preserveRemainingRevisions(middle, ctx.currentPackage());
           if (groupNativeChanges) {
             const grouped = new Map<string, ReviewGroupReceipt['addresses'][number][]>();
-            for (const receipt of receipts) {
-              const addresses = grouped.get(receipt.partName) ?? [];
-              addresses.push(...receipt.addresses);
-              grouped.set(receipt.partName, addresses);
-            }
+            const add = (partName: string, address: ReviewGroupReceipt['addresses'][number]) => {
+              const addresses = grouped.get(partName) ?? [];
+              if (
+                !addresses.some(
+                  (known) =>
+                    propertyAddressKey(partName, known) === propertyAddressKey(partName, address)
+                )
+              )
+                addresses.push(address);
+              grouped.set(partName, addresses);
+            };
+            for (const receipt of receipts)
+              for (const address of receipt.addresses) add(receipt.partName, address);
+            // Plain native revisions have no receipt. Couple every new one outside application
+            // proposals, which keep their own persisted decisions.
+            const prior = new Set(
+              requireSuccess(readReviewGroups(middle)).groups.flatMap((group) =>
+                group.native.map((member) => propertyAddressKey(member.partName, member.address))
+              )
+            );
+            for (const group of requireSuccess(readReviewGroups(ctx.currentPackage())).groups)
+              if (
+                !group.properties.length &&
+                !group.readOnly &&
+                !group.id.startsWith('g1:payload:')
+              )
+                for (const member of group.native)
+                  if (!prior.has(propertyAddressKey(member.partName, member.address)))
+                    add(member.partName, member.address);
             receipts = [...grouped].map(([partName, addresses]) => ({ partName, addresses }));
           }
           edit((working) => persistReviewGroups(middle, working, receipts, allowInitialization));
