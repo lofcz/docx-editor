@@ -26,6 +26,7 @@ import {
   type TreeDocOp,
 } from '@docx-editor.dev/core/store';
 import { readPayloadStore, withPayloadRecord } from '../blocks/payload-opc-codec';
+import { siblingRemoval, withoutPayloadRecords } from './direct-block-removal';
 import type { BlockPayload } from '../blocks/payload-schema';
 import { sameRevision, type NativeEditFailure, type RevisionToken } from '../contracts/document';
 import { jsonDataKey } from '../diff/target-key';
@@ -381,14 +382,12 @@ function lowerDirectPlan(
       }
       case 'siblings': {
         sibling(preview, edit);
-        for (const id of edit.removedIds) {
-          const node = findNode(preview, id);
-          if (!node || (node.kind !== 'paragraph' && !wml(node, 'tbl')) || hasSection(node))
-            refuse(
-              'Direct sibling removal supports complete paragraphs and tables without section marks.',
-              'unsupported-operation'
-            );
-        }
+        const removal = siblingRemoval(preview, edit.removedIds, hasSection);
+        if (typeof removal === 'string') refuse(removal, 'unsupported-operation');
+        const removedBlocks = removal.blocks;
+        const removedPayloads = removal.payloads;
+        if (removedPayloads.length)
+          deferred.push((working) => withoutPayloadRecords(working, removedPayloads));
         const prepared = siblingFragmentSeeds(
           edit,
           edit.afterId !== null && findNode(preview, edit.afterId)?.kind === 'paragraph',
@@ -402,6 +401,10 @@ function lowerDirectPlan(
             refuse('An inserted list binding names no new paragraph.', 'apply-failed');
         const lateRemoval: string[] = [];
         for (const id of edit.removedIds) {
+          if (removedBlocks.has(id)) {
+            apply({ op: 'removeContentControl', controlId: id, keepContent: false });
+            continue;
+          }
           const op = { op: 'deleteBlock' as const, blockId: id };
           if (
             (seeds.paragraphs.length || seeds.placed.length) &&

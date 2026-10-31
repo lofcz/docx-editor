@@ -450,7 +450,7 @@ const MARK_XML: Readonly<Record<string, string>> = {
   italic: '<w:i/>',
   strike: '<w:strike/>',
 };
-function runXml(value: string, marks: readonly string[]): string {
+export function runXml(value: string, marks: readonly string[]): string {
   // The code character style (N18) is CT_RPr's first child, ahead of the toggles.
   const properties =
     (marks.includes('code') ? `<w:rStyle w:val="${SCIOBOT_CODE_STYLE_ID}"/>` : '') +
