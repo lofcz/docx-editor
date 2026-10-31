@@ -334,7 +334,7 @@ Final verification against installed fork `929e0ea4a9bf68f3a4c9a7c133e55bc76b76d
 
 ## X18
 
-- [ ] Render table of contents navigation
+- [x] Render table of contents navigation
 
 **Depends:** [N02](07-native-content.md#n02), [B05](02-react-blocks.md#b05), [V01](11-verification.md#v01)
 
@@ -348,7 +348,7 @@ Final verification against installed fork `929e0ea4a9bf68f3a4c9a7c133e55bc76b76d
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** claude, application branch `claude/docx-native-cutover`, fork `915ceb2b`. **Evidence:** Plate serializes a table of contents as `<toc />` and derives its entries from headings. Fork `915ceb2b` registers `toc` as an atomic block with no attributes and a one-line Word fallback ("Table of contents"); fork `projection/toc.test.ts` plans it, reopens it with an exact projection, and replans with no operations. Application commit `be7214638` adds `blocks/toc.tsx` and the slash entry. Entries are the paragraphs with heading 1-3 styles (by style name or `HeadingN` ID), read again on every document change; a click places the caret at the heading and reveals it with `revealPosition`. A defect class surfaced: the React Compiler memoizes reads of the mutable session unless the revision is an input, so the entries stayed stale; the reads now take the revision, and the activity property review read was given the same guard. Chromium `toc.test.ts` passes 3 cases: keyboard-written headings and a slash-inserted table of contents list Lesson, Part one, and Part two; a renamed heading updates its entry; after 70 paragraphs push the heading pages down, its entry scrolls it into view; and two sessions in both client orders show a peer's heading rename in both tables with equal saved digests. Difference: the Word fallback is a static title line, not a Word TOC field.
 
 ## X19
 
