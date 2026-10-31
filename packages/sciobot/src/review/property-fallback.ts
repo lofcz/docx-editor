@@ -1,3 +1,4 @@
+import { activeStorage } from '../registry/active';
 import {
   contentControlPropertiesOf,
   contentControlContentNodeOf,
@@ -12,7 +13,6 @@ import {
   type RevisionAddress,
 } from '@docx-editor.dev/core/store';
 import { blockIdFromTag } from '../blocks/payload-opc-codec';
-import { GENERATED_LABEL_TAG } from '../projection/block-tags';
 
 /** Resolve one explicitly generated label without descending into another application block. */
 export function propertyFallbackParagraph(part: OoxmlPart, controlId: string) {
@@ -20,7 +20,7 @@ export function propertyFallbackParagraph(part: OoxmlPart, controlId: string) {
   if (control?.kind !== 'contentControl') return null;
   const labels = contentControlsIn(control).filter(
     (entry) =>
-      contentControlPropertiesOf(entry.node).tag === GENERATED_LABEL_TAG &&
+      contentControlPropertiesOf(entry.node).tag === activeStorage().labelTag &&
       !entry.ancestors.some(
         (ancestor) =>
           ancestor.id !== controlId &&

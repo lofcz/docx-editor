@@ -31,6 +31,25 @@ export interface MdxMarkdownBinding {
 }
 
 /**
+ * A component that sits inside a paragraph as one native inline control.
+ *
+ * Both hooks may throw `MdxRefusal` to refuse with a stable message.
+ */
+export interface MdxInlineBinding {
+  /** The atom name plans record for this control. */
+  readonly atom: string;
+  /** Markdown node types that write this atom inside a paragraph, such as `inlineMath`. */
+  readonly types?: readonly string[];
+  /** The payload of a new Markdown node of one of `types`. */
+  readonly fromMarkdown?: (ast: TargetAstNode, id: string) => BlockPayload;
+  /** The payload to store and the Word-readable text that stands for it. */
+  readonly fallback: (payload: BlockPayload) => {
+    readonly payload: BlockPayload;
+    readonly text: string;
+  };
+}
+
+/**
  * One application component that the embedding application registers.
  *
  * `type` is the payload type that a block stores. `mdx` maps the payload to its MDX tag and
@@ -45,6 +64,7 @@ export interface MdxComponentDefinition {
   readonly mdx?: BlockTagDefinition;
   readonly parse?: MdxComponentParser;
   readonly markdown?: MdxMarkdownBinding;
+  readonly inline?: MdxInlineBinding;
   readonly diff?: DomainDiffStrategy;
 }
 
@@ -95,6 +115,8 @@ export interface MdxComponentRegistry {
   >;
   /** Components written as Markdown nodes, by node type. */
   readonly markdown: ReadonlyMap<string, MdxComponentDefinition>;
+  /** Inline components written as Markdown nodes inside a paragraph, by node type. */
+  readonly inlineMarkdown: ReadonlyMap<string, MdxComponentDefinition>;
   readonly opaque: {
     readonly allowed: ReadonlyMap<string, readonly string[]>;
     readonly literal: ReadonlySet<string>;
@@ -175,6 +197,14 @@ function componentProblem(component: MdxComponentDefinition): string | null {
     if (typeof binding.fromMarkdown !== 'function' || typeof binding.matches !== 'function')
       return 'markdown.hooks';
   }
+  if (component.inline) {
+    const binding = component.inline;
+    if (component.kind !== 'inline') return 'inline.kind';
+    if (!named(binding.atom, TAG) || typeof binding.fallback !== 'function') return 'inline';
+    for (const type of binding.types ?? []) if (!named(type, TAG)) return 'inline.types';
+    if (binding.types?.length && typeof binding.fromMarkdown !== 'function')
+      return 'inline.fromMarkdown';
+  }
   const diff = component.diff;
   if (diff) {
     if (diff.kind !== 'atomic' && diff.kind !== 'container') return 'diff.kind';
@@ -211,6 +241,7 @@ export function createMdxComponentRegistry(input: MdxRegistryInput): MdxRegistry
     { atomic?: MdxComponentDefinition; container?: MdxComponentDefinition }
   >();
   const markdown = new Map<string, MdxComponentDefinition>();
+  const inlineMarkdown = new Map<string, MdxComponentDefinition>();
   for (const component of input.components) {
     const issue = componentProblem(component);
     if (issue) return refuse('invalid-component', `${String(component.type)}: ${issue}`);
@@ -233,6 +264,10 @@ export function createMdxComponentRegistry(input: MdxRegistryInput): MdxRegistry
       if (markdown.has(type)) return refuse('duplicate-parser', `markdown:${type}`);
       markdown.set(type, frozen);
     }
+    for (const type of component.inline?.types ?? []) {
+      if (inlineMarkdown.has(type)) return refuse('duplicate-parser', `inline:${type}`);
+      inlineMarkdown.set(type, frozen);
+    }
     components.set(component.type, frozen);
   }
   const opaque = input.opaque ?? { allowed: {}, literal: [], dataOnly: [] };
@@ -254,6 +289,7 @@ export function createMdxComponentRegistry(input: MdxRegistryInput): MdxRegistry
       diffStrategies,
       parsers,
       markdown,
+      inlineMarkdown,
       opaque: Object.freeze({
         allowed,
         literal: new Set(opaque.literal),

@@ -1,5 +1,6 @@
+import { activeStorage } from '../registry/active';
 import { type OoxmlNode, type OoxmlElement, type OoxmlPackage } from '@docx-editor.dev/core/store';
-import { readPayloadStore, PAYLOAD_NAMESPACE } from '../blocks/payload-opc-codec';
+import { readPayloadStore } from '../blocks/payload-opc-codec';
 import type { DocumentView, NativeEditFailure } from '../contracts/document';
 import { bindBlockPresenceRecord } from './block-presence-plan';
 import type { BlockPresenceRecord } from './block-presence-schema';
@@ -37,7 +38,7 @@ export function projectBlockPresence(
       const payload =
         metadata &&
         child.kind !== 'textValue' &&
-        child.namespaceUri === PAYLOAD_NAMESPACE &&
+        child.namespaceUri === activeStorage().namespace &&
         child.localName === 'node'
           ? child.attributes.find(
               (attribute) => attribute.namespaceUri === '' && attribute.localName === 'id'

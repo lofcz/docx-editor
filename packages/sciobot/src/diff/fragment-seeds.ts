@@ -1,5 +1,5 @@
 import type { MdxComponentRegistry } from '../registry/contract';
-import { sciobotMdxRegistry } from '../registry/sciobot';
+import { activeMdxRegistry } from '../registry/active';
 import { completeInlineAtomPayloads } from '../native/inline-atom-payloads';
 import type { InlineImageRuntime } from '../native/inline-image-runtime';
 import { inlineAtomXml, inlineAtomKey, inlineAtomsByPath } from './inline-atom-xml';
@@ -604,8 +604,7 @@ function blockXml(node: TargetAstNode, path: readonly number[], context: RenderC
   const properties = `<w:sdtPr><w:alias w:val="${escapeXml(binding.label)}"/><w:tag w:val="${escapeXml(blockTag(binding.payload.id))}"/></w:sdtPr>`;
   if (
     binding.payload.type === MDX_BLOCK ||
-    (context.registry ?? sciobotMdxRegistry()).blockTags.get(binding.payload.type)?.kind ===
-      'atomic'
+    (context.registry ?? activeMdxRegistry()).blockTags.get(binding.payload.type)?.kind === 'atomic'
   ) {
     if (binding.payload.type === 'code_block') {
       const language = binding.payload.attributes.language,

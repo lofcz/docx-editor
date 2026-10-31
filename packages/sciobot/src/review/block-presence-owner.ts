@@ -1,3 +1,4 @@
+import { activeStorage } from '../registry/active';
 import { inlinePresenceSource } from './inline-presence-native';
 import { removableInlinePayload } from '../diff/inline-removal';
 import { sha256FontBytes } from '@docx-editor.dev/core/layout';
@@ -13,7 +14,6 @@ import {
 } from '@docx-editor.dev/core/store';
 import { buildBlockIndex } from '../blocks/block-index';
 import { blockIdFromTag, readPayloadStore } from '../blocks/payload-opc-codec';
-import { BLOCK_TAG_PREFIX } from '../blocks/payload-schema';
 import type { NativeEditFailure } from '../contracts/document';
 import { BLOCK_PRESENCE_LIMITS, type BlockPresenceMember } from './block-presence-schema';
 
@@ -94,7 +94,7 @@ export function readPresenceOwners(
       const tag = contentControlPropertiesOf(node).tag ?? '',
         id = blockIdFromTag(tag);
       if (!id) {
-        if (tag.startsWith(BLOCK_TAG_PREFIX))
+        if (tag.startsWith(activeStorage().tagPrefix))
           return fail('A presence subtree has a malformed block reference.');
         continue;
       }

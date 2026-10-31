@@ -1,5 +1,5 @@
 import type { MdxComponentRegistry } from '../registry/contract';
-import { sciobotMdxRegistry } from '../registry/sciobot';
+import { activeMdxRegistry } from '../registry/active';
 import { diffArrays } from 'diff';
 import type { BlockPayload } from '../blocks/payload-schema';
 import type { NativeEditFailure } from '../contracts/document';
@@ -26,7 +26,7 @@ export function atomicTargetsPairable(
   payload: BlockPayload,
   before: TargetAstNode,
   after: TargetAstNode,
-  registry: MdxComponentRegistry = sciobotMdxRegistry()
+  registry: MdxComponentRegistry = activeMdxRegistry()
 ): boolean {
   if (opaque(payload))
     return (
@@ -183,7 +183,7 @@ export function planTargetAtomic(
   payload: BlockPayload,
   before: TargetAstNode,
   after: TargetAstNode,
-  registry: MdxComponentRegistry = sciobotMdxRegistry()
+  registry: MdxComponentRegistry = activeMdxRegistry()
 ): EditPlanResult {
   if (!atomicTargetsPairable(payload, before, after, registry))
     return fail('Atomic target syntax changes its native payload kind.');

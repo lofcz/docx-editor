@@ -1,6 +1,6 @@
 import type { OoxmlPackage } from '@docx-editor.dev/core/store';
 import type { MdxComponentRegistry } from '../registry/contract';
-import { sciobotMdxRegistry } from '../registry/sciobot';
+import { activeMdxRegistry } from '../registry/active';
 import { buildBlockIndex } from '../blocks/block-index';
 import { encodeBlockPayload, isBlockId } from '../blocks/payload-schema';
 import type { NativeEditFailure, RevisionToken } from '../contracts/document';
@@ -38,7 +38,7 @@ export function planDomainProperties(
   source: DomainPropertySource,
   target: DomainPropertyTarget,
   intent?: DomainPropertyIntent,
-  registry: MdxComponentRegistry = sciobotMdxRegistry()
+  registry: MdxComponentRegistry = activeMdxRegistry()
 ): EditPlanResult {
   if (intent !== undefined && intent !== 'field-edit') return fail('Invalid property edit intent.');
   if (!source || typeof source !== 'object') return fail('Missing domain property source.');

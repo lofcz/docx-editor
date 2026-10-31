@@ -1,3 +1,4 @@
+import { activeStorage } from '../registry/active';
 import {
   customXmlDataParts,
   customXmlNodes,
@@ -5,8 +6,7 @@ import {
   type CustomXmlDataPart,
   type OoxmlPackage,
 } from '@docx-editor.dev/core/store';
-import { isBlockId, PROPERTY_REVIEW_NODE_PREFIX } from '../blocks/payload-schema';
-import { PAYLOAD_NAMESPACE, PAYLOAD_ROOT } from '../blocks/payload-opc-codec';
+import { isBlockId } from '../blocks/payload-schema';
 import {
   decodePropertyReviewRecord,
   encodePropertyReviewRecord,
@@ -14,9 +14,10 @@ import {
   type PropertyReviewRecord,
 } from './property-record-schema';
 
-export const PROPERTY_REVIEW_NAMESPACE = PAYLOAD_NAMESPACE;
-export const PROPERTY_REVIEW_ROOT = PAYLOAD_ROOT;
-const PREFIX = PROPERTY_REVIEW_NODE_PREFIX;
+// Property review records share the payload store, under its own node prefix.
+const namespace = () => activeStorage().namespace;
+const root = () => activeStorage().root;
+const prefix = () => activeStorage().reviewNodePrefix;
 const MAX_RECORDS = 1024;
 const MAX_NODE_SLOTS = 50_000;
 const MAX_STORE_BYTES = 8 * 1024 * 1024;
@@ -45,17 +46,13 @@ export type PropertyStoreWrite =
 /** One proposal per native custom XML node. Independent proposals never overwrite one payload string. */
 export function readPropertyReviewStore(pkg: OoxmlPackage): PropertyStoreRead {
   const descriptors = customXmlDataParts(pkg, pkg.mainDocumentPart).filter(
-    (part) => part.namespaceUri === PROPERTY_REVIEW_NAMESPACE
+    (part) => part.namespaceUri === namespace()
   );
   if (!descriptors.length) return { status: 'absent' };
   if (descriptors.length !== 1) return { status: 'invalid', reason: 'duplicate-property-store' };
   const descriptor = descriptors[0]!,
     part = pkg.parts.get(descriptor.partName);
-  if (
-    !part ||
-    part.root.localName !== PROPERTY_REVIEW_ROOT ||
-    part.root.namespaceUri !== PROPERTY_REVIEW_NAMESPACE
-  )
+  if (!part || part.root.localName !== root() || part.root.namespaceUri !== namespace())
     return { status: 'invalid', reason: 'invalid-property-store-root' };
   if (part.root.children.length > MAX_NODE_SLOTS)
     return { status: 'invalid', reason: 'property-store-node-limit' };
@@ -63,7 +60,7 @@ export function readPropertyReviewStore(pkg: OoxmlPackage): PropertyStoreRead {
     authored = part.root.children.filter(
       (node) =>
         node.kind !== 'textValue' &&
-        node.namespaceUri === PROPERTY_REVIEW_NAMESPACE &&
+        node.namespaceUri === namespace() &&
         node.localName === 'node' &&
         // Native peer-preserving undo can leave an empty wrapper. It carries no record or intent.
         (node.attributes.length !== 0 || node.children.length !== 0)
@@ -75,12 +72,12 @@ export function readPropertyReviewStore(pkg: OoxmlPackage): PropertyStoreRead {
     const id = node.attributes.find(
       (attribute) => attribute.namespaceUri === '' && attribute.localName === 'id'
     )?.value;
-    if (!id?.startsWith(PREFIX)) continue;
+    if (!id?.startsWith(prefix())) continue;
     for (const name of ['label', 'data']) {
       const fields = node.children.filter(
         (child) =>
           child.kind !== 'textValue' &&
-          child.namespaceUri === PROPERTY_REVIEW_NAMESPACE &&
+          child.namespaceUri === namespace() &&
           child.localName === name
       );
       if (
@@ -93,7 +90,7 @@ export function readPropertyReviewStore(pkg: OoxmlPackage): PropertyStoreRead {
         return { status: 'invalid', reason: 'invalid-property-node-fields' };
     }
   }
-  if (nodes.filter((node) => node.id.startsWith(PREFIX)).length > MAX_RECORDS)
+  if (nodes.filter((node) => node.id.startsWith(prefix())).length > MAX_RECORDS)
     return { status: 'invalid', reason: 'property-store-count-limit' };
   const records = new Map<string, StoredPropertyRecord>(),
     retainedRecords = new Map<string, StoredPropertyRecord>(),
@@ -101,7 +98,7 @@ export function readPropertyReviewStore(pkg: OoxmlPackage): PropertyStoreRead {
   let bytes = 0;
   for (const node of nodes) {
     if (node.id.startsWith('scio_')) continue;
-    const id = node.id.startsWith(PREFIX) ? node.id.slice(PREFIX.length) : null;
+    const id = node.id.startsWith(prefix()) ? node.id.slice(prefix().length) : null;
     if (!isBlockId(id)) return { status: 'invalid', reason: 'invalid-property-node-id' };
     if (records.has(id) || removedIds.has(id))
       return { status: 'invalid', reason: 'duplicate-property-node-id' };
@@ -154,7 +151,7 @@ export function withPropertyReviewRecord(
   // Every property owner already has an application payload. Avoid racing a second part's creation.
   if (old.status !== 'ready') return refuse('application-payload-store-required');
   const next = withCustomXmlNode(pkg, old.part.partName, {
-      id: PREFIX + record.id,
+      id: prefix() + record.id,
       label: '',
       data: raw,
     }),
@@ -174,7 +171,7 @@ export function withoutPropertyReviewRecord(pkg: OoxmlPackage, id: string): Prop
   if (store.records.get(id)!.decoded.status === 'unsupported-version')
     return refuse('unsupported-property-record-version');
   const next = withCustomXmlNode(pkg, store.part.partName, {
-      id: PREFIX + id,
+      id: prefix() + id,
       label: REMOVED,
       data: store.records.get(id)!.raw,
     }),

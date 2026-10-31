@@ -1,10 +1,11 @@
+import { activeStorage } from '../registry/active';
 import {
   contentControlPropertiesOf,
   contentControlsIn,
   isStoryPart,
   type OoxmlPackage,
 } from '@docx-editor.dev/core/store';
-import { BLOCK_TAG_PREFIX, type BlockPayload } from './payload-schema';
+import type { BlockPayload } from './payload-schema';
 import { blockIdFromTag, readPayloadStore } from './payload-opc-codec';
 
 export interface IndexedBlock {
@@ -52,7 +53,7 @@ export function buildBlockIndex(pkg: OoxmlPackage, maxDiagnostics = 64): BlockIn
       const tag = contentControlPropertiesOf(node).tag ?? '';
       const id = blockIdFromTag(tag);
       if (id === null) {
-        if (tag.startsWith(BLOCK_TAG_PREFIX))
+        if (tag.startsWith(activeStorage().tagPrefix))
           report({ code: 'malformed-reference', controlId: node.id });
         continue;
       }

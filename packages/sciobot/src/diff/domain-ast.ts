@@ -3,7 +3,7 @@ import type { TargetAstNode } from '../projection/parse-target';
 import type { DomainNode } from './domain-strategies';
 import type { MdxComponentRegistry } from '../registry/contract';
 import { readMdxComponent } from '../registry/mdx-read';
-import { sciobotMdxRegistry } from '../registry/sciobot';
+import { activeMdxRegistry } from '../registry/active';
 
 /**
  * The payload node a registered JSX element describes, or null for any other element.
@@ -13,7 +13,7 @@ import { sciobotMdxRegistry } from '../registry/sciobot';
  */
 export function domainNodeFromAst(
   ast: TargetAstNode,
-  registry: MdxComponentRegistry = sciobotMdxRegistry()
+  registry: MdxComponentRegistry = activeMdxRegistry()
 ): (DomainNode & JsonObject) | null {
   return readMdxComponent(registry, ast);
 }

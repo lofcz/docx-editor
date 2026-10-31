@@ -1,5 +1,5 @@
 import type { MdxComponentRegistry } from '../registry/contract';
-import { sciobotMdxRegistry } from '../registry/sciobot';
+import { activeMdxRegistry } from '../registry/active';
 import {
   contentControlContentNodeOf,
   findNode,
@@ -58,7 +58,7 @@ const fail = (
 export function planDomainContainers(
   source: DomainContainerSource,
   target: readonly TargetAstNode[],
-  registry: MdxComponentRegistry = sciobotMdxRegistry()
+  registry: MdxComponentRegistry = activeMdxRegistry()
 ): DomainContainerResult {
   if (!source || typeof source !== 'object') return fail('Missing domain container source.');
   const descriptors = Object.getOwnPropertyDescriptors(source);

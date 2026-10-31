@@ -1,5 +1,5 @@
 import type { MdxComponentRegistry } from '../registry/contract';
-import { sciobotMdxRegistry } from '../registry/sciobot';
+import { activeMdxRegistry } from '../registry/active';
 
 /** How the planner pairs and updates a registered component's nodes. */
 export type DomainDiffStrategy =
@@ -20,7 +20,7 @@ export const IGNORED_DIFF_PROPERTIES: ReadonlySet<string> = new Set(['id', 'list
 /** The registered diff strategy of a node's payload type, if it has one. */
 export function domainDiffStrategy(
   node: DomainNode,
-  registry: MdxComponentRegistry = sciobotMdxRegistry()
+  registry: MdxComponentRegistry = activeMdxRegistry()
 ): DomainDiffStrategy | undefined {
   return node.type ? registry.diffStrategies.get(node.type) : undefined;
 }
@@ -28,7 +28,7 @@ export function domainDiffStrategy(
 export function sameContainerIdentity(
   before: DomainNode,
   after: DomainNode,
-  registry: MdxComponentRegistry = sciobotMdxRegistry()
+  registry: MdxComponentRegistry = activeMdxRegistry()
 ): boolean {
   if (before.type !== after.type) return false;
   const strategy = domainDiffStrategy(before, registry);
@@ -90,7 +90,7 @@ function propertyState(node: DomainNode, key: string): PropertyState {
 export function domainPropertyChanges(
   before: DomainNode,
   after: DomainNode,
-  registry: MdxComponentRegistry = sciobotMdxRegistry()
+  registry: MdxComponentRegistry = activeMdxRegistry()
 ): readonly DomainPropertyChange[] {
   const strategy = domainDiffStrategy(before, registry);
   if (strategy?.kind !== 'container' || !sameContainerIdentity(before, after, registry)) return [];

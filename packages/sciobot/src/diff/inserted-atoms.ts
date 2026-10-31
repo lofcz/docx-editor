@@ -1,11 +1,7 @@
-import { createMentionPayload, mentionWordFallback } from '../blocks/mention-codec';
 import type { OoxmlPackage } from '@docx-editor.dev/core/store';
-import {
-  INLINE_MATH,
-  createMathPayload,
-  decodeMathPayload,
-  mathWordFallback,
-} from '../blocks/math-codec';
+import type { MdxComponentRegistry } from '../registry/contract';
+import { activeMdxRegistry } from '../registry/active';
+import { MdxRefusal, astFields as fields, xmlText } from '../registry/mdx-fields';
 import { encodeBlockPayload, type BlockPayload } from '../blocks/payload-schema';
 import type { NativeEditFailure } from '../contracts/document';
 import type { TargetAstNode } from '../projection/parse-target';
@@ -16,7 +12,6 @@ import {
 } from './inline-target';
 import { insertedPayload } from './inserted-blocks';
 import { insertedPayloadProblem } from './inserted-payloads';
-import { jsonDataKey } from './target-key';
 
 /** Resolve new paragraph paths only after the structural executor allocates their native IDs. */
 export type InlineInsertionLocation =
@@ -35,7 +30,8 @@ export type InsertedInlineAtom = AtomPlacement &
   (
     | {
         readonly kind: 'inline-control';
-        readonly atom: 'math' | 'mention' | 'source';
+        /** The registered component's atom name, such as `math`. */
+        readonly atom: string;
         readonly payload: BlockPayload;
         readonly label: string;
         readonly fallback: string;
@@ -67,48 +63,12 @@ const fail = (
   error: string,
   code: NativeEditFailure['code'] = 'invalid-input'
 ): NativeEditFailure => ({ success: false, code, error });
-const xmlText = (value: unknown): value is string =>
-  typeof value === 'string' &&
-  !/[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]/.test(value) &&
-  !/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(value);
 function freeze<T>(value: T): T {
   if (value && typeof value === 'object' && !Object.isFrozen(value)) {
     for (const child of Object.values(value)) freeze(child);
     Object.freeze(value);
   }
   return value;
-}
-/** Recognized AST fields only: extension metadata must never disappear into native fallback. */
-function fields(node: TargetAstNode, names: readonly string[]): boolean {
-  return Object.keys(node).every(
-    (key) =>
-      key === 'position' ||
-      names.includes(key) ||
-      (key === 'data' &&
-        node.data !== null &&
-        typeof node.data === 'object' &&
-        !Array.isArray(node.data) &&
-        !Object.keys(node.data).length)
-  );
-}
-function mathFields(node: TargetAstNode): boolean {
-  if (!fields(node, ['type', 'value', 'data'])) return false;
-  if (
-    node.data === undefined ||
-    (node.data !== null &&
-      typeof node.data === 'object' &&
-      !Array.isArray(node.data) &&
-      !Object.keys(node.data).length)
-  )
-    return true;
-  return (
-    jsonDataKey(node.data) ===
-    jsonDataKey({
-      hName: 'code',
-      hProperties: { className: ['language-math', 'math-inline'] },
-      hChildren: [{ type: 'text', value: node.value! }],
-    })
-  );
 }
 /**
  * Plan atoms in a paragraph insertion fragment. New and retained paragraphs share the same
@@ -117,7 +77,8 @@ function mathFields(node: TargetAstNode): boolean {
  */
 export function compileInsertedAtoms(
   source: Omit<InsertedInlineAtomSource, 'pkg'>,
-  paragraph: TargetAstNode
+  paragraph: TargetAstNode,
+  registry: MdxComponentRegistry = activeMdxRegistry()
 ): { readonly success: true; readonly plan: InsertedInlineAtomPlan } | NativeEditFailure {
   if (!Number.isSafeInteger(source.offset) || source.offset < 0)
     return fail('The atom insertion offset must be a nonnegative model offset.');
@@ -185,63 +146,10 @@ export function compileInsertedAtoms(
         continue;
       }
       const id = allocate();
-      let payload: BlockPayload, fallback: string, atom: 'math' | 'mention' | 'source';
-      if (ast.type === 'inlineMath') {
-        if (!mathFields(ast))
-          return fail(
-            'Math extension metadata needs explicit native reconciliation.',
-            'unsupported-operation'
-          );
-        if (!xmlText(ast.value)) return fail('Inline math needs a literal LaTeX source.');
-        const math = createMathPayload(id, 'inline', ast.value);
-        payload = math;
-        fallback = mathWordFallback(math).inlineText;
-        atom = 'math';
-      } else if (ast.type === 'mention') {
-        if (
-          !fields(ast, ['type', 'username', 'displayText', 'children']) ||
-          !Array.isArray(ast.children) ||
-          ast.children.length !== 1 ||
-          ast.children.some(
-            (child) =>
-              !child ||
-              typeof child !== 'object' ||
-              Array.isArray(child) ||
-              child.type !== 'text' ||
-              !fields(child as TargetAstNode, ['type', 'value']) ||
-              !xmlText(child.value)
-          )
-        )
-          return fail(
-            'Mention extension metadata needs explicit native reconciliation.',
-            'unsupported-operation'
-          );
-        if (
-          !xmlText(ast.username) ||
-          !ast.username ||
-          (ast.displayText !== undefined && !xmlText(ast.displayText))
-        )
-          return fail('A mention needs a stored identifier and literal display text.');
-        if (
-          ast.displayText !== undefined &&
-          (ast.children[0] as TargetAstNode).value !== ast.displayText
-        )
-          return fail('The mention display label and text child disagree.');
-        const children = ast.children as TargetAstNode[] | undefined;
-        const value =
-          typeof ast.displayText === 'string'
-            ? ast.displayText
-            : children
-                ?.map((child) =>
-                  child.type === 'text' && typeof child.value === 'string' ? child.value : ''
-                )
-                .join('') || ast.username;
-        if (!xmlText(value)) return fail('A mention needs a readable single-line label.');
-        const mention = createMentionPayload(id, ast.username, value);
-        payload = mention;
-        fallback = mentionWordFallback(mention).text;
-        atom = 'mention';
-      } else {
+      const inline = registry.inlineMarkdown.get(ast.type)?.inline;
+      let created: BlockPayload | null;
+      if (inline?.fromMarkdown) created = inline.fromMarkdown(ast, id);
+      else {
         if (
           !fields(ast, ['type', 'name', 'attributes', 'children']) ||
           !Array.isArray(ast.children) ||
@@ -251,31 +159,18 @@ export function compileInsertedAtoms(
             'Only complete empty registered atom syntax can enter an inline control.',
             'unsupported-operation'
           );
-        const created = insertedPayload(ast, id);
-        if (created?.type === INLINE_MATH) {
-          const math = decodeMathPayload(encodeBlockPayload(created));
-          if (math.status !== 'supported')
-            return fail('An inline equation needs a valid original source.');
-          payload = math.payload;
-          fallback = mathWordFallback(math.payload).inlineText;
-          atom = 'math';
-        } else {
-          if (!created || created.type !== 'source')
-            return fail(
-              `Inserted ${ast.type} atoms need their own native representation.`,
-              'unsupported-operation'
-            );
-          payload = created;
-          const attrs = payload.attributes;
-          fallback =
-            ([attrs.title, attrs.author, attrs.url].find(
-              (value) => typeof value === 'string' && value.length > 0
-            ) as string | undefined) ?? 'Source';
-          if (!xmlText(fallback) || /[\r\n]/.test(fallback))
-            return fail('An inline source needs a readable single-line label.');
-          atom = 'source';
-        }
+        created = insertedPayload(ast, id, registry);
       }
+      const binding = created ? registry.components.get(created.type)?.inline : undefined;
+      if (!created || !binding)
+        return fail(
+          `Inserted ${ast.type} atoms need their own native representation.`,
+          'unsupported-operation'
+        );
+      const shown = binding.fallback(created);
+      let payload = shown.payload;
+      const fallback = shown.text,
+        atom = binding.atom;
       // Validate before the allocation escapes. Source metadata is detached from caller objects.
       payload = JSON.parse(encodeBlockPayload(payload)) as BlockPayload;
       const label = Array.from(fallback).slice(0, 128).join('');
@@ -291,6 +186,7 @@ export function compileInsertedAtoms(
       return fail('Inserted atom block IDs must be distinct.');
     return { success: true, plan: freeze({ operations, modelLength: offset - source.offset }) };
   } catch (error) {
+    if (error instanceof MdxRefusal) return fail(error.message, error.code);
     return fail(error instanceof Error ? error.message : 'The inline atom plan was refused.');
   }
 }
@@ -298,9 +194,10 @@ export function compileInsertedAtoms(
 /** Validate compiled atom ownership against the immutable source package before planning writes. */
 export function planInsertedAtoms(
   source: InsertedInlineAtomSource,
-  paragraph: TargetAstNode
+  paragraph: TargetAstNode,
+  registry: MdxComponentRegistry = activeMdxRegistry()
 ): { readonly success: true; readonly plan: InsertedInlineAtomPlan } | NativeEditFailure {
-  const compiled = compileInsertedAtoms(source, paragraph);
+  const compiled = compileInsertedAtoms(source, paragraph, registry);
   if (!compiled.success) return compiled;
   const controls = compiled.plan.operations.flatMap((op) =>
     op.kind === 'inline-control' ? [{ path: op.path, payload: op.payload, label: op.label }] : []

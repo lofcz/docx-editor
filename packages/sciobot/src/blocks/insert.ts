@@ -1,3 +1,4 @@
+import { activeStorage } from '../registry/active';
 import type { DocxEditorInstance } from '@docx-editor.dev/core/editor';
 import {
   bodyStoryRoot,
@@ -19,7 +20,6 @@ import {
   type OoxmlPart,
 } from '@docx-editor.dev/core/store';
 import type { NativeEditFailure } from '../contracts/document';
-import { GENERATED_LABEL_TAG } from '../projection/block-tags';
 import { blockTag, readPayloadStore, withPayloadRecord } from './payload-opc-codec';
 import type { BlockPayload } from './payload-schema';
 
@@ -64,7 +64,7 @@ function blockXml(insertion: BlockInsertion, paragraphs: readonly string[]): str
   const label =
     insertion.generatedLabel === undefined
       ? ''
-      : `<w:sdt><w:sdtPr><w:tag w:val="${GENERATED_LABEL_TAG}"/></w:sdtPr><w:sdtContent>` +
+      : `<w:sdt><w:sdtPr><w:tag w:val="${activeStorage().labelTag}"/></w:sdtPr><w:sdtContent>` +
         `<w:p>${run(insertion.generatedLabel)}</w:p></w:sdtContent></w:sdt>`;
   return (
     `<w:sdt><w:sdtPr><w:alias w:val="${escapeXml(insertion.label)}"/>` +
@@ -111,7 +111,7 @@ function editableParagraphs(control: OoxmlNode): string[] {
     if (node.kind === 'textValue') return;
     if (
       node.kind === 'contentControl' &&
-      contentControlPropertiesOf(node).tag === GENERATED_LABEL_TAG
+      contentControlPropertiesOf(node).tag === activeStorage().labelTag
     )
       return;
     if (node.kind === 'paragraph') found.push(node.id);

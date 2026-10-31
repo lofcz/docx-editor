@@ -1,5 +1,5 @@
 import type { MdxComponentRegistry } from '../registry/contract';
-import { sciobotMdxRegistry } from '../registry/sciobot';
+import { activeMdxRegistry } from '../registry/active';
 import { payloadFallback, payloadFallbackContains, type PayloadFallback } from './payload-fallback';
 import { FIELD_PROPERTY_REVIEW_EXECUTOR } from './property-record-schema';
 import {
@@ -195,7 +195,7 @@ function validPayloadChange(
 /** Pure canonical inspection. The returned targets are internal, never stored or replayed. */
 export function prepareExternalReview(
   pkg: OoxmlPackage,
-  registry: MdxComponentRegistry = sciobotMdxRegistry()
+  registry: MdxComponentRegistry = activeMdxRegistry()
 ):
   | {
       readonly success: true;
@@ -457,7 +457,7 @@ export function prepareExternalReview(
 /** No group state is hidden or modified when external content is ambiguous. */
 export function inspectExternalReview(
   pkg: OoxmlPackage,
-  registry: MdxComponentRegistry = sciobotMdxRegistry()
+  registry: MdxComponentRegistry = activeMdxRegistry()
 ): ExternalReviewRead {
   const prepared = prepareExternalReview(pkg, registry);
   return prepared.success ? Object.freeze({ success: true, report: prepared.report }) : prepared;

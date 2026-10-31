@@ -8,6 +8,7 @@ import {
 import { BLOCK_TAG_PREFIX, PROPERTY_REVIEW_NODE_PREFIX } from '../blocks/payload-schema';
 import { PAYLOAD_NAMESPACE, PAYLOAD_ROOT, PAYLOAD_NODE_PREFIX } from '../blocks/payload-opc-codec';
 import { SCIOBOT_PARSERS } from './sciobot-parse';
+import { INLINE_EQUATION_INLINE, MENTION_INLINE, SOURCE_INLINE } from './sciobot-inline';
 import {
   BLOCK_EQUATION_MARKDOWN,
   CODE_BLOCK_MARKDOWN,
@@ -15,6 +16,7 @@ import {
 } from './sciobot-markdown';
 import {
   createMdxComponentRegistry,
+  type MdxInlineBinding,
   type MdxMarkdownBinding,
   type MdxComponentDefinition,
   type MdxComponentRegistry,
@@ -29,7 +31,13 @@ const MARKDOWN: Readonly<Record<string, MdxMarkdownBinding>> = {
   equation: BLOCK_EQUATION_MARKDOWN,
   inline_equation: INLINE_EQUATION_MARKDOWN,
 };
+const INLINE: Readonly<Record<string, MdxInlineBinding>> = {
+  inline_equation: INLINE_EQUATION_INLINE,
+  mention: MENTION_INLINE,
+  source: SOURCE_INLINE,
+};
 const extras = (type: string) => ({
+  ...(Object.hasOwn(INLINE, type) ? { inline: INLINE[type]! } : {}),
   ...(Object.hasOwn(SCIOBOT_DIFF_STRATEGIES, type) ? { diff: SCIOBOT_DIFF_STRATEGIES[type]! } : {}),
   ...(Object.hasOwn(SCIOBOT_PARSERS, type) ? { parse: SCIOBOT_PARSERS[type]! } : {}),
   ...(Object.hasOwn(MARKDOWN, type) ? { markdown: MARKDOWN[type]! } : {}),

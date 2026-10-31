@@ -174,3 +174,4 @@ export * from './review/recompose-properties';
 export * from './registry/contract';
 export { sciobotMdxRegistry } from './registry/sciobot';
 export * from './registry/mdx-read';
+export * from './registry/active';

@@ -1,3 +1,4 @@
+import { activeStorage } from '../registry/active';
 import {
   bodyStoryRoot,
   contentControlPropertiesOf,
@@ -11,7 +12,6 @@ import type { MarkdownSourceSlice } from '@docx-editor.dev/docx-to-markdown';
 import { buildBlockIndex } from '../blocks/block-index';
 import { sameRevision, type NativeEditFailure } from '../contracts/document';
 import { copyBoundedJson } from '../data/json';
-import { GENERATED_LABEL_TAG } from '../projection/block-tags';
 import { SCIOBOT_CHECKLIST_TAG } from './lists';
 import { MDX_INLINE, MDX_BLOCK } from '../projection/mdx';
 import { createEditPlan, EDIT_PLAN_LIMITS } from './plan';
@@ -170,7 +170,7 @@ export function indexTargetSource(source: TargetSourceInput): TargetSourceResult
       return fail('The canonical body is duplicated, cyclic, or excessive.', 'invalid-document');
     const label =
       node.kind === 'contentControl' &&
-      contentControlPropertiesOf(node).tag === GENERATED_LABEL_TAG;
+      contentControlPropertiesOf(node).tag === activeStorage().labelTag;
     const entry: Entry = {
       ...current,
       paragraphId: node.kind === 'paragraph' ? node.id : current.paragraphId,

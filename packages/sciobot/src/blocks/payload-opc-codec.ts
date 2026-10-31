@@ -1,3 +1,4 @@
+import { activeMdxRegistry } from '../registry/active';
 import {
   customXmlDataParts,
   customXmlNodes,
@@ -47,7 +48,10 @@ export const SCIOBOT_PAYLOAD_STORAGE: PayloadStorage = Object.freeze({
   reviewNodePrefix: PROPERTY_REVIEW_NODE_PREFIX,
 });
 
-export function blockTag(id: string, storage: PayloadStorage = SCIOBOT_PAYLOAD_STORAGE): string {
+export function blockTag(
+  id: string,
+  storage: PayloadStorage = activeMdxRegistry().storage
+): string {
   if (!isBlockId(id) || storage.tagPrefix.length + id.length > MAX_TAG_LENGTH)
     throw new TypeError('Invalid block ID');
   return storage.tagPrefix + id;
@@ -55,7 +59,7 @@ export function blockTag(id: string, storage: PayloadStorage = SCIOBOT_PAYLOAD_S
 
 export function blockIdFromTag(
   tag: string,
-  storage: PayloadStorage = SCIOBOT_PAYLOAD_STORAGE
+  storage: PayloadStorage = activeMdxRegistry().storage
 ): string | null {
   if (!tag.startsWith(storage.tagPrefix)) return null;
   const id = tag.slice(storage.tagPrefix.length);
@@ -64,7 +68,7 @@ export function blockIdFromTag(
 
 export function payloadReferences(
   tags: Iterable<string>,
-  storage: PayloadStorage = SCIOBOT_PAYLOAD_STORAGE
+  storage: PayloadStorage = activeMdxRegistry().storage
 ):
   | { readonly ok: true; readonly ids: ReadonlySet<string> }
   | { readonly ok: false; readonly reason: string } {
@@ -132,7 +136,7 @@ export type PayloadStoreRead =
 /** Initialize before room bootstrap so no actor owns the shared store lifetime. */
 export function withInitializedPayloadStore(
   pkg: OoxmlPackage,
-  storage: PayloadStorage = SCIOBOT_PAYLOAD_STORAGE
+  storage: PayloadStorage = activeMdxRegistry().storage
 ):
   | { readonly ok: true; readonly pkg: OoxmlPackage }
   | { readonly ok: false; readonly pkg: OoxmlPackage; readonly reason: string } {
@@ -147,7 +151,7 @@ export function withInitializedPayloadStore(
 
 export function readPayloadStore(
   pkg: OoxmlPackage,
-  storage: PayloadStorage = SCIOBOT_PAYLOAD_STORAGE
+  storage: PayloadStorage = activeMdxRegistry().storage
 ): PayloadStoreRead {
   const stores = customXmlDataParts(pkg, pkg.mainDocumentPart).filter(
     (part) => part.namespaceUri === storage.namespace
@@ -212,7 +216,7 @@ export function withPayloadRecord(
   pkg: OoxmlPackage,
   payload: BlockPayload,
   label: string,
-  storage: PayloadStorage = SCIOBOT_PAYLOAD_STORAGE
+  storage: PayloadStorage = activeMdxRegistry().storage
 ): PayloadStoreWrite {
   const refuse = (reason: string): PayloadStoreWrite => ({ ok: false, pkg, reason });
   if (!isPayloadLabel(label)) return refuse('invalid-label');

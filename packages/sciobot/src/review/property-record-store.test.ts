@@ -34,8 +34,10 @@ import {
   type PropertyReviewRecord,
 } from './property-record-schema';
 import {
-  PROPERTY_REVIEW_NAMESPACE,
-  PROPERTY_REVIEW_ROOT,
+  PAYLOAD_NAMESPACE as PROPERTY_REVIEW_NAMESPACE,
+  PAYLOAD_ROOT as PROPERTY_REVIEW_ROOT,
+} from '../blocks/payload-opc-codec';
+import {
   readPropertyReviewStore,
   withPropertyReviewRecord,
   withoutPropertyReviewRecord,

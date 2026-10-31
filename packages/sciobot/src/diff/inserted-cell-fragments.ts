@@ -1,6 +1,6 @@
 import { encodeBlockPayload, type BlockPayload } from '../blocks/payload-schema';
 import type { MdxComponentRegistry } from '../registry/contract';
-import { sciobotMdxRegistry } from '../registry/sciobot';
+import { activeMdxRegistry } from '../registry/active';
 import { MDX_BLOCK, MDX_INLINE, serializeOpaqueMdx } from '../projection/mdx';
 import type { TargetAstNode } from '../projection/parse-target';
 import { domainNodeFromAst } from './domain-ast';
@@ -39,7 +39,7 @@ const opaque = (payload: BlockPayload) => payload.type === MDX_BLOCK || payload.
 export function payloadMatches(
   node: TargetAstNode,
   payload: BlockPayload,
-  registry: MdxComponentRegistry = sciobotMdxRegistry()
+  registry: MdxComponentRegistry = activeMdxRegistry()
 ): boolean {
   const markdown = registry.components.get(payload.type)?.markdown;
   if (markdown) return markdown.matches(node, payload);
@@ -81,7 +81,7 @@ export function isInsertedCellFragments(
   cells: unknown,
   payloads: unknown,
   inlineAtoms = false,
-  registry: MdxComponentRegistry = sciobotMdxRegistry()
+  registry: MdxComponentRegistry = activeMdxRegistry()
 ): boolean {
   if (
     !Array.isArray(cells) ||

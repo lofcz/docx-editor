@@ -1,5 +1,5 @@
 import type { MdxComponentRegistry } from '../registry/contract';
-import { sciobotMdxRegistry } from '../registry/sciobot';
+import { activeMdxRegistry } from '../registry/active';
 import { copyBoundedJson, type JsonObject } from '../data/json';
 import type { NativeEditFailure } from '../contracts/document';
 import type { BlockTagDefinition } from '../projection/block-tags';
@@ -139,8 +139,8 @@ function trimPrefix(ast: TargetAstNode): { ast: TargetAstNode; count: number } {
  */
 export function normalizeLogicalBlocks(
   input: Pick<ParsedTargetMarkdown, 'ast' | 'markdown'>,
-  definitions: ReadonlyMap<string, Definition> = sciobotMdxRegistry().blockTags,
-  registry: MdxComponentRegistry = sciobotMdxRegistry()
+  definitions: ReadonlyMap<string, Definition> = activeMdxRegistry().blockTags,
+  registry: MdxComponentRegistry = activeMdxRegistry()
 ): LogicalBlockResult {
   try {
     if (!input || typeof input !== 'object') return refuse('Missing parsed logical target.');

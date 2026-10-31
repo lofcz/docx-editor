@@ -1,5 +1,5 @@
 import type { MdxComponentRegistry } from '../registry/contract';
-import { sciobotMdxRegistry } from '../registry/sciobot';
+import { activeMdxRegistry } from '../registry/active';
 import { planInsertedAtomBindings } from './inserted-atom-bindings';
 import { atomicTargetsPairable, planTargetAtomic } from './target-atomic';
 import {
@@ -130,7 +130,7 @@ export function planTargetDocument(
   targetMarkdown: string,
   options: TargetDocumentOptions = {}
 ): TargetDocumentPlanResult {
-  const registry = options.registry ?? sciobotMdxRegistry();
+  const registry = options.registry ?? activeMdxRegistry();
   const definitions = options.definitions ?? registry.blockTags;
   const bound = bindLogicalSource(input, definitions);
   if (!bound.success) return bound;

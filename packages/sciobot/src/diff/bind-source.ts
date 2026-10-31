@@ -3,7 +3,7 @@ import { findNode, paragraphOffsetIndex } from '@docx-editor.dev/core/store';
 import type { NativeEditFailure } from '../contracts/document';
 import { copyBoundedJson, type JsonValue } from '../data/json';
 import type { BlockTagDefinition } from '../projection/block-tags';
-import { sciobotMdxRegistry } from '../registry/sciobot';
+import { activeMdxRegistry } from '../registry/active';
 import {
   parseTargetMarkdown,
   targetSourceRangeAt,
@@ -94,7 +94,7 @@ function paragraphIntervals(owners: readonly TargetSourceOwner[]) {
  */
 export function bindLogicalSource(
   input: TargetSourceInput,
-  definitions: ReadonlyMap<string, Pick<BlockTagDefinition, 'tag' | 'kind'>> = sciobotMdxRegistry()
+  definitions: ReadonlyMap<string, Pick<BlockTagDefinition, 'tag' | 'kind'>> = activeMdxRegistry()
     .blockTags
 ): BoundSourceResult {
   const indexed = indexTargetSource(input);

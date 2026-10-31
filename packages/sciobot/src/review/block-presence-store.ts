@@ -1,5 +1,5 @@
+import { activeStorage } from '../registry/active';
 import { customXmlNodes, withCustomXmlNode, type OoxmlPackage } from '@docx-editor.dev/core/store';
-import { PROPERTY_REVIEW_NODE_PREFIX } from '../blocks/payload-schema';
 import type { NativeEditFailure } from '../contracts/document';
 import { readPropertyReviewStore } from './property-record-store';
 import { bindBlockPresenceRecord } from './block-presence-plan';
@@ -28,7 +28,7 @@ export function withBlockPresenceRecord(
   if (
     old &&
     customXmlNodes(pkg, store.part.partName).find(
-      (node) => node.id === PROPERTY_REVIEW_NODE_PREFIX + record.id
+      (node) => node.id === activeStorage().reviewNodePrefix + record.id
     )?.label !== ''
   )
     return {
@@ -59,7 +59,7 @@ export function withBlockPresenceRecord(
       error: 'Presence storage exceeds the existing review metadata limits.',
     };
   const next = withCustomXmlNode(pkg, store.part.partName, {
-    id: PROPERTY_REVIEW_NODE_PREFIX + record.id,
+    id: activeStorage().reviewNodePrefix + record.id,
     label: '',
     data: raw,
   });

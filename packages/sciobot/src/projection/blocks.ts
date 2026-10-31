@@ -1,4 +1,5 @@
-import { sciobotMdxRegistry } from '../registry/sciobot';
+import { activeStorage } from '../registry/active';
+import { activeMdxRegistry } from '../registry/active';
 import { serializeMention, mentionInsideHyperlink } from './mention';
 import { forEachSemanticStory, forEachStoryParagraphFragment } from '@docx-editor.dev/core/layout';
 import { managedInlineImageAssets } from './inline-image-assets';
@@ -20,7 +21,6 @@ import {
 import type { NativeEditFailure, RevisionToken } from '../contracts/document';
 import { ProjectionComposer } from './compose';
 import {
-  GENERATED_LABEL_TAG,
   attributeLiteral,
   type BlockTagDefinition,
   type BlockPropertyPath,
@@ -113,7 +113,7 @@ export function projectBlocks(
   pkg: OoxmlPackage,
   layout: ExportSemanticLayout,
   revision: RevisionToken,
-  definitions: ReadonlyMap<string, BlockTagDefinition> = sciobotMdxRegistry().blockTags,
+  definitions: ReadonlyMap<string, BlockTagDefinition> = activeMdxRegistry().blockTags,
   options: Pick<MarkdownLayoutOptions, 'tableSyntax'> = {}
 ): { readonly success: true; readonly projection: BlockProjection } | NativeEditFailure {
   const index = buildBlockIndex(pkg);
@@ -158,7 +158,7 @@ export function projectBlocks(
     }
     if (
       node.kind === 'contentControl' &&
-      contentControlPropertiesOf(node).tag === GENERATED_LABEL_TAG
+      contentControlPropertiesOf(node).tag === activeStorage().labelTag
     )
       labelOwner = active.at(-1);
     if (node.kind === 'paragraph') {

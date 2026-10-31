@@ -2,7 +2,7 @@ import { MDX_BLOCK } from '../projection/mdx';
 import type { OoxmlPackage } from '@docx-editor.dev/core/store';
 import { encodeBlockPayload, isBlockId, type BlockPayload } from '../blocks/payload-schema';
 import type { MdxComponentRegistry } from '../registry/contract';
-import { sciobotMdxRegistry } from '../registry/sciobot';
+import { activeMdxRegistry } from '../registry/active';
 import type { NativeEditFailure, RevisionToken } from '../contracts/document';
 import type { JsonObject } from '../data/json';
 import type { TargetAstNode } from '../projection/parse-target';
@@ -46,7 +46,7 @@ export const defaultBlockId = (): string => crypto.randomUUID();
 export function insertedPayload(
   ast: TargetAstNode,
   id: string,
-  registry: MdxComponentRegistry = sciobotMdxRegistry()
+  registry: MdxComponentRegistry = activeMdxRegistry()
 ): BlockPayload | null {
   const markdown = registry.markdown.get(ast.type)?.markdown;
   if (markdown) return markdown.fromMarkdown(ast, id);
@@ -78,7 +78,7 @@ export function planInsertedBlocks(
   inserted: readonly { readonly block: LogicalBlock; readonly ast: TargetAstNode }[],
   allocate: () => string = defaultBlockId,
   authorPayload?: NewBlockPayload,
-  registry: MdxComponentRegistry = sciobotMdxRegistry()
+  registry: MdxComponentRegistry = activeMdxRegistry()
 ): { success: true; plan: InsertedBlockPlan } | NativeEditFailure {
   const blocks: InsertedBlockBinding[] = [],
     lists: InsertedListBinding[] = [];
@@ -157,7 +157,7 @@ export function planInsertedBlocks(
 export function isInsertedBlockBindings(
   inserted: readonly TargetAstNode[],
   value: unknown,
-  registry: MdxComponentRegistry = sciobotMdxRegistry()
+  registry: MdxComponentRegistry = activeMdxRegistry()
 ): boolean {
   if (!Array.isArray(value)) return false;
   const paths = new Set<string>(),

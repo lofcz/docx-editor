@@ -1,5 +1,5 @@
 import type { MdxComponentRegistry } from '../registry/contract';
-import { sciobotMdxRegistry } from '../registry/sciobot';
+import { activeMdxRegistry } from '../registry/active';
 import type { OoxmlPackage } from '@docx-editor.dev/core/store';
 import type { NativeEditFailure } from '../contracts/document';
 import { MDX_BLOCK } from '../projection/mdx';
@@ -13,7 +13,7 @@ import { jsonDataKey } from './target-key';
 export function insertedParagraphs(
   inserted: readonly TargetAstNode[],
   blocks: readonly InsertedBlockBinding[],
-  registry: MdxComponentRegistry = sciobotMdxRegistry()
+  registry: MdxComponentRegistry = activeMdxRegistry()
 ): readonly { readonly path: readonly number[]; readonly ast: TargetAstNode }[] {
   const atomic = new Set(
     blocks
@@ -56,7 +56,7 @@ export function planInsertedAtomBindings(
   inserted: readonly TargetAstNode[],
   blocks: readonly InsertedBlockBinding[],
   allocate: () => string = () => crypto.randomUUID(),
-  registry: MdxComponentRegistry = sciobotMdxRegistry()
+  registry: MdxComponentRegistry = activeMdxRegistry()
 ): { readonly success: true; readonly atoms: readonly InsertedInlineAtom[] } | NativeEditFailure {
   const atoms: InsertedInlineAtom[] = [];
   const used = new Set(blocks.map((binding) => binding.payload.id));
@@ -90,7 +90,7 @@ export function isInsertedAtomBindings(
   inserted: readonly TargetAstNode[],
   blocks: readonly InsertedBlockBinding[],
   value: unknown,
-  registry: MdxComponentRegistry = sciobotMdxRegistry()
+  registry: MdxComponentRegistry = activeMdxRegistry()
 ): boolean {
   if (!Array.isArray(value)) return false;
   try {

@@ -1,5 +1,5 @@
 import type { MdxComponentRegistry } from '../registry/contract';
-import { sciobotMdxRegistry } from '../registry/sciobot';
+import { activeMdxRegistry } from '../registry/active';
 import type { OoxmlPackage } from '@docx-editor.dev/core/store';
 import { buildBlockIndex } from '../blocks/block-index';
 import { encodeBlockPayload, isBlockId, type BlockPayload } from '../blocks/payload-schema';
@@ -41,7 +41,7 @@ function payloadKey(payload: BlockPayload): string {
 export function planAtomicBlock(
   source: AtomicBlockSource,
   target: BlockPayload,
-  registry: MdxComponentRegistry = sciobotMdxRegistry()
+  registry: MdxComponentRegistry = activeMdxRegistry()
 ): EditPlanResult {
   if (!source || typeof source !== 'object') return fail('Missing atomic block source.');
   const descriptors = Object.getOwnPropertyDescriptors(source);
