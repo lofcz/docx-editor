@@ -266,6 +266,9 @@ export const DOMAIN_BLOCK_TAGS: ReadonlyMap<string, BlockTagDefinition> = new Ma
     },
   ],
   ['source_excerpt', { tag: 'source', kind: 'container', attributes: source }],
+  // Plate column layouts: each column is a nested container, in reading order.
+  ['column_group', { tag: 'column_group', kind: 'container', attributes: all }],
+  ['column', { tag: 'column', kind: 'container', attributes: all }],
 ]);
 
 /** A nested block SDT with this tag contains generated fallback label paragraphs. */

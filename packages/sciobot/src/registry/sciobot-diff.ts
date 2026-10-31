@@ -14,6 +14,8 @@ export const SCIOBOT_DIFF_STRATEGIES: Readonly<Record<string, DomainDiffStrategy
   lesson_visual: { kind: 'atomic' },
   listening: { kind: 'atomic' },
   callout: { kind: 'container' },
+  column_group: { kind: 'container' },
+  column: { kind: 'container' },
   story: { kind: 'container' },
   solution: { kind: 'container' },
   source: { kind: 'atomic' },

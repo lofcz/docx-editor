@@ -89,6 +89,8 @@ export const SCIOBOT_PARSERS: Readonly<Record<string, MdxComponentParser>> = {
   lesson_phase: phase('phase'),
   recap_phase: phase('recap_phase'),
   lesson_activity: plain('activity'),
+  column_group: plain('column_group'),
+  column: plain('column'),
   lesson_title: {
     tag: 'lesson_title',
     read: (attributes) =>
