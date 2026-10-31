@@ -62,7 +62,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 ## U04
 
-- [ ] Connect drag and drop block movement
+- [x] Connect drag and drop block movement
 
 **Depends:** [B13](02-react-blocks.md#b13), [U03](09-editor-ui.md#u03), [V01](11-verification.md#v01)
 
@@ -76,7 +76,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** claude, application branch `claude/docx-native-cutover`, fork `00c33e27`. **Evidence:** Application commit `db3ba4c1c`. A press on a block handle that moves more than five pixels drags the block; a still press selects it. `blocks/block-drag.ts` finds the paragraph fragment nearest the drop point and lands the block before or after that paragraph's outermost ancestor inside the nearest registered container or the body. A container of the dragged block's own type is not a destination, so an activity dropped on another activity lands beside it. The move goes through the fork `moveBlock`, which keeps payload records and descendant IDs and commits one native undo unit. Chromium `block-drag.test.ts` passes 3 cases: an activity dragged from the evocation phase on page 1 into the understanding phase on page 2, with unchanged payloads and native body, no block selection after the drop, and one undo and one redo; and two sessions in both client orders where the peer types in the moved activity's body during the drag, with convergence, author undo, and equal saved digests.
 
 ## U05
 
