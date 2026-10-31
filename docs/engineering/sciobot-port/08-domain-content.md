@@ -496,7 +496,7 @@ Final verification against installed fork `929e0ea4a9bf68f3a4c9a7c133e55bc76b76d
 
 ## X27
 
-- [ ] Connect gallery ordering and lightbox controls
+- [x] Connect gallery ordering and lightbox controls
 
 **Depends:** [X26](08-domain-content.md#x26), [B05](02-react-blocks.md#b05), [P04](03-agent-projection.md#p04), [V01](11-verification.md#v01)
 
@@ -510,7 +510,7 @@ Final verification against installed fork `929e0ea4a9bf68f3a4c9a7c133e55bc76b76d
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** claude, fork commit `7c4facffe`, app branch `claude/docx-native-cutover` commit `08997883b`. **Evidence:** The fork registers `image_gallery` as an atomic block with the application grammar (`layout`, optional `align`, `images={[…]}` as a JSON expression). Markdown images (`![caption](url)`) group into a gallery as in Plate, so agent targets with images plan instead of refusing. Only http(s) image addresses apply. The Word fallback is one line per image (caption or address). Fork test `projection/gallery.test.ts`: 5 pass (round trip, unchanged replan from both forms, unsafe address refused, reorder with undo, two sessions in both receiver orders). The app splits the Plate gallery into a Plate-free `GalleryView` (`ui/gallery-view.tsx`), which `GalleryElement` and the native `GalleryBlock` share: row-fit and grid layout, captions, removal, the PhotoSwipe lightbox, and native-only move-earlier and move-later controls. Each change is one `updateAtomicBlock` undo unit. Block-selection keys now leave open dialogs alone, so Escape closes the lightbox. Chromium command `bun test --timeout 600000 scripts/docx-native/harness/gallery.test.ts`: 2 pass, run twice (lightbox opens and closes without a revision change; a reorder converges beside offline peer typing with captions moved; undo restores the order and keeps the peer text; reopen and saved digests match; both client orders).
 
 ## X28
 
