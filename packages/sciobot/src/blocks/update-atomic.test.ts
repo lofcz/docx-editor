@@ -86,6 +86,33 @@ test('an atomic code block update keeps its ID, exact whitespace, Word lines, an
   }
 });
 
+test('an inline atomic control refuses a paragraph fallback update', async () => {
+  const input = await targetDocumentInput('<w:p><w:r><w:t>Seed text</w:t></w:r></w:p>');
+  const planned = planTargetDocument(input, 'Area $a^2$ here.\n\nSeed text', {
+    allocateBlockId: () => 'math-1',
+  });
+  if (!planned.success) throw new Error(planned.error);
+  const applied = previewDirectPlan(input.pkg, planned.plan);
+  if (!applied.success) throw new Error(applied.error);
+  const container = document.createElement('div');
+  document.body.append(container);
+  const editor = createDocxEditor({
+    container,
+    document: writeOoxmlPackage(applied.pkg),
+    author: 'Ann',
+  });
+  try {
+    const before = editor.surface!.session.packageRevision();
+    expect(
+      updateAtomicBlock(editor, { blockId: 'math-1', attributes: { texExpression: 'b^2' } })
+    ).toMatchObject({ success: false, code: 'unsupported-operation' });
+    expect(editor.surface!.session.packageRevision()).toBe(before);
+  } finally {
+    editor.destroy();
+    container.remove();
+  }
+});
+
 for (const first of [0, 1] as const)
   test(`two sessions converge on a code update beside peer typing; receiver ${first}`, async () => {
     const pair = await createTwoEditorFixture({ document: await codeDocument() });

@@ -4,6 +4,7 @@ import {
   contentControlPropertiesOf,
   contentControlsIn,
   createNodeIdAllocator,
+  findNode,
   readOoxmlPart,
   replaceChildren,
   usedParaIds,
@@ -77,6 +78,18 @@ export function updateAtomicBlock(
     if (error instanceof MdxRefusal) return fail('invalid-input', error.message);
     throw error;
   }
+  // An inline control holds runs, not paragraphs: its fallback is part of a sentence.
+  const live = findNode(surface.session.part(), block.controlId);
+  const liveContent =
+    live?.kind === 'contentControl'
+      ? live.children.find((child) => child.kind === 'contentControlContent')
+      : undefined;
+  if (
+    !liveContent ||
+    liveContent.kind === 'textValue' ||
+    liveContent.children.some((child) => child.kind === 'run' || child.kind === 'hyperlink')
+  )
+    return fail('unsupported-operation', 'Only block-level atomic controls update here.');
   const store = readPayloadStore(pkg);
   if (store.status !== 'ready') return fail('invalid-document', 'The block payloads are missing.');
   const label = store.entries.get(block.payload.id)?.label ?? block.payload.type;
