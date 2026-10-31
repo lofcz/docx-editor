@@ -1,6 +1,6 @@
 # Native code blocks
 
-X16 and D34 evidence. Fork `62c7e8ef`, application branch `docx-work`.
+X16 and D34 evidence. Fork `62c7e8ef`, application branch `claude/docx-native-cutover`.
 
 ## Representation
 
