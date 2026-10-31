@@ -112,6 +112,11 @@ const excluded = new Set([
   OWNED_TEXT_OPERATIONS,
   OWNED_TEXT_LINEAGE,
 ]);
+/**
+ * Native history ledgers. An undo records the characters it hides and the redo withdraws
+ * them; these writes are history bookkeeping, not document fields, so no review owns them.
+ */
+const nativeHistoryLedgers = new Set(['docx-text-deletions-v1', 'docx-text-marks-v1']);
 let installed = false;
 let set: typeof Y.Map.prototype.set, remove: typeof Y.Map.prototype.delete;
 let removeItems: typeof Y.Array.prototype.delete;
@@ -135,7 +140,7 @@ function rootName(state: State, map: Y.Map<unknown> | Y.Array<unknown>): string 
 }
 function location(state: State, map: Y.Map<unknown>, key: string): ReviewFieldLocation | null {
   const root = rootName(state, map);
-  if (root === null || excluded.has(root)) return null;
+  if (root === null || excluded.has(root) || nativeHistoryLedgers.has(root)) return null;
   if (typeof key !== 'string' || !key.length || key.length > 65536) {
     if (state.capturing) throw new ReviewFieldError('Invalid bounded review field key.');
     return null;

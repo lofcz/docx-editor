@@ -1,5 +1,7 @@
 import { expect, test } from 'bun:test';
 import * as Y from 'yjs';
+import { TEXT_DELETIONS_KEY } from '../../../pro/src/collaboration/document/paragraph-text-deletions';
+import { TEXT_MARKS_KEY } from '../../../pro/src/collaboration/document/paragraph-text-marks';
 import { attachOwnedReviewFields } from './review-fields';
 import {
   REVIEW_FIELD_TARGETS,
@@ -433,6 +435,32 @@ test('sequence metadata requires exact bounded neighbor addresses and a removal 
     expect(Y.encodeStateVector(doc)).toEqual(vector);
     expect(doc.getArray('native').toArray()).toEqual(['A']);
   } finally {
+    doc.destroy();
+  }
+});
+test('native history ledgers stay outside field ownership', () => {
+  const doc = new Y.Doc(),
+    fields = attachOwnedReviewFields(doc);
+  const ledgers = [TEXT_DELETIONS_KEY, TEXT_MARKS_KEY].map((name) => doc.getMap<string>(name));
+  try {
+    for (const ledger of ledgers) ledger.set('k', 'a');
+    doc.getMap<string>('native').set('shape', 'original');
+    fields.enable();
+    // An undo records the characters it hides and its redo withdraws them, outside any review.
+    for (const ledger of ledgers) {
+      ledger.set('k', 'b');
+      ledger.delete('k');
+    }
+    doc.getMap<string>('native').set('shape', 'changed');
+    const targets = doc.getMap<string>(REVIEW_FIELD_TARGETS);
+    expect(
+      [...targets.keys()]
+        .filter((key) => key !== 'protocol')
+        .map((key) => decodeFieldTarget(key, targets.get(key)))
+    ).toEqual([expect.objectContaining({ root: 'native', key: 'shape' })]);
+    fields.assertHealthy();
+  } finally {
+    fields.dispose();
     doc.destroy();
   }
 });
