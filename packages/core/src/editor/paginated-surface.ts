@@ -88,6 +88,7 @@ import { createReviewOrderIndex } from './surface-review-order.ts';
 import { litReviewKeys, reviewItemsByKey } from './review-replacement-pairs.ts';
 import { bodyBlockCountOf, bodyBlockLimitAfter, bodyBlocksOf } from '../layout/body-block-limit.ts';
 import { snapshotLayoutSession } from '../layout/layout-session-snapshot.ts';
+import { graphemeEndAfter, graphemeStartBefore } from './grapheme-step.ts';
 import { furnitureLaterSteps } from './surface-furniture-later.ts';
 import { createBlockReservationState } from '../layout/block-reservations.ts';
 import {
@@ -4606,21 +4607,15 @@ export function mountPaginatedSurface(
         for (const member of mergedPredecessorsOf(editingLayout(), position.paragraphId)) {
           const text = textOf(member);
           if (text.length === 0) continue;
+          const start = graphemeStartBefore(text, text.length);
           commit(
             () =>
               applyOps(
-                [
-                  {
-                    op: 'deleteText',
-                    paragraphId: member,
-                    start: text.length - 1,
-                    end: text.length,
-                  },
-                ],
+                [{ op: 'deleteText', paragraphId: member, start, end: text.length }],
                 selectionMark(),
-                caretMark({ paragraphId: member, offset: text.length - 1 })
+                caretMark({ paragraphId: member, offset: start })
               ),
-            () => collapsedAt({ paragraphId: member, offset: text.length - 1 }),
+            () => collapsedAt({ paragraphId: member, offset: start }),
             { rearmPending: armed }
           );
           return;
@@ -4651,6 +4646,7 @@ export function mountPaginatedSurface(
         );
         return;
       }
+      const start = graphemeStartBefore(textOf(position.paragraphId), position.offset);
       commit(
         () =>
           applyOps(
@@ -4658,14 +4654,14 @@ export function mountPaginatedSurface(
               {
                 op: 'deleteText',
                 paragraphId: position.paragraphId,
-                start: position.offset - 1,
+                start,
                 end: position.offset,
               },
             ],
             selectionMark(),
-            caretMark({ ...position, offset: position.offset - 1 })
+            caretMark({ ...position, offset: start })
           ),
-        () => collapsedAt({ ...position, offset: position.offset - 1 }),
+        () => collapsedAt({ ...position, offset: start }),
         { rearmPending: armed }
       );
     },
@@ -4996,7 +4992,7 @@ export function mountPaginatedSurface(
                   op: 'deleteText',
                   paragraphId: position.paragraphId,
                   start: position.offset,
-                  end: position.offset + 1,
+                  end: graphemeEndAfter(text, position.offset),
                 },
               ],
               selectionMark()
