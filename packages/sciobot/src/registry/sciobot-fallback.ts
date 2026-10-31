@@ -22,8 +22,12 @@ const equation: WordFallback = (payload: BlockPayload) => {
   return { lines: mathWordFallback(math.payload).paragraphs };
 };
 
+/** A table of contents is derived from the headings; Word shows its title line. */
+const toc: WordFallback = () => ({ lines: ['Table of contents'] });
+
 export const SCIOBOT_WORD_FALLBACKS: Readonly<Record<string, WordFallback>> = {
   code_block: code,
+  toc,
   equation,
   inline_equation: equation,
 };

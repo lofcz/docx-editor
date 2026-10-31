@@ -227,6 +227,7 @@ export const DOMAIN_BLOCK_TAGS: ReadonlyMap<string, BlockTagDefinition> = new Ma
   ['lesson_visual', { tag: 'lesson_visual', kind: 'atomic', attributes: visual }],
   ['source', { tag: 'source', kind: 'atomic', attributes: source }],
   ['date', { tag: 'date', kind: 'atomic', attributes: (payload) => ordered(payload, ['value']) }],
+  ['toc', { tag: 'toc', kind: 'atomic', attributes: empty }],
   [
     'inline_equation',
     {

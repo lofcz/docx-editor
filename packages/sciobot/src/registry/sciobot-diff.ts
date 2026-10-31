@@ -20,6 +20,7 @@ export const SCIOBOT_DIFF_STRATEGIES: Readonly<Record<string, DomainDiffStrategy
   solution: { kind: 'container' },
   toggle: { kind: 'container' },
   date: { kind: 'atomic' },
+  toc: { kind: 'atomic' },
   source: { kind: 'atomic' },
   source_excerpt: {
     kind: 'container',

@@ -113,6 +113,7 @@ export const SCIOBOT_PARSERS: Readonly<Record<string, MdxComponentParser>> = {
   solution: plain('solution'),
   toggle: plain('toggle'),
   date: plain('date'),
+  toc: plain('toc'),
   inline_equation: equation('scio-inline-equation'),
   equation: equation('scio-equation'),
   source: source('source'),
