@@ -226,7 +226,7 @@ Final verification against installed fork `929e0ea4a9bf68f3a4c9a7c133e55bc76b76d
 
 ## X12
 
-- [ ] Render source excerpt containers
+- [x] Render source excerpt containers
 
 **Depends:** [X11](08-domain-content.md#x11), [B06](02-react-blocks.md#b06), [D12](04-edit-planner.md#d12), [V01](11-verification.md#v01)
 
@@ -240,7 +240,7 @@ Final verification against installed fork `929e0ea4a9bf68f3a4c9a7c133e55bc76b76d
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** claude, application branch `claude/docx-native-cutover`, fork `00c33e27`. **Evidence:** Application commits `0bbcdef9a` (frame and body suite) and `780e29a73` (identity cases in the harness). `SourceExcerptBlock` frames the native body and keeps provenance controls in the page margin. The four identity cases that failed at the checkpoint (`Only complete native paragraphs without section marks can be removed here`) now pass on the current fork: a changed citation title creates one structural presence proposal that removes the old `source_excerpt` and adds the new one, the stored payload stays unchanged until a decision, and accept or reject leaves one excerpt with the expected title, no pending groups, and the earlier body edits; undo and redo follow. Chromium: `source-excerpts.test.ts` (8 cases: body edits, wrapper identity, offline neighbor deletion, reopen) and `source-excerpt-identity.test.ts` (4 cases: both client orders with accept and reject) pass 12 cases together.
 
 ## X13
 
