@@ -50,10 +50,7 @@ test('a grouped recomposition is one review decision with the same views', async
   expect(grouped.groups).toHaveLength(1);
   expect(await views(grouped.editor)).toEqual(await views(separate.editor));
   const token = groupToken(grouped.editor);
-  const rejected = rejectAllReviewGroups(grouped.editor, token, {
-    ...context,
-    author: 'Reviewer',
-  });
+  const rejected = rejectAllReviewGroups(grouped.editor, token, context);
   expect(rejected.success).toBe(true);
   const [committed, working] = await views(grouped.editor);
   expect(working).toBe(committed);
