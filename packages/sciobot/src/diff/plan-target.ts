@@ -24,7 +24,11 @@ import { planDomainProperties } from './domain-properties';
 import { domainNodeFromAst } from './domain-ast';
 import { sameContainerIdentity } from './domain-strategies';
 import { planListMembership } from './lists';
-import { planInsertedBlocks, type NewBlockPayload } from './inserted-blocks';
+import {
+  planInsertedBlocks,
+  type GeneratedBlockLabel,
+  type NewBlockPayload,
+} from './inserted-blocks';
 import { resolveTargetLists } from './target-lists';
 import { planSiblingBlocks, siblingContentPairable } from './sibling-blocks';
 import { createEditPlan, type CanonicalEdit, type CanonicalEditPlan } from './plan';
@@ -45,6 +49,11 @@ export interface TargetDocumentOptions {
   readonly allocateBlockId?: () => string;
   /** Trusted host data for new atomic React blocks. AST expressions remain inert stored text. */
   readonly newBlockPayload?: NewBlockPayload;
+  /**
+   * The Word label of a new container, such as an activity's name and duration. It goes into a
+   * generated label control, which property suggestions rewrite. Null adds no label.
+   */
+  readonly generatedLabel?: GeneratedBlockLabel;
   /** The application's MDX components; `definitions` defaults to its MDX mappings. */
   readonly registry?: MdxComponentRegistry;
 }
@@ -369,7 +378,8 @@ export function planTargetDocument(
         })),
         options.allocateBlockId,
         options.newBlockPayload,
-        registry
+        registry,
+        options.generatedLabel
       );
       if (!nestedBlocks.success) return nestedBlocks;
       const blockBindings = nestedBlocks.plan.blocks.map((binding) => ({

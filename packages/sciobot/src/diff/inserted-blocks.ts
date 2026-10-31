@@ -20,7 +20,12 @@ export interface InsertedBlockBinding {
   readonly payload: BlockPayload;
   /** Readable control alias and payload record label. */
   readonly label: string;
+  /** Word label paragraph of a new container, in a generated label control. */
+  readonly generatedLabel?: string;
 }
+
+/** The Word label of a new container block, or null for none. See `TargetDocumentOptions`. */
+export type GeneratedBlockLabel = (payload: BlockPayload) => string | null;
 
 export type NewBlockPayload = (
   ast: TargetAstNode,
@@ -78,7 +83,8 @@ export function planInsertedBlocks(
   inserted: readonly { readonly block: LogicalBlock; readonly ast: TargetAstNode }[],
   allocate: () => string = defaultBlockId,
   authorPayload?: NewBlockPayload,
-  registry: MdxComponentRegistry = activeMdxRegistry()
+  registry: MdxComponentRegistry = activeMdxRegistry(),
+  generatedLabel?: GeneratedBlockLabel
 ): { success: true; plan: InsertedBlockPlan } | NativeEditFailure {
   const blocks: InsertedBlockBinding[] = [],
     lists: InsertedListBinding[] = [];
@@ -120,7 +126,19 @@ export function planInsertedBlocks(
     const label = authored?.label ?? definition?.tag;
     if (typeof label !== 'string' || label.length > 256)
       return fail('A new application block needs a bounded readable label.');
-    blocks.push({ path: [...path], payload, label });
+    const shown = block.kind === 'container' && !markdown ? generatedLabel?.(payload) : null;
+    if (
+      shown !== null &&
+      shown !== undefined &&
+      (typeof shown !== 'string' || /[\r\n]/.test(shown) || shown.length > 512)
+    )
+      return fail('A generated block label must be one bounded line of text.');
+    blocks.push({
+      path: [...path],
+      payload,
+      label,
+      ...(typeof shown === 'string' ? { generatedLabel: shown } : {}),
+    });
     if (block.kind === 'atomic' || markdown) return null;
     const group = block as LogicalGroup;
     const children = (ast.children ?? []) as TargetAstNode[];
@@ -166,12 +184,18 @@ export function isInsertedBlockBindings(
     for (const raw of value) {
       if (
         !record(raw) ||
-        Object.keys(raw).some((key) => !['path', 'payload', 'label'].includes(key)) ||
+        Object.keys(raw).some(
+          (key) => !['path', 'payload', 'label', 'generatedLabel'].includes(key)
+        ) ||
         !Array.isArray(raw.path) ||
         !raw.path.length ||
         !raw.path.every((step) => Number.isSafeInteger(step) && Number(step) >= 0) ||
         typeof raw.label !== 'string' ||
         raw.label.length > 256 ||
+        (Object.hasOwn(raw, 'generatedLabel') &&
+          (typeof raw.generatedLabel !== 'string' ||
+            raw.generatedLabel.length > 512 ||
+            /[\r\n]/.test(raw.generatedLabel))) ||
         !record(raw.payload)
       )
         return false;

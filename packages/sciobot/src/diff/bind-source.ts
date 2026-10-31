@@ -76,9 +76,13 @@ function paragraphIntervals(owners: readonly TargetSourceOwner[]) {
     const result: ExtentEntry[] = [];
     for (let index = low; index < entries.length && entries[index]!.start <= end; index++) {
       const entry = entries[index]!;
+      // An empty paragraph projects to nothing. At a block boundary it belongs to neither
+      // neighbor; it stays a native sibling. It only belongs to an empty or enclosing block.
       if (
         entry.start === entry.end
-          ? start <= entry.start && entry.end <= end
+          ? start === end
+            ? start === entry.start
+            : start < entry.start && entry.end < end
           : entry.start < end && start < entry.end
       )
         result.push(entry);

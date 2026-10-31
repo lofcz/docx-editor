@@ -447,21 +447,35 @@ export function indexTargetSource(source: TargetSourceInput): TargetSourceResult
       groups++;
       start = -1;
     };
+    // A blank body paragraph projects to nothing, so Markdown cannot address it. It stays in
+    // place as a barrier between windows, like Word's blank lines between paragraphs.
+    const blank = (id: string) => {
+      const owner = byId.get(id);
+      return (
+        node.id === body.id &&
+        owner?.kind === 'paragraph' &&
+        owner.extents.every((extent) => extent.start === extent.end) &&
+        paragraphTextOf(part, id) === ''
+      );
+    };
     for (let i = 0; i < all.length; i++) {
       const owner = byId.get(all[i]!.id),
         eligible =
           owner?.visibility === 'projected' &&
-          (owner.kind !== 'block' || owner.paragraphId === null);
+          (owner.kind !== 'block' || owner.paragraphId === null) &&
+          !blank(all[i]!.id);
       if (eligible) {
         if (start < 0) start = i;
       } else emit(i);
     }
     emit(all.length);
     if (!groups) {
-      const at =
+      let at =
         node.id === body.id && all.length && word(all.at(-1)!, 'sectPr')
           ? all.length - 1
           : all.length;
+      // New content goes before the trailing blank paragraphs of an empty body.
+      while (at > 0 && blank(all[at - 1]!.id)) at--;
       windows.push({
         parentId: node.id,
         startIndex: at,

@@ -1,6 +1,6 @@
 import { MdxRefusal } from '../registry/mdx-fields';
 import type { MdxComponentRegistry } from '../registry/contract';
-import { activeMdxRegistry } from '../registry/active';
+import { activeMdxRegistry, activeStorage } from '../registry/active';
 import { completeInlineAtomPayloads } from '../native/inline-atom-payloads';
 import type { InlineImageRuntime } from '../native/inline-image-runtime';
 import { inlineAtomXml, inlineAtomKey, inlineAtomsByPath } from './inline-atom-xml';
@@ -637,7 +637,13 @@ function blockXml(node: TargetAstNode, path: readonly number[], context: RenderC
     return `<w:sdt>${properties}<w:sdtContent><w:p>${runXml(fallback ?? binding.label, [])}</w:p></w:sdtContent></w:sdt>`;
   }
   const children = (node.children ?? []) as TargetAstNode[];
-  let content = children.map((child, index) => blockXml(child, [...path, index], context)).join('');
+  let content = '';
+  if (binding.generatedLabel !== undefined) {
+    // The Word label is generated content: it maps to no target paragraph.
+    context.paragraphs.push('');
+    content += `<w:sdt><w:sdtPr><w:tag w:val="${escapeXml(activeStorage().labelTag)}"/></w:sdtPr><w:sdtContent><w:p>${runXml(binding.generatedLabel, [])}</w:p></w:sdtContent></w:sdt>`;
+  }
+  content += children.map((child, index) => blockXml(child, [...path, index], context)).join('');
   // A story container needs a paragraph after a final table, and an empty container one seed.
   if (!children.length || children.at(-1)!.type === 'table') content += seedParagraph(context);
   return `<w:sdt>${properties}<w:sdtContent>${content}</w:sdtContent></w:sdt>`;
