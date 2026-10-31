@@ -84,6 +84,27 @@ const equation = (tag: string): MdxComponentParser => ({
   read: (attributes) => mdxProps(attributes, { literal: ['texExpression'] }) as JsonObject,
 });
 
+function textOf(node: JsonValue | undefined): string {
+  if (!node || typeof node !== 'object' || Array.isArray(node)) return '';
+  const { value, children } = node as JsonObject;
+  if (typeof value === 'string') return value;
+  return Array.isArray(children) ? (children as readonly JsonValue[]).map(textOf).join('') : '';
+}
+
+/**
+ * A SMILES structure. The `smiles` attribute is exact; the application's older form writes the
+ * string as element text, which Markdown can rewrite (`[C@@H](O)` reads as a link), so the
+ * attribute wins and text is the fallback.
+ */
+const smiles: MdxComponentParser = {
+  tag: 'smiles',
+  read(attributes, ast) {
+    const props = mdxProps(attributes, { literal: ['smiles'] });
+    if (typeof props.smiles !== 'string') props.smiles = textOf(ast).trim();
+    return props as JsonObject;
+  },
+};
+
 /** How each Sciobot payload type reads its MDX element, keyed by payload type. */
 export const SCIOBOT_PARSERS: Readonly<Record<string, MdxComponentParser>> = {
   lesson_phase: phase('phase'),
@@ -114,6 +135,7 @@ export const SCIOBOT_PARSERS: Readonly<Record<string, MdxComponentParser>> = {
   toggle: plain('toggle'),
   date: plain('date'),
   toc: plain('toc'),
+  smiles,
   inline_equation: equation('scio-inline-equation'),
   equation: equation('scio-equation'),
   source: source('source'),

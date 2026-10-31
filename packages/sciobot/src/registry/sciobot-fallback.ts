@@ -2,6 +2,7 @@ import { decodeMathPayload, mathWordFallback } from '../blocks/math-codec';
 import { encodeBlockPayload, type BlockPayload } from '../blocks/payload-schema';
 import type { MdxComponentDefinition } from './contract';
 import { MdxRefusal } from './mdx-fields';
+import { SMILES } from './sciobot-valid';
 
 type WordFallback = NonNullable<MdxComponentDefinition['wordFallback']>;
 
@@ -25,9 +26,17 @@ const equation: WordFallback = (payload: BlockPayload) => {
 /** A table of contents is derived from the headings; Word shows its title line. */
 const toc: WordFallback = () => ({ lines: ['Table of contents'] });
 
+/** A SMILES structure shows its exact source in the inline code style. */
+const smiles: WordFallback = (payload: BlockPayload) => {
+  if (!SMILES.test(String(payload.attributes.smiles)))
+    throw new MdxRefusal('A SMILES block needs a bounded single-line SMILES string.');
+  return { lines: [payload.attributes.smiles as string], code: true };
+};
+
 export const SCIOBOT_WORD_FALLBACKS: Readonly<Record<string, WordFallback>> = {
   code_block: code,
   toc,
+  smiles,
   equation,
   inline_equation: equation,
 };

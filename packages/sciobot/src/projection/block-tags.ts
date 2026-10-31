@@ -229,6 +229,10 @@ export const DOMAIN_BLOCK_TAGS: ReadonlyMap<string, BlockTagDefinition> = new Ma
   ['date', { tag: 'date', kind: 'atomic', attributes: (payload) => ordered(payload, ['value']) }],
   ['toc', { tag: 'toc', kind: 'atomic', attributes: empty }],
   [
+    'smiles',
+    { tag: 'smiles', kind: 'atomic', attributes: (payload) => ordered(payload, ['smiles']) },
+  ],
+  [
     'inline_equation',
     {
       tag: 'scio-inline-equation',

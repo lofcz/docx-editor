@@ -21,6 +21,7 @@ export const SCIOBOT_DIFF_STRATEGIES: Readonly<Record<string, DomainDiffStrategy
   toggle: { kind: 'container' },
   date: { kind: 'atomic' },
   toc: { kind: 'atomic' },
+  smiles: { kind: 'atomic' },
   source: { kind: 'atomic' },
   source_excerpt: {
     kind: 'container',
