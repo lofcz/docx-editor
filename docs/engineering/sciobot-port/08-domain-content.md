@@ -636,7 +636,7 @@ Final verification against installed fork `929e0ea4a9bf68f3a4c9a7c133e55bc76b76d
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** claude, app branch `codex/docx-native-cutover` worktree `sciobot-next-docx-work`, commits `5730d547a` and `aceb43169`. **Evidence:** `SharedMdxPreview` (`blocks/shared-mdx.tsx`) renders the stored AST through the Plate `MdxPreview`, inline or block. One fixture per tag (qr-code, sciocil, competence, law, entity, qref, actionplaceholder, vfs-cite) renders once; the QR, law, qref, and VFS citation previews show their stored identifiers. Inline citations keep `SourceChip`. Block roots get a router bridge (`blocks/block-routing.tsx`) and a `ConfirmProvider`. Two real sessions in both client orders converge beside peer typing; saved digests match and reopen keeps the Markdown. Chromium command `bun test --timeout 600000 scripts/docx-native/harness/shared-mdx.test.ts`: 4 pass, 0 fail, 34 assertions.
+**Claim:** claude, app branch `claude/docx-native-cutover` worktree `sciobot-next-docx-work`, commits `5730d547a` and `aceb43169`. **Evidence:** `SharedMdxPreview` (`blocks/shared-mdx.tsx`) renders the stored AST through the Plate `MdxPreview`, inline or block. One fixture per tag (qr-code, sciocil, competence, law, entity, qref, actionplaceholder, vfs-cite) renders once; the QR, law, qref, and VFS citation previews show their stored identifiers. Inline citations keep `SourceChip`. Block roots get a router bridge (`blocks/block-routing.tsx`) and a `ConfirmProvider`. Two real sessions in both client orders converge beside peer typing; saved digests match and reopen keeps the Markdown. Chromium command `bun test --timeout 600000 scripts/docx-native/harness/shared-mdx.test.ts`: 4 pass, 0 fail, 34 assertions.
 
 ## X35
 
@@ -654,7 +654,7 @@ Final verification against installed fork `929e0ea4a9bf68f3a4c9a7c133e55bc76b76d
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** claude, app branch `codex/docx-native-cutover` worktree `sciobot-next-docx-work`, commits `5730d547a` and `aceb43169`. **Evidence:** Material share, trash, trash-batch, reference, rating, and upsell render through the existing chat components. With a signed-in test user and a routed `/assistant-node`, each card looks up exactly its stored node ID. Opening the trash confirmation shows the stored node name; Cancel sends no VFS write and leaves the Markdown and history revision unchanged. The rating card loads its target through Supabase, which the harness does not route; it renders the shared component only. Chromium command `bun test --timeout 600000 scripts/docx-native/harness/shared-mdx.test.ts`: 4 pass, 0 fail, 34 assertions.
+**Claim:** claude, app branch `claude/docx-native-cutover` worktree `sciobot-next-docx-work`, commits `5730d547a` and `aceb43169`. **Evidence:** Material share, trash, trash-batch, reference, rating, and upsell render through the existing chat components. With a signed-in test user and a routed `/assistant-node`, each card looks up exactly its stored node ID. Opening the trash confirmation shows the stored node name; Cancel sends no VFS write and leaves the Markdown and history revision unchanged. The rating card loads its target through Supabase, which the harness does not route; it renders the shared component only. Chromium command `bun test --timeout 600000 scripts/docx-native/harness/shared-mdx.test.ts`: 4 pass, 0 fail, 34 assertions.
 
 ## X36
 
@@ -672,7 +672,7 @@ Final verification against installed fork `929e0ea4a9bf68f3a4c9a7c133e55bc76b76d
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** claude, app branch `codex/docx-native-cutover` worktree `sciobot-next-docx-work`, commits `5730d547a` and `aceb43169`. **Evidence:** The `suggestions` payload renders through the shared preview with its nested `suggestion` children. The Markdown keeps both messages, the review state has no groups, and save/reopen keeps the payload in both client orders. Chromium command `bun test --timeout 600000 scripts/docx-native/harness/shared-mdx.test.ts`: 4 pass, 0 fail, 34 assertions.
+**Claim:** claude, app branch `claude/docx-native-cutover` worktree `sciobot-next-docx-work`, commits `5730d547a` and `aceb43169`. **Evidence:** The `suggestions` payload renders through the shared preview with its nested `suggestion` children. The Markdown keeps both messages, the review state has no groups, and save/reopen keeps the payload in both client orders. Chromium command `bun test --timeout 600000 scripts/docx-native/harness/shared-mdx.test.ts`: 4 pass, 0 fail, 34 assertions.
 
 ## X37
 
