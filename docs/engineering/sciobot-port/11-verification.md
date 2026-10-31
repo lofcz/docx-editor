@@ -62,7 +62,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 ## V04
 
-- [ ] Verify cross-feature collaboration convergence
+- [x] Verify cross-feature collaboration convergence
 
 **Depends:** [V02](11-verification.md#v02), [V03](11-verification.md#v03), [B10](02-react-blocks.md#b10), [B13](02-react-blocks.md#b13), [X05](08-domain-content.md#x05), [X10](08-domain-content.md#x10), [I08](10-app-integration.md#i08), [V01](11-verification.md#v01)
 
@@ -76,7 +76,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused native document regression. Include save/reopen and undo/redo. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** claude, app branch `claude/docx-native-cutover` commit `ae9a6a390`. **Evidence:** Chromium `scripts/docx-native/harness/cross-feature.test.ts` runs two real sessions over one document with an activity, a listening exercise that carries generated-audio and opaque future fields, and a tail paragraph (`crossFeatureDocument`). Bob's remote caret shows in Alice's pane. Offline, Alice moves the activity below the listening block (`moveBlock`, as a block drag does) while Bob types inside the activity and deletes the tail paragraph, which is the move anchor; after reconnect both sessions hold the same Markdown with the moved order and Bob's text. One AI suggestion wave then proposes an activity property, activity text, and listening metadata (title); both sessions show the same pending group identities and working view; keyboard undo and redo in Alice's session converge in both; accepting all leaves equal documents, equal saved digests, and a reopened copy with the same working view. 2 pass (both client orders); with `listening-edits.test.ts` 10 pass. The block move is between body blocks; moves into or out of containers are covered by `block-drag.test.ts`.
 
 ## V05
 
