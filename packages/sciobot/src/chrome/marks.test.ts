@@ -237,3 +237,42 @@ test('toolbar reports mixed state and shortcuts dispose without affecting foreig
     container.remove();
   }
 });
+
+test('mark chords typed in a block widget form reach the widget', () => {
+  const editor = createDocxEditor({
+    container: document.createElement('div'),
+    document: markDocument(),
+  });
+  const stop = installMarkShortcuts(editor);
+  try {
+    const s = editor.surface!,
+      id = s.session.paragraphIds()[0]!;
+    s.setSelection({
+      anchor: { paragraphId: id, offset: 0 },
+      head: { paragraphId: id, offset: 5 },
+    });
+    const editable = s.hostElement().querySelector('[contenteditable="true"]')!;
+    // React block widgets mark their furniture with `data-sciobot-block-ui`. The capture-phase
+    // shortcut must let the chord reach the widget; the block host stops it there.
+    const widget = editable.ownerDocument.createElement('div');
+    widget.setAttribute('data-sciobot-block-ui', '');
+    widget.setAttribute('contenteditable', 'false');
+    const input = editable.ownerDocument.createElement('input');
+    let reached = false;
+    input.addEventListener('keydown', (event) => {
+      reached = true;
+      event.stopPropagation();
+    });
+    widget.append(input);
+    editable.append(widget);
+    input.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'b', ctrlKey: true, bubbles: true, cancelable: true })
+    );
+    expect(reached).toBe(true);
+    expect(basicMarkState(editor, 'bold')).toBe('off');
+    widget.remove();
+  } finally {
+    stop();
+    editor.destroy();
+  }
+});

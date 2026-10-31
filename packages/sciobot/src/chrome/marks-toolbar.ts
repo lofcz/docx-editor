@@ -56,7 +56,7 @@ export function installMarkShortcuts(editor: DocxEditorInstance) {
     const target = event.target as Element | null;
     if (
       !target?.closest?.('[contenteditable="true"]') ||
-      target.closest('[data-docx-block-ui]') ||
+      target.closest('[data-sciobot-block-ui]') ||
       event.isComposing ||
       event.altKey ||
       event.getModifierState('AltGraph') ||

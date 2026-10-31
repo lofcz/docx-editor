@@ -266,7 +266,7 @@ export function installListEditing(editor: DocxEditorInstance, context: BlockCom
     return (
       editor.surface === s &&
       !!target?.closest?.('[contenteditable="true"]') &&
-      !target.closest('[data-docx-block-ui]')
+      !target.closest('[data-sciobot-block-ui]')
     );
   };
   const stop = (event: Event) => {

@@ -11,7 +11,7 @@ export function installBlockInputRules(editor: DocxEditorInstance, context: Bloc
   const inSurface = (event: Event) => {
     const target = event.target as Element | null;
     return (
-      !!target?.closest?.('[contenteditable="true"]') && !target.closest('[data-docx-block-ui]')
+      !!target?.closest?.('[contenteditable="true"]') && !target.closest('[data-sciobot-block-ui]')
     );
   };
   const selected = () => {

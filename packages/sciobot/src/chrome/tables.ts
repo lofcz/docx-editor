@@ -116,7 +116,7 @@ export function installTableNavigation(editor: DocxEditorInstance) {
       event.metaKey ||
       event.altKey ||
       !target?.closest?.('[contenteditable="true"]') ||
-      target.closest('[data-docx-block-ui]') ||
+      target.closest('[data-sciobot-block-ui]') ||
       surface.contentControls.formFill()
     )
       return;
