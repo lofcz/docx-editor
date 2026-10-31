@@ -208,7 +208,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 ## I12
 
-- [ ] Convert legacy application block payloads
+- [x] Convert legacy application block payloads
 
 **Depends:** [I11](10-app-integration.md#i11), [B02](02-react-blocks.md#b02), [X09](08-domain-content.md#x09), [X19](08-domain-content.md#x19), [X23](08-domain-content.md#x23), [I22](10-app-integration.md#i22), [I23](10-app-integration.md#i23), [V01](11-verification.md#v01)
 
@@ -222,7 +222,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** claude, application branch `claude/docx-native-cutover`. **Evidence:** Application commit `e5a37cc7c` with fork `63958989` (vendored in `b6c4980f3`). The I11 conversion carries registered domain nodes as native payloads through the planner. A block JSX element without a native component keeps its complete MDX tree as an opaque `shared_mdx_block` payload through the planner's `newBlockPayload` hook (listening exercises use this representation). Fork `63958989` adds the inline counterpart: an unregistered inline JSX element keeps its tree as an opaque `shared_mdx_inline` atom whose Word text is its `label`, `title`, `name`, or `text` attribute or else its tag name (`diff/inserted-raw-inline.test.ts`, 3 cases, including reopen and empty replanning; an inline element with children still refuses). Chromium `bun test --timeout 600000 scripts/docx-native/harness/legacy-conversion.test.ts` passes 37 cases with equal Markdown content, which includes every attribute: the 12 captured C02 logical-block Plate values (`legacy-values.json` from `logical-blocks.json`: inline and flow lesson titles, standalone and empty paired sources, source excerpts, recap goals with lists and legacy number prefixes, recap curriculum, materials, adaptations, and activity lists), and Plate values from the application's deserializer for callout, story, solution, phase with activity, preparation recap with recap phase, fenced code with language and indentation, display and inline math, lesson visual, listening, columns, and the shared reference tags `law` and `qr-code`, whose Word text reads `Scan`. Assets: converted payloads keep their references (for example `lesson_visual src`); the conversion uploads nothing. Collaboration: conversion runs once in an offscreen single-user editor before any session opens.
 
 ## I13
 

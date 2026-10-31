@@ -352,7 +352,7 @@ Final verification against installed fork `929e0ea4a9bf68f3a4c9a7c133e55bc76b76d
 
 ## X19
 
-- [ ] Map application columns to native table geometry
+- [x] Map application columns to native table geometry
 
 **Depends:** [B02](02-react-blocks.md#b02), [B06](02-react-blocks.md#b06), [P04](03-agent-projection.md#p04), [V01](11-verification.md#v01)
 
@@ -366,7 +366,7 @@ Final verification against installed fork `929e0ea4a9bf68f3a4c9a7c133e55bc76b76d
 
 **Check:** Add a focused native document regression. Include save/reopen and undo/redo. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** claude, branch `codex/react-block-proof`. **Evidence:** Fork commit `c8fe2c79`. Plate serializes layouts as `<column_group>` with `<column width=…>` children. The Sciobot registration now maps `column_group` and `column` to native container blocks (`projection/block-tags.ts`, `registry/sciobot-parse.ts`, `registry/sciobot-diff.ts`), so each column is a nested content control that holds its native blocks and keeps its `width` and other attributes in the payload. Design decision: the columns are nested containers in reading order, not a borderless table. Word therefore shows the columns one after another, which preserves their order; side-by-side page layout in Word is a recorded follow-up and is not claimed. The same change fixes a defect for every new application block that contains a table: `fragment-seeds.ts` emitted a malformed `w:tblGrid` (an operator-precedence error produced a truncated first `w:gridCol`), so such blocks refused with `parse-error`. `bun test packages/sciobot/src/blocks/columns.test.ts` passes 5 cases: two columns with a nested GFM table and three columns with a nested list keep payload widths, the projected `<column_group>`/`<column width>` tags, identical projection after save and reopen, Word text order, and empty replanning; a live column edit is one undo step with redo and reopen; two real sessions in both receiver orders converge on a column edit beside peer typing in another column, show Bob's remote caret in Alice's layout, keep Bob's text through Alice's undo and redo, converge when Bob deletes text while Alice types, and save equal digests. The registry, projection, diff, and blocks suites (134 files) show only the pre-merge baseline failures (`target-source-map`, `inserted-atoms`). Pre-commit gates pass.
 
 ## X20
 
