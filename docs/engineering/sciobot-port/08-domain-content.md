@@ -316,7 +316,7 @@ Final verification against installed fork `929e0ea4a9bf68f3a4c9a7c133e55bc76b76d
 
 ## X17
 
-- [ ] Render collapsible toggle blocks
+- [x] Render collapsible toggle blocks
 
 **Depends:** [B05](02-react-blocks.md#b05), [B06](02-react-blocks.md#b06), [V01](11-verification.md#v01)
 
@@ -330,7 +330,7 @@ Final verification against installed fork `929e0ea4a9bf68f3a4c9a7c133e55bc76b76d
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** claude, application branch `claude/docx-native-cutover`, fork `c16989ea`. **Evidence:** Plate keeps a toggle as an indented paragraph and its Markdown serializer drops the toggle title, so no Markdown shape existed. The fork registers `toggle` as a plain container (`<toggle>` with native children); its first paragraph is the summary. Fork `projection/toggle.test.ts` plans the tag, projects it back exactly, and plans a body change as one text operation. Application commit `ca138f7b5` adds `blocks/toggle.tsx` and the slash entry. Collapsing hides every native paint element except the summary on screen only; Word export, print, and the store never change. `blocks/collapsible-reveal.ts` (generalized from the solution reveal) opens a toggle or solution when a selection, typing, or a review reveal reaches hidden content, including blocks on pages that are not laid out yet. Chromium `toggles.test.ts` passes 5 cases: collapse with unchanged Markdown, history, and saved digest; summary typing that keeps it closed and Enter that opens it; review navigation into a closed toggle; slash insertion with undo; and two sessions in both client orders with edits in summary and body, local open state, author undo, and equal saved digests. `direct-edits.test.ts` adds an AI wave inside a closed toggle on a later page.
 
 ## X18
 

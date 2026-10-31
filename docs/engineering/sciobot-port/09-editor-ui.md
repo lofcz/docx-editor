@@ -152,7 +152,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 ## U09
 
-- [ ] Connect the review bar and group navigation
+- [x] Connect the review bar and group navigation
 
 **Depends:** [R14](05-suggestions.md#r14), [R15](05-suggestions.md#r15), [R16](05-suggestions.md#r16), [R17](05-suggestions.md#r17), [R18](05-suggestions.md#r18), [R21](05-suggestions.md#r21), [V01](11-verification.md#v01)
 
@@ -166,7 +166,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** claude, application branch `claude/docx-native-cutover`. **Evidence:** Progress, not closure. Application commits `19c3244ea` and `14c765e0c`. `review/review-bar.tsx` mounts in the native panel. It shows the active position and count, previous and next (buttons and Alt+Up/Alt+Down), accept and reject of the active group, and Accept all and Reject all through the fork group decisions. The active group is tracked by its stable ID; after a decision the group that followed it becomes active. Navigation selects the group anchor and calls `revealPosition`. A defect surfaced and is fixed: the workspace scroller lacked the engine class `docx-editor__scroll-container`, so reveals and caret follow could not scroll; the editor now also pins 100% zoom, because the engine's fit-to-width zoom shrank text under block widgets that do not scale. Chromium `review-bar.test.ts` passes 3 cases: navigation to a group two pages away, wrap-around shortcuts, accept and reject of the active group with the next selection, Reject all, undo restoring the group with its ID, and two sessions in both client orders with peer typing, author undo, and equal saved digests. The full harness passes 224 of 225 cases; the media case failed once under load and passes alone twice. Remaining: navigation into a collapsed toggle (needs X17).
+**Claim:** claude, application branch `claude/docx-native-cutover`. **Evidence:** Application commits `19c3244ea`, `14c765e0c`, and `ca138f7b5`. `review/review-bar.tsx` mounts in the native panel. It shows the active position and count, previous and next (buttons and Alt+Up/Alt+Down), accept and reject of the active group, and Accept all and Reject all through the fork group decisions. The active group is tracked by its stable ID; after a decision the group that followed it becomes active. Navigation opens a collapsed toggle or solution that hides the anchor, selects the anchor, and calls `revealPosition`. The workspace scroller carries the engine class `docx-editor__scroll-container`, and the editor pins 100% zoom so block widgets keep their scale. Chromium `review-bar.test.ts` passes 3 cases: navigation to a group two pages away, wrap-around shortcuts, accept and reject of the active group with the next selection, Reject all, undo restoring the group with its ID, and two sessions in both client orders with peer typing, author undo, and equal saved digests. `toggles.test.ts` navigates into a closed toggle and accepts the group there.
 
 ## U10
 
@@ -206,7 +206,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 ## U12
 
-- [ ] Scroll to the first newly introduced suggestion
+- [x] Scroll to the first newly introduced suggestion
 
 **Depends:** [U09](09-editor-ui.md#u09), [A06](06-direct-ai.md#a06), [V01](11-verification.md#v01)
 
@@ -220,7 +220,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** claude, application branch `claude/docx-native-cutover`. **Evidence:** Progress, not closure. Application commit `303a85c32`. The review bar remembers the group IDs a session has shown. When a change brings a group it has not shown, the editor scrolls once to the first such group with `revealPosition`; the selection does not move. Undo, redo, and repeated renders bring back known groups and do not scroll. Chromium case "a new AI wave scrolls once to its first new group" in `direct-edits.test.ts` checks the first wave, a second wave that replaces it, and undo. Remaining: revealing collapsed ancestors (needs X17) and the two-session scenario.
+**Claim:** claude, application branch `claude/docx-native-cutover`. **Evidence:** Application commits `303a85c32` and `ca138f7b5`. The review bar remembers the group IDs a session has shown. When a change brings a group it has not shown, it opens any collapsed toggle or solution that hides the group and scrolls once to the first such group with `revealPosition`; the selection does not move. Undo, redo, peer edits, and repeated renders bring back known groups or no group and do not scroll. Chromium `direct-edits.test.ts` passes 2 cases: a first wave, a second wave that replaces it, and undo; and, in two sessions, an AI wave inside a closed toggle on a later page that opens it and scrolls once, while the peer's toggle stays closed and the peer's typing does not scroll.
 
 ## U13
 
