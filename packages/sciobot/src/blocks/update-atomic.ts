@@ -60,6 +60,8 @@ export function updateAtomicBlock(
     return fail('stale-revision', 'Read the current document before changing this block.');
   if (surface.editingMode() === 'suggest')
     return fail('unsupported-operation', 'Tracked block changes require a review transaction.');
+  if (surface.editingMode() !== 'edit')
+    return fail('unsupported-operation', 'The document is read-only.');
   const pkg = surface.session.currentPackage();
   const block = buildBlockIndex(pkg).byId.get(update.blockId);
   if (!block) return fail('invalid-input', 'The block no longer exists.');
