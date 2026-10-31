@@ -44,7 +44,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 ## V03
 
-- [ ] Exercise mixed review waves through the application
+- [x] Exercise mixed review waves through the application
 
 **Depends:** [I06](10-app-integration.md#i06), [U09](09-editor-ui.md#u09), [U10](09-editor-ui.md#u10), [U11](09-editor-ui.md#u11), [U12](09-editor-ui.md#u12), [R20](05-suggestions.md#r20), [V01](11-verification.md#v01)
 
@@ -58,7 +58,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** claude, app branch `claude/docx-native-cutover` commit `53d7c6f0b`. **Evidence:** Chromium `scripts/docx-native/harness/review-waves.test.ts` drives the production tool executor (`edit_document`), the review bar, and two real sessions (`file-executor` scenario, activity document): wave one proposes an activity name change and a text change; `read_document` returns the working view; Bob types in the tail; a direct edit (`is_suggesion` false) rewrites that text and keeps the pending groups; wave two changes the text from wave one and proposes a duration change. Each session's saved DOCX, read back without an editor, holds the same pending group identities. Alice accepts the first group and rejects the next in the review bar; both sessions converge with Bob's and the direct-edit text kept, and saved digests match before and after the decisions. 2 pass (both client orders); with `direct-edits.test.ts` 25 pass. Tab routing across documents (I06) is not part of this scenario.
 
 ## V04
 
