@@ -1,4 +1,7 @@
-/** Application rules ported from lesson-plan and source diff-strategy.ts. */
+import type { MdxComponentRegistry } from '../registry/contract';
+import { sciobotMdxRegistry } from '../registry/sciobot';
+
+/** How the planner pairs and updates a registered component's nodes. */
 export type DomainDiffStrategy =
   | { readonly kind: 'atomic' }
   | {
@@ -12,37 +15,23 @@ export interface DomainNode {
   readonly [key: string]: unknown;
 }
 
-const STRATEGIES: Readonly<Record<string, DomainDiffStrategy>> = {
-  lesson_title: { kind: 'container', identityProps: ['grade'] },
-  preparation_recap: { kind: 'container' },
-  recap_goals: { kind: 'container' },
-  recap_curriculum: { kind: 'container', identityProps: ['framework', 'source'] },
-  recap_materials: { kind: 'container' },
-  recap_adaptations: { kind: 'container' },
-  recap_phase: { kind: 'container', identityProps: ['phaseType'] },
-  lesson_phase: { kind: 'container', identityProps: ['phaseType'] },
-  lesson_activity: { kind: 'container', updateProps: ['name', 'duration'] },
-  lesson_visual: { kind: 'atomic' },
-  listening: { kind: 'atomic' },
-  callout: { kind: 'container' },
-  story: { kind: 'container' },
-  solution: { kind: 'container' },
-  source: { kind: 'atomic' },
-  source_excerpt: {
-    kind: 'container',
-    identityProps: ['url', 'title', 'author', 'bookId', 'trust'],
-  },
-};
-
 export const IGNORED_DIFF_PROPERTIES: ReadonlySet<string> = new Set(['id', 'listStart']);
 
-export function domainDiffStrategy(node: DomainNode): DomainDiffStrategy | undefined {
-  return node.type && Object.hasOwn(STRATEGIES, node.type) ? STRATEGIES[node.type] : undefined;
+/** The registered diff strategy of a node's payload type, if it has one. */
+export function domainDiffStrategy(
+  node: DomainNode,
+  registry: MdxComponentRegistry = sciobotMdxRegistry()
+): DomainDiffStrategy | undefined {
+  return node.type ? registry.diffStrategies.get(node.type) : undefined;
 }
 
-export function sameContainerIdentity(before: DomainNode, after: DomainNode): boolean {
+export function sameContainerIdentity(
+  before: DomainNode,
+  after: DomainNode,
+  registry: MdxComponentRegistry = sciobotMdxRegistry()
+): boolean {
   if (before.type !== after.type) return false;
-  const strategy = domainDiffStrategy(before);
+  const strategy = domainDiffStrategy(before, registry);
   if (strategy?.kind !== 'container') return false;
   if (strategy.identityProps)
     return strategy.identityProps.every((key) => equalDomainValue(before[key], after[key]));
@@ -100,10 +89,11 @@ function propertyState(node: DomainNode, key: string): PropertyState {
 
 export function domainPropertyChanges(
   before: DomainNode,
-  after: DomainNode
+  after: DomainNode,
+  registry: MdxComponentRegistry = sciobotMdxRegistry()
 ): readonly DomainPropertyChange[] {
-  const strategy = domainDiffStrategy(before);
-  if (strategy?.kind !== 'container' || !sameContainerIdentity(before, after)) return [];
+  const strategy = domainDiffStrategy(before, registry);
+  if (strategy?.kind !== 'container' || !sameContainerIdentity(before, after, registry)) return [];
   const changes: DomainPropertyChange[] = [];
   for (const key of strategy.updateProps ?? []) {
     if (IGNORED_DIFF_PROPERTIES.has(key)) continue;

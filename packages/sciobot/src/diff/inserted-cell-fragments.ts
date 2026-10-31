@@ -1,7 +1,6 @@
-import { BLOCK_MATH, INLINE_MATH, decodeMathPayload } from '../blocks/math-codec';
-import { matchesNativeMathAst } from '../projection/native-math';
 import { encodeBlockPayload, type BlockPayload } from '../blocks/payload-schema';
-import { DOMAIN_BLOCK_TAGS } from '../projection/block-tags';
+import type { MdxComponentRegistry } from '../registry/contract';
+import { sciobotMdxRegistry } from '../registry/sciobot';
 import { MDX_BLOCK, MDX_INLINE, serializeOpaqueMdx } from '../projection/mdx';
 import type { TargetAstNode } from '../projection/parse-target';
 import { domainNodeFromAst } from './domain-ast';
@@ -36,48 +35,19 @@ const mdx = (node: TargetAstNode) =>
   node.type === 'mdxJsxFlowElement' || node.type === 'mdxJsxTextElement';
 const opaque = (payload: BlockPayload) => payload.type === MDX_BLOCK || payload.type === MDX_INLINE;
 
-export function payloadMatches(node: TargetAstNode, payload: BlockPayload): boolean {
-  if (payload.type === 'code_block') {
-    return (
-      node.type === 'code' &&
-      typeof node.value === 'string' &&
-      node.value === payload.attributes.value &&
-      (node.lang ?? '') === payload.attributes.language
-    );
-  }
-  if (payload.type === BLOCK_MATH || payload.type === INLINE_MATH) {
-    const math = decodeMathPayload(encodeBlockPayload(payload));
-    if (math.status !== 'supported') return false;
-    if (node.type === 'math' || node.type === 'inlineMath')
-      return matchesNativeMathAst(node, math.kind, math.source);
-    if (
-      !mdx(node) ||
-      node.name !== (math.kind === 'inline' ? 'scio-inline-equation' : 'scio-equation') ||
-      !Array.isArray(node.children) ||
-      node.children.length ||
-      !Array.isArray(node.attributes) ||
-      node.attributes.length !== 1
-    )
-      return false;
-    const attr = node.attributes[0];
-    return (
-      Object.keys(node).every((key) =>
-        ['type', 'name', 'attributes', 'children', 'position'].includes(key)
-      ) &&
-      !!attr &&
-      typeof attr === 'object' &&
-      !Array.isArray(attr) &&
-      attr.type === 'mdxJsxAttribute' &&
-      attr.name === 'texExpression' &&
-      attr.value === math.source &&
-      Object.keys(attr).every((key) => ['type', 'name', 'value', 'position'].includes(key))
-    );
-  }
+/** Whether a target node still describes `payload` exactly, under the registry's MDX rules. */
+export function payloadMatches(
+  node: TargetAstNode,
+  payload: BlockPayload,
+  registry: MdxComponentRegistry = sciobotMdxRegistry()
+): boolean {
+  const markdown = registry.components.get(payload.type)?.markdown;
+  if (markdown) return markdown.matches(node, payload);
   if (opaque(payload)) {
     serializeOpaqueMdx(payload);
     return targetAstKey(payload.mdast) === targetAstKey(node);
   }
-  const definition = DOMAIN_BLOCK_TAGS.get(payload.type);
+  const definition = registry.blockTags.get(payload.type);
   if (!definition) return false;
   const attributes = definition
     .attributes(payload)
@@ -92,20 +62,17 @@ export function payloadMatches(node: TargetAstNode, payload: BlockPayload): bool
             ? entry.value
             : JSON.stringify(entry.value),
     }));
-  const expected = domainNodeFromAst({
-    type: node.type,
-    name: definition.tag,
-    attributes,
-    children: [],
-  });
-  const actual = domainNodeFromAst(node);
+  const expected = domainNodeFromAst(
+    { type: node.type, name: definition.tag, attributes, children: [] },
+    registry
+  );
+  const actual = domainNodeFromAst(node, registry);
+  // The expected element is built without children, so a tag that a container shares with
+  // an atom reads as the atom; the payload's own type is the one it must match.
   return (
     actual !== null &&
     expected !== null &&
-    jsonDataKey(actual) ===
-      jsonDataKey(
-        payload.type === 'source_excerpt' ? { ...expected, type: 'source_excerpt' } : expected
-      )
+    jsonDataKey(actual) === jsonDataKey({ ...expected, type: payload.type })
   );
 }
 
@@ -113,7 +80,8 @@ export function payloadMatches(node: TargetAstNode, payload: BlockPayload): bool
 export function isInsertedCellFragments(
   cells: unknown,
   payloads: unknown,
-  inlineAtoms = false
+  inlineAtoms = false,
+  registry: MdxComponentRegistry = sciobotMdxRegistry()
 ): boolean {
   if (
     !Array.isArray(cells) ||
@@ -154,16 +122,16 @@ export function isInsertedCellFragments(
       if (inlineAtoms && !binding && (node.type === 'paragraph' || node.type === 'heading'))
         return true;
       if (mdx(node)) {
-        if (!binding || !payloadMatches(node, binding.payload)) return false;
+        if (!binding || !payloadMatches(node, binding.payload, registry)) return false;
         matched++;
         // Atomic payloads own their complete AST. Nested JSX is not a second native control.
         if (
           opaque(binding.payload) ||
-          DOMAIN_BLOCK_TAGS.get(binding.payload.type)?.kind === 'atomic'
+          registry.blockTags.get(binding.payload.type)?.kind === 'atomic'
         )
           return true;
       } else if (binding) {
-        if (node.type !== 'code' || !payloadMatches(node, binding.payload)) return false;
+        if (node.type !== 'code' || !payloadMatches(node, binding.payload, registry)) return false;
         matched++;
         return true;
       }

@@ -1,3 +1,5 @@
+import type { MdxComponentRegistry } from '../registry/contract';
+import { sciobotMdxRegistry } from '../registry/sciobot';
 import { payloadFallback, payloadFallbackContains, type PayloadFallback } from './payload-fallback';
 import { FIELD_PROPERTY_REVIEW_EXECUTOR } from './property-record-schema';
 import {
@@ -16,7 +18,6 @@ import {
   type BlockPayload,
 } from '../blocks/payload-schema';
 import { domainDiffStrategy, sameContainerIdentity } from '../diff/domain-strategies';
-import { DOMAIN_BLOCK_TAGS } from '../projection/block-tags';
 import { MDX_BLOCK, MDX_INLINE, serializeOpaqueMdx } from '../projection/mdx';
 import { jsonDataKey } from '../diff/target-key';
 import { readPropertyReviewStore } from './property-record-store';
@@ -131,7 +132,8 @@ function labels(record: PropertyReviewRecord) {
 function validPayloadChange(
   payload: BlockPayload,
   block: StoredPropertyBlock,
-  atomic: boolean
+  atomic: boolean,
+  registry: MdxComponentRegistry
 ): boolean {
   try {
     if (atomic) {
@@ -153,10 +155,10 @@ function validPayloadChange(
         serializeOpaqueMdx(after.value);
         return true;
       }
-      return domainDiffStrategy({ type: block.type })?.kind === 'atomic';
+      return domainDiffStrategy({ type: block.type }, registry)?.kind === 'atomic';
     }
-    const definition = DOMAIN_BLOCK_TAGS.get(block.type),
-      strategy = domainDiffStrategy({ type: block.type });
+    const definition = registry.blockTags.get(block.type),
+      strategy = domainDiffStrategy({ type: block.type }, registry);
     if (definition?.kind !== 'container' || strategy?.kind !== 'container') return false;
     const names = new Set(block.changes.map((change) => change.name)),
       probe = Object.fromEntries(
@@ -178,7 +180,8 @@ function validPayloadChange(
     if (
       !sameContainerIdentity(
         { ...payload.attributes, type: block.type },
-        { ...after, type: block.type }
+        { ...after, type: block.type },
+        registry
       )
     )
       return false;
@@ -190,7 +193,10 @@ function validPayloadChange(
 }
 
 /** Pure canonical inspection. The returned targets are internal, never stored or replayed. */
-export function prepareExternalReview(pkg: OoxmlPackage):
+export function prepareExternalReview(
+  pkg: OoxmlPackage,
+  registry: MdxComponentRegistry = sciobotMdxRegistry()
+):
   | {
       readonly success: true;
       readonly report: ExternalReviewReport;
@@ -356,7 +362,7 @@ export function prepareExternalReview(pkg: OoxmlPackage):
     if (
       !candidate.conflict &&
       payload &&
-      !validPayloadChange(payload, candidate.block, candidate.atomic)
+      !validPayloadChange(payload, candidate.block, candidate.atomic, registry)
     )
       candidate.conflict = 'invalid-execution-metadata';
     if (!candidate.part || !candidate.paragraphId) continue;
@@ -449,7 +455,10 @@ export function prepareExternalReview(pkg: OoxmlPackage):
 }
 
 /** No group state is hidden or modified when external content is ambiguous. */
-export function inspectExternalReview(pkg: OoxmlPackage): ExternalReviewRead {
-  const prepared = prepareExternalReview(pkg);
+export function inspectExternalReview(
+  pkg: OoxmlPackage,
+  registry: MdxComponentRegistry = sciobotMdxRegistry()
+): ExternalReviewRead {
+  const prepared = prepareExternalReview(pkg, registry);
   return prepared.success ? Object.freeze({ success: true, report: prepared.report }) : prepared;
 }

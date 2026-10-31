@@ -1,3 +1,5 @@
+import type { MdxComponentRegistry } from '../registry/contract';
+import { sciobotMdxRegistry } from '../registry/sciobot';
 import { planInsertedAtomBindings } from './inserted-atom-bindings';
 import { atomicTargetsPairable, planTargetAtomic } from './target-atomic';
 import {
@@ -9,7 +11,7 @@ import { findNode, paragraphTextOf } from '@docx-editor.dev/core/store';
 import { buildBlockIndex } from '../blocks/block-index';
 import type { NativeEditFailure } from '../contracts/document';
 import type { JsonObject } from '../data/json';
-import { DOMAIN_BLOCK_TAGS, type BlockTagDefinition } from '../projection/block-tags';
+import type { BlockTagDefinition } from '../projection/block-tags';
 import { parseTargetMarkdown } from '../projection/parse-target';
 import { bindLogicalSource, type BoundSourceBlock } from './bind-source';
 import type { TargetSourceInput } from './target-source';
@@ -43,6 +45,8 @@ export interface TargetDocumentOptions {
   readonly allocateBlockId?: () => string;
   /** Trusted host data for new atomic React blocks. AST expressions remain inert stored text. */
   readonly newBlockPayload?: NewBlockPayload;
+  /** The application's MDX components; `definitions` defaults to its MDX mappings. */
+  readonly registry?: MdxComponentRegistry;
 }
 export interface TargetDocumentPair {
   readonly id: string;
@@ -126,12 +130,13 @@ export function planTargetDocument(
   targetMarkdown: string,
   options: TargetDocumentOptions = {}
 ): TargetDocumentPlanResult {
-  const definitions = options.definitions ?? DOMAIN_BLOCK_TAGS;
+  const registry = options.registry ?? sciobotMdxRegistry();
+  const definitions = options.definitions ?? registry.blockTags;
   const bound = bindLogicalSource(input, definitions);
   if (!bound.success) return bound;
   const parsed = parseTargetMarkdown(targetMarkdown);
   if (!parsed.success) return parsed;
-  const normalized = normalizeLogicalBlocks(parsed.target, definitions);
+  const normalized = normalizeLogicalBlocks(parsed.target, definitions, registry);
   if (!normalized.success) return normalized;
   const beforeQuotes = bindQuoteParagraphStream(bound.source),
     afterQuotes = quoteParagraphStream(normalized.document);
@@ -279,11 +284,13 @@ export function planTargetDocument(
             afterBlock = newMap.get(next)!,
             native = byControl.get(entry.binding!.structuralOwnerId!);
           if (native) {
-            const a = domainNodeFromAst(old),
-              b = domainNodeFromAst(next);
+            const a = domainNodeFromAst(old, registry),
+              b = domainNodeFromAst(next, registry);
             if (entry.binding!.atomicControlId)
-              return atomicTargetsPairable(native.payload, old, next);
-            return !!a && !!b && sameContainerIdentity({ ...a, type: native.payload.type }, b);
+              return atomicTargetsPairable(native.payload, old, next, registry);
+            return (
+              !!a && !!b && sameContainerIdentity({ ...a, type: native.payload.type }, b, registry)
+            );
           }
           if (entry.block.kind !== afterBlock.kind) return false;
           if (entry.block.kind === 'table' && afterBlock.kind === 'table') return true;
@@ -361,7 +368,8 @@ export function planTargetDocument(
           ast,
         })),
         options.allocateBlockId,
-        options.newBlockPayload
+        options.newBlockPayload,
+        registry
       );
       if (!nestedBlocks.success) return nestedBlocks;
       const blockBindings = nestedBlocks.plan.blocks.map((binding) => ({
@@ -372,7 +380,8 @@ export function planTargetDocument(
         input.pkg,
         inserted,
         blockBindings,
-        options.allocateBlockId
+        options.allocateBlockId,
+        registry
       );
       if (!atomBindings.success) return atomBindings;
       structural.push({
@@ -440,7 +449,8 @@ export function planTargetDocument(
           { pkg: input.pkg, revision, blockId: block.id },
           block.payload,
           entry.ast,
-          astOf(next)
+          astOf(next),
+          registry
         );
         if (!atomic.success) return atomic;
         operations.push(...atomic.plan.operations);
@@ -508,8 +518,8 @@ export function planTargetDocument(
         !binding.atomicControlId
       ) {
         const block = byControl.get(ownerId);
-        const old = domainNodeFromAst(entry.ast),
-          current = domainNodeFromAst(astOf(next));
+        const old = domainNodeFromAst(entry.ast, registry),
+          current = domainNodeFromAst(astOf(next), registry);
         if (!block || !old || !current)
           return fail('The retained container needs its application metadata codec.');
         const set: Record<string, JsonObject[string]> = {},
@@ -532,7 +542,9 @@ export function planTargetDocument(
         }
         const metadata = planDomainProperties(
           { revision, pkg: input.pkg, blockId: block.id },
-          { set, remove }
+          { set, remove },
+          undefined,
+          registry
         );
         if (!metadata.success) return metadata;
         operations.push(...metadata.plan.operations);

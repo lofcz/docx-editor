@@ -1,6 +1,8 @@
+import type { MdxComponentRegistry } from '../registry/contract';
+import { sciobotMdxRegistry } from '../registry/sciobot';
 import { copyBoundedJson, type JsonObject } from '../data/json';
 import type { NativeEditFailure } from '../contracts/document';
-import { DOMAIN_BLOCK_TAGS, type BlockTagDefinition } from '../projection/block-tags';
+import type { BlockTagDefinition } from '../projection/block-tags';
 import type {
   ParsedTargetMarkdown,
   TargetAstNode,
@@ -137,7 +139,8 @@ function trimPrefix(ast: TargetAstNode): { ast: TargetAstNode; count: number } {
  */
 export function normalizeLogicalBlocks(
   input: Pick<ParsedTargetMarkdown, 'ast' | 'markdown'>,
-  definitions: ReadonlyMap<string, Definition> = DOMAIN_BLOCK_TAGS
+  definitions: ReadonlyMap<string, Definition> = sciobotMdxRegistry().blockTags,
+  registry: MdxComponentRegistry = sciobotMdxRegistry()
 ): LogicalBlockResult {
   try {
     if (!input || typeof input !== 'object') return refuse('Missing parsed logical target.');
@@ -173,7 +176,7 @@ export function normalizeLogicalBlocks(
     }
     const policy = (ast: TargetAstNode) => {
       if (!jsx(ast) || typeof ast.name !== 'string') return null;
-      const semantic = domainNodeFromAst(ast),
+      const semantic = domainNodeFromAst(ast, registry),
         definition = semantic && definitions.get(semantic.type!);
       if (definition?.tag === ast.name) return { type: semantic!.type!, kind: definition.kind };
       const candidates = byTag.get(ast.name) ?? [];

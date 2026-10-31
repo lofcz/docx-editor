@@ -1,6 +1,7 @@
+import type { MdxComponentRegistry } from '../registry/contract';
+import { sciobotMdxRegistry } from '../registry/sciobot';
 import type { OoxmlPackage } from '@docx-editor.dev/core/store';
 import type { NativeEditFailure } from '../contracts/document';
-import { DOMAIN_BLOCK_TAGS } from '../projection/block-tags';
 import { MDX_BLOCK } from '../projection/mdx';
 import type { TargetAstNode } from '../projection/parse-target';
 import { compileInsertedAtoms, type InsertedInlineAtom } from './inserted-atoms';
@@ -11,14 +12,15 @@ import { jsonDataKey } from './target-key';
 /** Cell paragraphs use one final paragraph index after the row/cell path, including implicit GFM paragraphs. */
 export function insertedParagraphs(
   inserted: readonly TargetAstNode[],
-  blocks: readonly InsertedBlockBinding[]
+  blocks: readonly InsertedBlockBinding[],
+  registry: MdxComponentRegistry = sciobotMdxRegistry()
 ): readonly { readonly path: readonly number[]; readonly ast: TargetAstNode }[] {
   const atomic = new Set(
     blocks
       .filter(
         (binding) =>
           binding.payload.type === MDX_BLOCK ||
-          DOMAIN_BLOCK_TAGS.get(binding.payload.type)?.kind === 'atomic'
+          registry.blockTags.get(binding.payload.type)?.kind === 'atomic'
       )
       .map((binding) => binding.path.join('/'))
   );
@@ -53,11 +55,12 @@ export function planInsertedAtomBindings(
   pkg: OoxmlPackage,
   inserted: readonly TargetAstNode[],
   blocks: readonly InsertedBlockBinding[],
-  allocate: () => string = () => crypto.randomUUID()
+  allocate: () => string = () => crypto.randomUUID(),
+  registry: MdxComponentRegistry = sciobotMdxRegistry()
 ): { readonly success: true; readonly atoms: readonly InsertedInlineAtom[] } | NativeEditFailure {
   const atoms: InsertedInlineAtom[] = [];
   const used = new Set(blocks.map((binding) => binding.payload.id));
-  for (const paragraph of insertedParagraphs(inserted, blocks)) {
+  for (const paragraph of insertedParagraphs(inserted, blocks, registry)) {
     const compiled = compileInsertedAtoms(
       {
         location: { kind: 'new-paragraph', path: paragraph.path },
@@ -86,7 +89,8 @@ export function planInsertedAtomBindings(
 export function isInsertedAtomBindings(
   inserted: readonly TargetAstNode[],
   blocks: readonly InsertedBlockBinding[],
-  value: unknown
+  value: unknown,
+  registry: MdxComponentRegistry = sciobotMdxRegistry()
 ): boolean {
   if (!Array.isArray(value)) return false;
   try {
@@ -98,7 +102,7 @@ export function isInsertedAtomBindings(
     if (new Set(ids).size !== ids.length) return false;
     let next = 0;
     const expected: InsertedInlineAtom[] = [];
-    for (const paragraph of insertedParagraphs(inserted, blocks)) {
+    for (const paragraph of insertedParagraphs(inserted, blocks, registry)) {
       const compiled = compileInsertedAtoms(
         {
           location: { kind: 'new-paragraph', path: paragraph.path },

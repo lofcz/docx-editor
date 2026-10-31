@@ -1,9 +1,10 @@
 import type { OoxmlPackage } from '@docx-editor.dev/core/store';
+import type { MdxComponentRegistry } from '../registry/contract';
+import { sciobotMdxRegistry } from '../registry/sciobot';
 import { buildBlockIndex } from '../blocks/block-index';
 import { encodeBlockPayload, isBlockId } from '../blocks/payload-schema';
 import type { NativeEditFailure, RevisionToken } from '../contracts/document';
 import { jsonDataProblem, type JsonObject } from '../data/json';
-import { DOMAIN_BLOCK_TAGS } from '../projection/block-tags';
 import { domainDiffStrategy, sameContainerIdentity } from './domain-strategies';
 import { createEditPlan, EDIT_PLAN_LIMITS, type CanonicalEdit, type EditPlanResult } from './plan';
 
@@ -36,7 +37,8 @@ const record = (value: unknown): value is JsonObject =>
 export function planDomainProperties(
   source: DomainPropertySource,
   target: DomainPropertyTarget,
-  intent?: DomainPropertyIntent
+  intent?: DomainPropertyIntent,
+  registry: MdxComponentRegistry = sciobotMdxRegistry()
 ): EditPlanResult {
   if (intent !== undefined && intent !== 'field-edit') return fail('Invalid property edit intent.');
   if (!source || typeof source !== 'object') return fail('Missing domain property source.');
@@ -71,8 +73,8 @@ export function planDomainProperties(
     return fail('Domain property names must be unique nonempty strings.');
   const block = buildBlockIndex(source.pkg).byId.get(source.blockId);
   if (!block) return fail('The native domain block does not exist.', 'invalid-document');
-  const definition = DOMAIN_BLOCK_TAGS.get(block.payload.type),
-    strategy = domainDiffStrategy({ type: block.payload.type });
+  const definition = registry.blockTags.get(block.payload.type),
+    strategy = domainDiffStrategy({ type: block.payload.type }, registry);
   if (definition?.kind !== 'container' || strategy?.kind !== 'container')
     return fail(
       'Property planning requires a registered domain container.',
@@ -103,7 +105,8 @@ export function planDomainProperties(
     intent !== 'field-edit' &&
     !sameContainerIdentity(
       { ...attributes, type: block.payload.type },
-      { ...after, type: block.payload.type }
+      { ...after, type: block.payload.type },
+      registry
     )
   )
     return fail(

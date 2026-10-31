@@ -1,5 +1,34 @@
 import type { BlockTagDefinition } from '../projection/block-tags';
 import type { DomainDiffStrategy } from '../diff/domain-strategies';
+import type { TargetAstNode } from '../projection/parse-target';
+import type { BlockPayload } from '../blocks/payload-schema';
+import type { JsonObject, JsonValue } from '../data/json';
+
+/** One MDX JSX attribute as the parser reads it. Expressions stay inert JSON objects. */
+export interface MdxAttribute {
+  readonly name: string;
+  readonly value: JsonValue | undefined;
+}
+
+/** How a component reads its MDX element back into payload attributes. */
+export interface MdxComponentParser {
+  /** The JSX tag name this component reads. */
+  readonly tag: string;
+  /** The payload attributes of one element, or null when the element is not this component. */
+  readonly read: (attributes: readonly MdxAttribute[], ast: TargetAstNode) => JsonObject | null;
+}
+
+/**
+ * A component written as a Markdown node instead of a JSX element, such as a fenced code block
+ * or a math block. Both hooks see the untrusted parsed node.
+ */
+export interface MdxMarkdownBinding {
+  readonly types: readonly string[];
+  /** The payload a new node describes, or null when it describes none. */
+  readonly fromMarkdown: (ast: TargetAstNode, id: string) => BlockPayload | null;
+  /** Whether a node, Markdown or JSX, still describes this payload exactly. */
+  readonly matches: (ast: TargetAstNode, payload: BlockPayload) => boolean;
+}
 
 /**
  * One application component that the embedding application registers.
@@ -14,6 +43,8 @@ export interface MdxComponentDefinition {
   /** `native`: the component wraps editable Word content. `none`: payload only. */
   readonly content: 'none' | 'native' | 'opaque-mdx';
   readonly mdx?: BlockTagDefinition;
+  readonly parse?: MdxComponentParser;
+  readonly markdown?: MdxMarkdownBinding;
   readonly diff?: DomainDiffStrategy;
 }
 
@@ -54,6 +85,16 @@ export interface MdxComponentRegistry {
   /** MDX mappings by payload type, the shape `projectBlocks` and `projectMdx` read. */
   readonly blockTags: ReadonlyMap<string, BlockTagDefinition>;
   readonly diffStrategies: ReadonlyMap<string, DomainDiffStrategy>;
+  /**
+   * Components by the JSX tag they read. One tag may name an atom and a container; the parser
+   * picks the container when the element holds text.
+   */
+  readonly parsers: ReadonlyMap<
+    string,
+    { readonly atomic?: MdxComponentDefinition; readonly container?: MdxComponentDefinition }
+  >;
+  /** Components written as Markdown nodes, by node type. */
+  readonly markdown: ReadonlyMap<string, MdxComponentDefinition>;
   readonly opaque: {
     readonly allowed: ReadonlyMap<string, readonly string[]>;
     readonly literal: ReadonlySet<string>;
@@ -70,6 +111,7 @@ export type MdxRegistryRefusal =
   | 'invalid-component'
   | 'duplicate-component'
   | 'duplicate-tag'
+  | 'duplicate-parser'
   | 'invalid-opaque-tag';
 
 const MAX_COMPONENTS = 512;
@@ -122,6 +164,17 @@ function componentProblem(component: MdxComponentDefinition): string | null {
     if ((mdx.kind === 'container') !== (component.content === 'native')) return 'mdx.kind';
     if (typeof mdx.attributes !== 'function') return 'mdx.attributes';
   }
+  if (component.parse) {
+    if (!named(component.parse.tag, TAG)) return 'parse.tag';
+    if (typeof component.parse.read !== 'function') return 'parse.read';
+  }
+  if (component.markdown) {
+    const binding = component.markdown;
+    if (!Array.isArray(binding.types) || binding.types.length === 0) return 'markdown.types';
+    for (const type of binding.types) if (!named(type, TAG)) return 'markdown.types';
+    if (typeof binding.fromMarkdown !== 'function' || typeof binding.matches !== 'function')
+      return 'markdown.hooks';
+  }
   const diff = component.diff;
   if (diff) {
     if (diff.kind !== 'atomic' && diff.kind !== 'container') return 'diff.kind';
@@ -153,6 +206,11 @@ export function createMdxComponentRegistry(input: MdxRegistryInput): MdxRegistry
   const blockTags = new Map<string, BlockTagDefinition>();
   const diffStrategies = new Map<string, DomainDiffStrategy>();
   const tags = new Set<string>();
+  const parsers = new Map<
+    string,
+    { atomic?: MdxComponentDefinition; container?: MdxComponentDefinition }
+  >();
+  const markdown = new Map<string, MdxComponentDefinition>();
   for (const component of input.components) {
     const issue = componentProblem(component);
     if (issue) return refuse('invalid-component', `${String(component.type)}: ${issue}`);
@@ -164,7 +222,18 @@ export function createMdxComponentRegistry(input: MdxRegistryInput): MdxRegistry
       blockTags.set(component.type, Object.freeze({ ...component.mdx }));
     }
     if (component.diff) diffStrategies.set(component.type, Object.freeze({ ...component.diff }));
-    components.set(component.type, Object.freeze({ ...component }));
+    const frozen = Object.freeze({ ...component });
+    if (component.parse) {
+      const slot = component.content === 'native' ? 'container' : 'atomic';
+      const entry = parsers.get(component.parse.tag) ?? {};
+      if (entry[slot]) return refuse('duplicate-parser', `${slot}:${component.parse.tag}`);
+      parsers.set(component.parse.tag, { ...entry, [slot]: frozen });
+    }
+    for (const type of component.markdown?.types ?? []) {
+      if (markdown.has(type)) return refuse('duplicate-parser', `markdown:${type}`);
+      markdown.set(type, frozen);
+    }
+    components.set(component.type, frozen);
   }
   const opaque = input.opaque ?? { allowed: {}, literal: [], dataOnly: [] };
   const allowed = new Map<string, readonly string[]>();
@@ -183,6 +252,8 @@ export function createMdxComponentRegistry(input: MdxRegistryInput): MdxRegistry
       components,
       blockTags,
       diffStrategies,
+      parsers,
+      markdown,
       opaque: Object.freeze({
         allowed,
         literal: new Set(opaque.literal),

@@ -1,3 +1,5 @@
+import type { MdxComponentRegistry } from '../registry/contract';
+import { sciobotMdxRegistry } from '../registry/sciobot';
 import type { OoxmlPackage } from '@docx-editor.dev/core/store';
 import { buildBlockIndex } from '../blocks/block-index';
 import { encodeBlockPayload, isBlockId, type BlockPayload } from '../blocks/payload-schema';
@@ -19,7 +21,8 @@ const fail = (
   code: NativeEditFailure['code'] = 'invalid-input'
 ): NativeEditFailure => ({ success: false, code, error });
 const opaque = (type: string) => type === MDX_BLOCK || type === MDX_INLINE;
-const atomic = (type: string) => opaque(type) || domainDiffStrategy({ type })?.kind === 'atomic';
+const atomic = (type: string, registry: MdxComponentRegistry) =>
+  opaque(type) || domainDiffStrategy({ type }, registry)?.kind === 'atomic';
 
 function payloadKey(payload: BlockPayload): string {
   return jsonDataKey(
@@ -35,7 +38,11 @@ function payloadKey(payload: BlockPayload): string {
  * Equal targets keep the original stored payload and parser locations without any edit.
  * Executors must treat a root payload change as one block replacement and update its native fallback.
  */
-export function planAtomicBlock(source: AtomicBlockSource, target: BlockPayload): EditPlanResult {
+export function planAtomicBlock(
+  source: AtomicBlockSource,
+  target: BlockPayload,
+  registry: MdxComponentRegistry = sciobotMdxRegistry()
+): EditPlanResult {
   if (!source || typeof source !== 'object') return fail('Missing atomic block source.');
   const descriptors = Object.getOwnPropertyDescriptors(source);
   for (const name of ['revision', 'pkg', 'blockId'])
@@ -56,7 +63,7 @@ export function planAtomicBlock(source: AtomicBlockSource, target: BlockPayload)
   const block = buildBlockIndex(source.pkg).byId.get(source.blockId);
   if (!block) return fail('The native atomic block does not exist.', 'invalid-document');
   const before = block.payload;
-  if (!atomic(before.type))
+  if (!atomic(before.type, registry))
     return fail(
       'The native block requires container or structural planning.',
       'unsupported-operation'

@@ -1,3 +1,5 @@
+import type { MdxComponentRegistry } from '../registry/contract';
+import { sciobotMdxRegistry } from '../registry/sciobot';
 import { completeInlineAtomPayloads } from '../native/inline-atom-payloads';
 import type { InlineImageRuntime } from '../native/inline-image-runtime';
 import { inlineAtomXml, inlineAtomKey, inlineAtomsByPath } from './inline-atom-xml';
@@ -45,7 +47,6 @@ import {
   withInlineCodeStyle,
 } from '../native/inline-code';
 import type { NativeEditFailure } from '../contracts/document';
-import { DOMAIN_BLOCK_TAGS } from '../projection/block-tags';
 import { HORIZONTAL_RULE_PARAGRAPH_XML, withHorizontalRuleStyle } from '../native/horizontal-rule';
 import { compileInlineTarget } from './inline-target';
 import type { InsertedBlockBinding } from './inserted-blocks';
@@ -480,6 +481,7 @@ interface RenderContext {
   readonly bindings: ReadonlyMap<string, InsertedBlockBinding>;
   readonly atoms: ReadonlyMap<string, InsertedInlineAtom>;
   readonly images?: InlineImageRuntime;
+  readonly registry?: MdxComponentRegistry;
   pkg: OoxmlPackage;
   /** Paragraph AST paths in the order their elements appear in the rendered XML. */
   readonly paragraphs: string[];
@@ -602,7 +604,8 @@ function blockXml(node: TargetAstNode, path: readonly number[], context: RenderC
   const properties = `<w:sdtPr><w:alias w:val="${escapeXml(binding.label)}"/><w:tag w:val="${escapeXml(blockTag(binding.payload.id))}"/></w:sdtPr>`;
   if (
     binding.payload.type === MDX_BLOCK ||
-    DOMAIN_BLOCK_TAGS.get(binding.payload.type)?.kind === 'atomic'
+    (context.registry ?? sciobotMdxRegistry()).blockTags.get(binding.payload.type)?.kind ===
+      'atomic'
   ) {
     if (binding.payload.type === 'code_block') {
       const language = binding.payload.attributes.language,

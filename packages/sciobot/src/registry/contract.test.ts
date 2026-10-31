@@ -5,9 +5,9 @@ import {
   type MdxComponentStorage,
   type MdxOpaqueTags,
 } from './contract';
-import { SCIOBOT_MDX_REGISTRY } from './sciobot';
+import { sciobotMdxRegistry } from './sciobot';
 import { DOMAIN_BLOCK_TAGS } from '../projection/block-tags';
-import { domainDiffStrategy } from '../diff/domain-strategies';
+import { SCIOBOT_DIFF_STRATEGIES } from './sciobot-diff';
 
 const storage: MdxComponentStorage = {
   tagPrefix: 'acme:1:',
@@ -111,7 +111,7 @@ test('opaque tags must be allowed before they can be literal or data-only', () =
 });
 
 test('the Sciobot registry keeps the stored names and every existing mapping', () => {
-  const registry = SCIOBOT_MDX_REGISTRY;
+  const registry = sciobotMdxRegistry();
   expect(registry.storage).toEqual({
     tagPrefix: 'scio:1:',
     namespace: 'urn:sciobot:docx:blocks:1',
@@ -122,7 +122,7 @@ test('the Sciobot registry keeps the stored names and every existing mapping', (
   });
   expect([...registry.blockTags]).toEqual([...DOMAIN_BLOCK_TAGS]);
   for (const type of [...registry.components.keys()])
-    expect(registry.diffStrategies.get(type)).toEqual(domainDiffStrategy({ type }));
+    expect(registry.diffStrategies.get(type)).toEqual(SCIOBOT_DIFF_STRATEGIES[type]);
   expect(registry.components.get('listening')).toMatchObject({ content: 'opaque-mdx' });
   expect(registry.components.get('mention')).toMatchObject({ kind: 'inline', content: 'none' });
   expect(registry.components.get('callout')).toMatchObject({ kind: 'block', content: 'native' });

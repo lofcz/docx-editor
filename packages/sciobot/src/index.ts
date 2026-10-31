@@ -172,4 +172,5 @@ export { installListEditing } from './chrome/list-input';
 
 export * from './review/recompose-properties';
 export * from './registry/contract';
-export { SCIOBOT_MDX_REGISTRY } from './registry/sciobot';
+export { sciobotMdxRegistry } from './registry/sciobot';
+export * from './registry/mdx-read';

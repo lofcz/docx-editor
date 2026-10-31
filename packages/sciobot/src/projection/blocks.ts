@@ -1,3 +1,4 @@
+import { sciobotMdxRegistry } from '../registry/sciobot';
 import { serializeMention, mentionInsideHyperlink } from './mention';
 import { forEachSemanticStory, forEachStoryParagraphFragment } from '@docx-editor.dev/core/layout';
 import { managedInlineImageAssets } from './inline-image-assets';
@@ -19,7 +20,6 @@ import {
 import type { NativeEditFailure, RevisionToken } from '../contracts/document';
 import { ProjectionComposer } from './compose';
 import {
-  DOMAIN_BLOCK_TAGS,
   GENERATED_LABEL_TAG,
   attributeLiteral,
   type BlockTagDefinition,
@@ -113,7 +113,7 @@ export function projectBlocks(
   pkg: OoxmlPackage,
   layout: ExportSemanticLayout,
   revision: RevisionToken,
-  definitions: ReadonlyMap<string, BlockTagDefinition> = DOMAIN_BLOCK_TAGS,
+  definitions: ReadonlyMap<string, BlockTagDefinition> = sciobotMdxRegistry().blockTags,
   options: Pick<MarkdownLayoutOptions, 'tableSyntax'> = {}
 ): { readonly success: true; readonly projection: BlockProjection } | NativeEditFailure {
   const index = buildBlockIndex(pkg);

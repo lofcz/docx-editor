@@ -39,7 +39,7 @@ Unregistered tags that the projection allows keep the opaque MDX path. Existing 
 
 ## M02
 
-- [ ] Drive the MDX projection from the registry
+- [x] Drive the MDX projection from the registry
 
 **Depends:** [M01](#m01)
 
@@ -55,7 +55,7 @@ Unregistered tags that the projection allows keep the opaque MDX path. Existing 
 
 **Check:** Run the projection and MDX suites. Add one fixture with a non-Sciobot component.
 
-**Claim:** Unclaimed. **Evidence:** Pending.
+**Claim:** claude, branch `codex/react-block-proof`. **Evidence:** The component contract adds `parse` (JSX attributes to payload attributes) and `markdown` (`fromMarkdown` and `matches` for Markdown nodes such as fenced code and math). `registry/mdx-read.ts` holds the generic reader; `registry/sciobot-parse.ts`, `registry/sciobot-markdown.ts`, and `registry/sciobot-diff.ts` hold the Sciobot rules that `domain-ast.ts`, `insertedPayload`, `payloadMatches`, and `domain-strategies.ts` used to hard-code. `planTargetDocument` takes `options.registry` and passes it to `bindLogicalSource`, `normalizeLogicalBlocks`, `planInsertedBlocks`, `planInsertedAtomBindings`, `planTargetAtomic`, `planAtomicBlock`, and `planDomainProperties`; `planDomainContainers`, `prepareExternalReview`, and the inserted-cell and fragment-seed validators take it too. `projectBlocks` and `projectMdx` default to the registry mappings. Checks: `bun test packages/sciobot/src/registry` passes 7 cases, including a non-Sciobot `Card` component that parses, binds, matches, and keeps its own identity rule, and that each registry reads only its own components. The whole `sciobot` suite (418 files) shows only the pre-merge baseline failures; the files that timed out under 14 workers pass alone in 6 to 13 seconds. Limits: entry points still default to `sciobotMdxRegistry()` until M06 makes the application pass the registry. Inline atom paths (`target-inline.ts`, `inline-source-updates.ts`) and `property-projection.ts` still use the default; M05 covers them.
 
 ## M03
 
@@ -91,7 +91,7 @@ Unregistered tags that the projection allows keep the opaque MDX path. Existing 
 
 **Check:** Run the diff suites. Add a planner case for a non-Sciobot component.
 
-**Claim:** Unclaimed. **Evidence:** Pending.
+**Claim:** Unclaimed. **Evidence:** In progress. `SCIOBOT_DIFF_STRATEGIES` moved to `registry/sciobot-diff.ts`; `domainDiffStrategy`, `sameContainerIdentity`, and `domainPropertyChanges` read `registry.diffStrategies`. Open: `fragment-seeds.ts` renders the `code_block` Word fallback by type, `domain-properties.ts` and `external-review-state.ts` probe `bookId` and `trust` values, and `inserted-cell-fragments.ts` accepts only fenced code as a bound Markdown cell node.
 
 ## M05
 

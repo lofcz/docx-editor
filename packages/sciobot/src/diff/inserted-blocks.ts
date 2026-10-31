@@ -1,16 +1,10 @@
-import { matchesNativeMathAst } from '../projection/native-math';
-import {
-  BLOCK_MATH,
-  INLINE_MATH,
-  createMathPayload,
-  decodeMathPayload,
-} from '../blocks/math-codec';
 import { MDX_BLOCK } from '../projection/mdx';
 import type { OoxmlPackage } from '@docx-editor.dev/core/store';
 import { encodeBlockPayload, isBlockId, type BlockPayload } from '../blocks/payload-schema';
+import type { MdxComponentRegistry } from '../registry/contract';
+import { sciobotMdxRegistry } from '../registry/sciobot';
 import type { NativeEditFailure, RevisionToken } from '../contracts/document';
 import type { JsonObject } from '../data/json';
-import { DOMAIN_BLOCK_TAGS } from '../projection/block-tags';
 import type { TargetAstNode } from '../projection/parse-target';
 import { domainNodeFromAst } from './domain-ast';
 import { payloadMatches } from './inserted-cell-fragments';
@@ -41,47 +35,27 @@ const fail = (error: string): NativeEditFailure => ({
 const record = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
 const mdx = (node: TargetAstNode) => node.type === 'mdxJsxFlowElement';
+/** A Markdown node that a registered block component reads, such as fenced code. */
+const markdownBlock = (registry: MdxComponentRegistry, node: TargetAstNode) =>
+  registry.markdown.get(node.type)?.kind === 'block';
 
 /** A collision-resistant persistent ID that fits Word's 64-character tag limit. */
 export const defaultBlockId = (): string => crypto.randomUUID();
 
 /** The application payload a new registered element describes. Unknown tags have none. */
-export function insertedPayload(ast: TargetAstNode, id: string): BlockPayload | null {
-  if (ast.type === 'code') {
-    if (
-      typeof ast.value !== 'string' ||
-      (ast.lang !== null && typeof ast.lang !== 'string') ||
-      (typeof ast.lang === 'string' && ast.lang.length > 128) ||
-      (ast.meta !== null && ast.meta !== undefined)
-    )
-      return null;
-    return {
-      version: 1,
-      id,
-      type: 'code_block',
-      attributes: { language: ast.lang ?? '', value: ast.value },
-    };
-  }
-  if (ast.type === 'math' || ast.type === 'inlineMath') {
-    const kind = ast.type === 'math' ? 'block' : 'inline';
-    if (typeof ast.value !== 'string' || !matchesNativeMathAst(ast, kind, ast.value)) return null;
-    try {
-      return createMathPayload(id, kind, ast.value);
-    } catch {
-      return null;
-    }
-  }
-  const node = domainNodeFromAst(ast);
+export function insertedPayload(
+  ast: TargetAstNode,
+  id: string,
+  registry: MdxComponentRegistry = sciobotMdxRegistry()
+): BlockPayload | null {
+  const markdown = registry.markdown.get(ast.type)?.markdown;
+  if (markdown) return markdown.fromMarkdown(ast, id);
+  const node = domainNodeFromAst(ast, registry);
   const type = node?.type;
-  if (!node || typeof type !== 'string' || !DOMAIN_BLOCK_TAGS.has(type)) return null;
+  if (!node || typeof type !== 'string' || !registry.blockTags.has(type)) return null;
   const { type: _type, ...attributes } = node;
   const payload: BlockPayload = { version: 1, id, type, attributes: attributes as JsonObject };
-  if (
-    (type === INLINE_MATH || type === BLOCK_MATH) &&
-    decodeMathPayload(encodeBlockPayload(payload)).status !== 'supported'
-  )
-    return null;
-  return payloadMatches(ast, payload) ? payload : null;
+  return payloadMatches(ast, payload, registry) ? payload : null;
 }
 
 export interface InsertedBlockPlan {
@@ -103,7 +77,8 @@ export function planInsertedBlocks(
   },
   inserted: readonly { readonly block: LogicalBlock; readonly ast: TargetAstNode }[],
   allocate: () => string = defaultBlockId,
-  authorPayload?: NewBlockPayload
+  authorPayload?: NewBlockPayload,
+  registry: MdxComponentRegistry = sciobotMdxRegistry()
 ): { success: true; plan: InsertedBlockPlan } | NativeEditFailure {
   const blocks: InsertedBlockBinding[] = [],
     lists: InsertedListBinding[] = [];
@@ -113,10 +88,10 @@ export function planInsertedBlocks(
     path: readonly number[]
   ): NativeEditFailure | null => {
     if (block.kind === 'paragraph' || block.kind === 'row' || block.kind === 'cell') return null;
-    const math = block.kind === 'block' && ast.type === 'math';
-    const code = block.kind === 'block' && ast.type === 'code';
+    // A block written as a Markdown node, such as fenced code or display math.
+    const markdown = block.kind === 'block' && markdownBlock(registry, ast);
     const thematicBreak = block.kind === 'block' && ast.type === 'thematicBreak';
-    if (block.kind === 'block' && !math && !code && !thematicBreak)
+    if (block.kind === 'block' && !markdown && !thematicBreak)
       return fail('New opaque blocks need their own native representation.');
     if (thematicBreak) return null;
     if (block.kind === 'table') {
@@ -124,29 +99,29 @@ export function planInsertedBlocks(
         item.kind === 'paragraph' ? !!item.list : 'children' in item && item.children.some(listed);
       return listed(block) ? fail('Lists inside new tables need nested table list paths.') : null;
     }
-    if (!mdx(ast) && !math && !code) {
+    if (!mdx(ast) && !markdown) {
       if (block.kind === 'container' && ast.type === 'blockquote' && path.length === 1) return null;
       return fail(`New ${ast.type} blocks need their own native representation.`);
     }
     const id = allocate();
     if (!isBlockId(id)) return fail('The block ID allocator returned an invalid ID.');
-    // Native math has its own codec; React admission receives MDX syntax only.
-    const authored = math || code ? undefined : authorPayload?.(ast, id);
-    const payload = authored?.payload ?? insertedPayload(ast, id);
-    const definition = payload && DOMAIN_BLOCK_TAGS.get(payload.type);
+    // Markdown components have their own codec; React admission receives MDX syntax only.
+    const authored = markdown ? undefined : authorPayload?.(ast, id);
+    const payload = authored?.payload ?? insertedPayload(ast, id, registry);
+    const definition = payload && registry.blockTags.get(payload.type);
     const opaque = payload?.type === MDX_BLOCK && block.kind === 'atomic';
     if (
       !payload ||
       payload.id !== id ||
-      (!opaque && (!definition || definition.kind !== (math || code ? 'atomic' : block.kind))) ||
-      !payloadMatches(ast, payload)
+      (!opaque && (!definition || definition.kind !== (markdown ? 'atomic' : block.kind))) ||
+      !payloadMatches(ast, payload, registry)
     )
       return fail('New application blocks need a registered payload type.');
     const label = authored?.label ?? definition?.tag;
     if (typeof label !== 'string' || label.length > 256)
       return fail('A new application block needs a bounded readable label.');
     blocks.push({ path: [...path], payload, label });
-    if (block.kind === 'atomic' || math || code) return null;
+    if (block.kind === 'atomic' || markdown) return null;
     const group = block as LogicalGroup;
     const children = (ast.children ?? []) as TargetAstNode[];
     if (children.length !== group.children.length)
@@ -181,7 +156,8 @@ export function planInsertedBlocks(
 /** Called after the D01 bounded JSON gate. Each binding names one registered element by path. */
 export function isInsertedBlockBindings(
   inserted: readonly TargetAstNode[],
-  value: unknown
+  value: unknown,
+  registry: MdxComponentRegistry = sciobotMdxRegistry()
 ): boolean {
   if (!Array.isArray(value)) return false;
   const paths = new Set<string>(),
@@ -214,8 +190,8 @@ export function isInsertedBlockBindings(
       }
       if (
         !node ||
-        (!mdx(node) && node.type !== 'math' && node.type !== 'code') ||
-        !payloadMatches(node, binding.payload)
+        (!mdx(node) && !markdownBlock(registry, node)) ||
+        !payloadMatches(node, binding.payload, registry)
       )
         return false;
     }
@@ -230,7 +206,7 @@ export function isInsertedBlockBindings(
         matched++;
         if (
           binding.payload.type === MDX_BLOCK ||
-          DOMAIN_BLOCK_TAGS.get(binding.payload.type)?.kind === 'atomic'
+          registry.blockTags.get(binding.payload.type)?.kind === 'atomic'
         )
           return;
       }

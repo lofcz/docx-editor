@@ -1,8 +1,9 @@
+import type { MdxComponentRegistry } from '../registry/contract';
+import { sciobotMdxRegistry } from '../registry/sciobot';
 import { diffArrays } from 'diff';
 import type { BlockPayload } from '../blocks/payload-schema';
 import type { NativeEditFailure } from '../contracts/document';
 import type { JsonObject, JsonValue } from '../data/json';
-import { DOMAIN_BLOCK_TAGS } from '../projection/block-tags';
 import { MDX_BLOCK, MDX_INLINE, serializeOpaqueMdx } from '../projection/mdx';
 import { parseTargetMarkdown, type TargetAstNode } from '../projection/parse-target';
 import { planAtomicBlock, type AtomicBlockSource } from './atomic-blocks';
@@ -24,14 +25,15 @@ const opaque = (payload: BlockPayload) => [MDX_BLOCK, MDX_INLINE].includes(paylo
 export function atomicTargetsPairable(
   payload: BlockPayload,
   before: TargetAstNode,
-  after: TargetAstNode
+  after: TargetAstNode,
+  registry: MdxComponentRegistry = sciobotMdxRegistry()
 ): boolean {
   if (opaque(payload))
     return (
       before.type === after.type && ['mdxJsxFlowElement', 'mdxJsxTextElement'].includes(after.type)
     );
-  const a = domainNodeFromAst(before),
-    b = domainNodeFromAst(after);
+  const a = domainNodeFromAst(before, registry),
+    b = domainNodeFromAst(after, registry);
   return !!a && !!b && a.type === b.type;
 }
 
@@ -180,9 +182,10 @@ export function planTargetAtomic(
   source: AtomicBlockSource,
   payload: BlockPayload,
   before: TargetAstNode,
-  after: TargetAstNode
+  after: TargetAstNode,
+  registry: MdxComponentRegistry = sciobotMdxRegistry()
 ): EditPlanResult {
-  if (!atomicTargetsPairable(payload, before, after))
+  if (!atomicTargetsPairable(payload, before, after, registry))
     return fail('Atomic target syntax changes its native payload kind.');
   try {
     let target: BlockPayload;
@@ -204,10 +207,15 @@ export function planTargetAtomic(
       if (!syntax || targetAstKey(syntax) !== targetAstKey(after))
         return fail('Stored opaque data changes the requested target syntax.');
     } else {
-      const definition = DOMAIN_BLOCK_TAGS.get(payload.type);
-      const old = domainNodeFromAst(before),
-        next = domainNodeFromAst(after);
-      if (definition?.kind !== 'atomic' || !old || !next || !payloadMatches(before, payload))
+      const definition = registry.blockTags.get(payload.type);
+      const old = domainNodeFromAst(before, registry),
+        next = domainNodeFromAst(after, registry);
+      if (
+        definition?.kind !== 'atomic' ||
+        !old ||
+        !next ||
+        !payloadMatches(before, payload, registry)
+      )
         return fail('A retained atomic target has no exact registered source codec.');
       if (Array.isArray(after.children) && after.children.length)
         return fail('A registered atomic target needs a codec for its complete child syntax.');
@@ -229,10 +237,10 @@ export function planTargetAtomic(
         else delete attributes[key];
       }
       target = { ...payload, attributes };
-      if (!payloadMatches(after, target))
+      if (!payloadMatches(after, target, registry))
         return fail('The atomic target does not round-trip through its registered codec.');
     }
-    return planAtomicBlock(source, target);
+    return planAtomicBlock(source, target, registry);
   } catch (cause) {
     return fail(cause instanceof Error ? cause.message : String(cause));
   }

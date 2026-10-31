@@ -1,3 +1,4 @@
+import { sciobotMdxRegistry } from '../registry/sciobot';
 import type { MarkdownLayoutOptions } from '@docx-editor.dev/docx-to-markdown';
 import type { ExportSemanticLayout } from '@docx-editor.dev/core/export';
 import type { OoxmlPackage } from '@docx-editor.dev/core/store';
@@ -15,7 +16,7 @@ import {
   type JsonValue,
 } from '../blocks/payload-schema';
 import type { NativeEditFailure, RevisionToken } from '../contracts/document';
-import { DOMAIN_BLOCK_TAGS, type BlockTagDefinition, type SerializedBlockTag } from './block-tags';
+import { type BlockTagDefinition, type SerializedBlockTag } from './block-tags';
 import { projectBlocks, type BlockProjection } from './blocks';
 import { projectTableOwnership, type TableProjection } from './tables';
 
@@ -127,7 +128,7 @@ export function projectMdx(
   pkg: OoxmlPackage,
   layout: ExportSemanticLayout,
   revision: RevisionToken,
-  definitions: ReadonlyMap<string, BlockTagDefinition> = DOMAIN_BLOCK_TAGS,
+  definitions: ReadonlyMap<string, BlockTagDefinition> = sciobotMdxRegistry().blockTags,
   options: Pick<MarkdownLayoutOptions, 'tableSyntax'> = {}
 ): { readonly success: true; readonly projection: MdxProjection } | NativeEditFailure {
   const serialized = new Map<string, SerializedOpaqueMdx>();

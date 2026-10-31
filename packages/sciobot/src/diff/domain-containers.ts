@@ -1,3 +1,5 @@
+import type { MdxComponentRegistry } from '../registry/contract';
+import { sciobotMdxRegistry } from '../registry/sciobot';
 import {
   contentControlContentNodeOf,
   findNode,
@@ -7,7 +9,6 @@ import { buildBlockIndex } from '../blocks/block-index';
 import type { NativeEditFailure, RevisionToken } from '../contracts/document';
 import { jsonDataProblem } from '../data/json';
 import type { TargetAstNode } from '../projection/parse-target';
-import { DOMAIN_BLOCK_TAGS } from '../projection/block-tags';
 import { domainNodeFromAst } from './domain-ast';
 import { domainDiffStrategy, sameContainerIdentity } from './domain-strategies';
 import { createEditPlan, type CanonicalEdit, type CanonicalEditPlan } from './plan';
@@ -56,7 +57,8 @@ const fail = (
 /** Pair retained domain wrappers recursively. Content/property/atomic pairs stay explicit work for D13-D15. */
 export function planDomainContainers(
   source: DomainContainerSource,
-  target: readonly TargetAstNode[]
+  target: readonly TargetAstNode[],
+  registry: MdxComponentRegistry = sciobotMdxRegistry()
 ): DomainContainerResult {
   if (!source || typeof source !== 'object') return fail('Missing domain container source.');
   const descriptors = Object.getOwnPropertyDescriptors(source);
@@ -121,8 +123,8 @@ export function planDomainContainers(
     const owners = new Map(window.blocks.map((mapped) => [mapped.ast, byControl.get(mapped.id)]));
     for (const mapped of window.blocks) {
       const owner = byControl.get(mapped.id),
-        semantic = domainNodeFromAst(mapped.ast);
-      const definition = owner && DOMAIN_BLOCK_TAGS.get(owner.payload.type);
+        semantic = domainNodeFromAst(mapped.ast, registry);
+      const definition = owner && registry.blockTags.get(owner.payload.type);
       if (semantic && !owner)
         return fail('The mapped domain wrapper has no native payload.', 'invalid-document');
       if (definition && mapped.ast.name !== definition.tag)
@@ -132,7 +134,8 @@ export function planDomainContainers(
         semantic &&
         definition &&
         semantic.type !== owner.payload.type &&
-        !(owner.payload.type === 'source_excerpt' && mapped.ast.name === 'source')
+        // A container that shares its tag with an atom reads as the atom without text.
+        registry.components.get(owner.payload.type)?.parse?.tag !== mapped.ast.name
       )
         return fail(
           'The mapped domain type does not match its native payload.',
@@ -143,12 +146,12 @@ export function planDomainContainers(
       key,
       pairable(before, next) {
         const owner = owners.get(before),
-          nativeStrategy = owner && domainDiffStrategy({ type: owner.payload.type });
+          nativeStrategy = owner && domainDiffStrategy({ type: owner.payload.type }, registry);
         if (owner && (!nativeStrategy || nativeStrategy.kind === 'atomic'))
           return before.type === next.type;
-        const decoded = domainNodeFromAst(before),
+        const decoded = domainNodeFromAst(before, registry),
           a = decoded && owner ? { ...decoded, type: owner.payload.type } : decoded,
-          b = domainNodeFromAst(next);
+          b = domainNodeFromAst(next, registry);
         if (!a && !b)
           return (
             before.type === next.type &&
@@ -157,8 +160,8 @@ export function planDomainContainers(
             )
           );
         if (!a || !b || a.type !== b.type) return false;
-        const strategy = domainDiffStrategy(a);
-        return strategy?.kind === 'atomic' || sameContainerIdentity(a, b);
+        const strategy = domainDiffStrategy(a, registry);
+        return strategy?.kind === 'atomic' || sameContainerIdentity(a, b, registry);
       },
     });
     if (!paired.success) return paired;
@@ -168,10 +171,10 @@ export function planDomainContainers(
         ast = mapped.ast,
         next = after[pair.afterIndex]!;
       const block = byControl.get(mapped.id),
-        before = domainNodeFromAst(ast),
+        before = domainNodeFromAst(ast, registry),
         strategy = block
-          ? domainDiffStrategy({ type: block.payload.type })
-          : before && domainDiffStrategy(before);
+          ? domainDiffStrategy({ type: block.payload.type }, registry)
+          : before && domainDiffStrategy(before, registry);
       const kind =
         strategy?.kind === 'container'
           ? 'container'
