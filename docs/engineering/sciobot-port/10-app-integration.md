@@ -136,7 +136,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 ## I08
 
-- [ ] Save native documents through existing autosave
+- [x] Save native documents through existing autosave
 
 **Depends:** [I01](10-app-integration.md#i01), [I07](10-app-integration.md#i07), [V01](11-verification.md#v01)
 
@@ -150,11 +150,11 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** claude, application branch `claude/docx-native-cutover`. **Evidence:** application branch `claude/docx-native-cutover` in `/run/media/lofcz/ssd_external/GitHub/sciobot-next-docx-work`, commit `bc584983d`, fork runtime `f64e9972` (vendored in `907868900`). `src/lib/docx/native-autosave.ts` (`NativeDocxAutosave`) reuses `SaveScheduler` and the Plate timing: a 500 ms capture writes the local draft with bytes, and a 1500 ms persist (10 s cap) uploads the DOCX before it saves the reference. The revision is the SHA-256 of the bytes. Upload or reference failures set `error`/`offline` and retry with the Plate backoff (1 s doubling to 30 s); the saved reference never changes on failure. `finish()` saves the last keystrokes before the editor is destroyed. `src/lib/docx/native-storage.ts` stores revisions under `<owner>/docx-native/<material>/<sha256>.docx` in the private owner-scoped `attachment-workspaces` bucket and PATCHes `material_documents` with the snapshot envelope as `content` and the working-view Markdown as `markdown`; zero updated rows fail. `NativeWorkspaceRoute` binds the session through `nativeAutosaveBinding.ts`; `DocxWorkspacePanel` shows the save status with the existing autosave strings. Checks: `bunx rstest run src/lib/docx/native-autosave.test.ts src/lib/docx/native-load.test.ts src/lib/docx/snapshot.test.ts` passes 25 cases (upload-before-reference, upload and reference failures with retry, typing during a save, unchanged documents, draft clearing, finish). Chromium: `bun test --timeout 600000 scripts/docx-native/harness/native-persistence.test.ts` passes 8 cases: a failed upload keeps the saved reference and Markdown until the retry; reload restores identical text, working view, committed view, and the activity payload with a pending suggestion; unmount saves the last keystrokes; saved Plate content is never written. The full harness at `bc584983d` passes 153 cases across 22 files (one start-up connection refusal reran clean). Frontend and harness types pass 6,878 and 2,457 files. Collaboration: these changes add no document operation and change no geometry. The production native route opens one session per material; shared-room persistence follows cutover under the collaboration scope decision in `SCIOBOT_PORT_TODO.md`. Limit: a material edited by its owner only; another user's session cannot read the owner's private folder.
 
 ## I09
 
-- [ ] Restore drafts without overwriting newer content
+- [x] Restore drafts without overwriting newer content
 
 **Depends:** [I08](10-app-integration.md#i08), [V01](11-verification.md#v01)
 
@@ -168,11 +168,11 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** claude, application branch `claude/docx-native-cutover`. **Evidence:** application branch `claude/docx-native-cutover` in `/run/media/lofcz/ssd_external/GitHub/sciobot-next-docx-work`, commits `bc584983d` and `6b6a88f07`. `src/lib/docx/native-load.ts` (`loadNativeDocument`) applies the Plate rule: a local draft newer than the row's `updated_at` wins, unless it is the revision the row already references. A failed download falls back to a draft of the same material; unreadable data and missing rows return failures and are never replaced. Saved Plate content returns `legacy` and stays with the legacy editor. Drafts use their own `docx-native-draft:` key, so the Plate reader never sees DOCX bytes. `NativeWorkspaceRoute` loads once per session key and drops a stale result; a later store hydration never reloads a mounted session. Checks: `native-load.test.ts` covers server, newer draft, older draft, same-revision draft, download fallback, legacy, empty, unknown-version, and missing rows. Chromium `native-persistence.test.ts`: a newer local draft after failed uploads wins on reload and then saves; a 4 s delayed load of the first material cannot replace a newly selected material; a late `hydrateFromMaterial` of the open material keeps the same live editor and the typed text, and the typing saves. Collaboration: these changes add no document operation and change no geometry. The production native route opens one session per material; shared-room persistence follows cutover under the collaboration scope decision in `SCIOBOT_PORT_TODO.md`.
 
 ## I10
 
-- [ ] Import original DOCX bytes without a Plate conversion
+- [x] Import original DOCX bytes without a Plate conversion
 
 **Depends:** [I01](10-app-integration.md#i01), [I07](10-app-integration.md#i07), [V01](11-verification.md#v01)
 
@@ -186,7 +186,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** claude, application branch `claude/docx-native-cutover`. **Evidence:** application branch `claude/docx-native-cutover` in `/run/media/lofcz/ssd_external/GitHub/sciobot-next-docx-work`, commit `4b25fdbe2`. The import button opens the original bytes in a new native session without a Plate conversion. The autosave uploads the original once as its own content-addressed asset before the first revision; every snapshot records it as `sourceAssetRef`, and the cleanup never removes it. Markdown is the working-view projection of the saved revision. Chromium `bun test --timeout 600000 scripts/docx-native/harness/native-import.test.ts` imports a fixture (`rich-import.ts`) with a header part, `PAGE` and `DATE` fields, an inline picture, body-level and settings unknown XML, edits one sentence through the keyboard, and reads the saved asset. The stored source equals the input bytes. The picture keeps exact bytes; `header1.xml` and `settings.xml` keep equal `canonicalOoxmlFingerprint`; every original style, document default, and relationship remains; every body child except the edited paragraph keeps an equal fingerprint, and the unknown element keeps its text. Finding: the engine mints `w14:paraId`/`w14:textId` on paragraphs that lack them, as Word does on save; the paragraph comparison ignores only those two identity attributes. Collaboration: these changes add no document operation and change no geometry. The production native route opens one session per material; shared-room persistence follows cutover under the collaboration scope decision in `SCIOBOT_PORT_TODO.md`.
 
 ## I11
 
@@ -244,7 +244,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 ## I14
 
-- [ ] Export native DOCX through the workspace workflow
+- [x] Export native DOCX through the workspace workflow
 
 **Depends:** [I08](10-app-integration.md#i08), [V01](11-verification.md#v01)
 
@@ -258,7 +258,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** claude, application branch `claude/docx-native-cutover`. **Evidence:** application branch `claude/docx-native-cutover` in `/run/media/lofcz/ssd_external/GitHub/sciobot-next-docx-work`, commit `b9812d7d7`. `startWorkspaceExport` calls `captureNativeLesson` (`src/lib/docx/native-export-capture.ts`) synchronously at the click: it flushes input and starts `editor.save()`, which takes the package at the call. `collectWorkspaceExportDocuments` adds a native document as its own DOCX (`nativeFiles`, kind `docx`, archive folder `DOCX`): the live capture when the session belongs to the file, else the saved revision or a newer draft through `loadNativeDocument`. The PDF renders the working-view Markdown of the same bytes (`nativeExportMarkdown`, headless open) with `formats: ["pdf"]`, so no second Word file comes from the print path. Plate documents keep their previous path. Chromium `bun test --timeout 600000 scripts/docx-native/harness/native-export.test.ts` passes 2 cases: a batch export of a live and a saved material contains the captured live revision with a pending `w:ins` suggestion and its payload part, and the exact stored bytes of the saved material with its media; text typed after the export starts is absent; the archive holds `DOCX/live-lesson.docx` and `DOCX/rich-document.docx`. A single-file selection exports only that revision. Collaboration: these changes add no document operation and change no geometry. The production native route opens one session per material; shared-room persistence follows cutover under the collaboration scope decision in `SCIOBOT_PORT_TODO.md`. Limit: the PDF still renders through Markdown (I16).
 
 ## I15
 
@@ -334,7 +334,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 ## I19
 
-- [ ] Publish complete native snapshots to VFS consumers
+- [x] Publish complete native snapshots to VFS consumers
 
 **Depends:** [I07](10-app-integration.md#i07), [I14](10-app-integration.md#i14), [I15](10-app-integration.md#i15), [V01](11-verification.md#v01)
 
@@ -348,7 +348,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** claude, application branch `claude/docx-native-cutover`. **Evidence:** application branch `claude/docx-native-cutover` in `/run/media/lofcz/ssd_external/GitHub/sciobot-next-docx-work`, commit `726f71b94`, with I08 and I14. Each native save publishes the working-view Markdown to `material_documents.markdown`, which `loadFileText` and the `/workspace` sibling text mount already read. `supabase/functions/_shared/agent-tools/native-docx-files.ts` resolves the exact revision an envelope names: the file name must be the claimed SHA-256, the folder must be the material's, and the owner folder must match the row's `user_id`, because the reader can be a service client. `WorkspaceDocxMount` lists `/workspace/<path>.docx` beside `WorkspaceJsonMount` in workspace chat, with a content-addressed `sourceKey`. `read_document` pagination is unchanged and independent: the export (I14) and this mount read the complete saved file. Checks: `bunx 1tube test ./supabase/functions/_shared/agent-tools/vfs/mounts/workspace-docx.test.ts` passes 3 cases (envelope validation, listing only native documents with exact downloads, and refusal of another owner's folder; the oracle was checked against a same-owner control). Backend types pass 2,161 files. Collaboration: these changes add no document operation and change no geometry. The production native route opens one session per material; shared-room persistence follows cutover under the collaboration scope decision in `SCIOBOT_PORT_TODO.md`.
 
 ## I20
 
