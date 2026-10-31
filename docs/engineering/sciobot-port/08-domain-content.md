@@ -474,7 +474,7 @@ Final verification against installed fork `929e0ea4a9bf68f3a4c9a7c133e55bc76b76d
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** claude, fork commit `681dc969`, app branch `claude/docx-native-cutover` commit `c479c00df`. **Evidence (progress):** The fork registers `smiles` as an atomic block. It writes `<smiles smiles="…" />`, because element text loses `[C@@H](O)` to Markdown link syntax, and it still reads the older element-text form. The Word fallback is the exact source in the code style; `updateAtomicBlock` changes source and fallback in one undo unit. Fork test `packages/sciobot/src/projection/smiles.test.ts`: 5 pass (round trip, unchanged replan, older form, edit/undo, two sessions in both receiver orders). The app draws the structure with `SmilesDisplay`; the slash entry `molecule` and double-click open the shared SMILES dialog through its new `onSave` path (`SmilesDialogBody`, no Plate). Chromium command `bun test --timeout 600000 scripts/docx-native/harness/smiles.test.ts`: 2 pass (insert, edit beside peer typing, undo, reopen, matching saved digests, both client orders). **Open:** the Word fallback is the SMILES text, not an embedded image.
 
 ## X26
 
