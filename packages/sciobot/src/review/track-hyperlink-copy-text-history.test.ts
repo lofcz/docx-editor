@@ -24,7 +24,7 @@ for (const imported of [false, true])
           document: document_(
             imported
               ? paragraph(
-                  '<w:r xmlns:keep="urn:keep" keep:run="original"><w:rPr/><w:t keep:text="first">Alpha </w:t><w:t keep:text="second">end</w:t></w:r>'
+                  '<w:r xmlns:keep="urn:keep" keep:run="original"><w:rPr/><w:t xml:space="preserve" keep:text="first">Alpha </w:t><w:t keep:text="second">end</w:t></w:r>'
                 )
               : undefined
           ),
@@ -79,14 +79,16 @@ for (const imported of [false, true])
             }
           };
           const plain = `[Alpha new end](${url})`,
-            peer = `[AP1lpha new enP2d](${url})`;
-          await check(peer, 'Alpha end');
+            peer = `[AP1lpha new enP2d](${url})`,
+            // Untracked peer text stays committed inside the link when the copy is rejected.
+            committed = `Alpha end[P1P2](${url})`;
+          await check(peer, committed);
           expect(bob!.exec({ type: 'undo' }).ok).toBe(true);
           await pair.settle();
           await check(plain, 'Alpha end');
           expect(bob!.exec({ type: 'redo' }).ok).toBe(true);
           await pair.settle();
-          await check(peer, 'Alpha end');
+          await check(peer, committed);
           expect(alice!.exec({ type: 'resolveAllReviewChanges', action: 'accept' }).ok).toBe(true);
           await pair.settle();
           await check(peer);
@@ -98,7 +100,7 @@ for (const imported of [false, true])
           await check(peer);
           expect(alice!.exec({ type: 'undo' }).ok).toBe(true);
           await pair.settle();
-          await check(peer, 'Alpha end');
+          await check(peer, committed);
           expect(alice!.exec({ type: 'redo' }).ok).toBe(true);
           await pair.settle();
           await check(peer);

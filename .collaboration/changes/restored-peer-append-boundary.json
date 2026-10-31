@@ -1,0 +1,14 @@
+{
+  "impact": "migration-required",
+  "fields": ["repairVersion"],
+  "before": "Only a restored tracked tail could cross formatting clocks removed by history. When the concurrent peer undid and redid its typing, the peer walk stopped at its own removed formatting clock, so the redone peer text moved before the tracked terminal append.",
+  "after": "Restored text from either candidate run lets both boundary walks cross formatting clocks removed by history. The shared character-deletion ledger still blocks removed characters. Content-control labels keep their existing conservative guard. Collected and uncollected clocks produce the same ordering.",
+  "reason": "Deterministic text projection changes repairVersion from 15 to 16. Schema 9, protocol 1, canonical model 1, and record encodings stay unchanged. Old clients must refuse the new format. Export with the previous compatible deployment and reseed fresh rooms; no room is relabeled or migrated here. Transport remains evaluated under the EigenPal Pro License. Private native ownership guards require the matching format, without importing Pro into production.",
+  "tests": [
+    "packages/sciobot/src/review/terminal-revision-boundary.test.ts",
+    "packages/pro/src/collaboration/__tests__/paragraph-control-gap.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-format.test.ts"
+  ],
+  "changeset": "restored-peer-append-boundary",
+  "migration": "upgrade-rooms-to-format-19161"
+}

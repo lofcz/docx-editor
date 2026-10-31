@@ -27,8 +27,11 @@ import {
   type TargetAstNode,
 } from './parse-target';
 
-function parsed(source: string): ParsedTargetMarkdown {
-  const result = parseTargetMarkdown(source);
+function parsed(
+  source: string,
+  options?: Parameters<typeof parseTargetMarkdown>[1]
+): ParsedTargetMarkdown {
+  const result = parseTargetMarkdown(source, options);
   if (!result.success) throw new Error(result.error);
   return result.target;
 }
@@ -316,7 +319,8 @@ test('invalid, inverted, fractional, nonfinite, and out-of-bounds coordinates re
 test('every independent parser reference and C01 stream retains output/AST behavior and exact unchanged source ranges', () => {
   expect(reference.cases).toHaveLength(24);
   for (const entry of reference.cases) {
-    const target = parsed(entry.input);
+    // The captured reference is the Plate pipeline, which folds linked images into galleries.
+    const target = parsed(entry.input, { preserveLinkedImages: false });
     expect(target.markdown).toBe(entry.markdown);
     expect<unknown>(target.normalizedAst).toEqual(entry.normalizedAst);
     expect(targetSourceRangeAt(target, 0, target.markdown.length)).toMatchObject({

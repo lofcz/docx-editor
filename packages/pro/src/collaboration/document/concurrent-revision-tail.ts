@@ -87,14 +87,17 @@ export function concurrentRevisionTail(
   // Its text must keep its authored position before that shell.
   const peerClock = parseClientClock(ids.ids[peer] ?? '');
   let pointer = peerClock && text.doc ? structAt(text.doc, peerClock)?.rightOrigin : null;
-  let offset = 0;
   const delta = text.toDelta() as { insert: unknown; attributes?: Record<string, unknown> }[];
-  const suffix = delta.find((op) => {
-    const end = offset + (typeof op.insert === 'string' ? op.insert.length : 1);
-    const contains = offset <= start && start < end;
-    offset = end;
-    return contains;
-  })?.attributes;
+  const attributesAt = (at: number) => {
+    let offset = 0;
+    return delta.find((op) => {
+      const end = offset + (typeof op.insert === 'string' ? op.insert.length : 1);
+      const contains = offset <= at && at < end;
+      offset = end;
+      return contains;
+    })?.attributes;
+  };
+  const suffix = attributesAt(start);
   for (let depth = 0; pointer && text.doc && depth < 64; depth += 1) {
     const item = structAt(text.doc, pointer);
     if (!item || !(item.content instanceof Y.ContentFormat)) break;
@@ -103,10 +106,14 @@ export function concurrentRevisionTail(
       return shown;
     pointer = item.rightOrigin;
   }
-  const controlled = decodeAttributes(suffix, limits, paragraphId).wrap.some(
-    (wrapper) => wrapper.kind === 'contentControl'
-  );
-  const restored = ids.restored[start] === true && !controlled;
+  // History restores either run: a redo of the tail or of the concurrent peer text. Both
+  // walks share one rule. Content-control labels keep the conservative boundary.
+  const restoredAt = (at: number, attributes = attributesAt(at)) =>
+    ids.restored[at] === true &&
+    !decodeAttributes(attributes, limits, paragraphId).wrap.some(
+      (wrapper) => wrapper.kind === 'contentControl'
+    );
+  const restored = restoredAt(start, suffix) || restoredAt(peer);
   const origin = authoredBoundary(text, ids, start, visible, restored);
   if (!origin || authoredBoundary(text, ids, peer, visible, restored) !== origin) return shown;
   if (ids.ids.indexOf(origin) + 1 !== peer) return shown;

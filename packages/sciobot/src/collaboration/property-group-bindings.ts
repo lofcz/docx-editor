@@ -75,6 +75,9 @@ export function createPropertyGroupBindings(doc: Y.Doc) {
       const staged: [string, string][] = [];
       for (const scope of scopes) {
         const selected = propertyScopedReceipt(doc, receipt, scope.nodeIds, scope.anchors);
+        // A group whose change only creates native content owns no shared intents. Its
+        // native history decides it, so it gets no binding.
+        if (!selected.fields.length && !selected.flags.length) continue;
         for (const item of selected.fields) {
           if (claimedFields.has(item.id))
             throw new Error('Property field ownership belongs to another group.');

@@ -85,13 +85,20 @@ test('structural receipts ignore committed trailing text but still detect change
   expect(f.verify(withPart(f.pkg, changed.part))).toMatchObject({ code: 'ambiguous-target' });
 });
 
-test('paragraph properties and interior committed text remain protected by structural receipts', () => {
+test('paragraph properties and owned text around interior committed text remain protected by structural receipts', () => {
   const f = setup(peer + insertion('Tail'));
+  // Committed interior runs survive the native inverse, like trailing ones. The proof joins
+  // the owned fragments around them, so a peer edit there is admitted.
   const text = f.all.find((n) => n.kind === 'textValue' && n.value === 'Peer');
   if (text?.kind !== 'textValue') throw Error('Missing interior text.');
   const changed = replaceNode(f.part, text.id, { ...text, value: 'Changed' });
   if (!changed.ok) throw Error('Invalid interior edit.');
-  expect(f.verify(withPart(f.pkg, changed.part))).toMatchObject({ code: 'ambiguous-target' });
+  expect(f.verify(withPart(f.pkg, changed.part))).toBeNull();
+  const tail = f.all.find((n) => n.kind === 'textValue' && n.value === 'Tail');
+  if (tail?.kind !== 'textValue') throw Error('Missing owned tail text.');
+  const owned = replaceNode(f.part, tail.id, { ...tail, value: 'Changed' });
+  if (!owned.ok) throw Error('Invalid owned edit.');
+  expect(f.verify(withPart(f.pkg, owned.part))).toMatchObject({ code: 'ambiguous-target' });
   const paragraph = f.all.find((n) => n.kind === 'paragraph');
   if (paragraph?.kind !== 'paragraph') throw Error('Missing paragraph.');
   const properties = replaceNode(f.part, paragraph.id, {

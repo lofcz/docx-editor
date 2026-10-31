@@ -11,6 +11,8 @@ import { textIdentities } from '../document/paragraph-text-identity';
 import { DEFAULT_DOCUMENT_LIMITS } from '../document/limits';
 import { asLogicalId } from '../document/identity';
 import { keepFormattingMarkers } from '../document/yjs-items';
+import { INLINE_FIELD } from '../document/paragraph-text';
+import { markRestoredText } from '../document/paragraph-text-restore';
 
 function chars(value: string, holder: string): Token[] {
   return [...value].map((insert) => ({
@@ -172,3 +174,45 @@ test('collected formatting clocks cannot change terminal append ordering', () =>
     cold.destroy();
   }
 });
+
+for (const gc of [true, false])
+  test(`redone peer text crosses formatting clocks its history removed: gc=${gc}`, () => {
+    const docs = [new Y.Doc({ gc }), new Y.Doc({ gc }), new Y.Doc({ gc })] as const;
+    const [alice, bob, cold] = docs;
+    alice.clientID = 73;
+    bob.clientID = 41;
+    const stops = docs.map((doc) => keepFormattingMarkers(doc));
+    const textOf = (doc: Y.Doc) => doc.getMap('paragraph').get(INLINE_FIELD) as Y.Text;
+    try {
+      alice.getMap('paragraph').set(INLINE_FIELD, new Y.Text());
+      textOf(alice).insert(0, 'A ');
+      Y.applyUpdate(bob, Y.encodeStateAsUpdate(alice));
+      textOf(alice).insert(2, 'Paper', tracked);
+      const history = new Y.UndoManager(textOf(bob));
+      textOf(bob).insert(2, 'Peer', { o: '1' });
+      history.stopCapturing();
+      history.undo();
+      const from = Y.getState(bob.store, bob.clientID);
+      history.redo();
+      markRestoredText(bob, from);
+      Y.applyUpdate(alice, Y.encodeStateAsUpdate(bob));
+      Y.applyUpdate(bob, Y.encodeStateAsUpdate(alice));
+      Y.applyUpdate(cold, Y.encodeStateAsUpdate(alice));
+      for (const doc of docs) {
+        const text = textOf(doc);
+        expect(text.toString()).toBe('A PeerPaper');
+        const identities = textIdentities(text);
+        expect(identities.restored.slice(2, 6)).toEqual([true, true, true, true]);
+        const result = concurrentRevisionTail(
+          text,
+          { identities, hidden: new Set<number>(), incoming: [] },
+          asLogicalId('paragraph'),
+          DEFAULT_DOCUMENT_LIMITS
+        );
+        expect([...result.hidden]).toEqual([6, 7, 8, 9, 10]);
+      }
+    } finally {
+      stops.forEach((stop) => stop());
+      docs.forEach((doc) => doc.destroy());
+    }
+  });

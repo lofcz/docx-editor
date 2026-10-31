@@ -25,7 +25,7 @@ const context = {
 };
 const documentBytes = () =>
   docxFixture(
-    '<w:p><w:pPr><w:spacing w:after="120"/><w:customKeep w:val="yes"/></w:pPr><w:r><w:t>Before </w:t></w:r><w:r><w:rPr><w:color w:val="123456"/></w:rPr><w:t>Item</w:t></w:r><w:r><w:t> After</w:t></w:r></w:p>'
+    '<w:p><w:pPr><w:spacing w:after="120"/><w:customKeep w:val="yes"/></w:pPr><w:r><w:t xml:space="preserve">Before </w:t></w:r><w:r><w:rPr><w:color w:val="123456"/></w:rPr><w:t>Item</w:t></w:r><w:r><w:t xml:space="preserve"> After</w:t></w:r></w:p>'
   );
 function plan(editor: DocxEditorInstance, heading: boolean) {
   const session = editor.surface!.session;

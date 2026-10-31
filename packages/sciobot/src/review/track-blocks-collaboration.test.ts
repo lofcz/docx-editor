@@ -206,10 +206,11 @@ for (const clients of [
           );
           expect(alice.exec({ type: 'undo' }).ok).toBe(true);
           await pair.settle();
-          // Undoing owner creation removes that owner; redo must recover its retained peer content.
+          // Undoing owner creation removes the owner's own text. The peer's committed text
+          // stays as its own paragraph; redo must restore the owner around it.
           await assertViews(
             pair,
-            change === 'deletion' ? 'Opening\n\nOldPeer\n\nClosing' : 'Opening\n\nClosing'
+            change === 'deletion' ? 'Opening\n\nOldPeer\n\nClosing' : 'Opening\n\nPeer\n\nClosing'
           );
           expect(alice.exec({ type: 'redo' }).ok).toBe(true);
           await pair.settle();

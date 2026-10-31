@@ -89,7 +89,7 @@ test('property scope captures exact scalar, namespace, and child identities afte
   const meta = doc.getMap('docx-package-meta-v1');
   meta.set('protocolVersion', 1);
   meta.set('sharedSchemaVersion', 9);
-  meta.set('repairVersion', 15);
+  meta.set('repairVersion', 16);
   meta.set('canonicalModelVersion', 1);
   const nodes = doc.getMap<Y.Map<unknown>>('docx-package-nodes-v1');
   const parent = new Y.Map<unknown>(),
@@ -154,7 +154,7 @@ test('property scope captures exact scalar, namespace, and child identities afte
     );
     expect(() => store.read(id, membersKey)).toThrow('profile');
     expect(Y.encodeStateAsUpdate(doc)).toEqual(unknownProfile);
-    meta.set('repairVersion', 15);
+    meta.set('repairVersion', 16);
     expect(() =>
       doc.transact(() => store.publish([scope], { fields: captured, flags: [] }))
     ).toThrow('another group');

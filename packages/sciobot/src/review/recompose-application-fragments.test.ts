@@ -161,9 +161,7 @@ test('missing presence identity refuses before native publication and leaves his
     );
     expect(result.success).toBe(false);
     if (!result.success)
-      expect(result.error).toBe(
-        'Inserted application blocks need an explicit presence proposal identity.'
-      );
+      expect(result.error).toBe('Application presence changes need an explicit proposal identity.');
     expect(editor.surface!.session.currentPackage()).toBe(before);
     expect(editor.surface!.session.canUndo()).toBe(false);
   } finally {
