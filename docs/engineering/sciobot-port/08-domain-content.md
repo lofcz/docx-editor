@@ -478,7 +478,7 @@ Final verification against installed fork `929e0ea4a9bf68f3a4c9a7c133e55bc76b76d
 
 ## X26
 
-- [ ] Connect image insertion and resizing
+- [x] Connect image insertion and resizing
 
 **Depends:** [B05](02-react-blocks.md#b05), [B11](02-react-blocks.md#b11), [V01](11-verification.md#v01)
 
@@ -492,7 +492,7 @@ Final verification against installed fork `929e0ea4a9bf68f3a4c9a7c133e55bc76b76d
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** claude, application branch `claude/docx-native-cutover`. **Evidence:** Application commit `4a10c287a`. The slash entry `image` opens the file picker and embeds a PNG, JPEG, or GIF at the caret through the engine's `insertImage` command (`chrome/image-insert.ts`): one undo step, scaled to fit, with the file name as alt text. `chrome/image-toolbar.tsx` shows for a selected picture and changes its size (×0.8, ×1.25, aspect kept) and its alt text through `setImageProperties`, each one undo step. The picture bytes live in the DOCX, so no external reference can replace them. Chromium `images.test.ts` passes 3 cases: a 200 × 100 PNG chosen through the real file chooser is painted, selecting it shows the toolbar, enlarging keeps the 2:1 aspect, the alt text saves, the saved DOCX holds one media part with the new `descr` and extent, and two undos restore the original size; and two sessions in both client orders converge with the picture painted in both panes and equal saved digests. Differences: the agent Markdown projection does not list embedded pictures, and there are no drag handles; size changes use the toolbar buttons.
 
 ## X27
 
