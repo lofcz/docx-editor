@@ -384,7 +384,7 @@ Final verification against installed fork `929e0ea4a9bf68f3a4c9a7c133e55bc76b76d
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** unclaimed. **Evidence:** pending.
+**Claim:** claude, application branch `claude/docx-native-cutover`. **Evidence:** Not ported; recorded as out of the cutover scope. X19 stores a column group as nested content controls in reading order, not as a table, so the native page shows the columns one after another, as Word does. Width handles and a resized grid need a side-by-side geometry that this representation does not have. Each column keeps its `width` in its payload, and the projection, saves, and reopening keep it (`blocks/columns.test.ts`). The slash menu inserts three empty columns as one undo step (`columns-insert.test.ts`). Follow-up, if side-by-side columns become a requirement: store the group as a one-row borderless table whose cells hold the column controls, and drive widths through the core `setTableColumnWidths` operation; that changes the Word form and needs a collaboration format decision.
 
 ## X21
 
