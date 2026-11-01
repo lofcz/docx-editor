@@ -363,6 +363,8 @@ function MeasuredRoot({
       contentEditable: false,
       style: {
         maxHeight,
+        // The widget covers its Word fallback text, so the fallback never shows through it.
+        background: 'var(--doc-page-bg-rendered, #fff)',
         overflowY: 'auto',
         overscrollBehaviorY: 'contain',
         pointerEvents: 'auto',
