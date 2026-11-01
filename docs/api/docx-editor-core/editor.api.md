@@ -94,6 +94,14 @@ export interface BlankDocumentOptions {
 }
 
 // @public
+export interface BlockInset {
+    readonly bottom?: number;
+    readonly left: number;
+    readonly right: number;
+    readonly top?: number;
+}
+
+// @public
 export interface BookmarkChromeHandlers {
     readonly onRequest?: () => void;
 }
@@ -3927,6 +3935,7 @@ export type SupportedImageMime = 'image/png' | 'image/jpeg' | 'image/gif' | 'ima
 
 // @public
 export interface SurfaceBlockReservations {
+    setBlockInsets(insets: ReadonlyMap<string, BlockInset>): void;
     setBlockReservations(reservations: ReadonlyMap<string, number>): void;
 }
 

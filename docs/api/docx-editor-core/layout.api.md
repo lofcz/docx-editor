@@ -124,9 +124,18 @@ export interface BidiEmbeddingLevels {
 export type BlockFragmentRecord = ParagraphFragmentRecord | TableFragmentRecord;
 
 // @public
+export interface BlockInset {
+    readonly bottom?: number;
+    readonly left: number;
+    readonly right: number;
+    readonly top?: number;
+}
+
+// @public
 export interface BlockReservations {
     readonly epoch: string;
     extraAfter(paragraphId: string): number;
+    insetOf?(nodeId: string): BlockInset | undefined;
 }
 
 // @public

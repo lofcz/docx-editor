@@ -180,6 +180,9 @@ export interface AuthorizationPort {
 export function beginOperation(init: OperationInit): OperationContext;
 
 // @public
+export function blockStoryContainerChildren(node: OoxmlNode): readonly OoxmlNode[] | null;
+
+// @public
 export function bodyStoryRoot(part: OoxmlPart): OoxmlNode | null;
 
 // @public

@@ -18,7 +18,9 @@ export const MAX_BLOCK_INSET_PT = 324;
 
 /** Layout-only room around one body paragraph or table, in points. */
 export interface BlockInset {
+  /** Extra indent on the left, in points. */
   readonly left: number;
+  /** Extra indent on the right, in points. */
   readonly right: number;
   /** Raises a paragraph's `w:spacing/@before`; Word's collapse with the space after above applies. Tables ignore it. */
   readonly top?: number;
