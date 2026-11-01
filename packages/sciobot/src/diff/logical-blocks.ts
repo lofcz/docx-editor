@@ -69,6 +69,23 @@ const node = (value: unknown): TargetAstNode => {
     return refuse('Invalid logical AST node.');
   return value as TargetAstNode;
 };
+/** Inline Markdown node types: content of a paragraph, never a block of its own. */
+const PHRASING = new Set([
+  'text',
+  'emphasis',
+  'strong',
+  'delete',
+  'inlineCode',
+  'inlineMath',
+  'break',
+  'link',
+  'linkReference',
+  'image',
+  'imageReference',
+  'footnoteReference',
+  'mdxJsxTextElement',
+  'mdxTextExpression',
+]);
 const children = (value: TargetAstNode): readonly TargetAstNode[] => {
   if (!Array.isArray(value.children)) return refuse('Logical AST containers need child arrays.');
   return value.children.map(node);
@@ -454,14 +471,30 @@ export function normalizeLogicalBlocks(
           stripLists: !!rules?.suppressLists,
           stripPrefix: !!rules?.stripNumberPrefix,
         };
+        const all = children(ast);
+        // `<tag>Text</tag>` on one line parses with phrasing children and no paragraph. Plate
+        // reads that text as the container's paragraph, so plan it as one.
+        if (all.length && all.every((child) => PHRASING.has(child.type)))
+          return [
+            group(
+              'container',
+              { ...ast, type: 'mdxJsxFlowElement' },
+              path,
+              [
+                paragraph(
+                  { type: 'paragraph', children: all } as TargetAstNode,
+                  [...path, 0],
+                  all.map((_, index) => [...path, index]),
+                  true,
+                  next,
+                  depth + 1
+                ),
+              ],
+              definition.type
+            ),
+          ];
         return [
-          group(
-            'container',
-            ast,
-            path,
-            flow(children(ast), path, next, 0, depth + 1),
-            definition.type
-          ),
+          group('container', ast, path, flow(all, path, next, 0, depth + 1), definition.type),
         ];
       }
       if (definition?.kind === 'atomic') {
