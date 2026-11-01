@@ -589,7 +589,7 @@ function blockXml(node: TargetAstNode, path: readonly number[], context: RenderC
             .join('')}</w:tr>`
       )
       .join('');
-    // Single borders on every edge, so a new table reads as a table in Word and on the page.
+    // Borders on every edge, so a new table reads as a table in Word and on the page.
     return `<w:tbl><w:tblPr><w:tblW w:w="0" w:type="auto"/>${NEW_TABLE_BORDERS}</w:tblPr><w:tblGrid>${Array.from({ length: columns }, () => `<w:gridCol w:w="${width}"/>`).join('')}</w:tblGrid>${rows}</w:tbl>`;
   }
   const binding = context.bindings.get(path.join('/'));
@@ -649,9 +649,19 @@ function blockXml(node: TargetAstNode, path: readonly number[], context: RenderC
   if (!children.length || children.at(-1)!.type === 'table') content += seedParagraph(context);
   return `<w:sdt>${properties}<w:sdtContent>${content}</w:sdtContent></w:sdt>`;
 }
+// Light grey rules and roomy cells, as the Plate table draws them.
 const NEW_TABLE_BORDERS = `<w:tblBorders>${['top', 'left', 'bottom', 'right', 'insideH', 'insideV']
-  .map((edge) => `<w:${edge} w:val="single" w:sz="4" w:space="0" w:color="auto"/>`)
-  .join('')}</w:tblBorders>`;
+  .map((edge) => `<w:${edge} w:val="single" w:sz="4" w:space="0" w:color="D0D5DD"/>`)
+  .join('')}</w:tblBorders><w:tblCellMar>${(
+  [
+    ['top', 100],
+    ['left', 160],
+    ['bottom', 100],
+    ['right', 160],
+  ] as const
+)
+  .map(([edge, twips]) => `<w:${edge} w:w="${twips}" w:type="dxa"/>`)
+  .join('')}</w:tblCellMar>`;
 function cloneFresh(
   node: OoxmlNode,
   next: () => string,
