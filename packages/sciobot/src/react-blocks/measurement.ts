@@ -28,7 +28,7 @@ const defaultMeasure: MeasureBlockElement = (element) => element.getBoundingClie
 export class BlockMeasurement {
   private readonly tracked = new Map<
     string,
-    { element: HTMLElement; fragment: MeasuredFragment }
+    { element: HTMLElement; fragment: MeasuredFragment; height?: number }
   >();
   private readonly observer: ResizeObserver | null;
   private queued = false;
@@ -51,7 +51,7 @@ export class BlockMeasurement {
       if (previous) this.observer?.unobserve(previous.element);
       this.observer?.observe(element);
     }
-    this.tracked.set(key, { element, fragment });
+    this.tracked.set(key, { element, fragment, height: previous?.height });
     this.schedule();
   }
 
@@ -77,12 +77,18 @@ export class BlockMeasurement {
   flush(): void {
     if (this.disposed) return;
     const reservations = new Map<string, number>();
-    for (const { element, fragment } of this.tracked.values()) {
-      if (!element.isConnected || !(fragment.scale > 0)) continue;
-      const height = this.measure(element);
-      if (!Number.isFinite(height)) continue;
+    for (const entry of this.tracked.values()) {
+      const { element, fragment } = entry;
+      // A root parked with its virtual page keeps the height it last measured. Dropping its
+      // room moved the content, which brought that page back and measured it again, in a loop.
+      if (element.isConnected) {
+        const height = this.measure(element);
+        if (Number.isFinite(height)) entry.height = height;
+      }
+      if (entry.height === undefined || !(fragment.scale > 0)) continue;
       const extra =
-        Math.min(height, fragment.maxHeight ?? Infinity) / fragment.scale - fragment.nativeHeight;
+        Math.min(entry.height, fragment.maxHeight ?? Infinity) / fragment.scale -
+        fragment.nativeHeight;
       if (extra > 0)
         reservations.set(
           fragment.paragraphId,

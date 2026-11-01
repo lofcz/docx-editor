@@ -15,7 +15,7 @@ import { buildBlockIndex } from '../blocks/block-index';
 import { withPayloadRecord } from '../blocks/payload-opc-codec';
 import { writeBlockPayload } from '../blocks/payload-part';
 import { mountReactBlockHost, type ReactBlockViewProps } from './host';
-import { lastBodyParagraphIn } from './measurement';
+import { BlockMeasurement, lastBodyParagraphIn } from './measurement';
 
 const environment = globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean };
 const ROW = 60;
@@ -424,5 +424,30 @@ test("a container's view box covers the room its nested widget reserves", async 
     editor.destroy();
     container.remove();
     environment.IS_REACT_ACT_ENVIRONMENT = previous;
+  }
+});
+
+test('a root parked with its virtual page keeps its room until it is released', () => {
+  const published: ReadonlyMap<string, number>[] = [];
+  const surface = {
+    setBlockReservations: (next: ReadonlyMap<string, number>) => published.push(next),
+  } as unknown as ConstructorParameters<typeof BlockMeasurement>[0];
+  const measurement = new BlockMeasurement(surface, () => 300);
+  const element = document.createElement('div');
+  document.body.append(element);
+  try {
+    measurement.track('widget:0', element, { paragraphId: 'p1', nativeHeight: 100, scale: 1 });
+    measurement.flush();
+    expect(published.at(-1)).toEqual(new Map([['p1', 200]]));
+    // The page is virtualized: the root leaves the document but the widget still exists.
+    element.remove();
+    measurement.flush();
+    expect(published.at(-1)).toEqual(new Map([['p1', 200]]));
+    measurement.release('widget:0');
+    measurement.flush();
+    expect(published.at(-1)).toEqual(new Map());
+  } finally {
+    measurement.dispose();
+    element.remove();
   }
 });
