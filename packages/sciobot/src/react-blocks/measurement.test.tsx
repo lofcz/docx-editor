@@ -361,3 +361,68 @@ for (const clientIds of [
         environment.IS_REACT_ACT_ENVIRONMENT = previous;
       }
     }, 60_000);
+
+test("a container's view box covers the room its nested widget reserves", async () => {
+  const previous = environment.IS_REACT_ACT_ENVIRONMENT;
+  environment.IS_REACT_ACT_ENVIRONMENT = true;
+  const read = readOoxmlPackage(
+    docxFixture(
+      hostParagraph('Intro') +
+        hostControl(
+          'outer-1',
+          hostParagraph('Outer text') + hostControl('tall-1', hostParagraph('Tall fallback'))
+        ) +
+        hostParagraph('Tail')
+    )
+  );
+  if (!read.ok) throw new Error(read.reason);
+  let pkg = read.package;
+  for (const [id, type, attributes] of [
+    ['outer-1', 'test_outer', {}],
+    ['tall-1', 'test_tall', { rows: 4 }],
+  ] as const) {
+    const written = withPayloadRecord(pkg, { id, type, version: 1, attributes }, id);
+    if (!written.ok) throw new Error(written.reason);
+    pkg = written.pkg;
+  }
+  const container = document.createElement('div');
+  document.body.append(container);
+  const editor = createDocxEditor({ container, document: writeOoxmlPackage(pkg) });
+  const outerBoxes: number[] = [];
+  function Outer({ fragment, children }: ReactBlockViewProps) {
+    outerBoxes.push(fragment.box.y + fragment.box.height);
+    return <div style={{ display: 'contents' }}>{children}</div>;
+  }
+  let host: ReturnType<typeof mountReactBlockHost> | undefined;
+  try {
+    await act(async () => {
+      host = mountReactBlockHost(
+        editor,
+        new Map([
+          ['test_outer', { view: Outer, nativeContent: true }],
+          ['test_tall', { view: Tall, reserveHeight: true }],
+        ]),
+        { measure }
+      );
+    });
+    for (let round = 0; round < 3; round += 1)
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 15));
+      });
+    const tail = yAt(editor, idOf(editor, 'Tail'));
+    const native = tallBox(editor)![0]!;
+    // Within the quarter point the layout rounds a reservation to.
+    // The reservation moved the tail below the widget, and the outer box reaches the room's end.
+    expect(tail).toBeGreaterThan(native.y + native.height + 100);
+    expect(outerBoxes.at(-1)!).toBeCloseTo(
+      native.y + native.height + expectedExtra(4, native.height, scaleOf(editor)),
+      0
+    );
+    expect(outerBoxes.at(-1)!).toBeLessThanOrEqual(tail);
+  } finally {
+    await act(async () => host?.dispose());
+    editor.destroy();
+    container.remove();
+    environment.IS_REACT_ACT_ENVIRONMENT = previous;
+  }
+});

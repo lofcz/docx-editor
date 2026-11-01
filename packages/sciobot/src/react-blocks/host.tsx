@@ -160,6 +160,7 @@ export function mountReactBlockHost(
       if (content) pages.set(Number(page.dataset.pageIndex), content);
     }
     const valid = new Set<string>();
+    const rooms = measurement ? widgetRooms(index!, next, registry, measurement) : null;
     const inlineBoxes = options.inlineOnly ? inlineLayoutBoxes(next.layout) : null;
     const native: NativeSlotMount[] = [];
     const render: (() => void)[] = [];
@@ -205,7 +206,14 @@ export function mountReactBlockHost(
           mount = { element, root, slot: new NativeSlotLease(key, next.pagesLayer), release };
           mounts.set(key, mount);
         }
-        const box = inlineBoxes?.get(`${fragment.pageIndex}:${block.controlId}`) ?? fragment.box;
+        const nativeBox =
+          inlineBoxes?.get(`${fragment.pageIndex}:${block.controlId}`) ?? fragment.box;
+        // A container's frame covers the room its measured widgets reserve below their text.
+        const roomBottom = rooms?.get(`${block.id}:${fragment.pageIndex}`);
+        const box =
+          roomBottom !== undefined && roomBottom > nativeBox.y + nativeBox.height
+            ? { ...nativeBox, height: roomBottom - nativeBox.y }
+            : nativeBox;
         Object.assign(mount.element.style, {
           display: nativeContent ? 'contents' : 'block',
           position: nativeContent ? 'static' : 'absolute',
@@ -409,4 +417,41 @@ function collectParagraphs(
         Object.freeze({ id: paragraph.id, text: paragraphTextOf(frame.part, paragraph.id) ?? '' })
       );
   return out;
+}
+
+/**
+ * Where the reserved room of each measured widget ends, per enclosing block and page: the
+ * bottom of the widget's last native fragment plus its reservation, clamped to the page.
+ * Keys are `blockId:pageIndex`; the widget's own block is not a key for its room.
+ */
+function widgetRooms(
+  index: BlockIndex,
+  frame: SurfacePaintFrame,
+  registry: ReadonlyMap<string, ReactBlockRegistration>,
+  measurement: BlockMeasurement
+): Map<string, number> {
+  const rooms = new Map<string, number>();
+  const boundaries = new Map(
+    (frame.layout.contentControls ?? []).map((boundary) => [boundary.id, boundary])
+  );
+  for (const block of index.byId.values()) {
+    if (block.partName !== frame.part.name || !registry.get(block.payload.type)?.reserveHeight)
+      continue;
+    const control = findNode(frame.part, block.controlId);
+    const paragraph = control ? lastBodyParagraphIn(control) : null;
+    const room = paragraph ? measurement.reservedAfter(paragraph) : 0;
+    const last = boundaries.get(block.controlId)?.fragments.at(-1);
+    if (!(room > 0) || !last) continue;
+    const pageBottom = frame.layout.pages[last.pageIndex]?.contentBox.height ?? Infinity;
+    const bottom = Math.min(last.box.y + last.box.height + room, pageBottom);
+    for (
+      let parent: string | null | undefined = block.parentId;
+      parent;
+      parent = index.byId.get(parent)?.parentId
+    ) {
+      const key = `${parent}:${last.pageIndex}`;
+      rooms.set(key, Math.max(rooms.get(key) ?? 0, bottom));
+    }
+  }
+  return rooms;
 }

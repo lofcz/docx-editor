@@ -33,6 +33,7 @@ export class BlockMeasurement {
   private readonly observer: ResizeObserver | null;
   private queued = false;
   private disposed = false;
+  private published: ReadonlyMap<string, number> = new Map();
 
   constructor(
     private readonly surface: PaginatedSurface,
@@ -88,13 +89,20 @@ export class BlockMeasurement {
           Math.max(reservations.get(fragment.paragraphId) ?? 0, extra)
         );
     }
+    this.published = reservations;
     this.surface.setBlockReservations(reservations);
+  }
+
+  /** The room last reserved after one paragraph, in points, or 0. */
+  reservedAfter(paragraphId: string): number {
+    return this.published.get(paragraphId) ?? 0;
   }
 
   dispose(): void {
     if (this.disposed) return;
     this.observer?.disconnect();
     this.tracked.clear();
+    this.published = new Map();
     this.surface.setBlockReservations(new Map());
     this.disposed = true;
   }
