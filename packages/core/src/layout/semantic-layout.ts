@@ -2355,7 +2355,7 @@ function* layoutBlocksPass(
             listItem,
             measurer,
             pending[0],
-            0,
+            rtl ? 0 : blockSpace.insetLeftOf(options.blockReservations, paragraphId, columnWidth()),
             rtl ? indent.left + available + indent.right : undefined,
             options.inlineDrawingLayout?.pictureBulletResource
           )

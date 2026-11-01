@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
 import { createDocxEditor } from '../docx-editor.ts';
 import { cell, docx, p, row, table } from '../../automation/__tests__/support/protocol.ts';
 import { createBlockReservationState } from '../../layout/block-reservations.ts';
@@ -149,4 +150,56 @@ test('inset values quantize, cap, and drop invalid entries', () => {
   expect(state.set(new Map([['a', 5]]))).toBe(true);
   expect(state.option()!.epoch).not.toBe(option.epoch);
   expect(state.option()!.insetOf?.('a')).toEqual({ left: 10.25, right: 0 });
+});
+
+const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+/** `docx()` with a one-level decimal list in `numbering.xml`. */
+function withNumbering(bytes: Uint8Array): Uint8Array {
+  const files = unzipSync(bytes);
+  const add = (name: string, find: string, insert: string) => {
+    files[name] = strToU8(strFromU8(files[name]!).replace(find, insert + find));
+  };
+  add(
+    '[Content_Types].xml',
+    '</Types>',
+    '<Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/>'
+  );
+  add(
+    'word/_rels/document.xml.rels',
+    '</Relationships>',
+    '<Relationship Id="rId9" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering" Target="numbering.xml"/>'
+  );
+  files['word/numbering.xml'] = strToU8(
+    `<w:numbering xmlns:w="${W}"><w:abstractNum w:abstractNumId="0"><w:lvl w:ilvl="0">` +
+      '<w:numFmt w:val="decimal"/><w:lvlText w:val="%1."/>' +
+      '<w:pPr><w:ind w:left="720" w:hanging="360"/></w:pPr></w:lvl></w:abstractNum>' +
+      '<w:num w:numId="1"><w:abstractNumId w:val="0"/></w:num></w:numbering>'
+  );
+  return zipSync(files);
+}
+
+test('a list marker moves with its inset paragraph', async () => {
+  const item = (text: string) =>
+    '<w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr>' +
+    `<w:r><w:t>${text}</w:t></w:r></w:p>`;
+  const doc = open(withNumbering(docx(item('First') + item('Second'))));
+  try {
+    const markerX = (prefix: string) => {
+      doc.surface.flushPendingInput();
+      const id = doc.idOf(prefix);
+      for (const page of doc.surface.layout().pages)
+        for (const fragment of page.fragments)
+          if (fragment.kind === 'paragraph' && fragment.paragraphId === id && fragment.marker)
+            return fragment.marker.box.x;
+      throw new Error(`no marker for ${prefix}`);
+    };
+    const before = { marker: markerX('Second'), text: doc.caretOf('Second').x };
+    doc.surface.setBlockInsets(new Map([[doc.idOf('Second'), { left: 24, right: 0 }]]));
+    await settle();
+    expect(markerX('Second')).toBe(before.marker + 24);
+    expect(doc.caretOf('Second').x).toBe(before.text + 24);
+    expect(markerX('First')).toBe(before.marker);
+  } finally {
+    doc.close();
+  }
 });

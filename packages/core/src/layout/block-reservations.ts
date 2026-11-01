@@ -91,6 +91,15 @@ export function resolveInsetParagraph<
   };
 }
 
+/** The left inset a list marker moves by: the paragraph's text moved by the same room. */
+export function insetLeftOf(
+  reservations: BlockReservations | undefined,
+  paragraphId: string,
+  width: number
+): number {
+  return usableInset(reservations, paragraphId, width)?.left ?? 0;
+}
+
 /** The column an in-flow table paginates in, narrowed by its inset. Positioned tables pass false. */
 export function insetTableColumn(
   layout: false | { readonly blockReservations?: BlockReservations | undefined },
