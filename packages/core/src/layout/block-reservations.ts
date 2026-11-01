@@ -16,10 +16,14 @@ const QUANTUM = 4;
 /** Upper bound for one horizontal inset: a little more than half a Letter page. */
 export const MAX_BLOCK_INSET_PT = 324;
 
-/** Layout-only horizontal room on both sides of one body paragraph or table, in points. */
+/** Layout-only room around one body paragraph or table, in points. */
 export interface BlockInset {
   readonly left: number;
   readonly right: number;
+  /** Raises a paragraph's `w:spacing/@before`; Word's collapse with the space after above applies. Tables ignore it. */
+  readonly top?: number;
+  /** Raises a paragraph's `w:spacing/@after`. Tables ignore it. */
+  readonly bottom?: number;
 }
 
 /** Extra flow height after body paragraphs, keyed by canonical paragraph ID. */
@@ -46,7 +50,8 @@ export function blockReservationToken(
   const extra = reservations?.extraAfter(nodeId) ?? 0;
   const inset = reservations?.insetOf?.(nodeId);
   return (
-    (extra > 0 ? `|reserve:${extra}` : '') + (inset ? `|inset:${inset.left},${inset.right}` : '')
+    (extra > 0 ? `|reserve:${extra}` : '') +
+    (inset ? `|inset:${inset.left},${inset.right},${inset.top ?? 0},${inset.bottom ?? 0}` : '')
   );
 }
 
@@ -60,7 +65,11 @@ function usableInset(
   width: number
 ): BlockInset | undefined {
   const inset = reservations?.insetOf?.(nodeId);
-  return inset && width - inset.left - inset.right >= MIN_INSET_COLUMN_PT ? inset : undefined;
+  return inset &&
+    (inset.left || inset.right) &&
+    width - inset.left - inset.right >= MIN_INSET_COLUMN_PT
+    ? inset
+    : undefined;
 }
 
 /**
@@ -71,6 +80,7 @@ function usableInset(
 export function resolveInsetParagraph<
   T extends {
     readonly indent: { left: number; right: number; hanging: number; firstLine: number };
+    readonly spacing: { readonly before: number; readonly after: number };
   },
 >(
   reservations: BlockReservations | undefined,
@@ -78,16 +88,30 @@ export function resolveInsetParagraph<
   resolve: (width: number) => T,
   width: number
 ): T {
+  const room = reservations?.insetOf?.(paragraphId);
+  if (!room) return resolve(width);
   const inset = usableInset(reservations, paragraphId, width);
-  if (!inset) return resolve(width);
-  const inputs = resolve(width - inset.left - inset.right);
+  const inputs = resolve(inset ? width - inset.left - inset.right : width);
   return {
     ...inputs,
-    indent: {
-      ...inputs.indent,
-      left: inputs.indent.left + inset.left,
-      right: inputs.indent.right + inset.right,
-    },
+    ...(inset
+      ? {
+          indent: {
+            ...inputs.indent,
+            left: inputs.indent.left + inset.left,
+            right: inputs.indent.right + inset.right,
+          },
+        }
+      : {}),
+    ...(room.top || room.bottom
+      ? {
+          spacing: {
+            ...inputs.spacing,
+            before: inputs.spacing.before + (room.top ?? 0),
+            after: inputs.spacing.after + (room.bottom ?? 0),
+          },
+        }
+      : {}),
   };
 }
 
@@ -176,15 +200,30 @@ export function createBlockReservationState(): {
       const normalized = new Map<string, BlockInset>();
       for (const [id, inset] of next) {
         const left = quantizeInset(inset?.left),
-          right = quantizeInset(inset?.right);
-        if (typeof id === 'string' && id && (left > 0 || right > 0))
-          normalized.set(id, Object.freeze({ left, right }));
+          right = quantizeInset(inset?.right),
+          top = quantizeInset(inset?.top ?? 0),
+          bottom = quantizeInset(inset?.bottom ?? 0);
+        if (typeof id === 'string' && id && (left > 0 || right > 0 || top > 0 || bottom > 0))
+          normalized.set(
+            id,
+            Object.freeze({
+              left,
+              right,
+              ...(top > 0 ? { top } : {}),
+              ...(bottom > 0 ? { bottom } : {}),
+            })
+          );
       }
       if (
         normalized.size === insets.size &&
         [...normalized].every(([id, value]) => {
           const old = insets.get(id);
-          return old?.left === value.left && old.right === value.right;
+          return (
+            old?.left === value.left &&
+            old.right === value.right &&
+            old.top === value.top &&
+            old.bottom === value.bottom
+          );
         })
       )
         return false;

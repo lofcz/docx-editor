@@ -13,6 +13,10 @@ import type { BlockIndex } from '../blocks/block-index';
 export interface ReactBlockInset {
   readonly left?: number;
   readonly right?: number;
+  /** Space above the container's first paragraph, at least. */
+  readonly top?: number;
+  /** Space below the container's last paragraph, at least. */
+  readonly bottom?: number;
 }
 
 const POINTS_PER_PIXEL = 0.75;
@@ -28,29 +32,50 @@ export function containerInsets(
   insetOf: (type: string) => ReactBlockInset | undefined
 ): Map<string, BlockInset> {
   const out = new Map<string, BlockInset>();
-  const add = (node: OoxmlNode, left: number, right: number) => {
+  const add = (node: OoxmlNode, room: Required<ReactBlockInset>) => {
     const old = out.get(node.id);
-    out.set(node.id, { left: (old?.left ?? 0) + left, right: (old?.right ?? 0) + right });
+    const top = (old?.top ?? 0) + room.top,
+      bottom = (old?.bottom ?? 0) + room.bottom;
+    out.set(node.id, {
+      left: (old?.left ?? 0) + room.left,
+      right: (old?.right ?? 0) + room.right,
+      ...(top ? { top } : {}),
+      ...(bottom ? { bottom } : {}),
+    });
   };
-  const walk = (children: readonly OoxmlNode[], left: number, right: number, depth: number) => {
+  const blocks = (children: readonly OoxmlNode[], into: OoxmlNode[], depth: number) => {
     for (const child of children) {
-      if (child.kind === 'paragraph' || child.kind === 'table') {
-        add(child, left, right);
-        continue;
+      if (child.kind === 'paragraph' || child.kind === 'table') into.push(child);
+      else {
+        const nested = blockStoryContainerChildren(child);
+        if (nested && depth < MAX_STORY_SDT_NESTING) blocks(nested, into, depth + 1);
       }
-      const nested = blockStoryContainerChildren(child);
-      if (nested && depth < MAX_STORY_SDT_NESTING) walk(nested, left, right, depth + 1);
     }
+    return into;
   };
   for (const block of index.byId.values()) {
     if (block.partName !== part.name) continue;
     const inset = insetOf(block.payload.type);
-    const left = Math.max(0, inset?.left ?? 0) * POINTS_PER_PIXEL;
-    const right = Math.max(0, inset?.right ?? 0) * POINTS_PER_PIXEL;
-    if (!left && !right) continue;
+    const points = (value: number | undefined) => Math.max(0, value ?? 0) * POINTS_PER_PIXEL;
+    const room = {
+      left: points(inset?.left),
+      right: points(inset?.right),
+      top: points(inset?.top),
+      bottom: points(inset?.bottom),
+    };
+    if (!room.left && !room.right && !room.top && !room.bottom) continue;
     const control = findNode(part, block.controlId);
     const content = control ? contentControlContentNodeOf(control) : null;
-    if (content) walk(content.children, left, right, 0);
+    const members = content ? blocks(content.children, [], 0) : [];
+    // Top and bottom room belong to the first and last paragraph; a table edge takes none.
+    members.forEach((member, at) =>
+      add(member, {
+        left: room.left,
+        right: room.right,
+        top: at === 0 && member.kind === 'paragraph' ? room.top : 0,
+        bottom: at === members.length - 1 && member.kind === 'paragraph' ? room.bottom : 0,
+      })
+    );
   }
   return out;
 }

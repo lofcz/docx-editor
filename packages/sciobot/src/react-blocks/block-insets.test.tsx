@@ -143,3 +143,41 @@ for (const receiver of [0, 1] as const)
       environment.IS_REACT_ACT_ENVIRONMENT = previous;
     }
   });
+
+test('top and bottom room go to the first and last paragraph of a container', async () => {
+  const previous = environment.IS_REACT_ACT_ENVIRONMENT;
+  environment.IS_REACT_ACT_ENVIRONMENT = true;
+  const container = document.createElement('div');
+  document.body.append(container);
+  const editor = createDocxEditor({ container, document: nativeSlotDocument() });
+  const yOf = (text: string) => {
+    editor.surface!.flushPendingInput();
+    return caretAt(editor.surface!.layout(), { paragraphId: idOf(editor, text), offset: 0 })!.y;
+  };
+  try {
+    const gap = (from: string, to: string) => yOf(to) - yOf(from);
+    const before = { open: gap('Intro', 'Outer start'), middle: gap('Outer start', 'Inner text') };
+    let host: ReturnType<typeof mountReactBlockHost> | undefined;
+    await act(async () => {
+      host = mountReactBlockHost(
+        editor,
+        new Map([['native_container', { view: Frame, inset: { top: 80 } }]])
+      );
+      await settle();
+    });
+    // 80 px is 60 pt: more than any authored spacing here, so it decides the gap.
+    expect(gap('Intro', 'Outer start')).toBeGreaterThan(before.open + 40);
+    // `Inner text` opens the `inner` container, so it gets room too; `Outer middle` does not.
+    expect(gap('Outer start', 'Inner text')).toBeGreaterThan(before.middle + 40);
+    expect(xOf(editor, 'Inner text')).toBe(xOf(editor, 'Intro'));
+    await act(async () => {
+      host!.dispose();
+      await settle();
+    });
+    expect(gap('Intro', 'Outer start')).toBeCloseTo(before.open, 6);
+  } finally {
+    editor.destroy();
+    container.remove();
+    environment.IS_REACT_ACT_ENVIRONMENT = previous;
+  }
+});

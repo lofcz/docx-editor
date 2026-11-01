@@ -203,3 +203,28 @@ test('a list marker moves with its inset paragraph', async () => {
     doc.close();
   }
 });
+
+test('top and bottom room raise the space before and after a paragraph', async () => {
+  const doc = open(docx(p('Alpha') + p('Beta') + p('Gamma')));
+  try {
+    const y = (text: string) => doc.caretOf(text).y;
+    // Equal lines: each step is the line height plus the paragraph spacing.
+    const step = y('Beta') - y('Alpha');
+    expect(y('Gamma') - y('Beta')).toBeCloseTo(step, 6);
+    doc.surface.setBlockInsets(
+      new Map([[doc.idOf('Beta'), { left: 0, right: 0, top: 40, bottom: 10 }]])
+    );
+    await settle();
+    // Word's collapse still applies: the larger of the previous space after and the raised
+    // space before separates two paragraphs, and the raised space after joins the next gap.
+    const after = y('Beta') - y('Alpha');
+    expect(after).toBeGreaterThan(step);
+    expect(y('Gamma') - y('Beta')).toBeCloseTo(step + 10, 6);
+    expect(doc.caretOf('Beta').x).toBe(doc.caretOf('Alpha').x);
+    doc.surface.setBlockInsets(new Map());
+    await settle();
+    expect(y('Beta') - y('Alpha')).toBeCloseTo(step, 6);
+  } finally {
+    doc.close();
+  }
+});
