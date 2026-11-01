@@ -146,6 +146,35 @@ test('a reservation larger than the rest of the page carries the following text 
   }
 });
 
+test('a widget paragraph that fits an empty page with its reservation moves there whole', async () => {
+  const lines = Array.from({ length: 22 }, (_, index) => p(`Line ${index + 1}`)).join('');
+  const doc = open(docx(lines + p('Widget') + p('Next')));
+  try {
+    const widget = doc.caretOf('Widget');
+    expect(widget.pageIndex).toBe(0);
+    const pageHeight = doc.surface.layout().pages[0]!.contentBox.height;
+    // Taller than the rest of the first page, smaller than an empty one.
+    const reserve = pageHeight - widget.y - 20;
+    expect(reserve).toBeLessThan(pageHeight - 40);
+    doc.surface.setBlockReservations(new Map([[doc.idOf('Widget'), reserve + 40]]));
+    await settle();
+    // The paragraph and its room open the next page, so the widget never clips.
+    const moved = doc.caretOf('Widget');
+    expect(moved.pageIndex).toBe(1);
+    expect(moved.y).toBe(doc.caretOf('Line 1').y);
+    const next = doc.caretOf('Next');
+    expect(next.pageIndex).toBe(1);
+    expect(next.y - moved.y).toBeGreaterThanOrEqual(reserve + 40);
+    // The page before keeps its text; nothing else moves.
+    expect(doc.caretOf('Line 22').pageIndex).toBe(0);
+    doc.surface.setBlockReservations(new Map());
+    await settle();
+    expect(doc.caretOf('Widget').pageIndex).toBe(0);
+  } finally {
+    doc.close();
+  }
+});
+
 test('user history and saved files never see a reservation', async () => {
   const doc = open(docx(p('Alpha') + p('Beta') + p('Gamma')));
   try {

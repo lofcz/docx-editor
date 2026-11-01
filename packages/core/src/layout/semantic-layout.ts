@@ -2191,6 +2191,14 @@ function* layoutBlocksPass(
             }
           )
         );
+      // A host widget's room travels with its paragraph: when the paragraph and its widget fit
+      // an empty page but not the rest of this one, both move on, as Word moves the line of an
+      // inline picture. Larger widgets stay, and their room clips at the page end.
+      if (reservedAfter > 0) {
+        const whole =
+          lead + topExtent + lines.reduce((sum, line) => sum + line.height, 0) + reservedAfter;
+        if (whole <= contentHeight()) needed = Math.max(needed, whole);
+      }
       // `w:keepNext` (§17.3.1.15): priced ONCE per chain, at its head (`keepNextGroupNeed`).
       if (keeps.keepNext && !keepsNext[index - 1]) {
         const need = keepChains.need(index, previousSpaceAfter, {

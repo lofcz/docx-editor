@@ -222,7 +222,9 @@ export function mountReactBlockHost(
         });
         // One opaque widget keeps its identity when the Word fallback splits across pages.
         // Reserve only excess viewport height after the complete fallback's last paragraph.
-        const maxHeight = blockViewportHeight(next, fragment.pageIndex, box.y);
+        // Bounded by a whole page, not the rest of this one: a widget that fits an empty page
+        // reserves its full height, and the layout moves its paragraph to the next page.
+        const maxHeight = blockViewportHeight(next, fragment.pageIndex, 0);
         const target = measured
           ? measuredFragment(
               block.controlId,
