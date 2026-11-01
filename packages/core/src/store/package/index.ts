@@ -532,6 +532,7 @@ export {
 } from './content-control-nodes.ts';
 export {
   MAX_STORY_SDT_NESTING,
+  blockStoryContainerChildren,
   bodyStoryRoot,
   collectStoryParagraphs,
   storyParagraphs,

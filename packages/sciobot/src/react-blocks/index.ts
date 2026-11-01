@@ -14,3 +14,4 @@ export * from './input-boundary';
 export * from './clipboard';
 export { BlockMeasurement, lastBodyParagraphIn } from './measurement';
 export type { MeasureBlockElement, MeasuredFragment } from './measurement';
+export type { ReactBlockInset } from './block-insets';

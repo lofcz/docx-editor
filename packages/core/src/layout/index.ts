@@ -361,7 +361,7 @@ export {
   type TabLeader,
   type TabStop,
 } from './paragraph-tabs.ts';
-export type { BlockReservations } from './block-reservations.ts';
+export type { BlockInset, BlockReservations } from './block-reservations.ts';
 export {
   createLayoutSession,
   layoutSemanticDocument,

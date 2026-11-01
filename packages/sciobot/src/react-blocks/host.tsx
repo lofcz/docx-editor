@@ -13,6 +13,7 @@ import { isolateWidgetInput } from './input-boundary';
 import { inlineLayoutBoxes } from './inline-layout-boxes';
 import { BlockMeasurement, lastBodyParagraphIn, type MeasuredFragment } from './measurement';
 import { blockViewportHeight } from './overflow';
+import { containerInsets, type ReactBlockInset } from './block-insets';
 import { NativeSlotLease, preserveNativeSelection } from './native-slots';
 import { attachNativeSlots, type NativeSlotMount } from './native-slot-plan';
 import {
@@ -54,6 +55,12 @@ export interface ReactBlockRegistration {
    * The complete native fallback remains available for Word export.
    */
   readonly reserveHeight?: boolean;
+  /**
+   * Padding for a container's native content, in CSS pixels. Its body paragraphs and tables
+   * are laid out narrower by this room on each side, without a document edit, so a frame the
+   * view paints around them can hold labels and borders. Nested containers add their insets.
+   */
+  readonly inset?: ReactBlockInset;
 }
 export type ReactBlockRegistry = ReadonlyMap<string, ReactBlockView | ReactBlockRegistration>;
 export interface ReactBlockHost {
@@ -61,7 +68,7 @@ export interface ReactBlockHost {
   register(
     type: string,
     view: ReactBlockView,
-    options?: { nativeContent?: boolean; reserveHeight?: boolean }
+    options?: { nativeContent?: boolean; reserveHeight?: boolean; inset?: ReactBlockInset }
   ): () => void;
   /** Update explicit provider values. Stable provider component types retain widget identity. */
   setProviders(providers: ReactBlockProviders | undefined): void;
@@ -97,6 +104,8 @@ export function mountReactBlockHost(
   let indexedPackage: OoxmlPackage | null = null;
   let index: BlockIndex | null = null;
   let providers = options.providers;
+  // Insets are computed again when the package or the registry changes.
+  let insetsFor: OoxmlPackage | null = null;
   const measurement = options.inlineOnly ? null : new BlockMeasurement(surface, options.measure);
   const validateType = (type: string) => {
     if (!/^[A-Za-z][A-Za-z0-9_.:-]{0,127}$/.test(type))
@@ -131,6 +140,14 @@ export function mountReactBlockHost(
     if (pkg !== indexedPackage) {
       indexedPackage = pkg;
       index = buildBlockIndex(pkg);
+    }
+    if (!options.inlineOnly && insetsFor !== pkg) {
+      insetsFor = pkg;
+      const insets = containerInsets(next.part, index!, (type) => registry.get(type)?.inset);
+      // Outside the paint: a changed inset lays the document out again.
+      queueMicrotask(() => {
+        if (!disposed) surface!.setBlockInsets(insets);
+      });
     }
     const controls = new Map(
       (next.layout.contentControls ?? []).map((boundary) => [boundary.id, boundary])
@@ -289,6 +306,7 @@ export function mountReactBlockHost(
     else stop();
     for (const [key, mount] of mounts) discard(key, mount);
     measurement?.dispose();
+    if (!options.inlineOnly) surface!.setBlockInsets(new Map());
     registry.clear();
     frame = null;
     index = null;
@@ -307,12 +325,14 @@ export function mountReactBlockHost(
       validateType(type);
       if (registry.has(type)) throw new Error(`React block type is already registered: ${type}`);
       registry.set(type, { view, ...options });
+      insetsFor = null;
       refresh();
       let registered = true;
       return () => {
         if (!registered || disposed) return;
         registered = false;
         registry.delete(type);
+        insetsFor = null;
         refresh();
       };
     },

@@ -5379,6 +5379,10 @@ export function mountPaginatedSurface(
       if (!destroyed && blockReservations.set(next))
         scheduler.invalidateAll(session.packageRevision(), 'block-reservations');
     },
+    setBlockInsets(next) {
+      if (!destroyed && blockReservations.setInsets(next))
+        scheduler.invalidateAll(session.packageRevision(), 'block-reservations');
+    },
     observePaint(observer) {
       paintObservers.add(observer);
       render(false);

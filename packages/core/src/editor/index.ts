@@ -233,6 +233,7 @@ export {
   type ChromeSlotId,
 } from './chrome-controls.ts';
 export type { SurfaceBlockReservations } from './surface-block-reservations.ts';
+export type { BlockInset } from '../layout/block-reservations.ts';
 export {
   mountPaginatedSurface,
   type DrawingSelectionIntent,

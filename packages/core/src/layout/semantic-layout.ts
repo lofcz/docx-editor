@@ -185,7 +185,7 @@ import {
   layoutSemanticDocumentWithNotesSteps,
 } from './note-pagination.ts';
 import { closingSpaceAfterPt } from './note-area-fit.ts';
-import { blockReservationToken, reservedAfterOf } from './block-reservations.ts';
+import * as blockSpace from './block-reservations.ts';
 import { passProducerOf } from './pass-producer.ts';
 import { documentProjectionProducer } from './document-property-context.ts';
 
@@ -749,13 +749,12 @@ function* layoutBlocksPass(
           : options.drawingLayoutToken || '';
     const projectionToken = `${
       block.kind === 'paragraph'
-        ? styleSeparatorToken(block, options.projectionTokenForParagraph) +
-          blockReservationToken(options.blockReservations, block.id)
+        ? styleSeparatorToken(block, options.projectionTokenForParagraph)
         : block.kind === 'table' && options.projectionTokenForParagraph
           ? (options.projectionTokenForTable?.(block) ??
             aggregateParagraphTokensForTableBlock(block, options.projectionTokenForParagraph))
           : ''
-    }|${options.paragraphLineUnitPt ?? '-'}`;
+    }${blockSpace.blockReservationToken(options.blockReservations, block.id)}|${options.paragraphLineUnitPt ?? '-'}`;
     // A TABLE'S LIST STATE IS ITS CELLS'. `listItems` is keyed by PARAGRAPH, and a numbered
     // list that continues inside a table cell has its markers there — so reading the table's
     // own id gave an empty token, and a renumbering that left the table's flow key untouched
@@ -819,14 +818,20 @@ function* layoutBlocksPass(
       };
     } else {
       const listItem = listItems?.get(block.id);
-      let preparedParagraph = resolveParagraphLayoutInputs(
-        block,
-        availableWidth,
-        styleCascade,
-        listItem,
-        undefined,
-        false,
-        options.paragraphLineUnitPt
+      let preparedParagraph = blockSpace.resolveInsetParagraph(
+        options.blockReservations,
+        block.id,
+        (width) =>
+          resolveParagraphLayoutInputs(
+            block,
+            width,
+            styleCascade,
+            listItem,
+            undefined,
+            false,
+            options.paragraphLineUnitPt
+          ),
+        availableWidth
       );
       const frame =
         columns.count === 1 && !options.disabledParagraphFrameIds?.has(block.id)
@@ -1719,8 +1724,7 @@ function* layoutBlocksPass(
       positionShiftX,
       ...(stackTop !== undefined ? { stackTop } : {}),
       cursorY: anchorY,
-      columnWidth,
-      columnLeft,
+      ...blockSpace.insetTableColumn(!positioned && options, table.id, columnWidth, columnLeft),
       flowColumn: () => (columns.count > 1 ? flowColumnIndex : undefined),
       contentHeight,
       unreservedContentHeight,
@@ -2113,7 +2117,7 @@ function* layoutBlocksPass(
     // paragraph, its control boundary, and hit testing keep their native extent.
     const reservedAfter = collapsedMark
       ? 0
-      : reservedAfterOf(options.blockReservations, paragraphId);
+      : blockSpace.reservedAfterOf(options.blockReservations, paragraphId);
     let keepTailAt = -1; // Where a kept paragraph that splits early breaks; a rebreak clears it.
     const rebreakInCurrentColumn = (startOffset: number, placedParagraphStartY?: number): void => {
       const next = prepareBlock(paragraph, columnWidth());
