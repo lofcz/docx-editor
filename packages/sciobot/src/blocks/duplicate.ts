@@ -166,6 +166,16 @@ function duplicateSelection(
   const registeredSingle =
     range.nodes.length === 1 &&
     [...index.byId.values()].some((block) => block.controlId === range.nodes[0]!.id);
+  const registeredControls = new Set([...index.byId.values()].map((block) => block.controlId));
+  if (
+    surface.collaborationSession() &&
+    !surface.collaborationSession()?.resolveNodeId &&
+    range.nodes.some((node) => !registeredControls.has(node.id))
+  )
+    return fail(
+      'unsupported-operation',
+      'This collaboration provider cannot retain copied native block identities.'
+    );
   if (native && !registeredSingle) {
     const refusal = blockRangeCopyRefusal(range.nodes);
     if (refusal) return fail('unsupported-operation', refusal);
@@ -232,6 +242,9 @@ function duplicateSelection(
     );
   }
   const sourceLastId = range.nodes.at(-1)!.id;
+  const rootTags = range.nodes.map(
+    (node) => tags.get(contentControlPropertiesOf(node).tag ?? '') ?? null
+  );
   const identitySeed = `scio-block-copy:${crypto.randomUUID()}`;
   let insertedIds: string[] = [];
   let placedOnce = false;
@@ -282,7 +295,17 @@ function duplicateSelection(
   } finally {
     stop();
   }
-  if (insertedIds.some((id) => !findNode(surface.session.part(), id)))
+  const live = surface.session.part();
+  insertedIds = insertedIds.map((id, position) => {
+    if (findNode(live, id)) return id;
+    const tag = rootTags[position];
+    if (!tag) return id;
+    const matching = contentControlsIn(live.root).filter(
+      ({ node }) => contentControlPropertiesOf(node).tag === tag
+    );
+    return matching.length === 1 ? matching[0]!.node.id : id;
+  });
+  if (insertedIds.some((id) => !findNode(live, id)))
     return fail('apply-failed', 'A copied block cannot be found.');
   return {
     success: true,

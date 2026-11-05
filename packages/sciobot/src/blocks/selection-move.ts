@@ -16,6 +16,7 @@ import {
 import type { NativeEditFailure } from '../contracts/document';
 import { ancestorContentWriteRefusal } from './ancestor-content-write';
 import { resolveBlockSelectionRange } from './selection-range';
+import { blockMovementRangeRefusal } from './selection-move-ranges';
 
 export interface BlockSelectionMove {
   readonly nodeIds: readonly string[];
@@ -175,6 +176,8 @@ export function moveBlockSelection(
   try {
     const prepared = move(pkg);
     if (prepared === pkg) return { success: true, revision, changed: false };
+    const rangeRefusal = blockMovementRangeRefusal(part, prepared.parts.get(part.name)!);
+    if (rangeRefusal) return fail('unsupported-operation', rangeRefusal);
     const result = surface.applyAutomationOps(() => [], { kind: 'body' }, [move], false, true);
     if (result.rejected || !result.committed)
       return fail('apply-failed', String(result.reason ?? 'The movement did not commit.'));
