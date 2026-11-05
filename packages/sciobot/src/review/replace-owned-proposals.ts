@@ -1,4 +1,8 @@
 import { freshPropertyGroupScopes } from './property-group-scopes';
+import {
+  addsTaskCompletionStyles,
+  TASK_COMPLETION_PREPARATION_ERROR,
+} from '../native/task-completion-style';
 import { PROPERTY_REVIEW_PROTOTYPE } from './property-history-contract';
 import type { PropertyGroupScope } from './property-history-contract';
 import { propertyAddressKey } from './property-fallback';
@@ -424,6 +428,10 @@ function commit(
         { recordsHistory: false }
       );
       if (!checked.ok) throw new Error(`Replacement preflight refused: ${checked.reason}.`);
+      if (!allowInitialization && addsTaskCompletionStyles(before, preview.currentPackage()))
+        throw new ReplacementRefusal(
+          fail(TASK_COMPLETION_PREPARATION_ERROR, 'unsupported-operation')
+        );
       preserveRemainingRevisions(last, preview.currentPackage());
       flags += groupRemovalBudget(last, preview.currentPackage());
       fields += groupReviewFieldBudget(last, preview.currentPackage());

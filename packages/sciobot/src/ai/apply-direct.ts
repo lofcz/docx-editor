@@ -1,4 +1,8 @@
 import { directImageHistory } from './direct-image-history';
+import {
+  addsTaskCompletionStyles,
+  TASK_COMPLETION_PREPARATION_ERROR,
+} from '../native/task-completion-style';
 import { completeImageReplacement } from './direct-image-replacement';
 import { cellAtomBindings, insertedAtomsOfEdit } from '../diff/inserted-cell-atoms';
 import { completeInlineAtomPayloads } from '../native/inline-atom-payloads';
@@ -943,6 +947,11 @@ export function applyDirectPlan(
   try {
     lowering = lowerDirectPlan(pkg, plan, context.images, context.contentLockPolicy);
     candidate = previewLowering(pkg, lowering, context.contentLockPolicy);
+    if (
+      editor.snapshot().collaborationStatus !== 'inactive' &&
+      addsTaskCompletionStyles(pkg, candidate)
+    )
+      refuse(TASK_COMPLETION_PREPARATION_ERROR, 'unsupported-operation');
   } catch (error) {
     return failure(error);
   }

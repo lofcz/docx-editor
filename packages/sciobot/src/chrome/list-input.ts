@@ -1,4 +1,5 @@
 import type { DocxEditorInstance } from '@docx-editor.dev/core/editor';
+import { installTaskCheckboxEditing, type TaskCheckboxOptions } from './task-checkbox-editing';
 import {
   paragraphTextOf,
   parentNodeOf,
@@ -258,10 +259,15 @@ export function handleManualListKey(
   return false;
 }
 
-export function installListEditing(editor: DocxEditorInstance, context: BlockCommandContext) {
+export function installListEditing(
+  editor: DocxEditorInstance,
+  context: BlockCommandContext,
+  options: TaskCheckboxOptions = {}
+) {
   const s = editor.surface;
   if (!s) throw new Error('The native editor is not attached.');
   const host = s.hostElement();
+  const disposeCheckboxes = installTaskCheckboxEditing(editor, context, options);
   const inSurface = (event: Event) => {
     const target = event.target as Element | null;
     return (
@@ -304,6 +310,7 @@ export function installListEditing(editor: DocxEditorInstance, context: BlockCom
   host.addEventListener('beforeinput', input, true);
   host.addEventListener('keydown', key, true);
   return () => {
+    disposeCheckboxes();
     host.removeEventListener('beforeinput', input, true);
     host.removeEventListener('keydown', key, true);
   };

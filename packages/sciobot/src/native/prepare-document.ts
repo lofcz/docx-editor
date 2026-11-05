@@ -3,6 +3,7 @@ import { withAtomicMathFallbacks } from '../blocks/math-ownership';
 import { withPreparedPayloadFields } from '../blocks/payload-preparation';
 import { withGalleryImageRecords } from '../blocks/gallery-record-upgrade';
 import { withNativeNumberingInfrastructure } from './numbering-infrastructure';
+import { withTaskCompletionStyles } from './task-completion-style';
 import { readOoxmlPackage } from '@docx-editor.dev/core/store';
 import type { NativeEditFailure } from '../contracts/document';
 import { withInitializedReviewGroupStore } from '../review/group-record-store';
@@ -69,7 +70,17 @@ export function prepareNativeDocument(document: Uint8Array): PreparedNativeDocum
       code: 'invalid-document',
       error: 'Cannot initialize the native code style.',
     };
-  const prepared = withNativeNumberingInfrastructure(styled),
+  let completed;
+  try {
+    completed = withTaskCompletionStyles(styled);
+  } catch (error) {
+    return {
+      success: false,
+      code: 'invalid-document',
+      error: error instanceof Error ? error.message : 'Cannot initialize task completion styles.',
+    };
+  }
+  const prepared = withNativeNumberingInfrastructure(completed),
     codeStyleReady = state !== 'conflict';
   if (!prepared)
     return {

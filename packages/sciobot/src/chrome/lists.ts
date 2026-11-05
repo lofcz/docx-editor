@@ -306,12 +306,18 @@ export function setManualChecklist(
 export function setManualListChecked(
   editor: DocxEditorInstance,
   checked: boolean,
-  context: BlockCommandContext
+  context: BlockCommandContext,
+  paragraphId?: string
 ) {
-  return change(editor, context, (state) =>
-    state.checkbox
-      ? { kind: 'checklist', level: state.checkbox.level, checked }
-      : fail('Select a checklist item.')
+  return change(
+    editor,
+    context,
+    (state) =>
+      state.checkbox
+        ? { kind: 'checklist', level: state.checkbox.level, checked }
+        : fail('Select a checklist item.'),
+    false,
+    paragraphId ? [paragraphId] : undefined
   );
 }
 export function adjustManualListLevel(

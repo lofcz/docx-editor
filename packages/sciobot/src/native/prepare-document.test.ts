@@ -151,7 +151,9 @@ test('a conflicting imported identity stays intact while review storage initiali
   expect(result).toMatchObject({ changed: true, codeStyleReady: false });
   const original = unzipSync(input),
     after = unzipSync(result.document);
-  expect(after['word/styles.xml']).toEqual(original['word/styles.xml']);
+  expect(canonicalOoxmlFingerprint(stylesPartOf(pkg(result.document))!.root.children[0]!)).toEqual(
+    canonicalOoxmlFingerprint(stylesPartOf(pkg(input))!.root.children[0]!)
+  );
   expect(after['word/document.xml']).toEqual(original['word/document.xml']);
   expect(readReviewGroupStore(pkg(result.document)).status).toBe('ready');
   expect(ready(result.document)).toMatchObject({ changed: false, codeStyleReady: false });
