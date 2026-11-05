@@ -2077,7 +2077,6 @@ Runtime `93f2ad71` and application `8bc4e7d9b` complete the R42 executor and ins
 
 The private broad result is 2615 passes and one stale expected peer version. Updating its expected core constraint from 2.31 to upstream 2.32 preserves every one-core assertion. The corrected guard and the complete concurrent file pass 19 cases and 307 assertions. No production code changes after broad verification. This is combined broad/scoped evidence, not a claim that the earlier broad process exited zero. Frontend types pass 6671 files; harness types pass 2238 files; 30 application unit checks pass. Normal source commit hooks pass, and the installed archives match all 456 files with one physical core. The four public archives remain exact verified bytes from `2d2cb157`; the private archive is rebuilt from the repaired source. [The verification record](tracked-hyperlinks.json) retains commands, log hashes, source revisions, archive hashes, and scope limits. R42 closes; R19, R43, application suggestion routing, and remaining port work stay separate.
 
-
 ## Resolved nested paragraph checkpoint
 
 Branch `codex/review-terminal-cell-fix` starts at `a0150e25`. The R06 integration audit exposed pre-existing merge rejection failures. Baseline compound targets fail four rejection cases. Baseline bulk native review fails four merge cases. The focused final R06 tree also fails three local merge decisions and one owned merge inverse. Their outputs retain extra empty terminal cell paragraphs.
@@ -2298,13 +2297,11 @@ Six local cases pass with 123 assertions, including headings, table cells, regis
 
 Final verification passes all 1063 diff, AI and review composition cases across 103 files, with 38783 assertions, in 787.53 seconds. It includes C01 and both linked-control suites. The stock production inventory audit rejects its full snapshot comparison after the application revision changed from `5650bdf550b7987174d1b61fe2a925b86fb24f15` to `073cb22447c6ac6a3699958e27bb1f3b8661bd22`. An independent SHA-256 comparison finds all 199 pinned source files unchanged. The baseline is not recaptured. No full production audit pass or D30 closure is claimed.
 
-
 ## D30 code-styled inline controls
 
 Native code styles now cover new and retained inline controls without turning their projection into literal backtick content. Eight local cases and sixteen shared cases pass exact native ownership, histories, and reopening. Runtime `472ff8e5` retains the trailing text address across native splits. Continuous style deltas avoid unnecessary whitespace splits. The broad and focused runs cover 1,930 distinct passing source cases; 24 compiled code fixtures also pass. Types, builds, API extraction, root formatting, lint, and compatibility checks pass. See [code-control evidence](code-inline-controls.md).
 
 The stronger middle-fragment case remains failing in all eight permutations. Its peer text moves before its original anchor after creation undo. The independent native oracle stays unchanged. Preserve exact source provenance for every native split fragment next; the trailing fragment alone does not establish it. D30 remains open.
-
 
 ## D30 exact native text provenance
 
@@ -2314,23 +2311,19 @@ The original middle-fragment oracle now passes all 32 cases. All 56 compiled cod
 
 The historical peer-born-cell probe now passes both row and column cases. It no longer represents an active failure on this branch. The stronger native table history and geometry fixtures remain the default coverage. See [native provenance evidence](native-text-slice-provenance.md) for exact verification scopes. D30 remains open; no TODO closes.
 
-
 ## D30 logical joined-paragraph automation
 
 Runtime `9cfd1f3d` groups retained physical fragments into Word paragraphs and maps read ranges, word tokens, searches, replacement and structural paragraph edits back to canonical addresses. The original paragraph-mark acceptance failure now passes unchanged. Four shared cases retain exact native XML through replacement, both histories and cold reopening; the compiled core/document API runner passes the same 72 assertions. All 369 tracking cases pass across 27 files. The compiled private SDK/code-control matrix also passes all 56 cases.
 
 Runtime `14d9787f` fixes six inherited DOM-free compiler diagnostics by generating existing UUID v4 identities through a narrow secure-host interface. The original neutral compiler assertion passes, as do 80 origin/clipboard/export cases. The wide runtime run passes 730 behavioral cases; its one compiler failure passes after this repair. The wide core automation run retains two inherited native tracked-row fingerprint failures. A separate unchanged benchmark passes within its original limit. Investigate `revision-marker-content.ts` / accepted table holders next: direct rows retain empty `trPr` and `tcPr`, while acceptance drops them. Keep the original table-authoring assertions. See [joined paragraph evidence](joined-paragraph-automation.md). D30 remains open, with 179 leaves closed and 97 open.
 
-
 ## D30 tracked table property holders
 
 Runtime `f7ca8c5e` retains explicitly present row/cell holders and missing source holders through native revision decisions. Both inherited table-authoring acceptance expectations now pass unchanged. All 657 core automation cases pass; 40 focused cases preserve exact native accept/reject and DOCX reopening. The older-reader tool passes 72 exact native snapshots, including foreign text, both histories, and current acceptance undo/redo. See [table holder evidence](tracked-table-property-holders.md). D30 remains open, with 179 leaves closed and 97 open.
 
-
 ## D30 retained inline atom marks
 
 Runtime `956ba1e9` plans native formatting over unchanged math, mention, source, and image sequences. Explicit host policy admits direct formatting while preserving stored locks. Drawing layout records carry resolved run formatting, so projection retains image marks and structural code syntax. Twenty-two source and compiled cases pass, including independent native oracles, both peer orders, both histories, remote geometry, and DOCX/room reopening. Another 467 existing private/exporter/drawing cases pass. Builds, types, public API checks, root formatting/lint, and compatibility policy pass. The unchanged production inventory still rejects application revision drift; all 199 pinned file hashes match. See [retained mark evidence](retained-atom-mark-changes.md). D30 remains open; 179 leaves remain closed and 97 open. Next, reconcile retained hyperlink ownership and changed atom sequences without replacing retained controls or losing media/history ownership.
-
 
 ## D30 retained inline atom hyperlinks
 
@@ -2346,13 +2339,11 @@ Runtime `2b4fe004` resolves all four original linked image probes without changi
 
 The new [imported boundary regression](regressions/imported-linked-image-boundary.test.ts) preserves a deeper failure: repeated-space text planning loses an imported hyperlink before the image insertion. Fix explicit boundary ownership next. D30 remains unchecked. Counts remain 179 closed and 97 open.
 
-
 ## D30 explicit hyperlink text ownership
 
 Runtime `d11c08c7` and follow-up `c37f8096` resolve the imported linked-image boundary without moving the old outside space into the link. Native named insertion supports typed hyperlink owners and enforces actual landing restrictions. The private planner preserves complete source link boundaries across repeated spaces, letters and supplementary characters. Leading-link edits retain existing tracked behavior. Four shared cases preserve foreign text, imported metadata and both histories through DOCX/room reopening. All 91 compiled image/retained mark/link cases pass under original limits. Earlier readers preserve 20 exact native snapshots. See [ownership evidence](hyperlink-text-ownership.md).
 
 The full C01/composer matrix passes 269 of 333 cases. All 64 failures reproduce with identical displayed diffs at port checkpoint `88c58801`; the [failure inventory](composer-inherited-failures-2026-10-24.json) preserves their names. These suggestion-history failures remain priority repair work. Two additional fresh/retained linked-atom probes also fail at planning and keep their complete acceptance bodies. No integration gate or TODO closes. Counts remain 179 closed and 97 open.
-
 
 ## Shared composer history repairs
 
@@ -2366,14 +2357,20 @@ Runtime `7234d5a0` / `7ea0a3d0` anchors retained controls through exact native s
 
 ## Upstream 2.34 reconciliation
 
-Merge `fff945161` imports all 102 upstream commits through `5993bd223`. Commit `a06c82d6f` extracts internal helpers and refreshes API snapshots. The merge retains native block reservations, staged package edits, source identities, private review ownership, and payload persistence.
+Merge `fff945161` imports all 102 upstream commits through `5993bd223`. Runtime `b9aa95520` includes the verified follow-up repairs. The merge retains block reservations, staged package edits, source identities, private review ownership, and payload persistence.
 
-Application commit `927aaffd3` pins five verified archives from `a06c82d6f`. It resolves one physical core package. The private build excludes production Pro and editor-api imports. The application and harness type checks, dependency alignment, and frozen install pass.
+Follow-up repairs preserve caret formatting, joined text provenance, restored deletion ownership, and revision records across styled runs. Export updates private review references when Word revision IDs change. Complete paragraph creation retains its ownership through rejection, including empty table separators. Split rejection keeps upstream's original first-paragraph identity.
 
-The installed browser batch passes 62 cases and 762 assertions on `fff945161`. Final archives pass another 16 cases and 332 assertions. These checks cover direct edits, collaboration, saving, export, source excerpts, tracked links, and actual PDF conversion. See [source excerpt verification](native-source-excerpts.md) for the resumed session and commands' log paths.
+Application commit `74328ce53` pins five verified archives from `b9aa95520`. Archive hashes, frozen installation, dependency alignment, and the single core instance check pass. The private production build excludes Pro and editor-api imports. The production application build and direct frontend and harness compiler checks pass.
 
-All public package builds, API checks, third-party notices, type checks, formatting, lint, adapter parity, and translation validation pass. The strict OpenSpec check and Office.js compatibility report also pass. Focused helper checks pass 149 cases. The full repository run uses frozen merge `fff945161`; its result remains pending at this checkpoint.
+The final installed Chromium batch passes 19 cases and 209 assertions. It covers persistence, source excerpt identity, tracked hyperlinks, both participant orders, review decisions, history, and reopening. The earlier `924f056c8` batch passes 46 cases and 544 assertions, including actual PDF conversion. See [source excerpt verification](native-source-excerpts.md) for the resumed session.
 
-Collaboration format `docx-collaboration:1.9.17.1` combines upstream repair behavior with private review ownership. Existing rooms require the documented export and reseed migration. The compatibility policy passes against `upstream/main`.
+The full repository run on frozen merge `fff945161` reports 37,838 passes, 597 failures, and two skips across 3,407 files. A later 99-file check includes every failing file and two export regression files. It reports 2,050 passes and 142 failures. Of those failures, 85 reproduce on the original fork engine. Subsequent repairs pass checks for 55 remaining behavioral failures. Both remaining timing failures pass separately within their unchanged limits. These follow-up results do not constitute a green full-suite run.
 
-The coverage audit verifies 202 source hashes at the updated application commit. The ledger retains 278 closed leaves from 282 leaves. B23 needs desktop input method evidence. V06 needs desktop Microsoft Word evidence. X20 retains its recorded column scope decision. V08 remains open until the required evidence and scope decisions permit closure.
+The [verification inventory](upstream-234-verification.json) records every confirmed baseline failure and each follow-up scope. The original fork remains the comparison baseline. Added upstream collaboration tests also run against that engine. No baseline failure is counted as passing.
+
+Core and Pro builds, public API checks, third-party notices, compiler checks, formatting, and lint pass. Adapter parity, translation validation, and strict OpenSpec validation also pass. The Office.js compatibility report passes. Commits bypass pre-commit hooks; the recorded checks run manually. The aggregate application frontend check still fails its unchanged board generator comparison. Direct compiler checks pass; this does not make the aggregate check green.
+
+Collaboration format `docx-collaboration:1.9.17.1` combines upstream repair behavior with private review ownership. Existing rooms require the documented export and reseed migration. Keep old rooms and offline data until migration verification finishes. Do not relabel old rooms or replay their operations into the new format. The compatibility policy passes against `upstream/main`.
+
+The coverage audit verifies 202 source hashes at application commit `74328ce53`. The ledger retains 278 closed leaves from 282 leaves. B23 needs desktop input method evidence. V06 needs desktop Microsoft Word evidence. X20 retains its recorded column scope decision. V08 remains open until the required evidence and scope decisions permit closure.

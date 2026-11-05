@@ -433,5 +433,24 @@
       "log": "/tmp/docx-sync-runner-fixture2.log"
     }
   ],
-  "completion": "The full suite remains red. No baseline failure is counted as passing. Do not infer a green full run by adding follow-up counts."
+  "completion": "The full suite remains red. No baseline failure is counted as passing. Do not infer a green full run by adding follow-up counts.",
+  "finalRuntime": "b9aa955209a9971b4e2fe99e71557c17cef81847",
+  "application": {
+    "commit": "74328ce53ac0e024ba4aa2170df175c0046d3538",
+    "branch": "claude/docx-native-cutover",
+    "browser": {
+      "pass": 19,
+      "fail": 0,
+      "assertions": 209,
+      "files": 3,
+      "log": "/tmp/sciobot-docx-final-repair-browser.log"
+    },
+    "productionBuild": "/tmp/sciobot-docx-final-pin-build.log",
+    "directCompilerChecks": "/tmp/sciobot-docx-export-types.log",
+    "aggregateFrontendCheck": "Fails the unchanged board generated-file comparison; direct compiler checks pass.",
+    "coverageHashes": 202,
+    "closedLeaves": 278,
+    "totalLeaves": 282
+  },
+  "resumedSession": "01a1520f-129b-7670-8af1-7dd69e359b62"
 }
