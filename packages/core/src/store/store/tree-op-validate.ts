@@ -94,7 +94,7 @@ import {
 import { validateMergeTableCells } from './tree-op-table-merge.ts';
 import { validateSplitTableCell } from './tree-op-table-split.ts';
 import { addressesMergedColumns, validateMergedColumnOp } from './tree-op-table-merged-columns.ts';
-import { trackedStructureRefusal } from './tree-op-tracked-table-merges.ts';
+import { joinsTableInsertion, trackedStructureRefusal } from './tree-op-tracked-table-merges.ts';
 import {
   bodyNodeOf,
   governingSectionOwnerId,
@@ -472,10 +472,14 @@ export function validateTreeOp(
       : validateTableColumnOp(part, op);
     return refusal ?? trackedStructureRefusal(part, op);
   }
-  if (op.op === 'mergeTableCells')
-    return validateMergeTableCells(part, op) ?? trackedStructureRefusal(part, op);
-  if (op.op === 'splitTableCell')
-    return validateSplitTableCell(part, op) ?? trackedStructureRefusal(part, op);
+  if (op.op === 'mergeTableCells' || op.op === 'splitTableCell') {
+    const structure = joinsTableInsertion(part, op) ? op : { ...op, revision: undefined };
+    const refusal =
+      structure.op === 'mergeTableCells'
+        ? validateMergeTableCells(part, structure)
+        : validateSplitTableCell(part, structure);
+    return refusal ?? trackedStructureRefusal(part, op);
+  }
   if (
     op.op === 'setTableColumnWidths' ||
     op.op === 'setTableRightEdgeWidth' ||

@@ -354,6 +354,25 @@ describe('exec history groups', () => {
 });
 
 describe('owned history handles and reporting', () => {
+  test('a visually identical color keeps history when it replaces a theme reference', () => {
+    withEditor(
+      `<w:p>${run('alpha', '<w:rPr><w:color w:val="FF0000" w:themeColor="accent1"/></w:rPr>')}</w:p>`,
+      (editor) => {
+        const visible = editor.surface!.formatting().color;
+        if (!visible) throw new Error('The caret must have a resolved color.');
+        const group = editor.beginHistoryGroup();
+        expect(setColor(editor, visible, group)).toMatchObject({ history: { kind: 'started' } });
+        expect(editor.surface!.formatting().color).toBe(visible);
+        expect(editor.exec({ type: 'undo' }).ok).toBe(true);
+        expect(editor.surface!.state().pendingFormat).toBeNull();
+        expect(editor.exec({ type: 'redo' }).ok).toBe(true);
+        expect(editor.surface!.state().pendingFormat).toEqual([
+          { localName: 'color', attributes: { val: visible } },
+        ]);
+      }
+    );
+  });
+
   test('groups caret color gestures without changing document content', () => {
     withEditor(MIXED, (editor) => {
       const g = editor.beginHistoryGroup();

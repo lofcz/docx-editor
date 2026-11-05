@@ -571,6 +571,12 @@ export function createSurfaceFormat(deps: SurfaceFormatDeps): FormatMethods {
         return 'Use an explicit characterStyle operation for a range.';
       if (cells && cells.length > 0) return writeRunPropertyOverCells(cells, incoming);
       const { from, to } = orderedRange();
+      if (localName === 'rStyle') {
+        if (from.paragraphId !== to.paragraphId || from.offset !== to.offset)
+          return 'Use an explicit characterStyle operation for a range.';
+        armPending(incoming);
+        return null;
+      }
       const empty = emptyParagraphAtCaret(from, to);
       if (empty) return writeEmptyParagraphMark(empty, incoming);
       // A highlight is a pen, not a word format: with nothing selected it marks what is typed
@@ -583,7 +589,6 @@ export function createSurfaceFormat(deps: SurfaceFormatDeps): FormatMethods {
         armPending(incoming);
         return null;
       }
-      if (localName === 'rStyle') return 'Use an explicit characterStyle operation for a range.';
       return writeRunProperty(from, to, incoming);
     },
 

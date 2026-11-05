@@ -229,6 +229,7 @@ import { applyTrackedTableColumnOp } from './tree-op-tracked-table-columns.ts';
 import {
   applyTrackedMergeTableCells,
   applyTrackedSplitTableCell,
+  joinsTableInsertion,
 } from './tree-op-tracked-table-merges.ts';
 import { applyTrackedHyperlinkTarget } from './tree-op-tracked-hyperlink.ts';
 import {
@@ -340,7 +341,8 @@ function applyValidatedTreeOp(part: OoxmlPart, op: TreeDocOp, options?: EditOpti
     return untracked(part, op);
   }
   if (op.op === 'mergeTableCells') {
-    if (!op.revision) return applyMergeTableCells(part, op, options);
+    if (!op.revision || joinsTableInsertion(part, op))
+      return applyMergeTableCells(part, op, options);
     return applyTrackedMergeTableCells(
       part,
       { ...op, revision: op.revision },
@@ -350,7 +352,8 @@ function applyValidatedTreeOp(part: OoxmlPart, op: TreeDocOp, options?: EditOpti
     );
   }
   if (op.op === 'splitTableCell') {
-    if (!op.revision) return applySplitTableCell(part, op, options);
+    if (!op.revision || joinsTableInsertion(part, op))
+      return applySplitTableCell(part, op, options);
     return applyTrackedSplitTableCell(
       part,
       { ...op, revision: op.revision },

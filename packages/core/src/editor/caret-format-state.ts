@@ -22,7 +22,18 @@ export function pendingCharacterStyle(properties: readonly SurfaceProperty[]): {
 
 /** Pending identity/removal changes need history even when visible formatting agrees. */
 export function pendingCharacterStyleChanged(before: PendingFormat, after: PendingFormat): boolean {
-  return JSON.stringify(before?.properties ?? []) !== JSON.stringify(after?.properties ?? []);
+  const base = before?.base ?? after?.base ?? [];
+  const authored = (pending: PendingFormat) =>
+    mergedRunWrite(pending?.base ?? base, pending?.properties ?? [], false)
+      .map(
+        (property) =>
+          [
+            property.localName,
+            Object.entries(property.attributes ?? {}).sort(([a], [b]) => a.localeCompare(b)),
+          ] as const
+      )
+      .sort(([a], [b]) => a.localeCompare(b));
+  return JSON.stringify(authored(before)) !== JSON.stringify(authored(after));
 }
 
 /** One insertion writes its captured face and explicit character style in the same transaction. */

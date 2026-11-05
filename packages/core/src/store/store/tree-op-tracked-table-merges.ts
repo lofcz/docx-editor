@@ -22,6 +22,7 @@ import { readMergeableTable } from './tree-op-table-cell-shape.ts';
 import { wmlChildNamed } from './tree-op-table-shared.ts';
 import { fromEdit } from './tree-op-nodes.ts';
 import { invalidRevisionAttribution } from './tree-op-revision-attribution.ts';
+import { isOwnPendingTableInsertion } from './table-authoring-plan.ts';
 import { freshWmlElement } from './table-property-attributes.ts';
 import {
   attributes,
@@ -40,6 +41,15 @@ type MergeOp = Extract<TreeDocOp, { op: 'mergeTableCells' }>;
 type SplitOp = Extract<TreeDocOp, { op: 'splitTableCell' }>;
 type Tracked<T> = T & { readonly revision: RevisionAttributionInput };
 type Apply = (part: OoxmlPart, op: TreeDocOp) => TreeOpResult;
+
+/** An author's pending table changes shape within its existing insertion. */
+export function joinsTableInsertion(part: OoxmlPart, op: MergeOp | SplitOp): boolean {
+  return (
+    op.revision !== undefined &&
+    !invalidRevisionAttribution(op.revision) &&
+    isOwnPendingTableInsertion(part.root, op.tableId, op.revision.author)
+  );
+}
 
 /** Refusals specific to the tracked form; the untracked validator runs first. */
 export function trackedTableMergeRefusal(
@@ -235,6 +245,8 @@ export function trackedStructureRefusal(
   >
 ): TreeOpRejection | null {
   if (!op.revision) return 'widthTwips' in op && op.widthTwips !== undefined ? 'invalidArgs' : null;
+  if ((op.op === 'mergeTableCells' || op.op === 'splitTableCell') && joinsTableInsertion(part, op))
+    return null;
   return op.op === 'insertTableColumn' || op.op === 'deleteTableColumn'
     ? trackedTableColumnRefusal(part, { ...op, revision: op.revision })
     : trackedTableMergeRefusal(part, { ...op, revision: op.revision });

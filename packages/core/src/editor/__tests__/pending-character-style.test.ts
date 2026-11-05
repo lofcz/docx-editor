@@ -2,6 +2,29 @@ import { expect, test } from 'bun:test';
 import { createDocxEditor } from '../docx-editor';
 import { canonicalOoxmlFingerprint, readOoxmlPackage, serializeOoxmlPart } from '../../store/index';
 
+test('a character style picked inside a word applies only to subsequent typing', () => {
+  const editor = createDocxEditor({ container: document.createElement('div'), document: 'blank' });
+  try {
+    const surface = editor.surface!;
+    surface.insertPlainText('BeforeAfter');
+    surface.flushPendingInput();
+    const paragraphId = surface.session.paragraphIds()[0]!;
+    const point = { paragraphId, offset: 6 };
+    surface.setSelection({ anchor: point, head: point });
+    const before = canonicalOoxmlFingerprint(surface.session.part());
+    expect(surface.setRunProperty('rStyle', { val: 'Code' })).toBeNull();
+    expect(canonicalOoxmlFingerprint(surface.session.part())).toEqual(before);
+    surface.insertPlainText('typed');
+    surface.flushPendingInput();
+    expect(serializeOoxmlPart(surface.session.part())).toContain('w:val="Code"');
+    expect(surface.session.bodyText()).toBe('BeforetypedAfter');
+    expect(editor.exec({ type: 'undo' }).ok).toBe(true);
+    expect(canonicalOoxmlFingerprint(surface.session.part())).toEqual(before);
+  } finally {
+    editor.destroy();
+  }
+});
+
 test('caret character style uses the explicit operation field and independent typing history', async () => {
   const editor = createDocxEditor({ container: document.createElement('div'), document: 'blank' });
   try {
