@@ -14,6 +14,7 @@ import {
   paragraphsInCells,
   spansInCells,
   tableContextAt,
+  tableRegionCellSelection,
 } from '../semantic-cell-selection.ts';
 import { hitTestPage, type TableCellAddress } from '../semantic-hit-test.ts';
 import { createFixedMeasurer, layoutSemanticDocument } from '../semantic-layout.ts';
@@ -371,5 +372,52 @@ describe('nested tables', () => {
     const context = tableContextAt(layout, deep.paragraphId)!;
     expect(context.tableId).toBe(innerFragment.tableId);
     expect(context.tableId).not.toBe(outer.tableId);
+  });
+});
+
+describe('complete row and column selections', () => {
+  test('a selected column includes whole horizontal merges and their covered columns', () => {
+    const layout = lay(
+      `<w:tbl><w:tblGrid>${'<w:gridCol w:w="1800"/>'.repeat(3)}</w:tblGrid>${tr(tc(p('merged'), '<w:tcPr><w:gridSpan w:val="2"/></w:tcPr>') + tc(p('C1')))}${tr(tc(p('A2')) + tc(p('B2')) + tc(p('C2')))}</w:tbl>`
+    );
+    const table = tableOf(layout);
+    const selected = tableRegionCellSelection(
+      layout,
+      {
+        tableId: table.tableId,
+        rows: { from: 1, to: 1 },
+        columns: { from: 1, to: 1 },
+      },
+      'column'
+    )!;
+    expect(selected.rows).toEqual({ from: 0, to: 1 });
+    expect(selected.columns).toEqual({ from: 0, to: 1 });
+    expect(selected.cellIds).toEqual([
+      table.rows[0]!.cells[0]!.id,
+      table.rows[1]!.cells[0]!.id,
+      table.rows[1]!.cells[1]!.id,
+    ]);
+    expect(cellSelectionRects(layout, selected.cellIds)).toHaveLength(3);
+  });
+
+  test('a selected row expands through complete vertical merges', () => {
+    const layout = lay(
+      `<w:tbl>${tr(tc(p('merged'), '<w:tcPr><w:vMerge w:val="restart"/></w:tcPr>') + tc(p('B1')))}${tr(tc(p(''), '<w:tcPr><w:vMerge/></w:tcPr>') + tc(p('B2')))}</w:tbl>`
+    );
+    const table = tableOf(layout);
+    const selected = tableRegionCellSelection(
+      layout,
+      {
+        tableId: table.tableId,
+        rows: { from: 1, to: 1 },
+        columns: { from: 1, to: 1 },
+      },
+      'row'
+    )!;
+    expect(selected.rows).toEqual({ from: 0, to: 1 });
+    expect(selected.columns).toEqual({ from: 0, to: 1 });
+    expect(selected.cellIds).toHaveLength(4);
+    expect(cellSelectionText(layout, selected)).toContain('B1');
+    expect(cellSelectionText(layout, selected)).toContain('B2');
   });
 });

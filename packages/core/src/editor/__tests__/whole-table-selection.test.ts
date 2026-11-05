@@ -161,18 +161,38 @@ describe('selectTableRegion', () => {
     }
   });
 
-  test("'row' and 'column' stay refused, and so does a caret outside a table", () => {
+  test.each(['row', 'column'] as const)(
+    '%s selects the complete region without a document edit',
+    async (region) => {
+      const { editor, surface, caretIn, body } = mount('editing');
+      caretIn(2);
+      const before = await body();
+      expect(editor.can({ type: 'selectTableRegion', region })).toEqual({ ok: true });
+      expect(editor.exec({ type: 'selectTableRegion', region })).toEqual({
+        ok: true,
+        changed: false,
+      });
+      const selection = surface.state().cellSelection!;
+      expect(selection.cellIds).toHaveLength(2);
+      expect(selection.rows).toEqual(region === 'row' ? { from: 0, to: 0 } : { from: 0, to: 1 });
+      expect(selection.columns).toEqual(region === 'row' ? { from: 0, to: 1 } : { from: 1, to: 1 });
+      expect(await body()).toBe(before);
+      expect(editor.exec({ type: 'setCellFill', color: { kind: 'hex', value: 'FFFF00' } }).ok).toBe(
+        true
+      );
+      expect((await body()).match(/w:fill="FFFF00"/g)).toHaveLength(2);
+      expect(editor.exec({ type: 'undo' }).ok).toBe(true);
+      expect(await body()).toBe(before);
+    }
+  );
+
+  test('all regions refuse a caret outside a table', () => {
     const { editor, caretIn } = mount('editing');
-    caretIn(1);
-    for (const region of ['row', 'column'] as const)
-      expect(editor.can({ type: 'selectTableRegion', region })).toMatchObject({
+    caretIn(0);
+    for (const region of ['table', 'row', 'column'] as const)
+      expect(editor.exec({ type: 'selectTableRegion', region })).toMatchObject({
         ok: false,
         code: 'unsupported',
       });
-    caretIn(0);
-    expect(editor.exec({ type: 'selectTableRegion', region: 'table' })).toMatchObject({
-      ok: false,
-      code: 'unsupported',
-    });
   });
 });

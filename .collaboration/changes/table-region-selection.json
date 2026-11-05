@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Native commands select whole tables but refuse rows and columns.",
+  "after": "Native commands select complete rows and columns, including intersecting merged cells.",
+  "reason": "Selection uses existing cell-selection and awareness state. Document operations and room formats do not change.",
+  "tests": [
+    "packages/core/src/editor/__tests__/whole-table-selection.test.ts",
+    "packages/core/src/layout/__tests__/semantic-cell-selection.test.ts"
+  ],
+  "changeset": "table-region-selection",
+  "migration": null
+}

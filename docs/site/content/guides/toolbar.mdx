@@ -259,3 +259,7 @@ The menu bar moves menus that do not fit into one `⋯` menu, from the end. Host
 - [Chrome slot reference](/docs/2.x/guides/chrome-slots)
 - [Custom styles and branding](/docs/2.x/guides/custom-styles)
 - [React composition](/docs/2.x/react/composition) and [Vue composition](/docs/2.x/vue/composition)
+
+## Select table rows and columns
+
+Custom table controls can call `editor.exec({ type: 'selectTableRegion', region: 'row' })` or use `region: 'column'` to select a complete column. The command expands an existing cell selection to all rows or columns that it touches. Merged cells remain whole. Selection does not change the document and remains available in viewing mode. Subsequent cell formatting commands apply to the selected cells.

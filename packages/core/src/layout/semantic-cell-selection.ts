@@ -217,13 +217,28 @@ export function cellSelectionBetween(
   head: TableCellAddress
 ): CellSelection | null {
   if (anchor.tableId !== head.tableId) return null;
-  const table = tableIndex(layout).get(anchor.tableId);
-  if (!table) return null;
+  return cellSelectionInBounds(layout, anchor.tableId, {
+    rows: {
+      from: Math.min(anchor.rowIndex, head.rowIndex),
+      to: Math.max(anchor.rowIndex, head.rowIndex),
+    },
+    columns: {
+      from: Math.min(spans(anchor).from, spans(head).from),
+      to: Math.max(spans(anchor).to, spans(head).to),
+    },
+  });
+}
 
-  let rowFrom = Math.min(anchor.rowIndex, head.rowIndex);
-  let rowTo = Math.max(anchor.rowIndex, head.rowIndex);
-  let columnFrom = Math.min(spans(anchor).from, spans(head).from);
-  let columnTo = Math.max(spans(anchor).to, spans(head).to);
+/** Expand a logical rectangle to include every intersecting merged cell. */
+function cellSelectionInBounds(
+  layout: SemanticLayout,
+  tableId: string,
+  bounds: Pick<CellSelection, 'rows' | 'columns'>
+): CellSelection | null {
+  const table = tableIndex(layout).get(tableId);
+  if (!table) return null;
+  let { from: rowFrom, to: rowTo } = bounds.rows;
+  let { from: columnFrom, to: columnTo } = bounds.columns;
 
   const overlapsColumns = (cell: TableCellFragmentRecord): boolean => {
     const { from, to } = spans(cell);
@@ -287,11 +302,11 @@ export function cellSelectionBetween(
 
   return {
     kind: 'cells',
-    tableId: anchor.tableId,
+    tableId,
     cellIds,
     rows: { from: rowFrom, to: rowTo },
     columns: { from: columnFrom, to: columnTo },
-    text: textRangeOf(layout, anchor.tableId, cellIds),
+    text: textRangeOf(layout, tableId, cellIds),
   };
 }
 
@@ -320,6 +335,20 @@ export function wholeTableCellSelection(
     columns: { from: 0, to: columnCountOf(table) - 1 },
     text: textRangeOf(layout, tableId, cellIds),
   };
+}
+
+/** Expand the current cell rectangle to its complete rows or columns. */
+export function tableRegionCellSelection(
+  layout: SemanticLayout,
+  selection: Pick<CellSelection, 'tableId' | 'rows' | 'columns'>,
+  region: 'row' | 'column'
+): CellSelection | null {
+  const whole = wholeTableCellSelection(layout, selection.tableId);
+  if (!whole) return null;
+  return cellSelectionInBounds(layout, selection.tableId, {
+    rows: region === 'column' ? whole.rows : selection.rows,
+    columns: region === 'row' ? whole.columns : selection.columns,
+  });
 }
 
 /** Whether a rectangle holds every cell of its table. */

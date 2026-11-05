@@ -5,6 +5,7 @@ import type { EditorCommand } from '@docx-editor.dev/core/contracts/editor';
 import {
   coversWholeTable,
   tableContextAt,
+  tableRegionCellSelection,
   wholeTableCellSelection,
   type CellSelection,
 } from '../layout/semantic-cell-selection.ts';
@@ -18,17 +19,21 @@ export function planSelectTableRegion(
   input: TableCommandPlannerInput,
   command: SelectTableRegion
 ): TableCommandPlan {
-  if (command.region !== 'table') {
-    return {
-      ok: false,
-      code: 'unsupported',
-      reason: `selecting a table ${command.region} is not supported yet`,
-    };
-  }
-  const tableId =
-    input.cellSelection?.tableId ??
-    tableContextAt(input.layout, input.selection.head.paragraphId)?.tableId;
-  const cells = tableId === undefined ? null : wholeTableCellSelection(input.layout, tableId);
+  const context = tableContextAt(input.layout, input.selection.head.paragraphId);
+  const current =
+    input.cellSelection ??
+    (context
+      ? {
+          tableId: context.tableId,
+          rows: { from: context.rowIndex, to: context.rowIndex },
+          columns: { from: context.columnIndex, to: context.columnIndex },
+        }
+      : null);
+  const cells = !current
+    ? null
+    : command.region === 'table'
+      ? wholeTableCellSelection(input.layout, current.tableId)
+      : tableRegionCellSelection(input.layout, current, command.region);
   if (!cells)
     return { ok: false, code: 'unsupported', reason: 'the selection is not inside a table' };
   return { ok: true, ops: [], selection: { kind: 'selectCells', cells } };
