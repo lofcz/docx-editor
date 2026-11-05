@@ -246,6 +246,14 @@ if (decision.lastOutcome?.kind === 'split') console.warn(decision.lastOutcome.re
 - Commands that publish separate relationship journals, such as external hyperlink insertion, reject `historyGroup`.
 - Custom collaboration ports must preserve journal identity and synchronous local capture. `historyGroupOfJournal(journal)` reads local metadata that spreading, `structuredClone`, serialization, and `postMessage` lose.
 
+## Derive paragraph appearance
+
+Register `EditorModule.paragraphAppearance` to derive strike and color defaults from native inline controls. The resolver receives frozen control facts and the revision display mode. It must return deterministic values without changing its closure or document state. Original view uses original controls; proposed view and All Markup use proposed controls.
+
+Authored character styles and direct run properties keep precedence over these defaults. Body, table, header, and footer paragraphs use the same style cascade. Pass the same contribution to `openDocumentForExport` for matching export layout. Raw DOCX saving keeps authored properties and does not materialize appearance defaults.
+
+A module registry accepts one appearance contribution. Repeated registrations require the same ID and callback; conflicting registrations throw. Core bounds control traversal and validates returned strike and Word color values.
+
 ## Limits
 
 - Keep one resolved Core copy across adapters and extensions. Two copies break shared caches without an error.

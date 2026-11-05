@@ -1,4 +1,5 @@
 import type { UnsupportedElementRule } from '../layout/unsupported-content-types.ts';
+import type { ParagraphAppearanceContribution } from '../contracts/paragraph-appearance.ts';
 import type { ResolvedRevisionMarkup } from '../contracts/revision-markup.ts';
 // What `openPaginated` takes: the options record of the paginated surface.
 //
@@ -135,6 +136,8 @@ export interface PaginatedSurfaceOptions {
    * built on it stays inert.
    */
   readonly reviewModel?: ReviewModuleContribution;
+  /** Read-only host appearance defaults; native control state remains authoritative. */
+  readonly paragraphAppearance?: ParagraphAppearanceContribution;
   /**
    * Opt-in relaxation of `w:lock` for run-property writes: `contentLocked` / `sdtContentLocked`
    * controls can be restyled (toolbar, shortcuts, automation `setFont`) but not retyped.

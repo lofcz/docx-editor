@@ -3,6 +3,8 @@ import {
   type RevisionMarkupOptions,
   type ResolvedRevisionMarkup,
 } from '../contracts/revision-markup.ts';
+import type { ParagraphAppearanceContribution } from '../contracts/paragraph-appearance.ts';
+import { withParagraphAppearance } from '../layout/paragraph-appearance.ts';
 // One neutral document layout session shared by all exporters.
 
 import {
@@ -69,6 +71,8 @@ export type ExportDocumentSource = Uint8Array | HeadlessDocumentView;
 
 /** Shared session options; translators add their own format-specific options. @public */
 export interface OpenDocumentForExportOptions {
+  /** Read-only host appearance defaults, shared with native editor layout. */
+  readonly paragraphAppearance?: ParagraphAppearanceContribution;
   /** Viewer markup applied before layout and export. */
   readonly revisionMarkup?: RevisionMarkupOptions;
   /** Stable author color slots captured from the editor session. */
@@ -580,6 +584,17 @@ export function openDocumentForExport(
     const fieldLinks = fieldLinkState.registry;
 
     const session = state.sessions.get(mode) ?? createLayoutSession();
+    const styleCascade = () => {
+      const table = state.styles.styleCascade();
+      return table
+        ? withParagraphAppearance(
+            table,
+            options.paragraphAppearance,
+            layoutProjectionOf(mode),
+            viewFilter
+          )
+        : table;
+    };
     state.sessions.set(mode, session);
     let source = state.furniture.get(mode);
     if (!source) {
@@ -588,7 +603,7 @@ export function openDocumentForExport(
         measurer: state.measurer,
         producer,
         cache: state.paragraphCache,
-        styleCascade: state.styles.styleCascade,
+        styleCascade,
         numberingIndex: state.styles.numberingIndex,
         defaultTabStopPt: state.styles.defaultTabStopPt,
         compatibilityMode: state.styles.compatibilityMode,
@@ -618,7 +633,7 @@ export function openDocumentForExport(
         cache: state.paragraphCache,
         session,
         producer,
-        styleCascade: state.styles.styleCascade,
+        styleCascade,
         defaultTabStopPt: state.styles.defaultTabStopPt,
         numberingIndex: state.styles.numberingIndex,
         furniture: source,

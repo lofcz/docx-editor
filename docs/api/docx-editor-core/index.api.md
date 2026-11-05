@@ -1293,6 +1293,9 @@ export interface ContentControlFilter {
 }
 
 // @public
+export type ContentControlKind = 'richText' | 'plainText' | 'checkbox' | 'dropDownList' | 'comboBox' | 'date' | 'picture' | 'docPartObj' | 'docPartList' | 'group' | 'citation' | 'bibliography' | 'equation' | 'untyped';
+
+// @public
 export interface ContentControlSummary {
     // (undocumented)
     readonly alias?: string;
@@ -2506,6 +2509,7 @@ export interface EditorModule {
     readonly id: string;
     readonly onCustomNodeDiagnostic?: (diagnostic: unknown) => void;
     readonly onDiagnostic?: (event: EditorDiagnostic) => void;
+    readonly paragraphAppearance?: ParagraphAppearanceContribution;
     readonly review?: ReviewModuleContribution;
     readonly wantsDiagnostic?: (kind: EditorDiagnosticKind) => boolean;
 }
@@ -3421,6 +3425,50 @@ export interface Paragraph {
     readonly runs: readonly Run[];
     // (undocumented)
     readonly styleId?: string;
+}
+
+// @public
+export interface ParagraphAppearanceContext {
+    readonly controls: readonly ParagraphAppearanceControl[];
+    // (undocumented)
+    readonly displayMode: RevisionDisplayMode;
+    // (undocumented)
+    readonly paragraphId: string;
+}
+
+// @public
+export interface ParagraphAppearanceContribution {
+    readonly id: string;
+    // (undocumented)
+    readonly resolve: (context: ParagraphAppearanceContext) => ParagraphAppearanceDefaults | null;
+}
+
+// @public
+export interface ParagraphAppearanceControl {
+    // (undocumented)
+    readonly checked?: boolean;
+    // (undocumented)
+    readonly controlType: ContentControlKind;
+    // (undocumented)
+    readonly end: number;
+    // (undocumented)
+    readonly id: string;
+    // (undocumented)
+    readonly start: number;
+    // (undocumented)
+    readonly tag?: string;
+}
+
+// @public
+export interface ParagraphAppearanceDefaults {
+    // (undocumented)
+    readonly color?: {
+        readonly themeColor?: string;
+        readonly themeTint?: string;
+        readonly val: string;
+    };
+    // (undocumented)
+    readonly strike?: boolean;
 }
 
 // @public

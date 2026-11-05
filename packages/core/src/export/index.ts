@@ -77,3 +77,11 @@ export type { FontOrigin, FontOriginFailure } from '../editor/font-resolver.ts';
 export type { FontRequest, FontSubstitution } from '../layout/font-resource.ts';
 
 export type { ExportContentWarning } from './export-content-warnings.ts';
+export type {
+  ParagraphAppearanceContribution,
+  ParagraphAppearanceContext,
+  ParagraphAppearanceControl,
+  ParagraphAppearanceDefaults,
+} from '../contracts/paragraph-appearance.ts';
+export type { ContentControlKind } from '@docx-editor.dev/core/store';
+export type { RevisionDisplayMode } from '../layout/revision-projection.ts';

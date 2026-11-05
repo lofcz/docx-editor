@@ -1,4 +1,5 @@
 import { createSurfaceAutomation } from './surface-automation.ts';
+import { withParagraphAppearance } from '../layout/paragraph-appearance.ts';
 import {
   SurfaceInlineWidgetMetrics,
   registerSurfaceInlineWidgetMetrics,
@@ -945,8 +946,23 @@ export function mountPaginatedSurface(
   };
 
   // Style and numbering indexes are identity-memoized and shared by every story.
-  const { styleCascade, numberingIndex, defaultTabStopPt, compatibilityMode } =
-    createSurfaceStyleDeps(session);
+  const {
+    styleCascade: baseStyleCascade,
+    numberingIndex,
+    defaultTabStopPt,
+    compatibilityMode,
+  } = createSurfaceStyleDeps(session);
+  function styleCascade() {
+    const table = baseStyleCascade();
+    return table
+      ? withParagraphAppearance(
+          table,
+          options.paragraphAppearance,
+          revisionDisplayMode(),
+          revisionFilter()
+        )
+      : table;
+  }
   // Word's "style for following paragraph". Its own lane, because it is a question about
   // `styles.xml` rather than about the selection an Enter is standing in.
   const nextStyle = createNextStyleWrites({

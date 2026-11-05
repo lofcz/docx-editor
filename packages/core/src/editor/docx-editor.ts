@@ -730,6 +730,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
       // review-module display mode; with one registered the surface keeps the layout
       // default (`all-markup`), which is what the review rail annotates.
       revisionDisplayMode: reviewEnabled ? reviewDisplayMode : 'proposed',
+      paragraphAppearance: modules.paragraphAppearance ?? undefined,
       ...diagnostics.surfaceHooks(suggesting, () => surface),
       ...preparedOpen.takePreparedOpen(bytes),
       ...(modules.collaboration ? { collaborationModel: modules.collaboration } : {}),

@@ -1,22 +1,22 @@
-import type { ContentControlMappedType } from '../layout/semantic-control-records.ts';
+import type { ContentControlKind } from '@docx-editor.dev/core/store';
 import type { RevisionDisplayMode } from '../layout/revision-projection.ts';
 
 /**
  * Read-only inline-control facts for a paragraph appearance resolver.
  * Core applies revision visibility before creating these records.
  * Records contain no tree nodes, package maps, or mutation methods.
- * @internal Proposed host contribution; not wired or exported yet.
+ * @public
  */
 export interface ParagraphAppearanceControl {
   readonly id: string;
   readonly tag?: string;
-  readonly controlType: ContentControlMappedType;
+  readonly controlType: ContentControlKind;
   readonly start: number;
   readonly end: number;
   readonly checked?: boolean;
 }
 
-/** @internal Proposed host contribution; not wired or exported yet. */
+/** Immutable facts supplied once per paragraph and revision view. @public */
 export interface ParagraphAppearanceContext {
   readonly paragraphId: string;
   readonly displayMode: RevisionDisplayMode;
@@ -30,7 +30,7 @@ export interface ParagraphAppearanceContext {
 /**
  * Metric-neutral defaults. Authored character styles and direct run properties
  * retain their native precedence. Core validates colors through its Word resolver.
- * @internal Proposed host contribution; not wired or exported yet.
+ * @public
  */
 export interface ParagraphAppearanceDefaults {
   readonly strike?: boolean;
@@ -46,14 +46,18 @@ export interface ParagraphAppearanceDefaults {
  * Core freezes bounded input records and validates the returned defaults.
  * This contribution creates no document operations or persisted appearance state.
  *
- * Proposed attachment points: EditorModule.paragraphAppearance and
- * OpenDocumentForExportOptions.paragraphAppearance. Both reach the shared
- * document-layout coordinator. Word materialization calls the same resolver
- * against a detached snapshot and leaves pending review paragraphs unchanged.
- * @internal Proposed host contribution; not wired or exported yet.
+ * Register through EditorModule.paragraphAppearance or pass the contribution to
+ * OpenDocumentForExportOptions.paragraphAppearance. Both use the same native
+ * style cascade. DOCX saving retains authored styles; materialization belongs
+ * to the host's detached export preparation.
+ *
+ * A registry permits one contribution. Repeating the same ID and callback is
+ * allowed; conflicting registrations throw. Changed callbacks invalidate layout
+ * caches, including when their IDs match. Resolver closures must remain immutable.
+ * @public
  */
 export interface ParagraphAppearanceContribution {
-  /** Stable implementation identity, included in layout cache keys. */
+  /** Diagnostic identity: a nonempty string containing at most 256 characters. */
   readonly id: string;
   readonly resolve: (context: ParagraphAppearanceContext) => ParagraphAppearanceDefaults | null;
 }

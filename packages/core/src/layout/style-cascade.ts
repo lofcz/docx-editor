@@ -63,6 +63,11 @@ import { withNumberingTabRule } from './numbering-tab-rule.ts';
 import { NO_THEME_FONTS, type ThemeFonts } from './run-style.ts';
 import { combineStyleToggles } from './style-toggles.ts';
 import {
+  withParagraphAppearanceDefaults,
+  paragraphAppearanceOf,
+  applyParagraphAppearanceDefaults,
+} from './paragraph-appearance.ts';
+import {
   characterStyleRunProperties,
   paragraphStyleChain,
   styleChain,
@@ -733,9 +738,19 @@ export function cascadeRunProperties(
   directRunProperties: readonly OoxmlProperty[],
   table?: StyleCascadeTable
 ): readonly OoxmlProperty[] {
-  const finish = (props: readonly OoxmlProperty[]) =>
-    applyLigatureCompatibility(props, table?.disableOptionalLigatures);
+  const appearance = paragraphAppearanceOf(inheritedRunProperties);
+  if (appearance) inheritedRunProperties = appearance.base;
   let characterProps: readonly OoxmlProperty[] = [];
+  const finish = (props: readonly OoxmlProperty[]) =>
+    applyLigatureCompatibility(
+      applyParagraphAppearanceDefaults(
+        props,
+        appearance?.defaults,
+        characterProps,
+        directRunProperties
+      ),
+      table?.disableOptionalLigatures
+    );
   if (table) {
     // Only a named character style applies; the default character style adds nothing.
     const rStyleId = styleIdFromProps(directRunProperties, 'rStyle');
@@ -877,7 +892,11 @@ export function resolveParagraphLayoutInputs(
   // `markRunProperties` carries direct `w:pPr/w:rPr`. Without styles, there is no style
   // face to inherit — content stays empty and the mark props size empty lines alone.
   const markOnly = propertiesOf(findRunProperties(pPr && isElement(pPr) ? pPr : undefined));
-  const inheritedRunProperties = cascaded ? cascaded.runProperties : [];
+  const inheritedRunProperties = withParagraphAppearanceDefaults(
+    styleCascade,
+    paragraph,
+    cascaded ? cascaded.runProperties : []
+  );
   const markRunProperties = cascaded ? cascaded.markRunProperties : markOnly;
   const baseIndent = paragraphIndent(props);
   let hanging = 0;

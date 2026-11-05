@@ -1444,6 +1444,9 @@ export function computeResizedImageExtentEmu(startWidthEmu: number, startHeightE
 export const CONTENT_CONTROL_PICTURE_ACCEPT = "image/png,image/jpeg,image/gif,image/bmp,image/webp";
 
 // @public
+export type ContentControlKind = 'richText' | 'plainText' | 'checkbox' | 'dropDownList' | 'comboBox' | 'date' | 'picture' | 'docPartObj' | 'docPartList' | 'group' | 'citation' | 'bibliography' | 'equation' | 'untyped';
+
+// @public
 export interface ContentControlListNavigation {
     keyDown(event: KeyboardEvent, root: HTMLElement): void;
     reset(): void;
@@ -1860,6 +1863,7 @@ export interface EditorModule {
     readonly id: string;
     readonly onCustomNodeDiagnostic?: (diagnostic: unknown) => void;
     readonly onDiagnostic?: (event: EditorDiagnostic) => void;
+    readonly paragraphAppearance?: ParagraphAppearanceContribution;
     readonly review?: ReviewModuleContribution;
     readonly wantsDiagnostic?: (kind: EditorDiagnosticKind) => boolean;
 }
@@ -1873,6 +1877,8 @@ export interface EditorModuleRegistry {
     // (undocumented)
     readonly customNodes: readonly unknown[];
     readonly diagnosticListeners: readonly ((event: EditorDiagnostic) => void)[];
+    // (undocumented)
+    readonly paragraphAppearance: ParagraphAppearanceContribution | null;
     // (undocumented)
     readonly review: ReviewModuleContribution | null;
     readonly wantsDiagnostic: (kind: EditorDiagnosticKind) => boolean;
@@ -3069,6 +3075,7 @@ export interface PaginatedSurfaceOptions {
     readonly onToggleParagraphMarks?: () => void;
     // @internal
     readonly pairsReplacements?: () => boolean;
+    readonly paragraphAppearance?: ParagraphAppearanceContribution;
     readonly pointer?: 'engine' | 'native';
     readonly producer?: string;
     readonly reviewModel?: ReviewModuleContribution;
@@ -3112,6 +3119,50 @@ export interface PaginatedSurfaceState {
     readonly revision: number;
     // (undocumented)
     readonly selection: SemanticSelection;
+}
+
+// @public
+export interface ParagraphAppearanceContext {
+    readonly controls: readonly ParagraphAppearanceControl[];
+    // (undocumented)
+    readonly displayMode: RevisionDisplayMode;
+    // (undocumented)
+    readonly paragraphId: string;
+}
+
+// @public
+export interface ParagraphAppearanceContribution {
+    readonly id: string;
+    // (undocumented)
+    readonly resolve: (context: ParagraphAppearanceContext) => ParagraphAppearanceDefaults | null;
+}
+
+// @public
+export interface ParagraphAppearanceControl {
+    // (undocumented)
+    readonly checked?: boolean;
+    // (undocumented)
+    readonly controlType: ContentControlKind;
+    // (undocumented)
+    readonly end: number;
+    // (undocumented)
+    readonly id: string;
+    // (undocumented)
+    readonly start: number;
+    // (undocumented)
+    readonly tag?: string;
+}
+
+// @public
+export interface ParagraphAppearanceDefaults {
+    // (undocumented)
+    readonly color?: {
+        readonly themeColor?: string;
+        readonly themeTint?: string;
+        readonly val: string;
+    };
+    // (undocumented)
+    readonly strike?: boolean;
 }
 
 // @public

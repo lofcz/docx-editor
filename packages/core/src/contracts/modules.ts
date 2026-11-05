@@ -1,4 +1,12 @@
 import type { CompareDocumentsDialogSession } from './compare-documents.ts';
+import type { ParagraphAppearanceContribution } from './paragraph-appearance.ts';
+export type { ContentControlKind } from '@docx-editor.dev/core/store';
+export type {
+  ParagraphAppearanceContribution,
+  ParagraphAppearanceContext,
+  ParagraphAppearanceControl,
+  ParagraphAppearanceDefaults,
+} from './paragraph-appearance.ts';
 import type {
   CompareDocumentsBackgroundEngine,
   CompareDocumentsEngine,
@@ -198,6 +206,8 @@ export interface EditorModule {
   readonly id: string;
   /** Review capability: queue derivation, commands gate, display modes. */
   readonly review?: ReviewModuleContribution;
+  /** Read-only paragraph appearance defaults derived from native control state. */
+  readonly paragraphAppearance?: ParagraphAppearanceContribution;
   /**
    * Collaboration replica. Absent, the editor stays single-user: local undo
    * stays the authority, and `snapshot().collaborationStatus` is `'inactive'`.
@@ -254,6 +264,7 @@ export interface EditorModule {
  */
 export interface EditorModuleRegistry {
   readonly review: ReviewModuleContribution | null;
+  readonly paragraphAppearance: ParagraphAppearanceContribution | null;
   readonly collaboration: CollaborationModuleContribution | null;
   readonly customNodes: readonly unknown[];
   /** Every claimed payload namespace, deduplicated, in registration order. */
@@ -268,6 +279,7 @@ export interface EditorModuleRegistry {
 
 const EMPTY_REGISTRY: EditorModuleRegistry = Object.freeze({
   review: null,
+  paragraphAppearance: null,
   collaboration: null,
   customNodes: Object.freeze([]) as readonly unknown[],
   customNodePayloadNamespaces: Object.freeze([]) as readonly string[],
@@ -282,6 +294,7 @@ export function resolveEditorModules(
 ): EditorModuleRegistry {
   if (!modules || modules.length === 0) return EMPTY_REGISTRY;
   let review: ReviewModuleContribution | null = null;
+  let paragraphAppearance: ParagraphAppearanceContribution | null = null;
   let collaboration: CollaborationModuleContribution | null = null;
   const customNodes: unknown[] = [];
   const namespaces = new Set<string>();
@@ -289,6 +302,22 @@ export function resolveEditorModules(
   const diagnosticListeners: ((event: EditorDiagnostic) => void)[] = [];
   const wants: ((kind: EditorDiagnosticKind) => boolean)[] = [];
   for (const module of modules) {
+    const next = module.paragraphAppearance;
+    if (next) {
+      if (
+        typeof next.id !== 'string' ||
+        !next.id.trim() ||
+        next.id.length > 256 ||
+        typeof next.resolve !== 'function'
+      )
+        throw new TypeError('Invalid paragraph appearance contribution.');
+      if (
+        paragraphAppearance &&
+        (paragraphAppearance.id !== next.id || paragraphAppearance.resolve !== next.resolve)
+      )
+        throw new TypeError('Conflicting paragraph appearance contributions.');
+      paragraphAppearance = Object.freeze({ id: next.id, resolve: next.resolve });
+    }
     // First registration wins: two review modules is a configuration mistake,
     // and silently merging them would leave neither author able to say which
     // derivation runs. The second is ignored rather than throwing — a module
@@ -312,6 +341,7 @@ export function resolveEditorModules(
   }
   return {
     review,
+    paragraphAppearance,
     collaboration,
     customNodes,
     customNodePayloadNamespaces: [...namespaces],
