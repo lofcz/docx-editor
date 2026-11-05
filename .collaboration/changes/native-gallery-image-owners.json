@@ -1,0 +1,14 @@
+{
+  "impact": "migration-required",
+  "fields": ["sharedSchemaVersion"],
+  "before": "Gallery images share one array payload and paragraph-owned fallback text.",
+  "after": "Gallery version 2 stores each image in its own metadata record and marked native control. Native child order owns gallery order. Generated fallback text uses schema 10 atomic replacement records.",
+  "reason": "Image ownership changes before room creation. Existing shared array and paragraph histories cannot become per-image records during a live session.",
+  "tests": [
+    "packages/sciobot/src/blocks/gallery-record-upgrade.test.ts",
+    "packages/sciobot/src/blocks/gallery-collaboration.test.ts",
+    "packages/sciobot/src/blocks/remove.test.ts"
+  ],
+  "changeset": "native-gallery-image-owners",
+  "migration": "upgrade-atomic-equation-rooms-to-format-110171"
+}

@@ -6,6 +6,8 @@ import {
   usedParaIds,
   w14RootPrefix,
   WML_NAMESPACE_URI,
+  withAtomicContentMarker,
+  type OoxmlContentControlNode,
   type OoxmlElement,
   type OoxmlNode,
   type OoxmlPart,
@@ -37,11 +39,13 @@ export function galleryImageControl(
   const template = body && body.kind !== 'textValue' && body.children[0];
   if (!template || template.kind !== 'contentControl')
     throw Error('Invalid gallery image fallback.');
-  const control = withFreshIds(template, allocate, {
-    prefix: w14RootPrefix(part.root),
-    used: new Set(usedParaIds(part.root)),
-    seed: `scio-gallery-image:${imageId}`,
-  }) as OoxmlElement;
+  const control = withAtomicContentMarker(
+    withFreshIds(template, allocate, {
+      prefix: w14RootPrefix(part.root),
+      used: new Set(usedParaIds(part.root)),
+      seed: `scio-gallery-image:${imageId}`,
+    }) as OoxmlContentControlNode
+  );
   if (!paragraph) return control;
   return {
     ...control,

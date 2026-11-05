@@ -18,6 +18,7 @@ import { buildBlockIndex } from './block-index';
 import { withFreshIds } from './fresh-ids';
 import { blockIdFromTag, blockTag, readPayloadStore, withPayloadRecord } from './payload-opc-codec';
 import type { BlockPayload } from './payload-schema';
+import { copiedGalleryPayload, galleryRecordOrder } from './gallery-copy';
 
 export interface BlockDuplication {
   readonly controlId: string;
@@ -129,6 +130,13 @@ export function duplicateBlock(
     copies.push({ payload: { ...block.payload, id: next }, label: stored.label });
   }
   if (!tags.size) return fail('invalid-input', 'The control is not a registered block.');
+  const copiedIds = new Map(Object.entries(payloadIds));
+  try {
+    for (const copy of copies) copy.payload = copiedGalleryPayload(copy.payload, copiedIds);
+    copies.sort((a, b) => galleryRecordOrder(a.payload, b.payload));
+  } catch (error) {
+    return fail('invalid-input', error instanceof Error ? error.message : String(error));
+  }
   const template = copyOf(control, tags);
   const rootTag = tags.get(contentControlPropertiesOf(control).tag ?? '')!;
   let placedOnce = false;

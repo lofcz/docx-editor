@@ -226,7 +226,15 @@ export function removeBlocks(
   }
   try {
     cleanup(withPart(pkg, prepared.part));
-    const result = surface.applyAutomationOps(() => ops, { kind: 'body' }, [cleanup], false, true);
+    // References disappear before their payloads. Gallery reads validate that relationship.
+    const result = surface.applyAutomationOps(
+      () => ops,
+      { kind: 'body' },
+      [cleanup],
+      false,
+      true,
+      'after'
+    );
     if (result.rejected || !result.committed)
       return fail('apply-failed', String(result.reason ?? 'The block removal did not commit.'));
     if (needsParagraph) {

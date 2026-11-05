@@ -537,6 +537,8 @@ The application keeps exact multiline TeX in equation payloads. Word's readable 
 
 Prepare equation ownership before room creation. Equation edits refuse when a shared document still contains an unprepared equation. Insertion marks only its new equation and leaves existing ownership unchanged.
 
+The same preparation upgrades supported application galleries to payload version 2. Each image gains a distinct metadata record and native control. Native child order supplies gallery order. Duplicate image addresses retain separate identities. Earlier payload readers retain these records as opaque data and show the native fallback. The upgrade refuses modified legacy fallback content rather than replacing it. Existing gallery rooms also require export and reseeding.
+
 1. Stop writes and reconnects to the old rooms.
 2. Back up room snapshots, offline updates, and the compatible application build.
 3. Export DOCX files with the previous compatible deployment.

@@ -154,6 +154,18 @@ export function readPayloadStore(
   pkg: OoxmlPackage,
   storage: PayloadStorage = activeMdxRegistry().storage
 ): PayloadStoreRead {
+  const stored = readPayloadRecords(pkg, storage);
+  if (stored.status !== 'ready') return stored;
+  const entries = new Map(stored.entries);
+  const problem = projectGalleryRecords(pkg, entries, storage);
+  return problem ? { status: 'invalid', reason: problem } : { ...stored, entries };
+}
+
+/** Metadata only, for the native clipboard repair before copied tags regain unique owners. */
+export function readPayloadRecords(
+  pkg: OoxmlPackage,
+  storage: PayloadStorage = activeMdxRegistry().storage
+): PayloadStoreRead {
   const stores = customXmlDataParts(pkg, pkg.mainDocumentPart).filter(
     (part) => part.namespaceUri === storage.namespace
   );
@@ -200,8 +212,6 @@ export function readPayloadStore(
     if (!label.ok) return { status: 'invalid', reason: `${id}:${label.reason}` };
     entries.set(id, { id, label: label.label, raw: effective.raw, decoded });
   }
-  const galleryProblem = projectGalleryRecords(pkg, entries, storage);
-  if (galleryProblem) return { status: 'invalid', reason: galleryProblem };
   return { status: 'ready', part: descriptor, entries };
 }
 

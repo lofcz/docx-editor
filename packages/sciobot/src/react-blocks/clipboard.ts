@@ -6,6 +6,7 @@ import {
 import {
   contentControlPropertiesOf,
   contentControlsIn,
+  isAtomicContentControl,
   isStoryPart,
   type OoxmlPackage,
   type TreeDocOp,
@@ -15,8 +16,11 @@ import {
   blockIdFromTag,
   blockTag,
   readPayloadStore,
+  readPayloadRecords,
   withPayloadRecord,
 } from '../blocks/payload-opc-codec';
+import { copiedGalleryPayload, galleryRecordOrder } from '../blocks/gallery-copy';
+import { withCopiedAtomicTags } from '../blocks/copied-atomic-tags';
 import {
   decodeBlockPayload,
   MAX_BLOCK_ID_LENGTH,
@@ -61,6 +65,7 @@ interface TaggedControl {
   readonly controlId: string;
   readonly id: string;
   readonly partName: string;
+  readonly atomic: boolean;
 }
 
 function taggedControls(pkg: OoxmlPackage): TaggedControl[] {
@@ -69,7 +74,8 @@ function taggedControls(pkg: OoxmlPackage): TaggedControl[] {
     if (!isStoryPart(part)) continue;
     for (const { node } of contentControlsIn(part.root)) {
       const id = blockIdFromTag(contentControlPropertiesOf(node).tag ?? '');
-      if (id !== null) out.push({ controlId: node.id, id, partName });
+      if (id !== null)
+        out.push({ controlId: node.id, id, partName, atomic: isAtomicContentControl(node) });
     }
   }
   return out;
@@ -169,7 +175,7 @@ export function repairPastedBlocks(
   const controls = taggedControls(pkg);
   const pasted = controls.filter((control) => !before.has(control.controlId));
   if (!pasted.length) return null;
-  const store = readPayloadStore(pkg);
+  const store = readPayloadRecords(pkg);
   const known = new Map<string, BlockClipboardEntry>();
   for (const entry of data?.blocks ?? []) known.set(entry.id, entry);
   // A same-document copy without private data can still use the stored payload.
@@ -194,30 +200,53 @@ export function repairPastedBlocks(
     used.add(id);
     remapped.set(control.id, id);
   }
-  const ops: TreeDocOp[] = pasted.map((control) => {
-    const id = remapped.get(control.id);
-    return {
-      op: 'setContentControlProperties',
-      controlId: control.controlId,
-      tag: id === undefined ? '' : blockTag(id),
-    } as TreeDocOp;
-  });
+  const ops: TreeDocOp[] = pasted
+    .filter((control) => !control.atomic)
+    .map((control) => {
+      const id = remapped.get(control.id);
+      return {
+        op: 'setContentControlProperties',
+        controlId: control.controlId,
+        tag: id === undefined ? '' : blockTag(id),
+      } as TreeDocOp;
+    });
   const records = [...remapped].map(([old, id]) => {
     const source = known.get(old)!;
-    const payload = remapValue(source.payload, remapped) as BlockPayload;
+    const payload =
+      source.payload.version === 2
+        ? copiedGalleryPayload(source.payload, remapped)
+        : (remapValue(source.payload, remapped) as BlockPayload);
     return { payload: { ...payload, id }, label: source.label };
   });
-  const result = surface.applyAutomationOps(() => ops, { kind: 'body' }, [
-    (working) => {
-      let next = working;
-      for (const record of records) {
-        const written = withPayloadRecord(next, record.payload, record.label);
-        if (!written.ok) throw new Error(`Pasted block payload refused: ${written.reason}`);
-        next = written.pkg;
-      }
-      return next;
-    },
-  ]);
+  records.sort((a, b) => galleryRecordOrder(a.payload, b.payload));
+  const result = surface.applyAutomationOps(
+    () => ops,
+    { kind: 'body' },
+    [
+      (working) => {
+        let next = withCopiedAtomicTags(
+          working,
+          pasted
+            .filter((control) => control.atomic)
+            .map((control) => ({
+              partName: control.partName,
+              controlId: control.controlId,
+              previousTag: blockTag(control.id),
+              tag: remapped.has(control.id) ? blockTag(remapped.get(control.id)!) : '',
+            }))
+        );
+        for (const record of records) {
+          const written = withPayloadRecord(next, record.payload, record.label);
+          if (!written.ok) throw new Error(`Pasted block payload refused: ${written.reason}`);
+          next = written.pkg;
+        }
+        return next;
+      },
+    ],
+    false,
+    false,
+    'after'
+  );
   if (result.rejected || !result.committed)
     throw new Error(String(result.reason ?? 'The pasted block repair did not commit.'));
   return { remapped, untagged };

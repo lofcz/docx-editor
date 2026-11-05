@@ -3,6 +3,7 @@ import {
   contentControlPropertiesOf,
   contentControlsIn,
   isStoryPart,
+  isAtomicContentControl,
   type OoxmlNode,
   type OoxmlPackage,
 } from '@docx-editor.dev/core/store';
@@ -47,9 +48,9 @@ export function projectGalleryRecords(
     const images: JsonObject[] = [];
     const seen = new Set<string>();
     for (const child of content.children) {
-      if (child.kind !== 'contentControl') continue;
+      if (!isAtomicContentControl(child)) return `invalid-gallery-image-owner:${record.id}`;
       const tag = contentControlPropertiesOf(child).tag;
-      if (!tag?.startsWith(storage.tagPrefix)) continue;
+      if (!tag?.startsWith(storage.tagPrefix)) return `invalid-gallery-image-tag:${record.id}`;
       const id = tag.slice(storage.tagPrefix.length);
       const image = entries.get(id)?.decoded;
       if (
