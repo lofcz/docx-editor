@@ -110,16 +110,20 @@ export function createTableAppendControls(host: SurfaceTableInteractionHost) {
         selection,
         cellSelection,
         themeColors: input.themeColors,
-        editable: input.editingMode !== 'view',
+        editable: host.session().editable && input.editingMode !== 'view',
+        suggestingAuthor: input.suggestingAuthor,
         viewing: input.editingMode === 'view',
       })
     );
     for (const next of plans) if (!next.ok) return next;
     // These canonical operations resolve their own row cells when the transaction applies.
     // The column operation therefore includes the row that the preceding operation inserts.
+    const ops = plans.flatMap((next) => (next.ok ? next.ops : []));
+    const reason = host.planRefusal?.(ops);
+    if (reason) return refusal(reason);
     return {
       ok: true,
-      ops: plans.flatMap((next) => (next.ok ? next.ops : [])),
+      ops,
       selection: { kind: 'adoptCommittedCaret' },
     };
   }
@@ -183,7 +187,7 @@ export function createTableAppendControls(host: SurfaceTableInteractionHost) {
       clear();
       return;
     }
-    const key = `${tableId}:${input.storeRevision}:${input.editingMode}:${host.scale()}`;
+    const key = `${tableId}:${input.storeRevision}:${input.editingMode}:${input.suggestingAuthor ?? ''}:${host.scale()}`;
     if (painted?.layout === input.layout && painted.key === key) return;
     painted = { layout: input.layout, key };
     const found = targetOf(input, tableId);

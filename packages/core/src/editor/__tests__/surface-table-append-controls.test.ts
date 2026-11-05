@@ -1,4 +1,5 @@
 import { afterEach, expect, test } from 'bun:test';
+import { strFromU8, unzipSync } from 'fflate';
 import { createDocxEditor } from '../docx-editor.ts';
 import { docx, paragraph as p } from './paginated-surface-fixtures.ts';
 import { paragraphTextFromLayout } from '../../layout/semantic-interaction.ts';
@@ -10,11 +11,12 @@ const cleanups: (() => void)[] = [];
 afterEach(() => {
   cleanups.splice(0).forEach((cleanup) => cleanup());
 });
-function mount(owned = false, markup = table) {
+function mount(owned = false, markup = table, author?: string) {
   const container = document.createElement('div');
   document.body.append(container);
   const editor = createDocxEditor({
     container,
+    author,
     document: docx(p('Before') + markup + p('After')),
     tableControlRefusal: owned ? () => 'Owned table' : undefined,
   });
@@ -84,4 +86,27 @@ test('append buttons have a 24-pixel target and refresh visible labels', () => {
   surface.setTableInteractionLabel((key) => `localized:${key}`);
   expect(row.title).toBe('localized:table.insertRowBelow');
   expect(row.getAttribute('aria-label')).toBe(row.title);
+});
+
+test('append controls create tracked row and column changes while suggesting', async () => {
+  const { editor, control, shape } = mount(false, table, 'Writer');
+  editor.surface!.setEditingMode('suggest');
+  expect(control('both').disabled).toBe(false);
+  control('both').click();
+  expect(shape()).toEqual([3, 3]);
+  const xml = strFromU8(unzipSync(new Uint8Array(await editor.save()))['word/document.xml']!);
+  expect(xml).toContain('w:author="Writer"');
+  expect(xml).toContain('w:ins');
+  expect(xml).toContain('w:cellIns');
+  expect(editor.exec({ type: 'undo' }).ok).toBe(true);
+  expect(shape()).toEqual([2, 2]);
+});
+
+test('append controls refuse suggesting without an author before activation', () => {
+  const { editor, control, shape } = mount();
+  editor.surface!.setEditingMode('suggest');
+  expect(control('both').disabled).toBe(true);
+  expect(control('both').title).toContain('author');
+  control('both').click();
+  expect(shape()).toEqual([2, 2]);
 });

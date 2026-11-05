@@ -63,6 +63,7 @@ export interface SurfaceTableInteractionInput {
   readonly selection: SemanticSelection;
   readonly cellSelection: CellSelection | null;
   readonly editingMode: SurfaceEditingMode;
+  readonly suggestingAuthor?: string;
   readonly themeColors: readonly import('../binding/document-theme.ts').DocumentThemeColorEntry[];
 }
 
@@ -78,6 +79,7 @@ export interface SurfaceTableInteractionHost {
   applyTableCommandPlan(plan: TableCommandPlan): ExecResult;
   label(key: TableInteractionLabelKey): string;
   controlRefusal?(tableId: string): string | null;
+  planRefusal?(ops: readonly import('../store/store/tree-op-types.ts').TreeDocOp[]): string | null;
 }
 
 export interface SurfaceTableInteraction {

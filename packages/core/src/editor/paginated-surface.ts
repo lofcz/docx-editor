@@ -6176,6 +6176,7 @@ export function mountPaginatedSurface(
   );
 
   const tableInteraction = createSurfaceTableInteraction({
+    planRefusal: (ops) => writeRefusal(true, ops),
     controlRefusal: (tableId) => tableControlRefusal(surface, tableId),
     pagesLayer,
     furnitureLayer: tableFurnitureLayer,
@@ -6188,6 +6189,7 @@ export function mountPaginatedSurface(
       selection,
       cellSelection,
       editingMode,
+      ...(editingMode === 'suggest' && author?.trim() ? { suggestingAuthor: author } : {}),
       themeColors: session.documentThemeColors(),
     }),
     session: () => session,
