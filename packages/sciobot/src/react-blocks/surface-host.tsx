@@ -230,6 +230,7 @@ export function mountSurfaceBlockHost(
                     target,
                     maxHeight,
                     width: box.width * (4 / 3),
+                    minHeight: nativeBox.height * (4 / 3),
                     zoom: next.scale * 0.75,
                     children: view,
                   })
@@ -338,6 +339,7 @@ function MeasuredRoot({
   target,
   maxHeight,
   width,
+  minHeight,
   zoom,
   children,
 }: {
@@ -346,6 +348,7 @@ function MeasuredRoot({
   readonly target: MeasuredFragment | null;
   readonly maxHeight: number;
   readonly width: number;
+  readonly minHeight: number;
   readonly zoom: number;
   readonly children: ReactNode;
 }) {
@@ -366,6 +369,9 @@ function MeasuredRoot({
       style: {
         position: 'relative',
         width,
+        // Absolute-fill views use this box as their containing block. Only native
+        // fragment height belongs here; a previous reservation would feed back.
+        minHeight: Math.min(minHeight, maxHeight / zoom),
         maxHeight: maxHeight / zoom,
         transform: `scale(${zoom})`,
         transformOrigin: '0 0',

@@ -4,6 +4,78 @@ import { createDocxEditor } from '@docx-editor.dev/core/editor';
 import { blockMeasurementDocument } from '../../test/support/react-block-document';
 import { mountReactBlockHost } from './host';
 
+test('measured absolute-fill views retain native height without reserving that height again', async () => {
+  const environment = globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean };
+  const previous = environment.IS_REACT_ACT_ENVIRONMENT;
+  environment.IS_REACT_ACT_ENVIRONMENT = true;
+  const container = document.createElement('div');
+  document.body.append(container);
+  const editor = createDocxEditor({ container, document: blockMeasurementDocument() });
+  const surface = editor.surface!;
+  const native = surface.layout();
+  const nativeHeight = native.contentControls![0]!.fragments[0]!.box.height;
+  const revision = surface.session.packageRevision();
+  let zoom = 1;
+  let measurements = 0;
+  let host: ReturnType<typeof mountReactBlockHost> | undefined;
+  const settle = () => act(async () => new Promise((resolve) => setTimeout(resolve, 30)));
+  try {
+    await act(async () => {
+      host = mountReactBlockHost(
+        editor,
+        new Map([
+          [
+            'test_tall',
+            {
+              reserveHeight: true,
+              view: () => (
+                <button style={{ position: 'absolute', inset: 0 }}>Edit expression</button>
+              ),
+            },
+          ],
+        ]),
+        {
+          measure: (element) => {
+            measurements++;
+            return Number.parseFloat(element.style.minHeight) * zoom;
+          },
+        }
+      );
+    });
+    await settle();
+    const measured = container.querySelector<HTMLElement>('[data-sciobot-block-measure]')!;
+    const button = measured.querySelector('button')!;
+    expect(Number.parseFloat(measured.style.minHeight)).toBeCloseTo((nativeHeight * 4) / 3);
+    expect(Number.parseFloat(measured.style.minHeight)).toBeGreaterThan(0);
+    button.focus();
+    for (const nextZoom of [0.75, 1.5, 1]) {
+      await act(async () => {
+        zoom = nextZoom;
+        editor.setZoom(zoom);
+        host!.refresh();
+      });
+      await settle();
+      expect(container.querySelector('[data-sciobot-block-measure]')).toBe(measured);
+      expect(Number.parseFloat(measured.style.minHeight)).toBeCloseTo((nativeHeight * 4) / 3);
+      expect(measured.style.transform).toBe(`scale(${zoom})`);
+      expect(surface.layout().contentControls).toEqual(native.contentControls);
+      expect(surface.layout().pages).toEqual(native.pages);
+      expect(surface.session.packageRevision()).toBe(revision);
+      expect(document.activeElement).toBe(button);
+    }
+    const settledMeasurements = measurements;
+    await settle();
+    expect(measurements).toBe(settledMeasurements);
+  } finally {
+    await act(async () => {
+      host?.dispose();
+      editor.destroy();
+    });
+    container.remove();
+    environment.IS_REACT_ACT_ENVIRONMENT = previous;
+  }
+});
+
 test('opaque fragments keep connected roots through repaint and hide outside materialized pages', async () => {
   const environment = globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean };
   const previous = environment.IS_REACT_ACT_ENVIRONMENT;
