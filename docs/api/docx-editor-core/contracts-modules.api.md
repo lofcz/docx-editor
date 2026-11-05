@@ -348,6 +348,7 @@ export interface ReviewModuleContribution {
     readonly createCompareDocumentsDialog?: (host: CompareDocumentsDialogHost) => CompareDocumentsDialog;
     readonly createRevisionMarkupDialog?: (host: RevisionMarkupDialogHost) => RevisionMarkupDialog;
     readonly displayModes: readonly ReviewDisplayMode[];
+    readonly exportRevisionReferences?: (source: OoxmlPackage, exported: OoxmlPackage) => OoxmlPackage;
     readonly pane?: ReviewPaneOptions;
     readonly reservedRevisionIds?: RevisionIdReservationSource;
     readonly revisionItemsOfParagraph: (part: OoxmlPart, paragraphId: string) => readonly ReviewRevisionItem[];

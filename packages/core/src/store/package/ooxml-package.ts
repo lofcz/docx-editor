@@ -627,8 +627,17 @@ export function* readOoxmlPackageSteps(
  * Every revision element in the saved file has its own `@w:id`, unique across all parts and
  * within the 32-bit signed range. The ids in `pkg` do not change.
  */
-export function writeOoxmlPackage(pkg: OoxmlPackage): Uint8Array {
-  return runSteps(writeOoxmlPackageSteps(pkg));
+export function writeOoxmlPackage(
+  pkg: OoxmlPackage,
+  options: {
+    /** Repair module-owned references in the export snapshot after revision IDs change. */
+    readonly exportRevisionReferences?: (
+      source: OoxmlPackage,
+      exported: OoxmlPackage
+    ) => OoxmlPackage;
+  } = {}
+): Uint8Array {
+  return runSteps(writeOoxmlPackageSteps(pkg, options));
 }
 
 /**
@@ -664,7 +673,13 @@ function runSteps(steps: Generator<void, Uint8Array>): Uint8Array {
  */
 export function* writeOoxmlPackageSteps(
   pkg: OoxmlPackage,
-  options: { readonly keepRevisionIds?: boolean } = {}
+  options: {
+    readonly keepRevisionIds?: boolean;
+    readonly exportRevisionReferences?: (
+      source: OoxmlPackage,
+      exported: OoxmlPackage
+    ) => OoxmlPackage;
+  } = {}
 ): Generator<void, Uint8Array> {
   // Concurrent note property writes can leave a repeated element in shared state; the saved
   // file keeps the first copy, which is the one every reader uses.
@@ -672,11 +687,11 @@ export function* writeOoxmlPackageSteps(
     commentExportPackage(withoutDuplicateNoteProperties(pkg))
   );
   // Assign Word revision ids before text box fallbacks copy them.
-  const exported = projectContentTypeBytes(
-    yield* textboxFallbackExportPackageSteps(
-      options.keepRevisionIds ? cleaned : yield* uniqueRevisionIdsExportPackageSteps(cleaned)
-    )
-  );
+  const numbered = options.keepRevisionIds
+    ? cleaned
+    : yield* uniqueRevisionIdsExportPackageSteps(cleaned);
+  const referenced = options.exportRevisionReferences?.(cleaned, numbered) ?? numbered;
+  const exported = projectContentTypeBytes(yield* textboxFallbackExportPackageSteps(referenced));
   yield;
   const entries = new Map<string, Uint8Array>(exported.partBytes);
   for (const [name, part] of exported.parts) {

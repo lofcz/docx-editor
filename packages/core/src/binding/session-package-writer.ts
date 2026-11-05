@@ -13,14 +13,16 @@ export interface SessionPackageWriter {
 }
 
 /** Cache only exact immutable package snapshots; every caller owns its returned bytes. */
-export function createSessionPackageWriter(): SessionPackageWriter {
+export function createSessionPackageWriter(
+  exportRevisionReferences?: (source: OoxmlPackage, exported: OoxmlPackage) => OoxmlPackage
+): SessionPackageWriter {
   // A weak key avoids keeping a previous package/tree alive after the session advances.
   // Replacing the map on a miss also bounds retained output when undo keeps old keys alive.
   let cached = new WeakMap<OoxmlPackage, Uint8Array>();
   function* steps(pkg: OoxmlPackage): Generator<void, Uint8Array> {
     const previous = cached.get(pkg);
     if (previous) return previous.slice();
-    const bytes = yield* writeOoxmlPackageSteps(pkg);
+    const bytes = yield* writeOoxmlPackageSteps(pkg, { exportRevisionReferences });
     cached = new WeakMap();
     if (bytes.byteLength <= MAX_CACHED_SAVE_BYTES) cached.set(pkg, bytes.slice());
     return bytes;

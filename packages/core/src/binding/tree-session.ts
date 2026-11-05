@@ -234,7 +234,7 @@ export function openTreeSessionFromPackage(
 
   const bodyStore = () => packageStore.bodyStore();
   const currentPackage = (): OoxmlPackage => packageStore.currentPackage();
-  const writePackage = createSessionPackageWriter();
+  const writePackage = createSessionPackageWriter(options.reviewModel?.exportRevisionReferences);
   const BODY_SCOPE: StoryScope = Object.freeze({ kind: 'body' as const });
 
   const headerFooterSettingsPart = (

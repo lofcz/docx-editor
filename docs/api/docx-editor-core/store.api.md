@@ -6562,7 +6562,9 @@ export function wrapTargetToAnchorSpec(target: ImageWrapTarget): {
 };
 
 // @public
-export function writeOoxmlPackage(pkg: OoxmlPackage): Uint8Array;
+export function writeOoxmlPackage(pkg: OoxmlPackage, options?: {
+    readonly exportRevisionReferences?: (source: OoxmlPackage, exported: OoxmlPackage) => OoxmlPackage;
+}): Uint8Array;
 
 // @internal
 export function writeOoxmlPackageKeepingRevisionIds(pkg: OoxmlPackage): Uint8Array;

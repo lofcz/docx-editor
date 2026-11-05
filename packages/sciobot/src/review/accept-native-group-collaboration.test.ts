@@ -5,7 +5,6 @@ import {
   collectRevisionSites,
   paragraphTextOf,
   readOoxmlPackage,
-  writeOoxmlPackage,
   type OoxmlPart,
 } from '@docx-editor.dev/core/store';
 import { createTwoEditorFixture } from '../../test/support/collaboration';
@@ -18,6 +17,7 @@ import { readEditorRevision } from '../projection/revision-cache';
 import { SCIOBOT_NATIVE_REVIEW_MODULE } from './native-module';
 import { acceptReviewGroup } from './accept-group';
 import { trackTableFormatPlan } from './track-table-format';
+import { writeReviewGroupPackage } from './group-export';
 
 const editorOptions = { modules: [SCIOBOT_NATIVE_REVIEW_MODULE] };
 function type(editor: DocxEditorInstance, id: string, text: string) {
@@ -38,7 +38,7 @@ for (const clients of [
   for (const receiver of [0, 1] as const)
     test(`complete body/header group retains peer acceptance through both undo steps and native save; ${clients}/${receiver}`, async () => {
       const pair = await createTwoEditorFixture({
-        document: writeOoxmlPackage(crossStoryGroupFixture()),
+        document: writeReviewGroupPackage(crossStoryGroupFixture()),
         clientIds: clients,
         ownedAttributes: true,
         editor: editorOptions,

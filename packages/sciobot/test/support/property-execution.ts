@@ -1,5 +1,9 @@
 import { createDocxEditor, type DocxEditorInstance } from '@docx-editor.dev/core/editor';
-import { paragraphTextOf, writeOoxmlPackage, type OoxmlPackage } from '@docx-editor.dev/core/store';
+import {
+  paragraphTextOf,
+  writeOoxmlPackageKeepingRevisionIds,
+  type OoxmlPackage,
+} from '@docx-editor.dev/core/store';
 import { planDomainProperties, type DomainPropertyTarget } from '../../src/diff/domain-properties';
 import { readEditorRevision } from '../../src/projection/revision-cache';
 import { buildBlockIndex } from '../../src/blocks/block-index';
@@ -18,7 +22,7 @@ export const propertyContext = {
 export function propertyEditor(pkg: OoxmlPackage = propertyRecordFixture(), review = true) {
   return createDocxEditor({
     container: document.createElement('div'),
-    document: writeOoxmlPackage(pkg),
+    document: writeOoxmlPackageKeepingRevisionIds(pkg),
     author: 'User',
     modules: review ? [SCIOBOT_NATIVE_REVIEW_MODULE] : [],
   });

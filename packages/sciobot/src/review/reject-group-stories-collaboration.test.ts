@@ -7,7 +7,7 @@ import {
   paragraphTextOf,
   readOoxmlPackage,
   withPart,
-  writeOoxmlPackage,
+  writeOoxmlPackageKeepingRevisionIds,
   type OoxmlPackage,
 } from '@docx-editor.dev/core/store';
 import { createTwoEditorFixture } from '../../test/support/collaboration';
@@ -32,7 +32,7 @@ for (const mode of ['body-header', 'imported-middle'] as const)
       test(`${mode} rejection preserves native neighbors and original pending identity through both actors history; ${clients}/${receiver}`, async () => {
         const document =
           mode === 'body-header'
-            ? writeOoxmlPackage(crossStoryGroupFixture())
+            ? writeOoxmlPackageKeepingRevisionIds(crossStoryGroupFixture())
             : docxFixture(
                 ['Before', 'Middle', 'After']
                   .map(

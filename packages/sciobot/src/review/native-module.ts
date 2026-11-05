@@ -1,4 +1,5 @@
 import { reviewGroupRevisionReservations } from './group-allocation';
+import { exportReviewGroupReferences } from './group-export';
 import type { EditorModule } from '@docx-editor.dev/core/editor';
 import {
   collectReviewItems,
@@ -12,6 +13,7 @@ export const SCIOBOT_NATIVE_REVIEW_MODULE: EditorModule = Object.freeze({
   id: 'sciobot-native-review',
   review: Object.freeze({
     reservedRevisionIds: reviewGroupRevisionReservations,
+    exportRevisionReferences: exportReviewGroupReferences,
     displayModes: Object.freeze(['all-markup', 'simple-markup', 'proposed', 'original'] as const),
     collectReviewItems,
     revisionItemsOfParagraph: (part: OoxmlPart, id: string) => {

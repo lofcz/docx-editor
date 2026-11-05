@@ -38,7 +38,11 @@ import type { EditorDiagnostic, EditorDiagnosticKind } from './diagnostics.ts';
  * @public
  */
 
-import type { OoxmlPart, RevisionIdReservationSource } from '@docx-editor.dev/core/store';
+import type {
+  OoxmlPackage,
+  OoxmlPart,
+  RevisionIdReservationSource,
+} from '@docx-editor.dev/core/store';
 import type { CollaborationModuleContribution } from '../collaboration/index.ts';
 import type { ReviewDisplayMode } from '../layout/revision-projection.ts';
 import type {
@@ -130,6 +134,15 @@ export interface ReviewModuleContribution {
    * This allocation contribution changes no Word content, history, provider, or shared format.
    */
   readonly reservedRevisionIds?: RevisionIdReservationSource;
+  /**
+   * Repair module-owned revision references after save assigns Word revision IDs.
+   * Return an immutable export snapshot. Never mutate either input or the live document.
+   * Called before XML serialization; exceptions refuse the save. This is module infrastructure.
+   */
+  readonly exportRevisionReferences?: (
+    source: OoxmlPackage,
+    exported: OoxmlPackage
+  ) => OoxmlPackage;
   /** Document compare. Absent, compare commands refuse. */
   readonly compareDocuments?: CompareDocumentsEngine;
   /**

@@ -9,6 +9,7 @@ import {
 import { buildBlockIndex } from '../blocks/block-index';
 import { acceptAllReviewGroups } from './accept-all';
 import { acceptReviewGroup } from './accept-group';
+import { writeReviewGroupPackage } from './group-export';
 import { propertyEditor, propertyContext } from '../../test/support/property-execution';
 import {
   groupFixture,
@@ -249,7 +250,7 @@ test('document switches with an equal numeric revision still refuse the previous
   const editor = propertyEditor(crossStoryGroupFixture());
   try {
     const old = groupToken(editor);
-    await editor.load(writeOoxmlPackage(crossStoryGroupFixture()));
+    await editor.load(writeReviewGroupPackage(crossStoryGroupFixture()));
     const identity = { documentId: 'another-document', epoch: 'another-mount' },
       current = editor.surface!.session.packageRevision(),
       before = writeOoxmlPackage(bulkSource(editor));
