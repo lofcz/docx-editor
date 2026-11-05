@@ -18,6 +18,7 @@ import { nativeCodeSource } from './code-native-source';
 import { readPayloadStore, withPayloadRecord } from './payload-opc-codec';
 import { DEFAULT_PAYLOAD_LIMITS, encodeBlockPayload } from './payload-schema';
 import type { BlockPayload } from './payload-schema';
+import { fieldChanges } from './payload-fields';
 
 type CodeEditResult = { readonly success: true; readonly revision: number } | NativeEditFailure;
 const fail = (code: NativeEditFailure['code'], error: string): NativeEditFailure => ({
@@ -241,7 +242,7 @@ function commitCodeSource(
     );
   if (request.expectedSource !== source.value)
     return fail('stale-revision', 'The code source changed. Your source remains available.');
-  if (request.value === source.value)
+  if (request.value === source.value && !attributes)
     return { success: true, revision: surface.session.packageRevision() };
   try {
     const payload = {
@@ -249,6 +250,8 @@ function commitCodeSource(
       attributes: { ...(attributes ?? block.payload.attributes), value: request.value },
     };
     encodeBlockPayload(payload);
+    if (!fieldChanges(block.payload, payload).length)
+      return { success: true, revision: surface.session.packageRevision() };
     const edits = changes(source.value, request.value).reverse();
     if (edits.length + request.value.split('\t').length > 20000)
       throw Error('The code edit exceeds the operation limit.');
@@ -264,7 +267,7 @@ function commitCodeSource(
           child.namespaceUri === WML_NAMESPACE_URI &&
           child.localName === 'lock'
       );
-    const locked = properties.lock && properties.lock !== 'unlocked';
+    const locked = edits.length > 0 && properties.lock && properties.lock !== 'unlocked';
     const lockPart = (part: OoxmlPart, unlock: boolean) => {
       if (!locked) return part;
       if (!lockNode || lockNode.kind !== 'generic') throw Error('The code lock is invalid.');

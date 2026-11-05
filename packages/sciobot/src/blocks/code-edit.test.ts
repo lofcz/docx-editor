@@ -6,7 +6,8 @@ import { createTwoEditorFixture } from '../../test/support/collaboration';
 import { codeDocument, openCode } from '../../test/support/code';
 import { projectSourcePackage } from '../../test/support/target-source-fixture';
 import { buildBlockIndex } from './block-index';
-import { updateCodeLanguage, updateCodeSource } from './code-edit';
+import { updateCodeLanguage, updateCodePayload, updateCodeSource } from './code-edit';
+import { updateAtomicBlock } from './update-atomic';
 import { nativeCodeSource } from './code-native-source';
 
 const ORIGINAL = 'one\nmiddle\nlast';
@@ -20,6 +21,58 @@ const read = (editor: DocxEditorInstance) => {
   expect(native?.value).toBe(block.payload.attributes.value as string);
   return { block, source: native!.value, ids: native!.paragraphs.map((paragraph) => paragraph.id) };
 };
+
+test('the existing atomic API and code payload helper retain v2 metadata-only writes without source history', async () => {
+  const pair = await createTwoEditorFixture({ document: await codeDocument() });
+  const [alice, bob] = pair.editors as [DocxEditorInstance, DocxEditorInstance];
+  try {
+    const initial = read(alice)!;
+    expect(
+      updateAtomicBlock(alice, {
+        blockId: 'code',
+        attributes: {
+          ...initial.block.payload.attributes,
+          language: 'typescript',
+          opaque: { retained: ['value'] },
+        },
+      })
+    ).toMatchObject({ success: true });
+    await pair.settle();
+    for (const editor of pair.editors) {
+      expect(read(editor)!.ids).toEqual(initial.ids);
+      expect(read(editor)!.source).toBe(ORIGINAL);
+      expect(read(editor)!.block.payload.attributes).toEqual({
+        value: ORIGINAL,
+        language: 'typescript',
+        opaque: { retained: ['value'] },
+      });
+    }
+    const payload = read(bob)!.block.payload;
+    expect(
+      updateCodePayload(bob, payload, {
+        ...payload,
+        attributes: {
+          ...payload.attributes,
+          language: 'javascript',
+          opaque: { retained: ['changed'] },
+        },
+      })
+    ).toMatchObject({ success: true });
+    await pair.settle();
+    expect(read(alice)!.block.payload.attributes.opaque).toEqual({ retained: ['changed'] });
+    expect(read(alice)!.block.payload.attributes.language).toBe('javascript');
+    expect(read(alice)!.ids).toEqual(initial.ids);
+    expect(bob.exec({ type: 'undo' }).ok).toBe(true);
+    await pair.settle();
+    expect(read(alice)!.block.payload.attributes.language).toBe('typescript');
+    expect(alice.exec({ type: 'undo' }).ok).toBe(true);
+    await pair.settle();
+    expect(read(alice)!.block.payload.attributes).toEqual({ value: ORIGINAL, language: 'python' });
+    expect(read(alice)!.ids).toEqual(initial.ids);
+  } finally {
+    pair.destroy();
+  }
+});
 
 test('code source refuses malicious values and external protection before writes', async () => {
   for (const protection of [
