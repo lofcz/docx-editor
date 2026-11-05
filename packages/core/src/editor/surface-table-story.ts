@@ -52,9 +52,11 @@ export function partOfTableIn(session: StoryPartLookup, tableId: string): OoxmlP
 export function offeredHit(
   session: StoryPartLookup,
   hit: TableInteractionHit | null,
-  openParagraphId: string
+  openParagraphId: string,
+  controlRefusal?: (tableId: string) => string | null
 ): TableInteractionHit | null {
   if (!hit || hit.kind === 'tableBody') return null;
+  if (controlRefusal?.(hit.tableId) != null) return null;
   return sameStoryPart(session, hit.tableId, openParagraphId) ? hit : null;
 }
 

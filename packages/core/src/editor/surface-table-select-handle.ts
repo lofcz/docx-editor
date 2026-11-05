@@ -49,6 +49,7 @@ export interface SurfaceTableSelectHandleHost {
     readonly editingMode: SurfaceEditingMode;
   };
   label(key: TableInteractionLabelKey): string;
+  controlRefusal?(tableId: string): string | null;
   setCellSelection(cells: CellSelection): void;
   session(): TreeDocxSessionView;
   applyTableCommandPlan(plan: TableCommandPlan): ExecResult;
@@ -202,7 +203,7 @@ export function createSurfaceTableSelectHandle(
       : useHover
         ? hoveredFound
         : outermostTableOnPage(layout, target.tableId, target.pageIndex);
-    if (!target || !found) {
+    if (!target || !found || host.controlRefusal?.(found.table.tableId) != null) {
       shownTableId = null;
       // A drag that lost its handle cannot end with a drop; end it where it stands.
       if (drag.dragging()) drag.cancel();

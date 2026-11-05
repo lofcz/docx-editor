@@ -1857,6 +1857,7 @@ export interface DocxEditorConfig {
     reviewDisplayMode?: ReviewDisplayMode;
     revisionMarkup?: RevisionMarkupOptions;
     revisionStyles?: RevisionStyles;
+    tableControlRefusal?: (tableId: string, pkg: OoxmlPackage) => string | null;
     tableInteractionLabel?: (key: TableInteractionLabelKey) => string;
     translate?: (key: string, params?: Record<string, string | number>) => string;
     unsupportedElementRules?: readonly UnsupportedElementRule[];

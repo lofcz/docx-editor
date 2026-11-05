@@ -303,6 +303,11 @@ import { createSurfaceCaret } from './surface-caret.ts';
 import { createSurfaceBookmarks, storyContentBox } from './surface-bookmarks.ts';
 import { defaultTableLabel, type TableInteractionLabelKey } from './table-chrome.ts';
 import { createSurfaceTableInteraction } from './surface-table-interaction.ts';
+import {
+  registerTableControlPolicy,
+  tableControlRefusal,
+  guardTableControlPlan,
+} from './surface-table-control-policy.ts';
 import { createSurfaceFormat } from './surface-format.ts';
 import { createSurfaceFormatPainter } from './surface-format-painter.ts';
 import { authoredRunPropertiesAt, type SurfaceProperty } from './surface-formatting.ts';
@@ -5620,6 +5625,7 @@ export function mountPaginatedSurface(
     },
     notePreviewText: (scopeId) => notePreviewTextOf(session, scopeId),
     applyTableCommandPlan(plan: TableCommandPlan): ExecResult {
+      plan = guardTableControlPlan(surface, plan);
       if (!plan.ok) {
         return { ok: false, code: plan.code, reason: plan.reason };
       }
@@ -5945,6 +5951,7 @@ export function mountPaginatedSurface(
   );
   registerFormFieldIdentity(surface, textFormInteraction.fieldId);
   registerContentLockPolicy(surface, options.contentLockPolicy);
+  registerTableControlPolicy(surface, options.tableControlRefusal);
   legacyCheckboxInteraction = createLegacyCheckboxInteraction({
     pagesLayer,
     part: (paragraphId?: string) =>
@@ -6167,6 +6174,7 @@ export function mountPaginatedSurface(
   );
 
   const tableInteraction = createSurfaceTableInteraction({
+    controlRefusal: (tableId) => tableControlRefusal(surface, tableId),
     pagesLayer,
     furnitureLayer: tableFurnitureLayer,
     listeners: hostListeners,
@@ -6185,6 +6193,7 @@ export function mountPaginatedSurface(
     label: (key) => tableLabelState.resolve(key),
   });
   tableSelectHandle = createSurfaceTableSelectHandle({
+    controlRefusal: (tableId) => tableControlRefusal(surface, tableId),
     pagesLayer,
     layer: tableSelectLayer,
     listeners: hostListeners,

@@ -195,6 +195,15 @@ export interface DocxEditorConfig {
   onFontError?: (error: EditorFontError) => void;
   /** Localized labels for table insertion furniture on the painted surface. */
   tableInteractionLabel?: (key: TableInteractionLabelKey) => string;
+  /**
+   * Return a localized refusal for tables whose structure and geometry the host manages.
+   * Return null for ordinary native table controls. Content, selection, history, and
+   * explicit automation stay available. This local UI policy provides no document protection.
+   */
+  tableControlRefusal?: (
+    tableId: string,
+    pkg: import('../store/package/ooxml-package.ts').OoxmlPackage
+  ) => string | null;
 }
 
 /**

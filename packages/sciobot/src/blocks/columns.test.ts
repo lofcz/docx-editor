@@ -25,6 +25,7 @@ import { buildBlockIndex } from './block-index';
 import { columnWidthsTwips, readColumnGeometry } from './column-geometry';
 import { planColumnWidths } from '../diff/column-widths';
 import { moveColumnContent } from './move-column-content';
+import { createColumnTableRefusal } from './column-table-owner';
 
 // Each column keeps its native control inside an owned borderless table cell.
 const column = (width: string, body: string) => `<column width="${width}">\n\n${body}\n\n</column>`;
@@ -272,6 +273,11 @@ test('manual widths and content movement retain native identities and separate u
     const right = editor
       .surface!.session.paragraphIds()
       .find((id) => paragraphTextOf(editor.surface!.session.part(), id) === 'Right text.')!;
+    const refuse = createColumnTableRefusal('Use the column controls.');
+    expect(refuse(geometry.tableId, editor.surface!.session.currentPackage())).toBe(
+      'Use the column controls.'
+    );
+    expect(refuse(right, editor.surface!.session.currentPackage())).toBeNull();
     const sourceParent = parentNodeOf(editor.surface!.session.part(), right)!.id;
     const request = {
       groupId: geometry.group.id,
@@ -320,7 +326,10 @@ test('manual widths and content movement retain native identities and separate u
 
 for (const first of [0, 1] as const)
   test(`column content movement retains concurrent typing and undo; receiver ${first}`, async () => {
-    const pair = await createTwoEditorFixture({ document: writeOoxmlPackage(await land(TWO)) });
+    const pair = await createTwoEditorFixture({
+      document: writeOoxmlPackage(await land(TWO)),
+      editor: { tableControlRefusal: createColumnTableRefusal('Use the column controls.') },
+    });
     try {
       const [alice, bob] = pair.editors as [DocxEditorInstance, DocxEditorInstance];
       const geometry = geometryOf(alice);
@@ -393,6 +402,7 @@ for (const first of [0, 1] as const)
 for (const first of [0, 1] as const)
   test(`concurrent column boundaries retain matching native widths and payload fields; receiver ${first}`, async () => {
     const pair = await createTwoEditorFixture({
+      editor: { tableControlRefusal: createColumnTableRefusal('Use the column controls.') },
       document: writeOoxmlPackage(
         await land(
           group(column('33.33%', 'One'), column('33.33%', 'Two'), column('33.33%', 'Three'))
@@ -446,7 +456,10 @@ for (const first of [0, 1] as const)
 
 for (const first of [0, 1] as const)
   test(`two sessions converge on column resize and editing beside peer typing; receiver ${first}`, async () => {
-    const pair = await createTwoEditorFixture({ document: writeOoxmlPackage(await land(TWO)) });
+    const pair = await createTwoEditorFixture({
+      document: writeOoxmlPackage(await land(TWO)),
+      editor: { tableControlRefusal: createColumnTableRefusal('Use the column controls.') },
+    });
     try {
       const [alice, bob] = pair.editors as [DocxEditorInstance, DocxEditorInstance];
       const leftId = bob

@@ -76,6 +76,7 @@ export interface SurfaceTableInteractionHost {
   session(): TreeDocxSessionView;
   applyTableCommandPlan(plan: TableCommandPlan): ExecResult;
   label(key: TableInteractionLabelKey): string;
+  controlRefusal?(tableId: string): string | null;
 }
 
 export interface SurfaceTableInteraction {
@@ -411,7 +412,7 @@ export function createSurfaceTableInteraction(
   function paintHover(hit: TableInteractionHit, input: SurfaceTableInteractionInput): void {
     clearNonInsertFurniture();
     removeExtraInsertButtons(insertButton ?? focusedInsertButton());
-    if (drag || input.editingMode === 'view') return;
+    if (drag || input.editingMode === 'view' || host.controlRefusal?.(hit.tableId) != null) return;
 
     if ((hit.kind === 'columnDivider' || hit.kind === 'rightEdge') && !hit.isHeaderRepeat) {
       const found = findTableOnPage(input.layout, hit.tableId, hit.pageIndex);
@@ -744,7 +745,12 @@ export function createSurfaceTableInteraction(
     if (!hoverHit || drag || input.editingMode === 'view') return;
     clearTimers();
     const hit = hitAtLastPointer(input);
-    const offered = offeredHit(host.session(), hit, input.selection.head.paragraphId);
+    const offered = offeredHit(
+      host.session(),
+      hit,
+      input.selection.head.paragraphId,
+      host.controlRefusal
+    );
     if (!offered) {
       hoverHit = null;
       clearFurniture();
@@ -780,7 +786,11 @@ export function createSurfaceTableInteraction(
 
     const priorTarget = tableInteractionTargetIdentity(insertHit);
     const resolved = resolveTableInteractionInsertHit(index, insertHit);
-    if (!resolved || tableInteractionTargetIdentity(resolved) !== priorTarget) {
+    if (
+      !resolved ||
+      host.controlRefusal?.(resolved.tableId) != null ||
+      tableInteractionTargetIdentity(resolved) !== priorTarget
+    ) {
       retireRetainedInsertButton();
       return;
     }
@@ -843,7 +853,12 @@ export function createSurfaceTableInteraction(
           pageIndex >= 0 ? pageIndex : undefined
         )
       : null;
-    const offered = offeredHit(host.session(), hit, input.selection.head.paragraphId);
+    const offered = offeredHit(
+      host.session(),
+      hit,
+      input.selection.head.paragraphId,
+      host.controlRefusal
+    );
     if (!offered) {
       if (overInsertControl) return;
       timers.migrate();

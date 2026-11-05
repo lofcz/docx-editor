@@ -1,4 +1,5 @@
 import { textboxInsertionRefusal } from './textbox-commands.ts';
+import { guardTableControlPlan } from './surface-table-control-policy.ts';
 import { tocAtPosition } from './surface-toc-ranges.ts';
 import { formsProtectionRefusal } from '../store/store/tree-op-content-controls.ts';
 import { settingsPartOf } from '../store/package/note-properties.ts';
@@ -274,7 +275,7 @@ export function tableCommandState(
   surface: PaginatedSurface
 ): { readonly can: CanResult; readonly plan: TableCommandPlan } {
   const input = buildTableCommandPlannerInput(command, surface);
-  let plan = planTableCommand(input);
+  let plan = guardTableControlPlan(surface, planTableCommand(input));
   const settings = settingsPartOf(surface.session.currentPackage());
   if (plan.ok && plan.ops.some((op) => formsProtectionRefusal(input.part, settings, op))) {
     plan = { ok: false, code: 'locked', reason: FORMS_WRITE_REASON };

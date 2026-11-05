@@ -3,9 +3,10 @@
   "fields": [],
   "before": "Application columns use vertically stacked native content controls.",
   "after": "New column groups use ordinary native table cells, with the same content controls and payload identities.",
-  "reason": "The shared node schema, repair rules, text identities, and transport stay unchanged. Existing readers already understand these native tables. Legacy groups keep their stored structure until an explicit conversion.",
+  "reason": "The shared node schema, repair rules, text identities, and transport stay unchanged. Existing readers already understand these native tables. Legacy groups keep their stored structure until an explicit conversion. Host table ownership only gates local controls; it changes no shared operation or wire format.",
   "tests": [
-    "packages/sciobot/src/blocks/columns.test.ts"
+    "packages/sciobot/src/blocks/columns.test.ts",
+    "packages/core/src/editor/__tests__/table-control-policy.test.ts"
   ],
   "changeset": "sciobot-native-column-geometry",
   "migration": null

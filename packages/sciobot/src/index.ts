@@ -113,6 +113,7 @@ export * from './blocks/update-atomic';
 export * from './blocks/move';
 export * from './blocks/move-column-content';
 export { readColumnGeometry, type ColumnGeometry } from './blocks/column-geometry';
+export { createColumnTableRefusal } from './blocks/column-table-owner';
 export * from './diff/column-widths';
 export * from './native/inline-code';
 export * from './native/prepare-document';

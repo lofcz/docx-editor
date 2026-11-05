@@ -9,9 +9,10 @@ export function configSurfaceOptions(
   config: DocxEditorConfig
 ): Pick<
   PaginatedSurfaceOptions,
-  'tableInteractionLabel' | 'imageDecodePort' | 'lockedControlNavigation'
+  'tableInteractionLabel' | 'tableControlRefusal' | 'imageDecodePort' | 'lockedControlNavigation'
 > {
   return {
+    ...(config.tableControlRefusal ? { tableControlRefusal: config.tableControlRefusal } : {}),
     ...(config.tableInteractionLabel
       ? { tableInteractionLabel: config.tableInteractionLabel }
       : {}),

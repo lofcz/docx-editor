@@ -37,6 +37,14 @@ editor.destroy();
 
 To mount at creation, pass `container`. For detach and pop-outs, see [Editor mount modes](/docs/2.x/core/mount-modes).
 
+### Manage application table controls
+
+Set `tableControlRefusal(tableId, pkg)` when your application manages a native table's structure and geometry. Return a localized reason for an application-owned table, or `null` for ordinary table controls. The callback receives the current immutable package. Keep it synchronous and cache derived ownership by package identity.
+
+The editor uses this decision for table command admission, execution, insertion handles, resize handles, and table movement. Text editing, selection, undo, redo, and explicit automation transactions remain available. The callback controls local editor tools; it does not provide document protection or validate collaboration messages. Use the same ownership policy in each application instance. Nested tables keep their controls unless the callback also names them.
+
+This host configuration stays separate from the Office.js document model.
+
 ## Choose an import
 
 Prefer the root import.

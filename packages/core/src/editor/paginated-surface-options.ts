@@ -224,6 +224,16 @@ export interface PaginatedSurfaceOptions {
    * Defaults to English from `@docx-editor.dev/i18n` when omitted.
    */
   readonly tableInteractionLabel?: (key: TableInteractionLabelKey) => string;
+  /**
+   * Host ownership of table controls. Return a localized refusal for a table whose
+   * structure and geometry the host manages, or null for ordinary native controls.
+   * Generic table commands and furniture share this decision. Text edits, selection,
+   * history, and explicit automation transactions remain available. This is no security boundary.
+   */
+  readonly tableControlRefusal?: (
+    tableId: string,
+    pkg: import('../store/package/ooxml-package.ts').OoxmlPackage
+  ) => string | null;
   /** Localized drawing refusal labels; defaults to English when omitted. */
   readonly drawingStrings?: import('../output/semantic-paint-drawings.ts').DrawingPaintStrings;
   /** Override raster decode for package image intents; defaults to browser/headless. */

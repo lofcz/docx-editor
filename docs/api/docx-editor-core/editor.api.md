@@ -1711,6 +1711,7 @@ export interface DocxEditorConfig {
     reviewDisplayMode?: ReviewDisplayMode;
     revisionMarkup?: RevisionMarkupOptions;
     revisionStyles?: RevisionStyles;
+    tableControlRefusal?: (tableId: string, pkg: OoxmlPackage) => string | null;
     tableInteractionLabel?: (key: TableInteractionLabelKey) => string;
     translate?: (key: string, params?: Record<string, string | number>) => string;
     unsupportedElementRules?: readonly UnsupportedElementRule[];
@@ -3078,6 +3079,7 @@ export interface PaginatedSurfaceOptions {
     readonly scale?: number;
     readonly showBookmarks?: boolean;
     readonly showParagraphMarks?: boolean;
+    readonly tableControlRefusal?: (tableId: string, pkg: OoxmlPackage) => string | null;
     readonly tableInteractionLabel?: (key: TableInteractionLabelKey) => string;
     readonly tocLabels?: {
         readonly title: string;

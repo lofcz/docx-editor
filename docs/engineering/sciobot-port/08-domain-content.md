@@ -386,31 +386,17 @@ Final verification against installed fork `929e0ea4a9bf68f3a4c9a7c133e55bc76b76d
 
 **Claim:** Codex, branch `codex/react-block-proof`; implementation continues.
 
-**Evidence:** New column groups use one borderless native table with one content control in each cell.
-The private projection preserves column syntax and reads each complete column before the next column.
-The complete-target planner resolves each retained column through its actual cell window.
-Width changes update the native grid and private metadata in one transaction.
-The existing column controls and paragraph identities remain stable.
+**Evidence:** New column groups use one borderless native table with one content control in each cell. The private projection preserves column syntax and reads each complete column before the next column. The complete-target planner resolves each retained column through its actual cell window. Width changes update the native grid and private metadata in one transaction. The existing column controls and paragraph identities remain stable.
 
-`packages/sciobot/src/blocks/columns.test.ts` checks empty, two-column, and three-column groups, nested tables, and save/reopen behavior.
-It checks reading order across pages and rejects unsupported widths or occupied generated separators.
-Two real collaboration sessions check concurrent typing, resize, remote selection, undo, redo, deletion, reconnect, and equal saved digests.
-The compatibility decision is `sciobot-native-column-geometry`.
-The shared format stays unchanged because existing readers already understand the native table representation.
-The focused check passed 190 tests across nine files, plus private package typecheck, formatting, and repository lint.
+`packages/sciobot/src/blocks/columns.test.ts` checks empty, two-column, and three-column groups, nested tables, and save/reopen behavior. It checks reading order across pages and rejects unsupported widths or occupied generated separators. Two real collaboration sessions check concurrent typing, resize, remote selection, undo, redo, deletion, reconnect, and equal saved digests. The compatibility decision is `sciobot-native-column-geometry`. The shared format stays unchanged because existing readers already understand the native table representation. The focused check passed 190 tests across nine files, plus private package typecheck, formatting, and repository lint.
 
-`planColumnWidths` updates only changed percentage fields and preserves their scale, including `33.33%` columns.
-Concurrent boundary changes keep native widths and payload fields consistent.
-`moveColumnContent` moves complete native blocks between columns without replacing their identities.
-An empty source column receives an editable paragraph.
-The command refuses stale requests, protected content, and suggestion mode.
-Two real sessions verify peer typing, undo, redo, remote selections, concurrent deletion, and equal saved digests.
+`planColumnWidths` updates only changed percentage fields and preserves their scale, including `33.33%` columns. Concurrent boundary changes keep native widths and payload fields consistent. `moveColumnContent` moves complete native blocks between columns without replacing their identities. An empty source column receives an editable paragraph. The command refuses stale requests, protected content, and suggestion mode. Two real sessions verify peer typing, undo, redo, remote selections, concurrent deletion, and equal saved digests.
 
 The command check passed 51 tests across four files, plus private package typecheck, formatting, and repository lint.
 
-**Remaining:** Application width handles, keyboard controls, movement controls, column count changes, and installed browser checks remain open.
-Existing stacked groups retain their structure until an explicit conversion preserves their identities.
-Tracked operations also need complete application verification before this leaf closes.
+Application commit `e8becc009` installs fork commit `529d3f450` and adds shared pointer and keyboard width controls. The installed Chromium check passes both receiver orders with 34 assertions. It verifies Escape and pointer cancellation, half zoom, peer typing, native caret movement, undo, redo, and suggestion-mode refusal. Content movement preserves paragraph identity, and both sessions save equal digests and reopen with equal projected content. Native group widths stay fixed through resize; core hover controls respect the application input marker. Frontend and harness type checks pass, along with scoped formatting and lint.
+
+**Remaining:** Generic table control ownership, column count changes, and explicit legacy conversion remain open. Existing stacked groups retain their structure until an explicit conversion preserves their identities. Tracked operations also need complete application verification before this leaf closes.
 
 ## X21
 
