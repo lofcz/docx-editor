@@ -7,6 +7,7 @@ import {
   findNode,
   paragraphTextOf,
   readOoxmlPackage,
+  serializeOoxmlPart,
   withPart,
   writeOoxmlPackage,
   type OoxmlNode,
@@ -222,10 +223,14 @@ test('native body text edits beside fields and opaque inline XML preserve protec
   }
 });
 
-test('field caches, omitted drawings, and crossings identify their canonical protected boundary', async () => {
+test('field results, omitted drawings, and crossings identify their canonical protected boundary', async () => {
   const value = await imported();
   try {
-    for (const text of ['7', 'Cached', 'Left right']) {
+    // PAGE renders its actual page number; the stored field result stays unchanged.
+    expect(serializeOoxmlPart(value.session.part())).toContain(
+      '<w:fldSimple w:instr="PAGE"><w:r><w:t>7</w:t></w:r></w:fldSimple>'
+    );
+    for (const text of ['1', 'Cached', 'Left right']) {
       const result = value.resolve(text);
       expect(result.success).toBe(false);
       if (result.success) throw new Error('Expected refusal');

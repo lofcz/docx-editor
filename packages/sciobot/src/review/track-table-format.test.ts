@@ -169,7 +169,7 @@ for (const [name, target] of FORMAT_TARGETS)
       }
     }, 30_000);
 
-test('a combined background and width proposal survives save/reopen with stable addresses', async () => {
+test('a combined background and width proposal survives save/reopen with complete native membership', async () => {
   for (const action of ['accept', 'reject'] as const) {
     const editor = mount();
     try {
@@ -192,7 +192,16 @@ test('a combined background and width proposal survives save/reopen with stable 
           .flatMap((item) => (item.kind === 'revision' ? item.addresses : []))
           .map((entry) => entry.id)
           .sort();
-        expect(ids).toEqual(result.proposals[0]!.addresses.map((entry) => entry.id).sort());
+        // Word export assigns unique IDs; live native ownership keeps its original IDs.
+        expect(ids).toHaveLength(result.proposals[0]!.addresses.length);
+        expect(new Set(ids).size).toBe(ids.length);
+        expect(
+          editor
+            .surface!.session.reviewItems()
+            .flatMap((item) => (item.kind === 'revision' ? item.addresses : []))
+            .map((entry) => entry.id)
+            .sort()
+        ).toEqual(result.proposals[0]!.addresses.map((entry) => entry.id).sort());
         expect(reopened.exec({ type: 'resolveAllReviewChanges', action }).ok).toBe(true);
         expect(hollowFree(reopened.surface!.session.part())).toBe(
           hollowFree(action === 'accept' ? expected : part)
