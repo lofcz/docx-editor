@@ -1,5 +1,6 @@
 import { applyTreeOp, bodyStoryRoot, paragraphTextOf, storyParagraphs } from '../index.ts';
-import { inlineTextMerged } from '../store/tree-op-inline-slices.ts';
+import { inlineTextMerged, sameInlineTextMetadata } from '../store/tree-op-inline-slices.ts';
+import { coalesced } from '../store/tree-op-tracked.ts';
 import { readOoxmlPart, type OoxmlNode } from '../package/ooxml-tree.ts';
 import { expect, test } from 'bun:test';
 import {
@@ -112,6 +113,47 @@ test('coalescing an empty imported text element creates no nonexistent source wi
           { logicalId: original.children[0]!.id, utf16Start: 0, utf16Length: 4, beforeEffect: 0 },
         ]);
       }
+    },
+    () => true
+  );
+  stop();
+});
+
+test('coalescing normalizes whitespace metadata and keeps both source windows', () => {
+  const parsed = readOoxmlPart(
+    '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t xml:space="preserve">the </w:t><w:t>rest</w:t></w:r></w:p></w:body></w:document>',
+    { name: '/word/document.xml', contentType: 'application/xml' }
+  );
+  if (!parsed.ok) throw Error('Invalid fixture');
+  const texts: OoxmlNode[] = [];
+  const visit = (node: OoxmlNode) => {
+    if (node.kind === 'text') texts.push(node);
+    if (node.kind !== 'textValue') node.children.forEach(visit);
+  };
+  visit(parsed.part.root);
+  const [left, right] = texts;
+  if (left?.kind !== 'text' || right?.kind !== 'text') throw Error('Missing text');
+  expect(sameInlineTextMetadata(left, right)).toBe(false);
+  const store = {};
+  const stop = observeCanonicalPrimitiveJournal(store, () => {});
+  runObservedStoreTransaction(
+    store,
+    () => {
+      let next = 0;
+      const joined = coalesced(() => `joined-${next++}`, texts);
+      expect(joined).toHaveLength(1);
+      const leaf = joined[0]?.kind !== 'textValue' ? joined[0]?.children[0] : undefined;
+      if (leaf?.kind !== 'textValue') throw Error('Missing joined text');
+      expect(leaf.value).toBe('the rest');
+      expect(nativeTextSliceOf(leaf)).toEqual([
+        { logicalId: left.children[0]!.id, utf16Start: 0, utf16Length: 4, beforeEffect: 0 },
+        { logicalId: right.children[0]!.id, utf16Start: 0, utf16Length: 4, beforeEffect: 0 },
+      ]);
+      const owned = {
+        ...right,
+        attributes: [{ namespaceUri: 'urn:owner', prefix: 'o', localName: 'id', value: 'other' }],
+      };
+      expect(coalesced(() => `joined-${next++}`, [left, owned])).toHaveLength(2);
     },
     () => true
   );

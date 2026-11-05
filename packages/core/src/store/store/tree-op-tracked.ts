@@ -899,7 +899,7 @@ export function coalesced(mint: () => string, nodes: readonly OoxmlNode[]): Ooxm
       previous !== undefined &&
       previous.kind === node.kind &&
       (node.kind === 'text' || node.kind === 'deletedText') &&
-      sameInlineTextMetadata(previous, node);
+      sameInlineTextMetadata(previous, node, true);
     if (!mergeable) {
       out.push(node);
       continue;

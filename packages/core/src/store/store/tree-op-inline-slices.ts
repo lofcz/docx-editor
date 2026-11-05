@@ -77,7 +77,11 @@ export function inlineRunSlice(
 }
 
 /** Source text metadata, including local QName bindings, must agree before text coalesces. */
-export function sameInlineTextMetadata(left: OoxmlNode, right: OoxmlNode): boolean {
+export function sameInlineTextMetadata(
+  left: OoxmlNode,
+  right: OoxmlNode,
+  normalizeSpace = false
+): boolean {
   if (left.kind === 'textValue' || right.kind === 'textValue') return false;
   if (
     !left.attributes.length &&
@@ -88,7 +92,20 @@ export function sameInlineTextMetadata(left: OoxmlNode, right: OoxmlNode): boole
     return true;
   const attributes = (node: typeof left) =>
     JSON.stringify(
-      node.attributes.map((attr) => [attr.namespaceUri, attr.localName, attr.value]).sort()
+      node.attributes
+        // The reader already applies xml:space. A joined leaf writes its actual boundary spaces.
+        // Keep origin matching strict; only text coalescing can normalize this attribute.
+        .filter(
+          (attr) =>
+            !(
+              normalizeSpace &&
+              attr.namespaceUri === XML &&
+              attr.localName === 'space' &&
+              (attr.value === 'preserve' || attr.value === 'default')
+            )
+        )
+        .map((attr) => [attr.namespaceUri, attr.localName, attr.value])
+        .sort()
     );
   const bindings = (node: typeof left) =>
     JSON.stringify(

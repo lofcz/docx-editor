@@ -40,7 +40,7 @@ for (const version of [4, 6]) {
     expect(nodeText(alice.store.bodyStore().part.root)).toBe('hello');
     expect(bob.room.session.statusSnapshot().reason).toMatchObject({
       code: 'schema-version-mismatch',
-      detail: `sharedSchemaVersion: expected 5, received ${version}`,
+      detail: `sharedSchemaVersion: expected 9, received ${version}`,
     });
     bob.port.flushPendingJournals();
     bob.detach();

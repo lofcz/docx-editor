@@ -1,8 +1,6 @@
 {
   "impact": "migration-required",
-  "fields": [
-    "repairVersion"
-  ],
+  "fields": ["repairVersion"],
   "before": "Fork rooms use repair version 16 without the upstream split-order and restored-typing rules.",
   "after": "Fork rooms use repair version 17 with upstream repair rules and retained application review ownership.",
   "reason": "The combined readers can place the same shared characters and split paragraphs differently. Older clients must refuse the updated rooms.",
@@ -12,7 +10,11 @@
     "packages/core/src/editor/__tests__/suggesting-own-table-structure.test.ts",
     "packages/core/src/store/__tests__/tracked-table-merges.test.ts",
     "packages/pro/src/collaboration/__tests__/document-table-merge-split.test.ts",
-    "packages/sciobot/src/review/track-table-merges-collaboration.test.ts"
+    "packages/sciobot/src/review/track-table-merges-collaboration.test.ts",
+    "packages/sciobot/src/review/own-table-structure-collaboration.test.ts",
+    "packages/core/src/store/__tests__/revision-split-change.test.ts",
+    "packages/sciobot/src/review/joined-deletion-collaboration.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-compatibility.test.ts"
   ],
   "changeset": "fork-upstream-234-sync",
   "migration": "upgrade-fork-rooms-to-format-19171"
