@@ -290,6 +290,10 @@ Block and inline hosts retain registrations and provider callbacks across `edito
 
 Wrap widget controls in `BlockUi`. Its editor-furniture marker and event boundary let controls receive normal browser input while native editing remains separate. Dispose the host before destroying its editor. Disposal removes paint observation and roots; React cleanup runs in the next microtask. Unregistered content retains native rendering. Measurement and continuation policy retain B14-B17.
 
+Measured block views use CSS pixels at 100% zoom. The host keeps their layout width stable and scales their bounded viewport. `fragment.scale` maps native points to page pixels. `fragment.contentScale` describes the host transform. Divide page pixels by this value when placing chrome inside the measured view. Native slots retain page coordinates. Zoom and measurements create no document edits.
+
+Opaque block roots stay connected in an editor-owned layer during native paints. Each root clips to its native page. Offscreen fragments retain local state and measurements while hidden. Browser printing hides host controls and retains native fallback content. Document replacement disposes the previous layer and its focus owners.
+
 Pass `{ providers: (children, scope) => <AppProviders>{children}</AppProviders> }` as the third host argument. Independent roots need explicit application providers. The scope contains the owning editor, indexed block, and fragment. Call `host.setProviders(nextCallback)` when application context values change. Keep provider component types and nesting stable to retain widget state. Return provider elements from callbacks; call hooks inside their components. Each editor owns its callback and values. Provider changes create no document operations or history entries.
 
 Register native containers with `host.register(type, View, { nativeContent: true })`. Initial registries also accept `{ view: View, nativeContent: true }` descriptors. Render `props.children` once in a `display: contents` wrapper. Keep `BlockUi` beside these children. Native paragraphs, tables, rows, and cells retain their original nodes and coordinates.

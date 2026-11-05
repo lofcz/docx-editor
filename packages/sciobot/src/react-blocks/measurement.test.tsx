@@ -432,14 +432,18 @@ test('a root parked with its virtual page keeps its room until it is released', 
   const surface = {
     setBlockReservations: (next: ReadonlyMap<string, number>) => published.push(next),
   } as unknown as ConstructorParameters<typeof BlockMeasurement>[0];
-  const measurement = new BlockMeasurement(surface, () => 300);
+  const measurement = new BlockMeasurement(surface, (element) => (element.hidden ? 0 : 300));
   const element = document.createElement('div');
   document.body.append(element);
   try {
     measurement.track('widget:0', element, { paragraphId: 'p1', nativeHeight: 100, scale: 1 });
     measurement.flush();
     expect(published.at(-1)).toEqual(new Map([['p1', 200]]));
-    // The page is virtualized: the root leaves the document but the widget still exists.
+    // Persistent roots hide on virtual pages and keep their last measured room.
+    element.hidden = true;
+    measurement.flush();
+    expect(published.at(-1)).toEqual(new Map([['p1', 200]]));
+    // Native-slot roots can still leave the document while their widget exists.
     element.remove();
     measurement.flush();
     expect(published.at(-1)).toEqual(new Map([['p1', 200]]));

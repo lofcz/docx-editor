@@ -1,0 +1,14 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Measured widgets reflow at other zoom levels and lose focus during native paint.",
+  "after": "Opaque roots retain focus during paint, and measured widgets keep stable layout width at document zoom.",
+  "reason": "Only local host geometry changes. Native content, operations, and collaboration fields stay unchanged.",
+  "tests": [
+    "packages/sciobot/src/react-blocks/block-zoom.test.tsx",
+    "packages/sciobot/src/react-blocks/opaque-layer.test.tsx",
+    "packages/sciobot/src/react-blocks/measurement.test.tsx"
+  ],
+  "changeset": "measured-widget-zoom",
+  "migration": null
+}

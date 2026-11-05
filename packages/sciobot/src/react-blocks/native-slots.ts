@@ -7,8 +7,14 @@ export function preserveNativeSelection<T>(pages: HTMLElement, action: () => T):
     focus = selection?.focusNode;
   const native = (node: Node | null | undefined) =>
     node && pages.contains(node) && node.parentElement?.closest('.docx-paragraph-fragment');
+  const active = pages.ownerDocument.activeElement;
+  const foreignFocus =
+    active &&
+    active !== pages.ownerDocument.body &&
+    active !== pages.ownerDocument.documentElement &&
+    (!pages.contains(active) || active.closest('[data-docx-host-ui]'));
   const saved =
-    native(anchor) && native(focus)
+    !foreignFocus && native(anchor) && native(focus)
       ? { anchor: anchor!, focus: focus!, a: selection!.anchorOffset, f: selection!.focusOffset }
       : null;
   try {

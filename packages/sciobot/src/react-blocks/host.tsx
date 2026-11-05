@@ -17,6 +17,8 @@ export interface ReactBlockFragment {
     readonly height: number;
   };
   readonly scale: number;
+  /** CSS transform applied by the host to this view. Divide page pixels by this for local chrome. */
+  readonly contentScale?: number;
 }
 export interface ReactBlockViewProps {
   readonly block: IndexedBlock;

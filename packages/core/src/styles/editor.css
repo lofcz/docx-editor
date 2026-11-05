@@ -538,6 +538,10 @@
 /* Printing is always on white paper: drop the inversion and paint the page
   * white with black text (matches Word, saves toner). */
 @media print {
+  .docx-editor [data-docx-host-ui] {
+    display: none !important;
+  }
+
   .docx-editor.dark {
     --doc-page-bg: #ffffff;
     /* The colour a sheet is PAINTED. In the legacy lane the page is lightness-inverted, so

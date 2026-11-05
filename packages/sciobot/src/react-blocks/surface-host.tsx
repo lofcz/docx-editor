@@ -17,6 +17,7 @@ import { containerInsets } from './block-insets';
 import { NativeSlotLease, preserveNativeSelection } from './native-slots';
 import { attachNativeSlots, type NativeSlotMount } from './native-slot-plan';
 import { BlockRootProviders, type ReactBlockHostOptions } from './providers';
+import { OpaqueBlockLayer } from './opaque-layer';
 
 import type { ReactBlockHost, ReactBlockRegistration, ReactBlockRegistry } from './host';
 
@@ -50,6 +51,7 @@ export function mountSurfaceBlockHost(
   if (!surface) throw new Error('Attach the editor before mounting React blocks.');
   const registry = new Map<string, ReactBlockRegistration>();
   const mounts = new Map<string, Mount>();
+  const opaqueLayer = new OpaqueBlockLayer();
   let disposed = false;
   let frame: SurfacePaintFrame | null = null;
   let focused: HTMLElement | null = null;
@@ -68,7 +70,8 @@ export function mountSurfaceBlockHost(
   }
   function park(): void {
     for (const mount of mounts.values()) mount.slot.reset();
-    for (const mount of mounts.values()) mount.element.remove();
+    for (const mount of mounts.values())
+      if (!opaqueLayer.contains(mount.element)) mount.element.remove();
   }
   function discard(key: string, mount: Mount): void {
     mounts.delete(key);
@@ -141,8 +144,14 @@ export function mountSurfaceBlockHost(
         const key = `${block.id}:${ordinal}`;
         valid.add(key);
         const page = pages.get(fragment.pageIndex);
-        if (!page) return; // Keep roots parked for virtual pages.
         let mount = mounts.get(key);
+        if (!page) {
+          if (mount) {
+            mount.element.hidden = true;
+            mount.element.style.display = 'none';
+          }
+          return; // Keep local state for virtual pages without painting an invisible page.
+        }
         if (!mount) {
           const element = page.ownerDocument.createElement('div');
           element.dataset.sciobotBlockHost = key;
@@ -154,6 +163,7 @@ export function mountSurfaceBlockHost(
           mount = { element, root, slot: new NativeSlotLease(key, next.pagesLayer), release };
           mounts.set(key, mount);
         }
+        mount.element.hidden = false;
         const nativeBox =
           inlineBoxes?.get(`${fragment.pageIndex}:${block.controlId}`) ?? fragment.box;
         // A container's frame covers the room its measured widgets reserve below their text.
@@ -178,13 +188,15 @@ export function mountSurfaceBlockHost(
             element: mount.element,
             slot: mount.slot,
           });
-        else page.append(mount.element);
+        else if (options.inlineOnly) page.append(mount.element);
+        else opaqueLayer.place(next, page, mount.element, box);
         const currentMount = mount;
         const geometry = Object.freeze({
           ordinal,
           pageIndex: fragment.pageIndex,
           box: Object.freeze({ ...box }),
           scale: next.scale,
+          contentScale: measured ? next.scale * 0.75 : 1,
         });
         const view = createElement(View, {
           block,
@@ -217,6 +229,8 @@ export function mountSurfaceBlockHost(
                     mountKey: key,
                     target,
                     maxHeight,
+                    width: box.width * (4 / 3),
+                    zoom: next.scale * 0.75,
                     children: view,
                   })
                 : view,
@@ -261,6 +275,7 @@ export function mountSurfaceBlockHost(
     if (frame) preserveNativeSelection(frame.pagesLayer, stop);
     else stop();
     for (const [key, mount] of mounts) discard(key, mount);
+    opaqueLayer.dispose();
     measurement?.dispose();
     if (!options.inlineOnly) surface!.setBlockInsets(new Map());
     registry.clear();
@@ -322,12 +337,16 @@ function MeasuredRoot({
   mountKey,
   target,
   maxHeight,
+  width,
+  zoom,
   children,
 }: {
   readonly measurement: BlockMeasurement;
   readonly mountKey: string;
   readonly target: MeasuredFragment | null;
   readonly maxHeight: number;
+  readonly width: number;
+  readonly zoom: number;
   readonly children: ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -345,7 +364,11 @@ function MeasuredRoot({
       'data-docx-host-ui': '',
       contentEditable: false,
       style: {
-        maxHeight,
+        position: 'relative',
+        width,
+        maxHeight: maxHeight / zoom,
+        transform: `scale(${zoom})`,
+        transformOrigin: '0 0',
         // The widget covers its Word fallback text, so the fallback never shows through it.
         background: 'var(--doc-page-bg-rendered, #fff)',
         overflowY: 'auto',

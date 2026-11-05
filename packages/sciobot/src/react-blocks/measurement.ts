@@ -81,7 +81,7 @@ export class BlockMeasurement {
       const { element, fragment } = entry;
       // A root parked with its virtual page keeps the height it last measured. Dropping its
       // room moved the content, which brought that page back and measured it again, in a loop.
-      if (element.isConnected) {
+      if (element.isConnected && !element.closest('[hidden]')) {
         const height = this.measure(element);
         if (Number.isFinite(height)) entry.height = height;
       }
