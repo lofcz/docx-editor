@@ -246,6 +246,7 @@ export function withPayloadRecord(
     );
     if (!updated) return refuse('payload-write-refused');
     const reopened = readPayloadStore(updated, storage);
+    if (reopened.status === 'invalid') return refuse(reopened.reason);
     const stored = reopened.status === 'ready' ? reopened.entries.get(payload.id) : undefined;
     if (
       stored?.decoded.status !== 'supported' ||

@@ -30,6 +30,7 @@ import type { DocumentRegistry } from './registry.ts';
 import type { LogicalId } from './identity.ts';
 import { sharedEffect, type SharedEffect, type SharedNodeDescriptor } from './shared-effect.ts';
 import { routeInlineEffects, type InlinePlan } from './paragraph-text-writer.ts';
+import { atomicRecordOwnership } from './atomic-record-ownership.ts';
 
 type ProjectionRefusal = Extract<ApplyJournalResult, { readonly ok: false }>;
 
@@ -365,7 +366,7 @@ export function projectJournalToShared(
     }
     if (reinserted.size > registry.limits.maxNodes) return { ok: false, code: 'too-many-nodes' };
   }
-  const raw = new JournalProjection(registry);
+  const raw = new JournalProjection(registry, atomicRecordOwnership(registry, incoming));
   const text = new TextCoordinates(registry, raw);
   const visible = new VisibleJournalProjection(
     registry,

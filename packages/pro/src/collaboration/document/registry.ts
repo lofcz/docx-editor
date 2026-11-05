@@ -7,8 +7,7 @@ import { retainsCreatedDescriptor } from './undo-created-descriptors.ts';
 import * as resourceRecords from './registry-resource-records.ts';
 import { BirthUndoDependencies } from './birth-undo-dependencies.ts';
 import { subscribeTextReads } from './registry-text-reads.ts';
-import { TEXT_DELETIONS_KEY } from './paragraph-text-deletions.ts';
-import { TEXT_DECISIONS_KEY } from './paragraph-text-decisions.ts';
+import { registryTrackedTypes } from './registry-tracked-types.ts';
 import { keepFormattingMarkers } from './yjs-items.ts';
 import { compareDocumentOrder } from './registry-document-order.ts';
 import { RegistryHistory } from './registry-history.ts';
@@ -27,6 +26,7 @@ import { runIsPresent } from './run-text-reads.ts';
 import { mergeLimits, rejectDangerousKey, type DocumentLimits } from './limits.ts';
 import {
   NODE_CHILDREN_FIELD,
+  NODE_ATOMIC_TEXT_FIELD,
   NODE_DELETED_FIELD,
   NODE_UNDONE_FIELD,
   NODE_REPLACED_BY_FIELD,
@@ -73,7 +73,6 @@ import {
   writeSharedBinding,
 } from './registry-side-maps.ts';
 import {
-  asTrackedType,
   assertNoParentFieldsIn,
   elementRecordOf,
   isLogicalIdKey,
@@ -244,20 +243,7 @@ export class DocumentRegistry {
   }
 
   trackedTypes(): readonly Y.AbstractType<unknown>[] {
-    return [
-      asTrackedType(this.schema.meta),
-      asTrackedType(this.schema.nodes),
-      asTrackedType(this.schema.parts),
-      asTrackedType(this.schema.relationships),
-      asTrackedType(this.schema.overrides),
-      asTrackedType(this.schema.defaults),
-      asTrackedType(this.schema.binaries),
-      asTrackedType(this.schema.attributes),
-      asTrackedType(this.schema.bindings),
-      // An undo of a deletion or a decision withdraws its record, so the text shows again.
-      asTrackedType(this.doc.getMap(TEXT_DELETIONS_KEY)),
-      asTrackedType(this.doc.getMap(TEXT_DECISIONS_KEY)),
-    ];
+    return registryTrackedTypes(this.schema, this.doc);
   }
 
   /** Retain node records, shared containers and table ancestry needed by peer edits. */
@@ -316,7 +302,7 @@ export class DocumentRegistry {
     // A peer can plant a scalar here; treat it as no such node (see #567).
     if (!isNodeMap(rec)) return null;
     if (isTextNodeMap(rec)) {
-      const value = textRecordValue(rec, this.limits.maxTextLength);
+      const value = textRecordValue(rec, this.limits);
       if (value === null) return null;
       return { logicalId, kind: 'textValue', value } satisfies TextRecord;
     }
@@ -426,7 +412,7 @@ export class DocumentRegistry {
   /** The quantities a bound check reads, without the attribute arrays {@link record} builds. */
   nodeShape(logicalId: LogicalId): NodeShape | null {
     if (rejectDangerousKey(logicalId)) return null;
-    return nodeShapeOf(this.schema.nodes, logicalId, this.limits.maxTextLength);
+    return nodeShapeOf(this.schema.nodes, logicalId, this.limits);
   }
 
   /** One node's kind, without building its text. */
@@ -518,7 +504,7 @@ export class DocumentRegistry {
     atomic = false
   ): void {
     const record = this.require(logicalId);
-    const limit = this.limits.maxTextLength;
+    const limit = this.limits;
     if (spliceAtomicText(record, utf16Start, deleteCount, insert, atomic, limit)) return;
     const range = this.splitTextSources.range(logicalId);
     const restoreBoundary = captureInsertionBoundary(
@@ -792,6 +778,8 @@ export class DocumentRegistry {
     const changed = new Set<LogicalId>();
     let structural = false;
     for (const event of events) {
+      // Atomic replacement values cannot change document membership or split ancestry.
+      if (event.path[1] === NODE_ATOMIC_TEXT_FIELD) continue;
       // Text and boundary metadata do not change which split branches are reachable.
       if (
         !(event.target instanceof Y.Text) &&

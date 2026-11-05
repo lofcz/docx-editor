@@ -4,6 +4,7 @@ Licensed under the EigenPal Pro Evaluation License 1.0 — see packages/pro/LICE
 Production use requires a commercial agreement: licensing@eigenpal.com
 */
 import { expect, test } from 'bun:test';
+import * as Y from 'yjs';
 import {
   contentControlPropertiesOf,
   contentControlsIn,
@@ -135,7 +136,7 @@ for (const attachFirst of [true, false])
     }
   });
 
-test('atomic text uses one scalar replacement and malformed fields refuse; ordinary text remains shared characters', async () => {
+test('atomic text retains whole replacement entries and malformed fields refuse; ordinary text remains shared characters', async () => {
   const replica = await seedReplica(
     loadPackage(zipDocument(`<w:p>${control('atomic', run, '1')}</w:p>`))
   );
@@ -148,10 +149,10 @@ test('atomic text uses one scalar replacement and malformed fields refuse; ordin
     const value = textNode.children.find((child) => child.kind === 'textValue')!;
     const id = asLogicalId(value.id);
     const record = replica.registry.schema.nodes.get(id)!;
-    expect(record.get('atomicText')).toBe('source');
+    expect((record.get('atomicText') as Y.Array<string>).toArray()).toEqual(['source']);
     expect(replica.registry.textOf(id).toString()).toBe('');
     replica.registry.spliceText(id, 0, 6, 'replacement');
-    expect(record.get('atomicText')).toBe('replacement');
+    expect((record.get('atomicText') as Y.Array<string>).toArray()).toEqual(['replacement']);
     expect(replica.registry.nodeShape(id)?.textLength).toBe(11);
     record.set('atomicText', { invalid: true });
     expect(replica.registry.record(id)).toBeNull();

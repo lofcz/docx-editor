@@ -180,7 +180,7 @@ for (const clientIds of CLIENTS)
         expect(['Warmup', 'Cooldown']).toContain(merged.name as string);
         expect(merged).toMatchObject({ grade: 'A', minutes: 10 });
 
-        // The next write to the contested key leaves one register for it.
+        // The next write retains earlier immutable registers as history anchors.
         expect(write(bob!, 'counter-1', { ...merged, name: 'Final' }).success).toBe(true);
         await pair.settle();
         await expectConverged(pair, 'counter-1', { ...merged, name: 'Final' });
@@ -201,7 +201,7 @@ for (const clientIds of CLIENTS)
             child.localName === 'attr' &&
             child.attributes.some((a) => a.localName === 'name' && a.value === 'name')
         );
-        expect(nameRegisters).toHaveLength(1);
+        expect(nameRegisters).toHaveLength(3);
       } finally {
         pair.destroy();
       }

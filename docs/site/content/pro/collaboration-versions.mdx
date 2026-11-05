@@ -525,7 +525,13 @@ Never relabel room metadata or replay old updates into fresh rooms. Room undo hi
 
 ## Upgrade atomic equation rooms to format 1.10.17.1
 
-Format `docx-collaboration:1.10.17.1` keeps marked equation fallback content under one record owner across display changes. Earlier clients store that content in paragraph text or separate records, depending on its display mode. Generated fallback text uses scalar replacement records. Ordinary editable text keeps shared character ownership. The ownership histories are incompatible. Changing the room version does not migrate them.
+Format `docx-collaboration:1.10.17.1` keeps marked equation fallback content under one record owner across display changes. Earlier clients store that content in paragraph text or separate records, depending on its display mode. Generated fallback text uses ordered, immutable replacement entries in `atomicText`, a `Y.Array<string>`. The last live entry supplies the complete fallback. Ordinary editable text keeps shared character ownership. Changing the room version does not migrate incompatible ownership histories.
+
+Each fallback write withdraws only previous entries from its own Yjs client. Undo restores that client's previous entry without deleting another client's value. Live entries retain one value per writing client and obey the existing `maxChildren` limit. Each entry obeys `maxTextLength`; malformed and oversized histories refuse before canonical projection. Deleted entries follow the existing Yjs undo and garbage-collection policy.
+
+Private payload fields use immutable replacement XML elements with the same document-order winner rule. Earlier elements remain as history anchors, preserving later peer edits through undo. Each payload record permits 10,000 field elements and 8 MiB of encoded field values. Each value also obeys the payload byte limit. Further writes refuse before mutation when they exceed those limits.
+
+To recover capacity, export the DOCX and prepare it before seeding a replacement room. Preparation retains the latest value per field and removes redundant plain field elements from validated supported payloads. Opaque field metadata, unknown elements, future payload versions, and original payload JSON remain intact. Preparation never compacts an active room or changes its shared history. Do not admit clients that mutate existing payload fields, including earlier schema-10 development builds.
 
 The application keeps exact multiline TeX in equation payloads. Word's readable source fallback folds CRLF, CR, and LF line endings to spaces in one text record. Preparation normalizes only validated application equations. Imported OMML and unrelated content remain unchanged.
 

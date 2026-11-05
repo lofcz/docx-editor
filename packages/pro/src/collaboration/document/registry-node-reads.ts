@@ -17,9 +17,10 @@ import * as Y from 'yjs';
 import { itemIdOf } from './yjs-items.ts';
 import { asLogicalId, yjsItemKey, type LogicalId } from './identity.ts';
 import { rejectDangerousKey } from './limits.ts';
+import type { DocumentLimits } from './limits.ts';
+import { atomicTextState } from './record-text.ts';
 import {
   NODE_TEXT_FIELD,
-  NODE_ATOMIC_TEXT_FIELD,
   namespaceUriOf,
   type ElementRecord,
   type PackageSchema,
@@ -36,13 +37,15 @@ export interface NodeShape {
   isText: boolean;
   textLength: number;
   children: LogicalId[];
+  atomicEntries?: number;
+  atomicOwnedEntries?: number;
 }
 
 /** One node's class, text length and child ids. `children` is fresh, so callers may splice it. */
 export function nodeShapeOf(
   nodes: Y.Map<Y.Map<unknown>>,
   logicalId: string,
-  maxTextLength: number
+  limits: Pick<DocumentLimits, 'maxTextLength' | 'maxChildren'>
 ): NodeShape | null {
   const rec = nodes.get(logicalId);
   // The nodes map is peer-writable; a scalar value is not a node.
@@ -50,14 +53,13 @@ export function nodeShapeOf(
   if (isTextNodeMap(rec)) {
     // `Y.Text.length` is a counter. `toString()` builds the whole paragraph to measure it.
     const text = rec.get(NODE_TEXT_FIELD);
-    const atomic = rec.get(NODE_ATOMIC_TEXT_FIELD);
-    if (atomic !== undefined && (typeof atomic !== 'string' || atomic.length > maxTextLength))
-      return null;
+    const atomic = atomicTextState(rec, limits);
+    if (atomic === null) return null;
     return {
       isText: true,
-      textLength:
-        typeof atomic === 'string' ? atomic.length : text instanceof Y.Text ? text.length : 0,
+      textLength: atomic ? atomic.value.length : text instanceof Y.Text ? text.length : 0,
       children: [],
+      ...(atomic ? { atomicEntries: atomic.entries, atomicOwnedEntries: atomic.ownedEntries } : {}),
     };
   }
   return { isText: false, textLength: 0, children: childArrayOf(rec)?.toArray() ?? [] };

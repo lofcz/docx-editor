@@ -161,6 +161,55 @@ for (const clients of [
     }
   });
 
+for (const clients of [
+  [41, 73],
+  [73, 41],
+] as const)
+  test(`equation creation undo retains peer source through redo (${clients})`, async () => {
+    const prepared = prepareNativeDocument(mathDocument());
+    if (!prepared.success) throw Error(prepared.error);
+    const pair = await createTwoEditorFixture({ document: prepared.document, clientIds: clients });
+    try {
+      const [alice, bob] = pair.editors;
+      const a = alice!.surface!;
+      const point = { paragraphId: a.session.paragraphIds()[0]!, offset: 3 };
+      expect(
+        insertMathAtSelection(alice!, {
+          id: 'created',
+          source: 'original',
+          kind: 'block',
+          selection: { anchor: point, head: point },
+          expectedRevision: a.session.packageRevision(),
+        }).success
+      ).toBe(true);
+      await pair.settle();
+      const block = (index: number) =>
+        buildBlockIndex(pair.editors[index]!.surface!.session.currentPackage()).byId.get('created');
+      const controlId = block(0)!.controlId;
+      expect(
+        updateMath(bob!, { original: block(1)!.payload, source: 'peer\nsource', kind: 'block' })
+          .success
+      ).toBe(true);
+      await pair.settle();
+      expect(alice!.exec({ type: 'undo' }).ok).toBe(true);
+      await pair.settle();
+      expect(block(0)).toEqual(block(1));
+      expect(alice!.exec({ type: 'redo' }).ok).toBe(true);
+      await pair.settle();
+      for (const [index, editor] of pair.editors.entries()) {
+        expect(block(index)?.controlId).toBe(controlId);
+        expect(block(index)?.payload.attributes.texExpression).toBe('peer\nsource');
+        expect(contentControlTextOf(findNode(editor.surface!.session.part(), controlId)!)).toBe(
+          'peer source'
+        );
+      }
+      const saved = await pair.savedDigests();
+      expect(saved[0]).toEqual(saved[1]);
+    } finally {
+      pair.destroy();
+    }
+  });
+
 // This exact Word fallback oracle remains active until conversion history preserves peer content.
 test('conversion undo preserves a later peer source in the canonical Word fallback', async () => {
   const prepared = prepareNativeDocument(mathDocument());
@@ -256,6 +305,59 @@ for (const clients of [
           contentControlTextOf(findNode(editor.surface!.session.part(), current.controlId)!)
         ).toBe(expected);
       }
+      expect(alice!.exec({ type: 'undo' }).ok).toBe(true);
+      await pair.settle();
+      for (const [index, editor] of pair.editors.entries()) {
+        expect(block(index).payload.attributes.texExpression).toBe('bob\r\n\r\nsecond');
+        expect(
+          contentControlTextOf(findNode(editor.surface!.session.part(), block(index).controlId)!)
+        ).toBe('bob  second');
+      }
+      for (const round of [1, 2, 3]) {
+        pair.pause();
+        expect(
+          updateMath(alice!, {
+            original: block().payload,
+            source: `Alice repeated ${round}`,
+            kind: 'block',
+          }).success
+        ).toBe(true);
+        expect(
+          updateMath(bob!, {
+            original: block(1).payload,
+            source: `Bob repeated ${round}`,
+            kind: 'block',
+          }).success
+        ).toBe(true);
+        pair.reconnect();
+        await pair.settle();
+        const winner = block().payload.attributes.texExpression;
+        if (typeof winner !== 'string') throw Error('Missing equation source');
+        for (const [index, editor] of pair.editors.entries()) {
+          expect(block(index).payload.attributes.texExpression).toBe(winner);
+          expect(
+            contentControlTextOf(findNode(editor.surface!.session.part(), block(index).controlId)!)
+          ).toBe(winner);
+        }
+        expect(alice!.exec({ type: 'undo' }).ok).toBe(true);
+        await pair.settle();
+        for (const [index, editor] of pair.editors.entries()) {
+          expect(block(index)?.payload.attributes.texExpression).toBe(`Bob repeated ${round}`);
+          expect(
+            contentControlTextOf(findNode(editor.surface!.session.part(), block(index).controlId)!)
+          ).toBe(`Bob repeated ${round}`);
+        }
+        expect(alice!.exec({ type: 'redo' }).ok).toBe(true);
+        await pair.settle();
+        for (const [index, editor] of pair.editors.entries()) {
+          expect(block(index)?.payload.attributes.texExpression).toBe(winner);
+          expect(
+            contentControlTextOf(findNode(editor.surface!.session.part(), block(index).controlId)!)
+          ).toBe(winner);
+        }
+      }
+      const saved = await pair.savedDigests();
+      expect(saved[0]).toEqual(saved[1]);
     } finally {
       pair.destroy();
     }

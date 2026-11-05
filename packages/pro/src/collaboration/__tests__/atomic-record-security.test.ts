@@ -68,10 +68,51 @@ test('remote atomic fields reject malformed and oversized values before exposing
       expect(bounded.record(id)).toBeNull();
       expect(bounded.nodeShape(id)).toBeNull();
     }
-    record.set('atomicText', '12345678');
+    for (const invalid of [null, 42, { text: 'wrong' }, ['wrong'], '123456789']) {
+      const history = new Y.Array<unknown>();
+      history.push(['valid', invalid]);
+      record.set('atomicText', history);
+      Y.applyUpdate(peer, Y.encodeStateAsUpdate(replica.doc));
+      expect(bounded.record(id)).toBeNull();
+      expect(bounded.nodeShape(id)).toBeNull();
+    }
+    const history = new Y.Array<string>();
+    history.push(['12345678']);
+    record.set('atomicText', history);
     Y.applyUpdate(peer, Y.encodeStateAsUpdate(replica.doc));
     expect(bounded.record(id)).toMatchObject({ value: '12345678' });
     expect(bounded.nodeShape(id)?.textLength).toBe(8);
+  } finally {
+    bounded.destroy();
+    peer.destroy();
+    destroyReplica(replica);
+  }
+});
+
+test('atomic history entries refuse at the existing child limit before any journal writes', async () => {
+  const replica = await seedReplica(fixture());
+  const peer = new Y.Doc();
+  const bounded = new DocumentRegistry(peer, { maxChildren: 2 });
+  try {
+    const id = asLogicalId(findText(packageOf(replica), 'source').id);
+    const history = replica.registry.schema.nodes.get(id)!.get('atomicText') as Y.Array<string>;
+    history.push(['second']);
+    Y.applyUpdate(peer, Y.encodeStateAsUpdate(replica.doc));
+    const before = Y.encodeStateVector(peer);
+    expect(
+      applyPrimitiveJournal(bounded, {
+        effects: [
+          { kind: 'spliceText', logicalId: id, utf16Start: 0, deleteCount: 6, insert: 'first' },
+          { kind: 'spliceText', logicalId: id, utf16Start: 0, deleteCount: 5, insert: 'second' },
+        ],
+      })
+    ).toMatchObject({ ok: false, code: 'too-many-children' });
+    expect(Y.encodeStateVector(peer)).toEqual(before);
+    expect(bounded.record(id)).toMatchObject({ value: 'second' });
+    history.push(['third']);
+    Y.applyUpdate(peer, Y.encodeStateAsUpdate(replica.doc));
+    expect(bounded.record(id)).toBeNull();
+    expect(bounded.nodeShape(id)).toBeNull();
   } finally {
     bounded.destroy();
     peer.destroy();

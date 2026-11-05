@@ -1,5 +1,6 @@
 import { withInitializedPayloadStore } from '../blocks/payload-opc-codec';
 import { withAtomicMathFallbacks } from '../blocks/math-ownership';
+import { withPreparedPayloadFields } from '../blocks/payload-preparation';
 import { withNativeNumberingInfrastructure } from './numbering-infrastructure';
 import { readOoxmlPackage } from '@docx-editor.dev/core/store';
 import type { NativeEditFailure } from '../contracts/document';
@@ -74,7 +75,7 @@ export function prepareNativeDocument(document: Uint8Array): PreparedNativeDocum
       error: 'Cannot initialize native numbering infrastructure.',
     };
   try {
-    const owned = withAtomicMathFallbacks(prepared);
+    const owned = withAtomicMathFallbacks(withPreparedPayloadFields(prepared));
     return {
       success: true,
       document: initializedPackageBytes(document, original, owned),

@@ -271,6 +271,21 @@ export function firstItem<Event>(type: Y.AbstractType<Event>): Y.Item | null {
   return type._start;
 }
 
+/** Live array spans authored by this Yjs client, without trusting values to name their author. */
+export function ownedArraySpans(
+  array: Y.Array<unknown>,
+  client: number
+): { index: number; length: number }[] {
+  const spans: { index: number; length: number }[] = [];
+  let index = 0;
+  for (let item = array._start; item; item = item.right) {
+    if (item.deleted || !item.countable) continue;
+    if (item.id.client === client) spans.push({ index, length: item.length });
+    index += item.length;
+  }
+  return spans;
+}
+
 /**
  * The struct that holds `id`: an item, or a collected struct once garbage collection merged
  * it. Null when this replica has no struct for the ID.

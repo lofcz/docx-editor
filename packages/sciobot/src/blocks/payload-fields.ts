@@ -1,5 +1,6 @@
 import type { OoxmlElement, OoxmlNode } from '@docx-editor.dev/core/store';
 import type { JsonObject, JsonValue } from './payload-schema';
+import { DEFAULT_PAYLOAD_LIMITS } from './payload-schema';
 
 /**
  * Payload field registers.
@@ -8,14 +9,15 @@ import type { JsonObject, JsonValue } from './payload-schema';
  * character, so two sessions rewriting that JSON at once produce a third string that neither
  * wrote: a garbled value, or JSON that no longer parses and makes the whole store unreadable.
  *
- * Later writes therefore leave `data` alone and record each changed field as an XML attribute
- * on its own child element. Shared XML attributes are registers: one value wins in every
- * session. Disjoint fields live on different elements, so they both survive.
+ * Later writes therefore leave `data` alone and put each changed field on a fresh child
+ * element. Prior elements stay in document order. Concurrent replacements keep separate
+ * ownership, so undo cannot remove another session's value or change its ordering anchor.
+ * Disjoint fields live on different elements, so they both survive.
  *
  * `<attr name="k" value="json"/>` overrides `attributes[k]`; `<field name="k" value="json"/>`
  * overrides a top-level key. An element without `value` removes the key. When concurrent first
- * writes leave two elements for one key, the last in document order wins in every session, and
- * the next write to that key removes the others.
+ * writes leave two elements for one key, the last in document order wins in every session.
+ * The existing field-count limit bounds retained replacements; exceeding it refuses the write.
  */
 export const ATTRIBUTE_FIELD = 'attr';
 export const TOP_FIELD = 'field';
@@ -24,6 +26,7 @@ const VALUE = 'value';
 /** Identity and schema version never change after creation; `attributes` is split per key. */
 const FIXED_KEYS = new Set(['id', 'version', 'attributes']);
 const MAX_FIELDS = 10_000;
+const MAX_FIELD_BYTES = 8 * 1024 * 1024;
 
 type FieldKind = typeof ATTRIBUTE_FIELD | typeof TOP_FIELD;
 type Overrides = Map<string, JsonValue | undefined>;
@@ -48,6 +51,7 @@ export function readFields(record: OoxmlElement): FieldRead {
   const top: Overrides = new Map();
   const attributes: Overrides = new Map();
   let count = 0;
+  let bytes = 0;
   for (const child of record.children) {
     const kind = fieldKind(child, record.namespaceUri);
     if (!kind) continue;
@@ -59,6 +63,10 @@ export function readFields(record: OoxmlElement): FieldRead {
     const raw = plainAttribute(element, VALUE);
     let value: JsonValue | undefined;
     if (raw !== undefined) {
+      if (raw.length > DEFAULT_PAYLOAD_LIMITS.maxBytes)
+        return { ok: false, reason: 'field-byte-limit' };
+      bytes += new TextEncoder().encode(raw).byteLength;
+      if (bytes > MAX_FIELD_BYTES) return { ok: false, reason: 'field-byte-limit' };
       try {
         value = JSON.parse(raw) as JsonValue;
       } catch {
@@ -72,7 +80,13 @@ export function readFields(record: OoxmlElement): FieldRead {
     const merged: Record<string, unknown> = { ...(base as Record<string, unknown>) };
     for (const [name, value] of top) {
       if (value === undefined) delete merged[name];
-      else merged[name] = value;
+      else
+        Object.defineProperty(merged, name, {
+          value,
+          enumerable: true,
+          configurable: true,
+          writable: true,
+        });
     }
     if (attributes.size) {
       const current = merged.attributes;
@@ -80,7 +94,13 @@ export function readFields(record: OoxmlElement): FieldRead {
       const next: Record<string, unknown> = { ...(current as Record<string, unknown>) };
       for (const [name, value] of attributes) {
         if (value === undefined) delete next[name];
-        else next[name] = value;
+        else
+          Object.defineProperty(next, name, {
+            value,
+            enumerable: true,
+            configurable: true,
+            writable: true,
+          });
       }
       merged.attributes = next;
     }
@@ -125,74 +145,73 @@ export function fieldChanges(before: JsonObject, after: JsonObject): FieldChange
   ];
 }
 
-function fieldElement(
-  id: string,
-  namespaceUri: string,
-  change: FieldChange,
-  template?: OoxmlElement
-): OoxmlElement {
+function fieldElement(id: string, namespaceUri: string, change: FieldChange): OoxmlElement {
   const attribute = (localName: string, value: string) => ({
     kind: 'genericExtension' as const,
     namespaceUri: '',
     localName,
     value,
   });
-  const kept = (template?.attributes ?? []).filter(
-    (item) => !(item.namespaceUri === '' && (item.localName === NAME || item.localName === VALUE))
-  );
   return {
-    ...(template ?? {
-      id,
-      kind: 'generic',
-      namespaceUri,
-      localName: change.kind,
-      namespaceBindings: [],
-      children: [],
-    }),
+    id,
+    kind: 'generic',
+    namespaceUri,
+    localName: change.kind,
+    namespaceBindings: [],
+    children: [],
     attributes: [
-      ...kept,
       attribute(NAME, change.name),
       ...(change.value === undefined ? [] : [attribute(VALUE, JSON.stringify(change.value))]),
     ],
   } as OoxmlElement;
 }
 
+/** Compact validated records only before a room starts. Never remove opaque XML metadata. */
+export function compactPreparedFields(record: OoxmlElement): OoxmlElement {
+  const latest = new Map<string, OoxmlNode>();
+  for (const child of record.children) {
+    const kind = fieldKind(child, record.namespaceUri);
+    if (kind) latest.set(`${kind}:${plainAttribute(child as OoxmlElement, NAME)}`, child);
+  }
+  const children = record.children.filter((child) => {
+    const kind = fieldKind(child, record.namespaceUri);
+    if (!kind || child.kind === 'textValue') return true;
+    if (latest.get(`${kind}:${plainAttribute(child, NAME)}`) === child) return true;
+    return (
+      child.children.length > 0 ||
+      child.namespaceBindings.length > 0 ||
+      child.attributes.some(
+        (attribute) =>
+          attribute.namespaceUri !== '' ||
+          (attribute.localName !== NAME && attribute.localName !== VALUE)
+      )
+    );
+  });
+  return children.length === record.children.length
+    ? record
+    : ({ ...record, children } as OoxmlElement);
+}
+
 /**
- * The record's children after these changes. An existing element keeps its identity, so the
- * shared write is one attribute; a key with no element gets a new one at the front.
+ * The record's children after these changes. A changed field gets a fresh element identity.
+ * Unknown attributes and children remain intact. Other fields keep their existing identities.
  */
 export function withFieldChanges(
   record: OoxmlElement,
   updates: readonly FieldChange[],
   usedIds: ReadonlySet<string>
 ): OoxmlNode[] {
-  let children = [...record.children];
-  let serial = 0;
+  const children = [...record.children];
   const freshId = () => {
     let id: string;
-    do id = `${record.id}-field-${String((serial += 1))}`;
+    // Removed IDs still exist in shared history and must never identify another replacement.
+    do id = `field_${crypto.randomUUID().replaceAll('-', '')}`;
     while (usedIds.has(id) || children.some((child) => child.id === id));
     return id;
   };
   for (const change of updates) {
-    const matches = children.filter(
-      (child) =>
-        fieldKind(child, record.namespaceUri) === change.kind &&
-        plainAttribute(child as OoxmlElement, NAME) === change.name
-    ) as OoxmlElement[];
-    const winner = matches.at(-1);
-    if (!winner) {
-      children = [fieldElement(freshId(), record.namespaceUri, change), ...children];
-      continue;
-    }
-    const losers = new Set(matches.slice(0, -1));
-    children = children.flatMap((child) =>
-      losers.has(child as OoxmlElement)
-        ? []
-        : child === winner
-          ? [fieldElement(winner.id, record.namespaceUri, change, winner)]
-          : [child]
-    );
+    const replacement = fieldElement(freshId(), record.namespaceUri, change);
+    children.push(replacement);
   }
   return children;
 }

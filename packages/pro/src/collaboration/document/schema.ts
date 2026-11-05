@@ -36,7 +36,7 @@ export const NODE_SHELL_FIELD = 's';
 /** Immutable descriptor fallback for a container retained through creation undo. */
 export const NODE_INITIAL_SHELL_FIELD = 'b';
 export const NODE_TEXT_FIELD = 't';
-/** A generated atomic fallback replaces one complete value; character undo must not merge it. */
+/** Ordered immutable atomic fallback values. Undo withdraws only its own replacement entries. */
 export const NODE_ATOMIC_TEXT_FIELD = 'atomicText';
 export const NODE_CHILDREN_FIELD = 'children';
 export const NODE_DELETED_FIELD = 'deleted';

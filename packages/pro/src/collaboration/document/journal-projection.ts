@@ -33,7 +33,10 @@ export class JournalProjection {
   private readonly births: BirthProjection;
   private readonly hiddenChildren = new Set<LogicalId>();
   private readonly retainedChildCounts = new Map<LogicalId, number>();
-  constructor(private readonly registry: DocumentRegistry) {
+  constructor(
+    private readonly registry: DocumentRegistry,
+    private readonly atomicRecords: ReadonlySet<LogicalId> = new Set()
+  ) {
     this.births = new BirthProjection(registry);
   }
   hasHiddenChildren(id: LogicalId): boolean {
@@ -79,6 +82,9 @@ export class JournalProjection {
       isText: descriptor.kind === 'textValue',
       textLength: 0,
       children: [],
+      ...(descriptor.kind === 'textValue' && this.atomicRecords.has(descriptor.logicalId)
+        ? { atomicEntries: 1, atomicOwnedEntries: 1 }
+        : {}),
     });
   }
 
@@ -86,6 +92,10 @@ export class JournalProjection {
     const node = this.node(id);
     if (!node) return;
     node.textLength = Math.max(0, node.textLength - deleteCount) + insertLength;
+    if (node.atomicEntries !== undefined) {
+      node.atomicEntries += 1 - (node.atomicOwnedEntries ?? 0);
+      node.atomicOwnedEntries = 1;
+    }
   }
 
   spliceChildren(

@@ -136,6 +136,11 @@ export function validateEffect(
       }
       const node = projection.node(effect.logicalId);
       if (node && node.isText) {
+        if (
+          node.atomicEntries !== undefined &&
+          node.atomicEntries - (node.atomicOwnedEntries ?? 0) >= registry.limits.maxChildren
+        )
+          return { ok: false, code: 'too-many-children' };
         if (effect.utf16Start + effect.deleteCount > node.textLength) {
           return { ok: false, code: 'invalid-bound', detail: effect.logicalId };
         }
@@ -549,7 +554,7 @@ function planJournal(
   registry: DocumentRegistry,
   effects: readonly SharedEffect[]
 ): ApplyJournalResult | JournalPlan {
-  const projection = new JournalProjection(registry);
+  const projection = new JournalProjection(registry, atomicRecordOwnership(registry, effects));
   const removed: LogicalId[] = [];
   const reinserted = new Set<LogicalId>();
   const unlistedAtEnd = new Set<LogicalId>();

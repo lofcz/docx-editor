@@ -9,6 +9,7 @@ import { keyId } from './registry-node-reads.ts';
 import { rejectDangerousKey } from './limits.ts';
 import {
   NODE_DELETED_FIELD,
+  NODE_ATOMIC_TEXT_FIELD,
   NODE_REPLACED_BY_FIELD,
   parseAttributeMapKey,
   parseBindingMapKey,
@@ -31,7 +32,8 @@ export function observeDirtyPaths(
         continue;
       }
       logicalIds.add(keyId(path[0]!));
-      if (event.target instanceof Y.Array) membershipChanged = true;
+      if (event.target instanceof Y.Array && path[1] !== NODE_ATOMIC_TEXT_FIELD)
+        membershipChanged = true;
       if (
         event.target instanceof Y.Map &&
         (event.changes.keys.has(NODE_DELETED_FIELD) ||
