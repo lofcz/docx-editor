@@ -537,8 +537,7 @@ export function routeInlineEffects(
 
   // Inline shells have no registry records. A move to block structure must materialize
   // their baseline first, before the ordinary record effects can address that identity.
-  const promoted = new Set<LogicalId>();
-  const promotion: SharedEffect[] = [];
+  const promotionCandidates = new Map<LogicalId, OoxmlNode>();
   for (const effect of effects) {
     const parent =
       effect.kind === 'moveNode'
@@ -556,18 +555,12 @@ export function routeInlineEffects(
     for (const id of children) {
       if (
         registry.hasNode(id) ||
-        promoted.has(id) ||
+        promotionCandidates.has(id) ||
         !scratch.open(id) ||
         scratch.nodes.get(id)?.kind !== 'contentControl'
       )
         continue;
-      const created = promoteInlineTree(
-        scratch.recordTree(id),
-        (child) => registry.hasNode(child) || promoted.has(child)
-      );
-      for (const effect of created)
-        if (effect.kind === 'putNode') promoted.add(effect.descriptor.logicalId);
-      promotion.push(...created);
+      promotionCandidates.set(id, scratch.recordTree(id));
     }
   }
   const applied: boolean[] = [];
@@ -596,7 +589,20 @@ export function routeInlineEffects(
       };
   }
 
-  const passThrough: SharedEffect[] = [...promotion];
+  // A new inline wrapper has no scratch node before replay. Only the final owner decides
+  // whether the control leaves paragraph text and needs a durable record.
+  const promoted = new Set<LogicalId>();
+  const passThrough: SharedEffect[] = [];
+  for (const [id, baseline] of promotionCandidates) {
+    if (belongsToInlinePlan(scratch, id)) continue;
+    const created = promoteInlineTree(
+      baseline,
+      (child) => registry.hasNode(child) || promoted.has(child)
+    );
+    for (const effect of created)
+      if (effect.kind === 'putNode') promoted.add(effect.descriptor.logicalId);
+    passThrough.push(...created);
+  }
   effects.forEach((effect, index) => {
     const block = blockEffects.get(index);
     if (block) passThrough.push(block);
@@ -887,20 +893,23 @@ function replay(scratch: Scratch, effect: SharedEffect, registry: DocumentRegist
   }
 }
 
-/** Whether a replayed effect is wholly written by the paragraph text plan. */
-function consumed(scratch: Scratch, effect: SharedEffect): boolean {
+/** Whether the final scratch owner stores this node in paragraph text. */
+function belongsToInlinePlan(scratch: Scratch, id: LogicalId): boolean {
   // Inline content, or a scratch node the journal minted or took out of its paragraph and
   // left nowhere: an intermediate run of a multi-step split exists in no final state.
-  const inline = (id: LogicalId): boolean => {
-    const region = scratch.region(id);
-    if (region) return region.inline;
-    const node = scratch.nodes.get(id);
-    if (!node || node.opaque || node.paragraph) return false;
-    // Detached: inline content only if what it hangs from is an inline shell. A new part,
-    // comment or table is block content the record pipeline writes.
-    const root = scratch.detachedRoot(id);
-    return !root.outside && (root.kind === 'textValue' || isInlineShell(root));
-  };
+  const region = scratch.region(id);
+  if (region) return region.inline;
+  const node = scratch.nodes.get(id);
+  if (!node || node.opaque || node.paragraph) return false;
+  // Detached: inline content only if what it hangs from is an inline shell. A new part,
+  // comment or table is block content the record pipeline writes.
+  const root = scratch.detachedRoot(id);
+  return !root.outside && (root.kind === 'textValue' || isInlineShell(root));
+}
+
+/** Whether a replayed effect is wholly written by the paragraph text plan. */
+function consumed(scratch: Scratch, effect: SharedEffect): boolean {
+  const inline = (id: LogicalId) => belongsToInlinePlan(scratch, id);
   switch (effect.kind) {
     case 'putNode': {
       const id = effect.descriptor.logicalId;

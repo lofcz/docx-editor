@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "New inline wrappers could promote retained controls into standalone records before their final owner was known.",
+  "after": "Retained controls stay in paragraph text when their final owner is another inline wrapper. Block promotion keeps its original baseline.",
+  "reason": "The writer uses the existing final paragraph ownership model after replay. Shared fields and snapshot interpretation do not change. Existing image and equation histories keep their canonical identities.",
+  "tests": [
+    "packages/sciobot/src/diff/repeated-inline-atoms-collaboration.test.ts",
+    "packages/sciobot/src/blocks/math-edit-collaboration.test.ts"
+  ],
+  "changeset": "final-inline-promotion-owner",
+  "migration": null
+}
