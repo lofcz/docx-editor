@@ -56,9 +56,12 @@ export function captureRevisionCopyHistory(
       if (!owned.has(copy.role.key)) continue;
       const value = copy.attributes[copy.role.key];
       if (typeof value !== 'string') continue;
-      const entry = fields.get(copy.role.key) ?? { key: copy.role.key, value, items: [] };
+      // One revision key can carry different observed-character bounds across styled runs.
+      // Restoring the first value everywhere would remove its strike from later source text.
+      const cohort = JSON.stringify([copy.role.key, value]);
+      const entry = fields.get(cohort) ?? { key: copy.role.key, value, items: [] };
       entry.items.push(ids.items[position]!);
-      fields.set(copy.role.key, entry);
+      fields.set(cohort, entry);
     }
     if (fields.size) result.push({ paragraph, fields: [...fields.values()] });
   }

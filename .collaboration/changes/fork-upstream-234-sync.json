@@ -1,8 +1,6 @@
 {
   "impact": "migration-required",
-  "fields": [
-    "repairVersion"
-  ],
+  "fields": ["repairVersion"],
   "before": "Fork rooms use repair version 16 without the upstream split-order and restored-typing rules.",
   "after": "Fork rooms use repair version 17 with upstream repair rules and retained application review ownership.",
   "reason": "The combined readers can place the same shared characters and split paragraphs differently. Older clients must refuse the updated rooms.",
@@ -23,7 +21,9 @@
     "packages/pro/src/collaboration/__tests__/document-concurrent-strike-decision.test.ts",
     "packages/sciobot/src/review/group-export.test.ts",
     "packages/sciobot/src/review/accept-native-group-collaboration.test.ts",
-    "packages/sciobot/src/review/reject-group-stories-collaboration.test.ts"
+    "packages/sciobot/src/review/reject-group-stories-collaboration.test.ts",
+    "packages/sciobot/src/review/native-link-structure-collaboration.test.ts",
+    "packages/sciobot/src/review/track-hyperlink-structure-collaboration.test.ts"
   ],
   "changeset": "fork-upstream-234-sync",
   "migration": "upgrade-fork-rooms-to-format-19171"

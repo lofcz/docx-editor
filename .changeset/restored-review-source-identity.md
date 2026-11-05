@@ -2,4 +2,4 @@
 '@docx-editor.dev/pro': patch
 ---
 
-Preserve tracked text and checklist deletion markers when undo restores a review decision.
+Preserve tracked text, checklist, and hyperlink deletion markers through undo and redo.
