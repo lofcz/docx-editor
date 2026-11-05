@@ -18,6 +18,7 @@ import { findTableOnPage, offeredHit, partOfTableIn } from './surface-table-stor
 import type { CellSelection } from '../layout/semantic-cell-selection.ts';
 import type { SurfaceEditingMode } from './paginated-surface-contract.ts';
 import { hostTimers, isDomNode, isHTMLElementTag } from './host-realm.ts';
+import { isInHostUi } from './dom-selection.ts';
 import type { SurfaceHostListeners } from './surface-host-listeners.ts';
 import {
   planTableCommand,
@@ -808,6 +809,14 @@ export function createSurfaceTableInteraction(
       return;
     }
     if (input.editingMode === 'view') {
+      clearAllFurniture(false);
+      return;
+    }
+    // Application controls own their pointer gestures, including controls over native tables.
+    if (isInHostUi(event.target as Node | null)) {
+      hoverHit = null;
+      lastPointerSheet = null;
+      clearTimers();
       clearAllFurniture(false);
       return;
     }
