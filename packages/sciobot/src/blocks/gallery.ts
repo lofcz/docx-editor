@@ -5,6 +5,8 @@ import {
   createNodeIdAllocator,
   findNode,
   insertChildren,
+  lockForbidsEdit,
+  ATOMIC_CONTENT_NAMESPACE,
   replaceNode,
   withPart,
   type OoxmlNode,
@@ -20,6 +22,7 @@ import { moveBlock } from './move';
 import { blockIdFromTag, readPayloadStore, withPayloadRecord } from './payload-opc-codec';
 import { isBlockId, type BlockPayload } from './payload-schema';
 import { removeBlock } from './remove';
+import { ancestorContentWriteRefusal } from './ancestor-content-write';
 
 export interface GalleryImageState {
   readonly id: string;
@@ -153,6 +156,27 @@ export function updateGallery(
   if (store.status !== 'ready')
     return fail('invalid-document', 'The gallery payload store is unavailable.');
   let transform: (working: OoxmlPackage) => OoxmlPackage;
+  const part = surface.session.part();
+  const target = findNode(part, item?.controlId ?? gallery.controlId)!;
+  // The validated image owner permits its atomic fallback write, never an authored Word lock.
+  const declared = contentControlPropertiesOf(
+    item && target.kind === 'contentControl'
+      ? {
+          ...target,
+          attributes: target.attributes.filter(
+            (attribute) =>
+              attribute.namespaceUri !== ATOMIC_CONTENT_NAMESPACE ||
+              attribute.localName !== 'atomicContent'
+          ),
+        }
+      : target
+  );
+  const protectedAncestor = ancestorContentWriteRefusal(part, target.id);
+  if (lockForbidsEdit(declared.lock) || declared.dataBinding || protectedAncestor)
+    return fail(
+      'unsupported-operation',
+      protectedAncestor ?? 'The gallery content is protected by a native control.'
+    );
   if (change.type === 'caption') {
     if (typeof change.caption !== 'string' || change.caption.length > 2048)
       return fail('invalid-input', 'The image caption is too long.');

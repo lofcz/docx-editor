@@ -17,7 +17,8 @@ import { withFreshIds } from './fresh-ids';
 import { blockTag } from './payload-opc-codec';
 
 export function galleryImageText(image: JsonObject): string {
-  return (image.caption as string | undefined) || (image.url as string);
+  const source = (image.caption as string | undefined) || (image.url as string);
+  return source.replace(/\r\n|\r|\n/g, ' ');
 }
 
 /** One stable native owner per image, including duplicate addresses. */
