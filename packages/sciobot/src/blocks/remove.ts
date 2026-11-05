@@ -30,6 +30,7 @@ import { groupReviewFieldBudget } from '../review/group-field-budget';
 import { groupRemovalBudget } from '../review/group-removal-budget';
 import { ancestorContentWriteRefusal } from './ancestor-content-write';
 import { resolveBlockSelectionRange } from './selection-range';
+import { nativeGalleryRemovalSources } from './gallery-native-removal';
 
 export interface BlockRemoval {
   readonly controlId: string;
@@ -160,12 +161,40 @@ function removeTargets(
   const inlineIds = new Set<string>();
   const ownsInline = new Map<string, boolean>();
   const imageResources: { media: string; relationships: readonly string[] }[] = [];
+  const nativeUnlocks = new Map<string, readonly string[]>();
   for (const { block, control } of targets) {
+    if (
+      request.mode === 'unwrap' &&
+      block.payload.version === 3 &&
+      ['image_gallery', 'image_gallery_item'].includes(block.payload.type)
+    )
+      return fail(
+        'unsupported-operation',
+        'Use the native gallery ungroup command to retain every image owner.'
+      );
     encodeBlockPayload(block.payload);
     const image = decodeInlineImagePayload(encodeBlockPayload(block.payload));
     const ancestor = ancestorContentWriteRefusal(part, control.id);
     if (ancestor) return fail('unsupported-operation', ancestor);
     const paragraph = parentNodeOf(part, control.id);
+    let nativeGallery = false;
+    if (request.mode === 'delete') {
+      try {
+        const sources = nativeGalleryRemovalSources(pkg, part, block);
+        if (sources) {
+          const history = reviewGroupHistoryRefusal(surface.collaborationSession());
+          if (history) return fail('unsupported-operation', history);
+          nativeGallery = true;
+          nativeUnlocks.set(control.id, sources.unlock);
+          imageResources.push(...sources.resources);
+        }
+      } catch (cause) {
+        return fail(
+          'unsupported-operation',
+          cause instanceof Error ? cause.message : String(cause)
+        );
+      }
+    }
     if (image && request.mode === 'delete') {
       if (paragraph?.kind !== 'paragraph')
         return fail('unsupported-operation', 'The image has an unsupported native owner.');
@@ -204,7 +233,7 @@ function removeTargets(
       }
     for (const id of owned) {
       ids.add(id);
-      if (ownedInline) inlineIds.add(id);
+      if (ownedInline || nativeGallery) inlineIds.add(id);
     }
   }
   // Never delete a payload used by a second control, including one in another story.
@@ -293,6 +322,13 @@ function removeTargets(
     }
   }
   for (const { control } of targets) {
+    for (const controlId of nativeUnlocks.get(control.id) ?? []) {
+      const unlock: TreeDocOp = { op: 'setContentControlProperties', controlId, lock: 'unlocked' };
+      const result = applyTreeOp(preview, unlock);
+      if (!result.ok) return fail('apply-failed', `Native image unlock refused: ${result.reason}`);
+      preview = result.part;
+      ops.push(unlock);
+    }
     // Delete only registered native atom controls; explicit user locks on other blocks still
     // refuse.
     if (

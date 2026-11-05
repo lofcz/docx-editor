@@ -53,6 +53,8 @@ export async function ungroupGallery(
   const surface = editor.surface;
   if (!surface) return fail('document-not-ready', 'The document is not attached.');
   surface.flushPendingInput();
+  if (surface.activeScope().kind !== 'body')
+    return fail('unsupported-operation', 'Gallery changes require the body story.');
   if (surface.editingMode() !== 'edit')
     return fail('unsupported-operation', 'Gallery changes require edit mode.');
   const session = surface.session;

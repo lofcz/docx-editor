@@ -74,12 +74,16 @@ export function nativeGalleryPicture(pkg: OoxmlPackage, part: OoxmlPart, paragra
   return { paragraph, fields, resource };
 }
 
-export function isNativeGalleryCaption(part: OoxmlPart, node: OoxmlNode): boolean {
-  if (node.kind !== 'paragraph' || !isPlainGalleryFallback(node)) return false;
+export function hasNativeGalleryCaptionStyle(part: OoxmlPart, node: OoxmlNode): boolean {
+  if (node.kind !== 'paragraph') return false;
   const style = directParagraphProperties(part, node.id).find(
     (property) => property.localName === 'pStyle'
   );
   return (style?.attributes?.val ?? style?.attributes?.['w:val']) === 'Caption';
+}
+
+export function isNativeGalleryCaption(part: OoxmlPart, node: OoxmlNode): boolean {
+  return hasNativeGalleryCaptionStyle(part, node) && isPlainGalleryFallback(node);
 }
 
 /** Read one native image owner. Child order identifies its picture and optional caption. */

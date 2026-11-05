@@ -72,7 +72,7 @@ export function nativeImageResource(pkg: OoxmlPackage, partName: string, control
     partName,
     references[0]!
   );
-  return resource.mode === 'internal' ? resource : null;
+  return resource.mode === 'internal' ? { ...resource, relationshipId: references[0]! } : null;
 }
 
 /** Native fields have one owner. Private records retain resource provenance and opaque metadata. */

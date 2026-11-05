@@ -2,6 +2,7 @@ import type { DocxEditorInstance } from '@docx-editor.dev/core/editor';
 import {
   bodyStoryRoot,
   contentControlPropertiesOf,
+  contentControlContentNodeOf,
   contentControlsIn,
   createNodeIdAllocator,
   escapeXml,
@@ -11,6 +12,7 @@ import {
   replaceNode,
   withPart,
   WML_NAMESPACE_URI,
+  usedParaIds,
   type OoxmlElement,
   type OoxmlNode,
   type OoxmlPackage,
@@ -24,10 +26,15 @@ import { ancestorContentWriteRefusal } from './ancestor-content-write';
 import { blockTag, readPayloadStore, withPayloadRecord } from './payload-opc-codec';
 import { buildBlockIndex } from './block-index';
 import { withFreshIds } from './fresh-ids';
-import { isNativeGalleryCaption, nativeGalleryPicture } from './gallery-native-record';
+import {
+  hasNativeGalleryCaptionStyle,
+  isNativeGalleryCaption,
+  nativeGalleryPicture,
+} from './gallery-native-record';
 import { NATIVE_GALLERY_RESOURCE } from './gallery-native-shape';
 import { readGallery } from './gallery';
 import { readManagedImage } from './inline-image-update';
+import { emptyNativeGalleryCaption } from './gallery-native-caption';
 
 const fail = (code: NativeEditFailure['code'], error: string): NativeEditFailure => ({
   success: false,
@@ -82,6 +89,12 @@ export function readAdjacentGalleryImages(
       const managed = readManagedImage(pkg, part.name, native.fields.drawing.id);
       if (controls.length !== 1 || !managed || managed.control.id !== controls[0]!.node.id)
         return null;
+      const properties = contentControlPropertiesOf(managed.control);
+      if (
+        properties.dataBinding ||
+        (properties.lock && !['unlocked', 'sdtContentLocked'].includes(properties.lock))
+      )
+        return null;
     }
     return native;
   };
@@ -97,6 +110,17 @@ export function readAdjacentGalleryImages(
     }
     const following = parent.children[at + 1];
     const caption = following && isNativeGalleryCaption(part, following) ? following : null;
+    const nestedCaption = following && contentControlContentNodeOf(following);
+    if (
+      following &&
+      !caption &&
+      (hasNativeGalleryCaptionStyle(part, following) ||
+        nestedCaption?.children.some((child) => hasNativeGalleryCaptionStyle(part, child)))
+    ) {
+      if (run.length) runs.push(run);
+      run = [];
+      continue;
+    }
     run.push({
       drawingNodeId: image.fields.drawing.id,
       paragraphId: node.id,
@@ -144,6 +168,8 @@ export function groupAdjacentImages(
   const surface = editor.surface;
   if (!surface) return fail('document-not-ready', 'The document is not attached.');
   surface.flushPendingInput();
+  if (surface.activeScope().kind !== 'body')
+    return fail('unsupported-operation', 'Gallery grouping requires the body story.');
   if (surface.editingMode() !== 'edit')
     return fail('unsupported-operation', 'Gallery changes require edit mode.');
   const revision = surface.session.packageRevision();
@@ -163,10 +189,13 @@ export function groupAdjacentImages(
     const source = working.parts.get(part.name)!;
     let next = working;
     const allocate = createNodeIdAllocator(source, 'new');
+    const used = new Set(usedParaIds(source.root));
     const owners = images.map((image, at) => {
       const children = [
         findNode(source, image.paragraphId)!,
-        ...(image.captionId ? [findNode(source, image.captionId)!] : []),
+        image.captionId
+          ? findNode(source, image.captionId)!
+          : emptyNativeGalleryCaption(source, imageIds[at]!, allocate, used),
       ];
       const stored = withPayloadRecord(
         next,

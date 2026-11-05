@@ -9,6 +9,28 @@ import { galleryDocument } from './gallery';
 import { ungroupGallery } from '../../src/blocks/gallery-ungroup';
 import { buildBlockIndex } from '../../src/blocks/block-index';
 import { readGallery, updateGallery } from '../../src/blocks/gallery';
+import {
+  bodyStoryRoot,
+  replaceChildren,
+  withPart,
+  writeOoxmlPackage,
+} from '@docx-editor.dev/core/store';
+import { isNativeGalleryCaption } from '../../src/blocks/gallery-native-record';
+import { openGallery } from './gallery';
+
+export function withoutNativeGalleryCaptions(bytes: Uint8Array): Uint8Array {
+  const pkg = openGallery(bytes),
+    part = pkg.parts.get(pkg.mainDocumentPart)!;
+  const body = bodyStoryRoot(part)!;
+  if (body.kind === 'textValue') throw Error('Missing body');
+  const replaced = replaceChildren(
+    part,
+    body.id,
+    body.children.filter((node) => !isNativeGalleryCaption(part, node))
+  );
+  if (!replaced.ok) throw Error('Cannot remove fixture captions');
+  return writeOoxmlPackage(withPart(pkg, replaced.part));
+}
 
 export const galleryPng = Uint8Array.from(
   atob(

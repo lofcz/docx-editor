@@ -23,6 +23,7 @@ import { blockIdFromTag, readPayloadStore, withPayloadRecord } from './payload-o
 import { isBlockId, type BlockPayload } from './payload-schema';
 import { removeBlock } from './remove';
 import { ancestorContentWriteRefusal } from './ancestor-content-write';
+import { updateNativeGalleryCaption } from './gallery-native-caption';
 
 export interface GalleryImageState {
   readonly id: string;
@@ -115,6 +116,8 @@ export function updateGallery(
   const surface = editor.surface;
   if (!surface) return fail('document-not-ready', 'The document is not attached.');
   surface.flushPendingInput();
+  if (surface.activeScope().kind !== 'body')
+    return fail('unsupported-operation', 'Gallery changes require the body story.');
   if (surface.editingMode() !== 'edit')
     return fail('unsupported-operation', 'Gallery changes require edit mode.');
   if (
@@ -129,7 +132,7 @@ export function updateGallery(
   if (gallery.partName !== surface.session.part().name)
     return fail('unsupported-operation', 'The gallery is outside the active story.');
   const change = request.change;
-  if (gallery.payload.version === 3 && (change.type === 'caption' || change.type === 'append'))
+  if (gallery.payload.version === 3 && change.type === 'append')
     return fail(
       'unsupported-operation',
       'Native gallery images require a native image or caption transaction.'
@@ -191,6 +194,13 @@ export function updateGallery(
       return fail('invalid-input', 'The image caption is too long.');
     if ((item!.attributes.caption ?? '') !== change.expectedCaption)
       return fail('stale-revision', 'The image caption changed while this draft was open.');
+    if (gallery.payload.version === 3) {
+      try {
+        return updateNativeGalleryCaption(editor, item!, change.caption);
+      } catch (cause) {
+        return fail('apply-failed', cause instanceof Error ? cause.message : String(cause));
+      }
+    }
     const previous = store.entries.get(item!.id)!;
     if (previous.decoded.status !== 'supported')
       return fail('invalid-document', 'The image record is unavailable.');
