@@ -1,0 +1,10 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The common native preparation path omitted missing built-in paragraph styles, leaving heading controls unavailable on imported documents without styles.",
+  "after": "Preparation adds missing named paragraph styles before room creation. Imported definitions and document defaults remain unchanged. Conflicting definitions remain readable and are not replaced.",
+  "reason": "Only the pre-bootstrap package changes. Shared schema fields, primitive operations, identity, and history remain unchanged. Live rooms are never prepared again.",
+  "tests": ["packages/sciobot/src/native/prepare-block-styles.test.ts", "packages/sciobot/src/chrome/block-type-collaboration.test.ts"],
+  "changeset": "prepared-paragraph-controls",
+  "migration": null
+}

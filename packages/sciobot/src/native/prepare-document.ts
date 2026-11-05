@@ -4,6 +4,7 @@ import { withPreparedPayloadFields } from '../blocks/payload-preparation';
 import { withGalleryImageRecords } from '../blocks/gallery-record-upgrade';
 import { withNativeNumberingInfrastructure } from './numbering-infrastructure';
 import { withPreparedTaskCompletion } from './prepare-task-completion';
+import { withBlockTypeStyles } from './block-control-styles';
 import { readOoxmlPackage } from '@docx-editor.dev/core/store';
 import type { NativeEditFailure } from '../contracts/document';
 import { withInitializedReviewGroupStore } from '../review/group-record-store';
@@ -34,6 +35,7 @@ export type PreparedNativeDocument =
  * definitions for imported character styles are also initial content, so no actor owns their lifetime.
  *
  * Supported equation controls gain durable fallback ownership before room creation.
+ * Missing named paragraph styles become available without changing imported definitions or defaults.
  * Application tasks restore owned export styles and prepare accessible markers before room creation.
  * Only changed parts are serialized. Unrelated parts keep their original bytes.
  * This does not invoke the Word export cleanup or reconstruct content from Markdown.
@@ -81,7 +83,14 @@ export function prepareNativeDocument(document: Uint8Array): PreparedNativeDocum
       error: error instanceof Error ? error.message : 'Cannot initialize task completion styles.',
     };
   }
-  const prepared = withNativeNumberingInfrastructure(completed),
+  const blocks = withBlockTypeStyles(completed, { preserveConflicts: true });
+  if (!blocks)
+    return {
+      success: false,
+      code: 'invalid-document',
+      error: 'Cannot initialize paragraph styles.',
+    };
+  const prepared = withNativeNumberingInfrastructure(blocks),
     codeStyleReady = state !== 'conflict';
   if (!prepared)
     return {

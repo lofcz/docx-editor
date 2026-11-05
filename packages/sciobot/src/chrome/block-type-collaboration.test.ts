@@ -10,6 +10,7 @@ import {
 import { createTwoEditorFixture } from '../../test/support/collaboration';
 import { docxFixture } from '../../test/support/document';
 import { withBlockTypeStyles } from './block-styles';
+import { prepareNativeDocument } from '../native/prepare-document';
 import { setBlockType } from './block-type';
 import { insertBlock } from './insert-block';
 import { installBlockInputRules } from './block-input';
@@ -20,15 +21,14 @@ for (const clients of [
 ] as const)
   for (const type of ['p', 'h1', 'h2', 'h3', 'blockquote', 'hr'] as const)
     test(`${type} preserves concurrent text, peer history, geometry, deletion, reconnect, and saved convergence ${clients}`, async () => {
-      const loaded = readOoxmlPackage(
+      const prepared = prepareNativeDocument(
         docxFixture(
           '<w:p><w:r><w:t>Alpha beta</w:t></w:r></w:p><w:p><w:r><w:t>Tail</w:t></w:r></w:p>'
         )
       );
-      if (!loaded.ok) throw new Error(loaded.reason);
-      const prepared = withBlockTypeStyles(loaded.package)!;
+      if (!prepared.success) throw new Error(prepared.error);
       const pair = await createTwoEditorFixture({
-        document: writeOoxmlPackage(prepared),
+        document: prepared.document,
         clientIds: clients,
       });
       try {

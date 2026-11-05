@@ -7,14 +7,8 @@ import { planListMembership } from '../diff/lists';
 import { planParagraphFormat } from '../diff/paragraph-format';
 import { createEditPlan, type CanonicalEdit } from '../diff/plan';
 
-export type TextBlockType = 'p' | 'h1' | 'h2' | 'h3' | 'blockquote';
-export const BLOCK_PARAGRAPH_STYLES: Readonly<Record<TextBlockType, string>> = Object.freeze({
-  p: 'Normal',
-  h1: 'Heading1',
-  h2: 'Heading2',
-  h3: 'Heading3',
-  blockquote: 'Quote',
-});
+import { BLOCK_PARAGRAPH_STYLES, type TextBlockType } from '../native/block-control-styles';
+export { BLOCK_PARAGRAPH_STYLES, type TextBlockType } from '../native/block-control-styles';
 export interface BlockCommandContext {
   readonly documentId: string;
   readonly epoch: string;
