@@ -114,6 +114,12 @@ export * from './blocks/move';
 export * from './blocks/move-column-content';
 export { readColumnGeometry, type ColumnGeometry } from './blocks/column-geometry';
 export { createColumnTableRefusal } from './blocks/column-table-owner';
+export {
+  convertColumnGroup,
+  readLegacyColumnGroup,
+  type ColumnGroupConversion,
+  type ColumnGroupConversionResult,
+} from './blocks/convert-columns';
 export * from './diff/column-widths';
 export * from './native/inline-code';
 export * from './native/prepare-document';

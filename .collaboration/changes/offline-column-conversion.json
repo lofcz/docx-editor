@@ -1,0 +1,13 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Legacy stacked columns retain their imported structure.",
+  "after": "Hosts can explicitly convert complete legacy groups before attaching a collaboration session.",
+  "reason": "Conversion only runs offline and preserves existing controls, paragraphs, and payloads. Attached or disconnected collaboration sessions refuse. The converted document uses the existing native table and content-control format.",
+  "tests": [
+    "packages/sciobot/src/blocks/convert-columns.test.ts",
+    "packages/sciobot/src/blocks/columns.test.ts"
+  ],
+  "changeset": "offline-column-conversion",
+  "migration": null
+}
