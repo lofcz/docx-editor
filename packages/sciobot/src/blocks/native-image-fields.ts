@@ -90,14 +90,14 @@ export function projectNativeImageFields(
       .map((entry) => entry.id)
   );
   if (!images.size) return;
-  const owners = new Map<string, OoxmlNode | null>();
+  const owners = new Map<string, { node: OoxmlNode; partName: string } | null>();
   for (const part of pkg.parts.values()) {
     if (!isStoryPart(part)) continue;
     for (const { node } of contentControlsIn(part.root)) {
       const tag = contentControlPropertiesOf(node).tag;
       if (!tag?.startsWith(storage.tagPrefix)) continue;
       const id = tag.slice(storage.tagPrefix.length);
-      if (images.has(id)) owners.set(id, owners.has(id) ? null : node);
+      if (images.has(id)) owners.set(id, owners.has(id) ? null : { node, partName: part.name });
     }
   }
   for (const id of images) {
@@ -105,9 +105,11 @@ export function projectNativeImageFields(
     if (record.decoded.status !== 'supported') continue;
     const payload = decodeInlineImagePayload(encodeBlockPayload(record.decoded.value));
     const owner = owners.get(id);
-    const native = owner && nativeImageFields(owner);
+    const native = owner && nativeImageFields(owner.node);
+    const resource = owner && nativeImageResource(pkg, owner.partName, owner.node);
     // Unbound, ambiguous and opaque records retain their authored metadata.
-    if (!payload || !native) continue;
+    if (!payload || !native || !resource || resource.partName !== payload.attributes.mediaPartName)
+      continue;
     entries.set(id, {
       ...record,
       decoded: {

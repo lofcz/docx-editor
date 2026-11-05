@@ -19,7 +19,8 @@ import { buildBlockIndex } from './block-index';
 import { ungroupGallery } from './gallery-ungroup';
 import { readManagedImage, updateInlineImage, type InlineImageUpdate } from './inline-image-update';
 import { removeBlock } from './remove';
-import { readPayloadRecords, withPayloadRecord } from './payload-opc-codec';
+import { readPayloadRecords, readPayloadStore, withPayloadRecord } from './payload-opc-codec';
+import { nativeImageResource } from './native-image-fields';
 import { readEditorRevision } from '../projection/revision-cache';
 import { readWorkingView } from '../review/working-view';
 import { collectBlockClipboardData, pasteWithBlocks } from '../react-blocks/clipboard';
@@ -420,3 +421,74 @@ test('native image removal uses current fields and unchanged provenance', async 
     editor.destroy();
   }
 });
+
+for (const invalid of ['external-resource', 'different-resource', 'invalid-geometry'])
+  test(`unowned image projections preserve private metadata and refuse edits: ${invalid}`, async () => {
+    const editor = createDocxEditor({
+      container: document.createElement('div'),
+      document: await documentWithImages(),
+      imageDecodePort: decodePort,
+    });
+    let loaded: DocxEditorInstance | undefined;
+    try {
+      expect(update(editor, { type: 'alt', alt: 'Native label' }).success).toBe(true);
+      expect(update(editor, { type: 'size', widthPoints: 120, heightPoints: 60 }).success).toBe(
+        true
+      );
+      const image = imageOf(editor.surface!.session.currentPackage());
+      const resource = nativeImageResource(
+        editor.surface!.session.currentPackage(),
+        image.part.name,
+        image.control
+      )!;
+      const files = unzipSync(new Uint8Array(await editor.save()));
+      if (invalid === 'invalid-geometry') {
+        files['word/document.xml'] = strToU8(
+          strFromU8(files['word/document.xml']!).replace('cx="1524000"', 'cx="invalid"')
+        );
+      } else {
+        const target =
+          invalid === 'external-resource'
+            ? 'Target="https://untrusted.example/image.png" TargetMode="External"'
+            : 'Target="media/different-unowned-image.png"';
+        files['word/_rels/document.xml.rels'] = strToU8(
+          strFromU8(files['word/_rels/document.xml.rels']!).replace(
+            `Target="${resource.raw}"`,
+            target
+          )
+        );
+      }
+      loaded = createDocxEditor({
+        container: document.createElement('div'),
+        document: zipSync(files),
+        imageDecodePort: decodePort,
+      });
+      const session = loaded.surface!.session;
+      const before = session.currentPackage();
+      const record = readPayloadStore(before);
+      if (record.status !== 'ready') throw Error('Missing test metadata.');
+      const payload = record.entries.get(image.block.id)!.decoded;
+      if (payload.status !== 'supported') throw Error('Missing image payload.');
+      expect(payload.value.attributes.alt).toBe('First image');
+      expect(payload.value.attributes.widthPoints).not.toBe(120);
+      const control = buildBlockIndex(before).byId.get(image.block.id)!;
+      const drawing = descendants(findNode(session.part(), control.controlId)!).find(
+        (node) => node.kind !== 'textValue' && node.localName === 'drawing'
+      )!;
+      expect(readManagedImage(before, session.part().name, drawing.id)).toBeNull();
+      expect(
+        updateInlineImage(loaded, {
+          drawingNodeId: drawing.id,
+          expectedRevision: session.packageRevision(),
+          change: { type: 'alt', alt: 'Refused' },
+        })
+      ).toMatchObject({ success: false, code: 'invalid-input' });
+      expect(session.currentPackage()).toBe(before);
+      expect(readPayloadRecords(openGallery(new Uint8Array(await loaded.save())))).toEqual(
+        readPayloadRecords(before)
+      );
+    } finally {
+      loaded?.destroy();
+      editor.destroy();
+    }
+  });
