@@ -250,6 +250,14 @@ test('manual widths and content movement retain native identities and separate u
   try {
     const geometry = geometryOf(editor),
       before = geometry.columns.map((column) => column.width);
+    const table = () =>
+      editor
+        .surface!.layout()
+        .pages[0]!.fragments.find(
+          (block) => block.kind === 'table' && block.tableId === geometry.tableId
+        )!;
+    const total = before.reduce((sum, width) => sum + width, 0) / 20;
+    expect(table().box.width).toBeCloseTo(total);
     const resize = planColumnWidths(
       {
         pkg: editor.surface!.session.currentPackage(),
@@ -260,6 +268,7 @@ test('manual widths and content movement retain native identities and separate u
     );
     if (!resize.success) throw Error(resize.error);
     expect(applyDirectPlan(editor, resize.plan, context).success).toBe(true);
+    expect(table().box.width).toBeCloseTo(total);
     const right = editor
       .surface!.session.paragraphIds()
       .find((id) => paragraphTextOf(editor.surface!.session.part(), id) === 'Right text.')!;

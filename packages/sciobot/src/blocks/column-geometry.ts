@@ -89,7 +89,10 @@ export function columnTableXml(
         `<w:tc><w:tcPr><w:tcW w:w="${width}" w:type="dxa"/></w:tcPr>${render(index, width)}${separator()}</w:tc>`
     )
     .join('');
-  return `<w:tbl><w:tblPr><w:tblW w:w="5000" w:type="pct"/><w:tblBorders>${borders}</w:tblBorders><w:tblLayout w:type="fixed"/><w:tblCaption w:val="${escapeXml(caption())}"/></w:tblPr><w:tblGrid>${grid}</w:tblGrid><w:tr>${cells}</w:tr></w:tbl>`;
+  // Width authoring uses an absolute grid. Keep creation in that same coordinate system;
+  // Word's percentage table width also includes outside cell margins and would jump on resize.
+  const total = widths.reduce((sum, width) => sum + width, 0);
+  return `<w:tbl><w:tblPr><w:tblW w:w="${total}" w:type="dxa"/><w:tblBorders>${borders}</w:tblBorders><w:tblLayout w:type="fixed"/><w:tblCaption w:val="${escapeXml(caption())}"/></w:tblPr><w:tblGrid>${grid}</w:tblGrid><w:tr>${cells}</w:tr></w:tbl>`;
 }
 
 export interface ColumnGeometry {
