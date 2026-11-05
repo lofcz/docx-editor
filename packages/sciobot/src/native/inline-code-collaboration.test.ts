@@ -303,8 +303,8 @@ for (const clientIds of [
           const landed = `\`beta\` gamma Bob\n\n${tail}`;
           for (const editor of pair.editors) {
             expect((await views(editor))[1]).toBe(landed);
-            // Each peer's concurrent definition survives the merge until the next code write.
-            expect(await codeDefinitions(editor)).toBe(styled ? 2 : 1);
+            // Equal style definitions show once. Each peer's history still owns its source.
+            expect(await codeDefinitions(editor)).toBe(1);
           }
 
           // Alice's history removes only her code; Bob's text and code stay.

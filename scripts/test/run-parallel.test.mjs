@@ -232,7 +232,7 @@ test('a file with oversized output keeps its counts and does not end the run', (
     for (const dir of ['scripts/test', 'packages', 'docs', 'examples', 'benchmarks']) {
       mkdirSync(join(root, dir), { recursive: true });
     }
-    for (const file of ['run-parallel.mjs', 'shard.mjs']) {
+    for (const file of ['run-parallel.mjs', 'shard.mjs', 'output-capture.mjs']) {
       copyFileSync(new URL(file, import.meta.url), join(root, 'scripts/test', file));
     }
     writeFileSync(
@@ -258,7 +258,8 @@ test('a file with oversized output keeps its counts and does not end the run', (
     expect(run.status).toBe(1);
     expect(output).toContain('FAIL packages/flood.test.ts');
     expect(output).toContain('1 pass  1 fail');
-    expect(output).toContain('bytes of output not shown');
+    expect(output.includes('bytes of output omitted')).toBe(true);
+    expect(Buffer.byteLength(output)).toBeLessThan(6 * 1024 * 1024);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
