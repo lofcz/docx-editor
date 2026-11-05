@@ -91,6 +91,9 @@ export function assertValidId(id: string, kind?: IdKind): void;
 // @public
 export function assertValidQName(name: string): void;
 
+// @internal
+export const ATOMIC_CONTENT_NAMESPACE = "urn:docx-editor.dev:atomic-content:1";
+
 // @public
 export interface AtomicFieldSpan {
     readonly formatRunIds: readonly string[];
@@ -2531,6 +2534,9 @@ export function installDrawingRenderers(renderers: DrawingRenderers): void;
 
 // @public
 export function instrTextValue(node: OoxmlNode): string;
+
+// @internal
+export function isAtomicContentControl(node: OoxmlNode): boolean;
 
 // @public
 export function isAuthorableRunProperty(localName: string): boolean;
@@ -6487,6 +6493,9 @@ export function walkParagraphInline(children: readonly OoxmlNode[], depth: numbe
 
 // @public
 export function walkStoryBlocks(children: readonly OoxmlNode[], depth: number, visit: (block: OoxmlElement) => void): void;
+
+// @internal
+export function withAtomicContentMarker(control: OoxmlContentControlNode): OoxmlContentControlNode;
 
 // @public
 export function withBinaryPart(pkg: OoxmlPackage, partName: string, bytes: Uint8Array, contentType: string): OoxmlPackage;
