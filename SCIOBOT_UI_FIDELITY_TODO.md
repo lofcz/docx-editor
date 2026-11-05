@@ -48,12 +48,12 @@ Other sessions use the production application checkout. Feature work stays in is
 | UX19 | Activities and recap | Metadata, duration, goals, materials, adaptations, nested content and field controls | Pending |
 | UX20 | Curriculum and sources | Search and selection, source chips, excerpts, actions and contextual detail | Pending |
 | UX21 | Listening and lesson visuals | Established media controls, transcript fields, generation states, editing and sizing | Pending |
-| UX22 | Shared MDX and custom blocks | Actual registered renderers, inline/block geometry, controls, opaque content and fallbacks | Widget reload fix integrated; browser review and remaining comparison open |
+| UX22 | Shared MDX and custom blocks | Actual registered renderers, inline/block geometry, controls, opaque content and fallbacks | Widget reload fix verified; remaining comparison open |
 | UX23 | AI and material tools | Full material tools menu, selection quotes, prompts, progress, cancellation and result review | Pending; native toolbar opens a reduced menu |
 | UX24 | Suggestions and review | Discovery, navigation, attribution, accept/reject controls, grouping and conflict feedback | Pending |
 | UX25 | Core editing interactions | Caret, range selection, clipboard, shortcuts, undo/redo, text entry and focus boundaries | Pending |
 | UX26 | Page view and search | Zoom, scrolling, find/replace, page navigation, resizing and selection visibility | Pending |
-| UX27 | Document lifecycle | Loading, saving, recovery, import/export, document switches and error feedback | Widget reload fix integrated; browser review and remaining comparison open |
+| UX27 | Document lifecycle | Loading, saving, recovery, import/export, document switches and error feedback | Widget reload fix verified; remaining comparison open |
 | UX28 | Final comparison | Every production kit mapped; cross-feature flows, accessibility, responsive and visual review | Coordinator: pending |
 
 ## Acceptance records
@@ -66,7 +66,7 @@ UX01, UX03, and UX04 passed coordinator review. Other features remain open.
 - SMILES: app `5daf553f7`, `bb5bdf946`, and `60e0c27e3` share the Plate chemistry editor and protect draft ownership. Eight integrated browser cases pass. Coordinator review covers desktop and narrow layouts, keyboard input, cancellation, validation, replacement, history, shared editing, duplication, deletion, and save/reopen. AI request tests use controlled responses; they verify interaction and cancellation, not model output quality. Plate provides AI and manual entry with a preview, without a freehand drawing canvas.
 - Shared block ownership: engine `eac568851` fixes deletion of the wrong custom XML payload after duplication. The fix passes 59 focused tests. The integrated browser duplication and deletion check also passes.
 - Selected-text insertion: engine `b378d94d1` replaces the selected range in one transaction. Six tests cover concurrent edits, history, and save/reopen. The app integration passes selected-text replacement, one-step history, shared editing, and reopen.
-- Widget reload: engine `25c609fcd` retains block and inline registrations across `editor.load()`. Each document receives fresh widget state and measurements. Repeated document switches release old roots. Focused shared editing, history, deletion, and reopen checks pass. Integrated host and list checks pass 23 tests with 440 assertions. Browser review remains open.
+- Widget reload: engine `25c609fcd` retains block and inline registrations across `editor.load()`. Each document receives fresh widget state and measurements. Repeated document switches release old roots. Focused shared editing, history, deletion, and reopen checks pass. Integrated host and list checks pass 23 tests with 440 assertions. Two browser cases pass with 20 assertions against isolated host build `7b9cce3db` and runtime B. App `23a78c80b` requires visible controls after reload and fresh explicit media approval. The installed app package returns to runtime B after this review.
 - Lists: app `df1777fd9` and `f27aebba3` restore list conversion and list-level toolbar indentation. Engine `d1a4e7779` preserves nesting when task prefixes replace bullets or numbering. Completed-task styling, shared preparation guards, and listener reload remain open.
 - Media: app `9ee3b3002` and `ec250fa4f` require explicit document-owned loading for gallery images, audio, video, and embeds. Imported sources remain inert until approval. Full media and gallery control comparison remains open.
 
