@@ -1,0 +1,12 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Native paste uses an internal provenance preparation function.",
+  "after": "Store integrations can reuse the same bounded provenance preparation function.",
+  "reason": "This exposes the existing native copy ownership algorithm without changing shared formats.",
+  "tests": [
+    "packages/core/src/store/__tests__/run-origins-clipboard.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

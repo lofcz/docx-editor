@@ -9,9 +9,9 @@ import {
   serializeOoxmlPart,
   type OoxmlPart,
   type OoxmlParagraphNode,
+  freshenCopiedRunOrigins,
 } from '../index.ts';
 import { applyTreeOp } from '../store/tree-ops.ts';
-import { freshenCopiedRunOrigins } from '../store/run-origin-clipboard.ts';
 import {
   readRevisionOrigin,
   readRunOrigin,
@@ -116,6 +116,20 @@ test('complete copies receive independent scope and source tokens', () => {
 test('ordinary clipboard fragments preserve object identity', () => {
   const blocks = [paragraph(part('<w:p><w:r><w:t>A</w:t></w:r></w:p>'))];
   expect(freshenCopiedRunOrigins(blocks, 500_000, 64)).toBe(blocks);
+});
+
+test('the public copy provenance path enforces native resource budgets', () => {
+  const blocks = [paragraph(part('<w:p><w:r><w:t>A</w:t></w:r></w:p>'))];
+  for (const [nodes, depth] of [
+    [NaN, 64],
+    [500_000, Infinity],
+    [0, 64],
+    [500_000, -1],
+    [1.5, 64],
+  ])
+    expect(() => freshenCopiedRunOrigins(blocks, nodes!, depth!)).toThrow('budgets are invalid');
+  expect(() => freshenCopiedRunOrigins(blocks, 1, 64)).toThrow('exceeds fragment limits');
+  expect(() => freshenCopiedRunOrigins(blocks, 500_000, 1)).toThrow('exceeds fragment limits');
 });
 
 test('future clipboard provenance remains opaque', () => {

@@ -11,6 +11,7 @@ export {
 export { trackedReplacementLanding } from './tracked-replacement-landing.ts';
 export type { InsertParagraphsOp } from './tree-op-insert-paragraphs.ts';
 export type { InsertFragmentOp } from './tree-op-fragment.ts';
+export { freshenCopiedRunOrigins } from './run-origin-clipboard.ts';
 export type { TableCellPropertyOp } from './tree-op-table-cell-properties.ts';
 export {
   ACCEPTED_PARAGRAPH_PROPERTIES,

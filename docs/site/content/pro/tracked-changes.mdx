@@ -554,6 +554,10 @@ Concurrent text at the end of a link can move before the proposed copy when that
 
 Retargeting can follow text revisions created in the same open native transaction. Removing a link whose text that transaction already deletes adds no empty insertion. A later link can span that deleted source wrapper; Original retains the old wrapper outside the proposed copy. Copying retains source run boundaries. Earlier or imported deletion-only wrappers remain separate and refuse this composition.
 
+## Copy native review provenance
+
+Native store integrations can call `freshenCopiedRunOrigins(blocks, maxNodes, maxDepth)` before copying blocks. The function gives copied text independent review ownership. It preserves the source blocks and enforces the native node and nesting limits. It does not insert content or create other document identities. Use the native paste path when copying also needs resource or identifier changes.
+
 ## See also
 
 - [Customize the review pane](/docs/2.x/customization/tracked-changes)

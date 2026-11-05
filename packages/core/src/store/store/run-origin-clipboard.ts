@@ -16,12 +16,30 @@ import {
 } from './run-origin-metadata.ts';
 import { PackageEditRefusal } from './package-edit-refusal.ts';
 
-/** A paste creates independent provenance; partial ordinary copies carry no pending scope. */
+/**
+ * Give copied blocks independent text-review provenance without changing their source.
+ * Partial ordinary copies carry no pending scope. Complete copies retain independent pending
+ * scopes and the completed proofs those scopes need. This does not mint node, paragraph,
+ * drawing, bookmark, or content-control identities, and does not insert the blocks.
+ *
+ * @param blocks - Canonical blocks from the bounded OOXML reader.
+ * @param maxNodes - Positive node budget, capped at the native limit of 500,000.
+ * @param maxDepth - Positive nesting budget, capped at the native limit of 64.
+ * @throws An error when a budget is invalid or the copied content exceeds it.
+ * @public
+ */
 export function freshenCopiedRunOrigins(
   blocks: readonly OoxmlNode[],
   maxNodes: number,
   maxDepth: number
 ): readonly OoxmlNode[] {
+  if (!Number.isInteger(maxNodes) || maxNodes < 1 || !Number.isInteger(maxDepth) || maxDepth < 1)
+    throw new PackageEditRefusal(
+      'Copied provenance budgets are invalid.',
+      'fragment-resource-budget'
+    );
+  maxNodes = Math.min(maxNodes, 500_000);
+  maxDepth = Math.min(maxDepth, 64);
   const groups: OoxmlNode[][] = [];
   const preparedBlocks: OoxmlNode[] = [];
   const parents = new Map<OoxmlNode, OoxmlNode>();

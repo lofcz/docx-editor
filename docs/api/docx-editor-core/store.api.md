@@ -1960,6 +1960,9 @@ export type FragmentPasteResult = (Extract<PackageTransactResult, {
     ok: false;
 }>;
 
+// @public
+export function freshenCopiedRunOrigins(blocks: readonly OoxmlNode[], maxNodes: number, maxDepth: number): readonly OoxmlNode[];
+
 // @internal (undocumented)
 export interface GeometryDefinition {
     // (undocumented)
