@@ -29,7 +29,7 @@ Other sessions use the production application checkout. Feature work stays in is
 | --- | --- | --- | --- |
 | UX01 | Tables | Insertion grid, contextual controls, cell and row selection, resizing, structure, appearance, keyboard navigation | `ui_tables`: menu and selection integrated; append controls and repeated headers under review |
 | UX02 | Math | Shared MathLive dialog, virtual keyboard, selected-text insertion, inline/display editing, draft ownership | `ui_math`: shared MathLive dialog integrated; conversion ownership remains open |
-| UX03 | SMILES | Shared chemistry editor, AI and manual entry, preview, validation, activation, block actions, failed-save recovery | Coordinator: integrated browser review |
+| UX03 | SMILES | Shared chemistry editor, AI and manual entry, preview, validation, activation, block actions, failed-save recovery | Accepted; eight integrated browser cases pass |
 | UX04 | Links | Insert/edit/remove dialogs, selected text, URL validation, opening, keyboard shortcuts | `ui_smiles`: eight browser cases pass; coordinator review pending |
 | UX05 | Images and galleries | Upload, resize, captions, alignment, replacement, gallery actions, loading and errors | Pending |
 | UX06 | Files, audio, video, and embeds | Insert/edit controls, previews, loading, playback, removal, accessible fallback | Pending |
@@ -58,12 +58,12 @@ Other sessions use the production application checkout. Feature work stays in is
 
 ## Acceptance records
 
-No feature has passed complete coordinator review yet.
+UX03 passed coordinator review. Other features remain open.
 
 - Tables: engine `bf9fe406d` and `932663725`; app `8ab2a19aa` and `b930f2d3f`. Native menu review passes. Append controls and repeated headers remain open.
 - Math: app `885d05104` reuses the shared MathLive surface. Conversion undo can restore stale Word fallback text after a peer edit. This defect blocks acceptance.
-- SMILES: app `5daf553f7` shares the actual Plate chemistry editor. Plate supports AI and manual SMILES entry, with a rendered preview. It does not supply a freehand drawing canvas.
-- Shared block ownership: engine `eac568851` fixes deletion of the wrong custom XML payload after duplication. The fix passes 59 focused tests. Installed browser verification remains open.
-- Selected-text insertion: engine `b378d94d1` replaces the selected range in one transaction. Six tests cover concurrent edits, history, and save/reopen. The app chemistry integration remains under review.
+- SMILES: app `5daf553f7`, `bb5bdf946`, and `60e0c27e3` share the Plate chemistry editor and protect draft ownership. Eight integrated browser cases pass. Coordinator review covers desktop and narrow layouts, keyboard input, cancellation, validation, replacement, history, shared editing, duplication, deletion, and save/reopen. AI request tests use controlled responses; they verify interaction and cancellation, not model output quality. Plate provides AI and manual entry with a preview, without a freehand drawing canvas.
+- Shared block ownership: engine `eac568851` fixes deletion of the wrong custom XML payload after duplication. The fix passes 59 focused tests. The integrated browser duplication and deletion check also passes.
+- Selected-text insertion: engine `b378d94d1` replaces the selected range in one transaction. Six tests cover concurrent edits, history, and save/reopen. The app integration passes selected-text replacement, one-step history, shared editing, and reopen.
 
 The experimental app runtime uses engine `b378d94d1`. Archive hashes match, and the app resolves one physical core package.
