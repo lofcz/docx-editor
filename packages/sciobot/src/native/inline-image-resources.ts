@@ -59,9 +59,7 @@ export async function prepareInlineImageResources(
   try {
     const decoded = decodeEditPlan(serializeEditPlan(input));
     if (!decoded.success) return decoded;
-    const plan = decoded.plan,
-      resources = new Map<string, ResolvedInlineImage>();
-    let total = 0;
+    const plan = decoded.plan;
     const references = [
       ...planInlineDrawings(plan).map((atom) => atom.resource.reference),
       ...plan.operations.flatMap((edit) =>
@@ -70,53 +68,7 @@ export async function prepareInlineImageResources(
           : []
       ),
     ];
-    for (const reference of references) {
-      if (signal?.aborted) throw Error('Image resource preparation was aborted.');
-      if (resources.has(reference)) continue;
-      const source = await resolve(reference, signal);
-      if (
-        !(source.bytes instanceof Uint8Array) ||
-        source.bytes.byteLength > 64 * 1024 * 1024 - total
-      )
-        throw Error('Image resources exceed the preparation byte budget.');
-      const mime = source.mime,
-        requestedWidth = source.widthPoints,
-        requestedHeight = source.heightPoints;
-      const bytes = new Uint8Array(source.bytes),
-        limits = resolveImageResourceLimits();
-      const header = validateRasterHeader(bytes, mime);
-      if (
-        !header ||
-        !bytes.length ||
-        bytes.length > limits.maxEncodedBytes ||
-        sniffImageMime(bytes) !== mime ||
-        header.pixelWidth > limits.maxDimension ||
-        header.pixelHeight > limits.maxDimension ||
-        header.pixelWidth * header.pixelHeight > limits.maxPixels
-      )
-        throw Error('The image resource cannot be decoded safely.');
-      const decoded = await decodePort.decode(new Uint8Array(bytes), mime, limits, signal);
-      if (decoded.pixelWidth !== header.pixelWidth || decoded.pixelHeight !== header.pixelHeight)
-        throw Error('The image decoder dimensions disagree with its native header.');
-      const widthPoints = requestedWidth ?? (header.pixelWidth * 72) / (header.dpiX ?? 96);
-      const heightPoints = requestedHeight ?? (header.pixelHeight * 72) / (header.dpiY ?? 96);
-      if (
-        ![widthPoints, heightPoints].every(
-          (v) => Number.isFinite(v) && Math.round(v * 12700) > 0 && v <= 158400
-        )
-      )
-        throw Error('The image dimensions exceed the native drawing bounds.');
-      const hash = await crypto.subtle.digest('SHA-256', new Uint8Array(bytes));
-      if (signal?.aborted) throw Error('Image resource preparation was aborted.');
-      resources.set(reference, {
-        bytes,
-        mime,
-        widthPoints,
-        heightPoints,
-        contentHash: [...new Uint8Array(hash)].map((n) => n.toString(16).padStart(2, '0')).join(''),
-      });
-      total += bytes.byteLength;
-    }
+    const resources = await resolveInlineImageResources(references, resolve, decodePort, signal);
     const images: PreparedInlineImages = Object.freeze({ kind: 'prepared-inline-images' });
     stores.set(images, { plan: serializeEditPlan(plan), resources });
     return { success: true, images };
@@ -127,4 +79,61 @@ export async function prepareInlineImageResources(
       error: error instanceof Error ? error.message : String(error),
     };
   }
+}
+
+/** Resolve bounded, explicitly requested assets before an editor transaction. */
+export async function resolveInlineImageResources(
+  references: readonly string[],
+  resolve: InlineImageResolver,
+  decodePort: ImageDecodePort,
+  signal?: AbortSignal
+): Promise<ReadonlyMap<string, ResolvedInlineImage>> {
+  if (references.length > 10_000) throw Error('Too many image resources.');
+  const resources = new Map<string, ResolvedInlineImage>();
+  let total = 0;
+  for (const reference of references) {
+    if (signal?.aborted) throw Error('Image resource preparation was aborted.');
+    if (resources.has(reference)) continue;
+    const source = await resolve(reference, signal);
+    if (!(source.bytes instanceof Uint8Array) || source.bytes.byteLength > 64 * 1024 * 1024 - total)
+      throw Error('Image resources exceed the preparation byte budget.');
+    const mime = source.mime,
+      requestedWidth = source.widthPoints,
+      requestedHeight = source.heightPoints;
+    const bytes = new Uint8Array(source.bytes),
+      limits = resolveImageResourceLimits();
+    const header = validateRasterHeader(bytes, mime);
+    if (
+      !header ||
+      !bytes.length ||
+      bytes.length > limits.maxEncodedBytes ||
+      sniffImageMime(bytes) !== mime ||
+      header.pixelWidth > limits.maxDimension ||
+      header.pixelHeight > limits.maxDimension ||
+      header.pixelWidth * header.pixelHeight > limits.maxPixels
+    )
+      throw Error('The image resource cannot be decoded safely.');
+    const decoded = await decodePort.decode(new Uint8Array(bytes), mime, limits, signal);
+    if (decoded.pixelWidth !== header.pixelWidth || decoded.pixelHeight !== header.pixelHeight)
+      throw Error('The image decoder dimensions disagree with its native header.');
+    const widthPoints = requestedWidth ?? (header.pixelWidth * 72) / (header.dpiX ?? 96);
+    const heightPoints = requestedHeight ?? (header.pixelHeight * 72) / (header.dpiY ?? 96);
+    if (
+      ![widthPoints, heightPoints].every(
+        (v) => Number.isFinite(v) && Math.round(v * 12700) > 0 && v <= 158400
+      )
+    )
+      throw Error('The image dimensions exceed the native drawing bounds.');
+    const hash = await crypto.subtle.digest('SHA-256', new Uint8Array(bytes));
+    if (signal?.aborted) throw Error('Image resource preparation was aborted.');
+    resources.set(reference, {
+      bytes,
+      mime,
+      widthPoints,
+      heightPoints,
+      contentHash: [...new Uint8Array(hash)].map((n) => n.toString(16).padStart(2, '0')).join(''),
+    });
+    total += bytes.byteLength;
+  }
+  return resources;
 }
