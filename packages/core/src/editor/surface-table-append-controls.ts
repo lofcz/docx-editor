@@ -140,7 +140,10 @@ export function createTableAppendControls(host: SurfaceTableInteractionHost) {
     next.type = 'button';
     next.className = `docx-table-append-${kind}`;
     next.dataset.tableAppend = kind;
-    next.textContent = '+';
+    const icon = layer.ownerDocument.createElement('span');
+    icon.setAttribute('aria-hidden', 'true');
+    icon.textContent = '+';
+    next.append(icon);
     Object.assign(next.style, { position: 'absolute', pointerEvents: 'auto' });
     next.addEventListener('mousedown', (event) => event.preventDefault());
     next.addEventListener('click', (event) => {
@@ -205,17 +208,20 @@ export function createTableAppendControls(host: SurfaceTableInteractionHost) {
       control.setAttribute('aria-label', label(kind));
       control.title = verdict.ok ? label(kind) : verdict.reason;
       Object.assign(control.style, {
-        left: `${kind === 'row' ? left - 20 : left + width + 2}px`,
-        top: `${kind === 'column' ? top + Math.max(0, height / 2 - 8) : top + height - 16}px`,
-        width: '16px',
-        height: '16px',
+        left: `${kind === 'row' ? left - 26 : left + width + 2}px`,
+        top: `${kind === 'column' ? top + Math.max(0, height / 2 - 12) : top + height - 24}px`,
+        width: '24px',
+        height: '24px',
       });
     }
   }
   return {
     update,
     refreshLabels: () => {
-      for (const [kind, control] of buttons) control.setAttribute('aria-label', label(kind));
+      for (const [kind, control] of buttons) {
+        control.setAttribute('aria-label', label(kind));
+        if (!control.disabled) control.title = label(kind);
+      }
     },
     contains: (node: Node | null) => node !== null && layer.contains(node),
     destroy: () => layer.remove(),

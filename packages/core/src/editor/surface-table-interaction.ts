@@ -81,6 +81,7 @@ export interface SurfaceTableInteractionHost {
 }
 
 export interface SurfaceTableInteraction {
+  updateSelection(): void;
   update(): void;
   /** Repaint visible insertion furniture labels from the current resolver. */
   refreshLabels(): void;
@@ -918,6 +919,9 @@ export function createSurfaceTableInteraction(
   host.pagesLayer.addEventListener('keydown', onKeyDown);
 
   return {
+    updateSelection() {
+      appendControls.update(host.read());
+    },
     update() {
       const input = host.read();
       appendControls.update(input);

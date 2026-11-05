@@ -75,3 +75,13 @@ test('append controls support authored tables without a column grid', () => {
   expect(editor.exec({ type: 'undo' }).ok).toBe(true);
   expect(shape()).toEqual([2, 2]);
 });
+
+test('append buttons have a 24-pixel target and refresh visible labels', () => {
+  const { surface, control } = mount();
+  const row = control('row');
+  expect(row.style.width).toBe('24px');
+  expect(row.style.height).toBe('24px');
+  surface.setTableInteractionLabel((key) => `localized:${key}`);
+  expect(row.title).toBe('localized:table.insertRowBelow');
+  expect(row.getAttribute('aria-label')).toBe(row.title);
+});

@@ -6194,7 +6194,7 @@ export function mountPaginatedSurface(
     applyTableCommandPlan: (plan) => surface.applyTableCommandPlan(plan),
     label: (key) => tableLabelState.resolve(key),
   });
-  updateTableInteractionForSelection = () => tableInteraction.update();
+  updateTableInteractionForSelection = () => tableInteraction.updateSelection();
   tableSelectHandle = createSurfaceTableSelectHandle({
     controlRefusal: (tableId) => tableControlRefusal(surface, tableId),
     pagesLayer,
