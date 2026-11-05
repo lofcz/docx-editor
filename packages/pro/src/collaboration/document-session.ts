@@ -61,6 +61,8 @@ import {
   initialReplicaDocument,
 } from './document-bootstrap.ts';
 import { LogicalIdentityMap } from './document-identity.ts';
+import { atomicRecordAliases, recordAliasProjection } from './document/record-aliases.ts';
+import type { LogicalId } from './document/identity.ts';
 import { CaretAnchors } from './document-caret-anchors.ts';
 import { EditWait } from './document-edit-wait.ts';
 import { resourceUsageOf, type CollaborationResourceUsage } from './resource-usage.ts';
@@ -632,15 +634,14 @@ class DocumentSession implements DocumentCollaborationSession {
     );
     if (refusal === null) {
       this.refusals.published();
-      // Shared state can show this edit differently from the tree the editor computed: an ID
-      // another paragraph also holds, text that follows a move. Take what shared state shows.
+      const aliases = atomicRecordAliases(this.identityMap, this.registry, journal, shared.effects);
+      // Shared state can rename copied identities or move text. Take that view when it differs.
       const drift =
         this.registry.inline.takeDrift() ||
-        (translated !== journal &&
-          this.identityMap.introducesRecordIdentity(journal, this.registry)) ||
+        aliases !== undefined ||
         (journal.effects.some((effect) => effect.kind !== 'spliceText') &&
           viewRenamesPlan(this.registry, projected.plan));
-      if (drift) this.publishSharedToPort();
+      if (drift) this.publishSharedToPort(false, aliases);
       return;
     }
     this.refuseLocalJournal(refusal, transient);
@@ -719,7 +720,7 @@ class DocumentSession implements DocumentCollaborationSession {
     this.publishSharedToPort();
   };
 
-  private publishSharedToPort(full = false): void {
+  private publishSharedToPort(full = false, aliases?: ReadonlyMap<LogicalId, string>): void {
     const port = this.port;
     if (!port || this.applyingRemote) return;
     this.applyingRemote = true;
@@ -760,9 +761,10 @@ class DocumentSession implements DocumentCollaborationSession {
         else this.degrade('materialize-dropped-content', dropped);
         return;
       }
+      const projection = recordAliasProjection(aliases);
       const apply = (pkg: OoxmlPackage) => {
         this.remoteCounter += 1;
-        return port.applyRemotePackage(pkg, {
+        return port.applyRemotePackage(projection.package(pkg), {
           origin: ORIGIN_IDS.mutationRemote,
           actorId: 'remote',
           operationId: `${this.sessionId}:remote:${this.remoteCounter}`,
@@ -781,9 +783,7 @@ class DocumentSession implements DocumentCollaborationSession {
         else this.degrade('remote-apply-failed', result.reason);
         return;
       }
-      // Every node in the canonical tree now carries a logical id, so no local mapping is
-      // live. Keeping one would let a re-minted canonical id resolve to the wrong node.
-      if (result.changed) this.identityMap.reset();
+      projection.finish(this.identityMap, result.changed);
       this.caretAnchors.afterPublish();
       const heal = this.healTo;
       if (heal !== null) this.setStatus(heal.status, heal.code, heal.detail);

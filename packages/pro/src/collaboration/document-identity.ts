@@ -84,16 +84,34 @@ export class LogicalIdentityMap {
     return Object.freeze({ effects: Object.freeze(effects) });
   }
 
-  /** New durable records adopt logical IDs through the shared-view commit boundary. */
+  /** Atomic descendants adopt durable IDs before later shape changes reuse them. */
   introducesRecordIdentity(
     journal: CanonicalPrimitiveJournal,
-    records: { hasNode(id: LogicalId): boolean }
+    records: { hasNode(id: LogicalId): boolean },
+    atomic: ReadonlySet<LogicalId>
   ): boolean {
     return journal.effects.some((effect) => {
       if (effect.kind !== 'putNode') return false;
       const id = this.resolve(effect.descriptor.logicalId);
-      return id !== effect.descriptor.logicalId && records.hasNode(id);
+      return id !== effect.descriptor.logicalId && atomic.has(id) && records.hasNode(id);
     });
+  }
+
+  /** Ordinary creation results keep their local record IDs during eager atomic adoption. */
+  recordAliases(
+    records: { hasNode(id: LogicalId): boolean },
+    atomic: ReadonlySet<LogicalId>
+  ): ReadonlyMap<LogicalId, string> {
+    const aliases = new Map<LogicalId, string>();
+    for (const [canonical, logical] of this.toLogical)
+      if (!atomic.has(logical) && records.hasNode(logical)) aliases.set(logical, canonical);
+    return aliases;
+  }
+
+  /** Keep only aliases that the installed canonical package still uses. */
+  retain(used: ReadonlySet<string>): void {
+    for (const canonical of this.toLogical.keys())
+      if (!used.has(canonical)) this.toLogical.delete(canonical);
   }
 
   /** Returns the effect itself when every id it names already stands in shared identity. */

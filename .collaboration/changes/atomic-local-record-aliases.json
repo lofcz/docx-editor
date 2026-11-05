@@ -1,0 +1,14 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Eager shared identity adoption after local record creation invalidated ordinary creation-result IDs, including image IDs.",
+  "after": "Only atomic ownership requires eager adoption. Ordinary record aliases remain usable during that publication, including mixed transactions. Normal remote publication retains its existing identity boundary.",
+  "reason": "Only local canonical node IDs and the local identity map change. Shared records, wire fields, atomic history, XML content, and blob ownership remain unchanged. Mixed transactions retain ordinary creation results while atomic controls use the same durable IDs on both replicas.",
+  "tests": [
+    "packages/pro/src/collaboration/__tests__/document-atomic-identity-results.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-image-insert.test.ts",
+    "packages/sciobot/src/blocks/math-edit-collaboration.test.ts"
+  ],
+  "changeset": "atomic-local-record-aliases",
+  "migration": null
+}
