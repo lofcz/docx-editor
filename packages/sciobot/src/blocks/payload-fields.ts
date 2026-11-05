@@ -65,7 +65,10 @@ export function readFields(record: OoxmlElement): FieldRead {
     if (raw !== undefined) {
       if (raw.length > DEFAULT_PAYLOAD_LIMITS.maxBytes)
         return { ok: false, reason: 'field-byte-limit' };
-      bytes += new TextEncoder().encode(raw).byteLength;
+      const valueBytes = new TextEncoder().encode(raw).byteLength;
+      if (valueBytes > DEFAULT_PAYLOAD_LIMITS.maxBytes)
+        return { ok: false, reason: 'field-byte-limit' };
+      bytes += valueBytes;
       if (bytes > MAX_FIELD_BYTES) return { ok: false, reason: 'field-byte-limit' };
       try {
         value = JSON.parse(raw) as JsonValue;

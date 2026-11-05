@@ -303,6 +303,12 @@ test('field history bounds each value and the combined retained value bytes', ()
   ).toEqual({ ok: false, reason: 'field-byte-limit' });
   const entry = field(JSON.stringify('x'.repeat(2 * 1024 * 1024 - 2)));
   expect(
+    readFields({
+      ...node,
+      children: [field(JSON.stringify('尾'.repeat(700_000))), field('"small"')],
+    } as OoxmlElement)
+  ).toEqual({ ok: false, reason: 'field-byte-limit' });
+  expect(
     readFields({ ...node, children: Array.from({ length: 5 }, () => entry) } as OoxmlElement)
   ).toEqual({ ok: false, reason: 'field-byte-limit' });
 });
