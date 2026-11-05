@@ -13,9 +13,10 @@ export function textRecord(value: string, atomic: boolean): Y.Map<unknown> {
   return record;
 }
 
-export function textRecordValue(record: Y.Map<unknown>): string | null {
+export function textRecordValue(record: Y.Map<unknown>, maxTextLength: number): string | null {
   const atomic = record.get(NODE_ATOMIC_TEXT_FIELD);
-  if (atomic !== undefined) return typeof atomic === 'string' ? atomic : null;
+  if (atomic !== undefined)
+    return typeof atomic === 'string' && atomic.length <= maxTextLength ? atomic : null;
   const text = record.get(NODE_TEXT_FIELD);
   return text instanceof Y.Text ? text.toString() : '';
 }
@@ -25,12 +26,15 @@ export function spliceAtomicText(
   start: number,
   count: number,
   insert: string,
-  atomic: boolean
+  atomic: boolean,
+  maxTextLength: number
 ): boolean {
   if (!atomic && !record.has(NODE_ATOMIC_TEXT_FIELD)) return false;
-  const before = textRecordValue(record);
+  const before = textRecordValue(record, maxTextLength);
   if (before === null) throw Error('The atomic fallback text record is invalid.');
-  record.set(NODE_ATOMIC_TEXT_FIELD, before.slice(0, start) + insert + before.slice(start + count));
+  const next = before.slice(0, start) + insert + before.slice(start + count);
+  if (next.length > maxTextLength) throw Error('The atomic fallback text exceeds the text limit.');
+  record.set(NODE_ATOMIC_TEXT_FIELD, next);
   return true;
 }
 

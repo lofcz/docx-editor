@@ -2,6 +2,8 @@ import type { DocxEditorInstance } from '@docx-editor.dev/core/editor';
 import type { SemanticSelection } from '@docx-editor.dev/core/layout';
 import {
   applyTreeOp,
+  findNode,
+  isAtomicContentControl,
   withPart,
   type OoxmlPackage,
   type TreeDocOp,
@@ -70,6 +72,18 @@ export function updateMath(
   if (!live) return fail('stale-revision', 'The equation was deleted. Your draft remains open.');
   if (encodeBlockPayload(live.payload) !== encodeBlockPayload(request.original))
     return fail('stale-revision', 'The equation changed. Your draft remains open.');
+  const control = findNode(
+    surface.session.currentPackage().parts.get(live.partName)!,
+    live.controlId
+  );
+  if (
+    editor.snapshot().collaborationStatus !== 'inactive' &&
+    (!control || !isAtomicContentControl(control))
+  )
+    return fail(
+      'unsupported-operation',
+      'Prepare equation ownership before creating the shared document. Your draft remains open.'
+    );
   let payload;
   try {
     payload = withMathSource(live.payload, request.source);
@@ -177,7 +191,7 @@ export function insertMathAtSelection(
   const write = (working: OoxmlPackage) => {
     const stored = withPayloadRecord(working, payload, fallback.label);
     if (!stored.ok) throw Error(stored.reason);
-    return withAtomicMathFallbacks(stored.pkg);
+    return withAtomicMathFallbacks(stored.pkg, new Set([payload.id]));
   };
   try {
     write(withPart(pkg, part));

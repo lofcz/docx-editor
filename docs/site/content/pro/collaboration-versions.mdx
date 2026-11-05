@@ -529,6 +529,8 @@ Format `docx-collaboration:1.10.17.1` keeps marked equation fallback content und
 
 The application keeps exact multiline TeX in equation payloads. Word's readable source fallback folds CRLF, CR, and LF line endings to spaces in one text record. Preparation normalizes only validated application equations. Imported OMML and unrelated content remain unchanged.
 
+Prepare equation ownership before room creation. Equation edits refuse when a shared document still contains an unprepared equation. Insertion marks only its new equation and leaves existing ownership unchanged.
+
 1. Stop writes and reconnects to the old rooms.
 2. Back up room snapshots, offline updates, and the compatible application build.
 3. Export DOCX files with the previous compatible deployment.

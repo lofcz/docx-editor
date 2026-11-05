@@ -26,7 +26,12 @@ export function withAtomicContentMarker(control: OoxmlContentControlNode): Ooxml
     const node = pending.pop()!;
     if (node.kind === 'textValue') continue;
     if (node.prefix) used.add(node.prefix);
-    for (const attribute of node.attributes) if (attribute.prefix) used.add(attribute.prefix);
+    for (const attribute of node.attributes) {
+      if (attribute.prefix) used.add(attribute.prefix);
+      if (attribute.namespaceUri === MC_NAMESPACE_URI)
+        for (const token of attribute.value.trim().split(/\s+/))
+          if (token) used.add(token.split(':', 1)[0]!);
+    }
     for (const binding of node.namespaceBindings) used.add(binding.prefix);
     for (const child of node.children) pending.push(child);
   }

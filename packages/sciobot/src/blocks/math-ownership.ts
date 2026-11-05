@@ -15,9 +15,13 @@ import { decodeMathPayload } from './math-codec';
 import { encodeBlockPayload } from './payload-schema';
 
 /** Opt in only durable controls backed by a supported application equation payload. */
-export function withAtomicMathFallbacks(pkg: OoxmlPackage): OoxmlPackage {
+export function withAtomicMathFallbacks(
+  pkg: OoxmlPackage,
+  onlyIds?: ReadonlySet<string>
+): OoxmlPackage {
   let next = pkg;
   for (const block of buildBlockIndex(pkg).byId.values()) {
+    if (onlyIds && !onlyIds.has(block.payload.id)) continue;
     const math = decodeMathPayload(encodeBlockPayload(block.payload));
     if (math.status !== 'supported') continue;
     let part = next.parts.get(block.partName)!;

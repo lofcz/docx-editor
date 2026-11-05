@@ -27,6 +27,32 @@ function fixture(extra = '') {
   return read.part;
 }
 
+test('atomic marker prefixes retain inherited markup compatibility names', () => {
+  const read = readOoxmlPart(
+    `<w:document xmlns:w="${WML_NAMESPACE_URI}" xmlns:docxAtomic="urn:inherited" xmlns:mcAtomic="urn:other" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"><w:body><w:sdt mc:Ignorable="docxAtomic mcAtomic" mc:PreserveAttributes="docxAtomic:flag"><w:sdtPr/><w:sdtContent><w:p><w:r><w:t>x</w:t></w:r></w:p></w:sdtContent></w:sdt></w:body></w:document>`,
+    {
+      name: '/word/document.xml',
+      contentType:
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml',
+    }
+  );
+  if (!read.ok) throw Error(read.reason);
+  const control = contentControlsIn(read.part.root)[0]!.node;
+  const marked = replaceNode(read.part, control.id, withAtomicContentMarker(control));
+  if (!marked.ok) throw Error('The marker was refused.');
+  const xml = serializeOoxmlPart(marked.part);
+  expect(xml).toContain('xmlns:docxAtomic="urn:inherited"');
+  expect(xml).toContain('xmlns:docxAtomic2="urn:docx-editor.dev:atomic-content:1"');
+  expect(xml).toContain('xmlns:mcAtomic="urn:other"');
+  expect(xml).toContain(
+    'xmlns:mcAtomic2="http://schemas.openxmlformats.org/markup-compatibility/2006"'
+  );
+  expect(xml).toContain('docxAtomic:flag');
+  const opened = readOoxmlPart(xml, { name: read.part.name, contentType: read.part.contentType });
+  if (!opened.ok) throw Error(opened.reason);
+  expect(isAtomicContentControl(contentControlsIn(opened.part.root)[0]!.node)).toBe(true);
+});
+
 test('atomic fallback markers survive markup-compatible save and reopen and refuse generic text edits', () => {
   const part = fixture(
     'xmlns:docxAtomic="urn:other" xmlns:other="urn:existing" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="other" mc:PreserveAttributes="other:flag" other:flag="retained"'

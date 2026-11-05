@@ -316,7 +316,7 @@ export class DocumentRegistry {
     // A peer can plant a scalar here; treat it as no such node (see #567).
     if (!isNodeMap(rec)) return null;
     if (isTextNodeMap(rec)) {
-      const value = textRecordValue(rec);
+      const value = textRecordValue(rec, this.limits.maxTextLength);
       if (value === null) return null;
       return { logicalId, kind: 'textValue', value } satisfies TextRecord;
     }
@@ -426,7 +426,7 @@ export class DocumentRegistry {
   /** The quantities a bound check reads, without the attribute arrays {@link record} builds. */
   nodeShape(logicalId: LogicalId): NodeShape | null {
     if (rejectDangerousKey(logicalId)) return null;
-    return nodeShapeOf(this.schema.nodes, logicalId);
+    return nodeShapeOf(this.schema.nodes, logicalId, this.limits.maxTextLength);
   }
 
   /** One node's kind, without building its text. */
@@ -517,7 +517,9 @@ export class DocumentRegistry {
     insert: string,
     atomic = false
   ): void {
-    if (spliceAtomicText(this.require(logicalId), utf16Start, deleteCount, insert, atomic)) return;
+    const record = this.require(logicalId);
+    const limit = this.limits.maxTextLength;
+    if (spliceAtomicText(record, utf16Start, deleteCount, insert, atomic, limit)) return;
     const range = this.splitTextSources.range(logicalId);
     const restoreBoundary = captureInsertionBoundary(
       this.schema.nodes,

@@ -39,7 +39,11 @@ export interface NodeShape {
 }
 
 /** One node's class, text length and child ids. `children` is fresh, so callers may splice it. */
-export function nodeShapeOf(nodes: Y.Map<Y.Map<unknown>>, logicalId: string): NodeShape | null {
+export function nodeShapeOf(
+  nodes: Y.Map<Y.Map<unknown>>,
+  logicalId: string,
+  maxTextLength: number
+): NodeShape | null {
   const rec = nodes.get(logicalId);
   // The nodes map is peer-writable; a scalar value is not a node.
   if (!isNodeMap(rec)) return null;
@@ -47,7 +51,8 @@ export function nodeShapeOf(nodes: Y.Map<Y.Map<unknown>>, logicalId: string): No
     // `Y.Text.length` is a counter. `toString()` builds the whole paragraph to measure it.
     const text = rec.get(NODE_TEXT_FIELD);
     const atomic = rec.get(NODE_ATOMIC_TEXT_FIELD);
-    if (atomic !== undefined && typeof atomic !== 'string') return null;
+    if (atomic !== undefined && (typeof atomic !== 'string' || atomic.length > maxTextLength))
+      return null;
     return {
       isText: true,
       textLength:

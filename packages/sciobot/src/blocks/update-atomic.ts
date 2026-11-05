@@ -104,6 +104,16 @@ export function updateAtomicBlock(
       ? live.children.find((child) => child.kind === 'contentControlContent')
       : undefined;
   if (!liveContent) return fail('invalid-document', 'The block control is missing.');
+  if (
+    editor.snapshot().collaborationStatus !== 'inactive' &&
+    live &&
+    !isAtomicContentControl(live) &&
+    decodeMathPayload(encodeBlockPayload(block.payload)).status === 'supported'
+  )
+    return fail(
+      'unsupported-operation',
+      'Prepare equation ownership before creating the shared document.'
+    );
   // An inline control holds runs, not paragraphs: its fallback is part of a sentence.
   const inline = liveContent.children.some(
     (child) => child.kind === 'run' || child.kind === 'hyperlink'

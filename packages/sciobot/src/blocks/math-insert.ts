@@ -117,7 +117,7 @@ export function insertMath(editor: DocxEditorInstance, request: MathInsertion): 
         (working) => {
           const next = withPayloadRecord(working, request.payload, fallback.label);
           if (!next.ok) throw new Error(`Equation storage refused: ${next.reason}`);
-          return withAtomicMathFallbacks(next.pkg);
+          return withAtomicMathFallbacks(next.pkg, new Set([request.payload.id]));
         },
       ],
       false,

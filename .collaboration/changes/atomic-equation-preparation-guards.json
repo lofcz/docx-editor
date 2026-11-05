@@ -1,0 +1,14 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Inline insertion could normalize existing shared equations. Atomic fallback reads checked value types without checking text limits.",
+  "after": "Insertion marks only its new equation. Unprepared shared equation edits refuse. Atomic fallback reads enforce existing text limits and markup compatibility prefixes remain distinct.",
+  "reason": "The guards preserve the declared schema 10 ownership and limits. They add no shared fields or wire messages.",
+  "tests": [
+    "packages/sciobot/src/blocks/math-shared-preparation.test.ts",
+    "packages/pro/src/collaboration/__tests__/atomic-record-security.test.ts",
+    "packages/core/src/store/__tests__/atomic-content-control.test.ts"
+  ],
+  "changeset": "atomic-equation-preparation-guards",
+  "migration": null
+}
