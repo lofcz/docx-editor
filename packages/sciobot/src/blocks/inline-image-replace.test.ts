@@ -5,6 +5,7 @@ import { createDocxEditor, type DocxEditorInstance } from '@docx-editor.dev/core
 import {
   contentControlPropertiesOf,
   findNode,
+  parentNodeOf,
   type ImageDecodePort,
   type OoxmlNode,
 } from '@docx-editor.dev/core/store';
@@ -93,6 +94,16 @@ function replace(editor: DocxEditorInstance, reference: string, data = gif) {
   });
 }
 
+function selectImage(editor: DocxEditorInstance) {
+  const image = imageOf(editor);
+  let paragraph = parentNodeOf(image.part, image.drawing.id);
+  while (paragraph && paragraph.kind !== 'paragraph')
+    paragraph = parentNodeOf(image.part, paragraph.id);
+  expect(paragraph?.kind).toBe('paragraph');
+  expect(editor.surface!.selectDrawing(image.drawing.id, paragraph!.id)).toBe(true);
+  expect(editor.getSelectedImage()?.id).toBe(image.drawing.id);
+}
+
 test('the same source reference can replace bytes without changing image geometry or description', async () => {
   const editor = createDocxEditor({
     container: document.createElement('div'),
@@ -166,7 +177,10 @@ for (const clientIds of [
       const original = await state(alice!);
       const id = imageOf(alice!).block.id;
       pair.pause();
+      selectImage(alice!);
       expect((await replace(alice!, 'asset:replacement')).success).toBe(true);
+      expect(alice!.getSelectedImage()?.id).toBe(imageOf(alice!).drawing.id);
+      selectImage(bob!);
       let peer = imageOf(bob!);
       expect(
         updateInlineImage(bob!, {
@@ -175,6 +189,7 @@ for (const clientIds of [
           change: { type: 'alt', alt: 'Peer description' },
         }).success
       ).toBe(true);
+      expect(bob!.getSelectedImage()?.id).toBe(imageOf(bob!).drawing.id);
       peer = imageOf(bob!);
       expect(
         updateInlineImage(bob!, {
@@ -183,6 +198,7 @@ for (const clientIds of [
           change: { type: 'size', widthPoints: 120, heightPoints: 60 },
         }).success
       ).toBe(true);
+      expect(bob!.getSelectedImage()?.id).toBe(imageOf(bob!).drawing.id);
       pair.reconnect(0);
       await pair.settle();
       for (const editor of pair.editors)

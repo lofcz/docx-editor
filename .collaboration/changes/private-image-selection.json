@@ -1,0 +1,10 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Private image writes cleared the local drawing selection.",
+  "after": "Private image writes preserve selection through the existing stable block identity.",
+  "reason": "Restore local image selection through the existing stable private block identity after canonical writes.",
+  "tests": ["packages/sciobot/src/blocks/inline-image-replace.test.ts"],
+  "changeset": "private-image-selection",
+  "migration": null
+}
