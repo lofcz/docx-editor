@@ -370,7 +370,7 @@ Final verification against installed fork `929e0ea4a9bf68f3a4c9a7c133e55bc76b76d
 
 ## X20
 
-- [ ] Connect column widths and column controls
+- [x] Connect column widths and column controls
 
 **Depends:** [X19](08-domain-content.md#x19), [B05](02-react-blocks.md#b05), [V01](11-verification.md#v01)
 
@@ -384,7 +384,7 @@ Final verification against installed fork `929e0ea4a9bf68f3a4c9a7c133e55bc76b76d
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** Codex, branch `codex/react-block-proof`; implementation continues.
+**Claim:** Codex, branch `codex/react-block-proof`; application branch `claude/docx-native-cutover`.
 
 **Evidence:** New column groups use one borderless native table with one content control in each cell. The private projection preserves column syntax and reads each complete column before the next column. The complete-target planner resolves each retained column through its actual cell window. Width changes update the native grid and private metadata in one transaction. The existing column controls and paragraph identities remain stable.
 
@@ -406,7 +406,7 @@ Application commit `7f3583290` installs fork commit `cf96ac4cd`. The final brows
 
 The private `setColumnCount` command retains leading controls and moves removed child blocks into the final surviving column. Concurrent additions compose, and removals address original columns. Fixed-grid weight resolution keeps controls aligned after concurrent changes and later resizing. `enterColumn` creates a native paragraph on explicit entry into a restored empty column. Peer deletions survive undo and redo. The focused check passes 49 cases with 670 assertions across count, geometry, and conversion tests. It includes both receiver orders, peer typing, remote caret geometry, concurrent count changes, later resizing, deletion, and save/reopen. Compatibility decision `native-column-counts` adds no shared fields. Application wiring remains open.
 
-**Remaining:** Connect count changes and the existing turn-into action to the application toolbar. Add empty-column typing entry. Verify tracked operations in the application before this leaf closes.
+Application commit `3326720a2` installs runtime `7d5131205` and completes the toolbar action and empty-column entry. The final installed browser batch passes 12 cases with 140 assertions. Pointer and keyboard controls, shared editing, tracked text decisions, history, and save/reopen pass. The application build, both compiler checks, scoped formatting, and lint pass. All archive hashes match, and one core module resolves. See [native column controls](evidence/native-column-controls.md). No X20 work remains.
 
 ## X21
 

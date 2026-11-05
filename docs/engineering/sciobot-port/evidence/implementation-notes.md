@@ -2374,3 +2374,9 @@ Core and Pro builds, public API checks, third-party notices, compiler checks, fo
 Collaboration format `docx-collaboration:1.9.17.1` combines upstream repair behavior with private review ownership. Existing rooms require the documented export and reseed migration. Keep old rooms and offline data until migration verification finishes. Do not relabel old rooms or replay their operations into the new format. The compatibility policy passes against `upstream/main`.
 
 The coverage audit verifies 202 source hashes at application commit `74328ce53`. The ledger retains 278 closed leaves from 282 leaves. B23 needs desktop input method evidence. V06 needs desktop Microsoft Word evidence. X20 retains its recorded column scope decision. V08 remains open until the required evidence and scope decisions permit closure.
+
+## Native columns and final required coverage
+
+Application `3326720a2` installs runtime `7d5131205`. Native column controls, count changes, wrapping, and explicit empty-column entry are complete. Legacy conversion remains offline-only. Shared native editing preserves peer content, deletion history, and metadata. The final installed browser run passes 12 cases and 140 assertions. The application build and direct frontend and harness checks pass. See [native column controls](native-column-controls.md).
+
+The user removed desktop Microsoft Word and operating-system input-method checks from the required TODO list on November 5, 2026. These checks remain unverified. The required ledger contains 280 closed leaves and 50 complete coverage rows. The production audit verifies 202 source hashes and derives verification status from completed required leaves. The existing full-suite and aggregate board-generator baseline failures remain recorded; this checkpoint does not claim those checks pass.

@@ -116,7 +116,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 ## V08
 
-- [ ] Close the production coverage ledger
+- [x] Close the production coverage ledger
 
 **Depends:** Every other leaf in this backlog.
 
@@ -130,7 +130,7 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Validate every referenced file, task ID, and required coverage row.
 
-**Claim:** codex, branch `codex/react-block-proof`. **Evidence:** Progress, not closure. The user removed desktop Word and operating-system input-method verification from the required scope on November 5, 2026. The ledger retains 280 required leaves. X20 column controls and V08 coverage reconciliation remain open. The excluded desktop checks remain unverified.
+**Claim:** codex, branch `codex/react-block-proof`. **Evidence:** All 280 required leaves are closed after the user's desktop verification exclusions. All 50 coverage rows have completed required leaves. Application commit `3326720a2` installs runtime `7d5131205`; [native column controls](evidence/native-column-controls.md) records the final application checks. The production audit covers 37 workspace members, 26 static kits, 13 print overrides, and 202 source hashes. Its verification fields now follow each required leaf's checkbox. Before X20 closure, only ColumnKit and BaseColumnKit report pending verification. After closure, all 76 entries report completed required leaves. `SCIOBOT_REFERENCE_APP=<cutover worktree> node docs/engineering/sciobot-port/check.mjs` checks source hashes, links, dependencies, and closure evidence. The existing migration and reversible editor selection paths retain their completed leaf evidence. Desktop Word and operating-system input-method checks remain unverified exclusions. The recorded repository baseline failures remain separate from this scope closure.
 
 ## Scope exclusions
 

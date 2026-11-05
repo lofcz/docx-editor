@@ -334,7 +334,7 @@
     }
   },
   "snapshot": {
-    "applicationRevision": "7f35832903049b4b2042d8de6aec32b0cc6cab84",
+    "applicationRevision": "3326720a299b4e110bfe200a9763e943a55005cd",
     "workspace": [
       {
         "name": "AIKit",
@@ -428,7 +428,7 @@
           "R38",
           "N18"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "BlockMenuKit",
@@ -443,7 +443,7 @@
           "B12",
           "B13"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "BasicBlocksKit",
@@ -479,7 +479,7 @@
           "R37",
           "R38"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "CodeBlockKit",
@@ -507,7 +507,7 @@
           "X16",
           "P04"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "TableKit",
@@ -575,7 +575,7 @@
           "I23",
           "R37"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "ToggleKit",
@@ -597,7 +597,7 @@
           "U07",
           "U12"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "TocKit",
@@ -617,7 +617,7 @@
         "leaves": [
           "X18"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "MediaKit",
@@ -665,7 +665,7 @@
           "X32",
           "X33"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "CalloutKit",
@@ -686,7 +686,7 @@
           "X13",
           "X37"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "StoryKit",
@@ -707,7 +707,7 @@
           "X14",
           "X37"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "SolutionKit",
@@ -728,7 +728,7 @@
           "X15",
           "X37"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "ColumnKit",
@@ -756,7 +756,7 @@
           "X19",
           "X20"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "LessonPlanKit",
@@ -869,7 +869,7 @@
           "R33",
           "R34"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "MathKit",
@@ -882,7 +882,7 @@
           "X23",
           "X24"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "SmilesKit",
@@ -894,7 +894,7 @@
         "leaves": [
           "X25"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "DateKit",
@@ -918,7 +918,7 @@
           "B21",
           "X21"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "LinkKit",
@@ -936,7 +936,7 @@
           "R43",
           "P22"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "MentionKit",
@@ -968,7 +968,7 @@
           "X22",
           "X38"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "SourceKit",
@@ -999,7 +999,7 @@
           "D12",
           "D14"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "BasicMarksKit",
@@ -1014,7 +1014,7 @@
           "R38",
           "N18"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "FontKit",
@@ -1027,7 +1027,7 @@
           "N04",
           "N05"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "ListKit",
@@ -1043,7 +1043,7 @@
           "R30",
           "I22"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "AlignKit",
@@ -1056,7 +1056,7 @@
           "N06",
           "D04"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "LineHeightKit",
@@ -1069,7 +1069,7 @@
           "N07",
           "D04"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "SuggestionKit",
@@ -1136,7 +1136,7 @@
           "R50",
           "R51"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "SlashKit",
@@ -1156,7 +1156,7 @@
         "leaves": [
           "U02"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "AutoformatKit",
@@ -1168,7 +1168,7 @@
         "leaves": [
           "U05"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "CursorOverlayKit",
@@ -1181,7 +1181,7 @@
           "U14",
           "A04"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "DndKit",
@@ -1195,7 +1195,7 @@
           "U04",
           "B13"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "EmojiKit",
@@ -1215,7 +1215,7 @@
         "leaves": [
           "U06"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "ExitBreakKit",
@@ -1227,7 +1227,7 @@
         "leaves": [
           "U07"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "TrailingBlockPlugin",
@@ -1239,7 +1239,7 @@
         "leaves": [
           "U07"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "DocxKit",
@@ -1253,7 +1253,7 @@
           "I14",
           "B10"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "SharedMdxKit",
@@ -1279,7 +1279,7 @@
           "X36",
           "I12"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "MarkdownKit",
@@ -1304,7 +1304,7 @@
           "P22",
           "N18"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "BlockPlaceholderKit",
@@ -1316,7 +1316,7 @@
         "leaves": [
           "U08"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "FloatingToolbarKit",
@@ -1331,7 +1331,7 @@
           "U15",
           "U16"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       }
     ],
     "static": [
@@ -1408,7 +1408,7 @@
           "R37",
           "R38"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "BaseCodeBlockKit",
@@ -1440,7 +1440,7 @@
           "X16",
           "P04"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "BaseTableKit",
@@ -1512,7 +1512,7 @@
           "I23",
           "R37"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "BaseToggleKit",
@@ -1538,7 +1538,7 @@
           "U07",
           "U12"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "BaseTocKit",
@@ -1562,7 +1562,7 @@
           "I21",
           "X18"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "BaseMediaKit",
@@ -1621,7 +1621,7 @@
           "X32",
           "X33"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "BaseCalloutKit",
@@ -1646,7 +1646,7 @@
           "X13",
           "X37"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "BaseStoryKit",
@@ -1671,7 +1671,7 @@
           "X14",
           "X37"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "BaseSolutionKit",
@@ -1696,7 +1696,7 @@
           "X15",
           "X37"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "BaseColumnKit",
@@ -1728,7 +1728,7 @@
           "X19",
           "X20"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "BaseLessonPlanKit",
@@ -1845,7 +1845,7 @@
           "R33",
           "R34"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "BaseMathKit",
@@ -1877,7 +1877,7 @@
           "X23",
           "X24"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "BaseSmilesKit",
@@ -1901,7 +1901,7 @@
           "I21",
           "X25"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "BaseDateKit",
@@ -1929,7 +1929,7 @@
           "B21",
           "X21"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "BaseLinkKit",
@@ -1959,7 +1959,7 @@
           "R43",
           "P22"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "BaseMentionKit",
@@ -1988,7 +1988,7 @@
           "X22",
           "X38"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "BaseSourceKit",
@@ -2023,7 +2023,7 @@
           "D12",
           "D14"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "BaseBasicMarksKit",
@@ -2050,7 +2050,7 @@
           "R38",
           "N18"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "BaseFontKit",
@@ -2067,7 +2067,7 @@
           "N04",
           "N05"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "BaseListKit",
@@ -2087,7 +2087,7 @@
           "R30",
           "I22"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "BaseAlignKit",
@@ -2104,7 +2104,7 @@
           "N06",
           "D04"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "BaseLineHeightKit",
@@ -2121,7 +2121,7 @@
           "N07",
           "D04"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "BaseCommentKit",
@@ -2144,7 +2144,7 @@
           "I17",
           "I21"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "BaseSuggestionKit",
@@ -2223,7 +2223,7 @@
           "R50",
           "R51"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "BaseSharedMdxKit",
@@ -2253,7 +2253,7 @@
           "X36",
           "I12"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "MarkdownKit",
@@ -2282,7 +2282,7 @@
           "P22",
           "N18"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       }
     ],
     "print": [
@@ -2302,7 +2302,7 @@
           "I17",
           "X01"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "BasePreparationRecapPlugin",
@@ -2320,7 +2320,7 @@
           "I17",
           "X02"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "BaseRecapGoalsPlugin",
@@ -2338,7 +2338,7 @@
           "I17",
           "X02"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "BaseRecapCurriculumPlugin",
@@ -2356,7 +2356,7 @@
           "I17",
           "X03"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "BaseRecapMaterialsPlugin",
@@ -2374,7 +2374,7 @@
           "I17",
           "X02"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "BaseRecapAdaptationsPlugin",
@@ -2392,7 +2392,7 @@
           "I17",
           "X02"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "BaseRecapPhasePlugin",
@@ -2410,7 +2410,7 @@
           "I17",
           "X04"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "BasePhasePlugin",
@@ -2428,7 +2428,7 @@
           "I17",
           "X04"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "BaseActivityPlugin",
@@ -2446,7 +2446,7 @@
           "I17",
           "X05"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "BaseLessonVisualPlugin",
@@ -2464,7 +2464,7 @@
           "I17",
           "X08"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "BaseListeningPlugin",
@@ -2483,7 +2483,7 @@
           "X09",
           "X10"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "BaseImagePlugin",
@@ -2501,7 +2501,7 @@
           "I17",
           "X26"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       },
       {
         "name": "BaseGalleryPlugin",
@@ -2519,7 +2519,7 @@
           "I17",
           "X27"
         ],
-        "verification": "Pending production verification"
+        "verification": "Required leaves complete; see coverage.md for evidence and scope exclusions."
       }
     ],
     "files": {

@@ -107,10 +107,17 @@ function members(path, name) {
     ts.isSpreadElement(element) ? element.expression : element
   );
 }
-const leaves = new Set();
-for (const name of readdirSync(docs).filter((name) => /^\d\d-.*\.md$/.test(name)))
-  for (const match of readFileSync(resolve(docs, name), 'utf8').matchAll(/^## ([A-Z]\d+)$/gm))
-    leaves.add(match[1]);
+const leaves = new Map();
+for (const name of readdirSync(docs).filter((name) => /^\d\d-.*\.md$/.test(name))) {
+  const text = readFileSync(resolve(docs, name), 'utf8');
+  const headings = [...text.matchAll(/^## ([A-Z]\d+)$/gm)];
+  for (const [index, heading] of headings.entries()) {
+    const section = text.slice(heading.index, headings[index + 1]?.index ?? text.length);
+    const checkbox = section.match(/^- \[([ x])\] /m);
+    if (!checkbox || leaves.has(heading[1])) throw new Error(`Invalid leaf ${heading[1]}`);
+    leaves.set(heading[1], checkbox[1] === 'x');
+  }
+}
 const ledger = new Map(
   [...readFileSync(resolve(docs, 'coverage.md'), 'utf8').matchAll(/^\| `([^`]+)` \| (.+)$/gm)].map(
     (match) => [
@@ -122,7 +129,6 @@ const ledger = new Map(
     ]
   )
 );
-const pending = 'Pending production verification';
 const workspacePath = 'src/components/workspace/WorkspaceEditorKit.ts';
 const workspace = members(workspacePath, 'WorkspaceEditorKit').map((member) => {
   const name = member.getText();
@@ -147,7 +153,6 @@ const workspace = members(workspacePath, 'WorkspaceEditorKit').map((member) => {
     definition: defined,
     renderers: components(defined.path),
     leaves: row.leaves,
-    verification: pending,
   };
 });
 if (workspace.length !== Object.keys(profile.features).length)
@@ -169,7 +174,6 @@ const staticKits = members(staticPath, 'BaseEditorKit').map((member) => {
         ? 'Stored comment marks and IDs; no live comment composer requirement.'
         : profile.features[workspaceName].savedData,
     leaves: ['I17', 'I21', ...(name === 'BaseCommentKit' ? [] : ledger.get(workspaceName).leaves)],
-    verification: pending,
   };
 });
 const printPath = 'src/components/lesson-plan/lesson-plan-export-kit.tsx';
@@ -205,7 +209,6 @@ const print = members(printPath, 'LessonPlanExportKit').map((member) => {
     renderer,
     rendererDefinition: definition(printPath, renderer),
     leaves: ['I16', 'I17', ...printLeaves[name]],
-    verification: pending,
   };
 });
 for (const path of [
@@ -222,8 +225,13 @@ for (const path of [
   'src/components/chat/chat-input/EdixTextarea.tsx',
 ])
   source(path);
-for (const entry of [...workspace, ...staticKits, ...print])
+for (const entry of [...workspace, ...staticKits, ...print]) {
   for (const id of entry.leaves) if (!leaves.has(id)) throw new Error(`Unknown leaf ${id}`);
+  const open = entry.leaves.filter((id) => !leaves.get(id));
+  entry.verification = open.length
+    ? `Pending production verification: ${open.join(', ')}`
+    : 'Required leaves complete; see coverage.md for evidence and scope exclusions.';
+}
 const snapshot = {
   applicationRevision: execFileSync('git', ['rev-parse', 'HEAD'], {
     cwd: app,
