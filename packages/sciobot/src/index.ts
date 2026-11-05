@@ -205,3 +205,4 @@ export * from './registry/active';
 export * from './blocks/gallery';
 export * from './blocks/gallery-ungroup';
 export * from './blocks/inline-image-update';
+export * from './blocks/inline-image-replace';
