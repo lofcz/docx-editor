@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Managed image replacement required a revision-bound document plan.",
+  "after": "Manual image controls use the same native replacement primitive and owned history scope.",
+  "reason": "The command uses existing canonical image, relationship, private payload, and owned history operations. It changes no shared record format or schema version.",
+  "tests": [
+    "packages/sciobot/src/blocks/inline-image-replace.test.ts",
+    "packages/sciobot/src/diff/inline-image-replacement.test.ts",
+    "packages/sciobot/src/diff/inline-image-replacement-collaboration.test.ts"
+  ],
+  "changeset": "manual-image-replacement",
+  "migration": null
+}
