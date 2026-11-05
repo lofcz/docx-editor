@@ -23,7 +23,10 @@
     "packages/sciobot/src/review/accept-native-group-collaboration.test.ts",
     "packages/sciobot/src/review/reject-group-stories-collaboration.test.ts",
     "packages/sciobot/src/review/native-link-structure-collaboration.test.ts",
-    "packages/sciobot/src/review/track-hyperlink-structure-collaboration.test.ts"
+    "packages/sciobot/src/review/track-hyperlink-structure-collaboration.test.ts",
+    "packages/core/src/store/__tests__/insert-paragraphs.test.ts",
+    "packages/sciobot/src/review/recompose-new-table-atoms-shared.test.ts",
+    "packages/sciobot/src/review/recompose-new-table-atom-peer-waves.test.ts"
   ],
   "changeset": "fork-upstream-234-sync",
   "migration": "upgrade-fork-rooms-to-format-19171"

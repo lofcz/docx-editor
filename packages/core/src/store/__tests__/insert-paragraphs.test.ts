@@ -108,6 +108,25 @@ test('repeated seeds get fresh identities and independent native revision addres
 });
 
 for (const xml of ['<w:p/>', '<w:p><w:pPr><w:outlineLvl w:val="1"/></w:pPr></w:p>'])
+  test(`rejecting a complete empty paragraph preserves its following source identity: ${xml}`, () => {
+    const original = part(p('Before') + p('After'));
+    const after = paragraphs(original)[1]!;
+    const pending = apply(original, {
+      op: 'insertParagraphs',
+      parentId: body(original).id,
+      beforeId: after.id,
+      paragraphs: seed(xml),
+      revision: ADA,
+    });
+    const rejected = apply(pending, { op: 'rejectAllRevisions' });
+    expect(findNode(rejected, after.id)).toBe(after);
+    expect(canonicalOoxmlFingerprint(rejected)).toBe(canonicalOoxmlFingerprint(original));
+    expect(canonicalOoxmlFingerprint(apply(reopen(pending), { op: 'rejectAllRevisions' }))).toBe(
+      canonicalOoxmlFingerprint(original)
+    );
+  });
+
+for (const xml of ['<w:p/>', '<w:p><w:pPr><w:outlineLvl w:val="1"/></w:pPr></w:p>'])
   test(`empty terminal inserted paragraphs reject completely: ${xml}`, () => {
     const original = part(p('Kept'));
     const next = apply(original, {

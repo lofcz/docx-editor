@@ -10,6 +10,7 @@
 // would get an invisible table, which reads as "insert did nothing".
 
 import { actorScopedSeed } from '../package/actor-scoped-ids.ts';
+import { withInsertedParagraphPropertyPresence } from './inserted-paragraph-property-presence.ts';
 import {
   createNodeIdAllocator,
   findNode,
@@ -233,7 +234,19 @@ export function insertedMarkProperties(
   wml: WmlFreshNamespaceContext
 ): OoxmlParagraphPropertiesNode {
   const rPr = {
-    ...fresh('rPr', nextId, wml, [], [revisionMarker(revision, nextId, wml)]),
+    ...fresh(
+      'rPr',
+      nextId,
+      wml,
+      [],
+      [
+        withInsertedParagraphPropertyPresence(
+          revisionMarker(revision, nextId, wml),
+          undefined,
+          undefined
+        ),
+      ]
+    ),
     kind: 'runProperties',
   } as OoxmlElement;
   return {

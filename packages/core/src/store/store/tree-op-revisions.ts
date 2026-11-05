@@ -882,7 +882,10 @@ export function resolveRevisions(
         if (paragraph === null) return { ok: false, reason: 'unsupported-revision' };
         mergeForward.add(paragraph);
         if (action === 'reject' && site.node.localName === 'ins')
-          first.set(paragraph, !holdsContent(findNode(part, paragraph)));
+          first.set(
+            paragraph,
+            !ownsInsertedParagraph(site.node) && !holdsContent(findNode(part, paragraph))
+          );
       }
       continue;
     }
@@ -981,3 +984,4 @@ export function resolveRevisions(
 }
 
 export type { RevisionAddress };
+import { ownsInsertedParagraph } from './inserted-paragraph-property-presence.ts';

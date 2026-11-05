@@ -10,7 +10,7 @@ export function withInsertedParagraphPropertyPresence(
   properties: OoxmlNode | undefined,
   runProperties: OoxmlNode | undefined
 ): OoxmlElement {
-  if (!properties) return mark;
+  if (!properties) return withPropertyPresence(mark, 'absent pPr');
   return withPropertyPresence(mark, runProperties ? 'pPr rPr' : 'pPr');
 }
 
@@ -24,7 +24,7 @@ export function withInsertedTablePropertyPresence(
 
 function withPropertyPresence(
   mark: OoxmlElement,
-  properties: 'pPr' | 'pPr rPr' | 'trPr' | 'tcPr' | 'absent trPr' | 'absent tcPr'
+  properties: 'pPr' | 'pPr rPr' | 'absent pPr' | 'trPr' | 'tcPr' | 'absent trPr' | 'absent tcPr'
 ): OoxmlElement {
   const prefix = `paragraphOrigin${secureRandomUuid().replace(/-/g, '')}`;
   return {
@@ -74,6 +74,12 @@ export function hasInsertedPropertyPresence(node: OoxmlNode): boolean {
   return propertyPresence(node) !== null;
 }
 
+/** Complete paragraph creation owns an empty paragraph; a split owns only its new mark. */
+export function ownsInsertedParagraph(node: OoxmlNode): boolean {
+  const value = propertyPresence(node);
+  return value === 'absent pPr' || value === 'pPr' || value === 'pPr rPr';
+}
+
 function propertyPresence(node: OoxmlNode): string | null {
   if (node.kind === 'textValue') return null;
   const fields = node.attributes.filter(
@@ -81,7 +87,9 @@ function propertyPresence(node: OoxmlNode): string | null {
   );
   return fields.length === 1 &&
     fields[0]!.localName === 'properties' &&
-    ['pPr', 'pPr rPr', 'trPr', 'tcPr', 'absent trPr', 'absent tcPr'].includes(fields[0]!.value)
+    ['pPr', 'pPr rPr', 'absent pPr', 'trPr', 'tcPr', 'absent trPr', 'absent tcPr'].includes(
+      fields[0]!.value
+    )
     ? fields[0]!.value
     : null;
 }
