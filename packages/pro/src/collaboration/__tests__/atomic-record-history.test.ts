@@ -8,7 +8,7 @@ import * as Y from 'yjs';
 import { ATOMIC_CONTENT_NAMESPACE } from '@docx-editor.dev/core/store';
 import { applyPrimitiveJournal } from '../document';
 import { asLogicalId } from '../document/identity';
-import { JOURNAL_ORIGIN } from '../document/schema';
+import { isTextRecord, JOURNAL_ORIGIN } from '../document/schema';
 import {
   destroyReplica,
   findText,
@@ -51,7 +51,7 @@ for (const clients of [
     const value = (index: number) => replicas[index]!.registry.record(id);
     const replace = (index: number, next: string) => {
       const before = value(index);
-      if (before?.kind !== 'textValue') throw Error('Missing atomic text record');
+      if (!before || !isTextRecord(before)) throw Error('Missing atomic text record');
       expect(
         applyPrimitiveJournal(replicas[index]!.registry, {
           effects: [
