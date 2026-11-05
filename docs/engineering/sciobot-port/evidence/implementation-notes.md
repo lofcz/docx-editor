@@ -2363,3 +2363,17 @@ The two retained/fresh linked-atom planning probes remain explicit failures. D30
 ## Mixed retained and fresh inline atoms
 
 Runtime `7234d5a0` / `7ea0a3d0` anchors retained controls through exact native source ranges. Only fresh atoms reach resource preparation and materialization. Named hyperlink edge insertion stays beside protected children, honors the resolved index, and inherits visible properties without copying pending format records. See [mixed atom evidence](mixed-inline-atoms.md) for 239 compiled, 1,028 native, and 333 unchanged C01/composer cases. D30 and R19 remain open.
+
+## Upstream 2.34 reconciliation
+
+Merge `fff945161` imports all 102 upstream commits through `5993bd223`. Commit `a06c82d6f` extracts internal helpers and refreshes API snapshots. The merge retains native block reservations, staged package edits, source identities, private review ownership, and payload persistence.
+
+Application commit `927aaffd3` pins five verified archives from `a06c82d6f`. It resolves one physical core package. The private build excludes production Pro and editor-api imports. The application and harness type checks, dependency alignment, and frozen install pass.
+
+The installed browser batch passes 62 cases and 762 assertions on `fff945161`. Final archives pass another 16 cases and 332 assertions. These checks cover direct edits, collaboration, saving, export, source excerpts, tracked links, and actual PDF conversion. See [source excerpt verification](native-source-excerpts.md) for the resumed session and commands' log paths.
+
+All public package builds, API checks, third-party notices, type checks, formatting, lint, adapter parity, and translation validation pass. The strict OpenSpec check and Office.js compatibility report also pass. Focused helper checks pass 149 cases. The full repository run uses frozen merge `fff945161`; its result remains pending at this checkpoint.
+
+Collaboration format `docx-collaboration:1.9.17.1` combines upstream repair behavior with private review ownership. Existing rooms require the documented export and reseed migration. The compatibility policy passes against `upstream/main`.
+
+The coverage audit verifies 202 source hashes at the updated application commit. The ledger retains 278 closed leaves from 282 leaves. B23 needs desktop input method evidence. V06 needs desktop Microsoft Word evidence. X20 retains its recorded column scope decision. V08 remains open until the required evidence and scope decisions permit closure.

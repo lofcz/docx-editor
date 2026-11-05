@@ -38,4 +38,10 @@ bun --preload ./scripts/test/preload-dom.ts \
 
 ## Application verification
 
-X12 remains open until the recorded native runtime passes the installed structural identity regression. Its desired-success assertions remain at `app:scripts/docx-native/repros/source-excerpt-identity.test.ts`.
+Application commits `0bbcdef9a` and `780e29a73` close X12. The installed regression lives in `app:scripts/docx-native/harness/source-excerpt-identity.test.ts`.
+
+The upstream reconciliation resumes Codex session `01a1520f-129b-7670-8af1-7dd69e359b62` at its installed-package verification step. Later commits already contain its completed implementation.
+
+Merge checkpoint `fff945161` passes 62 installed Chromium cases across seven files, with 762 assertions. This batch includes all twelve source excerpt cases, tracked links, direct edits, file reads, persistence, and export. Both participant orders, both review decisions, offline deletion, undo, redo, and reopening pass. The run uses the installed archives and matching test-only collaboration source. `/tmp/sciobot-docx-updated-browser2.log` records the run.
+
+The final archives pin `a06c82d6f`, which extracts internal helpers to satisfy source limits. All sixteen follow-up cases pass, with 332 assertions. These cases cover source excerpts, structural identity review, tracked links, and production PDF conversion. `/tmp/sciobot-docx-final-browser.log` records the run. Frontend and harness types, frozen installation, archive hashes, and the single core instance check also pass.
