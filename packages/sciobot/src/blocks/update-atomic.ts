@@ -22,6 +22,7 @@ import { withInlineCodeStyle } from '../native/inline-code';
 import { activeMdxRegistry } from '../registry/active';
 import { MdxRefusal } from '../registry/mdx-fields';
 import { buildBlockIndex } from './block-index';
+import { ancestorContentWriteRefusal } from './ancestor-content-write';
 import { convertMathControl } from './math-convert';
 import { decodeMathPayload } from './math-codec';
 import { encodeBlockPayload } from './payload-schema';
@@ -108,7 +109,13 @@ export function updateAtomicBlock(
     live?.kind === 'contentControl'
       ? live.children.find((child) => child.kind === 'contentControlContent')
       : undefined;
-  if (!liveContent) return fail('invalid-document', 'The block control is missing.');
+  if (!live || !liveContent) return fail('invalid-document', 'The block control is missing.');
+  const protectedAncestor = ancestorContentWriteRefusal(surface.session.part(), live.id);
+  if (protectedAncestor || contentControlPropertiesOf(live).dataBinding)
+    return fail(
+      'unsupported-operation',
+      protectedAncestor ?? 'The block control is bound to custom XML.'
+    );
   if (
     editor.snapshot().collaborationStatus !== 'inactive' &&
     live &&

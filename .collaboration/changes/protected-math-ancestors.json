@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Application equation source and display transforms could write through a protected native ancestor.",
+  "after": "Equation and atomic payload edits refuse ancestor content locks and custom XML bindings without changing document or history.",
+  "reason": "The live editor now checks existing native protection before its private package transform. Shared fields and snapshot interpretation do not change. Equation-owned fallback locks retain their existing behavior, and an ancestor deletion lock still allows content edits.",
+  "tests": [
+    "packages/sciobot/src/blocks/math-protection.test.ts",
+    "packages/sciobot/src/blocks/math-edit-collaboration.test.ts"
+  ],
+  "changeset": "protected-math-ancestors",
+  "migration": null
+}

@@ -2,6 +2,7 @@ import type { DocxEditorInstance } from '@docx-editor.dev/core/editor';
 import type { SemanticSelection } from '@docx-editor.dev/core/layout';
 import {
   applyTreeOp,
+  contentControlPropertiesOf,
   findNode,
   isAtomicContentControl,
   withPart,
@@ -10,6 +11,7 @@ import {
 } from '@docx-editor.dev/core/store';
 import type { NativeEditFailure } from '../contracts/document';
 import { buildBlockIndex } from './block-index';
+import { ancestorContentWriteRefusal } from './ancestor-content-write';
 import { convertMathControl } from './math-convert';
 import { insertBlockAtSelection } from './insert';
 import { withAtomicMathFallbacks } from './math-ownership';
@@ -76,6 +78,17 @@ export function updateMath(
     surface.session.currentPackage().parts.get(live.partName)!,
     live.controlId
   );
+  if (control) {
+    const protectedAncestor = ancestorContentWriteRefusal(
+      surface.session.currentPackage().parts.get(live.partName)!,
+      control.id
+    );
+    if (protectedAncestor || contentControlPropertiesOf(control).dataBinding)
+      return fail(
+        'unsupported-operation',
+        protectedAncestor ?? 'The equation control is bound to custom XML.'
+      );
+  }
   if (
     editor.snapshot().collaborationStatus !== 'inactive' &&
     (!control || !isAtomicContentControl(control))
