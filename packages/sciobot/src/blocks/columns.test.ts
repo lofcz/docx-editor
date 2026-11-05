@@ -8,6 +8,7 @@ import {
   withPart,
   parentNodeOf,
   contentControlContentNodeOf,
+  storyParagraphs,
   readOoxmlPackage,
   writeOoxmlPackage,
   type OoxmlPackage,
@@ -90,6 +91,18 @@ for (const [name, target, widths, order] of [
     ).toEqual([...widths]);
     const owner = blocks.find((block) => block.payload.type === 'column_group')!;
     const geometry = readColumnGeometry(pkg, owner)!;
+    // Every caret paragraph in the group must belong to a column control.
+    const part = pkg.parts.get(owner.partName)!;
+    const owned = new Set(geometry.columns.map((column) => column.block.controlId));
+    const paragraphs = storyParagraphs(
+      contentControlContentNodeOf(findNode(part, owner.controlId)!)!
+    );
+    expect(paragraphs.length).toBeGreaterThan(0);
+    for (const paragraph of paragraphs) {
+      let node = parentNodeOf(part, paragraph.id);
+      while (node && !owned.has(node.id)) node = parentNodeOf(part, node.id);
+      expect(node).not.toBeNull();
+    }
     expect(geometry.columns.map((column) => column.block.payload.attributes.width)).toEqual([
       ...widths,
     ]);
@@ -195,8 +208,21 @@ test('column ownership refuses a separator that contains user content', async ()
   const group = [...buildBlockIndex(pkg).byId.values()].find(
     (block) => block.payload.type === 'column_group'
   )!;
-  const geometry = readColumnGeometry(pkg, group)!;
-  const changed = applyTreeOp(pkg.parts.get(pkg.mainDocumentPart)!, {
+  const original = readColumnGeometry(pkg, group)!;
+  const part = pkg.parts.get(pkg.mainDocumentPart)!;
+  const control = findNode(part, group.controlId)!;
+  const paragraph = storyParagraphs(contentControlContentNodeOf(control)!)[0]!;
+  if (paragraph.kind !== 'paragraph') throw Error('Missing source paragraph.');
+  // Older experimental documents contain an extra empty group paragraph.
+  const imported = applyTreeOp(part, {
+    op: 'insertParagraphs',
+    parentId: contentControlContentNodeOf(control)!.id,
+    beforeId: null,
+    paragraphs: [{ ...paragraph, children: [] }],
+  });
+  if (!imported.ok) throw Error(imported.reason);
+  const geometry = readColumnGeometry(withPart(pkg, imported.part), group)!;
+  const changed = applyTreeOp(imported.part, {
     op: 'insertText',
     paragraphId: [...geometry.separatorIds][0]!,
     offset: 0,
@@ -204,8 +230,61 @@ test('column ownership refuses a separator that contains user content', async ()
   });
   if (!changed.ok) throw Error(changed.reason);
   expect(readColumnGeometry(withPart(pkg, changed.part), group)).toBeNull();
-  expect(readColumnGeometry(pkg, group)?.tableId).toBe(geometry.tableId);
+  expect(readColumnGeometry(pkg, group)?.tableId).toBe(original.tableId);
 });
+
+for (const first of [0, 1] as const)
+  test(`empty native columns keep new caret paragraphs owned through shared typing and undo; receiver ${first}`, async () => {
+    const pair = await createTwoEditorFixture({
+      document: writeOoxmlPackage(await land(group(column('50%', ''), column('50%', 'Peer')))),
+    });
+    try {
+      const [alice, bob] = pair.editors as [DocxEditorInstance, DocxEditorInstance];
+      const surface = alice.surface!;
+      const firstColumn = geometryOf(alice).columns[0]!;
+      const content = contentControlContentNodeOf(
+        findNode(surface.session.part(), firstColumn.block.controlId)!
+      )!;
+      const blank = storyParagraphs(content)[0]!;
+      surface.setSelection({
+        anchor: { paragraphId: blank.id, offset: 0 },
+        head: { paragraphId: blank.id, offset: 0 },
+      });
+      pair.pause();
+      surface.type('One');
+      surface.splitParagraph();
+      surface.type('Two');
+      const newParagraphId = surface.state().selection.head.paragraphId;
+      expect(parentNodeOf(surface.session.part(), newParagraphId)?.id).toBe(content.id);
+      const peer = bob
+        .surface!.session.paragraphIds()
+        .find((id) => paragraphTextOf(bob.surface!.session.part(), id) === 'Peer')!;
+      bob.surface!.setSelection({
+        anchor: { paragraphId: peer, offset: 4 },
+        head: { paragraphId: peer, offset: 4 },
+      });
+      bob.surface!.type(' Bob');
+      pair.reconnect(first);
+      await pair.settle();
+      for (const editor of pair.editors) {
+        expect(geometryOf(editor).columns).toHaveLength(2);
+        expect(texts(editor)).toContain('Two');
+        expect(texts(editor)).toContain('Peer Bob');
+        expect(
+          caretAt(editor.surface!.layout(), editor.surface!.state().selection.head)
+        ).not.toBeNull();
+      }
+      expect(alice.exec({ type: 'undo' }).ok).toBe(true);
+      await pair.settle();
+      expect(texts(bob)).toContain('Peer Bob');
+      expect(alice.exec({ type: 'redo' }).ok).toBe(true);
+      await pair.settle();
+      const saved = await pair.savedDigests();
+      expect(saved[0]).toEqual(saved[1]);
+    } finally {
+      pair.destroy();
+    }
+  });
 
 test('a column edit is one undo step', async () => {
   const container = document.createElement('div');

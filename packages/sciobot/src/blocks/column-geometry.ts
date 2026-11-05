@@ -69,8 +69,7 @@ export function columnWidthsTwips(
 /** Only renderer-produced column XML enters this builder. Attribute values remain escaped. */
 export function columnTableXml(
   widths: readonly number[],
-  render: (index: number, width: number) => string,
-  separator: () => string
+  render: (index: number, width: number) => string
 ): string {
   if (
     !widths.length ||
@@ -86,7 +85,7 @@ export function columnTableXml(
   const cells = widths
     .map(
       (width, index) =>
-        `<w:tc><w:tcPr><w:tcW w:w="${width}" w:type="dxa"/></w:tcPr>${render(index, width)}${separator()}</w:tc>`
+        `<w:tc><w:tcPr><w:tcW w:w="${width}" w:type="dxa"/></w:tcPr>${render(index, width)}</w:tc>`
     )
     .join('');
   // Width authoring uses an absolute grid. Keep creation in that same coordinate system;

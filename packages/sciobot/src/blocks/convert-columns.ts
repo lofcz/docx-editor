@@ -10,6 +10,7 @@ import {
   parentNodeOf,
   paragraphTextOf,
   readOoxmlPart,
+  removeNode,
   usedParaIds,
   validateTreeOp,
   w14RootPrefix,
@@ -17,6 +18,7 @@ import {
   WML_NAMESPACE_URI,
   type OoxmlPackage,
   type OoxmlNode,
+  type OoxmlPart,
 } from '@docx-editor.dev/core/store';
 import type { NativeEditFailure } from '../contracts/document';
 import { buildBlockIndex, type IndexedBlock } from './block-index';
@@ -68,6 +70,20 @@ const fail = (code: NativeEditFailure['code'], error: string): NativeEditFailure
   error,
 });
 
+function retainParagraphs(part: OoxmlPart, sourceId: string, controlId: string): OoxmlPart {
+  const source = findNode(part, sourceId)!;
+  const target = contentControlContentNodeOf(findNode(part, controlId)!)!;
+  if (source.kind === 'textValue') throw new Error('The paragraph owner is invalid.');
+  let at = target.children.length;
+  for (const child of source.children) {
+    if (child.kind !== 'paragraph') continue;
+    const moved = moveNode(part, child.id, target.id, at++);
+    if (!moved.ok) throw new Error('A trailing paragraph could not move into its column.');
+    part = moved.part;
+  }
+  return part;
+}
+
 /**
  * Convert stacked columns before joining collaboration. Existing control and text identities survive.
  * Shared sessions, including disconnected sessions, refuse: concurrent wrapper creation needs coordination.
@@ -91,15 +107,18 @@ export function convertColumnGroup(
   const pkg = surface.session.currentPackage(),
     part = surface.session.part();
   const group = buildBlockIndex(pkg).byId.get(request.groupId);
-  if (group && readColumnGeometry(pkg, group))
+  const native = group && readColumnGeometry(pkg, group);
+  if (native && !native.separatorIds.size)
     return { success: true, revision: request.expectedRevision };
   const legacy = readLegacyColumnGroup(pkg, request.groupId);
-  if (!legacy || legacy.group.partName !== part.name || surface.storyScope().kind !== 'body')
+  const owner = legacy?.group ?? native?.group;
+  const columns = legacy?.columns ?? native?.columns.map((column) => column.block);
+  if (!owner || !columns || owner.partName !== part.name || surface.storyScope().kind !== 'body')
     return fail(
       'unsupported-operation',
-      'The group has no complete stacked column representation in the active body.'
+      'The group has no complete column representation in the active body.'
     );
-  for (const column of legacy.columns) {
+  for (const column of columns) {
     const reason = validateTreeOp(part, {
       op: 'removeContentControl',
       controlId: column.controlId,
@@ -120,23 +139,43 @@ export function convertColumnGroup(
         return fail('unsupported-operation', 'The column group contains protected content.');
     }
   }
-  const fragment = surface
-    .layout()
-    .contentControls?.find((control) => control.id === legacy.group.controlId)?.fragments[0];
-  if (!fragment)
-    return fail('unsupported-operation', 'The column group has no native layout geometry.');
   try {
+    const commit = (
+      change: (working: OoxmlPackage) => OoxmlPackage
+    ): ColumnGroupConversionResult => {
+      const result = surface.applyAutomationOps(() => [], { kind: 'body' }, [change], false, true);
+      if (result.rejected || !result.committed)
+        return fail(
+          'apply-failed',
+          String(result.reason ?? 'The column conversion did not commit.')
+        );
+      return { success: true, revision: surface.session.packageRevision() };
+    };
+    if (native)
+      return commit((working) => {
+        let current = working.parts.get(part.name)!;
+        // Older native prototypes have cell and group paragraphs outside the controls.
+        // Move them in reading order. Their identities, formatting, and undo remain intact.
+        for (const column of native.columns)
+          current = retainParagraphs(current, column.cellId, column.block.controlId);
+        const content = contentControlContentNodeOf(findNode(current, owner.controlId)!)!;
+        current = retainParagraphs(current, content.id, columns.at(-1)!.controlId);
+        return withPart(working, current);
+      });
+    if (!legacy) throw new Error('The stacked column representation is unavailable.');
+    const fragment = surface
+      .layout()
+      .contentControls?.find((control) => control.id === legacy.group.controlId)?.fragments[0];
+    if (!fragment)
+      return fail('unsupported-operation', 'The column group has no native layout geometry.');
     const widths = columnWidthsTwips(
       legacy.columns.map((column) => column.payload.attributes.width),
       Math.round(fragment.box.width * 20)
     );
-    const xml = columnTableXml(
-      widths,
-      () => '',
-      () => '<w:p/>'
-    );
+    // Temporary cells receive the existing controls before the transaction commits.
+    const xml = columnTableXml(widths, () => '<w:p/>');
     const parsed = readOoxmlPart(
-      `<w:document xmlns:w="${WML_NAMESPACE_URI}"><w:body>${xml}<w:p/></w:body></w:document>`,
+      `<w:document xmlns:w="${WML_NAMESPACE_URI}"><w:body>${xml}</w:body></w:document>`,
       { name: '/column-conversion.xml', contentType: part.contentType }
     );
     const body = parsed.ok ? bodyStoryRoot(parsed.part) : null;
@@ -151,7 +190,9 @@ export function convertColumnGroup(
         used: new Set(usedParaIds(current.root)),
         seed: identitySeed,
       };
-      const table = withFreshIds(body.children[0]!, allocate, identity);
+      const template = body.children[0]!;
+      // Each existing column supplies the cell's required block content.
+      const table = withFreshIds(template, allocate, identity);
       if (table.kind !== 'table') throw new Error('The native template contains no table.');
       const row = table.children.find((node) => node.kind === 'tableRow');
       const cells = row?.children.filter((node) => node.kind === 'tableCell') ?? [];
@@ -164,23 +205,20 @@ export function convertColumnGroup(
         const moved = moveNode(current, column.controlId, cells[index]!.id, 1);
         if (!moved.ok) throw new Error('A column control could not move into its native cell.');
         current = moved.part;
+        const seed = cells[index]!.children.find((node) => node.kind === 'paragraph')!;
+        const removed = removeNode(current, seed.id);
+        if (!removed.ok) throw new Error('The temporary cell seed could not be removed.');
+        current = removed.part;
       }
-      if (!legacy.hasTrailingParagraph) {
-        const trailing = insertChildren(current, legacy.content.id, 1, [
-          withFreshIds(body.children[1]!, allocate, identity),
-        ]);
-        if (!trailing.ok) throw new Error('The native column group needs its terminal paragraph.');
-        current = trailing.part;
-      }
+      // Retain imported trailing paragraph identities inside the final column's ownership.
+      if (legacy.hasTrailingParagraph)
+        current = retainParagraphs(current, legacy.content.id, legacy.columns.at(-1)!.controlId);
       const converted = withPart(working, current);
       if (!readColumnGeometry(converted, legacy.group))
         throw new Error('The converted column structure is invalid.');
       return converted;
     };
-    const result = surface.applyAutomationOps(() => [], { kind: 'body' }, [convert], false, true);
-    if (result.rejected || !result.committed)
-      return fail('apply-failed', String(result.reason ?? 'The column conversion did not commit.'));
-    return { success: true, revision: surface.session.packageRevision() };
+    return commit(convert);
   } catch (error) {
     return fail(
       'apply-failed',

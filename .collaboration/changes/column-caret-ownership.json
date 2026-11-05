@@ -1,0 +1,13 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Column creation adds empty paragraphs outside the column content controls.",
+  "after": "Every editable paragraph in a new or converted column group belongs to a column control.",
+  "reason": "Existing tables and controls already represent the complete shape. Removing generated outside caret positions needs no new shared fields. Imported empty trailing paragraphs retain their identities inside the last column during offline conversion.",
+  "tests": [
+    "packages/sciobot/src/blocks/columns.test.ts",
+    "packages/sciobot/src/blocks/convert-columns.test.ts"
+  ],
+  "changeset": "column-caret-ownership",
+  "migration": null
+}

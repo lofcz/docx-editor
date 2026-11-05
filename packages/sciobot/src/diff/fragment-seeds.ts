@@ -651,17 +651,15 @@ function blockXml(node: TargetAstNode, path: readonly number[], context: RenderC
         columns.map((column) => column.payload.attributes.width),
         context.width
       );
-      const table = columnTableXml(
-        widths,
-        (index, width) => {
-          const childContext = { ...context, width };
-          const xml = blockXml(children[index]!, [...path, index], childContext);
-          context.pkg = childContext.pkg;
-          return xml;
-        },
-        () => seedParagraph(context)
-      );
-      return `<w:sdt>${properties}<w:sdtContent>${table}${seedParagraph(context)}</w:sdtContent></w:sdt>`;
+      const table = columnTableXml(widths, (index, width) => {
+        const childContext = { ...context, width };
+        const xml = blockXml(children[index]!, [...path, index], childContext);
+        context.pkg = childContext.pkg;
+        return xml;
+      });
+      // The column controls already hold editable paragraphs. Extra cell/group paragraphs
+      // create editable regions outside every column and break the ownership contract.
+      return `<w:sdt>${properties}<w:sdtContent>${table}</w:sdtContent></w:sdt>`;
     } catch (error) {
       if (error instanceof NativeWriteRefusal) throw error;
       refuseWrite(

@@ -6,6 +6,7 @@ import {
   findNode,
   moveNode,
   paragraphTextOf,
+  parentNodeOf,
   readOoxmlPackage,
   removeNode,
   semanticDigest,
@@ -118,6 +119,79 @@ test('explicit legacy conversion retains rich native controls, text identities, 
     expect(readLegacyColumnGroup(surface.session.currentPackage(), fixture.groupId)).not.toBeNull();
     expect(editor.exec({ type: 'redo' }).ok).toBe(true);
     expect(geometry(editor, fixture.groupId)).not.toBeNull();
+  } finally {
+    editor.destroy();
+  }
+});
+
+test('conversion retains imported trailing paragraphs inside the last column', async () => {
+  const fixture = await legacyDocument('North', (xml) =>
+    xml.replace(/(<\/w:sdtContent><\/w:sdt>)(<w:p\b)/, '<w:p/>$1$2')
+  );
+  const editor = createDocxEditor({
+    container: document.createElement('div'),
+    document: fixture.bytes,
+  });
+  try {
+    const surface = editor.surface!;
+    const legacy = readLegacyColumnGroup(surface.session.currentPackage(), fixture.groupId)!;
+    expect(legacy.hasTrailingParagraph).toBe(true);
+    const ids = surface.session.paragraphIds();
+    const trailing = legacy.content.children.at(-1)!;
+    const result = convertColumnGroup(editor, request(editor, fixture.groupId));
+    if (!result.success) throw Error(result.error);
+    expect(surface.session.paragraphIds()).toEqual(ids);
+    const last = findNode(surface.session.part(), legacy.columns.at(-1)!.controlId)!;
+    expect(parentNodeOf(surface.session.part(), trailing.id)?.id).toBe(
+      contentControlContentNodeOf(last)!.id
+    );
+    expect(geometry(editor, fixture.groupId)?.separatorIds.size).toBe(0);
+  } finally {
+    editor.destroy();
+  }
+});
+
+test('offline conversion repairs older native caret ownership without replacing identities', async () => {
+  const fixture = await legacyDocument();
+  const source = createDocxEditor({
+    container: document.createElement('div'),
+    document: fixture.bytes,
+  });
+  let bytes: Uint8Array;
+  try {
+    expect(convertColumnGroup(source, request(source, fixture.groupId)).success).toBe(true);
+    const files = unzipSync(new Uint8Array(await source.save()));
+    files['word/document.xml'] = strToU8(
+      strFromU8(files['word/document.xml']!)
+        .replaceAll('</w:sdt></w:tc>', '</w:sdt><w:p/></w:tc>')
+        .replace('</w:tbl></w:sdtContent>', '</w:tbl><w:p/></w:sdtContent>')
+    );
+    bytes = zipSync(files);
+  } finally {
+    source.destroy();
+  }
+  const editor = createDocxEditor({ container: document.createElement('div'), document: bytes! });
+  try {
+    const surface = editor.surface!;
+    const old = geometry(editor, fixture.groupId)!;
+    expect(old.separatorIds.size).toBe(3);
+    const ids = surface.session.paragraphIds();
+    const before = semanticDigest(surface.session.currentPackage().parts.values());
+    const index = buildBlockIndex(surface.session.currentPackage());
+    const result = convertColumnGroup(editor, request(editor, fixture.groupId));
+    if (!result.success) throw Error(result.error);
+    expect(geometry(editor, fixture.groupId)?.separatorIds.size).toBe(0);
+    expect(surface.session.paragraphIds()).toEqual(ids);
+    expect(buildBlockIndex(surface.session.currentPackage()).byId).toEqual(index.byId);
+    expect(geometry(editor, fixture.groupId)?.tableId).toBe(old.tableId);
+    expect(editor.exec({ type: 'undo' }).ok).toBe(true);
+    expect(semanticDigest(surface.session.currentPackage().parts.values())).toEqual(before);
+    expect(editor.exec({ type: 'redo' }).ok).toBe(true);
+    const saved = readOoxmlPackage(new Uint8Array(await editor.save()));
+    if (!saved.ok) throw Error(saved.reason);
+    expect(semanticDigest(saved.package.parts.values())).toEqual(
+      semanticDigest(surface.session.currentPackage().parts.values())
+    );
   } finally {
     editor.destroy();
   }
