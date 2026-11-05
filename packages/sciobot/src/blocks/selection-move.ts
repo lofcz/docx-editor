@@ -97,7 +97,9 @@ export function moveBlockSelection(
   const seedSource =
     !sameParent &&
     (!remaining.some((node) => ['paragraph', 'table', 'contentControl'].includes(node.kind)) ||
-      (range.parent.kind === 'tableCell' && !remaining.some((node) => node.kind === 'paragraph')));
+      (range.parent.kind === 'tableCell' &&
+        (!remaining.some((node) => node.kind === 'paragraph') ||
+          remaining.at(-1)?.kind === 'table')));
   const seedTemplate = findNode(part, surface.session.paragraphIds()[0]!);
   if (seedSource && seedTemplate?.kind !== 'paragraph')
     return fail('invalid-document', 'The source has no native paragraph template.');
