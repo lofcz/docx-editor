@@ -1,0 +1,14 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Application tasks change checkbox state without a persistent completion appearance.",
+  "after": "Task commands change the checkbox and paragraph style together. Preparation seeds derived styles before room creation. Shared edits refuse missing definitions.",
+  "reason": "The change uses existing paragraph style references, style definitions, and checkbox operations. Shared records, ownership fields, and protocol versions do not change. Style definitions belong to initial room content, outside participant undo histories.",
+  "tests": [
+    "packages/sciobot/src/chrome/task-completion-style.test.ts",
+    "packages/sciobot/src/chrome/task-completion-collaboration.test.ts",
+    "packages/sciobot/src/native/prepare-document.test.ts"
+  ],
+  "changeset": "completed-task-appearance",
+  "migration": null
+}

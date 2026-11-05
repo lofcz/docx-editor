@@ -18,6 +18,7 @@ import {
 import { projectMdx, type MdxProjection } from '../projection/mdx';
 import { projectPendingProperties, type PendingPropertyProposal } from './property-projection';
 import { readApplicationProposals, projectApplicationPresence } from './application-proposals';
+import { withoutTaskCompletionAppearance } from '../native/task-completion-style';
 
 export type ReviewViewOptions = Pick<
   OpenDocumentForExportOptions,
@@ -80,11 +81,12 @@ export async function readNativeReviewView(
   if (!properties.success) return properties;
   const presence = projectApplicationPresence(properties.pkg, stored.presence, kind);
   if (!presence.success) return presence;
+  const readPackage = withoutTaskCompletionAppearance(presence.pkg);
   const projectedSource =
-    presence.pkg === properties.pkg
+    readPackage === pkg
       ? source
       : headlessViewOfStore(
-          new TreePackageStore(presence.pkg, presence.pkg.parts.get(presence.pkg.mainDocumentPart)!)
+          new TreePackageStore(readPackage, readPackage.parts.get(readPackage.mainDocumentPart)!)
         );
   const layoutSource =
     projectedSource === source

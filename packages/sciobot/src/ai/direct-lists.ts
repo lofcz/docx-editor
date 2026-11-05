@@ -159,7 +159,7 @@ export function applyDirectListAssignments(
       } else {
         const marker = seedNodes(
           part(),
-          `<w:p><w:sdt xmlns:w14="${W14}"><w:sdtPr><w:tag w:val="${checklistTag()}"/><w14:checkbox><w14:checked w14:val="${target.checked ? 1 : 0}"/></w14:checkbox></w:sdtPr><w:sdtContent><w:r><w:t>${target.checked ? '☒' : '☐'}</w:t></w:r></w:sdtContent></w:sdt></w:p>`,
+          `<w:p><w:sdt xmlns:w14="${W14}"><w:sdtPr><w:tag w:val="${checklistTag()}"/><w14:checkbox><w14:checked w14:val="${target.checked ? 1 : 0}"/></w14:checkbox></w:sdtPr><w:sdtContent><w:r><w:rPr><w:strike w:val="0"/><w:spacing w:val="180"/><w:sz w:val="30"/></w:rPr><w:t>${target.checked ? '☒' : '☐'}</w:t></w:r></w:sdtContent></w:sdt></w:p>`,
           `/sciobot-direct-list-${++seeds}.xml`
         )[0];
         const control =

@@ -11,9 +11,14 @@ import {
 } from '@docx-editor.dev/core/store';
 import { docxFixture } from '../../test/support/document';
 import { prepareNativeDocument } from '../native/prepare-document';
-import { taskCompletionStyleSource } from '../native/task-completion-style';
+import {
+  taskCompletionStyleSource,
+  withTaskCompletionStyles,
+} from '../native/task-completion-style';
 import { setManualList, setManualListChecked, manualListState } from './lists';
 import { handleManualListKey, installListEditing } from './list-input';
+import { readWorkingView } from '../review/working-view';
+import { readEditorRevision } from '../projection/revision-cache';
 const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 const context = { documentId: 'completed-tasks', epoch: 'mount' };
 const styleId = (editor: ReturnType<typeof createDocxEditor>, id: string) =>
@@ -60,7 +65,7 @@ for (const base of [undefined, 'Normal', 'Imported'])
       const rendered = spans(editor, id);
       expect(rendered.find((s) => s.text === 'Plain')!.style).toMatchObject({
         strike: true,
-        color: '808080',
+        color: '606060',
       });
       expect(rendered.find((s) => s.text === 'Styled')!.style).toMatchObject({
         strike: false,
@@ -68,6 +73,20 @@ for (const base of [undefined, 'Normal', 'Imported'])
         bold: true,
       });
       expect(rendered.find((s) => s.text === 'Struck')!.style.strike).toBe(true);
+      expect(rendered.find((s) => s.text === '☒')!.style).toMatchObject({
+        fontSizePt: 15,
+        characterSpacingPt: 9,
+        strike: false,
+      });
+      const projected = await readWorkingView(
+        surface.session,
+        readEditorRevision(editor, context.documentId, context.epoch)!
+      );
+      if (!projected.success) throw new Error(projected.error);
+      expect(projected.view.projection.text).toContain('- [x] ');
+      expect(projected.view.projection.text).toContain('Plain');
+      expect(projected.view.projection.text).toContain('~~Struck~~');
+      expect(projected.view.projection.text).not.toContain('~~Plain');
       const paragraph = findNode(surface.session.part(), id)!;
       if (paragraph.kind !== 'paragraph') throw new Error('Missing paragraph');
       expect(
@@ -98,6 +117,40 @@ for (const base of [undefined, 'Normal', 'Imported'])
       editor.destroy();
     }
   });
+
+test('completion retains a source paragraph strike through the native style cascade and reopen', async () => {
+  const editor = open(
+    'AlreadyStruck',
+    '<w:style w:type="paragraph" w:styleId="AlreadyStruck"><w:basedOn w:val="Normal"/><w:rPr><w:strike/></w:rPr></w:style>'
+  );
+  try {
+    const id = editor.surface!.session.paragraphIds()[0]!;
+    expect(spans(editor, id).find((span) => span.text === 'Plain')!.style.strike).toBe(true);
+    expect(setManualList(editor, 'todo', context).success).toBe(true);
+    expect(setManualListChecked(editor, true, context).success).toBe(true);
+    expect(spans(editor, id).find((span) => span.text === 'Plain')!.style.strike).toBe(true);
+    const prepared = prepareNativeDocument(new Uint8Array(await editor.save()));
+    if (!prepared.success) throw new Error(prepared.error);
+    await editor.load(prepared.document);
+    const reopenedId = editor.surface!.session.paragraphIds()[0]!;
+    expect(
+      taskCompletionStyleSource(
+        editor.surface!.session.currentPackage(),
+        styleId(editor, reopenedId)
+      )
+    ).toEqual({ base: 'AlreadyStruck' });
+    expect(spans(editor, reopenedId).find((span) => span.text === 'Plain')!.style.strike).toBe(
+      true
+    );
+    expect(setManualListChecked(editor, false, context).success).toBe(true);
+    expect(styleId(editor, reopenedId)).toBe('AlreadyStruck');
+    expect(spans(editor, reopenedId).find((span) => span.text === 'Plain')!.style.strike).toBe(
+      true
+    );
+  } finally {
+    editor.destroy();
+  }
+});
 for (const target of ['disc', 'none'] as const)
   test(`leaving completed tasks for ${target} restores the original paragraph style`, () => {
     const editor = open('Imported');
@@ -197,10 +250,107 @@ test('owned checkbox activation keeps the caret and supports keyboard focus', as
     s.insertPlainText(' changed');
     s.flushPendingInput();
     expect(widget().getAttribute('aria-label')).toBe('PlainStyledStruck changed');
+    widget().click();
+    await Promise.resolve();
+    expect(manualListState(editor, context, id)!.checkbox!.checked).toBe(true);
     expect(errors).toEqual([]);
   } finally {
     stop();
     editor.destroy();
     host.remove();
   }
+});
+
+test('preparation restores legacy completed task appearance before seeding and stays idempotent', async () => {
+  const editor = open('Imported');
+  try {
+    const s = editor.surface!,
+      id = s.session.paragraphIds()[0]!;
+    expect(setManualList(editor, 'todo', context).success).toBe(true);
+    expect(setManualListChecked(editor, true, context).success).toBe(true);
+    expect(
+      s.applyAutomationOps(() => [
+        {
+          op: 'setParagraphProperties',
+          paragraphId: id,
+          properties: directParagraphProperties(s.session.part(), id).map((p) =>
+            p.localName === 'pStyle' ? { ...p, attributes: { val: 'Imported' } } : p
+          ),
+        },
+      ]).committed
+    ).toBe(true);
+    expect(spans(editor, id).find((span) => span.text === 'Plain')!.style.strike).toBe(false);
+    const prepared = prepareNativeDocument(new Uint8Array(await editor.save()));
+    if (!prepared.success) throw new Error(prepared.error);
+    expect(prepared.changed).toBe(true);
+    await editor.load(prepared.document);
+    const reopenedId = editor.surface!.session.paragraphIds()[0]!;
+    expect(styleId(editor, reopenedId)).toBe('SciobotTaskDone__SImported');
+    expect(spans(editor, reopenedId).find((span) => span.text === 'Plain')!.style.strike).toBe(
+      true
+    );
+    const repeated = prepareNativeDocument(prepared.document);
+    expect(repeated).toMatchObject({ success: true, changed: false });
+    if (repeated.success) expect(repeated.document).toBe(prepared.document);
+  } finally {
+    editor.destroy();
+  }
+});
+
+test('task listeners follow document reloads and keep read-only reasons visible', async () => {
+  const editor = open();
+  const host = editor.surface!.hostElement();
+  document.body.append(host);
+  const stop = installListEditing(editor, context, {
+    label: () => 'Task',
+    disabledReason: (reason) => (reason === 'readOnly' ? 'Viewing this document' : undefined),
+  });
+  try {
+    expect(setManualList(editor, 'todo', context).success).toBe(true);
+    const document = new Uint8Array(await editor.save());
+    await editor.load(document);
+    const surface = editor.surface!;
+    const widget = () =>
+      surface.hostElement().querySelector<HTMLElement>('[data-docx-cc-widget="checkbox"]')!;
+    expect(widget().tabIndex).toBe(0);
+    widget().focus();
+    widget().dispatchEvent(
+      new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key: 'Enter' })
+    );
+    await Promise.resolve();
+    expect(manualListState(editor, context)!.checkbox!.checked).toBe(true);
+    expect(editor.exec({ type: 'setEditingMode', mode: 'viewing' }).ok).toBe(true);
+    expect(widget().getAttribute('aria-disabled')).toBe('true');
+    expect(widget().getAttribute('title')).toBe('Viewing this document');
+    widget().dispatchEvent(
+      new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key: ' ' })
+    );
+    expect(manualListState(editor, context)!.checkbox!.checked).toBe(true);
+    expect(editor.exec({ type: 'setEditingMode', mode: 'editing' }).ok).toBe(true);
+    stop();
+    await editor.load(document);
+    expect(widget().tabIndex).toBe(-1);
+  } finally {
+    stop();
+    editor.destroy();
+    host.remove();
+  }
+});
+
+test('many imported paragraph styles prepare together and remain unchanged on a second pass', () => {
+  const styles = Array.from(
+    { length: 1000 },
+    (_, i) =>
+      `<w:style w:type="paragraph" w:styleId="Imported${i}"><w:name w:val="Style ${i}"/></w:style>`
+  ).join('');
+  const loaded = readOoxmlPackage(
+    docxFixture('<w:p/>', { styles: `<w:styles xmlns:w="${W}">${styles}</w:styles>` })
+  );
+  if (!loaded.ok) throw new Error(loaded.reason);
+  const prepared = withTaskCompletionStyles(loaded.package);
+  expect(stylesPartOf(prepared)!.root.children.length).toBe(2001);
+  expect(taskCompletionStyleSource(prepared, 'SciobotTaskDone__SImported999')).toEqual({
+    base: 'Imported999',
+  });
+  expect(withTaskCompletionStyles(prepared)).toBe(prepared);
 });

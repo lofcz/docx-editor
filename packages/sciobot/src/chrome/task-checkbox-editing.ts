@@ -12,6 +12,7 @@ import { setManualListChecked } from './lists';
 export interface TaskCheckboxOptions {
   readonly onError?: (message: string) => void;
   readonly label?: () => string;
+  readonly disabledReason?: (reason: string) => string | undefined;
 }
 /** Owned task widgets use the same canonical command as keyboard and agent list edits. */
 export function installTaskCheckboxEditing(
@@ -46,7 +47,7 @@ export function installTaskCheckboxEditing(
     if (widget!.hasAttribute('disabled') || widget!.getAttribute('data-disabled-reason')) return;
     const result = setManualListChecked(editor, !task.checked, context, task.paragraphId);
     if (!result.success) options.onError?.(result.error);
-    else if (event.type === 'keydown')
+    else if (event.type === 'keydown' || event.type === 'click')
       queueMicrotask(() => {
         for (const current of host.querySelectorAll<HTMLElement>(
           '[data-docx-cc-widget="checkbox"]'
@@ -70,6 +71,9 @@ export function installTaskCheckboxEditing(
     )
       activate(event);
   };
+  const click = (event: MouseEvent) => {
+    if (event.detail === 0) activate(event);
+  };
   const decorate = (root: Element) => {
     const widgets = [...root.querySelectorAll('[data-docx-cc-widget="checkbox"]')];
     if (root.matches('[data-docx-cc-widget="checkbox"]')) widgets.push(root);
@@ -80,6 +84,10 @@ export function installTaskCheckboxEditing(
       const text = paragraphTextOf(surface.session.part(), task.paragraphId)?.slice(1).trim();
       const label = text || options.label?.();
       if (label) widget.setAttribute('aria-label', label);
+      const reason = widget.getAttribute('data-disabled-reason');
+      const title = reason ? options.disabledReason?.(reason) : undefined;
+      if (title) widget.setAttribute('title', title);
+      else widget.removeAttribute('title');
     }
   };
   // Existing widgets can survive a text-only paint. Their accessible names still change.
@@ -87,9 +95,11 @@ export function installTaskCheckboxEditing(
   decorate(host);
   host.addEventListener('pointerdown', pointer, true);
   host.addEventListener('keydown', key, true);
+  host.addEventListener('click', click, true);
   return () => {
     stopPaint();
     host.removeEventListener('pointerdown', pointer, true);
     host.removeEventListener('keydown', key, true);
+    host.removeEventListener('click', click, true);
   };
 }

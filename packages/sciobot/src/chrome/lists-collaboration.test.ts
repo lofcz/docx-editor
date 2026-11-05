@@ -9,7 +9,10 @@ import {
 } from '@docx-editor.dev/core/store';
 import { caretAt, selectionRects } from '@docx-editor.dev/core/layout';
 import { createTwoEditorFixture } from '../../test/support/collaboration';
-import { listDocument, listParagraph } from '../../test/support/list-document';
+import {
+  preparedListDocument as listDocument,
+  listParagraph,
+} from '../../test/support/list-document';
 import {
   setManualList,
   setManualListChecked,

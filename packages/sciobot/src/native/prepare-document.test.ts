@@ -11,12 +11,15 @@ import { inlineCodeStyleId, inlineCodeStyleState } from './inline-code';
 import { prepareNativeDocument } from './prepare-document';
 import { readPayloadStore } from '../blocks/payload-opc-codec';
 import { readReviewGroupStore } from '../review/group-record-store';
+import { checklistTag } from '../registry/adapter-names';
 
 const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 const BODY =
   '<w:p><w:pPr><w:keepNext/><w:customKeep w:val="keep"/></w:pPr>' +
   '<w:ins w:id="7" w:author="Teacher"><w:r><w:t>Pending</w:t></w:r></w:ins>' +
   '<w:r><w:t xml:space="preserve"> &amp; preserved 😀</w:t></w:r></w:p><w:sectPr><w:pgSz w:w="11906" w:h="16838"/></w:sectPr>';
+const checkedMarker = (tag: string, lock = '') =>
+  `<w:sdt xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml"><w:sdtPr><w:tag w:val="${tag}"/>${lock}<w14:checkbox><w14:checked w14:val="1"/></w14:checkbox></w:sdtPr><w:sdtContent><w:r><w:t>☒</w:t></w:r></w:sdtContent></w:sdt>`;
 const ready = (bytes: Uint8Array) => {
   const result = prepareNativeDocument(bytes);
   if (!result.success) throw new Error(result.error);
@@ -55,6 +58,19 @@ test('preparation adds shared code infrastructure and preserves every unrelated 
   expect(strFromU8(after['word/_rels/document.xml.rels']!)).toContain('Target="styles.xml"');
   expect(ready(prepared.document)).toMatchObject({ changed: false, codeStyleReady: true });
   expect(ready(prepared.document).document).toBe(prepared.document);
+});
+
+test('task preparation preserves pending revisions, protected tasks, and ordinary Word checkboxes', () => {
+  const content =
+    `<w:p><w:ins w:id="12" w:author="Peer">${checkedMarker(checklistTag())}</w:ins><w:r><w:t>Pending</w:t></w:r></w:p>` +
+    `<w:p>${checkedMarker(checklistTag(), '<w:lock w:val="contentLocked"/>')}<w:r><w:t>Protected</w:t></w:r></w:p>` +
+    `<w:p>${checkedMarker('ordinary-form')}<w:r><w:t>Form</w:t></w:r></w:p>`;
+  const input = docxFixture(content);
+  const prepared = ready(input);
+  expect(unzipSync(prepared.document)['word/document.xml']).toEqual(
+    unzipSync(input)['word/document.xml']
+  );
+  expect(ready(prepared.document).changed).toBe(false);
 });
 
 test('preparation retains imported style definitions and their nonstandard part location', () => {

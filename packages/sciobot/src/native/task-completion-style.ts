@@ -15,6 +15,12 @@ import {
   type OoxmlNode,
   type OoxmlPackage,
 } from '@docx-editor.dev/core/store';
+import {
+  buildStyleCascadeTable,
+  cascadeParagraphFormatting,
+  resolveRunStyle,
+  type StyleCascadeTable,
+} from '@docx-editor.dev/core/layout';
 
 const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 const CONTENT_TYPE = 'application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml';
@@ -29,6 +35,7 @@ interface StyleIndex {
   readonly defaultId: string | undefined;
 }
 const indexCache = new WeakMap<object, StyleIndex>();
+const cascadeCache = new WeakMap<object, StyleCascadeTable>();
 const attribute = (node: OoxmlNode | undefined, key: string) =>
   !node || node.kind === 'textValue'
     ? undefined
@@ -79,12 +86,56 @@ function source(id: string): Source | null {
     return null;
   }
 }
-function definition(id: string, inherited: string | undefined): string {
+function inheritedStrike(pkg: OoxmlPackage, inherited: string | undefined): boolean {
+  const root = stylesPartOf(pkg)?.root;
+  if (!root) return false;
+  let cascade = cascadeCache.get(root);
+  if (!cascade) {
+    cascade = buildStyleCascadeTable(root);
+    cascadeCache.set(root, cascade);
+  }
+  const properties: OoxmlElement = {
+    id: 'task-source-style',
+    kind: 'paragraphProperties',
+    namespaceUri: W,
+    prefix: 'w',
+    localName: 'pPr',
+    namespaceBindings: [],
+    attributes: [],
+    children:
+      inherited === undefined
+        ? []
+        : [
+            {
+              id: 'task-source-reference',
+              kind: 'generic',
+              namespaceUri: W,
+              prefix: 'w',
+              localName: 'pStyle',
+              namespaceBindings: [],
+              children: [],
+              attributes: [
+                {
+                  kind: 'wmlVal',
+                  namespaceUri: W,
+                  prefix: 'w',
+                  localName: 'val',
+                  value: inherited,
+                },
+              ],
+            },
+          ],
+  };
+  return resolveRunStyle(cascadeParagraphFormatting(cascade, properties).runProperties).strike;
+}
+function definition(id: string, inherited: string | undefined, strike = true): string {
   return (
     `<w:style w:type="paragraph" w:customStyle="1" w:styleId="${escapeXml(id)}">` +
     `<w:name w:val="${NAME}"/>` +
     (inherited === undefined ? '' : `<w:basedOn w:val="${escapeXml(inherited)}"/>`) +
-    '<w:semiHidden/><w:rPr><w:strike/><w:color w:val="808080" w:themeColor="text1" w:themeTint="80"/></w:rPr></w:style>'
+    '<w:semiHidden/><w:rPr>' +
+    (strike ? '<w:strike/>' : '') +
+    '<w:color w:val="606060" w:themeColor="text1" w:themeTint="60"/></w:rPr></w:style>'
   );
 }
 function parsed(name: string, xml: string) {
@@ -120,7 +171,12 @@ export function taskCompletionStyleSource(
         style.children.find((n) => is(n, 'basedOn')),
         'val'
       );
-    const expected = parsed('/task-style.xml', definition(id, inherited)).root.children[0]!;
+    const runProperties = style.children.find((node) => is(node, 'rPr'));
+    const strike =
+      runProperties?.kind !== 'textValue' &&
+      runProperties?.children.some((node) => is(node, 'strike'));
+    const expected = parsed('/task-style.xml', definition(id, inherited, !!strike)).root
+      .children[0]!;
     return canonicalOoxmlFingerprint(style) === canonicalOoxmlFingerprint(expected);
   })
     ? original
@@ -147,7 +203,10 @@ function ensureStyles(pkg: OoxmlPackage, bases: Iterable<string | undefined>) {
       if (id.length > 512) throw new Error('The task source style identifier exceeds its limit.');
       if (index.byId.has(id)) {
         if (!taskCompletionStyleSource(pkg, id)) continue;
-      } else xml.push(definition(id, base ?? index.defaultId));
+      } else {
+        const inherited = base ?? index.defaultId;
+        xml.push(definition(id, inherited, !inheritedStrike(pkg, inherited)));
+      }
       ids.set(base, id);
       break;
     }
@@ -199,6 +258,35 @@ export function addsTaskCompletionStyles(before: OoxmlPackage, after: OoxmlPacka
 }
 export const TASK_COMPLETION_PREPARATION_ERROR =
   'Prepare task completion styles before starting collaboration.';
+/** Task syntax already carries completion. Detached Markdown reads retain authored formatting only. */
+export function withoutTaskCompletionAppearance(pkg: OoxmlPackage): OoxmlPackage {
+  const part = stylesPartOf(pkg);
+  if (!part) return pkg;
+  let changed = false;
+  const children = part.root.children.map((node) => {
+    if (!is(node, 'style') || !taskCompletionStyleSource(pkg, attribute(node, 'styleId')))
+      return node;
+    changed = true;
+    return {
+      ...node,
+      children: node.children.filter((child) => !is(child, 'rPr')),
+    } as OoxmlElement;
+  });
+  return changed
+    ? withPart(pkg, { ...part, root: { ...part.root, children } as OoxmlElement })
+    : pkg;
+}
+/** Initialize only the definition required by a checked proposal, outside its tracked changes. */
+export function withTaskCompletionStyleFor(
+  pkg: OoxmlPackage,
+  partName: string,
+  paragraphId: string
+): OoxmlPackage {
+  const current = directParagraphProperties(pkg.parts.get(partName)!, paragraphId).find(
+    (p) => p.localName === 'pStyle'
+  )?.attributes?.val;
+  return taskCompletionStyleSource(pkg, current) ? pkg : ensureStyles(pkg, [current]).pkg;
+}
 /** Change only the paragraph style reference. Authored run properties remain untouched. */
 export function applyTaskCompletionStyle(
   pkg: OoxmlPackage,

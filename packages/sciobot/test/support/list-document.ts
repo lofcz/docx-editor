@@ -1,5 +1,13 @@
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
 import { docxFixture, W } from './document';
+import { prepareNativeDocument } from '../../src/native/prepare-document';
+
+/** Match the application boundary before a shared checklist can gain completion formatting. */
+export function preparedListDocument(body: string, styles?: string): Uint8Array {
+  const prepared = prepareNativeDocument(listDocument(body, styles));
+  if (!prepared.success) throw new Error(prepared.error);
+  return prepared.document;
+}
 
 export const listPPr = (numId: string, level = 0) =>
   `<w:numPr><w:ilvl w:val="${level}"/><w:numId w:val="${numId}"/></w:numPr>`;

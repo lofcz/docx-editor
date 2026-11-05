@@ -1,4 +1,5 @@
 import type { DocxEditorInstance } from '@docx-editor.dev/core/editor';
+import { followEditorSurface } from '../react-blocks/follow-editor-surface';
 import { installTaskCheckboxEditing, type TaskCheckboxOptions } from './task-checkbox-editing';
 import {
   paragraphTextOf,
@@ -263,6 +264,18 @@ export function installListEditing(
   editor: DocxEditorInstance,
   context: BlockCommandContext,
   options: TaskCheckboxOptions = {}
+) {
+  if (!editor.surface) throw new Error('The native editor is not attached.');
+  const lifetime = followEditorSurface(editor, () => ({
+    dispose: installSurfaceListEditing(editor, context, options),
+  }));
+  return lifetime.dispose;
+}
+
+function installSurfaceListEditing(
+  editor: DocxEditorInstance,
+  context: BlockCommandContext,
+  options: TaskCheckboxOptions
 ) {
   const s = editor.surface;
   if (!s) throw new Error('The native editor is not attached.');

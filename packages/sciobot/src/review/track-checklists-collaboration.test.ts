@@ -4,7 +4,11 @@ import * as Y from 'yjs';
 import { caretAt } from '@docx-editor.dev/core/layout';
 import { paragraphTextOf, readOoxmlPackage } from '@docx-editor.dev/core/store';
 import { createTwoEditorFixture } from '../../test/support/collaboration';
-import { listDocument, listParagraph, checklistParagraph } from '../../test/support/list-document';
+import {
+  preparedListDocument as listDocument,
+  listParagraph,
+  checklistParagraph,
+} from '../../test/support/list-document';
 import { propertyEditor } from '../../test/support/property-execution';
 import { readEditorRevision } from '../projection/revision-cache';
 import { planListMembership } from '../diff/lists';

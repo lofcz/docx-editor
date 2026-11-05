@@ -21,6 +21,7 @@ import {
   type TargetAstNode,
 } from '../projection/parse-target';
 import type { ReviewViewOptions } from './document-view';
+import { withoutTaskCompletionAppearance } from '../native/task-completion-style';
 import { projectPendingProperties } from './property-projection';
 import { readApplicationProposals, projectApplicationPresence } from './application-proposals';
 
@@ -54,7 +55,11 @@ async function readTargetPackage(
   options: ReviewViewOptions,
   syntax: 'auto' | 'gfm' = 'auto'
 ) {
-  const store = new TreePackageStore(pkg, pkg.parts.get(pkg.mainDocumentPart)!);
+  const readPackage = withoutTaskCompletionAppearance(pkg);
+  const store = new TreePackageStore(
+    readPackage,
+    readPackage.parts.get(readPackage.mainDocumentPart)!
+  );
   const source = { ...headlessViewOfStore(store), packageRevision: () => revision.revision };
   const { pendingProperties: _pending, tableSyntax: _syntax, ...nativeOptions } = options;
   const opened = openDocumentForExport(source, {
