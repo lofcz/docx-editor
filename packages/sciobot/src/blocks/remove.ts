@@ -29,6 +29,7 @@ import { captureReviewGroupHistory, reviewGroupHistoryRefusal } from '../review/
 import { groupReviewFieldBudget } from '../review/group-field-budget';
 import { groupRemovalBudget } from '../review/group-removal-budget';
 import { ancestorContentWriteRefusal } from './ancestor-content-write';
+import { resolveBlockSelectionRange } from './selection-range';
 
 export interface BlockRemoval {
   readonly controlId: string;
@@ -74,6 +75,31 @@ export function removeBlocks(
   editor: DocxEditorInstance,
   request: BlocksRemoval
 ): BlockRemoveResult {
+  return removeTargets(editor, request, false);
+}
+
+export interface BlockSelectionRemoval {
+  readonly nodeIds: readonly string[];
+  readonly expectedRevision?: number;
+}
+
+/** Delete a complete native sibling range and its owned payload records in one undo unit. */
+export function removeBlockSelection(
+  editor: DocxEditorInstance,
+  request: BlockSelectionRemoval
+): BlockRemoveResult {
+  return removeTargets(
+    editor,
+    { controlIds: request.nodeIds, mode: 'delete', expectedRevision: request.expectedRevision },
+    true
+  );
+}
+
+function removeTargets(
+  editor: DocxEditorInstance,
+  request: BlocksRemoval,
+  native: boolean
+): BlockRemoveResult {
   const surface = editor.surface;
   if (!surface) return fail('document-not-ready', 'The document is not attached.');
   surface.flushPendingInput();
@@ -84,31 +110,48 @@ export function removeBlocks(
     return fail('stale-revision', 'Read the current document before removing this block.');
   if (request.mode !== 'delete' && request.mode !== 'unwrap')
     return fail('invalid-input', 'Choose delete or unwrap.');
-  if (!request.controlIds.length || new Set(request.controlIds).size !== request.controlIds.length)
+  if (
+    !request.controlIds.length ||
+    (!native && new Set(request.controlIds).size !== request.controlIds.length)
+  )
     return fail('invalid-input', 'Choose distinct blocks to remove.');
   if (surface.editingMode() === 'suggest')
     return fail('unsupported-operation', 'Tracked block removal requires a review transaction.');
   const pkg = surface.session.currentPackage(),
     part = surface.session.part();
   const index = buildBlockIndex(pkg);
+  const range = native ? resolveBlockSelectionRange(part, request.controlIds) : null;
+  if (range && !range.success) return range;
+  const roots: OoxmlNode[] = range?.success ? [...range.nodes] : [];
   const targets: { block: IndexedBlock; control: OoxmlNode & { kind: 'contentControl' } }[] = [];
-  for (const controlId of request.controlIds) {
-    const block = [...index.byId.values()].find((entry) => entry.controlId === controlId);
+  const registered = new Map([...index.byId.values()].map((entry) => [entry.controlId, entry]));
+  const controls = range?.success
+    ? range.nodes.flatMap((node) => [
+        ...(node.kind === 'contentControl' ? [node.id] : []),
+        ...contentControlsIn(node).map((entry) => entry.node.id),
+      ])
+    : request.controlIds;
+  for (const controlId of controls) {
+    const block = registered.get(controlId);
     const control = findNode(part, controlId);
+    if (native && control && blockIdFromTag(contentControlPropertiesOf(control).tag ?? '') === null)
+      continue;
     if (!block || block.partName !== part.name || !control || control.kind !== 'contentControl')
       return fail('invalid-input', 'The registered block is missing from the active story.');
     targets.push({ block, control });
+    if (!native) roots.push(control);
   }
-  for (const { control } of targets)
-    for (
-      let parent = parentNodeOf(part, control.id);
-      parent;
-      parent = parentNodeOf(part, parent.id)
-    )
-      if (request.controlIds.includes(parent.id))
-        return fail('invalid-input', 'A selected block is inside another selected block.');
+  if (!native)
+    for (const { control } of targets)
+      for (
+        let parent = parentNodeOf(part, control.id);
+        parent;
+        parent = parentNodeOf(part, parent.id)
+      )
+        if (request.controlIds.includes(parent.id))
+          return fail('invalid-input', 'A selected block is inside another selected block.');
   const store = readPayloadStore(pkg);
-  if (store.status !== 'ready')
+  if (store.status !== 'ready' && (targets.length || !native))
     return fail('invalid-document', 'The block payload store is unavailable.');
   const ids = new Set<string>();
   // Payload IDs removed with a host-owned inline atom; their records retire in collaboration.
@@ -173,9 +216,11 @@ export function removeBlocks(
   }
   if ([...ids].some((id) => (counts.get(id) ?? 0) !== 1))
     return fail('ambiguous-target', 'A removed block ID does not identify one native control.');
-  const removedPayloadIds = [...ids].filter((id) => store.entries.has(id));
+  const removedPayloadIds =
+    store.status === 'ready' ? [...ids].filter((id) => store.entries.has(id)) : [];
   const cleanup = (working: OoxmlPackage) => {
     let next = working;
+    if (store.status !== 'ready') return next;
     for (const id of removedPayloadIds) {
       if (!inlineIds.has(id) || editor.snapshot().collaborationStatus === 'inactive') {
         next = withoutCustomXmlNode(next, store.part.partName, `scio_${id}`);
@@ -209,6 +254,42 @@ export function removeBlocks(
   };
   const ops: TreeDocOp[] = [];
   let preview = part;
+  // Native block deletion keeps an editable position. Seed the original owner before removing
+  // its last paragraph, so every intermediate operation meets the store's structural guards.
+  if (range?.success) {
+    const removedParagraphs = new Set(
+      range.nodes.flatMap((node) => storyParagraphs(node).map((p) => p.id))
+    );
+    const allParagraphsRemoved = surface.session
+      .paragraphIds()
+      .every((id) => removedParagraphs.has(id));
+    const removedRoots = new Set(range.nodes.map((node) => node.id));
+    const ownerEmpty = !range.parent.children.some(
+      (node) =>
+        !removedRoots.has(node.id) && ['paragraph', 'table', 'contentControl'].includes(node.kind)
+    );
+    const cellParagraphsRemoved =
+      range.parent.kind === 'tableCell' &&
+      !range.parent.children.some(
+        (node) => node.kind === 'paragraph' && !removedRoots.has(node.id)
+      );
+    if (allParagraphsRemoved || ownerEmpty || cellParagraphsRemoved) {
+      const original = findNode(part, surface.session.paragraphIds()[0]!);
+      if (!original || original.kind !== 'paragraph')
+        return fail('invalid-document', 'The selected range has no native paragraph template.');
+      const seed: TreeDocOp = {
+        op: 'insertParagraphs',
+        parentId: range.parent.id,
+        beforeId: null,
+        paragraphs: [{ ...original, children: [] }],
+      };
+      const inserted = applyTreeOp(preview, seed);
+      if (!inserted.ok)
+        return fail('apply-failed', `Native empty paragraph refused: ${inserted.reason}`);
+      preview = inserted.part;
+      ops.push(seed);
+    }
+  }
   for (const { control } of targets) {
     // Delete only registered native atom controls; explicit user locks on other blocks still
     // refuse.
@@ -227,11 +308,16 @@ export function removeBlocks(
       preview = result.part;
       ops.push(unlock);
     }
-    const op: TreeDocOp = {
-      op: 'removeContentControl',
-      controlId: control.id,
-      keepContent: request.mode === 'unwrap',
-    };
+  }
+  for (const root of roots) {
+    const op: TreeDocOp =
+      root.kind === 'contentControl'
+        ? {
+            op: 'removeContentControl',
+            controlId: root.id,
+            keepContent: request.mode === 'unwrap',
+          }
+        : { op: 'deleteBlock', blockId: root.id };
     const removed = applyTreeOp(preview, op);
     if (!removed.ok) return fail('apply-failed', `Native block removal refused: ${removed.reason}`);
     preview = removed.part;

@@ -1,0 +1,14 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Block selection removes registered wrappers only.",
+  "after": "Complete native sibling ranges use existing tree operations and payload cleanup in one transaction.",
+  "reason": "The shared schema, native operation format, and existing wrapper commands do not change.",
+  "tests": [
+    "packages/sciobot/src/blocks/selection-range.test.ts",
+    "packages/sciobot/src/blocks/remove.test.ts",
+    "packages/sciobot/src/blocks/block-selection.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

@@ -109,6 +109,7 @@ export * from './blocks/inline-insert';
 export * from './blocks/math-insert';
 export * from './blocks/math-edit';
 export * from './blocks/remove';
+export * from './blocks/selection-range';
 export * from './blocks/duplicate';
 export * from './blocks/update-atomic';
 export * from './blocks/move';
