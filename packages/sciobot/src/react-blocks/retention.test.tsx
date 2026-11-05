@@ -25,32 +25,35 @@ test('twenty document switches and editor destruction unmount every retained roo
   const environment = globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean };
   const previous = environment.IS_REACT_ACT_ENVIRONMENT;
   environment.IS_REACT_ACT_ENVIRONMENT = true;
-  const hosts: ReturnType<typeof mountReactBlockHost>[] = [];
+  let host: ReturnType<typeof mountReactBlockHost> | undefined;
   try {
+    await act(async () => {
+      host = mountReactBlockHost(editor, new Map([['test_counter', View]]));
+    });
     for (let i = 0; i < 20; i++) {
       await act(async () => {
-        hosts.push(mountReactBlockHost(editor, new Map([['test_counter', View]])));
         mountInlineInput(editor);
       });
       expect(mounted - unmounted).toBe(1);
       await act(async () => {
         await editor.load(reactBlockDocument());
       });
-      expect(mounted).toBe(i + 1);
-      expect(unmounted).toBe(mounted);
+      expect(mounted).toBe(i + 2);
+      expect(unmounted).toBe(i + 1);
+      expect(mounted - unmounted).toBe(1);
     }
-    await act(async () => {
-      hosts.push(mountReactBlockHost(editor, new Map([['test_counter', View]])));
-    });
     await act(async () => editor.destroy());
     expect(unmounted).toBe(mounted);
     await act(async () => {
-      hosts.forEach((host) => host.dispose());
+      host!.dispose();
       editor.destroy();
     });
     expect(unmounted).toBe(21);
   } finally {
-    await act(async () => editor.destroy());
+    await act(async () => {
+      host?.dispose();
+      editor.destroy();
+    });
     environment.IS_REACT_ACT_ENVIRONMENT = previous;
   }
 });
@@ -74,25 +77,29 @@ test('inline roots and measurement owners release after twenty native document r
     container: document.createElement('div'),
     document: inlineWidgetDocument(),
   });
-  const hosts: ReturnType<typeof mountReactInlineHost>[] = [];
+  let host: ReturnType<typeof mountReactInlineHost> | undefined;
   try {
-    for (let cycle = 0; cycle < 20; cycle++) {
-      await act(async () => {
-        hosts.push(
-          mountReactInlineHost(editor, new Map([['source_chip', Chip]]), {
-            measure: () => ({ width: 40, ascent: 15, descent: 3 }),
-          })
-        );
+    await act(async () => {
+      host = mountReactInlineHost(editor, new Map([['source_chip', Chip]]), {
+        measure: () => ({ width: 40, ascent: 15, descent: 3 }),
       });
+    });
+    for (let cycle = 0; cycle < 20; cycle++) {
       expect(mounted - unmounted).toBe(1);
       await act(async () => editor.load(inlineWidgetDocument()));
-      expect(unmounted).toBe(mounted);
+      expect(mounted).toBe(cycle + 2);
+      expect(unmounted).toBe(cycle + 1);
+      expect(mounted - unmounted).toBe(1);
+      expect(() => mountReactInlineHost(editor)).toThrow('already has a React inline host');
     }
     await act(async () => editor.destroy());
-    await act(async () => hosts.forEach((host) => host.dispose()));
-    expect(unmounted).toBe(20);
+    await act(async () => host!.dispose());
+    expect(unmounted).toBe(21);
   } finally {
-    await act(async () => editor.destroy());
+    await act(async () => {
+      host?.dispose();
+      editor.destroy();
+    });
     environment.IS_REACT_ACT_ENVIRONMENT = previous;
   }
 });

@@ -1,0 +1,14 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "React widget hosts stop rendering after a document load replaces their surface.",
+  "after": "Hosts retain registrations and providers while rebuilding document-owned widget state and measurements.",
+  "reason": "The change follows the editor surface lifetime. It adds no document operations or shared fields.",
+  "tests": [
+    "packages/sciobot/src/react-blocks/host-load.test.tsx",
+    "packages/sciobot/src/react-blocks/host.test.tsx",
+    "packages/sciobot/src/react-blocks/inline-host.test.tsx"
+  ],
+  "changeset": "react-widgets-document-load",
+  "migration": null
+}

@@ -1,6 +1,8 @@
 import { createElement, useLayoutEffect, useRef, type ReactNode } from 'react';
 import type { DocxEditorInstance, PaginatedSurface } from '@docx-editor.dev/core/editor';
-import { mountReactBlockHost, type ReactBlockView } from './host';
+import type { ReactBlockView } from './host';
+import { mountSurfaceBlockHost, validateBlockViewType } from './surface-host';
+import { followEditorSurface } from './follow-editor-surface';
 import { InlineMeasurement, type MeasureInlineElement } from './inline-measurement';
 import type { ReactBlockProviders } from './providers';
 
@@ -18,11 +20,11 @@ export interface ReactInlineHost {
 const owners = new WeakSet<PaginatedSurface>();
 
 /** Replace registered inline fallbacks with React views inside native atomic layout boxes. */
-export function mountReactInlineHost(
+function mountSurfaceInlineHost(
   editor: DocxEditorInstance,
   initial: ReadonlyMap<string, ReactBlockView> = new Map(),
   options: ReactInlineHostOptions = {}
-): ReactInlineHost {
+): ReactInlineHost & { unregister(type: string): void } {
   const surface = editor.surface;
   if (!surface) throw new Error('Attach the editor before mounting React inline widgets.');
   if (owners.has(surface)) throw new Error('The surface already has a React inline host.');
@@ -36,7 +38,7 @@ export function mountReactInlineHost(
         children: createElement(View, props),
       });
     };
-  const host = mountReactBlockHost(
+  const host = mountSurfaceBlockHost(
     editor,
     new Map([...initial].map(([type, view]) => [type, wrap(view)])),
     { providers: options.providers, inlineOnly: true }
@@ -65,6 +67,10 @@ export function mountReactInlineHost(
         measurement.place();
       };
     },
+    unregister(type) {
+      host.unregister(type);
+      measurement.place();
+    },
     setProviders(providers) {
       host.setProviders(providers);
       measurement.place();
@@ -74,6 +80,58 @@ export function mountReactInlineHost(
       measurement.place();
     },
     dispose,
+  };
+}
+
+/** Retain inline registrations while replacing document-owned measurements and widget state. */
+export function mountReactInlineHost(
+  editor: DocxEditorInstance,
+  initial: ReadonlyMap<string, ReactBlockView> = new Map(),
+  options: ReactInlineHostOptions = {}
+): ReactInlineHost {
+  if (!editor.surface) throw new Error('Attach the editor before mounting React inline widgets.');
+  const registry = new Map([...initial].map(([type, view]) => [type, { view }]));
+  let providers = options.providers;
+  let disposed = false;
+  const lifetime = followEditorSurface(editor, () =>
+    mountSurfaceInlineHost(
+      editor,
+      new Map([...registry].map(([type, entry]) => [type, entry.view])),
+      { ...options, providers }
+    )
+  );
+  const assertLive = () => {
+    if (disposed) throw new Error('The React inline host is disposed.');
+  };
+  return {
+    register(type, view) {
+      assertLive();
+      validateBlockViewType(type);
+      if (registry.has(type)) throw new Error(`React block type is already registered: ${type}`);
+      lifetime.current()?.register(type, view);
+      const entry = { view };
+      registry.set(type, entry);
+      return () => {
+        if (disposed || registry.get(type) !== entry) return;
+        registry.delete(type);
+        lifetime.current()?.unregister(type);
+      };
+    },
+    setProviders(next) {
+      assertLive();
+      providers = next;
+      lifetime.current()?.setProviders(next);
+    },
+    refresh() {
+      if (!disposed) lifetime.current()?.refresh();
+    },
+    dispose() {
+      if (disposed) return;
+      disposed = true;
+      lifetime.dispose();
+      registry.clear();
+      providers = undefined;
+    },
   };
 }
 
