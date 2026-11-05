@@ -23,6 +23,7 @@ import {
   mathWordFallback,
   withMathSource,
   type MathKind,
+  type MathPayload,
 } from './math-codec';
 import { blockTag, readPayloadStore, withPayloadRecord } from './payload-opc-codec';
 import { encodeBlockPayload, type BlockPayload } from './payload-schema';
@@ -104,7 +105,7 @@ export function updateMath(
       'unsupported-operation',
       'Prepare equation ownership before creating the shared document. Your draft remains open.'
     );
-  let payload;
+  let payload: MathPayload;
   try {
     payload = withMathSource(live.payload, request.source);
   } catch (error) {
