@@ -1,0 +1,10 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Task-list input only converts unnumbered paragraphs.",
+  "after": "Task-list input also converts existing numbered paragraphs and retains their list level.",
+  "reason": "The input rule uses existing canonical checklist and list membership operations without changing shared formats.",
+  "tests": ["packages/sciobot/src/chrome/list-input.test.ts"],
+  "changeset": null,
+  "migration": null
+}

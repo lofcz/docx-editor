@@ -65,7 +65,8 @@ export function applyManualListInput(
     revision = readEditorRevision(editor, context.documentId, context.epoch);
   if (text === null || text === undefined || text.length !== head.offset || !revision) return false;
   const current = manualListState(editor, context);
-  if (!current || current.numbering || current.checkbox) return false;
+  const checklistPrefix = ['[]', '[ ]', '[x]', '[X]'].includes(text);
+  if (!current || current.checkbox || (current.numbering && !checklistPrefix)) return false;
   let target: ListTarget;
   const ordered = /^(\d{1,9})[.)]$/.exec(text);
   const priorOrderedNumId = ordered
@@ -87,8 +88,8 @@ export function applyManualListInput(
           level: 0,
           instance: { kind: 'new', key: `input:${revision.revision}`, start: Number(ordered[1]) },
         };
-  else if (['[]', '[ ]', '[x]', '[X]'].includes(text))
-    target = { kind: 'checklist', level: 0, checked: /x/i.test(text) };
+  else if (checklistPrefix)
+    target = { kind: 'checklist', level: current.numbering?.level ?? 0, checked: /x/i.test(text) };
   else return false;
   const list = planListMembership(
     { pkg: s.session.currentPackage(), partName: part.name, revision },

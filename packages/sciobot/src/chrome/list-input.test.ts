@@ -81,3 +81,33 @@ test('checklist Enter retains nesting, creates an unchecked item, outdents empty
     editor.destroy();
   }
 });
+
+for (const checked of [false, true])
+  test(`task input converts a nested bullet and retains its level: checked=${checked}`, () => {
+    const editor = createDocxEditor({
+      container: document.createElement('div'),
+      document: docxFixture('<w:p><w:r><w:t>-</w:t></w:r></w:p>'),
+    });
+    try {
+      const surface = editor.surface!;
+      const paragraphId = surface.session.paragraphIds()[0]!;
+      const point = { paragraphId, offset: 1 };
+      surface.setSelection({ anchor: point, head: point });
+      expect(applyManualListInput(editor, context)).toBe(true);
+      expect(adjustManualListLevel(editor, 'increase', context).success).toBe(true);
+      const prefix = checked ? '[x]' : '[]';
+      surface.insertPlainText(prefix);
+      surface.flushPendingInput();
+      const before = canonicalOoxmlFingerprint(surface.session.part());
+      expect(applyManualListInput(editor, context)).toBe(true);
+      expect(manualListState(editor, context)?.checkbox).toMatchObject({ checked, level: 1 });
+      expect(manualListState(editor, context)?.numbering).toBeNull();
+      expect(paragraphTextOf(surface.session.part(), paragraphId)).toBe(checked ? '☒' : '☐');
+      expect(editor.exec({ type: 'undo' }).ok).toBe(true);
+      expect(canonicalOoxmlFingerprint(surface.session.part())).toEqual(before);
+      expect(editor.exec({ type: 'redo' }).ok).toBe(true);
+      expect(manualListState(editor, context)?.checkbox).toMatchObject({ checked, level: 1 });
+    } finally {
+      editor.destroy();
+    }
+  });
