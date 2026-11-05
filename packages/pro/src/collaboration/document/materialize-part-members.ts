@@ -33,6 +33,7 @@ Production use requires a commercial agreement: licensing@eigenpal.com
 // namespace and hands each store its own nodes.
 
 import { attributeValue } from './materialize-freeze.ts';
+import { isCustomXmlItemPartName } from './materialize-custom-xml.ts';
 import { WML_NAMESPACE_URI, type OoxmlElement, type OoxmlPart } from '@docx-editor.dev/core/store';
 import type { ElementRecord } from './schema.ts';
 import { idOf, type LogicalId } from './identity.ts';
@@ -147,8 +148,9 @@ export function partMemberSpecFor(root: OoxmlElement): PartMemberSpec | null {
 }
 
 /**
- * The children a member part's root shows, in order, or null for a part without members. The
- * view can adopt members no parent lists, and a local edit counts them.
+ * The children a member part's root shows, in order, or null for a part without members.
+ * Custom XML has a separate adoption policy, but its sorted children need the same journal
+ * coordinate mapping. A deletion must address the shown payload, not its raw array offset.
  */
 export function shownMemberChildren(
   parts: Iterable<OoxmlPart>,
@@ -156,7 +158,9 @@ export function shownMemberChildren(
 ): readonly LogicalId[] | null {
   for (const part of parts) {
     if (part.root.id !== rootId) continue;
-    return partMemberSpecFor(part.root) ? part.root.children.map(idOf) : null;
+    return partMemberSpecFor(part.root) || isCustomXmlItemPartName(part.name)
+      ? part.root.children.map(idOf)
+      : null;
   }
   return null;
 }

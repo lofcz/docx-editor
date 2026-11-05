@@ -1,0 +1,14 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Deleting a copied application block can remove a different custom XML record after shared records change order.",
+  "after": "Custom XML deletions use the materialized record order and preserve unrelated records and peer edits.",
+  "reason": "The writer maps displayed child positions to existing shared node identities before applying ordinary child splices. Stored fields, ownership rules, and room formats remain unchanged.",
+  "tests": [
+    "packages/sciobot/src/blocks/remove-duplicate-collaboration.test.ts",
+    "packages/sciobot/src/blocks/remove.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-custom-nodes-concurrent.test.ts"
+  ],
+  "changeset": "custom-xml-member-coordinates",
+  "migration": null
+}
