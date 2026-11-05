@@ -2,6 +2,8 @@ import { replaceNode, withPart, type OoxmlPackage } from '@docx-editor.dev/core/
 import { activeMdxRegistry } from '../registry/active';
 import { compactPreparedFields } from './payload-fields';
 import { readPayloadStore } from './payload-opc-codec';
+import { buildBlockIndex } from './block-index';
+import { GALLERY_IMAGE_RECORD } from './gallery-record-shape';
 
 /** Remove redundant plain payload fields only from validated DOCX input before room creation. */
 export function withPreparedPayloadFields(pkg: OoxmlPackage): OoxmlPackage {
@@ -10,6 +12,21 @@ export function withPreparedPayloadFields(pkg: OoxmlPackage): OoxmlPackage {
   const part = pkg.parts.get(store.part.partName)!;
   const registry = activeMdxRegistry();
   const prefix = registry.storage.nodePrefix;
+  const index = buildBlockIndex(pkg);
+  const galleryImages = new Set(
+    [...index.byId.values()]
+      .filter((block) => {
+        if (
+          block.payload.version !== 2 ||
+          block.payload.type !== GALLERY_IMAGE_RECORD ||
+          block.parentId !== block.payload.galleryId
+        )
+          return false;
+        const parent = block.parentId && index.byId.get(block.parentId)?.payload;
+        return parent && parent.version === 2 && parent.type === 'image_gallery';
+      })
+      .map((block) => block.id)
+  );
   let next = part;
   for (const record of part.root.children) {
     if (
@@ -25,7 +42,11 @@ export function withPreparedPayloadFields(pkg: OoxmlPackage): OoxmlPackage {
     const decoded = store.entries.get(id.slice(prefix.length))?.decoded;
     if (decoded?.status !== 'supported') continue;
     const definition = registry.components.get(decoded.value.type);
-    if (!definition || (definition.valid && !definition.valid(decoded.value))) continue;
+    if (
+      !galleryImages.has(decoded.value.id) &&
+      (!definition || (definition.valid && !definition.valid(decoded.value)))
+    )
+      continue;
     const compact = compactPreparedFields(record);
     if (compact === record) continue;
     const replaced = replaceNode(next, record.id, compact);
