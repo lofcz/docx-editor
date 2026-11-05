@@ -4,18 +4,21 @@ import { attachOwnedReviewFields } from './review-fields';
 import { decodeFieldIntent, decodeFieldTarget, REVIEW_FIELD_TARGETS } from './review-field-codec';
 
 for (const [protocol, repair, namespace, capturedCount] of [
-  ['1', 14, 'w', 0],
-  ['2', 14, 'w', 2],
+  ['1', 17, 'w', 0],
+  ['2', 17, 'w', 2],
   ['2', 13, 'w', 0],
+  ['2', 14, 'w', 0],
   ['2', 15, 'w', 0],
-  ['2', 14, 'foreign', 0],
+  ['2', 16, 'w', 0],
+  ['2', 18, 'w', 0],
+  ['2', 17, 'foreign', 0],
 ] as const)
   test(`constructor child ownership preserves native creation history and cold state: ${protocol}/${repair}/${namespace}`, () => {
     const doc = new Y.Doc(),
       meta = doc.getMap('docx-package-meta-v1');
     for (const [key, value] of Object.entries({
       protocolVersion: 1,
-      sharedSchemaVersion: 9,
+      sharedSchemaVersion: 10,
       repairVersion: repair,
       canonicalModelVersion: 1,
     }))

@@ -1,0 +1,16 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Private review retention stopped recognizing native table and numbering births after the evaluated schema upgrade.",
+  "after": "Private retention uses the same exact evaluated native profile as property review. Peer content survives creation undo and review decisions.",
+  "reason": "The existing schema 10 tuple is recognized consistently. Shared fields and history interpretation do not change. Old, future, and malformed profiles remain unsupported.",
+  "tests": [
+    "packages/sciobot/src/collaboration/review-retention-profile.test.ts",
+    "packages/sciobot/src/collaboration/review-birth-field-retention.test.ts",
+    "packages/sciobot/src/collaboration/review-numbering-birth-retention.test.ts",
+    "packages/sciobot/src/review/recompose-styled-cell-peer.test.ts",
+    "packages/sciobot/src/review/recompose-new-table-atom-peer-interior.test.ts"
+  ],
+  "changeset": "native-birth-retention-profile",
+  "migration": null
+}

@@ -1,4 +1,5 @@
 import * as Y from 'yjs';
+import { hasEvaluatedNativeProfile } from './native-profile';
 
 /**
  * The document transport retains undone birth ancestry for foreign content. Sequence
@@ -20,15 +21,7 @@ export function retainedBirthSequenceEntry(
       return null;
     }
   };
-  const meta = existingMap('docx-package-meta-v1');
-  if (!meta || typeof value !== 'string') return false;
-  if (
-    meta.get('protocolVersion') !== 1 ||
-    meta.get('sharedSchemaVersion') !== 9 ||
-    meta.get('repairVersion') !== 17 ||
-    meta.get('canonicalModelVersion') !== 1
-  )
-    return false;
+  if (typeof value !== 'string' || !hasEvaluatedNativeProfile(doc)) return false;
   const nodes = existingMap('docx-package-nodes-v1');
   if (!nodes) return false;
   const field = array._item;

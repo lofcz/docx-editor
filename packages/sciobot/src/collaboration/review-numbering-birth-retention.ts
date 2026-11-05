@@ -1,18 +1,12 @@
 import * as Y from 'yjs';
 import type { ReviewFieldIntent, ReviewFieldTarget } from './review-field-codec';
 import { reviewArray } from './review-sequences';
+import { hasEvaluatedNativeProfile } from './native-profile';
 
 function nativeNodes(doc: Y.Doc): Y.Map<unknown> | null {
   if (!doc.share.has('docx-package-nodes-v1') || !doc.share.has('docx-package-meta-v1'))
     return null;
-  const meta = doc.getMap('docx-package-meta-v1');
-  if (
-    meta.get('protocolVersion') !== 1 ||
-    meta.get('sharedSchemaVersion') !== 9 ||
-    meta.get('repairVersion') !== 17 ||
-    meta.get('canonicalModelVersion') !== 1
-  )
-    return null;
+  if (!hasEvaluatedNativeProfile(doc)) return null;
   return doc.getMap('docx-package-nodes-v1');
 }
 function wordName(record: unknown): string | null {

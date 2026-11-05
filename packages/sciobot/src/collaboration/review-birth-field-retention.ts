@@ -1,5 +1,6 @@
 import * as Y from 'yjs';
 import type { ReviewFieldLocation } from './review-field-codec';
+import { hasEvaluatedNativeProfile } from './native-profile';
 
 const GEOMETRY = new Set([
   'gridCol',
@@ -31,15 +32,7 @@ export function nativeBirthFieldCreation(
       return null;
     }
   };
-  const meta = existing('docx-package-meta-v1');
-  if (
-    !meta ||
-    meta.get('protocolVersion') !== 1 ||
-    meta.get('sharedSchemaVersion') !== 9 ||
-    meta.get('repairVersion') !== 17 ||
-    meta.get('canonicalModelVersion') !== 1
-  )
-    return false;
+  if (!hasEvaluatedNativeProfile(doc)) return false;
   const parts = target.key.split('\u001f');
   if (parts.length !== 3) return false;
   const [id, namespace, name] = parts;
