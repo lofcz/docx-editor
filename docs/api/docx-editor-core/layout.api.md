@@ -4824,6 +4824,7 @@ export interface TableCellFragmentRecord {
     readonly rowSpan?: number;
     readonly shading?: string;
     readonly textDirection?: 'btLr';
+    readonly vAlign?: 'top' | 'center' | 'bottom';
     readonly vMergeContinue: boolean;
 }
 

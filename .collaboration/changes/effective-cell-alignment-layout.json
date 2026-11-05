@@ -1,0 +1,12 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Cell alignment uses direct properties without table-style inheritance.",
+  "after": "Cell alignment includes table-style inheritance and exposes the effective layout value.",
+  "reason": "Only layout and presentation change. Canonical operations, serialized documents, and shared room state remain unchanged.",
+  "tests": [
+    "packages/core/src/layout/__tests__/table-cell-vertical-align.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

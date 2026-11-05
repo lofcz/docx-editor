@@ -1575,6 +1575,7 @@ export function layoutRowFragmentBounded(
       ...(entry.cell.gridColumnId ? { gridColumnId: entry.cell.gridColumnId } : {}),
       gridSpan: entry.cell.gridSpan,
       vMergeContinue: entry.cell.vMergeContinue,
+      vAlign: entry.cell.vAlign,
       ...(entry.cell.vMergeContinue ? { paintInert: true as const } : {}),
       rowSpan: 1,
       ...(entry.cell.shading === undefined ? {} : { shading: entry.cell.shading }),

@@ -108,7 +108,7 @@ import {
   type CellMarginsPt,
 } from './table-cell-margins.ts';
 import { readCellTextDirection } from './table-cell-text-direction.ts';
-import { readCellVerticalAlign } from './table-cell-vertical-align.ts';
+import { cellVerticalAlign } from './table-cell-vertical-align.ts';
 import { tableRowIsHeader } from './table-row-header-style.ts';
 import { cellIgnoresEndMark, cellNoWrap } from './table-cell-hide-mark.ts';
 import { uniformRowCellSpacingPt } from './table-row-cell-spacing.ts';
@@ -717,7 +717,7 @@ function readTableStructureUncached(
         vMergeContinue: vMerge === 'continue' && mergedAbove.has(gridColumn),
         hideEndMark: cellIgnoresEndMark(tableStyle, conditions, cellProperties),
         ...(cellNoWrap(tableStyle, conditions, cellProperties) ? { noWrap: true as const } : {}),
-        vAlign: readCellVerticalAlign(cellProperties),
+        vAlign: cellVerticalAlign(tableStyle, conditions, cellProperties),
         textDirection: readCellTextDirection(cellProperties),
         margins: cellMargins,
         borders: mergeCellBorders(conditionalBorders, ownBorders),

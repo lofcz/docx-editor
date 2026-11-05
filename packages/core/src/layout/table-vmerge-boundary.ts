@@ -313,6 +313,7 @@ function continuationRecord(
     ...(authored.gridColumnId ? { gridColumnId: authored.gridColumnId } : {}),
     gridSpan: placed.gridSpan,
     vMergeContinue: true,
+    vAlign: authored.vAlign,
     paintInert: true,
     rowSpan: 1,
     ...(authored.shading === undefined ? {} : { shading: authored.shading }),

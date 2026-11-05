@@ -775,6 +775,8 @@ export interface TableCellFragmentRecord {
   readonly paintInert?: boolean;
   /** Number of rows this restart cell visually spans (1 when not a vertical merge). */
   readonly rowSpan?: number;
+  /** Effective vertical alignment from table styles and direct cell properties. */
+  readonly vAlign?: 'top' | 'center' | 'bottom';
   /** Validated 6-hex cell shading fill, absent for none/auto. */
   readonly shading?: string;
   /** Bottom-to-top cell content uses a rotated local inline axis. */
