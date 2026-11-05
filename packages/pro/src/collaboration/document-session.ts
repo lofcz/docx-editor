@@ -120,11 +120,7 @@ class DocumentSession implements DocumentCollaborationSession {
   private applyingRemote = false;
   /** The last publish waited for a held-back update and left the editor behind shared state. */
   private viewWaiting = false;
-  /**
-   * A full rebuild that the editor refused while shared state waited for a held-back update.
-   * Until that update arrives, another full rebuild reads the same incomplete state, so a
-   * refused view waits for it instead of rebuilding the whole document on every update.
-   */
+  /** Avoid rebuilding the same refused view until its held-back update arrives. */
   private fullRefusedWhileWaiting = false;
   /** Where a degraded session returns on its next clean remote apply; null when terminal. */
   private healTo: HealTarget | null = null;
@@ -208,6 +204,10 @@ class DocumentSession implements DocumentCollaborationSession {
 
   get identity(): CollaborationIdentity {
     return this.currentIdentity;
+  }
+
+  resolveNodeId(nodeId: string): string {
+    return this.identityMap.resolve(nodeId);
   }
 
   private clearAttachWatchdog(): void {

@@ -136,6 +136,7 @@ export interface EditorCollaborationSession {
     redo(): boolean;
     remoteSelectionMove?(): CollaborationSelectionMove | null;
     remoteSelections(): readonly CollaborationRemoteSelection[];
+    resolveNodeId?(nodeId: string): string;
     readonly sessionId: string;
     setLocalSelection(selection: CollaborationLocalSelection | null): void;
     status(): CollaborationStatus;

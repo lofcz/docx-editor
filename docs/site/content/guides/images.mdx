@@ -51,6 +51,8 @@ const image = useEditorState((s) => s.image); // SelectedImageState | null
 
 Outside a component, call `editor.getSelectedImage()` or read `editor.snapshot().image`. Both return the same `SelectedImageState`.
 
+A selected image stays selected when shared edits change its replica identifier. Deleting that image does not select another image at the same position. Custom collaboration adapters can provide `resolveNodeId` on `EditorCollaborationSession`. The editor reads this mapping during document-port notifications, before local aliases expire. The mapping must use exact replica identities.
+
 | Field | Meaning |
 | --- | --- |
 | `widthEmu`, `heightEmu` | Extent in EMUs |

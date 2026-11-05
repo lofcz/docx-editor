@@ -1,0 +1,10 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "A selected drawing retained its retired local identifier after a shared publication.",
+  "after": "The editor follows the replica's exact identity mapping when the installed drawing adopts its shared identifier.",
+  "reason": "The optional adapter read changes local selection only. Shared fields, document bytes, operations, and history formats stay unchanged.",
+  "tests": ["packages/sciobot/src/collaboration/drawing-selection.test.ts"],
+  "changeset": "shared-drawing-selection",
+  "migration": null
+}

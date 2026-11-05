@@ -34,6 +34,7 @@ import {
   revisionParagraphMarkVisible,
 } from './surface-revision-markup.ts';
 import { createDrawingGestures } from './surface-drawing-gestures.ts';
+import { remapDrawingIntent } from './surface-drawing-identity.ts';
 import { createTextboxEditing } from './surface-textbox-editing.ts';
 import { storyOutsideTextbox, textboxOwnerDeps } from './surface-textbox-owner.ts';
 import { createCaretComplexScriptResolver } from './surface-complex-script.ts';
@@ -1882,6 +1883,11 @@ export function mountPaginatedSurface(
   // Every committed transaction, whatever produced it — this surface, undo, or another
   // editor sharing the store — reaches layout the same way.
   const unsubscribe = session.subscribe((modelChange) => {
+    drawingIntent = remapDrawingIntent(
+      drawingIntent,
+      collaborationSession,
+      session.currentPackage()
+    );
     // Before anything downstream can read the index against the new revision.
     reviewOrder.retain(modelChange);
     if (

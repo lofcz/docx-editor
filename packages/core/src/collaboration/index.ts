@@ -235,6 +235,14 @@ export interface EditorCollaborationSession {
    * editor maps the selection by text.
    */
   remoteSelectionMove?(): CollaborationSelectionMove | null;
+  /**
+   * Resolve a canonical node address into this replica's shared identity. Optional.
+   * Editors use this during a document-port change notification, before the session retires
+   * the previous package's local aliases. An unchanged or unknown address returns itself.
+   * The editor must confirm that the returned node exists in the installed package.
+   * This mapping never matches document attributes or guesses replacement nodes.
+   */
+  resolveNodeId?(nodeId: string): string;
   /** Publish the local selection through presence. `null` clears it. */
   setLocalSelection(selection: CollaborationLocalSelection | null): void;
   /** Participants in presence, this replica included. Capped at 256. */
