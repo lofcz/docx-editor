@@ -16,7 +16,7 @@ import {
 } from '@docx-editor.dev/core/store';
 import { withFreshIds } from './fresh-ids';
 import { stableMathFallback } from './math-fallback';
-import { mathWordFallback, type MathPayload } from './math-codec';
+import { BLOCK_MATH, INLINE_MATH, mathWordFallback, type MathPayload } from './math-codec';
 import { blockTag } from './payload-opc-codec';
 
 /** Reparent a canonical equation control. Adjacent runs remain the original nodes. */
@@ -37,7 +37,7 @@ export function convertMathControl(
   if (!inline && !['body', 'tableCell', 'contentControlContent'].includes(parent.kind))
     throw Error('This equation cannot change display in its container.');
   const fallback = mathWordFallback(payload);
-  const lines = payload.type === 'inline_equation' ? [fallback.inlineText] : fallback.paragraphs;
+  const lines = payload.type === INLINE_MATH ? [fallback.inlineText] : fallback.paragraphs;
   const xml =
     `<w:document xmlns:w="${WML_NAMESPACE_URI}"><w:body>` +
     lines
@@ -63,7 +63,7 @@ export function convertMathControl(
       child.id === content.id
         ? {
             ...content,
-            children: stableMathFallback(content, paragraphs, payload.type === 'inline_equation'),
+            children: stableMathFallback(content, paragraphs, payload.type === INLINE_MATH),
           }
         : child
     ),
@@ -71,7 +71,7 @@ export function convertMathControl(
   let target = parent;
   let replacements: OoxmlNode[];
   let removedId = control.id;
-  if (inline && payload.type === 'equation') {
+  if (inline && payload.type === BLOCK_MATH) {
     const container = parentNodeOf(part, parent.id);
     if (!container || !['body', 'tableCell', 'contentControlContent'].includes(container.kind))
       throw Error('This paragraph cannot contain a display equation.');
@@ -99,7 +99,7 @@ export function convertMathControl(
     }
     target = container;
     removedId = parent.id;
-  } else if (!inline && payload.type === 'inline_equation') {
+  } else if (!inline && payload.type === INLINE_MATH) {
     replacements = [{ ...first, children: [converted] }];
   } else {
     replacements = [converted];

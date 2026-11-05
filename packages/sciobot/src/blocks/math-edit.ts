@@ -16,7 +16,14 @@ import { convertMathControl } from './math-convert';
 import { insertBlockAtSelection } from './insert';
 import { withAtomicMathFallbacks } from './math-ownership';
 import { updateAtomicBlock } from './update-atomic';
-import { createMathPayload, mathWordFallback, withMathSource, type MathKind } from './math-codec';
+import {
+  BLOCK_MATH,
+  INLINE_MATH,
+  createMathPayload,
+  mathWordFallback,
+  withMathSource,
+  type MathKind,
+} from './math-codec';
 import { blockTag, readPayloadStore, withPayloadRecord } from './payload-opc-codec';
 import { encodeBlockPayload, type BlockPayload } from './payload-schema';
 
@@ -103,7 +110,7 @@ export function updateMath(
   } catch (error) {
     return fail('invalid-input', String(error));
   }
-  if (payload.type === (request.kind === 'inline' ? 'inline_equation' : 'equation')) {
+  if (payload.type === (request.kind === 'inline' ? INLINE_MATH : BLOCK_MATH)) {
     const updated = updateAtomicBlock(editor, {
       blockId: payload.id,
       attributes: payload.attributes,
@@ -112,7 +119,7 @@ export function updateMath(
   }
   payload = {
     ...payload,
-    type: request.kind === 'inline' ? ('inline_equation' as const) : ('equation' as const),
+    type: request.kind === 'inline' ? INLINE_MATH : BLOCK_MATH,
   };
   const replacement = payload;
   const convert = (pkg: OoxmlPackage) => {
