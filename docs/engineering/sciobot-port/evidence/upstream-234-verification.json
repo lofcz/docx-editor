@@ -1,0 +1,437 @@
+{
+  "upstreamCommit": "5993bd223945cabdaf3900557d9fb59bfd8c2d8c",
+  "forkBaseline": "1fabce96dd74289acc389a199b2b5f38977137ae",
+  "frozenMerge": "fff945161b92525ca50284c7dbd9dac18d898e21",
+  "frozenRun": {
+    "files": 3407,
+    "pass": 37838,
+    "fail": 597,
+    "skip": 2,
+    "failedFiles": 97,
+    "log": "/tmp/docx-verify-tests.log"
+  },
+  "failedFileRecheck": {
+    "files": 99,
+    "pass": 2050,
+    "fail": 142,
+    "log": "/tmp/docx-sync-final-failed-recheck.log",
+    "note": "Includes all 97 frozen failing files and two export regression files. Follow-up repairs supersede 55 failures; two timing failures pass separately."
+  },
+  "baselineMethod": "The original fork engine ran the same failing tests. Five added or extended upstream test files were copied into the baseline checkout. Existing private tests were unchanged.",
+  "baselineLogs": [
+    "/tmp/docx-sync-baseline-comparison.log",
+    "/tmp/docx-sync-baseline-concurrent-split.log",
+    "/tmp/docx-sync-baseline-updated-split.log",
+    "/tmp/docx-sync-baseline-late-collaboration.log",
+    "/tmp/docx-sync-baseline-late-undo.log",
+    "/tmp/docx-sync-baseline-private-failures.log",
+    "/tmp/docx-sync-baseline-remaining-private.log"
+  ],
+  "knownBaselineFailures": [
+    {
+      "file": "packages/pro/src/collaboration/__tests__/document-undo-inserted-paragraph.test.ts",
+      "name": "undo of a paragraph a peer typed in > joins the peer text into the paragraph above"
+    },
+    {
+      "file": "packages/pro/src/collaboration/__tests__/document-undo-inserted-paragraph.test.ts",
+      "name": "undo of a paragraph a peer typed in > keeps typing in an empty new paragraph, and later typing beside it"
+    },
+    {
+      "file": "packages/pro/src/collaboration/__tests__/document-undo-inserted-paragraph.test.ts",
+      "name": "undo of a paragraph a peer typed in > keeps peer text that arrives after the undo"
+    },
+    {
+      "file": "packages/pro/src/collaboration/__tests__/document-undo-inserted-paragraph.test.ts",
+      "name": "undo of a paragraph a peer typed in > joins the peer text into the paragraph after it when none comes before"
+    },
+    {
+      "file": "packages/pro/src/collaboration/__tests__/document-undo-inserted-paragraph.test.ts",
+      "name": "undo of a paragraph a peer typed in > keeps the moved text when a peer deleted the paragraph it came from"
+    },
+    {
+      "file": "packages/pro/src/collaboration/__tests__/document-undo-inserted-paragraph.test.ts",
+      "name": "undo of a paragraph a peer typed in > an undo and redo of the peer text keep it where it joined"
+    },
+    {
+      "file": "packages/pro/src/collaboration/__tests__/document-typing-beside-concurrent-strike.test.ts",
+      "name": "one participant types in a run another proposes deleting > 2 characters typed before the deletion arrives keep their order"
+    },
+    {
+      "file": "packages/pro/src/collaboration/__tests__/document-concurrent-split-order.test.ts",
+      "name": "more concurrent splits of one paragraph > two splits by each of two peers keep four breaks in text order (tracked, Alice, Bob, Carol)"
+    },
+    {
+      "file": "packages/pro/src/collaboration/__tests__/document-concurrent-split-order.test.ts",
+      "name": "more concurrent splits of one paragraph > two splits by each of two peers keep four breaks in text order (tracked, Carol, Bob, Alice)"
+    },
+    {
+      "file": "packages/pro/src/collaboration/__tests__/document-concurrent-split-order.test.ts",
+      "name": "rejecting every change after concurrent tracked splits > two peers, Paragraph.split, no paragraph properties (Alice, Bob, Carol)"
+    },
+    {
+      "file": "packages/pro/src/collaboration/__tests__/document-concurrent-split-order.test.ts",
+      "name": "rejecting every change after concurrent tracked splits > two peers, Paragraph.split, no paragraph properties (Carol, Bob, Alice)"
+    },
+    {
+      "file": "packages/pro/src/collaboration/__tests__/document-concurrent-split-order.test.ts",
+      "name": "rejecting every change after concurrent tracked splits > two peers, a typed paragraph break, no paragraph properties (Alice, Bob, Carol)"
+    },
+    {
+      "file": "packages/pro/src/collaboration/__tests__/document-concurrent-split-order.test.ts",
+      "name": "rejecting every change after concurrent tracked splits > two peers, a typed paragraph break, no paragraph properties (Carol, Bob, Alice)"
+    },
+    {
+      "file": "packages/pro/src/collaboration/__tests__/document-concurrent-split-order.test.ts",
+      "name": "rejecting every change after concurrent tracked splits > three peers split at three points, then one rejects all (Alice, Bob, Carol)"
+    },
+    {
+      "file": "packages/pro/src/collaboration/__tests__/document-concurrent-split-order.test.ts",
+      "name": "rejecting every change after concurrent tracked splits > three peers split at three points, then one rejects all (Carol, Bob, Alice)"
+    },
+    {
+      "file": "packages/pro/src/collaboration/__tests__/document-concurrent-split-order.test.ts",
+      "name": "several separate breaks by each peer while offline > two typed paragraph breaks by each of two peers (tracked, garbage collection on, Alice, Bob, Carol)"
+    },
+    {
+      "file": "packages/pro/src/collaboration/__tests__/document-concurrent-split-order.test.ts",
+      "name": "several separate breaks by each peer while offline > two typed paragraph breaks by each of two peers (tracked, garbage collection on, Carol, Bob, Alice)"
+    },
+    {
+      "file": "packages/pro/src/collaboration/__tests__/document-concurrent-split-order.test.ts",
+      "name": "several separate breaks by each peer while offline > two typed paragraph breaks by each of two peers (tracked, garbage collection off, Alice, Bob, Carol)"
+    },
+    {
+      "file": "packages/pro/src/collaboration/__tests__/document-concurrent-split-order.test.ts",
+      "name": "several separate breaks by each peer while offline > two typed paragraph breaks by each of two peers (tracked, garbage collection off, Carol, Bob, Alice)"
+    },
+    {
+      "file": "packages/pro/src/collaboration/__tests__/document-concurrent-split-order.test.ts",
+      "name": "several separate breaks by each peer while offline > two Paragraph.split calls by each of two peers (tracked, garbage collection on, Alice, Bob, Carol)"
+    },
+    {
+      "file": "packages/pro/src/collaboration/__tests__/document-concurrent-split-order.test.ts",
+      "name": "several separate breaks by each peer while offline > two Paragraph.split calls by each of two peers (tracked, garbage collection on, Carol, Bob, Alice)"
+    },
+    {
+      "file": "packages/pro/src/collaboration/__tests__/document-concurrent-split-order.test.ts",
+      "name": "several separate breaks by each peer while offline > two Paragraph.split calls by each of two peers (tracked, garbage collection off, Alice, Bob, Carol)"
+    },
+    {
+      "file": "packages/pro/src/collaboration/__tests__/document-concurrent-split-order.test.ts",
+      "name": "several separate breaks by each peer while offline > two Paragraph.split calls by each of two peers (tracked, garbage collection off, Carol, Bob, Alice)"
+    },
+    {
+      "file": "packages/pro/src/collaboration/__tests__/document-concurrent-split-order.test.ts",
+      "name": "several separate breaks by each peer while offline > three typed paragraph breaks by each of two peers (tracked, garbage collection on, Alice, Bob, Carol)"
+    },
+    {
+      "file": "packages/pro/src/collaboration/__tests__/document-concurrent-split-order.test.ts",
+      "name": "several separate breaks by each peer while offline > three typed paragraph breaks by each of two peers (tracked, garbage collection on, Carol, Bob, Alice)"
+    },
+    {
+      "file": "packages/pro/src/collaboration/__tests__/document-concurrent-split-order.test.ts",
+      "name": "several separate breaks by each peer while offline > three typed paragraph breaks by each of two peers (tracked, garbage collection off, Alice, Bob, Carol)"
+    },
+    {
+      "file": "packages/pro/src/collaboration/__tests__/document-concurrent-split-order.test.ts",
+      "name": "several separate breaks by each peer while offline > three typed paragraph breaks by each of two peers (tracked, garbage collection off, Carol, Bob, Alice)"
+    },
+    {
+      "file": "packages/pro/src/collaboration/__tests__/document-concurrent-split-order.test.ts",
+      "name": "several separate breaks by each peer while offline > three Paragraph.split calls by each of two peers (tracked, garbage collection on, Alice, Bob, Carol)"
+    },
+    {
+      "file": "packages/pro/src/collaboration/__tests__/document-concurrent-split-order.test.ts",
+      "name": "several separate breaks by each peer while offline > three Paragraph.split calls by each of two peers (tracked, garbage collection on, Carol, Bob, Alice)"
+    },
+    {
+      "file": "packages/pro/src/collaboration/__tests__/document-concurrent-split-order.test.ts",
+      "name": "several separate breaks by each peer while offline > three Paragraph.split calls by each of two peers (tracked, garbage collection off, Alice, Bob, Carol)"
+    },
+    {
+      "file": "packages/pro/src/collaboration/__tests__/document-concurrent-split-order.test.ts",
+      "name": "several separate breaks by each peer while offline > three Paragraph.split calls by each of two peers (tracked, garbage collection off, Carol, Bob, Alice)"
+    },
+    {
+      "file": "packages/pro/src/collaboration/__tests__/document-tracked-foreign-revisions.test.ts",
+      "name": "reviewer first: words typed into their insertion while the reviewer replaces it stay out of the strike"
+    },
+    {
+      "file": "packages/pro/src/collaboration/__tests__/document-tracked-foreign-revisions.test.ts",
+      "name": "counterparty first: words typed into their insertion while the reviewer replaces it stay out of the strike"
+    },
+    {
+      "file": "packages/sciobot/src/review/track-hyperlink-older-reader.test.ts",
+      "name": "later link proposal after legacy older-core accept 41,73/0/accept/inside-copy"
+    },
+    {
+      "file": "packages/sciobot/src/review/track-hyperlink-older-reader.test.ts",
+      "name": "later link proposal after legacy older-core accept 41,73/1/accept/inside-copy"
+    },
+    {
+      "file": "packages/sciobot/src/review/track-hyperlink-older-reader.test.ts",
+      "name": "later link proposal after legacy older-core accept 73,41/0/accept/inside-copy"
+    },
+    {
+      "file": "packages/sciobot/src/review/track-hyperlink-older-reader.test.ts",
+      "name": "later link proposal after legacy older-core accept 73,41/1/accept/inside-copy"
+    },
+    {
+      "file": "packages/sciobot/src/review/track-hyperlink-older-reader.test.ts",
+      "name": "later link proposal after legacy older-core reject 41,73/0/accept/inside-copy"
+    },
+    {
+      "file": "packages/sciobot/src/review/track-hyperlink-older-reader.test.ts",
+      "name": "later link proposal after legacy older-core reject 41,73/1/accept/inside-copy"
+    },
+    {
+      "file": "packages/sciobot/src/review/track-hyperlink-older-reader.test.ts",
+      "name": "later link proposal after legacy older-core reject 73,41/0/accept/inside-copy"
+    },
+    {
+      "file": "packages/sciobot/src/review/track-hyperlink-older-reader.test.ts",
+      "name": "later link proposal after legacy older-core reject 73,41/1/accept/inside-copy"
+    },
+    {
+      "file": "packages/sciobot/src/review/track-hyperlink-older-reader.test.ts",
+      "name": "later link proposal after dynamic older-core accept 41,73/0/accept/inside-copy"
+    },
+    {
+      "file": "packages/sciobot/src/review/track-hyperlink-older-reader.test.ts",
+      "name": "later link proposal after dynamic older-core accept 41,73/1/accept/inside-copy"
+    },
+    {
+      "file": "packages/sciobot/src/review/track-hyperlink-older-reader.test.ts",
+      "name": "later link proposal after dynamic older-core accept 73,41/0/accept/inside-copy"
+    },
+    {
+      "file": "packages/sciobot/src/review/track-hyperlink-older-reader.test.ts",
+      "name": "later link proposal after dynamic older-core accept 73,41/1/accept/inside-copy"
+    },
+    {
+      "file": "packages/sciobot/src/review/track-hyperlink-older-reader.test.ts",
+      "name": "later link proposal after dynamic older-core reject 41,73/0/accept/inside-copy"
+    },
+    {
+      "file": "packages/sciobot/src/review/track-hyperlink-older-reader.test.ts",
+      "name": "later link proposal after dynamic older-core reject 41,73/1/accept/inside-copy"
+    },
+    {
+      "file": "packages/sciobot/src/review/track-hyperlink-older-reader.test.ts",
+      "name": "later link proposal after dynamic older-core reject 73,41/0/accept/inside-copy"
+    },
+    {
+      "file": "packages/sciobot/src/review/track-hyperlink-older-reader.test.ts",
+      "name": "later link proposal after dynamic older-core reject 73,41/1/accept/inside-copy"
+    },
+    {
+      "file": "packages/sciobot/src/review/track-hyperlink-older-reader.test.ts",
+      "name": "later link proposal after layered older-core accept 41,73/0/accept/inside-copy"
+    },
+    {
+      "file": "packages/sciobot/src/review/track-hyperlink-older-reader.test.ts",
+      "name": "later link proposal after layered older-core accept 41,73/1/accept/inside-copy"
+    },
+    {
+      "file": "packages/sciobot/src/review/track-hyperlink-older-reader.test.ts",
+      "name": "later link proposal after layered older-core accept 73,41/0/accept/inside-copy"
+    },
+    {
+      "file": "packages/sciobot/src/review/track-hyperlink-older-reader.test.ts",
+      "name": "later link proposal after layered older-core accept 73,41/1/accept/inside-copy"
+    },
+    {
+      "file": "packages/sciobot/src/review/track-hyperlink-older-reader.test.ts",
+      "name": "later link proposal after layered older-core reject 41,73/0/accept/inside-copy"
+    },
+    {
+      "file": "packages/sciobot/src/review/track-hyperlink-older-reader.test.ts",
+      "name": "later link proposal after layered older-core reject 41,73/1/accept/inside-copy"
+    },
+    {
+      "file": "packages/sciobot/src/review/track-hyperlink-older-reader.test.ts",
+      "name": "later link proposal after layered older-core reject 73,41/0/accept/inside-copy"
+    },
+    {
+      "file": "packages/sciobot/src/review/track-hyperlink-older-reader.test.ts",
+      "name": "later link proposal after layered older-core reject 73,41/1/accept/inside-copy"
+    },
+    {
+      "file": "packages/core/src/editor/__tests__/review-structural-matrix.test.ts",
+      "name": "accept: structural matrix tracked-content-in-row-del, package round trip and atomic undo"
+    },
+    {
+      "file": "packages/core/src/editor/__tests__/review-structural-matrix.test.ts",
+      "name": "reject: structural matrix tracked-content-in-row-ins, package round trip and atomic undo"
+    },
+    {
+      "file": "packages/pro/src/collaboration/__tests__/document-split-collaboration.test.ts",
+      "name": "rejecting a tracked split while its author undoes it offline > a tracked paragraph break keeps the paragraph (Alice inserts first)"
+    },
+    {
+      "file": "packages/pro/src/collaboration/__tests__/document-split-collaboration.test.ts",
+      "name": "rejecting a tracked split while its author undoes it offline > a tracked paragraph break keeps the paragraph (Bob inserts first)"
+    },
+    {
+      "file": "packages/pro/src/collaboration/__tests__/document-split-collaboration.test.ts",
+      "name": "rejecting a tracked split while its author undoes it offline > a tracked split keeps the paragraph (Alice inserts first)"
+    },
+    {
+      "file": "packages/pro/src/collaboration/__tests__/document-split-collaboration.test.ts",
+      "name": "rejecting a tracked split while its author undoes it offline > a tracked split keeps the paragraph (Bob inserts first)"
+    },
+    {
+      "file": "packages/pro/src/collaboration/__tests__/document-split-collaboration.test.ts",
+      "name": "rejecting a tracked split while its author undoes it offline > a rejected tracked split joins into the first paragraph, which keeps its identity"
+    },
+    {
+      "file": "packages/pro/src/collaboration/__tests__/document-split-collaboration.test.ts",
+      "name": "undoing a split into two that trims its delimiter while a peer types > keeps the typing on undo and on redo"
+    },
+    {
+      "file": "packages/pro/src/collaboration/__tests__/document-undo-groups.test.ts",
+      "name": "undo groups > an undo of a long paste reads its marks per insert, not per character"
+    },
+    {
+      "file": "packages/core/src/store/__tests__/canonical-primitive-journal-coverage.test.ts",
+      "name": "canonical primitive journal completeness (tasks 3.6 and 3.8) > every accepted run property has a fixture or a declared reason"
+    },
+    {
+      "file": "packages/core/src/store/__tests__/review-word-bulk-content.test.ts",
+      "name": "Word bulk content: reject row-insert-with-deletion"
+    },
+    {
+      "file": "packages/core/src/store/__tests__/review-word-bulk-content.test.ts",
+      "name": "Word bulk content: reject row-opposite-text-ins"
+    },
+    {
+      "file": "packages/core/src/store/__tests__/review-word-bulk-content.test.ts",
+      "name": "Word bulk content: accept row-opposite-text-del"
+    },
+    {
+      "file": "packages/pro/src/collaboration/__tests__/document-undo-beside-concurrent-edits.test.ts",
+      "name": "an undone table move whose separator a peer moved > keeps its paragraph identity, so a caret in it shows to the peer"
+    },
+    {
+      "file": "packages/sciobot/src/review/source-bindings-concurrent.test.ts",
+      "name": "independent source scopes retain concurrent proposals, peer text, decisions, histories, and reopening; 41,73/false"
+    },
+    {
+      "file": "packages/sciobot/src/review/source-bindings-concurrent.test.ts",
+      "name": "independent source scopes retain concurrent proposals, peer text, decisions, histories, and reopening; 41,73/true"
+    },
+    {
+      "file": "packages/sciobot/src/review/source-bindings-concurrent.test.ts",
+      "name": "independent source scopes retain concurrent proposals, peer text, decisions, histories, and reopening; 73,41/false"
+    },
+    {
+      "file": "packages/sciobot/src/review/source-bindings-concurrent.test.ts",
+      "name": "independent source scopes retain concurrent proposals, peer text, decisions, histories, and reopening; 73,41/true"
+    },
+    {
+      "file": "packages/core/src/store/__tests__/revision-explicit-decisions.test.ts",
+      "name": "changes inside removed content > accepting a deleted row takes another author\u2019s insertion in it along"
+    },
+    {
+      "file": "packages/core/src/store/__tests__/revision-word-oracle.test.ts",
+      "name": "Word oracle accept: tracked-content-in-row-del"
+    },
+    {
+      "file": "packages/core/src/store/__tests__/revision-word-oracle.test.ts",
+      "name": "Word oracle reject: tracked-content-in-row-ins"
+    },
+    {
+      "file": "packages/core/src/store/__tests__/revision-boundary-rules.test.ts",
+      "name": "a block content control keeps its emptied last paragraph"
+    },
+    {
+      "file": "packages/sciobot/src/collaboration/review-birth-field-retention.test.ts",
+      "name": "native birth constructor fields stay outside conditional scalar ownership; later writes keep their baseline"
+    },
+    {
+      "file": "packages/sciobot/src/collaboration/review-birth-field-retention.test.ts",
+      "name": "native birth exemption excludes old nodes, unrelated fields, other roots, and sequences"
+    },
+    {
+      "file": "packages/sciobot/src/collaboration/review-birth-field-retention.test.ts",
+      "name": "numbering constructor scalars keep their native lifetime only in experimental protocol 2"
+    },
+    {
+      "file": "packages/sciobot/src/collaboration/review-numbering-birth-retention.test.ts",
+      "name": "constructor child ownership preserves native creation history and cold state: 2/14/w"
+    },
+    {
+      "file": "packages/core/src/store/__tests__/revision-emptied-cell.test.ts",
+      "name": "rejecting an inserted last paragraph of a cell keeps an empty paragraph (all)"
+    },
+    {
+      "file": "packages/core/src/store/__tests__/revision-emptied-cell.test.ts",
+      "name": "rejecting an inserted last paragraph of a cell keeps an empty paragraph (card)"
+    }
+  ],
+  "followups": [
+    {
+      "scope": "Hyperlink history",
+      "pass": 64,
+      "fail": 0,
+      "assertions": 2560,
+      "log": "/tmp/docx-sync-hyperlink-cohort-fix.log"
+    },
+    {
+      "scope": "Paragraph creation and table review",
+      "pass": 80,
+      "fail": 0,
+      "assertions": 651,
+      "log": "/tmp/docx-sync-paragraph-birth-focused.log"
+    },
+    {
+      "scope": "Native and shared table creation",
+      "files": 9,
+      "pass": 103,
+      "fail": 0,
+      "log": "/tmp/docx-sync-birth-integration.log"
+    },
+    {
+      "scope": "Computed fields preserve protected cache",
+      "pass": 10,
+      "fail": 0,
+      "assertions": 185,
+      "log": "/tmp/docx-sync-field-protection2.log"
+    },
+    {
+      "scope": "Split sweep, unchanged time limit",
+      "pass": 1,
+      "fail": 0,
+      "log": "/tmp/docx-sync-split-sweep-isolated.log"
+    },
+    {
+      "scope": "PDF workers, unchanged time limits",
+      "pass": 2,
+      "fail": 0,
+      "assertions": 16,
+      "log": "/tmp/docx-sync-layout-worker-final.log"
+    },
+    {
+      "scope": "Export reference and cache regression",
+      "pass": 3,
+      "fail": 0,
+      "assertions": 15,
+      "log": "/tmp/docx-sync-export-test.log"
+    },
+    {
+      "scope": "Cross-story rejection and history",
+      "pass": 8,
+      "fail": 0,
+      "assertions": 364,
+      "log": "/tmp/docx-sync-final-fixtures.log"
+    },
+    {
+      "scope": "Bounded test runner output",
+      "pass": 3,
+      "fail": 0,
+      "assertions": 51,
+      "log": "/tmp/docx-sync-runner-fixture2.log"
+    }
+  ],
+  "completion": "The full suite remains red. No baseline failure is counted as passing. Do not infer a green full run by adding follow-up counts."
+}
