@@ -87,7 +87,7 @@ test('only a live record displaces the identity of an inline shell', () => {
       () => 0
     );
     const paragraph = asLogicalId('p');
-    expect(index.holdersOf('control')).toEqual(new Set(['p']));
+    expect(index.holdersOf('control')).toEqual(new Set([paragraph]));
     // A simultaneous record and shell must not have duplicate canonical IDs.
     expect(index.shownId(paragraph, 'control')).not.toBe('control');
     // Undo retains the record for redo, but restores the only live inline owner.
