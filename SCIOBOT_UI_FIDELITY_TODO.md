@@ -30,8 +30,8 @@ Other sessions use the production application checkout. Feature work stays in is
 | UX01 | Tables | Insertion grid, contextual controls, cell and row selection, resizing, structure, appearance, keyboard navigation | `ui_tables`: menu and selection integrated; append controls and repeated headers under review |
 | UX02 | Math | Shared MathLive dialog, virtual keyboard, selected-text insertion, inline/display editing, draft ownership | `ui_math`: shared MathLive dialog integrated; conversion ownership remains open |
 | UX03 | SMILES | Shared chemistry editor, AI and manual entry, preview, validation, activation, block actions, failed-save recovery | Accepted; eight integrated browser cases pass |
-| UX04 | Links | Insert/edit/remove dialogs, selected text, URL validation, opening, keyboard shortcuts | `ui_smiles`: eight browser cases pass; coordinator review pending |
-| UX05 | Images and galleries | Upload, resize, captions, alignment, replacement, gallery actions, loading and errors | Pending |
+| UX04 | Links | Insert/edit/remove dialogs, selected text, URL validation, opening, keyboard shortcuts | Accepted; ten integrated browser cases and direct keyboard review pass |
+| UX05 | Images and galleries | Upload, resize, captions, alignment, replacement, gallery actions, loading and errors | `ui_smiles`: implementing |
 | UX06 | Files, audio, video, and embeds | Insert/edit controls, previews, loading, playback, removal, accessible fallback | Pending |
 | UX07 | Lists | Bullets, numbering, checklists, nesting, indentation, continuation and exit shortcuts | Pending |
 | UX08 | Text and paragraph formatting | Marks, font size, colors, headings, alignment, spacing, mixed selection state | Pending |
@@ -58,9 +58,10 @@ Other sessions use the production application checkout. Feature work stays in is
 
 ## Acceptance records
 
-UX03 passed coordinator review. Other features remain open.
+UX03 and UX04 passed coordinator review. Other features remain open.
 
 - Tables: engine `bf9fe406d` and `932663725`; app `8ab2a19aa` and `b930f2d3f`. Native menu review passes. Append controls and repeated headers remain open.
+- Links: app `cbe3e8884` and `61068174a` provide the shared app popover over canonical hyperlink commands. Ten integrated browser cases pass with 60 assertions. Coordinator keyboard and visual review also pass. Coverage includes stale drafts, document replacement, concurrent edits, history, save/reopen, view/suggest modes, narrow layout, and hover dismissal. Native links accept real pasted app URLs and bookmarks. The Plate reference contains a mock page catalog; this integration does not copy that mock. Field hyperlinks retain the engine's preview-only support.
 - Math: app `885d05104` reuses the shared MathLive surface. Conversion undo can restore stale Word fallback text after a peer edit. This defect blocks acceptance.
 - SMILES: app `5daf553f7`, `bb5bdf946`, and `60e0c27e3` share the Plate chemistry editor and protect draft ownership. Eight integrated browser cases pass. Coordinator review covers desktop and narrow layouts, keyboard input, cancellation, validation, replacement, history, shared editing, duplication, deletion, and save/reopen. AI request tests use controlled responses; they verify interaction and cancellation, not model output quality. Plate provides AI and manual entry with a preview, without a freehand drawing canvas.
 - Shared block ownership: engine `eac568851` fixes deletion of the wrong custom XML payload after duplication. The fix passes 59 focused tests. The integrated browser duplication and deletion check also passes.
