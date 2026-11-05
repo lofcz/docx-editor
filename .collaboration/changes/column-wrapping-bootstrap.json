@@ -1,0 +1,10 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Shared wrapping could create competing payload stores in an unprepared room.",
+  "after": "Shared wrapping requires the payload store created before room bootstrap.",
+  "reason": "The application already prepares shared documents. The guard prevents duplicate stores without changing the shared format.",
+  "tests": ["packages/sciobot/src/blocks/turn-into-columns.test.ts"],
+  "changeset": "column-wrapping-bootstrap",
+  "migration": null
+}

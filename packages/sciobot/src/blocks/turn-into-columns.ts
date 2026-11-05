@@ -15,7 +15,7 @@ import { activeMdxRegistry } from '../registry/active';
 import { buildBlockIndex } from './block-index';
 import { columnWidthsTwips, readColumnGeometry } from './column-geometry';
 import { columnContent, columnScaffold, columnStructureRefusal } from './column-structure';
-import { withPayloadRecord } from './payload-opc-codec';
+import { readPayloadStore, withPayloadRecord } from './payload-opc-codec';
 import { setColumnCount } from './set-column-count';
 
 export interface TurnIntoColumns {
@@ -50,6 +50,12 @@ export function turnIntoColumns(
     return fail('unsupported-operation', 'Choose one native body paragraph for this action.');
   const pkg = surface.session.currentPackage(),
     part = surface.session.part();
+  // Shared infrastructure belongs to room bootstrap, never to one actor's undo history.
+  if (surface.collaborationSession() && readPayloadStore(pkg).status !== 'ready')
+    return fail(
+      'document-not-ready',
+      'Prepare the native document before starting shared column editing.'
+    );
   const paragraph = findNode(part, head.paragraphId);
   const parent = paragraph && parentNodeOf(part, paragraph.id);
   if (paragraph?.kind !== 'paragraph' || !parent)

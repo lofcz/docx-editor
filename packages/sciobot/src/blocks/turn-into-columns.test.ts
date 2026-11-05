@@ -14,6 +14,7 @@ import { createTwoEditorFixture } from '../../test/support/collaboration';
 import { buildBlockIndex } from './block-index';
 import { readColumnGeometry } from './column-geometry';
 import { turnIntoColumns } from './turn-into-columns';
+import { prepareNativeDocument } from '../native/prepare-document';
 
 async function fixture() {
   return writeOoxmlPackage(
@@ -82,7 +83,12 @@ test('turn into columns preserves the selected native paragraph, history, and sa
 for (const first of [0, 1] as const)
   for (const action of ['type', 'delete', 'wrap'] as const)
     test(`column wrapping retains concurrent ${action} and history; receiver ${first}`, async () => {
-      const pair = await createTwoEditorFixture({ document: await fixture(), clientIds: [41, 73] });
+      const prepared = prepareNativeDocument(await fixture());
+      if (!prepared.success) throw Error(prepared.error);
+      const pair = await createTwoEditorFixture({
+        document: prepared.document,
+        clientIds: [41, 73],
+      });
       try {
         const [alice, bob] = pair.editors as [DocxEditorInstance, DocxEditorInstance];
         const id = select(alice);
@@ -97,8 +103,12 @@ for (const first of [0, 1] as const)
         else turn(bob);
         pair.reconnect(first);
         await pair.settle();
-        const check = async () => {
+        const check = async (count: number) => {
           for (const editor of pair.editors) {
+            expect(groups(editor)).toHaveLength(count);
+            expect(buildBlockIndex(editor.surface!.session.currentPackage()).diagnostics).toEqual(
+              []
+            );
             for (const group of groups(editor)) expect(group).not.toBeNull();
             const paragraph = findNode(editor.surface!.session.part(), id);
             if (action === 'delete') expect(paragraph).toBeNull();
@@ -113,13 +123,13 @@ for (const first of [0, 1] as const)
           const saved = await pair.savedDigests();
           expect(saved[0]).toEqual(saved[1]);
         };
-        await check();
+        await check(action === 'wrap' ? 2 : 1);
         expect(alice.exec({ type: 'undo' }).ok).toBe(true);
         await pair.settle();
-        await check();
+        await check(action === 'wrap' ? 1 : 0);
         expect(alice.exec({ type: 'redo' }).ok).toBe(true);
         await pair.settle();
-        await check();
+        await check(action === 'wrap' ? 2 : 1);
       } finally {
         pair.destroy();
       }
@@ -170,5 +180,27 @@ test('column wrapping refuses protected content, stale selections, and unsupport
     }
   } finally {
     editor.destroy();
+  }
+});
+
+test('shared wrapping refuses an uninitialized payload store without taking ownership of its lifetime', async () => {
+  const pair = await createTwoEditorFixture({ document: await fixture() });
+  try {
+    pair.pause();
+    for (const editor of pair.editors) {
+      select(editor);
+      const surface = editor.surface!,
+        before = surface.session.currentPackage();
+      expect(
+        turnIntoColumns(editor, { count: 3, expectedRevision: surface.session.packageRevision() })
+      ).toMatchObject({ success: false, code: 'document-not-ready' });
+      expect(surface.session.currentPackage()).toBe(before);
+    }
+    pair.reconnect();
+    await pair.settle();
+    const saved = await pair.savedDigests();
+    expect(saved[0]).toEqual(saved[1]);
+  } finally {
+    pair.destroy();
   }
 });
