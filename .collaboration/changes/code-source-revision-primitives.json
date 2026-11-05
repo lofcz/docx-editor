@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Native code source edits calculate inserted lines incrementally and have no exact tracked source views.",
+  "after": "Bounded code diffs produce canonical text, tab, split, and merge operations with exact committed and working source reads.",
+  "reason": "Model 2 retains native paragraph source proofs. This private primitive batch changes no record representation or review executor. Automatic preparation stays disabled; existing version-1 review stays active.",
+  "tests": [
+    "packages/sciobot/src/blocks/code-source-ops.test.ts",
+    "packages/sciobot/src/blocks/code-edit.test.ts",
+    "packages/sciobot/src/blocks/code-protection.test.ts"
+  ],
+  "changeset": "code-source-revision-primitives",
+  "migration": null
+}

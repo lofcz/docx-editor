@@ -1,69 +1,22 @@
 import {
-  contentControlContentNodeOf,
   contentControlPropertiesOf,
   contentControlsIn,
   isStoryPart,
-  paragraphTextOf,
-  WML_NAMESPACE_URI,
   type OoxmlNode,
   type OoxmlPackage,
   type OoxmlPart,
 } from '@docx-editor.dev/core/store';
 import type { PayloadStorage, StoredPayload } from './payload-opc-codec';
 import { codeRecordShape } from './code-record';
-import { DEFAULT_PAYLOAD_LIMITS } from './payload-schema';
+import { codeRevisionText, type CodeSourceView } from './code-revision-text';
 
 /** Only plain native code lines are editable. Imported fields and opaque structures stay intact. */
-export function nativeCodeSource(part: OoxmlPart, control: OoxmlNode) {
-  const content = contentControlContentNodeOf(control);
-  if (!content || !content.children.length || content.children.length > 10000) return null;
-  const paragraphs = content.children;
-  for (const paragraph of paragraphs) {
-    if (paragraph.kind !== 'paragraph') return null;
-    for (const child of paragraph.children) {
-      if (child.kind === 'paragraphProperties') {
-        if (
-          child.children.some((property) =>
-            ['sectPr', 'pPrChange', 'rPr'].includes(property.localName)
-          )
-        )
-          return null;
-        continue;
-      }
-      if (child.kind !== 'run') return null;
-      for (const runChild of child.children) {
-        if (runChild.kind === 'runProperties') {
-          if (
-            runChild.children.some((property) =>
-              ['rPrChange', 'vanish', 'webHidden', 'specVanish'].includes(property.localName)
-            )
-          )
-            return null;
-          continue;
-        }
-        if (
-          runChild.kind === 'text' &&
-          runChild.children.every((value) => value.kind === 'textValue')
-        )
-          continue;
-        if (
-          runChild.namespaceUri === WML_NAMESPACE_URI &&
-          runChild.localName === 'tab' &&
-          !runChild.children.length
-        )
-          continue;
-        return null;
-      }
-    }
-  }
-  const lines = paragraphs.map((paragraph) => paragraphTextOf(part, paragraph.id) ?? '');
-  const value = lines.join('\n');
-  if (
-    value.length > DEFAULT_PAYLOAD_LIMITS.maxBytes ||
-    new TextEncoder().encode(value).byteLength > DEFAULT_PAYLOAD_LIMITS.maxBytes
-  )
-    return null;
-  return { content, paragraphs, lines, value };
+export function nativeCodeSource(
+  _part: OoxmlPart,
+  control: OoxmlNode,
+  view: CodeSourceView = 'plain'
+) {
+  return codeRevisionText(control, view);
 }
 
 /** Source is a read projection; private records retain language and opaque imported metadata. */
@@ -97,7 +50,7 @@ export function projectNativeCodeSource(
     const record = entries.get(id)!;
     if (record.decoded.status !== 'supported') continue;
     const owner = owners.get(id);
-    const source = owner && nativeCodeSource(owner.part, owner.control);
+    const source = owner && nativeCodeSource(owner.part, owner.control, 'committed');
     if (!source) continue;
     entries.set(id, {
       ...record,

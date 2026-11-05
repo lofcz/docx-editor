@@ -1,4 +1,3 @@
-import { diffChars } from 'diff';
 import type { DocxEditorInstance } from '@docx-editor.dev/core/editor';
 import {
   applyTreeOp,
@@ -20,6 +19,7 @@ import { DEFAULT_PAYLOAD_LIMITS, encodeBlockPayload } from './payload-schema';
 import type { BlockPayload } from './payload-schema';
 import { fieldChanges } from './payload-fields';
 import { ownedCodeSourceLock } from './code-source-lock';
+import { codeSourceOps } from './code-source-ops';
 
 type CodeEditResult = { readonly success: true; readonly revision: number } | NativeEditFailure;
 const fail = (code: NativeEditFailure['code'], error: string): NativeEditFailure => ({
@@ -97,101 +97,6 @@ export function updateCodeLanguage(
   }
 }
 
-interface SourceChange {
-  start: number;
-  end: number;
-  insert: string;
-}
-
-/** Bound diff work and preserve every unchanged character between separate edits. */
-function changes(before: string, after: string): SourceChange[] {
-  const parts = diffChars(before, after, { timeout: 100, maxEditLength: 10000 });
-  if (!parts) throw Error('The code change is too large. Apply smaller source edits.');
-  const edits: SourceChange[] = [];
-  let offset = 0;
-  let current: SourceChange | undefined;
-  for (const part of parts) {
-    if (!part.added && !part.removed) {
-      offset += part.value.length;
-      current = undefined;
-      continue;
-    }
-    if (!current) {
-      current = { start: offset, end: offset, insert: '' };
-      edits.push(current);
-    }
-    if (part.removed) {
-      offset += part.value.length;
-      current.end = offset;
-    } else current.insert += part.value;
-  }
-  return edits;
-}
-
-function applySourceChange(
-  readPart: () => OoxmlPart,
-  apply: (op: TreeDocOp) => void,
-  controlId: string,
-  change: SourceChange
-): void {
-  const part = readPart();
-  const source = nativeCodeSource(part, findNode(part, controlId)!);
-  if (!source) throw Error('The code structure changed.');
-  const locate = (offset: number) => {
-    for (let row = 0; row < source.lines.length; row++) {
-      const length = source.lines[row]!.length;
-      if (offset <= length) return { row, offset };
-      offset -= length + 1;
-    }
-    throw Error('The source position is invalid.');
-  };
-  let start = locate(change.start),
-    end = locate(change.end);
-  let inserted = change.insert;
-  // A complete new line before an existing line belongs to the preceding paragraph break.
-  // Splitting the unchanged following line at zero would give its identity to the new text.
-  if (
-    start.row > 0 &&
-    start.offset === 0 &&
-    change.start === change.end &&
-    inserted.endsWith('\n')
-  ) {
-    start = { row: start.row - 1, offset: source.lines[start.row - 1]!.length };
-    end = start;
-    inserted = `\n${inserted.slice(0, -1)}`;
-  }
-  let current = source.paragraphs[start.row]!.id;
-  let offset = start.offset;
-  for (let row = start.row; row <= end.row; row++) {
-    const from = row === start.row ? start.offset : 0;
-    const to = row === end.row ? end.offset : source.lines[row]!.length;
-    if (to > from)
-      apply({ op: 'deleteText', paragraphId: source.paragraphs[row]!.id, start: from, end: to });
-    if (row > start.row)
-      apply({ op: 'joinParagraphs', firstId: current, secondId: source.paragraphs[row]!.id });
-  }
-  for (const token of inserted.split(/(\n|\t)/)) {
-    if (!token) continue;
-    if (token === '\n') {
-      apply({ op: 'splitParagraph', paragraphId: current, offset });
-      const changed = readPart();
-      const paragraphs = nativeCodeSource(changed, findNode(changed, controlId)!)?.paragraphs;
-      const index = paragraphs?.findIndex((paragraph) => paragraph.id === current) ?? -1;
-      if (!paragraphs || index < 0 || !paragraphs[index + 1])
-        throw Error('The code line did not split.');
-      current = paragraphs[index + 1]!.id;
-      offset = 0;
-    } else {
-      apply(
-        token === '\t'
-          ? { op: 'insertTab', paragraphId: current, offset }
-          : { op: 'insertText', paragraphId: current, offset, text: token }
-      );
-      offset += token.length;
-    }
-  }
-}
-
 /** Commit source through ordinary native text and paragraph operations in one history unit. */
 export function updateCodeSource(
   editor: DocxEditorInstance,
@@ -256,10 +161,8 @@ function commitCodeSource(
     encodeBlockPayload(payload);
     if (!fieldChanges(block.payload, payload).length)
       return { success: true, revision: surface.session.packageRevision() };
-    const edits = changes(source.value, request.value).reverse();
-    if (edits.length + request.value.split('\t').length > 20000)
-      throw Error('The code edit exceeds the operation limit.');
-    const locked = edits.length > 0;
+    const ops = codeSourceOps(source, request.value);
+    const locked = ops.length > 0;
     const lockPart = (part: OoxmlPart, unlock: boolean) => {
       if (!locked) return part;
       if (!lockNode || lockNode.kind !== 'generic') throw Error('The code lock is invalid.');
@@ -283,7 +186,7 @@ function commitCodeSource(
       return changed.part;
     };
     const run = (readPart: () => OoxmlPart, apply: (op: TreeDocOp) => void) => {
-      for (const edit of edits) applySourceChange(readPart, apply, block.controlId, edit);
+      for (const op of ops) apply(op);
       const part = readPart();
       const changed = nativeCodeSource(part, findNode(part, block.controlId)!);
       if (changed?.value !== request.value)
