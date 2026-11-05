@@ -3,7 +3,6 @@ import { withAtomicMathFallbacks } from '../blocks/math-ownership';
 import { withPreparedPayloadFields } from '../blocks/payload-preparation';
 import { withGalleryImageRecords } from '../blocks/gallery-record-upgrade';
 import { withNativeNumberingInfrastructure } from './numbering-infrastructure';
-import { withTaskCompletionStyles } from './task-completion-style';
 import { withPreparedTaskCompletion } from './prepare-task-completion';
 import { readOoxmlPackage } from '@docx-editor.dev/core/store';
 import type { NativeEditFailure } from '../contracts/document';
@@ -35,7 +34,7 @@ export type PreparedNativeDocument =
  * definitions for imported character styles are also initial content, so no actor owns their lifetime.
  *
  * Supported equation controls gain durable fallback ownership before room creation.
- * Valid application tasks gain their completion appearance before room creation.
+ * Application tasks restore owned export styles and prepare accessible markers before room creation.
  * Only changed parts are serialized. Unrelated parts keep their original bytes.
  * This does not invoke the Word export cleanup or reconstruct content from Markdown.
  */
@@ -74,7 +73,7 @@ export function prepareNativeDocument(document: Uint8Array): PreparedNativeDocum
     };
   let completed;
   try {
-    completed = withPreparedTaskCompletion(withTaskCompletionStyles(styled));
+    completed = withPreparedTaskCompletion(styled);
   } catch (error) {
     return {
       success: false,

@@ -2,8 +2,8 @@
   "impact": "no-impact",
   "fields": [],
   "before": "Application tasks change checkbox state without a persistent completion appearance.",
-  "after": "Task commands change the checkbox and paragraph style together. Preparation seeds derived styles before room creation. Shared edits refuse missing definitions.",
-  "reason": "The change uses existing paragraph style references, style definitions, and checkbox operations. Shared records, ownership fields, and protocol versions do not change. Style definitions belong to initial room content, outside participant undo histories.",
+  "after": "Task commands change canonical checkbox state only. A native appearance contribution derives completed formatting. Detached Word downloads materialize settled appearance through owned character styles.",
+  "reason": "Checkbox operations retain existing independent review ownership. No shared record, ownership field, protocol version, or persistent style infrastructure changes. Appearance is derived; detached Word preparation never enters shared histories.",
   "tests": [
     "packages/sciobot/src/chrome/task-completion-style.test.ts",
     "packages/sciobot/src/chrome/task-completion-collaboration.test.ts",

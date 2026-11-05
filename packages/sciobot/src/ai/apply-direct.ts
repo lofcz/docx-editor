@@ -1,5 +1,4 @@
 import { directImageHistory } from './direct-image-history';
-import { assertTaskCompletionPrepared } from './direct-task-completion';
 import { completeImageReplacement } from './direct-image-replacement';
 import { cellAtomBindings, insertedAtomsOfEdit } from '../diff/inserted-cell-atoms';
 import { completeInlineAtomPayloads } from '../native/inline-atom-payloads';
@@ -944,7 +943,6 @@ export function applyDirectPlan(
   try {
     lowering = lowerDirectPlan(pkg, plan, context.images, context.contentLockPolicy);
     candidate = previewLowering(pkg, lowering, context.contentLockPolicy);
-    assertTaskCompletionPrepared(editor, pkg, candidate);
   } catch (error) {
     return failure(error);
   }

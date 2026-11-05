@@ -1,48 +1,67 @@
 import {
-  collectRevisionSites,
-  bodyStoryRoot,
   contentControlPropertiesOf,
-  parentNodeOf,
-  storyParagraphs,
   type OoxmlPackage,
+  applyTreeOp,
+  paragraphTextOf,
+  runPropertyEdits,
+  runsCovering,
+  withPart,
 } from '@docx-editor.dev/core/store';
 import { createListSourceReader } from '../diff/lists';
 import { checklistTag } from '../registry/adapter-names';
 import { propertyControlRefusal } from '../review/property-fallback';
-import { applyTaskCompletionStyle } from './task-completion-style';
+import { restoreLegacyTaskCompletionStyle } from './task-completion-style';
 import { withPreparedTaskMarker } from './task-marker-style';
+import { taskExportStyleSource } from './task-export-styles';
+import { runCharacterStyle } from './inline-code';
+import { taskStoryParagraphs } from './task-export';
 
-/** Restore owned task appearance before room creation without changing imported Word checkboxes. */
+/** Restore authored task styles after Word materialization; live appearance follows checkbox state. */
 export function withPreparedTaskCompletion(pkg: OoxmlPackage): OoxmlPackage {
-  const part = pkg.parts.get(pkg.mainDocumentPart);
-  if (!part) return pkg;
-  const body = bodyStoryRoot(part);
-  if (!body) return pkg;
-  const pending = new Set<string>();
-  for (const site of collectRevisionSites(part)) {
-    let node = site.parent;
-    for (let depth = 0; node && depth < 64; depth++) {
-      if (node.kind === 'paragraph') {
-        pending.add(node.id);
-        break;
-      }
-      node = parentNodeOf(part, node.id);
-    }
-  }
-  const reader = createListSourceReader(pkg, part);
+  const readers = new Map<string, ReturnType<typeof createListSourceReader>>();
   let next = pkg;
-  for (const paragraph of storyParagraphs(body)) {
-    if (paragraph.kind !== 'paragraph') continue;
-    if (pending.has(paragraph.id)) continue;
+  for (const { part, paragraph, pending } of taskStoryParagraphs(pkg)) {
+    if (pending) continue;
     const owned = paragraph.children.find(
       (node) =>
         node.kind === 'contentControl' && contentControlPropertiesOf(node).tag === checklistTag()
     );
     if (!owned || propertyControlRefusal(part, owned.id)) continue;
+    let reader = readers.get(part.name);
+    if (!reader) {
+      reader = createListSourceReader(pkg, part);
+      readers.set(part.name, reader);
+    }
     const source = reader.read(paragraph.id);
     if (!source.success || !source.state.checkbox) continue;
     next = withPreparedTaskMarker(next, part.name, paragraph.id, owned.id);
-    next = applyTaskCompletionStyle(next, part.name, paragraph.id, source.state.checkbox.checked);
+    next = restoreLegacyTaskCompletionStyle(next, part.name, paragraph.id);
+    const current = next.parts.get(part.name)!;
+    for (const edit of runPropertyEdits(
+      current,
+      paragraph.id,
+      0,
+      paragraphTextOf(current, paragraph.id)?.length ?? 0,
+      [],
+      'proposed'
+    )) {
+      const run = runsCovering(current, paragraph.id, edit.start, edit.end, 'proposed').find(
+        (node) => !edit.targetRunIds || edit.targetRunIds.includes(node.id)
+      );
+      const source = run && taskExportStyleSource(next, runCharacterStyle(run));
+      if (!source) continue;
+      const restored = applyTreeOp(next.parts.get(part.name)!, {
+        op: 'setRunProperties',
+        paragraphId: paragraph.id,
+        start: edit.start,
+        end: edit.end,
+        properties: edit.properties,
+        characterStyle: source.base ?? null,
+        ...(edit.targetRunIds ? { targetRunIds: edit.targetRunIds } : {}),
+      });
+      if (!restored.ok) throw new Error('Task export style restoration was refused.');
+      next = withPart(next, restored.part);
+    }
   }
   return next;
 }

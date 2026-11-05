@@ -1,41 +1,28 @@
+// Restore only exact paragraph styles from the earlier experimental implementation.
+// Live editing never creates these definitions or changes paragraph style references.
 import {
   applyTreeOp,
   canonicalOoxmlFingerprint,
-  createNodeIdAllocator,
   directParagraphProperties,
   escapeXml,
-  insertChildren,
-  partNameKey,
   readOoxmlPart,
   stylesPartOf,
-  withNewPart,
   withPart,
-  withRelationship,
   type OoxmlElement,
   type OoxmlNode,
   type OoxmlPackage,
 } from '@docx-editor.dev/core/store';
-import {
-  buildStyleCascadeTable,
-  cascadeParagraphFormatting,
-  resolveRunStyle,
-  type StyleCascadeTable,
-} from '@docx-editor.dev/core/layout';
 
 const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 const CONTENT_TYPE = 'application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml';
-const RELATIONSHIP = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles';
 const PREFIX = 'SciobotTaskDone__';
 const NAME = 'Sciobot Completed Task';
 type Source = { base: string | undefined };
 const sourceCache = new WeakMap<object, Map<string, Source | null>>();
 interface StyleIndex {
-  readonly definitions: readonly OoxmlElement[];
   readonly byId: ReadonlyMap<string, readonly OoxmlElement[]>;
-  readonly defaultId: string | undefined;
 }
 const indexCache = new WeakMap<object, StyleIndex>();
-const cascadeCache = new WeakMap<object, StyleCascadeTable>();
 const attribute = (node: OoxmlNode | undefined, key: string) =>
   !node || node.kind === 'textValue'
     ? undefined
@@ -45,25 +32,16 @@ const is = (node: OoxmlNode, name: string): node is OoxmlElement =>
 function styleIndex(pkg: OoxmlPackage): StyleIndex {
   const root = stylesPartOf(pkg)?.root;
   if (root && indexCache.has(root)) return indexCache.get(root)!;
-  const styles: OoxmlElement[] = [];
   const byId = new Map<string, OoxmlElement[]>();
-  let defaultId: string | undefined;
   for (const node of root?.children ?? []) {
     if (!is(node, 'style')) continue;
-    styles.push(node);
     const id = attribute(node, 'styleId');
     if (id === undefined) continue;
     const entries = byId.get(id) ?? [];
     entries.push(node);
     byId.set(id, entries);
-    if (
-      defaultId === undefined &&
-      attribute(node, 'type') === 'paragraph' &&
-      ['1', 'true', 'on'].includes(attribute(node, 'default') ?? '')
-    )
-      defaultId = id;
   }
-  const index = { definitions: styles, byId, defaultId };
+  const index = { byId };
   if (root) indexCache.set(root, index);
   return index;
 }
@@ -76,7 +54,7 @@ function identity(base: string | undefined, suffix = 0): string {
   return PREFIX + (base === undefined ? 'A' : 'S' + encode(base)) + (suffix ? `_${suffix}` : '');
 }
 function source(id: string): Source | null {
-  if (!id.startsWith(PREFIX)) return null;
+  if (id.length > 512 || !id.startsWith(PREFIX)) return null;
   const match = /^(A|S.*?)(?:_(\d+))?$/.exec(id.slice(PREFIX.length));
   if (!match) return null;
   try {
@@ -85,48 +63,6 @@ function source(id: string): Source | null {
   } catch {
     return null;
   }
-}
-function inheritedStrike(pkg: OoxmlPackage, inherited: string | undefined): boolean {
-  const root = stylesPartOf(pkg)?.root;
-  if (!root) return false;
-  let cascade = cascadeCache.get(root);
-  if (!cascade) {
-    cascade = buildStyleCascadeTable(root);
-    cascadeCache.set(root, cascade);
-  }
-  const properties: OoxmlElement = {
-    id: 'task-source-style',
-    kind: 'paragraphProperties',
-    namespaceUri: W,
-    prefix: 'w',
-    localName: 'pPr',
-    namespaceBindings: [],
-    attributes: [],
-    children:
-      inherited === undefined
-        ? []
-        : [
-            {
-              id: 'task-source-reference',
-              kind: 'generic',
-              namespaceUri: W,
-              prefix: 'w',
-              localName: 'pStyle',
-              namespaceBindings: [],
-              children: [],
-              attributes: [
-                {
-                  kind: 'wmlVal',
-                  namespaceUri: W,
-                  prefix: 'w',
-                  localName: 'val',
-                  value: inherited,
-                },
-              ],
-            },
-          ],
-  };
-  return resolveRunStyle(cascadeParagraphFormatting(cascade, properties).runProperties).strike;
 }
 function definition(id: string, inherited: string | undefined, strike = true): string {
   return (
@@ -184,80 +120,6 @@ export function taskCompletionStyleSource(
   cached.set(id, result);
   return result;
 }
-function fresh(node: OoxmlNode, next: () => string): OoxmlNode {
-  return node.kind === 'textValue'
-    ? { ...node, id: next() }
-    : ({
-        ...node,
-        id: next(),
-        children: node.children.map((child) => fresh(child, next)),
-      } as OoxmlElement);
-}
-function ensureStyles(pkg: OoxmlPackage, bases: Iterable<string | undefined>) {
-  const index = styleIndex(pkg),
-    ids = new Map<string | undefined, string>(),
-    xml: string[] = [];
-  for (const base of bases) {
-    for (let suffix = 0; suffix < 1024; suffix++) {
-      const id = identity(base, suffix);
-      if (id.length > 512) throw new Error('The task source style identifier exceeds its limit.');
-      if (index.byId.has(id)) {
-        if (!taskCompletionStyleSource(pkg, id)) continue;
-      } else {
-        const inherited = base ?? index.defaultId;
-        xml.push(definition(id, inherited, !inheritedStrike(pkg, inherited)));
-      }
-      ids.set(base, id);
-      break;
-    }
-    if (!ids.has(base)) throw new Error('No task completion style identifier is free.');
-  }
-  if (!xml.length) return { pkg, ids };
-  const existing = stylesPartOf(pkg),
-    directory = pkg.mainDocumentPart.slice(0, pkg.mainDocumentPart.lastIndexOf('/') + 1);
-  const occupied = new Set([...pkg.parts.keys(), ...pkg.partBytes.keys()].map(partNameKey));
-  let filename = 'styles.xml';
-  for (let n = 1; occupied.has(partNameKey(directory + filename)); n++)
-    filename = `sciobot-task-styles-${n}.xml`;
-  const name = existing?.name ?? directory + filename;
-  // The native parser applies its XML element and size limits to the complete seed.
-  const seed = parsed(name, xml.join(''));
-  if (existing) {
-    const mint = createNodeIdAllocator(existing);
-    const inserted = insertChildren(
-      existing,
-      existing.root.id,
-      existing.root.children.length,
-      seed.root.children.map((node) => fresh(node, mint))
-    );
-    if (!inserted.ok) throw new Error('The task completion style was refused.');
-    return { pkg: withPart(pkg, inserted.part), ids };
-  }
-  const next = withNewPart(pkg, name, seed.root as OoxmlElement, CONTENT_TYPE);
-  const related = withRelationship(next, pkg.mainDocumentPart, RELATIONSHIP, filename);
-  if (!related.ok) throw new Error('The task completion style relationship was refused.');
-  return { pkg: related.pkg, ids };
-}
-/** Seed before room bootstrap so shared history never owns a style used by another participant. */
-export function withTaskCompletionStyles(pkg: OoxmlPackage): OoxmlPackage {
-  const bases = new Set<string | undefined>([undefined]);
-  for (const style of styleIndex(pkg).definitions) {
-    const id = attribute(style, 'styleId');
-    if (id && attribute(style, 'type') === 'paragraph' && !taskCompletionStyleSource(pkg, id))
-      if (identity(id).length <= 512) bases.add(id);
-  }
-  return ensureStyles(pkg, bases).pkg;
-}
-/** Shared edits may reference initial definitions, but cannot create their shared lifetime. */
-export function addsTaskCompletionStyles(before: OoxmlPackage, after: OoxmlPackage): boolean {
-  if (stylesPartOf(before) === stylesPartOf(after)) return false;
-  return styleIndex(after).definitions.some((style) => {
-    const id = attribute(style, 'styleId');
-    return !!taskCompletionStyleSource(after, id) && !taskCompletionStyleSource(before, id);
-  });
-}
-export const TASK_COMPLETION_PREPARATION_ERROR =
-  'Prepare task completion styles before starting collaboration.';
 /** Task syntax already carries completion. Detached Markdown reads retain authored formatting only. */
 export function withoutTaskCompletionAppearance(pkg: OoxmlPackage): OoxmlPackage {
   const part = stylesPartOf(pkg);
@@ -276,43 +138,27 @@ export function withoutTaskCompletionAppearance(pkg: OoxmlPackage): OoxmlPackage
     ? withPart(pkg, { ...part, root: { ...part.root, children } as OoxmlElement })
     : pkg;
 }
-/** Initialize only the definition required by a checked proposal, outside its tracked changes. */
-export function withTaskCompletionStyleFor(
+/** Detached preparation restores absent and explicit paragraph references exactly. */
+export function restoreLegacyTaskCompletionStyle(
   pkg: OoxmlPackage,
   partName: string,
   paragraphId: string
-): OoxmlPackage {
-  const current = directParagraphProperties(pkg.parts.get(partName)!, paragraphId).find(
-    (p) => p.localName === 'pStyle'
-  )?.attributes?.val;
-  return taskCompletionStyleSource(pkg, current) ? pkg : ensureStyles(pkg, [current]).pkg;
-}
-/** Change only the paragraph style reference. Authored run properties remain untouched. */
-export function applyTaskCompletionStyle(
-  pkg: OoxmlPackage,
-  partName: string,
-  paragraphId: string,
-  checked: boolean
 ): OoxmlPackage {
   const part = pkg.parts.get(partName)!;
   const properties = directParagraphProperties(part, paragraphId);
   const current = properties.find((p) => p.localName === 'pStyle')?.attributes?.val;
   const original = taskCompletionStyleSource(pkg, current);
-  if ((checked && original) || (!checked && !original)) return pkg;
-  const ensured = checked ? ensureStyles(pkg, [current]) : null;
-  const desired = ensured
-    ? { pkg: ensured.pkg, id: ensured.ids.get(current)! }
-    : { pkg, id: original!.base };
-  const result = applyTreeOp(desired.pkg.parts.get(partName)!, {
+  if (!original) return pkg;
+  const result = applyTreeOp(part, {
     op: 'setParagraphProperties',
     paragraphId,
     properties: [
       ...properties.filter((p) => p.localName !== 'pStyle'),
-      ...(desired.id === undefined
+      ...(original.base === undefined
         ? []
-        : [{ localName: 'pStyle', attributes: { val: desired.id } }]),
+        : [{ localName: 'pStyle', attributes: { val: original.base } }]),
     ],
   });
-  if (!result.ok) throw new Error('The task completion paragraph style was refused.');
-  return withPart(desired.pkg, result.part);
+  if (!result.ok) throw new Error('The legacy task paragraph style restoration was refused.');
+  return withPart(pkg, result.part);
 }

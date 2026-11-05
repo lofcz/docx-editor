@@ -11,10 +11,9 @@ import {
 } from '@docx-editor.dev/core/store';
 import { docxFixture } from '../../test/support/document';
 import { prepareNativeDocument } from '../native/prepare-document';
-import {
-  taskCompletionStyleSource,
-  withTaskCompletionStyles,
-} from '../native/task-completion-style';
+import { withPreparedTaskCompletion } from '../native/prepare-task-completion';
+import { SCIOBOT_NATIVE_REVIEW_MODULE } from '../review/native-module';
+import { materializeTaskAppearanceForWord } from '../native/task-export';
 import { setManualList, setManualListChecked, manualListState } from './lists';
 import { handleManualListKey, installListEditing } from './list-input';
 import { readWorkingView } from '../review/working-view';
@@ -40,6 +39,7 @@ function open(base?: string, collision = '') {
     container: document.createElement('div'),
     document: prepared.document,
     author: 'Alice',
+    modules: [SCIOBOT_NATIVE_REVIEW_MODULE],
   });
 }
 const spans = (editor: ReturnType<typeof createDocxEditor>, id: string) =>
@@ -59,9 +59,7 @@ for (const base of [undefined, 'Normal', 'Imported'])
       const before = runs.children.filter((n) => n.kind === 'run').map(canonicalOoxmlFingerprint);
       expect(setManualList(editor, 'todo', context).success).toBe(true);
       expect(setManualListChecked(editor, true, context).success).toBe(true);
-      expect(
-        taskCompletionStyleSource(surface.session.currentPackage(), styleId(editor, id))
-      ).toEqual({ base });
+      expect(styleId(editor, id)).toBe(base);
       const rendered = spans(editor, id);
       expect(rendered.find((s) => s.text === 'Plain')!.style).toMatchObject({
         strike: true,
@@ -94,14 +92,9 @@ for (const base of [undefined, 'Normal', 'Imported'])
       ).toEqual(before);
       const read = readOoxmlPackage(new Uint8Array(await editor.save()));
       if (!read.ok) throw new Error(read.reason);
-      // Reopened tree identities differ. The document retains the owned style definition.
-      expect(
-        stylesPartOf(read.package)!.root.children.some(
-          (n) =>
-            n.kind !== 'textValue' &&
-            n.attributes.some((a) => a.localName === 'styleId' && a.value === styleId(editor, id))
-        )
-      ).toBe(true);
+      expect(canonicalOoxmlFingerprint(stylesPartOf(read.package)!.root)).toBe(
+        canonicalOoxmlFingerprint(stylesPartOf(surface.session.currentPackage())!.root)
+      );
       expect(setManualListChecked(editor, false, context).success).toBe(true);
       expect(styleId(editor, id)).toBe(base);
       expect(spans(editor, id).find((s) => s.text === 'Plain')!.style).toMatchObject({
@@ -133,12 +126,7 @@ test('completion retains a source paragraph strike through the native style casc
     if (!prepared.success) throw new Error(prepared.error);
     await editor.load(prepared.document);
     const reopenedId = editor.surface!.session.paragraphIds()[0]!;
-    expect(
-      taskCompletionStyleSource(
-        editor.surface!.session.currentPackage(),
-        styleId(editor, reopenedId)
-      )
-    ).toEqual({ base: 'AlreadyStruck' });
+    expect(styleId(editor, reopenedId)).toBe('AlreadyStruck');
     expect(spans(editor, reopenedId).find((span) => span.text === 'Plain')!.style.strike).toBe(
       true
     );
@@ -181,7 +169,7 @@ test('Enter after a completed task creates an unchecked successor with its sourc
     editor.destroy();
   }
 });
-test('imported style collisions remain intact and use another owned identity', () => {
+test('imported style collisions remain intact during live completion', () => {
   const editor = open(
     undefined,
     '<w:style w:type="paragraph" w:styleId="SciobotTaskDone__A"><w:name w:val="Foreign"/></w:style>'
@@ -194,7 +182,7 @@ test('imported style collisions remain intact and use another owned identity', (
     );
     expect(setManualList(editor, 'todo', context).success).toBe(true);
     expect(setManualListChecked(editor, true, context).success).toBe(true);
-    expect(styleId(editor, id)).toBe('SciobotTaskDone__A_1');
+    expect(styleId(editor, id)).toBeUndefined();
     expect(
       canonicalOoxmlFingerprint(stylesPartOf(s.session.currentPackage())!.root.children[2]!)
     ).toBe(before);
@@ -233,9 +221,7 @@ test('owned checkbox activation keeps the caret and supports keyboard focus', as
       })
     );
     expect(manualListState(editor, context, id)!.checkbox!.checked).toBe(true);
-    expect(taskCompletionStyleSource(s.session.currentPackage(), styleId(editor, id))).toEqual({
-      base: 'Imported',
-    });
+    expect(styleId(editor, id)).toBe('Imported');
     expect(s.state().selection.head).toEqual(point);
     widget().focus();
     widget().dispatchEvent(
@@ -261,31 +247,18 @@ test('owned checkbox activation keeps the caret and supports keyboard focus', as
   }
 });
 
-test('preparation restores legacy completed task appearance before seeding and stays idempotent', async () => {
+test('preparation restores materialized task appearance and stays idempotent', async () => {
   const editor = open('Imported');
   try {
-    const s = editor.surface!,
-      id = s.session.paragraphIds()[0]!;
     expect(setManualList(editor, 'todo', context).success).toBe(true);
     expect(setManualListChecked(editor, true, context).success).toBe(true);
-    expect(
-      s.applyAutomationOps(() => [
-        {
-          op: 'setParagraphProperties',
-          paragraphId: id,
-          properties: directParagraphProperties(s.session.part(), id).map((p) =>
-            p.localName === 'pStyle' ? { ...p, attributes: { val: 'Imported' } } : p
-          ),
-        },
-      ]).committed
-    ).toBe(true);
-    expect(spans(editor, id).find((span) => span.text === 'Plain')!.style.strike).toBe(false);
-    const prepared = prepareNativeDocument(new Uint8Array(await editor.save()));
+    const exported = await materializeTaskAppearanceForWord(new Uint8Array(await editor.save()));
+    const prepared = prepareNativeDocument(exported);
     if (!prepared.success) throw new Error(prepared.error);
     expect(prepared.changed).toBe(true);
     await editor.load(prepared.document);
     const reopenedId = editor.surface!.session.paragraphIds()[0]!;
-    expect(styleId(editor, reopenedId)).toBe('SciobotTaskDone__SImported');
+    expect(styleId(editor, reopenedId)).toBe('Imported');
     expect(spans(editor, reopenedId).find((span) => span.text === 'Plain')!.style.strike).toBe(
       true
     );
@@ -337,7 +310,7 @@ test('task listeners follow document reloads and keep read-only reasons visible'
   }
 });
 
-test('many imported paragraph styles prepare together and remain unchanged on a second pass', () => {
+test('many imported paragraph styles require no completion definitions or migration', () => {
   const styles = Array.from(
     { length: 1000 },
     (_, i) =>
@@ -347,10 +320,8 @@ test('many imported paragraph styles prepare together and remain unchanged on a 
     docxFixture('<w:p/>', { styles: `<w:styles xmlns:w="${W}">${styles}</w:styles>` })
   );
   if (!loaded.ok) throw new Error(loaded.reason);
-  const prepared = withTaskCompletionStyles(loaded.package);
-  expect(stylesPartOf(prepared)!.root.children.length).toBe(2001);
-  expect(taskCompletionStyleSource(prepared, 'SciobotTaskDone__SImported999')).toEqual({
-    base: 'Imported999',
-  });
-  expect(withTaskCompletionStyles(prepared)).toBe(prepared);
+  const prepared = withPreparedTaskCompletion(loaded.package);
+  expect(prepared).toBe(loaded.package);
+  expect(stylesPartOf(prepared)!.root.children.length).toBe(1000);
+  expect(withPreparedTaskCompletion(prepared)).toBe(prepared);
 });

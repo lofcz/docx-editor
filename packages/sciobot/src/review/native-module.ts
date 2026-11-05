@@ -1,6 +1,7 @@
 import { reviewGroupRevisionReservations } from './group-allocation';
 import { exportReviewGroupReferences } from './group-export';
 import type { EditorModule } from '@docx-editor.dev/core/editor';
+import { taskAppearanceContribution } from '../native/task-appearance';
 import {
   collectReviewItems,
   findNode,
@@ -11,6 +12,9 @@ import {
 /** Application-owned review contribution over Apache core reads. It contains no Pro runtime. */
 export const SCIOBOT_NATIVE_REVIEW_MODULE: EditorModule = Object.freeze({
   id: 'sciobot-native-review',
+  get paragraphAppearance() {
+    return taskAppearanceContribution();
+  },
   review: Object.freeze({
     reservedRevisionIds: reviewGroupRevisionReservations,
     exportRevisionReferences: exportReviewGroupReferences,

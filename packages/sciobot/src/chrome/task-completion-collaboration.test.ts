@@ -6,7 +6,7 @@ import {
   paragraphTextOf,
   readOoxmlPackage,
   semanticDigest,
-  writeOoxmlPackage,
+  stylesPartOf,
 } from '@docx-editor.dev/core/store';
 import { createTwoEditorFixture } from '../../test/support/collaboration';
 import { docxFixture } from '../../test/support/document';
@@ -30,7 +30,7 @@ const style = (editor: ReturnType<typeof createDocxEditor>, text: string) =>
     .flatMap((p) => p.lines.flatMap((l) => l.spans))
     .find((s) => s.text.includes(text))!.style;
 for (const mode of ['editing', 'suggesting'] as const)
-  test(`shared ${mode} refuses missing task styles before any write`, async () => {
+  test(`shared ${mode} completion needs no task style infrastructure`, async () => {
     const pair = await createTwoEditorFixture({
       document: docxFixture('<w:p><w:r><w:t>Task</w:t></w:r></w:p>'),
       documentId: context.documentId,
@@ -43,18 +43,15 @@ for (const mode of ['editing', 'suggesting'] as const)
       await pair.settle();
       expect(alice.exec({ type: 'setEditingMode', mode }).ok).toBe(true);
       const surface = alice.surface!,
-        before = writeOoxmlPackage(surface.session.currentPackage()),
+        before = stylesPartOf(surface.session.currentPackage())?.root,
         revision = surface.session.packageRevision(),
         selection = surface.state().selection;
-      expect(setManualListChecked(alice, true, context)).toMatchObject({
-        success: false,
-        code: 'unsupported-operation',
-        error: 'Prepare task completion styles before starting collaboration.',
-      });
-      expect(writeOoxmlPackage(surface.session.currentPackage())).toEqual(before);
-      expect(surface.session.packageRevision()).toBe(revision);
+      expect(setManualListChecked(alice, true, context).success).toBe(true);
+      expect(stylesPartOf(surface.session.currentPackage())?.root).toBe(before);
+      expect(surface.session.packageRevision()).toBeGreaterThan(revision);
       expect(surface.state().selection).toEqual(selection);
       await pair.settle();
+      for (const editor of pair.editors) expect(style(editor, 'Task').strike).toBe(true);
       expect((await pair.savedDigests())[0]).toEqual((await pair.savedDigests())[1]);
     } finally {
       pair.destroy();
@@ -66,6 +63,7 @@ for (const receiver of [0, 1] as const)
       document: bytes(),
       documentId: context.documentId,
       ownedAttributes: true,
+      editor: { modules: [SCIOBOT_NATIVE_REVIEW_MODULE] },
     });
     try {
       const [alice, bob] = pair.editors,
@@ -132,6 +130,7 @@ for (const receiver of [0, 1] as const)
         const reopened = createDocxEditor({
           container: document.createElement('div'),
           document: savedBytes,
+          modules: [SCIOBOT_NATIVE_REVIEW_MODULE],
         });
         try {
           expect(style(reopened, 'Task').strike).toBe(true);
@@ -147,11 +146,12 @@ for (const receiver of [0, 1] as const)
     }
   }, 120_000);
 
-test('one participant undo cannot remove completion styles used by another task', async () => {
+test('one participant undo cannot remove another task completion appearance', async () => {
   const pair = await createTwoEditorFixture({
     document: bytes(),
     documentId: context.documentId,
     ownedAttributes: true,
+    editor: { modules: [SCIOBOT_NATIVE_REVIEW_MODULE] },
   });
   try {
     const [alice, bob] = pair.editors,
@@ -184,7 +184,7 @@ test('one participant undo cannot remove completion styles used by another task'
 }, 120_000);
 
 for (const action of ['accept', 'reject'] as const)
-  test(`suggested task completion tracks both style and checkbox through ${action}`, async () => {
+  test(`suggested task completion derives appearance from checkbox through ${action}`, async () => {
     const pair = await createTwoEditorFixture({
       document: bytes(),
       documentId: context.documentId,

@@ -135,6 +135,7 @@ export {
 export * from './diff/column-widths';
 export * from './native/inline-code';
 export * from './native/prepare-document';
+export { materializeTaskAppearanceForWord } from './native/task-export';
 export * from './native/prepare-review-groups';
 export * from './chrome/block-type';
 export * from './chrome/block-styles';
