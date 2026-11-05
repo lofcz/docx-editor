@@ -13,6 +13,7 @@ These decisions set the cutover scope. Change them here, not in individual leave
 - **Storage.** The DOCX package is the stored source of truth for documents that the native editor opens. Each save also writes the `markdown` projection, so server tools and VFS consumers keep their input.
 - **Creation.** Generated drafts and legacy documents enter through MDX conversion once, when they become DOCX. After that, edits change the canonical tree. This exception does not permit rebuilding an imported DOCX from Markdown.
 - **Collaboration.** The Plate editor has no collaboration, so collaboration does not block cutover. Shared document behavior stays supported and tested, but new collaboration edge-case leaves wait until after cutover.
+- **Desktop verification.** Desktop Microsoft Word and operating-system input-method checks are excluded at the user's request on November 5, 2026. These checks remain unverified.
 - **Application content.** The adapter reads application tags, storage names, and diff rules from an embedder registry. Sciobot registers its own components.
 
 ## Active cutover gates
@@ -27,7 +28,7 @@ Keep this list small and reviewable. Close a gate only with a command, fixture, 
 | **CUT-04 Suggestions and review** | AI suggestions preserve user edits, support accept/reject/undo, property changes, and reload without losing pending state. | C05, R14, R15, R16, R17, R18, R19, R21, I04, U09, V03 |
 | **CUT-05 Arbitrary React blocks** | A registered React block can be inserted, edited, moved, persisted, and restored without Plate serializers, and its definition comes from the embedder registry. | C03, B01, B02, B03, B04, B05, B06, B07, B08, B09, B10, B11, B12, B13, B14, B15, B16, B17, B18, B19, B20, B21, B22, M01, M02, M03, M04, M05, M06 |
 | **CUT-06 Content entry** | Generated drafts and legacy documents become DOCX with their blocks and pending suggestions. | I11, I12, I13, I18, I22, I23, I24, I25 |
-| **CUT-07 Release evidence** | Runtime dependencies, large-document performance, desktop Word files, and the AI fixtures are verified. | V02, V05, V06, V07 |
+| **CUT-07 Release evidence** | Runtime dependencies, large-document performance, and the AI fixtures are verified. | V02, V05, V07 |
 
 After cutover, V04 (cross-feature collaboration convergence) and V08 (the full coverage ledger) close the remaining parity work. Editor UI leaves outside CUT-04, such as drag and drop, autoformat, and emoji, also follow cutover.
 
@@ -68,7 +69,7 @@ C03 opens C08, B01, and B04. C07 also needs C02. Each feature still needs its li
 | Workstream | Leaves | Focus |
 | --- | --- | --- |
 | [Contracts and reference fixtures](docs/engineering/sciobot-port/01-contracts.md) | 8 | Freeze observable Plate behavior before replacing its implementation. These leaves provide independent expected results. |
-| [Production React block host](docs/engineering/sciobot-port/02-react-blocks.md) | 33 | Build on examples/react-blocks. The proof remains evidence, rather than the production implementation. |
+| [Production React block host](docs/engineering/sciobot-port/02-react-blocks.md) | 32 | Build on examples/react-blocks. The proof remains evidence, rather than the production implementation. |
 | [Agent document projection and targeting](docs/engineering/sciobot-port/03-agent-projection.md) | 23 | Keep the existing Markdown tool protocol. Map targeted changes back to canonical OOXML without rebuilding the document. |
 | [Small canonical edit plans](docs/engineering/sciobot-port/04-edit-planner.md) | 39 | Produce pure plans first. Direct and suggestion executors consume the same plans. |
 | [Suggestion state and review operations](docs/engineering/sciobot-port/05-suggestions.md) | 53 | Native revisions and application property proposals must form one review model. Required cases cannot close through refusal alone. |
@@ -77,7 +78,7 @@ C03 opens C08, B01, and B04. C07 also needs C02. Each feature still needs its li
 | [Application content and custom renderers](docs/engineering/sciobot-port/08-domain-content.md) | 37 | Reuse application services and content UI. Remove Plate-specific wrappers from each renderer separately. |
 | [Editor interactions and review presentation](docs/engineering/sciobot-port/09-editor-ui.md) | 16 | Connect existing application controls to native selection, commands, and private review state. |
 | [Application persistence and editor replacement](docs/engineering/sciobot-port/10-app-integration.md) | 25 | Work in isolated application branches. Keep unrelated dirty files intact. Preserve existing per-path tools and export workflows. |
-| [Cross-feature evidence and cutover gates](docs/engineering/sciobot-port/11-verification.md) | 8 | These leaves collect required evidence. Passing one gate does not replace focused checks on each feature. |
+| [Cross-feature evidence and cutover gates](docs/engineering/sciobot-port/11-verification.md) | 7 | These leaves collect required evidence. Passing one gate does not replace focused checks on each feature. |
 | [Embedder MDX components](docs/engineering/sciobot-port/12-embedder-mdx.md) | 6 | Replace Sciobot constants in the adapter with a registry that the application supplies. |
 
 The essential integration path runs through shared contracts, mapped projections, pure plans, review operations, and FileExecutor integration.

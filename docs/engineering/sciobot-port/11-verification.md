@@ -96,24 +96,6 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Claim:** codex solo, branch `codex/react-block-proof`. **Evidence:** The repeatable native benchmark `scripts/sciobot-port/measure-v05.ts` generates a 100-page, 1,300-paragraph DOCX and measures open, typing, review application, page movement, retained roots, and process RSS. Two matched runs use the same fixture and revision. The baseline reports open p95 4,417 ms, typing p50/p95 117/283 ms, review p50/p95 98/130 ms, movement p50/p95 0.116/0.786 ms, and 1,300 retained paragraphs. RSS rises 423 MiB in the baseline and 430 MiB in the repeat. Raw samples, summaries, environment, comparison, revision, and script hash are stored in [performance.json](evidence/performance.json). No regression threshold is weakened; deployment hardware remains a release-readiness follow-up.
 
-## V06
-
-- [ ] Verify payload and fallback behavior in desktop Word
-
-**Depends:** [R22](05-suggestions.md#r22), [X09](08-domain-content.md#x09), [X19](08-domain-content.md#x19), [X23](08-domain-content.md#x23), [I14](10-app-integration.md#i14)
-
-**Primary files:** `fork:docs/engineering/sciobot-port/evidence/word-roundtrip.md`; `sanitized resulting DOCX fixtures`
-
-**Read:** [S24](sources.md#s24), [S25](sources.md#s25)
-
-**Change:** Open and save exported files in desktop Word. Exercise native review acceptance/rejection and ordinary text edits around custom blocks.
-
-**Close when:** Reopen in the fork and verify payloads, review decisions, tables, columns, equations, and complete fallbacks. Record Word version and visual evidence.
-
-**Check:** Use desktop Microsoft Word. ZIP inspection or a browser screenshot cannot substitute for this check.
-
-**Claim:** unclaimed. **Evidence:** pending.
-
 ## V07
 
 - [x] Check native runtime package boundaries
@@ -148,4 +130,10 @@ Each named test or artifact is a deliverable. These specifications do not claim 
 
 **Check:** Validate every referenced file, task ID, and required coverage row.
 
-**Claim:** claude, branch `codex/react-block-proof`. **Evidence:** Progress, not closure. Every row of `coverage.md` starts with a status computed from the checkbox of each required leaf; earlier checkpoint text follows it. 46 of 50 rows are complete. Four rows stay open, and each one prevents cutover until it closes or its scope decision is accepted: X20 (side-by-side columns need a stored-form change; the leaf records both candidate designs and their planner blockers), B23 (needs a supported desktop with an operating-system input method; none is installed here), V06 (needs desktop Microsoft Word), and V08 itself. `SCIOBOT_REFERENCE_APP=<cutover worktree> node docs/engineering/sciobot-port/check.mjs` validates 282 leaves (278 closed), links, source paths, dependencies, and closure fields, and the production coverage audit verifies 202 source hashes after a fresh `--capture` at application `8c7cea8a0`.
+**Claim:** codex, branch `codex/react-block-proof`. **Evidence:** Progress, not closure. The user removed desktop Word and operating-system input-method verification from the required scope on November 5, 2026. The ledger retains 280 required leaves. X20 column controls and V08 coverage reconciliation remain open. The excluded desktop checks remain unverified.
+
+## Scope exclusions
+
+### V06
+
+Desktop Microsoft Word round-trip verification is excluded from the required TODO list at the user's request on November 5, 2026. This check remains unverified. It does not block the coverage ledger.

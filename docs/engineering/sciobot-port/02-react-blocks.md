@@ -436,24 +436,6 @@ Regression checks find and fix two concrete defects. The test transport adopted 
 
 **Claim:** codex, branch `codex/react-block-proof`. **Evidence:** Native baseline `9770e78`, local working tree. `payload-opc-codec.test.ts` passes five tests and 23 assertions. Native custom XML parts retain complete nested data through save/reopen. Tags fit the 64-character native limit. Duplicate references, duplicate/malformed records, mismatched IDs, and invalid XML labels refuse. Foreign stores and opaque future payloads stay intact. Package typecheck, scoped Prettier, and oxlint pass. This is the immutable package codec; live atomic writes remain B02.
 
-## B23
-
-- [ ] Verify native IME on a supported desktop
-
-**Depends:** [B09](02-react-blocks.md#b09)
-
-**Primary files:** `fork:docs/engineering/sciobot-port/evidence/desktop-ime.md`; `captured regression sequence`
-
-**Read:** [S24](sources.md#s24), [S25](sources.md#s25)
-
-**Change:** Run actual operating-system IME composition in a native slot and a React input. Record browser, operating system, and input method.
-
-**Close when:** Both inputs commit composition once. Repagination retains selection. Record the actual input sequence; synthetic events alone do not close this leaf.
-
-**Check:** Use desktop Microsoft Word. ZIP inspection or a browser screenshot cannot substitute for this check.
-
-**Claim:** unclaimed. **Evidence:** pending.
-
 ## B24
 
 - [x] Preserve imported payload node identities during updates
@@ -649,3 +631,9 @@ A normal move records exactly one existing `moveNode` effect. Inherited namespac
 Native lifecycle regressions verify document replacement, repeated editor destruction, idempotent removal, and two throwing cleanup callbacks beside a healthy host. The combined native/retention command passes five cases and 77 assertions. Log: `/tmp/b16-focused2.log`. The affected React host and native window-move command passes 74 cases and 1376 assertions across 15 files. Log: `/tmp/b16-affected.log`. A later focused retention command adds twenty inline replacement cycles and passes both lifecycle cases with 103 assertions. Log: `/tmp/b16-inline-retention.log`. B16 records real-session virtualization, deletion, history, resource counts, and Word convergence.
 
 Core and private builds pass. Private output verifies 209 modules with one external core. Core types pass 1583 files; private types pass 2041; browser types pass 1762. The public API checker scans 15 entries without errors and adds only the optional destruction callback. Root lint and line caps pass. Native surface composition grows by one line; cleanup dispatch stays in the observer module. Logs: `/tmp/b33-types.log`, `/tmp/b33-core-build.log`, `/tmp/b16-build-final.log`, `/tmp/b33-api-check.log`, `/tmp/b16-lint.log`. Minor changeset: `surface-paint-observer-lifetime`. Decision: `.collaboration/changes/sciobot-react-retention.json`. Shared operations, schemas, and payload encodings remain unchanged.
+
+## Scope exclusions
+
+### B23
+
+Native operating-system input-method verification is excluded from the required TODO list at the user's request on November 5, 2026. This check remains unverified. It does not block the coverage ledger.
