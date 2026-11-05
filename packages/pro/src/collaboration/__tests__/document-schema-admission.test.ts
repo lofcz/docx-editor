@@ -8,6 +8,7 @@ import * as Y from 'yjs';
 import { ORIGIN_IDS } from '@docx-editor.dev/core/store';
 import { createPeerHarness, nodeText, zipDocument, type Peer } from './document-peer-support.ts';
 import { PACKAGE_META_KEY } from '../document/schema.ts';
+import { DOCUMENT_COLLABORATION_VERSIONS } from '../document-compatibility.ts';
 
 const harness = createPeerHarness('schema-admission-592');
 afterEach(() => harness.cleanup());
@@ -40,7 +41,7 @@ for (const version of [4, 6]) {
     expect(nodeText(alice.store.bodyStore().part.root)).toBe('hello');
     expect(bob.room.session.statusSnapshot().reason).toMatchObject({
       code: 'schema-version-mismatch',
-      detail: `sharedSchemaVersion: expected 9, received ${version}`,
+      detail: `sharedSchemaVersion: expected ${DOCUMENT_COLLABORATION_VERSIONS.sharedSchemaVersion}, received ${version}`,
     });
     bob.port.flushPendingJournals();
     bob.detach();

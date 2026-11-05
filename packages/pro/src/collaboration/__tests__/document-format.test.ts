@@ -419,6 +419,7 @@ test('restored split typing refuses repair format 13 without changing the room',
 test('restored review typing refuses repair format 14 without changing the room', () => {
   const doc = savedRoom();
   try {
+    doc.getMap(PACKAGE_META_KEY).set('sharedSchemaVersion', 9);
     doc.getMap(PACKAGE_META_KEY).set('repairVersion', 14);
     const bytes = Y.encodeStateAsUpdate(doc);
     const version = readCollaborationFormatVersion(doc);
@@ -436,6 +437,7 @@ test('restored review typing refuses repair format 14 without changing the room'
 test('restored peer append boundaries refuse repair format 15 without changing the room', () => {
   const doc = savedRoom();
   try {
+    doc.getMap(PACKAGE_META_KEY).set('sharedSchemaVersion', 9);
     doc.getMap(PACKAGE_META_KEY).set('repairVersion', 15);
     const bytes = Y.encodeStateAsUpdate(doc);
     const version = readCollaborationFormatVersion(doc);
