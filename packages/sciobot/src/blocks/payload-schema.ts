@@ -1,3 +1,4 @@
+import { galleryRecordShape } from './gallery-record-shape';
 import { jsonDataProblem, type JsonObject } from '../data/json';
 export type { JsonObject, JsonValue } from '../data/json';
 
@@ -5,7 +6,7 @@ export type { JsonObject, JsonValue } from '../data/json';
 export interface BlockPayload extends JsonObject {
   readonly id: string;
   readonly type: string;
-  readonly version: 1;
+  readonly version: 1 | 2;
   readonly attributes: JsonObject;
 }
 
@@ -99,7 +100,8 @@ export function decodeBlockPayload(
     return invalid('invalid-version');
   const object = value as JsonObject;
   const version = object.version as number;
-  if (version !== 1) return { status: 'unsupported-version', version, raw, value: object };
+  if (version !== 1 && (version !== 2 || !galleryRecordShape(object, isBlockId)))
+    return { status: 'unsupported-version', version, raw, value: object };
   const schema = schemaProblem(value);
   if (schema) return invalid(schema);
   return { status: 'supported', value: object as BlockPayload };
@@ -111,7 +113,11 @@ export function encodeBlockPayload(
 ): string {
   const limits = limitsOf(options);
   const problem = jsonDataProblem(value, limits) ?? schemaProblem(value);
-  if (problem || value.version !== 1) throw new TypeError(problem ?? 'unsupported-version');
+  if (
+    problem ||
+    (value.version !== 1 && (value.version !== 2 || !galleryRecordShape(value, isBlockId)))
+  )
+    throw new TypeError(problem ?? 'unsupported-version');
   const raw = JSON.stringify(value);
   if (tooLarge(raw, limits)) throw new RangeError('byte-limit');
   return raw;

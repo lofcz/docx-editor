@@ -40,6 +40,7 @@ import {
   type TreeDocOp,
 } from '@docx-editor.dev/core/store';
 import { blockTag, withPayloadRecord } from '../blocks/payload-opc-codec';
+import { withGalleryImageRecords } from '../blocks/gallery-record-upgrade';
 import {
   inlineCodeRunChanges,
   inlineCodeCharacterStyles,
@@ -892,5 +893,12 @@ export function completeSiblingFragments(
     pkg = stored.pkg;
   }
   pkg = completeInlineAtomPayloads(pkg, partName, edit.atoms ?? []);
+  const galleries = withGalleryImageRecords(
+    pkg,
+    new Set([...bindings.values()].map((binding) => binding.payload.id))
+  );
+  if (!galleries.ok)
+    refuseWrite(`New gallery storage refused: ${galleries.reason}.`, 'apply-failed');
+  pkg = galleries.pkg;
   return { pkg, paragraphs };
 }

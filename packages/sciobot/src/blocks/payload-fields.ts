@@ -1,4 +1,5 @@
 import type { OoxmlElement, OoxmlNode } from '@docx-editor.dev/core/store';
+import { galleryStoredAttributes } from './gallery-record-shape';
 import type { JsonObject, JsonValue } from './payload-schema';
 import { DEFAULT_PAYLOAD_LIMITS } from './payload-schema';
 
@@ -144,7 +145,11 @@ function changes(before: JsonObject, after: JsonObject, kind: FieldKind): FieldC
 export function fieldChanges(before: JsonObject, after: JsonObject): FieldChange[] {
   return [
     ...changes(before, after, TOP_FIELD),
-    ...changes(before.attributes as JsonObject, after.attributes as JsonObject, ATTRIBUTE_FIELD),
+    ...changes(
+      galleryStoredAttributes(before) as JsonObject,
+      galleryStoredAttributes(after) as JsonObject,
+      ATTRIBUTE_FIELD
+    ),
   ];
 }
 

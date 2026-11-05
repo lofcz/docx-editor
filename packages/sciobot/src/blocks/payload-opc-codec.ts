@@ -1,3 +1,4 @@
+import { projectGalleryRecords } from './gallery-record-read';
 import { activeMdxRegistry } from '../registry/active';
 import {
   customXmlDataParts,
@@ -199,6 +200,8 @@ export function readPayloadStore(
     if (!label.ok) return { status: 'invalid', reason: `${id}:${label.reason}` };
     entries.set(id, { id, label: label.label, raw: effective.raw, decoded });
   }
+  const galleryProblem = projectGalleryRecords(pkg, entries, storage);
+  if (galleryProblem) return { status: 'invalid', reason: galleryProblem };
   return { status: 'ready', part: descriptor, entries };
 }
 
@@ -234,7 +237,18 @@ export function withPayloadRecord(
     return refuse(error instanceof Error ? error.message : 'invalid-payload');
   }
   const current = existing.status === 'ready' ? existing.entries.get(payload.id) : undefined;
+  if (
+    payload.version === 2 &&
+    payload.type === 'image_gallery' &&
+    payload.attributes.images !== undefined &&
+    (current?.decoded.status !== 'supported' ||
+      JSON.stringify(current.decoded.value.attributes.images) !==
+        JSON.stringify(payload.attributes.images))
+  )
+    return refuse('gallery-images-require-owned-record-command');
   if (existing.status === 'ready' && current?.decoded.status === 'supported') {
+    if (current.decoded.value.version !== payload.version)
+      return refuse('payload-version-change-requires-bootstrap');
     const updated = withFieldRegisters(
       pkg,
       existing,

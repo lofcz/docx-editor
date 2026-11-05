@@ -26,6 +26,7 @@ import {
 import type { NativeEditFailure } from '../contracts/document';
 import { blockTag, readPayloadStore, withPayloadRecord } from './payload-opc-codec';
 import { withFreshIds } from './fresh-ids';
+import { withGalleryImageRecords } from './gallery-record-upgrade';
 import type { BlockPayload } from './payload-schema';
 
 export interface BlockInsertion {
@@ -341,8 +342,10 @@ function commitBlockInsertion(
       insertion.label
     );
     if (!stored.ok) throw new Error(`Block payload storage refused: ${stored.reason}`);
+    const gallery = withGalleryImageRecords(stored.pkg, new Set([insertion.payload.id]));
+    if (!gallery.ok) throw new Error(`Gallery insertion refused: ${gallery.reason}`);
     placedOnce = true;
-    return stored.pkg;
+    return gallery.pkg;
   };
 
   try {

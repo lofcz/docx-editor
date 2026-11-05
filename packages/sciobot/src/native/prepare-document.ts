@@ -1,6 +1,7 @@
 import { withInitializedPayloadStore } from '../blocks/payload-opc-codec';
 import { withAtomicMathFallbacks } from '../blocks/math-ownership';
 import { withPreparedPayloadFields } from '../blocks/payload-preparation';
+import { withGalleryImageRecords } from '../blocks/gallery-record-upgrade';
 import { withNativeNumberingInfrastructure } from './numbering-infrastructure';
 import { readOoxmlPackage } from '@docx-editor.dev/core/store';
 import type { NativeEditFailure } from '../contracts/document';
@@ -55,11 +56,13 @@ export function prepareNativeDocument(document: Uint8Array): PreparedNativeDocum
   if (!groups.ok) return { success: false, code: 'invalid-document', error: groups.reason };
   const payloads = withInitializedPayloadStore(groups.pkg);
   if (!payloads.ok) return { success: false, code: 'invalid-document', error: payloads.reason };
-  const state = inlineCodeStyleState(payloads.pkg);
+  const galleries = withGalleryImageRecords(payloads.pkg);
+  if (!galleries.ok) return { success: false, code: 'invalid-document', error: galleries.reason };
+  const state = inlineCodeStyleState(galleries.pkg);
   const styled =
     state === 'conflict'
-      ? payloads.pkg
-      : withInlineCodeStyle(payloads.pkg, inlineCodeInitializationStyles(payloads.pkg));
+      ? galleries.pkg
+      : withInlineCodeStyle(galleries.pkg, inlineCodeInitializationStyles(galleries.pkg));
   if (!styled)
     return {
       success: false,
