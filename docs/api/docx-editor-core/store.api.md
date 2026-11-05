@@ -2475,17 +2475,6 @@ export interface InsertPageFieldOp {
     readonly revision?: RevisionAttributionInput;
 }
 
-// @public
-export interface InsertParagraphsOp {
-    readonly beforeId: string | null;
-    // (undocumented)
-    readonly op: 'insertParagraphs';
-    readonly paragraphs: readonly OoxmlParagraphNode[];
-    // (undocumented)
-    readonly parentId: string;
-    readonly revision?: RevisionAttributionInput;
-}
-
 // @public (undocumented)
 export interface InsertParagraphBesideTableOp {
     readonly op: 'insertParagraphBesideTable';
@@ -2496,6 +2485,17 @@ export interface InsertParagraphBesideTableOp {
     readonly text: string;
     // (undocumented)
     readonly where: 'before' | 'after';
+}
+
+// @public
+export interface InsertParagraphsOp {
+    readonly beforeId: string | null;
+    // (undocumented)
+    readonly op: 'insertParagraphs';
+    readonly paragraphs: readonly OoxmlParagraphNode[];
+    // (undocumented)
+    readonly parentId: string;
+    readonly revision?: RevisionAttributionInput;
 }
 
 // @public (undocumented)

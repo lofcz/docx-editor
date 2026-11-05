@@ -513,10 +513,7 @@ In a test deployment, confirm:
 
 ## Upgrade fork rooms to format 1.9.17.1
 
-The fork uses `docx-collaboration:1.9.17.1` after the upstream synchronization.
-It combines retained review ownership with upstream split ordering and restored typing rules.
-Clients with format `docx-collaboration:1.9.16.1` cannot share these rooms.
-The upstream format `docx-collaboration:1.5.3.1` is also incompatible.
+The fork uses `docx-collaboration:1.9.17.1` after the upstream synchronization. It combines retained review ownership with upstream split ordering and restored typing rules. Clients with format `docx-collaboration:1.9.16.1` cannot share these rooms. The upstream format `docx-collaboration:1.5.3.1` is also incompatible.
 
 1. Stop writes and reconnects to the previous rooms.
 2. Export each room with its previous compatible deployment.
@@ -524,5 +521,4 @@ The upstream format `docx-collaboration:1.5.3.1` is also incompatible.
 4. Open the exports with the updated deployment and create fresh room and persistence keys.
 5. Keep the original rooms and offline updates for recovery.
 
-Never relabel room metadata or replay old updates into fresh rooms.
-Room undo history does not transfer through DOCX.
+Never relabel room metadata or replay old updates into fresh rooms. Room undo history does not transfer through DOCX.

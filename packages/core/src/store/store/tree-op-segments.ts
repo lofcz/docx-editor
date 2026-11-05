@@ -1,3 +1,4 @@
+import { contentHolder } from './tree-op-text-node-lookup.ts';
 // UTF-16 paragraph segmentation for tree ops (tree-ops seam).
 //
 // Flattens a paragraph into addressable units — text, tab, hard break, atomic field, and
@@ -894,16 +895,6 @@ export function insertionDestination(
   };
   collect(paragraph);
   return { site, landingNodeId, path };
-}
-
-/** Where a run goes inside a control: its content element, or the control itself. */
-function contentHolder(control: OoxmlElement): OoxmlElement {
-  for (const child of control.children) {
-    if (child.kind === 'textValue') continue;
-    if (child.kind === 'contentControlContent') return child;
-    if (child.kind === 'generic' && child.localName === 'sdtContent') return child;
-  }
-  return control;
 }
 
 /**

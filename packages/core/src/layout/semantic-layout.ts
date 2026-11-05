@@ -34,7 +34,6 @@ import { emptyParagraphStyleFields, markStyleOf } from './empty-paragraph-style.
 import { anchorsFrames, frameOrigins, positionedFrameBottom } from './paragraph-frame.ts';
 import { ParagraphFrameFlow } from './paragraph-frame-flow.ts';
 // Semantic paragraph layout over the canonical tree (tasks 7.1, 7.3).
-//
 // Produces the revision-tagged records in `semantic-records.ts`: pages, paragraph fragments,
 // lines and style spans, each carrying a stable source range. It reads the CANONICAL TREE
 // and a measurement port, never the DOM and never ProseMirror.

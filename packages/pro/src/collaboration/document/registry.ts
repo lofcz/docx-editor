@@ -853,11 +853,10 @@ export class DocumentRegistry {
         const id = keyId(event.path[0]!);
         const keys = event.changes.keys;
         if (keys.has(NODE_UNDONE_FIELD)) this.history.noteMarkChanged(id);
-        // Undo retains record containers. Redo restores scalar provenance on those existing
-        // maps, so a late joiner must index field changes as well as new map entries.
+        // Undo retains containers; redo restores provenance on existing
+        // maps, so late joiners must index fields and new entries.
         if (keys.has('splitFrom') || keys.has('splitLineage')) this.splitDedup.indexExisting(id);
-        // An undo or redo can name a paragraph's new listing entry in its split points after
-        // it listed the paragraph, so the order of each parent that lists it is read again.
+        // Undo or redo can change split points after listing; read each parent order again.
         if (keys.has(NODE_SPLIT_POINTS_FIELD))
           for (const parentId of this.listings.get(id) ?? []) this.splitSiblings.forget(parentId);
       }

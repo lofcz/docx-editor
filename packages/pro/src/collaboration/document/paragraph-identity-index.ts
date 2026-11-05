@@ -10,8 +10,8 @@ Production use requires a commercial agreement: licensing@eigenpal.com
  * copy's. Each paragraph's runs are kept sorted by clock per client, apart for moved copies
  * and for characters in their first place, so a lookup is a binary search.
  */
-import type { LogicalId } from './identity.ts';
-import type { TextIdentities } from './paragraph-text-identity.ts';
+import { parseClientClock, type LogicalId } from './identity.ts';
+import type { TextIdentities, Identity } from './paragraph-text-identity.ts';
 
 /** A character in its first place, a moved copy, or a copy an undo or redo put back. */
 export type RunKind = 'original' | 'move' | 'restore';
@@ -257,4 +257,27 @@ export class IdentityIndex {
     this.runsOf.clear();
     for (const table of Object.values(this.tables)) table.clear();
   }
+}
+
+/**
+ * The identities whose showing decides where a source's following text goes: its own
+ * characters, which follow only while no copy of them shows, and the characters it was
+ * typed after or copied after.
+ */
+export function dependencyRuns(identities: TextIdentities): IdentityRun[] {
+  const runs = identityRuns(identities).map((run) => ({ ...run, kind: 'original' as const }));
+  const add = (identity: Identity): void => {
+    const parsed = parseClientClock(identity);
+    if (parsed)
+      runs.push({
+        client: parsed.client,
+        start: parsed.clock,
+        end: parsed.clock + 1,
+        kind: 'original',
+      });
+  };
+  for (const anchors of identities.anchors)
+    for (const anchor of anchors ?? []) add(anchor.identity);
+  for (const copied of identities.copiedAfter) for (const identity of copied ?? []) add(identity);
+  return runs;
 }

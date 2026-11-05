@@ -177,7 +177,9 @@ export function splitRunsAt(
     else if (segment.node.kind === 'textValue') {
       const local = offset - segment.start;
       headContent.push(inlineTextSlice(nextId, segment.node.value.slice(0, local), child, 0));
-      tailContent.push(inlineTextSlice(nextId, segment.node.value.slice(local), child, local, true));
+      tailContent.push(
+        inlineTextSlice(nextId, segment.node.value.slice(local), child, local, true)
+      );
     } else headContent.push(child);
   }
   const head = runElement(nextId, rPr ? [rPr, ...headContent] : headContent);

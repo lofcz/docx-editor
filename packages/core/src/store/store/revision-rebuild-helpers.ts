@@ -95,7 +95,10 @@ interface JoinGroup {
 function joinableParts(node: OoxmlNode): { properties: OoxmlNode[]; content: OoxmlNode[] } | null {
   if (node.kind !== 'run' || hasForeignAttributes(node)) return null;
   const content = node.children.filter((child) => !isRunProperties(child));
-  if (content.length === 0 || !content.every((child) => JOINABLE_CONTENT.has(child.kind) && !hasOriginMetadata(child)))
+  if (
+    content.length === 0 ||
+    !content.every((child) => JOINABLE_CONTENT.has(child.kind) && !hasOriginMetadata(child))
+  )
     return null;
   return { properties: node.children.filter(isRunProperties), content };
 }

@@ -849,7 +849,9 @@ export function applyInlinePlan(
       text,
       before,
       after: tokens,
-      steps: sourceOf ? diffSourceTokens(before, tokens) : diffTokens(before, tokens, true, typed && typedStartIn(after, typed)),
+      steps: sourceOf
+        ? diffSourceTokens(before, tokens)
+        : diffTokens(before, tokens, true, typed && typedStartIn(after, typed)),
       identities: shown?.identities.ids ?? [],
       shownIdentities: shown?.identities ?? null,
       hidden: shown?.hidden ?? new Set(),

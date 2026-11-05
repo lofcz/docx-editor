@@ -26,7 +26,12 @@ import { DEFAULT_DOCUMENT_LIMITS, type DocumentLimits } from './limits.ts';
 import { revisionCopyPeers } from './revision-copy-peers.ts';
 import { revisionCopyPositions } from './revision-text-copies.ts';
 import { parseClientClock, type LogicalId } from './identity.ts';
-import { IdentityIndex, identityRuns, type IdentityRun } from './paragraph-identity-index.ts';
+import {
+  IdentityIndex,
+  identityRuns,
+  dependencyRuns,
+  type IdentityRun,
+} from './paragraph-identity-index.ts';
 import {
   isCopyAt,
   textIdentities,
@@ -51,29 +56,6 @@ function copiesIn(identities: TextIdentities): Set<Identity> {
     }
   });
   return copies;
-}
-
-/**
- * The identities whose showing decides where a source's following text goes: its own
- * characters, which follow only while no copy of them shows, and the characters it was
- * typed after or copied after.
- */
-function dependencyRuns(identities: TextIdentities): IdentityRun[] {
-  const runs = identityRuns(identities).map((run) => ({ ...run, kind: 'original' as const }));
-  const add = (identity: Identity): void => {
-    const parsed = parseClientClock(identity);
-    if (parsed)
-      runs.push({
-        client: parsed.client,
-        start: parsed.clock,
-        end: parsed.clock + 1,
-        kind: 'original',
-      });
-  };
-  for (const anchors of identities.anchors)
-    for (const anchor of anchors ?? []) add(anchor.identity);
-  for (const copied of identities.copiedAfter) for (const identity of copied ?? []) add(identity);
-  return runs;
 }
 
 /** Where following text shows: by an anchor, or in a paragraph that `target` names. */
@@ -816,9 +798,7 @@ export class TextFollow {
       // another. A copy a move wrote here shows here, so the restored copy stays.
       const canFollow = identities.followingOriginal?.[position] ?? !isCopy;
       const shownIn = id === null ? null : this.shownCopy(id);
-      const elsewhere =
-        shownIn !== null &&
-        !(shownIn === source && canFollow && !movedHere(id!));
+      const elsewhere = shownIn !== null && !(shownIn === source && canFollow && !movedHere(id!));
       if (
         identities.deleted[position] ||
         (id !== null && (elsewhere || (!isCopy && ownCopies.has(id))))

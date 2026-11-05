@@ -6,10 +6,8 @@ Production use requires a commercial agreement: licensing@eigenpal.com
 /**
  * Full-document collaboration over the canonical primitive journal.
  *
- * Local direction: the canonical store commits, emits ONE journal, and the journal is applied
- * to shared state in one Yjs transaction. Remote direction: a shared-state change materializes
- * one canonical package, which the port publishes as one revision. The two never chase each
- * other, because a remote publication deliberately emits no journal.
+ * The canonical store applies its journal to shared state in one Yjs transaction.
+ * A remote change publishes one canonical package revision without emitting another journal.
  */
 
 import { STRUCTURAL_TEXT_ATTRIBUTE_KEYS } from './document/paragraph-text.ts';
@@ -26,7 +24,6 @@ import * as Y from 'yjs';
 import type { Awareness } from 'y-protocols/awareness';
 import {
   ORIGIN_IDS,
-  writeOoxmlPackageKeepingRevisionIds,
   type OoxmlPackage,
   type StoryScope,
   type TreeDocOp,
@@ -58,7 +55,11 @@ import { attachWatchdogDelay, startAttachWatchdog } from './document-session-wat
 import { RemoteSelectionResolver } from './document-remote-selections.ts';
 import { droppedContentDetail, packageVersionFailure } from './document/schema.ts';
 import { SHARED_BLOBS_KEY, SharedBlobStore } from './shared-blob-store.ts';
-import { observeSeedRecords, initializeSharedState } from './document-bootstrap.ts';
+import {
+  observeSeedRecords,
+  initializeSharedState,
+  initialReplicaDocument,
+} from './document-bootstrap.ts';
 import { LogicalIdentityMap } from './document-identity.ts';
 import { CaretAnchors } from './document-caret-anchors.ts';
 import { EditWait } from './document-edit-wait.ts';
@@ -623,7 +624,10 @@ class DocumentSession implements DocumentCollaborationSession {
       return failed;
     };
     const refusal = withoutPersistentHyperlinkUndo(
-      this.undoManager, this.localOrigin, this.registry, shared,
+      this.undoManager,
+      this.localOrigin,
+      this.registry,
+      shared,
       () => this.historyGroups.captureJournal(journal, this.localOrigin, publish)
     );
     if (refusal === null) {
@@ -969,20 +973,7 @@ async function bootstrapDocumentReplica(
   // below throw by design — so the whole tail hands the materializer back on the way out.
   // On success, ownership passes to the session, which detaches it on destroy.
   try {
-    const materialized = materializer.current();
-    const poisoned = blobs.poisonedDigest();
-    if (poisoned) {
-      // A blob that does not hash to its key reads downstream as a blob that is not there.
-      // Say which it was, so a poisoned room is not reported as a truncated one.
-      throw new CollaborationSchemaError('blob-digest-mismatch', poisoned);
-    }
-    if (!materialized.ok) {
-      throw new CollaborationSchemaError(materialized.code);
-    }
-    // Serialize before the session exists: a throw here must not orphan a live session
-    // whose registry and materializer the catch below is about to tear down. The replica
-    // loads these bytes as the shared document, so revision ids stay as shared state holds them.
-    const document = writeOoxmlPackageKeepingRevisionIds(materialized.package);
+    const document = initialReplicaDocument(materializer, blobs);
     const session = new DocumentSession(
       options.ydoc,
       options.awareness,

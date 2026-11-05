@@ -1,4 +1,4 @@
-import type { OoxmlNode, OoxmlParagraphNode } from '../package/ooxml-tree.ts';
+import type { OoxmlElement, OoxmlNode, OoxmlParagraphNode } from '../package/ooxml-tree.ts';
 
 export function contains(node: OoxmlNode, id: string): boolean {
   if (node.id === id) return true;
@@ -41,4 +41,14 @@ export function findTextParent(paragraph: OoxmlParagraphNode, valueId: string): 
     return null;
   };
   return walk(paragraph);
+}
+
+/** Where a run goes inside a control: its content element, or the control itself. */
+export function contentHolder(control: OoxmlElement): OoxmlElement {
+  for (const child of control.children) {
+    if (child.kind === 'textValue') continue;
+    if (child.kind === 'contentControlContent') return child;
+    if (child.kind === 'generic' && child.localName === 'sdtContent') return child;
+  }
+  return control;
 }

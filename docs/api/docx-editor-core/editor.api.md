@@ -2767,7 +2767,6 @@ export interface PaginatedSurface extends SurfaceBlockReservations, SurfaceInden
     }): void;
     activeReviewKey(): string | null;
     activeScope(): ViewScope;
-    adjustIndent(direction: 'increase' | 'decrease'): boolean;
     applyAutomationOps(staged: (relate: (url: string) => string | null) => readonly TreeDocOp[] | null, scope?: StoryScope, packageEdits?: readonly ((pkg: OoxmlPackage) => OoxmlPackage)[], requiresReview?: boolean,
     separateHistory?: boolean,
     packageEditPhase?: 'before' | 'after',

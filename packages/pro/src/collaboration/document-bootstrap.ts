@@ -21,6 +21,7 @@ import * as Y from 'yjs';
 import type { Awareness } from 'y-protocols/awareness';
 import {
   TreePackageStore,
+  writeOoxmlPackageKeepingRevisionIds,
   WML_NAMESPACE_URI,
   isStoryPart,
   withPart,
@@ -30,6 +31,7 @@ import {
   type OoxmlPackage,
 } from '@docx-editor.dev/core/store';
 import { seedPackage, type DocumentRegistry } from './document/index.ts';
+import type { PackageMaterializer } from './document/materialize.ts';
 import type { SharedBlobStore } from './shared-blob-store.ts';
 import { CollaborationSchemaError } from './errors.ts';
 import { PACKAGE_META_KEY, packageVersionFailure } from './document/schema.ts';
@@ -460,4 +462,25 @@ export async function initializeSharedState(
     }
     admitSharedState(registry, blobs, options.ydoc);
   }
+}
+
+/** Validate and serialize the replica before it acquires a live session. */
+export function initialReplicaDocument(
+  materializer: PackageMaterializer,
+  blobs: SharedBlobStore
+): Uint8Array {
+  const materialized = materializer.current();
+  const poisoned = blobs.poisonedDigest();
+  if (poisoned) {
+    // A blob that does not hash to its key reads downstream as a blob that is not there.
+    // Say which it was, so a poisoned room is not reported as a truncated one.
+    throw new CollaborationSchemaError('blob-digest-mismatch', poisoned);
+  }
+  if (!materialized.ok) {
+    throw new CollaborationSchemaError(materialized.code);
+  }
+  // Serialize before the session exists: a throw here must not orphan a live session
+  // whose registry and materializer the catch below is about to tear down. The replica
+  // loads these bytes as the shared document, so revision ids stay as shared state holds them.
+  return writeOoxmlPackageKeepingRevisionIds(materialized.package);
 }
