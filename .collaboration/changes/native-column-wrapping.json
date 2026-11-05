@@ -1,0 +1,12 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "The toolbar could not wrap existing native paragraphs in columns.",
+  "after": "Explicit wrapping retains paragraph identities and uses existing table and content control operations.",
+  "reason": "Existing readers understand every tree and payload operation. No shared format fields change. Concurrent wrapping preserves both groups and one original paragraph.",
+  "tests": [
+    "packages/sciobot/src/blocks/turn-into-columns.test.ts"
+  ],
+  "changeset": "native-column-wrapping",
+  "migration": null
+}

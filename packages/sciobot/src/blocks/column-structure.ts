@@ -22,29 +22,38 @@ import type { IndexedBlock } from './block-index';
 import type { BlockPayload } from './payload-schema';
 
 /** New column scaffolding contains no editable paragraph outside its control. */
-export function columnScaffold(part: OoxmlPart, widths: readonly number[], ids: readonly string[]) {
-  const xml = columnTableXml(
+export function columnScaffold(
+  part: OoxmlPart,
+  widths: readonly number[],
+  ids: readonly string[],
+  groupId?: string
+) {
+  const tableXml = columnTableXml(
     widths,
     (index) =>
       `<w:sdt><w:sdtPr><w:tag w:val="${escapeXml(blockTag(ids[index]!))}"/></w:sdtPr><w:sdtContent><w:p/></w:sdtContent></w:sdt>`
   );
+  const xml = groupId
+    ? `<w:sdt><w:sdtPr><w:tag w:val="${escapeXml(blockTag(groupId))}"/></w:sdtPr><w:sdtContent>${tableXml}</w:sdtContent></w:sdt>`
+    : tableXml;
   const parsed = readOoxmlPart(
     `<w:document xmlns:w="${WML_NAMESPACE_URI}"><w:body>${xml}</w:body></w:document>`,
     { name: part.name, contentType: part.contentType }
   );
   const root = parsed.ok ? bodyStoryRoot(parsed.part) : null;
   if (!root || root.kind === 'textValue') throw Error('The column scaffold is invalid.');
-  const table = withFreshIds(root.children[0]!, createNodeIdAllocator(part, 'new'), {
+  const node = withFreshIds(root.children[0]!, createNodeIdAllocator(part, 'new'), {
     prefix: w14RootPrefix(part.root),
     used: new Set(usedParaIds(part.root)),
     seed: ids.join(':'),
   });
-  if (table.kind !== 'table') throw Error('The column scaffold has no table.');
+  const table = groupId ? contentControlContentNodeOf(node)?.children[0] : node;
+  if (table?.kind !== 'table') throw Error('The column scaffold has no table.');
   const grid = table.children.find((node) => node.localName === 'tblGrid');
   const row = table.children.find((node) => node.kind === 'tableRow');
   if (!grid || !row || row.kind !== 'tableRow') throw Error('The column scaffold has no grid.');
   const cells = row.children.filter((node) => node.kind === 'tableCell');
-  return { table, grid, row, cells };
+  return { node, table, grid, row, cells };
 }
 
 /** Structural changes preserve locks and bindings throughout the affected group. */

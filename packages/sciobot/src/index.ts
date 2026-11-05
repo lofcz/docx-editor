@@ -126,6 +126,11 @@ export {
   type ColumnCountChangeResult,
 } from './blocks/set-column-count';
 export { enterColumn, type ColumnEntry, type ColumnEntryResult } from './blocks/enter-column';
+export {
+  turnIntoColumns,
+  type TurnIntoColumns,
+  type TurnIntoColumnsResult,
+} from './blocks/turn-into-columns';
 export * from './diff/column-widths';
 export * from './native/inline-code';
 export * from './native/prepare-document';
