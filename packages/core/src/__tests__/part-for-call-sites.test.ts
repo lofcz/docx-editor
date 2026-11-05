@@ -38,7 +38,9 @@ const PINNED_CALL_SITES: Readonly<Record<string, number>> = {
   // Resolving a review decision reads its exact sites inside the admitted write callback.
   // The following applyTreeOps writes this same story, so it needs the store either way.
   'core/src/editor/docx-editor-review-commands.ts': 1,
-  'core/src/editor/paginated-surface.ts': 6,
+  // The fork also resolves table insertion and row/column carets after their writes.
+  // Both reads reuse the active story store that applyOps has already opened.
+  'core/src/editor/paginated-surface.ts': 8,
   'core/src/editor/surface-range-edit.ts': 3,
   'core/src/editor/surface-review-order.ts': 1,
   'core/src/editor/surface-equations.ts': 1,
