@@ -6,17 +6,11 @@ import { reviewArray } from './review-sequences';
 import { flagMap } from './review-flag-items';
 import type { PropertyReviewReceipt } from './property-review-prototype';
 import type { PropertyGroupScope } from '../review/property-history-contract';
+import { hasEvaluatedNativeProfile } from './native-profile';
 
 /** Fail before authoring against an unknown native property representation. */
 export function assertNativePropertyProfile(doc: Y.Doc): void {
-  const meta = doc.share.has('docx-package-meta-v1') ? doc.getMap('docx-package-meta-v1') : null;
-  if (
-    !meta ||
-    meta.get('protocolVersion') !== 1 ||
-    meta.get('sharedSchemaVersion') !== 9 ||
-    meta.get('repairVersion') !== 17 ||
-    meta.get('canonicalModelVersion') !== 1
-  )
+  if (!hasEvaluatedNativeProfile(doc))
     throw new Error('Unsupported native property ownership profile.');
 }
 

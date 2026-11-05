@@ -88,7 +88,7 @@ test('property scope captures exact scalar, namespace, and child identities afte
     store = createPropertyGroupBindings(doc);
   const meta = doc.getMap('docx-package-meta-v1');
   meta.set('protocolVersion', 1);
-  meta.set('sharedSchemaVersion', 9);
+  meta.set('sharedSchemaVersion', 10);
   meta.set('repairVersion', 17);
   meta.set('canonicalModelVersion', 1);
   const nodes = doc.getMap<Y.Map<unknown>>('docx-package-nodes-v1');

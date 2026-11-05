@@ -1,0 +1,15 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Private property review commands refused rooms created by the schema 10 provider.",
+  "after": "Private property review commands require the evaluated 1.10.17.1 profile and continue to refuse every other profile.",
+  "reason": "The private admission guard matches the existing provider format. No shared field, wire representation, or migration rule changes.",
+  "tests": [
+    "packages/sciobot/src/collaboration/property-review-profile.test.ts",
+    "packages/sciobot/src/chrome/list-property-child-births.test.ts",
+    "packages/sciobot/src/review/track-format-marks-collaboration.test.ts",
+    "packages/sciobot/src/review/property-group-boundaries-collaboration.test.ts"
+  ],
+  "changeset": "native-property-profile-ten",
+  "migration": null
+}
