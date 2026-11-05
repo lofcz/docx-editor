@@ -41,7 +41,11 @@ export interface GalleryState {
 export function readGallery(pkg: OoxmlPackage, blockId: string): GalleryState | null {
   const index = buildBlockIndex(pkg);
   const gallery = index.byId.get(blockId);
-  if (!gallery || gallery.payload.type !== 'image_gallery' || gallery.payload.version !== 2)
+  if (
+    !gallery ||
+    gallery.payload.type !== 'image_gallery' ||
+    ![2, 3].includes(gallery.payload.version)
+  )
     return null;
   const part = pkg.parts.get(gallery.partName);
   const control = part && findNode(part, gallery.controlId);
@@ -56,7 +60,7 @@ export function readGallery(pkg: OoxmlPackage, blockId: string): GalleryState | 
       !image ||
       image.parentId !== blockId ||
       image.payload.type !== GALLERY_IMAGE_RECORD ||
-      image.payload.version !== 2 ||
+      image.payload.version !== gallery.payload.version ||
       image.payload.galleryId !== blockId
     )
       return null;
@@ -125,6 +129,11 @@ export function updateGallery(
   if (gallery.partName !== surface.session.part().name)
     return fail('unsupported-operation', 'The gallery is outside the active story.');
   const change = request.change;
+  if (gallery.payload.version === 3 && (change.type === 'caption' || change.type === 'append'))
+    return fail(
+      'unsupported-operation',
+      'Native gallery images require a native image or caption transaction.'
+    );
   const item =
     'imageId' in change ? gallery.images.find((image) => image.id === change.imageId) : undefined;
   if ('imageId' in change && !item)

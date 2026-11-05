@@ -30,6 +30,7 @@ import {
 import { activeMdxRegistry } from '../registry/active';
 import { withFreshIds } from './fresh-ids';
 import { readGallery } from './gallery';
+import { ungroupNativeGallery } from './gallery-native-ungroup';
 import { createInlineImagePayload } from './inline-image-codec';
 import { blockTag, readPayloadStore, withPayloadRecord } from './payload-opc-codec';
 
@@ -63,7 +64,7 @@ export async function ungroupGallery(
   const remove = {
     op: 'removeContentControl' as const,
     controlId: gallery.controlId,
-    keepContent: false,
+    keepContent: gallery.payload.version === 3,
   };
   const refusal = validateTreeOp(session.part(), remove);
   if (refusal) return fail('unsupported-operation', `The gallery cannot be ungrouped: ${refusal}.`);
@@ -71,6 +72,7 @@ export async function ungroupGallery(
   if (store.status !== 'ready')
     return fail('invalid-document', 'The gallery metadata is unavailable.');
   try {
+    if (gallery.payload.version === 3) return ungroupNativeGallery(editor, gallery);
     const resources = await resolveInlineImageResources(
       gallery.images.map((image) => String(image.attributes.url)),
       request.resolve,

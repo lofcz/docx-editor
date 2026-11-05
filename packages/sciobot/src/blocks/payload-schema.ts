@@ -1,4 +1,5 @@
 import { galleryRecordShape } from './gallery-record-shape';
+import { nativeGalleryRecordShape } from './gallery-native-shape';
 import { jsonDataProblem, type JsonObject } from '../data/json';
 export type { JsonObject, JsonValue } from '../data/json';
 
@@ -6,7 +7,7 @@ export type { JsonObject, JsonValue } from '../data/json';
 export interface BlockPayload extends JsonObject {
   readonly id: string;
   readonly type: string;
-  readonly version: 1 | 2;
+  readonly version: 1 | 2 | 3;
   readonly attributes: JsonObject;
 }
 
@@ -100,7 +101,11 @@ export function decodeBlockPayload(
     return invalid('invalid-version');
   const object = value as JsonObject;
   const version = object.version as number;
-  if (version !== 1 && (version !== 2 || !galleryRecordShape(object, isBlockId)))
+  if (
+    version !== 1 &&
+    !(version === 2 && galleryRecordShape(object, isBlockId)) &&
+    !(version === 3 && nativeGalleryRecordShape(object, isBlockId))
+  )
     return { status: 'unsupported-version', version, raw, value: object };
   const schema = schemaProblem(value);
   if (schema) return invalid(schema);
@@ -115,10 +120,24 @@ export function encodeBlockPayload(
   const problem = jsonDataProblem(value, limits) ?? schemaProblem(value);
   if (
     problem ||
-    (value.version !== 1 && (value.version !== 2 || !galleryRecordShape(value, isBlockId)))
+    (value.version !== 1 &&
+      !(value.version === 2 && galleryRecordShape(value, isBlockId)) &&
+      !(value.version === 3 && nativeGalleryRecordShape(value, isBlockId)))
   )
     throw new TypeError(problem ?? 'unsupported-version');
-  const raw = JSON.stringify(value);
+  const raw = JSON.stringify(
+    value.version === 3
+      ? {
+          ...value,
+          attributes:
+            value.type === 'image_gallery_item'
+              ? { resource: value.attributes.resource }
+              : Object.fromEntries(
+                  Object.entries(value.attributes).filter(([key]) => key !== 'images')
+                ),
+        }
+      : value
+  );
   if (tooLarge(raw, limits)) throw new RangeError('byte-limit');
   return raw;
 }

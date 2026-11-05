@@ -250,7 +250,18 @@ export function withPayloadRecord(
   }
   const current = existing.status === 'ready' ? existing.entries.get(payload.id) : undefined;
   if (
-    payload.version === 2 &&
+    payload.version === 3 &&
+    payload.type === 'image_gallery_item' &&
+    Object.entries(payload.attributes).some(
+      ([key, value]) =>
+        key !== 'resource' &&
+        (current?.decoded.status !== 'supported' ||
+          JSON.stringify(current.decoded.value.attributes[key]) !== JSON.stringify(value))
+    )
+  )
+    return refuse('gallery-image-fields-require-native-command');
+  if (
+    (payload.version === 2 || payload.version === 3) &&
     payload.type === 'image_gallery' &&
     payload.attributes.images !== undefined &&
     (current?.decoded.status !== 'supported' ||

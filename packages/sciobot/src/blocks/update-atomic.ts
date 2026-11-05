@@ -85,7 +85,7 @@ export function updateAtomicBlock(
   const pkg = surface.session.currentPackage();
   const block = buildBlockIndex(pkg).byId.get(update.blockId);
   if (!block) return fail('invalid-input', 'The block no longer exists.');
-  if (block.payload.version === 2 && block.payload.type === 'image_gallery')
+  if (block.payload.version >= 2 && block.payload.type === 'image_gallery')
     return fail(
       'unsupported-operation',
       'Use the gallery image commands to retain image ownership.'

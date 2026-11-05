@@ -26,7 +26,12 @@ export function galleryRecordShape(value: JsonObject, validId: (id: unknown) => 
 /** The array is a read projection. Field writes never store it as competing order state. */
 export function galleryStoredAttributes(payload: JsonObject): Readonly<Record<string, JsonValue>> {
   const attributes = payload.attributes as JsonObject;
-  if (payload.version !== GALLERY_RECORD_VERSION || payload.type !== 'image_gallery')
+  if (payload.version === 3 && payload.type === GALLERY_IMAGE_RECORD)
+    return { resource: attributes.resource! };
+  if (
+    ![GALLERY_RECORD_VERSION, 3].includes(payload.version as number) ||
+    payload.type !== 'image_gallery'
+  )
     return attributes;
   const { images: _images, ...stored } = attributes;
   return stored;

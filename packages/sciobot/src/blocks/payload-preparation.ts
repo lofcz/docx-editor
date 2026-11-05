@@ -17,13 +17,15 @@ export function withPreparedPayloadFields(pkg: OoxmlPackage): OoxmlPackage {
     [...index.byId.values()]
       .filter((block) => {
         if (
-          block.payload.version !== 2 ||
+          ![2, 3].includes(block.payload.version) ||
           block.payload.type !== GALLERY_IMAGE_RECORD ||
           block.parentId !== block.payload.galleryId
         )
           return false;
         const parent = block.parentId && index.byId.get(block.parentId)?.payload;
-        return parent && parent.version === 2 && parent.type === 'image_gallery';
+        return (
+          parent && parent.version === block.payload.version && parent.type === 'image_gallery'
+        );
       })
       .map((block) => block.id)
   );

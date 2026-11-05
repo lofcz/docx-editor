@@ -1,0 +1,13 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Application galleries used remote image records and generated text fallbacks.",
+  "after": "Native gallery records retain embedded pictures and native caption owners when grouping or ungrouping.",
+  "reason": "Version-3 private payloads remain opaque to earlier readers. Native descendants and the shared room format remain unchanged.",
+  "tests": [
+    "packages/sciobot/src/blocks/gallery-native-group.test.ts",
+    "packages/sciobot/src/blocks/gallery-native-compat.test.ts"
+  ],
+  "changeset": "native-gallery-ownership",
+  "migration": null
+}
