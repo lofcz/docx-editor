@@ -1,0 +1,10 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Image decoding could finish without notifying the selected image controls.",
+  "after": "Resource state changes notify the selected image controls without moving focus.",
+  "reason": "Only local editor state notifications change. The document and shared records stay unchanged.",
+  "tests": ["packages/core/src/editor/__tests__/image-resource-chrome.test.ts"],
+  "changeset": "image-resource-chrome",
+  "migration": null
+}

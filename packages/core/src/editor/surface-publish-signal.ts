@@ -14,7 +14,7 @@
 
 import type { PaginatedSurface, PaginatedSurfaceState } from './paginated-surface-contract.ts';
 import type { SemanticSelection as SurfaceSelection } from '@docx-editor.dev/core/layout';
-import { drawingSelectionIntentKey } from './docx-editor-images.ts';
+import { drawingSelectionIntentKey, resolveSelectedDrawingRecord } from './docx-editor-images.ts';
 import { selectionsMatch } from './docx-editor-support.ts';
 
 /** The observable surface state one publish reported, reduced to comparable keys. */
@@ -33,6 +33,8 @@ interface PublishKeys {
   headerFooter: string | null;
   /** A press on a drawing can re-set the SAME selection value; the intent key reports it. */
   drawingIntent: string;
+  /** Image decoding can finish without moving document content or selection. */
+  drawingResource: string;
   /**
    * Format painter arming and level.
    *
@@ -63,6 +65,7 @@ const EMPTY: PublishKeys = {
   pendingFormat: null,
   headerFooter: null,
   drawingIntent: 'none',
+  drawingResource: 'none',
   formatPainter: 'off/none',
   collaborationStatus: 'inactive',
   pageCount: 0,
@@ -70,11 +73,15 @@ const EMPTY: PublishKeys = {
 
 function keysOf(state: PaginatedSurfaceState, surface: PaginatedSurface): PublishKeys {
   const hf = surface.headerFooterState?.();
+  const resource = resolveSelectedDrawingRecord(surface)?.resource;
   return {
     selection: state.selection,
     pendingFormat: state.pendingFormat,
     headerFooter: hf?.editing && hf.rId ? `${hf.editing}:${hf.rId}` : null,
     drawingIntent: drawingSelectionIntentKey(surface.drawingSelectionIntent()),
+    drawingResource: resource
+      ? `${resource.kind}:${'resourceKey' in resource ? resource.resourceKey : ''}`
+      : 'none',
     formatPainter: `${state.formatPainter.mode}/${state.formatPainter.level}`,
     collaborationStatus: state.collaborationStatus,
     pageCount: state.pageCount,
@@ -113,6 +120,7 @@ export function createPublishSignal(): PublishSignal {
         next.pendingFormat === last.pendingFormat &&
         next.headerFooter === last.headerFooter &&
         next.drawingIntent === last.drawingIntent &&
+        next.drawingResource === last.drawingResource &&
         next.formatPainter === last.formatPainter &&
         next.collaborationStatus === last.collaborationStatus;
       const pages = next.pageCount !== last.pageCount;

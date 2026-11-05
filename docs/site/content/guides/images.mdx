@@ -9,6 +9,8 @@ The editor displays inline and floating DrawingML pictures (`w:drawing` with `pi
 
 Host automation can preserve an explicitly selected drawing during a property transaction without moving keyboard focus. Preservation requires the same drawing to survive the transaction. Deleting the drawing clears its selection.
 
+Image controls update when the selected image finishes decoding. This update keeps the document, selection, and keyboard focus unchanged.
+
 ## Insert an image
 
 Check the bytes with `normalizeImageBytes`, then run `insertImage`. Import from `@docx-editor.dev/vue` in Vue.
