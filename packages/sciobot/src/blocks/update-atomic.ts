@@ -98,11 +98,7 @@ export function updateAtomicBlock(
   if (registry.blockTags.get(block.payload.type)?.kind !== 'atomic')
     return fail('unsupported-operation', 'Only atomic blocks update here.');
   const payload: BlockPayload = { ...block.payload, attributes: { ...update.attributes } };
-  if (
-    payload.version === 2 &&
-    payload.type === 'code_block' &&
-    payload.attributes.value !== block.payload.attributes.value
-  )
+  if (payload.version === 2 && payload.type === 'code_block')
     return updateCodePayload(editor, block.payload, payload);
   let fallback: ReturnType<NonNullable<typeof shown>> | null = null;
   try {

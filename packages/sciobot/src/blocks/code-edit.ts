@@ -19,6 +19,7 @@ import { readPayloadStore, withPayloadRecord } from './payload-opc-codec';
 import { DEFAULT_PAYLOAD_LIMITS, encodeBlockPayload } from './payload-schema';
 import type { BlockPayload } from './payload-schema';
 import { fieldChanges } from './payload-fields';
+import { ownedCodeSourceLock } from './code-source-lock';
 
 type CodeEditResult = { readonly success: true; readonly revision: number } | NativeEditFailure;
 const fail = (code: NativeEditFailure['code'], error: string): NativeEditFailure => ({
@@ -51,7 +52,10 @@ function codeTarget(editor: DocxEditorInstance, blockId: string) {
   const ancestor = ancestorContentWriteRefusal(part, control.id);
   if (ancestor || properties.dataBinding)
     return fail('unsupported-operation', ancestor ?? 'The code block is bound to custom XML.');
-  return { success: true as const, surface, pkg, block, part, control, source, properties };
+  const lockNode = ownedCodeSourceLock(control);
+  if (!lockNode)
+    return fail('unsupported-operation', 'The code source lock is not owned by this editor.');
+  return { success: true as const, surface, pkg, block, part, control, source, lockNode };
 }
 
 /** Change language without taking ownership of source or unrelated payload fields. */
@@ -228,7 +232,7 @@ function commitCodeSource(
 ): CodeEditResult {
   const target = codeTarget(editor, request.blockId);
   if (!target.success) return target;
-  const { surface, block, source, properties } = target;
+  const { surface, block, source, lockNode } = target;
   if (
     typeof request.value !== 'string' ||
     typeof request.expectedSource !== 'string' ||
@@ -255,19 +259,7 @@ function commitCodeSource(
     const edits = changes(source.value, request.value).reverse();
     if (edits.length + request.value.split('\t').length > 20000)
       throw Error('The code edit exceeds the operation limit.');
-    const propertyNode =
-      target.control.kind !== 'textValue' &&
-      target.control.children.find((child) => child.kind === 'contentControlProperties');
-    const lockNode =
-      propertyNode &&
-      propertyNode.kind !== 'textValue' &&
-      propertyNode.children.find(
-        (child) =>
-          child.kind !== 'textValue' &&
-          child.namespaceUri === WML_NAMESPACE_URI &&
-          child.localName === 'lock'
-      );
-    const locked = edits.length > 0 && properties.lock && properties.lock !== 'unlocked';
+    const locked = edits.length > 0;
     const lockPart = (part: OoxmlPart, unlock: boolean) => {
       if (!locked) return part;
       if (!lockNode || lockNode.kind !== 'generic') throw Error('The code lock is invalid.');

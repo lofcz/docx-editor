@@ -22,6 +22,8 @@ The evaluated native provider uses format `docx-collaboration:1.10.17.1`. Privat
 
 `updateCodeSource` uses canonical text, tab, split, and join operations. It preserves unchanged characters and paragraph identities. `updateCodeLanguage` leaves source and its history unchanged. Stale source drafts, unsupported native structures, bound controls, and protected ancestors refuse before writes. Payload byte limits, 10000 lines, bounded diff work, and operation limits constrain source edits.
 
+Preparation preserves authored content and wrapper locks without conversion. It marks only its generated `contentLocked` node with `urn:sciobot:code-source-lock:1`. Source and metadata commands require that exact ownership marker and lock value. A later lock replacement, wrapper lock, missing marker, unsupported marker, or binding refuses before writes. Undoing the lock change restores the prior ownership. Version 2 alone never permits bypassing a native lock.
+
 This preparation remains explicit. Ordinary import preparation and insertion retain version 1 and its existing review path. Version-2 native source review, inline Plate editing, selection, and cursor geometry remain unfinished. Do not enable automatic code conversion until those checks pass. Export and prepare a fresh room to adopt this ownership; never convert existing shared histories live.
 
 ## Reference fixtures

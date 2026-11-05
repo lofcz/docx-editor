@@ -2,9 +2,11 @@ import {
   applyTreeOp,
   contentControlPropertiesOf,
   findNode,
+  replaceNode,
   withCustomXmlNode,
   withPart,
   type OoxmlPackage,
+  WML_NAMESPACE_URI,
 } from '@docx-editor.dev/core/store';
 import { activeMdxRegistry } from '../registry/active';
 import { buildBlockIndex } from './block-index';
@@ -12,6 +14,8 @@ import { nativeCodeSource } from './code-native-source';
 import { codeRecordShape } from './code-record';
 import { readPayloadStore } from './payload-opc-codec';
 import { encodeBlockPayload } from './payload-schema';
+import { ancestorContentWriteRefusal } from './ancestor-content-write';
+import { markCodeSourceLock } from './code-source-lock';
 
 /** Upgrade validated code before bootstrap, or only code created in the current insertion. */
 export function withNativeCodeSources(
@@ -35,18 +39,33 @@ export function withNativeCodeSources(
     const properties = contentControlPropertiesOf(control);
     const source = nativeCodeSource(part, control);
     // Imported fields, line-ending differences and modified Word fallbacks remain lossless and opaque.
-    if (properties.dataBinding || !source || source.value !== block.payload.attributes.value)
+    if (
+      properties.dataBinding ||
+      (properties.lock && properties.lock !== 'unlocked') ||
+      ancestorContentWriteRefusal(part, control.id) ||
+      !source ||
+      source.value !== block.payload.attributes.value
+    )
       continue;
-    if (!properties.lock || properties.lock === 'unlocked' || properties.lock === 'sdtLocked') {
-      const locked = applyTreeOp(part, {
-        op: 'setContentControlProperties',
-        controlId: control.id,
-        lock: properties.lock === 'sdtLocked' ? 'sdtContentLocked' : 'contentLocked',
-      });
-      if (!locked.ok) throw Error('Cannot protect native code source.');
-      part = locked.part;
-      next = withPart(next, part);
-    }
+    const locked = applyTreeOp(part, {
+      op: 'setContentControlProperties',
+      controlId: control.id,
+      lock: 'contentLocked',
+    });
+    if (!locked.ok) throw Error('Cannot protect native code source.');
+    part = locked.part;
+    const lockedControl = findNode(part, control.id);
+    const lock =
+      lockedControl?.kind === 'contentControl' &&
+      lockedControl.children
+        .find((child) => child.kind === 'contentControlProperties')
+        ?.children.find(
+          (child) => child.namespaceUri === WML_NAMESPACE_URI && child.localName === 'lock'
+        );
+    if (!lock) throw Error('The native code lock is missing.');
+    const marked = replaceNode(part, lock.id, markCodeSourceLock(lock));
+    if (!marked.ok) throw Error('Cannot retain native code lock ownership.');
+    next = withPart(next, marked.part);
     next = withCustomXmlNode(next, store.part.partName, {
       id: storage.nodePrefix + block.id,
       label: store.entries.get(block.id)!.label,
