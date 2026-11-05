@@ -1,0 +1,14 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Block duplication and movement accept one registered wrapper.",
+  "after": "Complete native sibling ranges copy or move in one transaction with exact shared node adoption.",
+  "reason": "The commands reuse native copy provenance and existing shared package operations. Unsupported range-copy ownership refuses before mutation.",
+  "tests": [
+    "packages/sciobot/src/blocks/selection-range.test.ts",
+    "packages/sciobot/src/blocks/gallery-copy.test.ts",
+    "packages/sciobot/src/blocks/move.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}

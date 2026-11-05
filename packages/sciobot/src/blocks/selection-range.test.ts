@@ -5,6 +5,7 @@ import {
   canonicalOoxmlFingerprint,
   contentControlContentNodeOf,
   findNode,
+  parentNodeOf,
   paragraphTextOf,
   readOoxmlPackage,
   storyParagraphs,
@@ -17,6 +18,8 @@ import { planTargetDocument } from '../diff/plan-target';
 import { buildBlockIndex } from './block-index';
 import { readPayloadStore } from './payload-opc-codec';
 import { removeBlockSelection } from './remove';
+import { duplicateBlockSelection } from './duplicate';
+import { moveBlockSelection } from './selection-move';
 import { resolveBlockSelectionRange } from './selection-range';
 
 const MARKDOWN = [
@@ -62,6 +65,288 @@ const roots = (editor: DocxEditorInstance) => {
 };
 const fingerprint = (editor: DocxEditorInstance) =>
   canonicalOoxmlFingerprint(editor.surface!.session.part().root);
+
+test('moving a mixed native range preserves exact subtree identities and one undo step', async () => {
+  const { editor, destroy } = mount(await lesson());
+  try {
+    const part = editor.surface!.session.part();
+    const selected = roots(editor).slice(1, 4);
+    const before = fingerprint(editor);
+    const request = {
+      nodeIds: selected.map((node) => node.id),
+      parentId: bodyStoryRoot(part)!.id,
+      beforeId: null,
+    };
+    expect(moveBlockSelection(editor, request)).toMatchObject({ success: true, changed: true });
+    expect(roots(editor).map((node) => node.id)).toEqual([
+      roots(editor)[0]!.id,
+      roots(editor)[1]!.id,
+      ...selected.map((node) => node.id),
+    ]);
+    expect(texts(editor)).toEqual([
+      'Before',
+      'After',
+      'Activity body',
+      'Nested tip',
+      'Between',
+      'First',
+      'Second',
+      'Cell A',
+      'Cell B',
+    ]);
+    for (const node of selected)
+      expect(findNode(editor.surface!.session.part(), node.id)).toBe(node);
+    const revision = editor.surface!.session.packageRevision();
+    expect(moveBlockSelection(editor, request)).toMatchObject({ success: true, changed: false });
+    expect(editor.surface!.session.packageRevision()).toBe(revision);
+    expect(editor.exec({ type: 'undo' }).ok).toBe(true);
+    expect(fingerprint(editor)).toBe(before);
+    expect(editor.exec({ type: 'redo' }).ok).toBe(true);
+    const reopened = mount(new Uint8Array(await editor.save()));
+    try {
+      expect(texts(reopened.editor)).toEqual(texts(editor));
+    } finally {
+      reopened.destroy();
+    }
+  } finally {
+    destroy();
+  }
+});
+
+test('movement refuses a selected descendant destination and keeps a paragraph in an emptied cell', async () => {
+  const { editor, destroy } = mount(await lesson());
+  try {
+    const part = editor.surface!.session.part();
+    const activity = roots(editor)[1]!;
+    const content = contentControlContentNodeOf(activity)!;
+    const before = fingerprint(editor);
+    expect(
+      moveBlockSelection(editor, { nodeIds: [activity.id], parentId: content.id, beforeId: null })
+        .success
+    ).toBe(false);
+    expect(fingerprint(editor)).toBe(before);
+    const cellParagraph = editor
+      .surface!.session.paragraphIds()
+      .find((id) => paragraphTextOf(part, id) === 'Cell A')!;
+    const cell = parentNodeOf(part, cellParagraph)!;
+    expect(
+      moveBlockSelection(editor, {
+        nodeIds: [cellParagraph],
+        parentId: bodyStoryRoot(part)!.id,
+        beforeId: roots(editor).at(-1)!.id,
+      }).success
+    ).toBe(true);
+    const remaining = storyParagraphs(findNode(editor.surface!.session.part(), cell.id)!);
+    expect(remaining).toHaveLength(1);
+    expect(paragraphTextOf(editor.surface!.session.part(), remaining[0]!.id)).toBe('');
+    expect(editor.exec({ type: 'undo' }).ok).toBe(true);
+    expect(fingerprint(editor)).toBe(before);
+  } finally {
+    destroy();
+  }
+});
+
+for (const clientIds of [
+  [41, 73],
+  [73, 41],
+] as const)
+  test(`mixed range movement retains peer typing, cursors, deletion, and history (${clientIds})`, async () => {
+    const pair = await createTwoEditorFixture({ document: await lesson(), clientIds });
+    try {
+      const [alice, bob] = pair.editors;
+      const part = alice!.surface!.session.part();
+      const selected = roots(alice!).slice(1, 4);
+      const paragraphId = selected[1]!.id;
+      const point = { paragraphId, offset: 7 };
+      bob!.surface!.setSelection({ anchor: point, head: point });
+      await pair.settle();
+      pair.pause();
+      expect(
+        moveBlockSelection(alice!, {
+          nodeIds: selected.map((node) => node.id),
+          parentId: bodyStoryRoot(part)!.id,
+          beforeId: null,
+        }).success
+      ).toBe(true);
+      expect(
+        bob!.surface!.applyAutomationOps(() => [
+          { op: 'insertText', paragraphId, offset: 7, text: ' peer' },
+        ]).committed
+      ).toBe(true);
+      pair.reconnect(clientIds[0] === 41 ? 0 : 1);
+      await pair.settle();
+      for (const editor of pair.editors)
+        expect(texts(editor).slice(0, 5)).toEqual([
+          'Before',
+          'After',
+          'Activity body',
+          'Nested tip',
+          'Between peer',
+        ]);
+      const remote = pair.rooms[0]!.session.remoteSelections().find(
+        (selection) => selection.actorId === 'bob'
+      );
+      expect(remote?.head.nodeId).toBe(paragraphId);
+      expect(alice!.exec({ type: 'undo' }).ok).toBe(true);
+      await pair.settle();
+      for (const editor of pair.editors)
+        expect(texts(editor).slice(0, 4)).toEqual([
+          'Before',
+          'Activity body',
+          'Nested tip',
+          'Between peer',
+        ]);
+      expect(alice!.exec({ type: 'redo' }).ok).toBe(true);
+      await pair.settle();
+      const removed = removeBlockSelection(bob!, { nodeIds: [paragraphId] });
+      if (!removed.success) throw Error(removed.error);
+      await pair.settle();
+      for (const editor of pair.editors)
+        expect(findNode(editor.surface!.session.part(), paragraphId)).toBeNull();
+      const saved = await pair.savedDigests();
+      expect(saved[0]).toEqual(saved[1]);
+    } finally {
+      pair.destroy();
+    }
+  });
+
+test('mixed range duplication keeps complete sibling order and fresh nested payload identities in one undo step', async () => {
+  const { editor, destroy } = mount(await lesson());
+  try {
+    const before = fingerprint(editor);
+    const original = roots(editor).slice(1, 4);
+    let id = 0;
+    const copied = duplicateBlockSelection(editor, {
+      nodeIds: original.map((node) => node.id),
+      allocateBlockId: (type) => `copy-${type}-${++id}`,
+    });
+    if (!copied.success) throw Error(copied.error);
+    expect(copied.nodeIds).toHaveLength(3);
+    expect(new Set(copied.nodeIds).size).toBe(3);
+    expect(copied.nodeIds.every((nodeId) => !original.some((node) => node.id === nodeId))).toBe(
+      true
+    );
+    expect(Object.keys(copied.payloadIds)).toHaveLength(2);
+    expect(texts(editor)).toEqual([
+      'Before',
+      'Activity body',
+      'Nested tip',
+      'Between',
+      'First',
+      'Second',
+      'Cell A',
+      'Cell B',
+      'Activity body',
+      'Nested tip',
+      'Between',
+      'First',
+      'Second',
+      'Cell A',
+      'Cell B',
+      'After',
+    ]);
+    const part = editor.surface!.session.part();
+    expect(copied.nodeIds.map((nodeId) => findNode(part, nodeId)?.kind)).toEqual([
+      'contentControl',
+      'paragraph',
+      'table',
+    ]);
+    const reopened = mount(new Uint8Array(await editor.save()));
+    try {
+      expect(texts(reopened.editor)).toEqual(texts(editor));
+    } finally {
+      reopened.destroy();
+    }
+    expect(editor.exec({ type: 'undo' }).ok).toBe(true);
+    expect(fingerprint(editor)).toBe(before);
+    expect(editor.exec({ type: 'redo' }).ok).toBe(true);
+    expect(texts(editor).filter((text) => text === 'Between')).toHaveLength(2);
+  } finally {
+    destroy();
+  }
+});
+
+test('unsupported native copy references and protected owners refuse the complete range without writing', async () => {
+  for (const body of [
+    '<w:p><w:bookmarkStart w:id="1" w:name="Keep"/><w:r><w:t>Bookmarked</w:t></w:r><w:bookmarkEnd w:id="1"/></w:p><w:p><w:r><w:t>After</w:t></w:r></w:p>',
+    '<w:sdt><w:sdtPr><w:lock w:val="contentLocked"/></w:sdtPr><w:sdtContent><w:p><w:r><w:t>Locked child</w:t></w:r></w:p></w:sdtContent></w:sdt><w:p/>',
+  ]) {
+    const input = await targetDocumentInput(body);
+    const { editor, destroy } = mount(writeOoxmlPackage(input.pkg));
+    try {
+      const before = fingerprint(editor);
+      const nodeId = editor.surface!.session.paragraphIds()[0]!;
+      const copied = duplicateBlockSelection(editor, {
+        nodeIds: [nodeId],
+        allocateBlockId: () => 'unused',
+      });
+      expect(copied.success).toBe(false);
+      expect(fingerprint(editor)).toBe(before);
+      expect(editor.surface!.session.canUndo()).toBe(false);
+    } finally {
+      destroy();
+    }
+  }
+});
+
+for (const clientIds of [
+  [41, 73],
+  [73, 41],
+] as const)
+  test(`copied native sibling IDs survive publication, peer deletion, and history (${clientIds})`, async () => {
+    const pair = await createTwoEditorFixture({ document: await lesson(), clientIds });
+    try {
+      const [alice, bob] = pair.editors;
+      const source = roots(alice!).slice(1, 4);
+      pair.pause();
+      let id = 0;
+      const copied = duplicateBlockSelection(alice!, {
+        nodeIds: source.map((node) => node.id),
+        allocateBlockId: (type) => `peer-copy-${type}-${++id}`,
+      });
+      if (!copied.success) throw Error(copied.error);
+      expect(
+        copied.nodeIds.every((nodeId) => !!findNode(alice!.surface!.session.part(), nodeId))
+      ).toBe(true);
+      const copiedParagraph = copied.nodeIds[1]!;
+      expect(
+        alice!.surface!.applyAutomationOps(() => [
+          { op: 'insertText', paragraphId: copiedParagraph, offset: 7, text: ' copy' },
+        ]).committed
+      ).toBe(true);
+      const removed = removeBlockSelection(bob!, {
+        nodeIds: roots(bob!)
+          .slice(1, 4)
+          .map((node) => node.id),
+      });
+      if (!removed.success) throw Error(removed.error);
+      pair.reconnect(clientIds[0] === 41 ? 0 : 1);
+      await pair.settle();
+      for (const editor of pair.editors) {
+        expect(texts(editor)).toContain('Between copy');
+        expect(texts(editor)).not.toContain('Between');
+      }
+      expect(alice!.exec({ type: 'undo' }).ok).toBe(true);
+      await pair.settle();
+      expect(alice!.exec({ type: 'undo' }).ok).toBe(true);
+      await pair.settle();
+      for (const editor of pair.editors) expect(texts(editor)).toEqual(['Before', 'After']);
+      expect(alice!.exec({ type: 'redo' }).ok).toBe(true);
+      await pair.settle();
+      const digests = await pair.savedDigests();
+      expect(digests[0]).toEqual(digests[1]);
+      for (const editor of pair.editors) {
+        const reopened = mount(new Uint8Array(await editor.save()));
+        try {
+          expect(texts(reopened.editor)).toEqual(texts(editor));
+        } finally {
+          reopened.destroy();
+        }
+      }
+    } finally {
+      pair.destroy();
+    }
+  });
 
 test('native range normalizes nested overlap and order, but never expands partial or disjoint requests', async () => {
   const { editor, destroy } = mount(await lesson());

@@ -4,6 +4,7 @@ import {
   contentControlsIn,
   createNodeIdAllocator,
   findNode,
+  freshenCopiedRunOrigins,
   insertChildren,
   parentNodeOf,
   usedParaIds,
@@ -19,6 +20,9 @@ import { withFreshIds } from './fresh-ids';
 import { blockIdFromTag, blockTag, readPayloadStore, withPayloadRecord } from './payload-opc-codec';
 import type { BlockPayload } from './payload-schema';
 import { copiedGalleryPayload, galleryRecordOrder } from './gallery-copy';
+import { resolveBlockSelectionRange } from './selection-range';
+import { blockRangeCopyRefusal } from './selection-copy-safety';
+import { ancestorContentWriteRefusal } from './ancestor-content-write';
 
 export interface BlockDuplication {
   readonly controlId: string;
@@ -85,8 +89,60 @@ export function duplicateBlock(
   editor: DocxEditorInstance,
   request: BlockDuplication
 ): BlockDuplicateResult {
+  const result = duplicateSelection(
+    editor,
+    {
+      nodeIds: [request.controlId],
+      allocateBlockId: request.allocateBlockId,
+      expectedRevision: request.expectedRevision,
+    },
+    false
+  );
+  return result.success
+    ? {
+        success: true,
+        revision: result.revision,
+        controlId: result.nodeIds[0]!,
+        payloadIds: result.payloadIds,
+      }
+    : result;
+}
+
+export interface BlockSelectionDuplication {
+  readonly nodeIds: readonly string[];
+  readonly allocateBlockId: (type: string) => string;
+  readonly expectedRevision?: number;
+}
+export type BlockSelectionDuplicateResult =
+  | {
+      readonly success: true;
+      readonly revision: number;
+      readonly nodeIds: readonly string[];
+      readonly payloadIds: Readonly<Record<string, string>>;
+    }
+  | NativeEditFailure;
+
+/**
+ * Copy a complete native sibling range after itself, with independent payload and review identities.
+ * Ordinary ranges refuse drawings, document-wide references, section marks, and pending revisions.
+ * A single registered block retains the existing registered-block copy support.
+ */
+export function duplicateBlockSelection(
+  editor: DocxEditorInstance,
+  request: BlockSelectionDuplication
+): BlockSelectionDuplicateResult {
+  return duplicateSelection(editor, request, true);
+}
+
+function duplicateSelection(
+  editor: DocxEditorInstance,
+  request: BlockSelectionDuplication,
+  native: boolean
+): BlockSelectionDuplicateResult {
   const surface = editor.surface;
   if (!surface) return fail('document-not-ready', 'The document is not attached.');
+  if (native && surface.activeScope().kind !== 'body')
+    return fail('unsupported-operation', 'Block selection changes require the document body.');
   surface.flushPendingInput();
   if (
     request.expectedRevision !== undefined &&
@@ -97,27 +153,50 @@ export function duplicateBlock(
     return fail('unsupported-operation', 'Block duplication requires edit mode.');
   const pkg = surface.session.currentPackage(),
     part = surface.session.part();
-  const control = findNode(part, request.controlId);
+  const control = findNode(part, request.nodeIds[0]!);
   const parent = control && parentNodeOf(part, control.id);
-  if (!control || control.kind !== 'contentControl' || !parent || parent.kind === 'paragraph')
+  if (
+    !native &&
+    (!control || control.kind !== 'contentControl' || !parent || parent.kind === 'paragraph')
+  )
     return fail('invalid-input', 'The registered block is missing from the active story.');
-  const store = readPayloadStore(pkg);
-  if (store.status !== 'ready')
-    return fail('invalid-document', 'The block payload store is unavailable.');
+  const range = resolveBlockSelectionRange(part, request.nodeIds);
+  if (!range.success) return range;
   const index = buildBlockIndex(pkg);
+  const registeredSingle =
+    range.nodes.length === 1 &&
+    [...index.byId.values()].some((block) => block.controlId === range.nodes[0]!.id);
+  if (native && !registeredSingle) {
+    const refusal = blockRangeCopyRefusal(range.nodes);
+    if (refusal) return fail('unsupported-operation', refusal);
+  }
+  if (native) {
+    const refusal = ancestorContentWriteRefusal(part, range.nodes[0]!.id);
+    if (refusal) return fail('unsupported-operation', refusal);
+  }
+  const store = readPayloadStore(pkg);
+  if (!native && store.status !== 'ready')
+    return fail('invalid-document', 'The block payload store is unavailable.');
   const tags = new Map<string, string>();
-  const payloadIds: Record<string, string> = {};
+  const payloadIds: Record<string, string> = Object.create(null);
   const copies: { payload: BlockPayload; label: string }[] = [];
-  for (const { node } of [{ node: control }, ...contentControlsIn(control)]) {
+  for (const node of range.nodes.flatMap((root) => [
+    ...(root.kind === 'contentControl' ? [root] : []),
+    ...contentControlsIn(root).map((entry) => entry.node),
+  ])) {
     const tag = contentControlPropertiesOf(node).tag ?? '';
     const id = blockIdFromTag(tag);
     if (id === null || Object.hasOwn(payloadIds, id)) continue;
     const block = index.byId.get(id);
-    const stored = store.entries.get(id);
+    const stored = store.status === 'ready' ? store.entries.get(id) : null;
     if (!block || !stored)
       return fail('invalid-document', 'A copied block has no stored payload record.');
     const next = request.allocateBlockId(block.payload.type);
-    if (index.byId.has(next) || store.entries.has(next) || Object.values(payloadIds).includes(next))
+    if (
+      index.byId.has(next) ||
+      (store.status === 'ready' && store.entries.has(next)) ||
+      Object.values(payloadIds).includes(next)
+    )
       return fail('invalid-input', 'A new block ID is already in use.');
     let nextTag: string;
     try {
@@ -129,7 +208,7 @@ export function duplicateBlock(
     payloadIds[id] = next;
     copies.push({ payload: { ...block.payload, id: next }, label: stored.label });
   }
-  if (!tags.size) return fail('invalid-input', 'The control is not a registered block.');
+  if (!native && !tags.size) return fail('invalid-input', 'The control is not a registered block.');
   const copiedIds = new Map(Object.entries(payloadIds));
   try {
     for (const copy of copies) copy.payload = copiedGalleryPayload(copy.payload, copiedIds);
@@ -137,21 +216,40 @@ export function duplicateBlock(
   } catch (error) {
     return fail('invalid-input', error instanceof Error ? error.message : String(error));
   }
-  const template = copyOf(control, tags);
-  const rootTag = tags.get(contentControlPropertiesOf(control).tag ?? '')!;
+  let templates: readonly OoxmlNode[];
+  try {
+    templates = freshenCopiedRunOrigins(
+      range.nodes.map((node) => copyOf(node, tags)),
+      500_000,
+      64
+    );
+  } catch (error) {
+    return fail(
+      'unsupported-operation',
+      error instanceof Error
+        ? error.message
+        : 'The copied text cannot retain independent review ownership.'
+    );
+  }
+  const sourceLastId = range.nodes.at(-1)!.id;
+  const identitySeed = `scio-block-copy:${crypto.randomUUID()}`;
+  let insertedIds: string[] = [];
   let placedOnce = false;
   const place = (working: OoxmlPackage): OoxmlPackage => {
     const live = working.parts.get(part.name);
     if (!live) throw new Error('The document part disappeared during the duplication.');
-    const container = parentNodeOf(live, control.id);
+    const container = parentNodeOf(live, sourceLastId);
     if (!container) throw new Error('The duplicated block disappeared during the duplication.');
-    const at = container.children.findIndex((child) => child.id === control.id);
-    const node = withFreshIds(template, createNodeIdAllocator(live, 'new'), {
+    const at = container.children.findIndex((child) => child.id === sourceLastId);
+    const nextId = createNodeIdAllocator(live, 'new');
+    const identity = {
       prefix: w14RootPrefix(live.root),
       used: new Set(usedParaIds(live.root)),
-      seed: `scio-block:${rootTag}`,
-    });
-    const placed = insertChildren(live, container.id, at + 1, [node]);
+      seed: identitySeed,
+    };
+    const nodes = templates.map((template) => withFreshIds(template, nextId, identity));
+    insertedIds = nodes.map((node) => node.id);
+    const placed = insertChildren(live, container.id, at + 1, nodes);
     if (!placed.ok) throw new Error('The copy was refused by the native store.');
     let next = withPart(working, placed.part);
     for (const copy of copies) {
@@ -162,6 +260,17 @@ export function duplicateBlock(
     placedOnce = true;
     return next;
   };
+  // Local node IDs become shared IDs during the synchronous document-port notification.
+  // Retain that exact mapping before the collaboration session retires its aliases.
+  const stop = surface.session.subscribe(() => {
+    const live = surface.session.part();
+    const collaboration = surface.collaborationSession();
+    insertedIds = insertedIds.map((id) => {
+      if (findNode(live, id)) return id;
+      const shared = collaboration?.resolveNodeId?.(id) ?? id;
+      return findNode(live, shared) ? shared : id;
+    });
+  });
   try {
     place(pkg);
     placedOnce = false;
@@ -170,16 +279,15 @@ export function duplicateBlock(
       return fail('apply-failed', String(result.reason ?? 'The duplication did not commit.'));
   } catch (error) {
     return fail('apply-failed', error instanceof Error ? error.message : 'The duplication failed.');
+  } finally {
+    stop();
   }
-  // Collaboration can rename the new nodes during the commit, so read the copy back by tag.
-  const live = [...contentControlsIn(surface.session.part().root)].find(
-    ({ node }) => contentControlPropertiesOf(node).tag === rootTag
-  );
-  if (!live) return fail('apply-failed', 'The copied block cannot be found.');
+  if (insertedIds.some((id) => !findNode(surface.session.part(), id)))
+    return fail('apply-failed', 'A copied block cannot be found.');
   return {
     success: true,
     revision: surface.session.packageRevision(),
-    controlId: live.node.id,
+    nodeIds: insertedIds,
     payloadIds,
   };
 }
