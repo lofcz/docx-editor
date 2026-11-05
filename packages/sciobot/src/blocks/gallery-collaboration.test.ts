@@ -271,3 +271,32 @@ test('last gallery image removal deletes the gallery in one shared history opera
     pair.destroy();
   }
 });
+test('successive gallery image removals delete the gallery and restore each membership through history', async () => {
+  const pair = await createTwoEditorFixture({ document: galleryDocument(), clientIds: [41, 73] });
+  try {
+    const alice = pair.editors[0]!;
+    for (let count = 3; count > 0; count--) {
+      const image = readGallery(alice.surface!.session.currentPackage(), 'gallery')!.images[0]!;
+      const result = updateGallery(alice, {
+        blockId: 'gallery',
+        change: { type: 'remove', imageId: image.id },
+      });
+      expect(result).toMatchObject({ success: true });
+      await pair.settle();
+      for (const editor of pair.editors)
+        expect(
+          readGallery(editor.surface!.session.currentPackage(), 'gallery')?.images.length ?? 0
+        ).toBe(count - 1);
+    }
+    for (let count = 1; count <= 3; count++) {
+      expect(alice.exec({ type: 'undo' }).ok).toBe(true);
+      await pair.settle();
+      for (const editor of pair.editors)
+        expect(
+          readGallery(editor.surface!.session.currentPackage(), 'gallery')!.images.length
+        ).toBe(count);
+    }
+  } finally {
+    pair.destroy();
+  }
+});
