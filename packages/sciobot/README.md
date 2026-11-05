@@ -16,6 +16,14 @@ The package test command loads the repository DOM environment explicitly. It wor
 
 The evaluated native provider uses format `docx-collaboration:1.10.17.1`. Private native property and birth ownership guards require that exact profile. Export verified DOCX with the previous compatible deployment and seed fresh rooms when upgrading. Never relabel old room metadata. This requirement does not add the evaluated provider to the production package.
 
+## Experimental native code ownership (UX13/UX24)
+
+`withNativeCodeSources` prepares only validated plain code before room creation. Its version-2 payload makes native paragraphs authoritative for source. Language and opaque metadata remain separate payload fields. Older readers keep this payload opaque. Native content locks prevent their generic text commands from editing its source.
+
+`updateCodeSource` uses canonical text, tab, split, and join operations. It preserves unchanged characters and paragraph identities. `updateCodeLanguage` leaves source and its history unchanged. Stale source drafts, unsupported native structures, bound controls, and protected ancestors refuse before writes. Payload byte limits, 10000 lines, bounded diff work, and operation limits constrain source edits.
+
+This preparation remains explicit. Ordinary import preparation and insertion retain version 1 and its existing review path. Version-2 native source review, inline Plate editing, selection, and cursor geometry remain unfinished. Do not enable automatic code conversion until those checks pass. Export and prepare a fresh room to adopt this ownership; never convert existing shared histories live.
+
 ## Reference fixtures
 
 These commands execute the application reference and capture its behavior:

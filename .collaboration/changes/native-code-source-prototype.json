@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Version-1 code payloads own source and regenerate native fallback paragraphs.",
+  "after": "An explicit preparation prototype gives version-2 code native paragraph ownership. Ordinary preparation and insertion retain version 1.",
+  "reason": "The pinned prior reader refuses the version-2 code shape as opaque. Its generic text commands also refuse the content lock. The existing shared record representation stays unchanged. Version-1 review remains active. Native code review and automatic migration are unfinished.",
+  "tests": [
+    "packages/sciobot/src/blocks/code-preparation.test.ts",
+    "packages/sciobot/src/blocks/code-edit.test.ts",
+    "packages/sciobot/src/blocks/update-atomic.test.ts"
+  ],
+  "changeset": "native-code-source-prototype",
+  "migration": null
+}

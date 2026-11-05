@@ -1,5 +1,6 @@
 import { projectGalleryRecords } from './gallery-record-read';
 import { projectNativeImageFields } from './native-image-fields';
+import { projectNativeCodeSource } from './code-native-source';
 import { activeMdxRegistry } from '../registry/active';
 import {
   customXmlDataParts,
@@ -160,6 +161,7 @@ export function readPayloadStore(
   const entries = new Map(stored.entries);
   const problem = projectGalleryRecords(pkg, entries, storage);
   if (!problem) projectNativeImageFields(pkg, entries, storage);
+  if (!problem) projectNativeCodeSource(pkg, entries, storage);
   return problem ? { status: 'invalid', reason: problem } : { ...stored, entries };
 }
 
@@ -260,6 +262,13 @@ export function withPayloadRecord(
     )
   )
     return refuse('gallery-image-fields-require-native-command');
+  if (
+    payload.version === 2 &&
+    payload.type === 'code_block' &&
+    current?.decoded.status === 'supported' &&
+    current.decoded.value.attributes.value !== payload.attributes.value
+  )
+    return refuse('code-source-requires-native-text-command');
   if (
     (payload.version === 2 || payload.version === 3) &&
     payload.type === 'image_gallery' &&

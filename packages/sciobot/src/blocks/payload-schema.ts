@@ -1,5 +1,6 @@
 import { galleryRecordShape } from './gallery-record-shape';
 import { nativeGalleryRecordShape } from './gallery-native-shape';
+import { codeRecordShape } from './code-record';
 import { jsonDataProblem, type JsonObject } from '../data/json';
 export type { JsonObject, JsonValue } from '../data/json';
 
@@ -103,7 +104,7 @@ export function decodeBlockPayload(
   const version = object.version as number;
   if (
     version !== 1 &&
-    !(version === 2 && galleryRecordShape(object, isBlockId)) &&
+    !(version === 2 && (galleryRecordShape(object, isBlockId) || codeRecordShape(object))) &&
     !(version === 3 && nativeGalleryRecordShape(object, isBlockId))
   )
     return { status: 'unsupported-version', version, raw, value: object };
@@ -121,7 +122,7 @@ export function encodeBlockPayload(
   if (
     problem ||
     (value.version !== 1 &&
-      !(value.version === 2 && galleryRecordShape(value, isBlockId)) &&
+      !(value.version === 2 && (galleryRecordShape(value, isBlockId) || codeRecordShape(value))) &&
       !(value.version === 3 && nativeGalleryRecordShape(value, isBlockId)))
   )
     throw new TypeError(problem ?? 'unsupported-version');

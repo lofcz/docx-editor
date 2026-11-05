@@ -23,6 +23,7 @@ import { activeMdxRegistry } from '../registry/active';
 import { MdxRefusal } from '../registry/mdx-fields';
 import { buildBlockIndex } from './block-index';
 import { ancestorContentWriteRefusal } from './ancestor-content-write';
+import { updateCodePayload } from './code-edit';
 import { convertMathControl } from './math-convert';
 import { decodeMathPayload } from './math-codec';
 import { encodeBlockPayload } from './payload-schema';
@@ -97,6 +98,12 @@ export function updateAtomicBlock(
   if (registry.blockTags.get(block.payload.type)?.kind !== 'atomic')
     return fail('unsupported-operation', 'Only atomic blocks update here.');
   const payload: BlockPayload = { ...block.payload, attributes: { ...update.attributes } };
+  if (
+    payload.version === 2 &&
+    payload.type === 'code_block' &&
+    payload.attributes.value !== block.payload.attributes.value
+  )
+    return updateCodePayload(editor, block.payload, payload);
   let fallback: ReturnType<NonNullable<typeof shown>> | null = null;
   try {
     fallback = shown ? shown(payload) : binding ? null : defaultFallback(payload);
