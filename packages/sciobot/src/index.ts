@@ -120,6 +120,12 @@ export {
   type ColumnGroupConversion,
   type ColumnGroupConversionResult,
 } from './blocks/convert-columns';
+export {
+  setColumnCount,
+  type ColumnCountChange,
+  type ColumnCountChangeResult,
+} from './blocks/set-column-count';
+export { enterColumn, type ColumnEntry, type ColumnEntryResult } from './blocks/enter-column';
 export * from './diff/column-widths';
 export * from './native/inline-code';
 export * from './native/prepare-document';

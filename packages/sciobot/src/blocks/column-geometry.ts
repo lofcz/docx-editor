@@ -15,6 +15,9 @@ import { blockIdFromTag } from './payload-opc-codec';
 const MAX_COLUMNS = 64;
 const MIN_WIDTH = 240;
 const MAX_WIDTH = 31680;
+// Percentage metadata is serialized to ten decimals. Quantize sub-twip noise before
+// rounding a boundary, so equivalent ratios retain the same half-twip tie direction.
+const roundedTwip = (value: number) => Math.round(Number(value.toFixed(7)));
 const caption = () => `${activeStorage().adapterPrefix}:columns:1`;
 const children = (node: OoxmlNode | undefined | null): readonly OoxmlNode[] =>
   !node || node.kind === 'textValue' ? [] : node.children;
@@ -35,8 +38,11 @@ export function columnPercentages(values: readonly unknown[]): readonly number[]
     if (typeof value !== 'string' || value.length > 32 || !/^(?:\d+(?:\.\d+)?|\.\d+)%$/.test(value))
       throw new Error('Column widths must use percentages.');
     const number = Number(value.slice(0, -1));
-    if (!Number.isFinite(number) || number <= 0 || number > 100)
-      throw new Error('Column percentages must be greater than zero and at most 100.');
+    // These percentages are relative weights. Concurrent count changes can retain a
+    // total above 100; resizing a survivor can then give it an individual weight above 100.
+    // The count, text length, and resulting native grid remain independently bounded.
+    if (!Number.isFinite(number) || number <= 0)
+      throw new Error('Column percentages must be finite and greater than zero.');
     return number;
   });
 }
@@ -58,7 +64,7 @@ export function columnWidthsTwips(
     cumulative = 0;
   return weights.map((weight) => {
     cumulative += weight;
-    const edge = Math.round((available * cumulative) / sum),
+    const edge = roundedTwip((available * cumulative) / sum),
       width = edge - previous;
     previous = edge;
     if (width < MIN_WIDTH) throw new Error('A column is narrower than the native minimum.');
@@ -184,6 +190,32 @@ export function readColumnGeometry(
       return null;
     columns.push({ block: column, cellId: cell.id, width });
   }
-  if (columns.reduce((sum, column) => sum + column.width, 0) > MAX_WIDTH) return null;
+  const total = columns.reduce((sum, column) => sum + column.width, 0);
+  if (total > MAX_WIDTH) return null;
+  const preferred = children(properties).find((node) => word(node, 'tblW'));
+  const fixed = children(properties).find((node) => word(node, 'tblLayout'));
+  const stated = Number(attr(preferred, 'w'));
+  // In this complete fixed grid, Word treats grid widths as relative weights when their
+  // sum exceeds a positive absolute table width. Concurrent insertions can produce that
+  // valid shape. Keep the column controls in the same coordinate system as native layout;
+  // a subsequent width edit then writes an exact grid without changing the group width.
+  if (
+    attr(fixed, 'type') === 'fixed' &&
+    attr(preferred, 'type') === 'dxa' &&
+    Number.isInteger(stated) &&
+    stated > 0 &&
+    stated < total
+  ) {
+    let cumulative = 0,
+      previous = 0;
+    for (let i = 0; i < columns.length; i++) {
+      cumulative += columns[i]!.width;
+      const edge = roundedTwip((stated * cumulative) / total);
+      const width = edge - previous;
+      if (width < MIN_WIDTH) return null;
+      columns[i] = { ...columns[i]!, width };
+      previous = edge;
+    }
+  }
   return { group, tableId: table.id, rowId: rows[0]!.id, columns, separatorIds };
 }

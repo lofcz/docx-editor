@@ -404,7 +404,9 @@ A browser probe found editable blank paragraphs outside the column controls. Typ
 
 Application commit `7f3583290` installs fork commit `cf96ac4cd`. The final browser runs pass eight cases with 108 assertions. They cover explicit keyboard conversion, shared-session refusal, paragraph identity, ordinary typing, paragraph splitting, undo, redo, and reload. Both stacked imports and the older native prototype pass. The prototype retains its blank paragraphs inside columns, so its Markdown includes their spacing. Resize, movement, insertion, cancellation, zoom, and two-session cases also pass. The application build, frontend types, harness types, scoped formatting, and lint pass. All five archive hashes match the manifest, and the app resolves one core module.
 
-**Remaining:** Column count changes and the existing turn-into action remain open. Tracked operations also need complete application verification before this leaf closes.
+The private `setColumnCount` command retains leading controls and moves removed child blocks into the final surviving column. Concurrent additions compose, and removals address original columns. Fixed-grid weight resolution keeps controls aligned after concurrent changes and later resizing. `enterColumn` creates a native paragraph on explicit entry into a restored empty column. Peer deletions survive undo and redo. The focused check passes 49 cases with 670 assertions across count, geometry, and conversion tests. It includes both receiver orders, peer typing, remote caret geometry, concurrent count changes, later resizing, deletion, and save/reopen. Compatibility decision `native-column-counts` adds no shared fields. Application wiring remains open.
+
+**Remaining:** Connect count changes and the existing turn-into action to the application toolbar. Add empty-column typing entry. Verify tracked operations in the application before this leaf closes.
 
 ## X21
 

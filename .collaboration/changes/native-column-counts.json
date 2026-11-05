@@ -1,0 +1,13 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Column counts remain fixed after group creation.",
+  "after": "A count change keeps retained column identities and moves removed content into the final surviving column.",
+  "reason": "The transaction uses existing canonical table, control, paragraph, and payload operations. Concurrent additions compose; removals address original columns. Native fixed table widths bound merged grid weights without new shared fields.",
+  "tests": [
+    "packages/sciobot/src/blocks/set-column-count.test.ts",
+    "packages/sciobot/src/blocks/columns.test.ts"
+  ],
+  "changeset": "native-column-counts",
+  "migration": null
+}

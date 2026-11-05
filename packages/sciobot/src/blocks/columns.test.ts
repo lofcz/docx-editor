@@ -190,6 +190,7 @@ test('column reading order stays complete across page fragments', async () => {
 });
 
 test('column widths reject unsupported values without rounding away the grid total', () => {
+  expect(columnWidthsTwips(['200%', '100%'], 9360)).toEqual([6240, 3120]);
   expect(columnWidthsTwips(['33.33%', '33.33%', '33.33%'], 9360)).toEqual([3120, 3120, 3120]);
   expect(columnWidthsTwips(['30%', '70%'], 9361).reduce((sum, width) => sum + width, 0)).toBe(9361);
   for (const widths of [
