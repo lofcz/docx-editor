@@ -1,5 +1,4 @@
 import { checklistTag } from '../registry/adapter-names';
-import { withTaskCompletionStyleFor } from '../native/task-completion-style';
 import {
   canonicalOoxmlFingerprint,
   collectRevisionSites,
@@ -59,8 +58,6 @@ export function stageTrackedChecklist(
   )
     refuseWrite('The checklist source changed after planning.', 'stale-revision');
   const originalSites = new Set(collectRevisionSites(part).map((site) => site.node.id));
-  if (edit.after.kind === 'checklist' && edit.after.checked)
-    writer.edit((working) => withTaskCompletionStyleFor(working, edit.partName, edit.paragraphId));
   if (edit.after.kind === 'ordered' || edit.after.kind === 'bullet')
     writer.edit((working) =>
       applyDirectListAssignments(

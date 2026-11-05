@@ -1,5 +1,4 @@
 import { checklistTag } from '../registry/adapter-names';
-import { applyTaskCompletionStyle } from '../native/task-completion-style';
 import { copyListInstanceTemplate, setListInstanceStart } from './list-instance-template';
 import { writeDormantListState } from '../diff/list-metadata';
 import { styleListInstance } from './direct-list-style';
@@ -228,12 +227,6 @@ export function applyDirectListAssignments(
         ? undefined
         : (target.dormantChecked ?? before?.dormantChecked);
     pkg = withPart(pkg, writeDormantListState(part(), paragraphId, dormant));
-    pkg = applyTaskCompletionStyle(
-      pkg,
-      partName,
-      paragraphId,
-      target.kind === 'checklist' && target.checked
-    );
   }
   return pkg;
 }
