@@ -34,7 +34,7 @@ export const DOCUMENT_COLLABORATION_VERSIONS: DocumentCollaborationVersions = Ob
   protocolVersion: 1,
   sharedSchemaVersion: 10,
   repairVersion: 17,
-  canonicalModelVersion: 1,
+  canonicalModelVersion: 2,
 });
 
 /** @internal */

@@ -39,6 +39,7 @@ import {
   readRunOrigins,
   readTextOrigins,
   readRevisionOrigins,
+  isOriginRevisionNode,
   isRunOriginNamespace,
   originNamespaceForScope,
 } from './run-origin-metadata.ts';
@@ -128,8 +129,9 @@ export function prepareTrackedRunOrigins(
   const activeOrigins = nodes
     .filter(
       (node) =>
-        node.kind === 'revisionInsert' ||
-        node.kind === 'revisionDelete' ||
+        (isOriginRevisionNode(node) &&
+          node.kind !== 'textValue' &&
+          ['ins', 'del'].includes(node.localName)) ||
         runPropertySite(part, node)
     )
     .flatMap(readRevisionOrigins);
@@ -335,29 +337,44 @@ export function sealTrackedRunOrigins(
   if (paragraph?.kind !== 'paragraph')
     throw new PackageEditRefusal('The run-origin paragraph is missing.', 'unknown-paragraph');
   const nodes = originNodes(paragraph);
-  const sourceOrigin = nodes
-    .map((node) => readRunOrigin(runProperties(node), originNamespaceForScope(scope)))
-    .find((origin) => origin?.scope === scope);
+  const sourceOrigin =
+    nodes
+      .map((node) => readRunOrigin(runProperties(node), originNamespaceForScope(scope)))
+      .find((origin) => origin?.scope === scope) ??
+    (() => {
+      const source = readTrackedSourceBindings(paragraph).find(
+        (binding) => binding.scope === scope
+      );
+      return source
+        ? { namespaceUri: originNamespaceForScope(scope), retainedPrefixes: source.retained }
+        : null;
+    })();
   if (!sourceOrigin) return part;
   const retained = encodeRetainedPrefixes(sourceOrigin.retainedPrefixes);
   const prior = collectRevisionSites(before);
   const oldIds = new Set(prior.map((site) => site.node.id));
   const oldAddresses = new Set(prior.map((site) => address(site.node)));
+  const currentSites = collectRevisionSites(part);
   const fresh = new Set(
-    collectRevisionSites(part)
+    currentSites
       .filter(
         (site) =>
           !oldIds.has(site.node.id) &&
           !oldAddresses.has(address(site.node)) &&
           !site.refused &&
-          !site.paragraphMark &&
-          (site.node.kind === 'revisionInsert' ||
+          (site.paragraphMark ||
+            site.node.kind === 'revisionInsert' ||
             site.node.kind === 'revisionDelete' ||
             runPropertySite(part, site.node))
       )
       .map((site) => site.node.id)
   );
-  if (!nodes.some((node) => fresh.has(node.id)))
+  const sealedSibling = currentSites.some(
+    (site) =>
+      fresh.has(site.node.id) &&
+      readRevisionOrigins(site.node).some((origin) => origin.scope === scope)
+  );
+  if (!nodes.some((node) => fresh.has(node.id)) && !sealedSibling)
     throw new PackageEditRefusal(
       'A run-origin stage needs new native revision sites.',
       'unsupported'

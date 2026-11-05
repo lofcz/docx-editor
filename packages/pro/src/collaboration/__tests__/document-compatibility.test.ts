@@ -53,7 +53,7 @@ test('the reconciled contract refuses earlier fork and upstream rooms', () => {
     protocolVersion: 1,
     sharedSchemaVersion: 10,
     repairVersion: 17,
-    canonicalModelVersion: 1,
+    canonicalModelVersion: 2,
   });
   expect(() => assertCompatible({ ...versions, repairVersion: 16 })).toThrow(
     'repairVersion: expected 17, received 16'
@@ -66,5 +66,11 @@ test('the reconciled contract refuses earlier fork and upstream rooms', () => {
 test('schema 10 refuses schema 9 rooms until DOCX export and reseeding', () => {
   expect(() => assertCompatible({ ...versions, sharedSchemaVersion: 9 })).toThrow(
     'sharedSchemaVersion: expected 10, received 9'
+  );
+});
+
+test('paragraph source decisions refuse model 1 rooms before interpreting their proofs', () => {
+  expect(() => assertCompatible({ ...versions, canonicalModelVersion: 1 })).toThrow(
+    'canonicalModelVersion: expected 2, received 1'
   );
 });

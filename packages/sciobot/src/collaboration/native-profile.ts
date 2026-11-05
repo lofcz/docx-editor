@@ -14,6 +14,6 @@ export function hasEvaluatedNativeProfile(doc: Y.Doc): boolean {
     meta.get('protocolVersion') === 1 &&
     meta.get('sharedSchemaVersion') === 10 &&
     meta.get('repairVersion') === 17 &&
-    meta.get('canonicalModelVersion') === 1
+    meta.get('canonicalModelVersion') === 2
   );
 }

@@ -6,28 +6,27 @@ import {
   readRunOrigins,
   readTextOrigins,
   readRevisionOrigins,
+  isOriginRevisionNode,
 } from './run-origin-metadata.ts';
 
 /** Keep a consumed proof until concurrent proposals from the same source have all settled. */
 export function settleDeferredRunOrigins(
   root: OoxmlNode,
   selected: ReadonlySet<string>,
-  hints: readonly { readonly scope: string; readonly source: string }[] = []
+  hints: readonly { readonly scope: string; readonly source: string }[] = [],
+  pendingElsewhere: ReadonlySet<string> = new Set()
 ): {
   readonly root: OoxmlNode;
   readonly scopes: ReadonlySet<string>;
 } {
   const nodes = originNodes(root);
-  const live = new Set(
-    nodes
-      .filter(
-        (node) =>
-          node.kind !== 'textValue' &&
-          (node.kind.startsWith('revision') || /PrChange$/.test(node.localName))
-      )
+  const live = new Set([
+    ...pendingElsewhere,
+    ...nodes
+      .filter(isOriginRevisionNode)
       .flatMap(readRevisionOrigins)
-      .map((origin) => origin.scope)
-  );
+      .map((origin) => origin.scope),
+  ]);
   const clean = new Set([...selected].filter((scope) => !live.has(scope)));
   const origins = nodes
     .flatMap(readRunOrigins)

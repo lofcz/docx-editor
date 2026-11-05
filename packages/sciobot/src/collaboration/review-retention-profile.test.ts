@@ -13,7 +13,7 @@ for (const schema of [9, 10, 11, '10'] as const)
       protocolVersion: 1,
       sharedSchemaVersion: schema,
       repairVersion: 17,
-      canonicalModelVersion: 1,
+      canonicalModelVersion: 2,
     }))
       meta.set(key, value);
     const properties = new Y.Map<unknown>();

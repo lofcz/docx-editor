@@ -7,7 +7,7 @@ const evaluated = {
   protocolVersion: 1,
   sharedSchemaVersion: 10,
   repairVersion: 17,
-  canonicalModelVersion: 1,
+  canonicalModelVersion: 2,
 };
 
 test('property ownership admits only the evaluated native profile without changing room metadata', () => {

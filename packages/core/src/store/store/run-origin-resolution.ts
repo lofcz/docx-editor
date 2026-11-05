@@ -14,6 +14,7 @@ import { PackageEditRefusal, isPackageEditRefusal } from './package-edit-refusal
 import type { TreeOpRejection } from './tree-op-types.ts';
 import { joinOriginRuns } from './run-origin-merge.ts';
 import { pruneRunOriginNamespaces } from './run-origin-namespaces.ts';
+import { collectRevisionSites } from './tree-op-revisions.ts';
 import {
   mapOriginNodes,
   originNodes,
@@ -44,6 +45,7 @@ export function captureRunOriginResolution(
   const prefixes = new Set<string>();
   const retained = new Set<string>();
   const paragraphPropertyPrefixes = new Set<string>();
+  const paragraphScopes = new Set<string>();
   for (const site of sites) {
     if (site.kind !== 'textValue' && hasInsertedPropertyPresence(site))
       for (const attr of site.attributes)
@@ -57,6 +59,15 @@ export function captureRunOriginResolution(
       owner = parentNodeOf(part, owner.id);
       if (owner?.kind !== 'run') continue;
       owner = parentNodeOf(part, owner.id);
+    } else if (
+      owner?.kind === 'runProperties' &&
+      site.kind !== 'textValue' &&
+      ['ins', 'del'].includes(site.localName)
+    ) {
+      owner = parentNodeOf(part, owner.id);
+      if (owner?.kind !== 'paragraphProperties') continue;
+      owner = parentNodeOf(part, owner.id);
+      for (const origin of origins) paragraphScopes.add(origin.scope);
     } else if (site.kind !== 'revisionInsert' && site.kind !== 'revisionDelete') continue;
     for (let depth = 0; owner && depth <= 256; depth++) {
       if (owner.kind === 'paragraph') {
@@ -76,6 +87,24 @@ export function captureRunOriginResolution(
   }
   const sourceHints = new Map<string, { scope: string; source: string }[]>();
   try {
+    // A paragraph mark owns a boundary between source fragments. Acceptance leaves both
+    // fragments alive, so its scope must also settle in the surviving sibling paragraphs.
+    if (paragraphScopes.size)
+      for (const paragraph of originNodes(part.root)) {
+        if (paragraph.kind !== 'paragraph') continue;
+        const scopes = new Set(
+          [
+            ...originNodes(paragraph)
+              .flatMap(readRunOrigins)
+              .map((origin) => origin.scope),
+            ...readTrackedSourceBindings(paragraph).map((binding) => binding.scope),
+          ].filter((scope) => paragraphScopes.has(scope))
+        );
+        if (!scopes.size) continue;
+        const known = paragraphs.get(paragraph.id) ?? new Set<string>();
+        for (const scope of scopes) known.add(scope);
+        paragraphs.set(paragraph.id, known);
+      }
     for (const [id, selected] of paragraphs) {
       const paragraph = findNode(part, id);
       if (paragraph)
@@ -106,10 +135,11 @@ export function normalizedRunOriginParagraph(
   selected: ReadonlySet<string>,
   prefixes: Set<string>,
   retained: Set<string>,
-  hints: readonly { readonly scope: string; readonly source: string }[]
+  hints: readonly { readonly scope: string; readonly source: string }[],
+  pendingElsewhere: ReadonlySet<string> = new Set()
 ): OoxmlNode {
   root = materializeTrackedSourceBindings(root, selected, false);
-  const settled = settleDeferredRunOrigins(root, selected, hints);
+  const settled = settleDeferredRunOrigins(root, selected, hints, pendingElsewhere);
   root = settled.root;
   const nodes = originNodes(root),
     scopes = settled.scopes;
@@ -278,6 +308,11 @@ function normalizeOrigins(
   let current = part;
   const prefixes = new Set(resolution.prefixes),
     retained = new Set(resolution.retained);
+  const pending = new Set(
+    collectRevisionSites(part)
+      .flatMap((site) => readRevisionOrigins(site.node))
+      .map((origin) => origin.scope)
+  );
   for (const [paragraphId, scopes] of resolution.paragraphs) {
     const paragraph = findNode(current, paragraphId);
     if (paragraph?.kind !== 'paragraph') continue;
@@ -286,7 +321,8 @@ function normalizeOrigins(
       scopes,
       prefixes,
       retained,
-      resolution.sourceHints.get(paragraphId) ?? []
+      resolution.sourceHints.get(paragraphId) ?? [],
+      pending
     );
     if (normalized === paragraph) continue;
     const made = replaceNode(current, paragraphId, normalized, options);

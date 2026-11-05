@@ -523,6 +523,14 @@ The fork uses `docx-collaboration:1.9.17.1` after the upstream synchronization. 
 
 Never relabel room metadata or replay old updates into fresh rooms. Room undo history does not transfer through DOCX.
 
+## Upgrade paragraph source rooms to format 1.10.17.2
+
+Format `docx-collaboration:1.10.17.2` retains native source ownership across tracked paragraph splits and joins. Paragraph marks carry the same bounded source proofs as tracked text. Accepting, rejecting, copying, and exporting these marks preserve their related source fragments. Earlier readers do not consume these proofs during paragraph decisions. They can leave split source runs and stale proof attributes after rejection. Matching XML field names do not make those decision rules compatible.
+
+Pause all writers and export each saved room with its compatible application build. Reopen the export and check pending revisions, source text, formatting, and opaque XML data. Seed a separate room with fresh persistence keys and empty history. Deploy matching clients, servers, agents, and export workers before editing starts. Do not rewrite live room versions or copy queued updates into replacement rooms. Keep the original room read-only until you accept the replacement.
+
+This format does not automatically convert application code blocks. Application preparation must preserve supported imported structures and run before room creation.
+
 ## Upgrade atomic equation rooms to format 1.10.17.1
 
 Format `docx-collaboration:1.10.17.1` keeps marked equation fallback content under one record owner across display changes. Earlier clients store that content in paragraph text or separate records, depending on its display mode. Generated fallback text uses ordered, immutable replacement entries in `atomicText`, a `Y.Array<string>`. The last live entry supplies the complete fallback. Ordinary editable text keeps shared character ownership. Changing the room version does not migrate incompatible ownership histories.

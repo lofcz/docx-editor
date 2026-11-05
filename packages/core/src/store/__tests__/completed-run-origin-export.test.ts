@@ -69,6 +69,23 @@ test('inactive proofs without explicit resolution and property history snapshots
   );
 });
 
+for (const mark of ['ins', 'del'])
+  test(`live paragraph ${mark} marks protect completed source proofs during XML export`, () => {
+    const input = part(
+      completed +
+        `<w:p><w:pPr><w:rPr><w:${mark} xmlns:q="${ns}" q:scope="${scope}" w:id="1" w:author="Ada"/></w:rPr></w:pPr><w:r><w:t>Live</w:t></w:r></w:p>`
+    );
+    const before = canonicalOoxmlFingerprint(input);
+    expect(projectCompletedRunOrigins(input)).toBe(input);
+    const xml = serializeOoxmlPart(input);
+    expect(xml).toContain('resolved="1"');
+    const steps = serializeOoxmlPartSteps(structuredClone(input));
+    let next = steps.next();
+    while (!next.done) next = steps.next();
+    expect(new TextDecoder().decode(next.value)).toBe(xml);
+    expect(canonicalOoxmlFingerprint(input)).toBe(before);
+  });
+
 test('a retained alias blocks its whole scope even when another source uses another alias', () => {
   const first = fragment('A');
   const second = fragment('B')

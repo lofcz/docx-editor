@@ -1,0 +1,17 @@
+{
+  "impact": "migration-required",
+  "fields": ["canonicalModelVersion"],
+  "before": "Tracked paragraph decisions do not interpret paragraph-mark source scopes.",
+  "after": "Paragraph marks retain source proofs through decisions, clipboard copies, and XML export.",
+  "reason": "Earlier readers leave split source runs and stale proof attributes after rejection. Decision interpretation differs despite unchanged shared field names. Model 2 refuses older rooms before updates or export; preparation requires fresh rooms.",
+  "tests": [
+    "packages/core/src/store/__tests__/run-origins-paragraph-reader.test.ts",
+    "packages/core/src/store/__tests__/run-origins-paragraph-marks.test.ts",
+    "packages/core/src/store/__tests__/completed-run-origin-export.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-compatibility.test.ts",
+    "packages/pro/src/collaboration/__tests__/read-collaboration-document.test.ts",
+    "packages/sciobot/src/collaboration/property-review-profile.test.ts"
+  ],
+  "changeset": "paragraph-mark-source-proofs",
+  "migration": "upgrade-paragraph-source-rooms-to-format-110172"
+}

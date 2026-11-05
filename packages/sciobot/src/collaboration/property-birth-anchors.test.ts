@@ -11,7 +11,7 @@ test('new property anchors exclude old tombstones, paragraph text, and unrelated
     protocolVersion: 1,
     sharedSchemaVersion: 10,
     repairVersion: 17,
-    canonicalModelVersion: 1,
+    canonicalModelVersion: 2,
   }))
     meta.set(key, value);
   const nodes = doc.getMap<Y.Map<unknown>>('docx-package-nodes-v1');

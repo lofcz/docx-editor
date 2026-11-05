@@ -1,7 +1,7 @@
 import { isMcPrefixListAttribute } from '../package/ooxml-serialize-namespaces.ts';
 import { MAX_XML_DEPTH } from '../package/xml-reader.ts';
 import { isXmlNCName } from '../package/qname.ts';
-import type { OoxmlElement, OoxmlNode } from '../package/ooxml-tree.ts';
+import { WML_NAMESPACE_URI, type OoxmlElement, type OoxmlNode } from '../package/ooxml-tree.ts';
 import { PackageEditRefusal } from './package-edit-refusal.ts';
 
 export const RUN_ORIGIN_NS = 'urn:docx-editor:tracked-run-origins:1';
@@ -20,6 +20,13 @@ export const originNamespaces = (node: OoxmlNode | undefined): readonly string[]
     ? []
     : [...new Set(node.attributes.map((attr) => attr.namespaceUri).filter(isRunOriginNamespace))];
 export const hasOriginMetadata = (node: OoxmlNode) => originNamespaces(node).length !== 0;
+
+/** Paragraph-mark revisions use generic nodes, but retain the same native source-scope proof. */
+export const isOriginRevisionNode = (node: OoxmlNode): boolean =>
+  node.kind !== 'textValue' &&
+  (node.kind.startsWith('revision') ||
+    /PrChange$/.test(node.localName) ||
+    (node.namespaceUri === WML_NAMESPACE_URI && ['ins', 'del'].includes(node.localName)));
 
 function fields(
   node: OoxmlNode,

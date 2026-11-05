@@ -20,7 +20,7 @@ for (const [protocol, repair, namespace, capturedCount] of [
       protocolVersion: 1,
       sharedSchemaVersion: 10,
       repairVersion: repair,
-      canonicalModelVersion: 1,
+      canonicalModelVersion: 2,
     }))
       meta.set(key, value);
     const nodes = doc.getMap<Y.Map<unknown>>('docx-package-nodes-v1');

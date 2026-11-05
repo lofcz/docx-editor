@@ -2,7 +2,11 @@ import { MAX_XML_DEPTH, XML_DEFAULT_MAX_ELEMENTS } from '../package/xml-reader.t
 import type { OoxmlElement, OoxmlNode, OoxmlPart } from '../package/ooxml-tree.ts';
 import { PackageEditRefusal } from './package-edit-refusal.ts';
 import { normalizedRunOriginParagraph } from './run-origin-resolution.ts';
-import { readRevisionOrigins, readRunOrigins } from './run-origin-metadata.ts';
+import {
+  readRevisionOrigins,
+  readRunOrigins,
+  isOriginRevisionNode,
+} from './run-origin-metadata.ts';
 
 interface SourceEvidence {
   readonly live: readonly string[];
@@ -36,7 +40,7 @@ function evidenceOf(root: OoxmlNode): SourceEvidence {
     const live: string[] = [],
       retained: string[] = [],
       sources: SourceEvidence['sources'][number][] = [];
-    if (node.kind.startsWith('revision') || /PrChange$/.test(node.localName))
+    if (isOriginRevisionNode(node))
       for (const origin of readRevisionOrigins(node)) {
         live.push(origin.scope);
         for (const prefix of origin.retainedPrefixes) retained.push(prefix);

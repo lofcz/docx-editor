@@ -14,7 +14,7 @@ bun run --filter '@sciobot/docx' build
 
 The package test command loads the repository DOM environment explicitly. It works from the package working directory.
 
-The evaluated native provider uses format `docx-collaboration:1.10.17.1`. Private native property and birth ownership guards require that exact profile. Export verified DOCX with the previous compatible deployment and seed fresh rooms when upgrading. Never relabel old room metadata. This requirement does not add the evaluated provider to the production package.
+The evaluated native provider uses format `docx-collaboration:1.10.17.2`. Private native property and birth ownership guards require that exact profile. Export verified DOCX with the previous compatible deployment and seed fresh rooms when upgrading. Never relabel old room metadata. This requirement does not add the evaluated provider to the production package.
 
 ## Experimental native code ownership (UX13/UX24)
 

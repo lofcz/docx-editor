@@ -13,6 +13,7 @@ import {
   originNamespaceForScope,
   readRunOrigins,
   readRevisionOrigins,
+  isOriginRevisionNode,
 } from './run-origin-metadata.ts';
 import { PackageEditRefusal } from './package-edit-refusal.ts';
 
@@ -86,6 +87,16 @@ export function freshenCopiedRunOrigins(
       : preparedBlocks;
   const ordinary = (node: OoxmlNode): boolean => {
     let owner = parents.get(node);
+    if (
+      isOriginRevisionNode(node) &&
+      node.kind !== 'textValue' &&
+      ['ins', 'del'].includes(node.localName) &&
+      owner?.kind === 'runProperties'
+    ) {
+      owner = parents.get(owner);
+      if (owner?.kind !== 'paragraphProperties') return false;
+      owner = parents.get(owner);
+    }
     if (node.kind === 'text' || node.kind === 'deletedText' || node.kind === 'runProperties') {
       if (owner?.kind !== 'run') return false;
       owner = parents.get(owner);
@@ -130,6 +141,11 @@ export function freshenCopiedRunOrigins(
     return (
       node.kind === 'revisionInsert' ||
       node.kind === 'revisionDelete' ||
+      (isOriginRevisionNode(node) &&
+        node.kind !== 'textValue' &&
+        ['ins', 'del'].includes(node.localName) &&
+        parent?.kind === 'runProperties' &&
+        parents.get(parent)?.kind === 'paragraphProperties') ||
       (node.kind !== 'textValue' &&
         node.localName === 'rPrChange' &&
         parent?.kind === 'runProperties' &&
@@ -217,7 +233,8 @@ export function freshenCopiedRunOrigins(
         next = {
           ...next,
           namespaceBindings: [
-            ...next.namespaceBindings,
+            // Retain opaque QName uses, but do not strand the consumed proof alias.
+            ...withoutOriginMetadata(next, namespaceUri).namespaceBindings,
             { prefix: target.prefix, namespaceUri: target.namespaceUri },
           ],
           attributes: next.attributes.map((attr) => {

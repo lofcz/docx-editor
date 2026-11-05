@@ -21,7 +21,7 @@ function fixture(repair = 17, protocol: '1' | '2' = '1') {
     protocolVersion: 1,
     sharedSchemaVersion: 10,
     repairVersion: repair,
-    canonicalModelVersion: 1,
+    canonicalModelVersion: 2,
   }))
     meta.set(name, value);
   const fields = attachOwnedReviewFields(doc, { protocol });
