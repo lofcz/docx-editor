@@ -1588,6 +1588,7 @@ a.docx-hyperlink:focus-visible {
 
 /* Table interaction furniture (core-owned, semantic geometry). */
 .docx-table-furniture,
+.docx-table-append-controls,
 .docx-table-select-layer {
   z-index: 3;
   pointer-events: none;
@@ -1618,6 +1619,36 @@ a.docx-hyperlink:focus-visible {
   font-size: 12px;
   line-height: 14px;
   cursor: pointer;
+}
+
+.docx-table-append-controls button {
+  position: absolute;
+  pointer-events: auto;
+  padding: 0;
+  border: 1px solid var(--doc-border-dark);
+  border-radius: 3px;
+  background: var(--doc-surface);
+  color: var(--doc-text-muted);
+  font-size: 14px;
+  line-height: 14px;
+  cursor: pointer;
+  opacity: 0.25;
+}
+
+.docx-table-append-controls button:hover,
+.docx-table-append-controls button:focus-visible {
+  opacity: 1;
+  background: var(--doc-primary-light);
+}
+
+.docx-table-append-controls button:focus-visible {
+  outline: 2px solid var(--doc-primary);
+  outline-offset: 2px;
+}
+
+.docx-table-append-controls button:disabled {
+  pointer-events: none;
+  opacity: 0.15;
 }
 
 .docx-table-select-handle[data-draggable='true'] {

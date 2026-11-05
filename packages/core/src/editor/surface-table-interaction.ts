@@ -1,3 +1,4 @@
+import { createTableAppendControls } from './surface-table-append-controls.ts';
 // Table interaction furniture for the paginated surface.
 //
 // A contenteditable=false sibling layer over painted pages. Geometry and targets come only
@@ -175,6 +176,7 @@ export function createSurfaceTableInteraction(
   layer.style.top = '0';
   layer.style.pointerEvents = 'none';
 
+  const appendControls = createTableAppendControls(host);
   const timers = hostTimers(() => layer);
   let hideTimer: number | null = null;
   let hoverHit: TableInteractionHit | null = null;
@@ -745,6 +747,7 @@ export function createSurfaceTableInteraction(
     if (!hoverHit || drag || input.editingMode === 'view') return;
     clearTimers();
     const hit = hitAtLastPointer(input);
+    appendControls.update(input, hit?.tableId);
     const offered = offeredHit(
       host.session(),
       hit,
@@ -800,6 +803,7 @@ export function createSurfaceTableInteraction(
 
   function onPointerMove(event: PointerEvent): void {
     const input = host.read();
+    if (isDomNode(event.target) && appendControls.contains(event.target)) return;
     if (drag && event.pointerId === drag.pointerId) {
       lastMoveClientX = event.clientX;
       lastMoveClientY = event.clientY;
@@ -853,6 +857,7 @@ export function createSurfaceTableInteraction(
           pageIndex >= 0 ? pageIndex : undefined
         )
       : null;
+    appendControls.update(input, hit?.tableId);
     const offered = offeredHit(
       host.session(),
       hit,
@@ -915,6 +920,7 @@ export function createSurfaceTableInteraction(
   return {
     update() {
       const input = host.read();
+      appendControls.update(input);
       const previousLayoutRevision = indexedLayoutRevision;
       const previousStoreRevision = indexedStoreRevision;
       index = null;
@@ -940,6 +946,7 @@ export function createSurfaceTableInteraction(
     },
     cancelDrag,
     refreshLabels() {
+      appendControls.refreshLabels();
       const input = host.read();
       if (input.editingMode === 'view') return;
       const retained = insertButton ?? focusedInsertButton();
@@ -957,6 +964,7 @@ export function createSurfaceTableInteraction(
       }
     },
     destroy() {
+      appendControls.destroy();
       clearTimers();
       cancelDrag();
       resetInsertState();

@@ -513,6 +513,7 @@ export function mountPaginatedSurface(
   const tableFurnitureLayer = overlaySheet(mountDocument, 'docx-table-furniture', false);
   const tableSelectLayer = overlaySheet(mountDocument, 'docx-table-select-layer', false);
   let tableSelectHandle: SurfaceTableSelectHandle | null = null;
+  let updateTableInteractionForSelection = () => {};
 
   container.style.position = 'relative';
   // Stacking order over the pages, bottom first.
@@ -3921,6 +3922,7 @@ export function mountPaginatedSurface(
   /** Draw selected cells, retained text, or paragraph marks native selection cannot show. */
   function renderOverlay(): void {
     textFormInteraction?.update();
+    updateTableInteractionForSelection();
     tableSelectHandle?.update();
     const rects = cellSelection
       ? cellSelectionRects(currentLayout, cellSelection.cellIds)
@@ -6192,6 +6194,7 @@ export function mountPaginatedSurface(
     applyTableCommandPlan: (plan) => surface.applyTableCommandPlan(plan),
     label: (key) => tableLabelState.resolve(key),
   });
+  updateTableInteractionForSelection = () => tableInteraction.update();
   tableSelectHandle = createSurfaceTableSelectHandle({
     controlRefusal: (tableId) => tableControlRefusal(surface, tableId),
     pagesLayer,

@@ -1,0 +1,12 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Native tables expose row and column insertion near individual boundaries.",
+  "after": "Native tables also expose bottom, right, and corner append controls using existing canonical operations.",
+  "reason": "Append controls reuse the existing row and column operations within one transaction. Shared document formats do not change.",
+  "tests": [
+    "packages/core/src/editor/__tests__/surface-table-append-controls.test.ts"
+  ],
+  "changeset": "table-append-controls",
+  "migration": null
+}
