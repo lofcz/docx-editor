@@ -123,7 +123,7 @@ export async function ungroupGallery(
           heightPoints,
         });
         next = embedded.pkg;
-        const alt = String(image.attributes.caption ?? '');
+        const alt = String(image.attributes.caption ?? '').replace(/\r\n|\r/g, '\n');
         const drawing = inlinePicture({
           docPrId: embedded.docPrId,
           relationshipId: embedded.relationshipId,
@@ -133,8 +133,14 @@ export async function ungroupGallery(
           alt,
         });
         const align = String(gallery.payload.attributes.align ?? 'left');
+        const caption = alt
+          ? `<w:p><w:pPr><w:pStyle w:val="Caption"/><w:jc w:val="${escapeXml(align)}"/></w:pPr><w:r>${alt
+              .split('\n')
+              .map((line) => `<w:t xml:space="preserve">${escapeXml(line)}</w:t>`)
+              .join('<w:br/>')}</w:r></w:p>`
+          : '';
         const parsed = readOoxmlPart(
-          `<w:document xmlns:w="${WML_NAMESPACE_URI}"><w:body><w:p><w:pPr><w:jc w:val="${escapeXml(align)}"/></w:pPr><w:sdt><w:sdtPr><w:tag w:val="${escapeXml(blockTag(id))}"/><w:lock w:val="sdtContentLocked"/></w:sdtPr><w:sdtContent><w:r><w:t>\uFFFC</w:t></w:r></w:sdtContent></w:sdt></w:p></w:body></w:document>`,
+          `<w:document xmlns:w="${WML_NAMESPACE_URI}"><w:body><w:p><w:pPr><w:jc w:val="${escapeXml(align)}"/></w:pPr><w:sdt><w:sdtPr><w:tag w:val="${escapeXml(blockTag(id))}"/><w:lock w:val="sdtContentLocked"/></w:sdtPr><w:sdtContent><w:r><w:t>\uFFFC</w:t></w:r></w:sdtContent></w:sdt></w:p>${caption}</w:body></w:document>`,
           { name: '/sciobot-gallery-ungroup.xml', contentType: part.contentType }
         );
         const body = parsed.ok && bodyStoryRoot(parsed.part);
@@ -146,20 +152,17 @@ export async function ungroupGallery(
           if (node.kind === 'textValue') return node;
           return { ...node, children: node.children.map(replacePicture) } as OoxmlNode;
         };
-        const paragraph = withFreshIds(
-          replacePicture(template),
-          createNodeIdAllocator(part, 'new'),
-          {
-            prefix: w14RootPrefix(part.root),
-            used,
-            seed: `ungroup:${id}`,
-          }
-        );
+        const allocate = createNodeIdAllocator(part, 'new');
+        const identity = { prefix: w14RootPrefix(part.root), used, seed: `ungroup:${id}` };
+        const paragraph = withFreshIds(replacePicture(template), allocate, identity);
+        const paragraphs = [paragraph];
+        if (body && body.children[1])
+          paragraphs.push(withFreshIds(body.children[1], allocate, identity));
         const inserted = insertChildren(
           part,
           parent.id,
           parent.children.findIndex((child) => child.id === control.id),
-          [paragraph]
+          paragraphs
         );
         if (!inserted.ok) throw Error('The native image cannot replace the gallery.');
         next = withPart(next, inserted.part);

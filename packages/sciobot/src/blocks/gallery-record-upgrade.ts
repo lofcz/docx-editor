@@ -15,7 +15,11 @@ import {
 import type { JsonObject } from '../data/json';
 import { validGallery } from '../projection/gallery';
 import { activeMdxRegistry } from '../registry/active';
-import { galleryImageControl, galleryImageText } from './gallery-record-build';
+import {
+  galleryImageControl,
+  galleryImageText,
+  isPlainGalleryFallback,
+} from './gallery-record-build';
 import { GALLERY_IMAGE_RECORD } from './gallery-record-shape';
 import { blockIdFromTag, readPayloadStore, withPayloadRecord } from './payload-opc-codec';
 import { encodeBlockPayload, type BlockPayload } from './payload-schema';
@@ -59,8 +63,9 @@ export function withGalleryImageRecords(
       content.children.length !== images.length ||
       content.children.some(
         (child, index) =>
-          child.kind !== 'paragraph' ||
-          paragraphTextOf(part, child.id) !== galleryImageText(images[index]!)
+          !isPlainGalleryFallback(child) ||
+          paragraphTextOf(part, child.id)?.replace(/\r\n|\r|\n/g, ' ') !==
+            galleryImageText(images[index]!)
       )
     )
       return refuse(`modified-legacy-gallery-fallback:${record.id}`);

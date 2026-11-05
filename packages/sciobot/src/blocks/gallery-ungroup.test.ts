@@ -3,6 +3,10 @@ import { unzipSync, zipSync, strFromU8, strToU8 } from 'fflate';
 import { createDocxEditor } from '@docx-editor.dev/core/editor';
 import {
   semanticDigest,
+  bodyStoryRoot,
+  directParagraphProperties,
+  paragraphTextOf,
+  storyParagraphs,
   type ImageDecodePort,
   type OoxmlPackage,
 } from '@docx-editor.dev/core/store';
@@ -28,6 +32,74 @@ const media = (pkg: OoxmlPackage) =>
   [...pkg.partBytes].filter(([name]) => /(^|\/)media\//.test(name));
 const nativeImages = (pkg: OoxmlPackage) =>
   [...buildBlockIndex(pkg).byId.values()].filter((block) => block.payload.type === 'inline_image');
+
+function captions(pkg: OoxmlPackage) {
+  const part = pkg.parts.get(pkg.mainDocumentPart)!;
+  return storyParagraphs(bodyStoryRoot(part)!).filter((paragraph) =>
+    directParagraphProperties(part, paragraph.id).some(
+      (property) =>
+        property.localName === 'pStyle' &&
+        (property.attributes?.val ?? property.attributes?.['w:val']) === 'Caption'
+    )
+  );
+}
+
+test('ungroup preserves visible multiline captions through peer editing, history, and reopen', async () => {
+  const pair = await createTwoEditorFixture({
+    document: galleryDocument(),
+    clientIds: [73, 41],
+    editor: { imageDecodePort: decodePort },
+  });
+  try {
+    const [alice, bob] = pair.editors;
+    const imageId = readGallery(alice!.surface!.session.currentPackage(), 'gallery')!.images[0]!.id;
+    expect(
+      updateGallery(alice!, {
+        blockId: 'gallery',
+        change: {
+          type: 'caption',
+          imageId,
+          expectedCaption: 'First image',
+          caption: 'First\r\nSecond',
+        },
+      }).success
+    ).toBe(true);
+    await pair.settle();
+    expect(
+      (await ungroupGallery(alice!, { blockId: 'gallery', decodePort, resolve })).success
+    ).toBe(true);
+    await pair.settle();
+    const caption = captions(bob!.surface!.session.currentPackage())[0]!;
+    expect(paragraphTextOf(bob!.surface!.session.part(), caption.id)).toBe('First\nSecond');
+    const edited = bob!.surface!.applyAutomationOps(
+      () => [{ op: 'insertText', paragraphId: caption.id, offset: 12, text: ' peer' }],
+      { kind: 'body' },
+      undefined,
+      false,
+      true
+    );
+    expect(edited.rejected).toBe(false);
+    await pair.settle();
+    expect(alice!.exec({ type: 'undo' }).ok).toBe(true);
+    await pair.settle();
+    expect(
+      readGallery(bob!.surface!.session.currentPackage(), 'gallery')!.images[0]!.attributes.caption
+    ).toBe('First\r\nSecond');
+    expect(alice!.exec({ type: 'redo' }).ok).toBe(true);
+    await pair.settle();
+    for (const editor of pair.editors) {
+      const pkg = openGallery(new Uint8Array(await editor.save()));
+      const part = pkg.parts.get(pkg.mainDocumentPart)!;
+      expect(captions(pkg).map((paragraph) => paragraphTextOf(part, paragraph.id))).toEqual([
+        'First\nSecond peer',
+        'Second image',
+        'Third image',
+      ]);
+    }
+  } finally {
+    pair.destroy();
+  }
+});
 
 test('ungroup after appending retains every image beside a preceding paragraph', async () => {
   const files = unzipSync(galleryDocument());
@@ -111,6 +183,9 @@ test('ungroup embeds distinct native images in one transaction and preserves his
     ]);
     expect(images[0]!.payload.attributes.widthPoints).toBe(48);
     expect(images[0]!.payload.attributes.heightPoints).toBe(24);
+    expect(captions(pkg).map((paragraph) => paragraphTextOf(session.part(), paragraph.id))).toEqual(
+      ['First image', 'Second image', 'Third image']
+    );
     expect(media(pkg)).toHaveLength(3);
     for (const [, bytes] of media(pkg)) expect(bytes).toEqual(png);
     expect(buildBlockIndex(pkg).diagnostics).toEqual([]);

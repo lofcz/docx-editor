@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { unzipSync, zipSync, strFromU8, strToU8 } from 'fflate';
 import {
   bodyStoryRoot,
   contentControlContentNodeOf,
@@ -8,6 +9,7 @@ import {
   semanticDigest,
   storyParagraphs,
   writeOoxmlPackage,
+  type OoxmlNode,
 } from '@docx-editor.dev/core/store';
 import { decodeBlockPayload as oldDecode } from '../../test/compat/payload-reader-v1';
 import {
@@ -21,6 +23,52 @@ import { buildBlockIndex } from './block-index';
 import { decodeBlockPayload, encodeBlockPayload } from './payload-schema';
 import { readPayloadStore, withPayloadRecord } from './payload-opc-codec';
 import { withGalleryImageRecords } from './gallery-record-upgrade';
+import { readGallery } from './gallery';
+
+test('legacy split text and native line breaks retain the first fallback text owner', () => {
+  const files = unzipSync(
+    legacyGallery([{ url: 'https://assets.example.test/image.png', caption: 'First\nSecond' }])
+  );
+  files['word/document.xml'] = strToU8(
+    strFromU8(files['word/document.xml']!).replace(
+      '<w:t>First Second</w:t>',
+      '<w:t>First</w:t><w:br/><w:t>Second</w:t>'
+    )
+  );
+  const original = openGallery(zipSync(files));
+  const block = buildBlockIndex(original).byId.get('gallery')!;
+  const textValues = (node: OoxmlNode): Extract<OoxmlNode, { kind: 'textValue' }>[] =>
+    node.kind === 'textValue' ? [node] : node.children.flatMap(textValues);
+  const before = textValues(findNode(original.parts.get(block.partName)!, block.controlId)!);
+  expect(before).toHaveLength(2);
+  const prepared = withGalleryImageRecords(original);
+  if (!prepared.ok) throw Error(prepared.reason);
+  const gallery = readGallery(prepared.pkg, 'gallery')!;
+  const after = textValues(
+    findNode(prepared.pkg.parts.get(gallery.partName)!, gallery.images[0]!.controlId)!
+  );
+  expect(after).toHaveLength(1);
+  expect(after[0]!.id).toBe(before[0]!.id);
+  expect(after[0]!.value).toBe('First Second');
+  expect(gallery.images[0]!.attributes.caption).toBe('First\nSecond');
+});
+
+test('legacy multiline captions keep their source and become one readable native line', () => {
+  const caption = 'First\r\nSecond\rThird\nFourth';
+  const original = openGallery(
+    legacyGallery([{ url: 'https://assets.example.test/image.png', caption }])
+  );
+  const upgraded = withGalleryImageRecords(original);
+  if (!upgraded.ok) throw Error(upgraded.reason);
+  const gallery = readGallery(upgraded.pkg, 'gallery')!;
+  expect(gallery.images[0]!.attributes.caption).toBe(caption);
+  const part = upgraded.pkg.parts.get(gallery.partName)!;
+  const paragraph = storyParagraphs(
+    contentControlContentNodeOf(findNode(part, gallery.images[0]!.controlId)!)!
+  )[0]!;
+  expect(paragraphTextOf(part, paragraph.id)).toBe('First Second Third Fourth');
+  expect(withGalleryImageRecords(upgraded.pkg)).toEqual({ ok: true, pkg: upgraded.pkg });
+});
 
 test('gallery bootstrap upgrades deterministically and preserves native paragraph owners', () => {
   const original = openGallery(legacyGallery());

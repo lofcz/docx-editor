@@ -21,6 +21,25 @@ export function galleryImageText(image: JsonObject): string {
   return source.replace(/\r\n|\r|\n/g, ' ');
 }
 
+/** Only generated text runs and their formatting belong to a legacy gallery fallback. */
+export function isPlainGalleryFallback(paragraph: OoxmlNode): boolean {
+  return (
+    paragraph.kind === 'paragraph' &&
+    paragraph.children.every(
+      (child) =>
+        child.kind === 'paragraphProperties' ||
+        (child.kind === 'run' &&
+          child.children.every(
+            (runChild) =>
+              runChild.kind === 'runProperties' ||
+              runChild.kind === 'text' ||
+              (runChild.namespaceUri === WML_NAMESPACE_URI &&
+                ['br', 'cr'].includes(runChild.localName))
+          ))
+    )
+  );
+}
+
 /** One stable native owner per image, including duplicate addresses. */
 export function galleryImageControl(
   part: OoxmlPart,
@@ -48,11 +67,33 @@ export function galleryImageControl(
     }) as OoxmlContentControlNode
   );
   if (!paragraph) return control;
+  let retained = false;
+  const fold = (node: OoxmlNode): OoxmlNode | null => {
+    if (node.kind === 'text') {
+      if (retained) return null;
+      const text = node.children.find((child) => child.kind === 'textValue');
+      if (!text) return null;
+      retained = true;
+      return { ...node, children: [{ ...text, value: galleryImageText(image) }] };
+    }
+    if (node.kind === 'textValue') return node;
+    if (node.namespaceUri === WML_NAMESPACE_URI && ['br', 'cr'].includes(node.localName))
+      return null;
+    return {
+      ...node,
+      children: node.children.flatMap((child) => {
+        const next = fold(child);
+        return next ? [next] : [];
+      }),
+    } as OoxmlNode;
+  };
+  const fallback = fold(paragraph);
+  if (!fallback || !retained) throw Error('The gallery fallback has no stable text owner.');
   return {
     ...control,
     children: control.children.map((node) =>
       node.kind === 'contentControlContent'
-        ? ({ ...node, children: [paragraph] } as OoxmlNode)
+        ? ({ ...node, children: [fallback] } as OoxmlNode)
         : node
     ),
   } as OoxmlElement;

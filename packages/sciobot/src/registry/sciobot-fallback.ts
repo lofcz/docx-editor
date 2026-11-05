@@ -40,8 +40,8 @@ const gallery: WordFallback = (payload: BlockPayload) => {
   if (!validGallery(payload))
     throw new MdxRefusal('A gallery needs one to 100 images with http(s) addresses.');
   return {
-    lines: (payload.attributes.images as JsonObject[]).map(
-      (image) => (image.caption as string | undefined) || (image.url as string)
+    lines: (payload.attributes.images as JsonObject[]).map((image) =>
+      ((image.caption as string | undefined) || (image.url as string)).replace(/\r\n|\r|\n/g, ' ')
     ),
   };
 };
