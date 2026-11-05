@@ -23,6 +23,7 @@ import { openGallery } from '../../test/support/gallery';
 import { groupAdjacentImages } from './gallery-group';
 import { readGallery, updateGallery } from './gallery';
 import { ungroupGallery } from './gallery-ungroup';
+import { removeBlock } from './remove';
 import { readPayloadRecords, readPayloadStore, withPayloadRecord } from './payload-opc-codec';
 import { updateAtomicBlock } from './update-atomic';
 import { readNativeGalleryImage } from './gallery-native-record';
@@ -247,6 +248,12 @@ test('a body image request refuses while the native header owns editing', async 
     );
     const groupedPackage = editor.surface!.session.currentPackage();
     const groupedShared = pair.documents.map((doc) => Y.encodeStateAsUpdate(doc));
+    expect(
+      removeBlock(editor, {
+        controlId: readGallery(groupedPackage, grouped.blockId)!.controlId,
+        mode: 'delete',
+      })
+    ).toMatchObject({ success: false, code: 'unsupported-operation' });
     expect(
       updateGallery(editor, {
         blockId: grouped.blockId,

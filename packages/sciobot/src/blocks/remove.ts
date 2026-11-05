@@ -164,6 +164,12 @@ function removeTargets(
   const nativeUnlocks = new Map<string, readonly string[]>();
   for (const { block, control } of targets) {
     if (
+      block.payload.version === 3 &&
+      ['image_gallery', 'image_gallery_item'].includes(block.payload.type) &&
+      surface.activeScope().kind !== 'body'
+    )
+      return fail('unsupported-operation', 'Gallery removal requires the body story.');
+    if (
       request.mode === 'unwrap' &&
       block.payload.version === 3 &&
       ['image_gallery', 'image_gallery_item'].includes(block.payload.type)
