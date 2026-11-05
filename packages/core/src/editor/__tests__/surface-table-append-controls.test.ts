@@ -1,5 +1,9 @@
 import { afterEach, expect, test } from 'bun:test';
 import { strFromU8, unzipSync } from 'fflate';
+import {
+  resetTableCommandPlannerCallCount,
+  tableCommandPlannerCallCount,
+} from '../table-command-plan.ts';
 import { createDocxEditor } from '../docx-editor.ts';
 import { docx, paragraph as p } from './paginated-surface-fixtures.ts';
 import { paragraphTextFromLayout } from '../../layout/semantic-interaction.ts';
@@ -11,7 +15,7 @@ const cleanups: (() => void)[] = [];
 afterEach(() => {
   cleanups.splice(0).forEach((cleanup) => cleanup());
 });
-function mount(owned = false, markup = table, author?: string) {
+async function mount(owned = false, markup = table, author?: string) {
   const container = document.createElement('div');
   document.body.append(container);
   const editor = createDocxEditor({
@@ -32,6 +36,7 @@ function mount(owned = false, markup = table, author?: string) {
     anchor: { paragraphId: id, offset: 0 },
     head: { paragraphId: id, offset: 0 },
   });
+  await Promise.resolve();
   const control = (kind: string) =>
     container.querySelector<HTMLButtonElement>(`[data-table-append="${kind}"]`)!;
   const shape = () => {
@@ -42,8 +47,8 @@ function mount(owned = false, markup = table, author?: string) {
   return { editor, surface, control, shape, container };
 }
 
-test('the corner appends a row and column in one undo transaction', () => {
-  const { editor, control, shape } = mount();
+test('the corner appends a row and column in one undo transaction', async () => {
+  const { editor, control, shape } = await mount();
   control('both').click();
   expect(shape()).toEqual([3, 3]);
   expect(editor.exec({ type: 'undo' }).ok).toBe(true);
@@ -51,26 +56,28 @@ test('the corner appends a row and column in one undo transaction', () => {
   expect(editor.exec({ type: 'redo' }).ok).toBe(true);
   expect(shape()).toEqual([3, 3]);
 });
-test('append buttons retain keyboard focus across repeated operations', () => {
-  const { control, shape } = mount();
+test('append buttons retain keyboard focus across repeated operations', async () => {
+  const { control, shape } = await mount();
   const button = control('row');
   button.focus();
   button.click();
+  await Promise.resolve();
   button.click();
+  await Promise.resolve();
   expect(shape()).toEqual([4, 2]);
   expect(document.activeElement).toBe(button);
   control('column').click();
   expect(shape()).toEqual([4, 3]);
 });
-test('owned tables and viewing mode hide append buttons', () => {
-  expect(mount(true).control('row')).toBeNull();
-  const { editor, control } = mount();
+test('owned tables and viewing mode hide append buttons', async () => {
+  expect((await mount(true)).control('row')).toBeNull();
+  const { editor, control } = await mount();
   editor.setEditingMode('viewing');
   expect(control('row')).toBeNull();
 });
 
-test('append controls support authored tables without a column grid', () => {
-  const { editor, control, shape } = mount(false, table.replace(grid, ''));
+test('append controls support authored tables without a column grid', async () => {
+  const { editor, control, shape } = await mount(false, table.replace(grid, ''));
   expect(control('both').disabled).toBe(false);
   control('both').click();
   expect(shape()).toEqual([3, 3]);
@@ -78,8 +85,8 @@ test('append controls support authored tables without a column grid', () => {
   expect(shape()).toEqual([2, 2]);
 });
 
-test('append buttons have a 24-pixel target and refresh visible labels', () => {
-  const { surface, control } = mount();
+test('append buttons have a 24-pixel target and refresh visible labels', async () => {
+  const { surface, control } = await mount();
   const row = control('row');
   expect(row.style.width).toBe('24px');
   expect(row.style.height).toBe('24px');
@@ -89,8 +96,9 @@ test('append buttons have a 24-pixel target and refresh visible labels', () => {
 });
 
 test('append controls create tracked row and column changes while suggesting', async () => {
-  const { editor, control, shape } = mount(false, table, 'Writer');
+  const { editor, control, shape } = await mount(false, table, 'Writer');
   editor.surface!.setEditingMode('suggest');
+  await Promise.resolve();
   expect(control('both').disabled).toBe(false);
   control('both').click();
   expect(shape()).toEqual([3, 3]);
@@ -102,11 +110,31 @@ test('append controls create tracked row and column changes while suggesting', a
   expect(shape()).toEqual([2, 2]);
 });
 
-test('append controls refuse suggesting without an author before activation', () => {
-  const { editor, control, shape } = mount();
+test('append controls refuse suggesting without an author before activation', async () => {
+  const { editor, control, shape } = await mount();
   editor.surface!.setEditingMode('suggest');
+  await Promise.resolve();
   expect(control('both').disabled).toBe(true);
   expect(control('both').title).toContain('author');
   control('both').click();
   expect(shape()).toEqual([2, 2]);
+});
+
+test('append permission probes share row and column plans after a document command', async () => {
+  const { editor, surface, control } = await mount();
+  resetTableCommandPlannerCallCount();
+  expect(editor.exec({ type: 'insertRow', where: 'below' }).ok).toBe(true);
+  expect(tableCommandPlannerCallCount()).toBe(1);
+  await Promise.resolve();
+  expect(tableCommandPlannerCallCount()).toBe(3);
+  resetTableCommandPlannerCallCount();
+  const paragraphId = surface.session
+    .paragraphIds()
+    .find((id) => paragraphTextFromLayout(surface.layout(), id) === 'A')!;
+  const position = { paragraphId, offset: 1 };
+  surface.setSelection({ anchor: position, head: position });
+  await Promise.resolve();
+  expect(tableCommandPlannerCallCount()).toBe(0);
+  control('both').click();
+  expect(tableCommandPlannerCallCount()).toBe(2);
 });

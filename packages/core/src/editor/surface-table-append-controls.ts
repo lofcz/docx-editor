@@ -39,6 +39,8 @@ export function createTableAppendControls(host: SurfaceTableInteractionHost) {
   let sourceRevision = -1;
   let painted: { layout: SurfaceTableInteractionInput['layout']; key: string } | null = null;
   const buttons = new Map<AppendKind, HTMLButtonElement>();
+  let permissionVersion = 0;
+  let destroyed = false;
 
   const label = (kind: AppendKind) =>
     kind === 'row'
@@ -47,7 +49,11 @@ export function createTableAppendControls(host: SurfaceTableInteractionHost) {
         ? host.label('table.insertColumnRight')
         : `${host.label('table.insertRowBelow')} + ${host.label('table.insertColumnRight')}`;
 
-  function plan(kind: AppendKind, input: SurfaceTableInteractionInput): TableCommandPlan {
+  function plan(
+    kind: AppendKind,
+    input: SurfaceTableInteractionInput,
+    cache?: Map<EditorCommand['type'], TableCommandPlan>
+  ): TableCommandPlan {
     const refusal = (reason: string): TableCommandPlan => ({
       ok: false,
       code: 'unsupported',
@@ -101,8 +107,10 @@ export function createTableAppendControls(host: SurfaceTableInteractionHost) {
         commands.push({ type: 'insertColumn', where: 'right' });
       }
     }
-    const plans = commands.map((command) =>
-      planTableCommand({
+    const plans = commands.map((command) => {
+      const cached = cache?.get(command.type);
+      if (cached) return cached;
+      const result = planTableCommand({
         command,
         part,
         layout: input.layout,
@@ -113,8 +121,10 @@ export function createTableAppendControls(host: SurfaceTableInteractionHost) {
         editable: host.session().editable && input.editingMode !== 'view',
         suggestingAuthor: input.suggestingAuthor,
         viewing: input.editingMode === 'view',
-      })
-    );
+      });
+      cache?.set(command.type, result);
+      return result;
+    });
     for (const next of plans) if (!next.ok) return next;
     // These canonical operations resolve their own row cells when the transaction applies.
     // The column operation therefore includes the row that the preceding operation inserts.
@@ -129,6 +139,7 @@ export function createTableAppendControls(host: SurfaceTableInteractionHost) {
   }
 
   function clear() {
+    permissionVersion++;
     const focused = layer.contains(layer.ownerDocument.activeElement);
     layer.replaceChildren();
     buttons.clear();
@@ -142,6 +153,7 @@ export function createTableAppendControls(host: SurfaceTableInteractionHost) {
     if (old) return old;
     const next = layer.ownerDocument.createElement('button');
     next.type = 'button';
+    next.disabled = true;
     next.className = `docx-table-append-${kind}`;
     next.dataset.tableAppend = kind;
     const icon = layer.ownerDocument.createElement('span');
@@ -207,10 +219,8 @@ export function createTableAppendControls(host: SurfaceTableInteractionHost) {
     layer.style.height = host.pagesLayer.style.height;
     for (const kind of ['row', 'column', 'both'] as const) {
       const control = button(kind);
-      const verdict = plan(kind, input);
-      control.disabled = !verdict.ok;
       control.setAttribute('aria-label', label(kind));
-      control.title = verdict.ok ? label(kind) : verdict.reason;
+      control.title = label(kind);
       Object.assign(control.style, {
         left: `${kind === 'row' ? left - 26 : left + width + 2}px`,
         top: `${kind === 'column' ? top + Math.max(0, height / 2 - 12) : top + height - 24}px`,
@@ -218,6 +228,19 @@ export function createTableAppendControls(host: SurfaceTableInteractionHost) {
         height: '24px',
       });
     }
+    // Chrome probes run after the document transaction, once per completed layout update.
+    // New controls stay disabled until their native plan is valid; existing focus is retained.
+    const version = ++permissionVersion;
+    queueMicrotask(() => {
+      if (destroyed || version !== permissionVersion) return;
+      const current = host.read();
+      const plans = new Map<EditorCommand['type'], TableCommandPlan>();
+      for (const [kind, control] of buttons) {
+        const verdict = plan(kind, current, plans);
+        control.disabled = !verdict.ok;
+        control.title = verdict.ok ? label(kind) : verdict.reason;
+      }
+    });
   }
   return {
     update,
@@ -228,6 +251,9 @@ export function createTableAppendControls(host: SurfaceTableInteractionHost) {
       }
     },
     contains: (node: Node | null) => node !== null && layer.contains(node),
-    destroy: () => layer.remove(),
+    destroy: () => {
+      destroyed = true;
+      layer.remove();
+    },
   };
 }
