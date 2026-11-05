@@ -396,7 +396,9 @@ The command check passed 51 tests across four files, plus private package typech
 
 Application commit `e8becc009` installs fork commit `529d3f450` and adds shared pointer and keyboard width controls. The installed Chromium check passes both receiver orders with 34 assertions. It verifies Escape and pointer cancellation, half zoom, peer typing, native caret movement, undo, redo, and suggestion-mode refusal. Content movement preserves paragraph identity, and both sessions save equal digests and reopen with equal projected content. Native group widths stay fixed through resize; core hover controls respect the application input marker. Frontend and harness type checks pass, along with scoped formatting and lint.
 
-**Remaining:** Generic table control ownership, column count changes, and explicit legacy conversion remain open. Existing stacked groups retain their structure until an explicit conversion preserves their identities. Tracked operations also need complete application verification before this leaf closes.
+Application commit `bdd2ad6e2` installs fork commit `137d0b6f7` and uses `tableControlRefusal` for recognized column tables. Generic table insertion, resize, and movement controls cannot change the column structure. Ordinary nested tables retain their native controls, and explicit column transactions remain available. The installed check passes four browser cases with 54 assertions, including Tab at the final column and disabled suggestion-mode keys. The application build, frontend types, harness types, and scoped lint pass. The installed application and adapter resolve one core module, and all five archive hashes match their manifest. The ownership guard passes 60 core tests and 14 column tests, plus API snapshots, compatibility reporting, and adapter parity. The compatibility decision is `host-table-control-ownership`; it changes no shared format.
+
+**Remaining:** Column count changes and explicit legacy conversion remain open. Existing stacked groups retain their structure until an explicit conversion preserves their identities. Tracked operations also need complete application verification before this leaf closes.
 
 ## X21
 

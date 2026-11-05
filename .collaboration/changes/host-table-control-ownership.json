@@ -1,0 +1,13 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Generic table controls can change application-owned column tables.",
+  "after": "Application hosts can refuse generic table controls while native text and explicit column transactions remain available.",
+  "reason": "This host policy changes local control admission only. Shared operations, identities, repair rules, and wire formats stay unchanged.",
+  "tests": [
+    "packages/sciobot/src/blocks/columns.test.ts",
+    "packages/core/src/editor/__tests__/table-control-policy.test.ts"
+  ],
+  "changeset": "host-table-control-ownership",
+  "migration": null
+}
