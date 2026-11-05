@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Managed image fields could diverge between native properties and private metadata during concurrent edits.",
+  "after": "Native drawing properties own image fields; private payload views and copied controls read that same native state.",
+  "reason": "The change uses existing native scalar operations and the production owned review history protocol. It adds no shared record format or schema version.",
+  "tests": [
+    "packages/sciobot/src/blocks/inline-image-update.test.ts",
+    "packages/sciobot/src/diff/inline-image-replacement-collaboration.test.ts",
+    "packages/sciobot/src/blocks/gallery-copy.test.ts"
+  ],
+  "changeset": "native-image-property-authority",
+  "migration": null
+}

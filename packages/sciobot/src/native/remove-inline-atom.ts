@@ -17,7 +17,7 @@ import {
   type TreeDocOp,
 } from '@docx-editor.dev/core/store';
 import { buildBlockIndex } from '../blocks/block-index';
-import { blockIdFromTag, readPayloadStore } from '../blocks/payload-opc-codec';
+import { blockIdFromTag, readPayloadRecords } from '../blocks/payload-opc-codec';
 import type { InlineRemoval } from '../diff/inline-removal';
 import { removableInlinePayload } from '../diff/inline-removal';
 import { jsonDataKey } from '../diff/target-key';
@@ -103,6 +103,11 @@ export function lowerInlineRemoval(
   readonly complete: (pkg: OoxmlPackage) => OoxmlPackage;
 } {
   const { control, relationships, media } = validateInlineRemovalSource(pkg, part, edit);
+  const originalStore = readPayloadRecords(pkg);
+  const originalRecord =
+    originalStore.status === 'ready' && originalStore.entries.get(edit.blockId);
+  if (!originalRecord)
+    refuseWrite('The removed atom payload record is unavailable.', 'apply-failed');
   const ops: TreeDocOp[] = [];
   let preview = part;
   const apply = (op: TreeDocOp) => {
@@ -118,11 +123,11 @@ export function lowerInlineRemoval(
     ops,
     part: preview,
     complete(working) {
-      const store = readPayloadStore(working);
+      const store = readPayloadRecords(working);
       if (
         store.status !== 'ready' ||
         store.entries.get(edit.blockId)?.decoded.status !== 'supported' ||
-        jsonDataKey(store.entries.get(edit.blockId)!.decoded.value) !== jsonDataKey(edit.before)
+        store.entries.get(edit.blockId)!.raw !== originalRecord.raw
       )
         refuseWrite('The removed atom payload record disappeared.', 'stale-revision');
       const payloadPart = working.parts.get(store.part.partName)!;

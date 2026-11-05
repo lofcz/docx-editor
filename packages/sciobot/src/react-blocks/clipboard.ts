@@ -8,6 +8,7 @@ import {
   contentControlsIn,
   isAtomicContentControl,
   isStoryPart,
+  findNode,
   type OoxmlPackage,
   type TreeDocOp,
 } from '@docx-editor.dev/core/store';
@@ -21,6 +22,8 @@ import {
 } from '../blocks/payload-opc-codec';
 import { copiedGalleryPayload, galleryRecordOrder } from '../blocks/gallery-copy';
 import { withCopiedAtomicTags } from '../blocks/copied-atomic-tags';
+import { decodeInlineImagePayload } from '../blocks/inline-image-codec';
+import { nativeImageResource } from '../blocks/native-image-fields';
 import {
   decodeBlockPayload,
   MAX_BLOCK_ID_LENGTH,
@@ -187,6 +190,20 @@ export function repairPastedBlocks(
   if (store.status === 'ready') for (const id of store.entries.keys()) used.add(id);
   const remapped = new Map<string, string>();
   const untagged: string[] = [];
+  const ownedImages = new Map<string, string>();
+  for (const control of pasted) {
+    const source = known.get(control.id);
+    if (!source || !decodeInlineImagePayload(JSON.stringify(source.payload))) continue;
+    const node = findNode(pkg.parts.get(control.partName)!, control.controlId);
+    const resource = node && nativeImageResource(pkg, control.partName, node);
+    if (
+      node &&
+      resource &&
+      contentControlPropertiesOf(node).lock === 'sdtContentLocked' &&
+      !contentControlPropertiesOf(node).dataBinding
+    )
+      ownedImages.set(control.controlId, resource.partName);
+  }
   for (const control of pasted) {
     if (remapped.has(control.id) || untagged.includes(control.id)) continue;
     const source = known.get(control.id);
@@ -201,7 +218,7 @@ export function repairPastedBlocks(
     remapped.set(control.id, id);
   }
   const ops: TreeDocOp[] = pasted
-    .filter((control) => !control.atomic)
+    .filter((control) => !control.atomic && !ownedImages.has(control.controlId))
     .map((control) => {
       const id = remapped.get(control.id);
       return {
@@ -212,10 +229,18 @@ export function repairPastedBlocks(
     });
   const records = [...remapped].map(([old, id]) => {
     const source = known.get(old)!;
-    const payload =
+    let payload =
       source.payload.version === 2
         ? copiedGalleryPayload(source.payload, remapped)
         : (remapValue(source.payload, remapped) as BlockPayload);
+    const image = pasted.filter(
+      (control) => control.id === old && ownedImages.has(control.controlId)
+    );
+    if (image.length === 1)
+      payload = {
+        ...payload,
+        attributes: { ...payload.attributes, mediaPartName: ownedImages.get(image[0]!.controlId)! },
+      };
     return { payload: { ...payload, id }, label: source.label };
   });
   records.sort((a, b) => galleryRecordOrder(a.payload, b.payload));
@@ -227,12 +252,13 @@ export function repairPastedBlocks(
         let next = withCopiedAtomicTags(
           working,
           pasted
-            .filter((control) => control.atomic)
+            .filter((control) => control.atomic || ownedImages.has(control.controlId))
             .map((control) => ({
               partName: control.partName,
               controlId: control.controlId,
               previousTag: blockTag(control.id),
               tag: remapped.has(control.id) ? blockTag(remapped.get(control.id)!) : '',
+              image: ownedImages.has(control.controlId),
             }))
         );
         for (const record of records) {

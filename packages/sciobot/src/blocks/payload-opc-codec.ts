@@ -1,4 +1,5 @@
 import { projectGalleryRecords } from './gallery-record-read';
+import { projectNativeImageFields } from './native-image-fields';
 import { activeMdxRegistry } from '../registry/active';
 import {
   customXmlDataParts,
@@ -158,6 +159,7 @@ export function readPayloadStore(
   if (stored.status !== 'ready') return stored;
   const entries = new Map(stored.entries);
   const problem = projectGalleryRecords(pkg, entries, storage);
+  if (!problem) projectNativeImageFields(pkg, entries, storage);
   return problem ? { status: 'invalid', reason: problem } : { ...stored, entries };
 }
 

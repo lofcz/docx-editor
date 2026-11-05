@@ -6,6 +6,8 @@ import type { DocxEditorInstance } from '@docx-editor.dev/core/editor';
 import {
   applyTreeOp,
   bodyStoryRoot,
+  canonicalOoxmlFingerprint,
+  cleanupOrphanImageMedia,
   contentControlPropertiesOf,
   contentControlsIn,
   findNode,
@@ -21,6 +23,12 @@ import {
 import type { NativeEditFailure } from '../contracts/document';
 import { buildBlockIndex, type IndexedBlock } from './block-index';
 import { blockIdFromTag, readPayloadStore } from './payload-opc-codec';
+import { decodeInlineImagePayload } from './inline-image-codec';
+import { validateInlineRemovalSource } from '../native/remove-inline-atom';
+import { captureReviewGroupHistory, reviewGroupHistoryRefusal } from '../review/group-history';
+import { groupReviewFieldBudget } from '../review/group-field-budget';
+import { groupRemovalBudget } from '../review/group-removal-budget';
+import { ancestorContentWriteRefusal } from './ancestor-content-write';
 
 export interface BlockRemoval {
   readonly controlId: string;
@@ -106,13 +114,41 @@ export function removeBlocks(
   // Payload IDs removed with a host-owned inline atom; their records retire in collaboration.
   const inlineIds = new Set<string>();
   const ownsInline = new Map<string, boolean>();
+  const imageResources: { media: string; relationships: readonly string[] }[] = [];
   for (const { block, control } of targets) {
     encodeBlockPayload(block.payload);
+    const image = decodeInlineImagePayload(encodeBlockPayload(block.payload));
+    const ancestor = ancestorContentWriteRefusal(part, control.id);
+    if (ancestor) return fail('unsupported-operation', ancestor);
+    const paragraph = parentNodeOf(part, control.id);
+    if (image && request.mode === 'delete') {
+      if (paragraph?.kind !== 'paragraph')
+        return fail('unsupported-operation', 'The image has an unsupported native owner.');
+      const historyRefusal = reviewGroupHistoryRefusal(surface.collaborationSession());
+      if (historyRefusal) return fail('unsupported-operation', historyRefusal);
+      try {
+        const source = validateInlineRemovalSource(pkg, part, {
+          kind: 'inline-remove',
+          paragraphId: paragraph.id,
+          controlId: control.id,
+          blockId: block.id,
+          before: block.payload,
+          fingerprint: canonicalOoxmlFingerprint(control),
+        });
+        if (typeof source.media !== 'string')
+          return fail('invalid-document', 'The image resource is unavailable.');
+        imageResources.push({ media: source.media, relationships: source.relationships });
+      } catch (cause) {
+        return fail(
+          'unsupported-operation',
+          cause instanceof Error ? cause.message : String(cause)
+        );
+      }
+    }
     // The host owns these immutable inline atoms. Ordinary text editing retains their lock.
     const ownedInline =
-      parentNodeOf(part, control.id)?.kind === 'paragraph' &&
-      // Inline controls: images are drawings, so only components with an inline binding count.
-      !!activeMdxRegistry().components.get(block.payload.type)?.inline &&
+      paragraph?.kind === 'paragraph' &&
+      (!!image || !!activeMdxRegistry().components.get(block.payload.type)?.inline) &&
       isInlineComponentPayload(block.payload, activeMdxRegistry());
     ownsInline.set(control.id, ownedInline);
     const owned = [block.id];
@@ -166,6 +202,9 @@ export function removeBlocks(
     const remaining = readPayloadStore(next);
     if (remaining.status !== 'ready' || removedPayloadIds.some((id) => remaining.entries.has(id)))
       throw new Error('The removed block payloads remain in the native store.');
+    for (const resource of imageResources)
+      for (const relationship of resource.relationships)
+        next = cleanupOrphanImageMedia(next, part.name, resource.media, relationship);
     return next;
   };
   const ops: TreeDocOp[] = [];
@@ -225,16 +264,18 @@ export function removeBlocks(
     ops.push(insertion);
   }
   try {
-    cleanup(withPart(pkg, prepared.part));
+    const complete = cleanup(withPart(pkg, prepared.part));
     // References disappear before their payloads. Gallery reads validate that relationship.
-    const result = surface.applyAutomationOps(
-      () => ops,
-      { kind: 'body' },
-      [cleanup],
-      false,
-      true,
-      'after'
-    );
+    const apply = () =>
+      surface.applyAutomationOps(() => ops, { kind: 'body' }, [cleanup], false, true, 'after');
+    const result = imageResources.length
+      ? captureReviewGroupHistory(
+          surface.collaborationSession(),
+          apply,
+          groupRemovalBudget(pkg, complete),
+          groupReviewFieldBudget(pkg, complete)
+        )
+      : apply();
     if (result.rejected || !result.committed)
       return fail('apply-failed', String(result.reason ?? 'The block removal did not commit.'));
     if (needsParagraph) {

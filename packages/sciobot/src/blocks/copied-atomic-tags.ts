@@ -8,11 +8,18 @@ import {
   type OoxmlPackage,
   type OoxmlNode,
 } from '@docx-editor.dev/core/store';
+import { nativeImageFields } from './native-image-fields';
 
 /** New clipboard-owned controls receive new tags without changing their content locks. */
 export function withCopiedAtomicTags(
   pkg: OoxmlPackage,
-  copies: readonly { partName: string; controlId: string; previousTag: string; tag: string }[]
+  copies: readonly {
+    partName: string;
+    controlId: string;
+    previousTag: string;
+    tag: string;
+    image?: boolean;
+  }[]
 ): OoxmlPackage {
   let next = pkg;
   for (const copy of copies) {
@@ -20,7 +27,13 @@ export function withCopiedAtomicTags(
     const control = findNode(part, copy.controlId);
     if (
       !control ||
-      !isAtomicContentControl(control) ||
+      (!isAtomicContentControl(control) &&
+        !(
+          copy.image &&
+          nativeImageFields(control) &&
+          contentControlPropertiesOf(control).lock === 'sdtContentLocked' &&
+          !contentControlPropertiesOf(control).dataBinding
+        )) ||
       contentControlPropertiesOf(control).tag !== copy.previousTag
     )
       throw Error('The copied atomic control identity changed.');
