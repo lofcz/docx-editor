@@ -1,0 +1,10 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The native table header toggle is unsupported.",
+  "after": "The native table header toggle uses the existing table property operation to set repeated header rows.",
+  "reason": "The command uses existing canonical operations and the existing tracked property format.",
+  "tests": ["packages/core/src/editor/__tests__/table-header-row.test.ts"],
+  "changeset": "table-header-repeat-command",
+  "migration": null
+}

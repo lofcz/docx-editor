@@ -53,6 +53,7 @@ import type {
 } from '../store/store/tree-op-types.ts';
 import { TABLE_BORDER_STYLES } from '../store/table-border-style.ts';
 import { planSelectTableRegion } from './table-select-plan.ts';
+import { toggleHeaderRowOp } from './table-header-row.ts';
 
 function isVisualRtlTable(layout: SemanticLayout, tableId: string): boolean {
   return tableInteractionIndex(layout).occurrences.some(
@@ -347,9 +348,10 @@ function validateTableCommandShape(command: EditorCommand): TableCommandPlan | n
         return refusal('invalidArgs', 'deleteColumn target shape is invalid');
       }
       return null;
+    case 'toggleHeaderRow':
     case 'deleteTable':
       return !isPlainObject(command) || !ownKeysExactly(command, ['type'])
-        ? refusal('invalidArgs', 'deleteTable command shape is invalid')
+        ? refusal('invalidArgs', `${command.type} command shape is invalid`)
         : null;
     case 'setCellFill':
       if (!isPlainObject(command) || !ownKeysExactly(command, ['type', 'color'])) {
@@ -747,7 +749,6 @@ export function planTableCommand(input: TableCommandPlannerInput): TableCommandP
   }
 
   switch (command.type) {
-    case 'toggleHeaderRow':
     case 'setTableProperties':
       return refusal(
         'unsupported',
@@ -801,6 +802,10 @@ export function planTableCommand(input: TableCommandPlannerInput): TableCommandP
   }
 
   switch (command.type) {
+    case 'toggleHeaderRow':
+      return planValidated(part, [toggleHeaderRowOp(part, anchor!.tableId)], {
+        kind: 'preserveSelection',
+      });
     case 'mergeCells':
     case 'splitCell': {
       if (!anchor) return refusal('unsupported', 'the selection is not inside a table');
@@ -982,7 +987,6 @@ export function tableCommandCanSupport(command: EditorCommand): {
     return { supported: false, reason: `command '${command.type}' is not a table command` };
   }
   switch (command.type) {
-    case 'toggleHeaderRow':
     case 'setTableProperties':
       return {
         supported: false,

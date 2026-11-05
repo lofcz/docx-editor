@@ -265,3 +265,7 @@ The menu bar moves menus that do not fit into one `⋯` menu, from the end. Host
 Custom table controls can call `editor.exec({ type: 'selectTableRegion', region: 'row' })` or use `region: 'column'` to select a complete column. The command expands an existing cell selection to all rows or columns that it touches. Merged cells remain whole. Selection does not change the document and remains available in viewing mode. Subsequent cell formatting commands apply to the selected cells.
 
 Read `TableCellFragmentRecord.vAlign` for the effective alignment that the layout uses. This value includes table-style inheritance and direct cell overrides.
+
+## Repeat table headers
+
+Call `editor.exec({ type: 'toggleHeaderRow' })` to repeat the first row on later pages. When the table already has repeated header rows, the command stops repeating all of them. It retains table styles and cell formatting. Undo restores the previous header rows, including imported multiple-row headers. The command applies to the table that contains the selection. Repeated copies cannot be edited directly.
