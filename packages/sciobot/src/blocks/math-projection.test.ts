@@ -93,7 +93,7 @@ for (const expression of ['', 'x^2', '<br>', '  a\r\nb | 𝛼\n'])
     }
   });
 
-test('registered lossless display syntax materializes original source and readable multiline Word fallback in one history unit', async () => {
+test('registered lossless display syntax retains exact multiline source and one Word fallback record in one history unit', async () => {
   const editor = createDocxEditor({
     container: document.createElement('div'),
     document: docxFixture('<w:p><w:r><w:t>Keep.</w:t></w:r></w:p>'),
@@ -120,11 +120,13 @@ test('registered lossless display syntax materializes original source and readab
     const read = await source(editor),
       block = buildBlockIndex(read.pkg).byId.get('new-equation')!;
     expect(block.payload.attributes.texExpression).toBe('1\r\n2');
+    // The generated fallback owns one text record. Word shows source line breaks as spaces;
+    // the payload and MathLive retain the exact TeX, including its original CRLF spelling.
     expect(
       paragraphs(findNode(editor.surface!.session.part(), block.controlId)!).map((p) =>
         paragraphTextOf(editor.surface!.session.part(), p.id)
       )
-    ).toEqual(['1', '2']);
+    ).toEqual(['1 2']);
     const parsed = parseTargetMarkdown(target),
       actual = parseTargetMarkdown(read.projection.text);
     if (!parsed.success || !actual.success) throw Error('Expected target syntax');
