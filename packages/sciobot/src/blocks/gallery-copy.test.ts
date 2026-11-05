@@ -94,6 +94,18 @@ for (const privateData of [true, false])
     });
     try {
       const surface = editor.surface!;
+      const image = readGallery(surface.session.currentPackage(), 'gallery')!.images[0]!;
+      expect(
+        updateGallery(editor, {
+          blockId: 'gallery',
+          change: {
+            type: 'caption',
+            imageId: image.id,
+            expectedCaption: 'First image',
+            caption: 'gallery',
+          },
+        }).success
+      ).toBe(true);
       const ids = surface.session.paragraphIds();
       const end = ids[2]!;
       surface.setSelection({
@@ -116,7 +128,7 @@ for (const privateData of [true, false])
       const copy = readGallery(surface.session.currentPackage(), 'copy-gallery')!;
       expect(copy.images).toHaveLength(3);
       expect(copy.images.every((item) => item.id.startsWith('copy-'))).toBe(true);
-      expect(copy.images[0]!.attributes.caption).toBe('First image');
+      expect(copy.images[0]!.attributes.caption).toBe('gallery');
       expect(buildBlockIndex(surface.session.currentPackage()).diagnostics).toEqual([]);
       expect(editor.exec({ type: 'undo' }).ok).toBe(true);
       expect(semanticDigest(surface.session.currentPackage().parts.values())).toEqual(before);

@@ -202,3 +202,4 @@ export { sciobotMdxRegistry } from './registry/sciobot';
 export * from './registry/mdx-read';
 export * from './registry/active';
 export * from './blocks/gallery';
+export * from './blocks/gallery-ungroup';
