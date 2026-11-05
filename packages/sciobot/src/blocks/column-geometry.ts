@@ -27,20 +27,10 @@ const attr = (node: OoxmlNode | undefined, name: string) =>
       )?.value
     : undefined;
 
-/** Convert relative application widths to one exact native grid. Never allocate from a file number. */
-export function columnWidthsTwips(
-  values: readonly unknown[],
-  available: number
-): readonly number[] {
-  if (
-    !values.length ||
-    values.length > MAX_COLUMNS ||
-    !Number.isInteger(available) ||
-    available > MAX_WIDTH ||
-    available < values.length * MIN_WIDTH
-  )
-    throw new Error('Column geometry exceeds the supported native grid.');
-  const weights = values.map((value) => {
+/** Read the stored relative weights without changing their scale or missing-value defaults. */
+export function columnPercentages(values: readonly unknown[]): readonly number[] {
+  if (!values.length || values.length > MAX_COLUMNS) throw new Error('Invalid column count.');
+  return values.map((value) => {
     if (value === undefined || value === null) return 100 / values.length;
     if (typeof value !== 'string' || value.length > 32 || !/^(?:\d+(?:\.\d+)?|\.\d+)%$/.test(value))
       throw new Error('Column widths must use percentages.');
@@ -49,6 +39,20 @@ export function columnWidthsTwips(
       throw new Error('Column percentages must be greater than zero and at most 100.');
     return number;
   });
+}
+
+/** Convert relative application widths to one exact native grid. Never allocate from a file number. */
+export function columnWidthsTwips(
+  values: readonly unknown[],
+  available: number
+): readonly number[] {
+  if (
+    !Number.isInteger(available) ||
+    available > MAX_WIDTH ||
+    available < values.length * MIN_WIDTH
+  )
+    throw new Error('Column geometry exceeds the supported native grid.');
+  const weights = columnPercentages(values);
   const sum = weights.reduce((total, weight) => total + weight, 0);
   let previous = 0,
     cumulative = 0;

@@ -2,4 +2,4 @@
 '@docx-editor.dev/pro': patch
 ---
 
-Render application column groups with native Word table geometry and synchronized column widths.
+Render application columns with native Word geometry, synchronized widths, and content movement that preserves native identities.

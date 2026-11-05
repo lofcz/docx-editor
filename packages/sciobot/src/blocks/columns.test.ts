@@ -6,6 +6,8 @@ import {
   findNode,
   applyTreeOp,
   withPart,
+  parentNodeOf,
+  contentControlContentNodeOf,
   readOoxmlPackage,
   writeOoxmlPackage,
   type OoxmlPackage,
@@ -21,6 +23,8 @@ import { readWorkingView } from '../review/working-view';
 import { SCIOBOT_NATIVE_REVIEW_MODULE } from '../review/native-module';
 import { buildBlockIndex } from './block-index';
 import { columnWidthsTwips, readColumnGeometry } from './column-geometry';
+import { planColumnWidths } from '../diff/column-widths';
+import { moveColumnContent } from './move-column-content';
 
 // Each column keeps its native control inside an owned borderless table cell.
 const column = (width: string, body: string) => `<column width="${width}">\n\n${body}\n\n</column>`;
@@ -236,6 +240,200 @@ test('a column edit is one undo step', async () => {
     container.remove();
   }
 });
+
+test('manual widths and content movement retain native identities and separate undo steps', async () => {
+  const editor = createDocxEditor({
+    container: document.createElement('div'),
+    document: writeOoxmlPackage(await land(TWO)),
+    modules: [SCIOBOT_NATIVE_REVIEW_MODULE],
+  });
+  try {
+    const geometry = geometryOf(editor),
+      before = geometry.columns.map((column) => column.width);
+    const resize = planColumnWidths(
+      {
+        pkg: editor.surface!.session.currentPackage(),
+        revision: token(editor),
+        groupId: geometry.group.id,
+      },
+      [before[0]! - 300, before[1]! + 300]
+    );
+    if (!resize.success) throw Error(resize.error);
+    expect(applyDirectPlan(editor, resize.plan, context).success).toBe(true);
+    const right = editor
+      .surface!.session.paragraphIds()
+      .find((id) => paragraphTextOf(editor.surface!.session.part(), id) === 'Right text.')!;
+    const sourceParent = parentNodeOf(editor.surface!.session.part(), right)!.id;
+    const request = {
+      groupId: geometry.group.id,
+      nodeId: right,
+      destinationColumnId: geometry.columns[0]!.block.id,
+      beforeId: null,
+      expectedRevision: editor.surface!.session.packageRevision(),
+    };
+    expect(
+      moveColumnContent(editor, { ...request, expectedRevision: request.expectedRevision - 1 })
+    ).toMatchObject({ success: false, code: 'stale-revision' });
+    editor.surface!.setEditingMode('suggest');
+    expect(moveColumnContent(editor, request)).toMatchObject({
+      success: false,
+      code: 'unsupported-operation',
+    });
+    expect(editor.surface!.editingMode()).toBe('suggest');
+    editor.surface!.setEditingMode('edit');
+    expect(moveColumnContent(editor, request).success).toBe(true);
+    expect(parentNodeOf(editor.surface!.session.part(), right)!.id).not.toBe(sourceParent);
+    const source = findNode(editor.surface!.session.part(), geometry.columns[1]!.block.controlId)!;
+    const seeded = contentControlContentNodeOf(source)!.children;
+    expect(seeded).toHaveLength(1);
+    expect(seeded[0]!.kind).toBe('paragraph');
+    expect(
+      caretAt(editor.surface!.layout(), { paragraphId: seeded[0]!.id, offset: 0 })
+    ).not.toBeNull();
+    expect(editor.exec({ type: 'undo' }).ok).toBe(true);
+    expect(parentNodeOf(editor.surface!.session.part(), right)!.id).toBe(sourceParent);
+    expect(geometryOf(editor).columns.map((column) => column.width)).toEqual([
+      before[0]! - 300,
+      before[1]! + 300,
+    ]);
+    expect(editor.exec({ type: 'undo' }).ok).toBe(true);
+    expect(geometryOf(editor).columns.map((column) => column.width)).toEqual(before);
+    expect(editor.exec({ type: 'redo' }).ok).toBe(true);
+    expect(editor.exec({ type: 'redo' }).ok).toBe(true);
+    const reopened = readOoxmlPackage(new Uint8Array(await editor.save()));
+    if (!reopened.ok) throw Error(reopened.reason);
+    const projected = await projectSourcePackage(reopened.package);
+    expect(projected.text.indexOf('Right text')).toBeLessThan(projected.text.indexOf('</column>'));
+  } finally {
+    editor.destroy();
+  }
+});
+
+for (const first of [0, 1] as const)
+  test(`column content movement retains concurrent typing and undo; receiver ${first}`, async () => {
+    const pair = await createTwoEditorFixture({ document: writeOoxmlPackage(await land(TWO)) });
+    try {
+      const [alice, bob] = pair.editors as [DocxEditorInstance, DocxEditorInstance];
+      const geometry = geometryOf(alice);
+      const id = alice
+        .surface!.session.paragraphIds()
+        .find((id) => paragraphTextOf(alice.surface!.session.part(), id) === 'Right text.')!;
+      const originalParent = parentNodeOf(alice.surface!.session.part(), id)!.id;
+      pair.pause();
+      const moved = moveColumnContent(alice, {
+        groupId: geometry.group.id,
+        nodeId: id,
+        destinationColumnId: geometry.columns[0]!.block.id,
+        beforeId: null,
+        expectedRevision: alice.surface!.session.packageRevision(),
+      });
+      if (!moved.success) throw Error(moved.error);
+      expect(
+        bob.surface!.applyAutomationOps(() => [
+          { op: 'insertText', paragraphId: id, offset: 11, text: ' Bob' },
+        ]).committed
+      ).toBe(true);
+      pair.reconnect(first);
+      await pair.settle();
+      for (const editor of pair.editors) {
+        expect(paragraphTextOf(editor.surface!.session.part(), id)).toBe('Right text. Bob');
+        expect(parentNodeOf(editor.surface!.session.part(), id)!.id).not.toBe(originalParent);
+      }
+      bob.surface!.setSelection({
+        anchor: { paragraphId: id, offset: 15 },
+        head: { paragraphId: id, offset: 15 },
+      });
+      await pair.settle();
+      expect(
+        pair.rooms[0]!.session.remoteSelections().find((selection) => selection.actorId === 'bob')!
+          .head.nodeId
+      ).toBe(id);
+      expect(caretAt(alice.surface!.layout(), { paragraphId: id, offset: 15 })).not.toBeNull();
+      expect(alice.exec({ type: 'undo' }).ok).toBe(true);
+      await pair.settle();
+      for (const editor of pair.editors) {
+        expect(paragraphTextOf(editor.surface!.session.part(), id)).toBe('Right text. Bob');
+        expect(parentNodeOf(editor.surface!.session.part(), id)!.id).toBe(originalParent);
+      }
+      expect(alice.exec({ type: 'redo' }).ok).toBe(true);
+      await pair.settle();
+      pair.pause();
+      expect(
+        moveColumnContent(alice, {
+          groupId: geometry.group.id,
+          nodeId: id,
+          destinationColumnId: geometry.columns[1]!.block.id,
+          beforeId: null,
+          expectedRevision: alice.surface!.session.packageRevision(),
+        }).success
+      ).toBe(true);
+      expect(
+        bob.surface!.applyAutomationOps(() => [{ op: 'deleteBlock', blockId: id }]).committed
+      ).toBe(true);
+      pair.reconnect(first);
+      await pair.settle();
+      for (const editor of pair.editors)
+        expect(findNode(editor.surface!.session.part(), id)).toBeNull();
+      const digests = await pair.savedDigests();
+      expect(digests[0]).toEqual(digests[1]);
+    } finally {
+      pair.destroy();
+    }
+  });
+
+for (const first of [0, 1] as const)
+  test(`concurrent column boundaries retain matching native widths and payload fields; receiver ${first}`, async () => {
+    const pair = await createTwoEditorFixture({
+      document: writeOoxmlPackage(
+        await land(
+          group(column('33.33%', 'One'), column('33.33%', 'Two'), column('33.33%', 'Three'))
+        )
+      ),
+    });
+    try {
+      const [alice, bob] = pair.editors as [DocxEditorInstance, DocxEditorInstance];
+      const geometry = geometryOf(alice),
+        before = geometry.columns.map((column) => column.width);
+      const a = planColumnWidths(
+        {
+          pkg: alice.surface!.session.currentPackage(),
+          revision: token(alice),
+          groupId: geometry.group.id,
+        },
+        [before[0]! - 300, before[1]! + 300, before[2]!]
+      );
+      const b = planColumnWidths(
+        {
+          pkg: bob.surface!.session.currentPackage(),
+          revision: token(bob),
+          groupId: geometry.group.id,
+        },
+        [before[0]!, before[1]! - 200, before[2]! + 200]
+      );
+      if (!a.success || !b.success) throw Error('Column width planning failed.');
+      pair.pause();
+      expect(applyDirectPlan(alice, a.plan, context).success).toBe(true);
+      expect(geometryOf(alice).columns[2]!.block.payload.attributes.width).toBe('33.33%');
+      expect(applyDirectPlan(bob, b.plan, context).success).toBe(true);
+      expect(geometryOf(bob).columns[0]!.block.payload.attributes.width).toBe('33.33%');
+      pair.reconnect(first);
+      await pair.settle();
+      for (const editor of pair.editors) {
+        const current = geometryOf(editor),
+          widths = current.columns.map((column) => column.width);
+        expect([
+          ...columnWidthsTwips(
+            current.columns.map((column) => column.block.payload.attributes.width),
+            widths.reduce((sum, width) => sum + width, 0)
+          ),
+        ]).toEqual(widths);
+      }
+      const saved = await pair.savedDigests();
+      expect(saved[0]).toEqual(saved[1]);
+    } finally {
+      pair.destroy();
+    }
+  });
 
 for (const first of [0, 1] as const)
   test(`two sessions converge on column resize and editing beside peer typing; receiver ${first}`, async () => {

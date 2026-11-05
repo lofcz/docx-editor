@@ -399,7 +399,16 @@ The compatibility decision is `sciobot-native-column-geometry`.
 The shared format stays unchanged because existing readers already understand the native table representation.
 The focused check passed 190 tests across nine files, plus private package typecheck, formatting, and repository lint.
 
-**Remaining:** Application width handles, keyboard controls, content movement, column count changes, and installed browser checks remain open.
+`planColumnWidths` updates only changed percentage fields and preserves their scale, including `33.33%` columns.
+Concurrent boundary changes keep native widths and payload fields consistent.
+`moveColumnContent` moves complete native blocks between columns without replacing their identities.
+An empty source column receives an editable paragraph.
+The command refuses stale requests, protected content, and suggestion mode.
+Two real sessions verify peer typing, undo, redo, remote selections, concurrent deletion, and equal saved digests.
+
+The command check passed 51 tests across four files, plus private package typecheck, formatting, and repository lint.
+
+**Remaining:** Application width handles, keyboard controls, movement controls, column count changes, and installed browser checks remain open.
 Existing stacked groups retain their structure until an explicit conversion preserves their identities.
 Tracked operations also need complete application verification before this leaf closes.
 
