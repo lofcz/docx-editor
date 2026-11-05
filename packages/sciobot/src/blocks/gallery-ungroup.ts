@@ -92,6 +92,7 @@ export async function ungroupGallery(
     const imageIds = gallery.images.map(() => crypto.randomUUID());
     const transform = (working: OoxmlPackage) => {
       let next = working;
+      const records: ReturnType<typeof createInlineImagePayload>[] = [];
       const used = new Set(usedParaIds(session.part().root));
       for (const [index, image] of gallery.images.entries()) {
         const part = next.parts.get(gallery.partName)!;
@@ -176,9 +177,7 @@ export async function ungroupGallery(
           widthPoints,
           heightPoints,
         });
-        const saved = withPayloadRecord(next, payload, alt || 'Image');
-        if (!saved.ok) throw Error(saved.reason);
-        next = saved.pkg;
+        records.push(payload);
       }
       const removed = applyTreeOp(next.parts.get(gallery.partName)!, remove);
       if (!removed.ok) throw Error(`The gallery removal failed: ${removed.reason}.`);
@@ -189,6 +188,11 @@ export async function ungroupGallery(
           store.part.partName,
           activeMdxRegistry().storage.nodePrefix + id
         );
+      for (const payload of records) {
+        const saved = withPayloadRecord(next, payload, String(payload.attributes.alt || 'Image'));
+        if (!saved.ok) throw Error(saved.reason);
+        next = saved.pkg;
+      }
       if (readPayloadStore(next).status !== 'ready')
         throw Error('The native image metadata is invalid.');
       return next;

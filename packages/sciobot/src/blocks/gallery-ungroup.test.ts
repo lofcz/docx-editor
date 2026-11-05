@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { unzipSync, zipSync, strFromU8, strToU8 } from 'fflate';
 import { createDocxEditor } from '@docx-editor.dev/core/editor';
 import {
   semanticDigest,
@@ -27,6 +28,49 @@ const media = (pkg: OoxmlPackage) =>
   [...pkg.partBytes].filter(([name]) => /(^|\/)media\//.test(name));
 const nativeImages = (pkg: OoxmlPackage) =>
   [...buildBlockIndex(pkg).byId.values()].filter((block) => block.payload.type === 'inline_image');
+
+test('ungroup after appending retains every image beside a preceding paragraph', async () => {
+  const files = unzipSync(galleryDocument());
+  files['word/document.xml'] = strToU8(
+    strFromU8(files['word/document.xml']!).replace(
+      '<w:body>',
+      '<w:body><w:p><w:r><w:t>Before</w:t></w:r></w:p>'
+    )
+  );
+  const pair = await createTwoEditorFixture({
+    document: zipSync(files),
+    editor: { imageDecodePort: decodePort },
+  });
+  try {
+    const alice = pair.editors[0]!;
+    expect(
+      updateGallery(alice, {
+        blockId: 'gallery',
+        change: {
+          type: 'append',
+          images: [
+            {
+              id: 'appended',
+              attributes: { url: 'https://assets.example.test/added.png', width: 1, height: 1 },
+            },
+          ],
+        },
+      }).success
+    ).toBe(true);
+    await pair.settle();
+    expect((await ungroupGallery(alice, { blockId: 'gallery', decodePort, resolve })).success).toBe(
+      true
+    );
+    await pair.settle();
+    for (const editor of pair.editors) {
+      const pkg = editor.surface!.session.currentPackage();
+      expect(buildBlockIndex(pkg).diagnostics).toEqual([]);
+      expect(nativeImages(pkg)).toHaveLength(4);
+    }
+  } finally {
+    pair.destroy();
+  }
+});
 
 test('ungroup embeds distinct native images in one transaction and preserves history and DOCX', async () => {
   const editor = createDocxEditor({
