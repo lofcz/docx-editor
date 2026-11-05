@@ -1,0 +1,10 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Changing code language replaced every native source paragraph.",
+  "after": "Language changes keep source paragraphs and their shared history unchanged.",
+  "reason": "The existing payload field representation stays unchanged. Language-only writes omit unrelated source replacements.",
+  "tests": ["packages/sciobot/src/blocks/update-atomic.test.ts"],
+  "changeset": "code-language-text-ownership",
+  "migration": null
+}

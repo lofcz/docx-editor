@@ -173,6 +173,17 @@ export function updateAtomicBlock(
   let committed = false;
 
   const replace = (working: OoxmlPackage): OoxmlPackage => {
+    // Language and opaque metadata do not own code text or paragraph identities.
+    // Keeping the source untouched also keeps a concurrent source edit out of this undo unit.
+    if (
+      payload.type === 'code_block' &&
+      payload.attributes.value === block.payload.attributes.value
+    ) {
+      const stored = withPayloadRecord(working, payload, label);
+      if (!stored.ok) throw new Error(`Block payload storage refused: ${stored.reason}`);
+      committed = true;
+      return stored.pkg;
+    }
     let next = working;
     if (fallback?.code && !inline) {
       const styled = withInlineCodeStyle(next);

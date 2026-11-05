@@ -35,6 +35,68 @@ const texts = (editor: DocxEditorInstance) =>
     .surface!.session.paragraphIds()
     .map((id) => paragraphTextOf(editor.surface!.session.part(), id));
 
+for (const clientIds of [
+  [41, 73],
+  [73, 41],
+] as const)
+  test(`code language keeps source identities and independent peer history (${clientIds.join('/')})`, async () => {
+    const pair = await createTwoEditorFixture({ document: await codeDocument(), clientIds });
+    try {
+      const [alice, bob] = pair.editors as [DocxEditorInstance, DocxEditorInstance];
+      const sourceIds = alice.surface!.session.paragraphIds().slice(0, 2);
+      pair.pause();
+      expect(
+        updateAtomicBlock(alice, {
+          blockId: 'code-1',
+          attributes: { language: 'typescript', value: ORIGINAL },
+        }).success
+      ).toBe(true);
+      expect(alice.surface!.session.paragraphIds().slice(0, 2)).toEqual(sourceIds);
+      expect(
+        updateAtomicBlock(bob, {
+          blockId: 'code-1',
+          attributes: { language: 'python', value: CHANGED },
+        }).success
+      ).toBe(true);
+      pair.reconnect();
+      await pair.settle();
+      for (const editor of pair.editors) {
+        expect(code(editor.surface!.session.currentPackage())).toEqual({
+          language: 'typescript',
+          value: CHANGED,
+        });
+        expect(texts(editor)).toEqual([...CHANGED.split('\n'), 'Seed text']);
+      }
+      expect(alice.exec({ type: 'undo' }).ok).toBe(true);
+      await pair.settle();
+      for (const editor of pair.editors) {
+        expect(code(editor.surface!.session.currentPackage())).toEqual({
+          language: 'python',
+          value: CHANGED,
+        });
+        expect(texts(editor)).toEqual([...CHANGED.split('\n'), 'Seed text']);
+      }
+      expect(bob.exec({ type: 'undo' }).ok).toBe(true);
+      await pair.settle();
+      for (const editor of pair.editors)
+        expect(texts(editor)).toEqual([...ORIGINAL.split('\n'), 'Seed text']);
+      expect(alice.exec({ type: 'redo' }).ok).toBe(true);
+      expect(bob.exec({ type: 'redo' }).ok).toBe(true);
+      await pair.settle();
+      for (const editor of pair.editors) {
+        expect(code(editor.surface!.session.currentPackage())).toEqual({
+          language: 'typescript',
+          value: CHANGED,
+        });
+        expect(texts(editor)).toEqual([...CHANGED.split('\n'), 'Seed text']);
+      }
+      const saved = await pair.savedDigests();
+      expect(saved[0]).toEqual(saved[1]);
+    } finally {
+      pair.destroy();
+    }
+  });
+
 test('an atomic code block update keeps its ID, exact whitespace, Word lines, and history', async () => {
   const container = document.createElement('div');
   document.body.append(container);
