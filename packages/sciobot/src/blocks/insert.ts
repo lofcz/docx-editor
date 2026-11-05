@@ -1,6 +1,8 @@
 import { activeStorage } from '../registry/active';
 import type { DocxEditorInstance } from '@docx-editor.dev/core/editor';
+import type { SemanticSelection } from '@docx-editor.dev/core/layout';
 import {
+  applyTreeOp,
   bodyStoryRoot,
   contentControlPropertiesOf,
   createNodeIdAllocator,
@@ -8,6 +10,7 @@ import {
   escapeXml,
   findNode,
   insertChildren,
+  parentNodeOf,
   readOoxmlPart,
   usedParaIds,
   w14RootPrefix,
@@ -17,6 +20,7 @@ import {
   type OoxmlNode,
   type OoxmlPackage,
   type OoxmlPart,
+  type TreeDocOp,
 } from '@docx-editor.dev/core/store';
 import type { NativeEditFailure } from '../contracts/document';
 import { blockTag, readPayloadStore, withPayloadRecord } from './payload-opc-codec';
@@ -149,6 +153,29 @@ export function insertBlock(
   editor: DocxEditorInstance,
   insertion: BlockInsertion
 ): BlockInsertResult {
+  return commitBlockInsertion(editor, insertion);
+}
+
+/** Insert an atomic block at a captured text range, preserving both unselected paragraph sides. */
+export function insertBlockAtSelection(
+  editor: DocxEditorInstance,
+  insertion: Omit<BlockInsertion, 'parentControlId' | 'beforeId'> & {
+    readonly selection: SemanticSelection;
+    readonly expectedRevision: number;
+  }
+): BlockInsertResult {
+  return commitBlockInsertion(
+    editor,
+    { ...insertion, parentControlId: null, beforeId: null },
+    insertion.selection
+  );
+}
+
+function commitBlockInsertion(
+  editor: DocxEditorInstance,
+  insertion: BlockInsertion,
+  replacement?: SemanticSelection
+): BlockInsertResult {
   const surface = editor.surface;
   if (!surface) return failure('document-not-ready', 'The document is not attached.');
   surface.flushPendingInput();
@@ -177,7 +204,50 @@ export function insertBlock(
     return failure('invalid-input', 'The block ID is invalid.');
   }
   const pkg = surface.session.currentPackage();
-  const part = surface.session.part();
+  const source = surface.session.part();
+  let part = source;
+  const ops: TreeDocOp[] = [];
+  let landing: string | undefined;
+  if (replacement) {
+    if (surface.editingMode() !== 'edit' || editor.getTableCellSelection())
+      return failure(
+        'unsupported-operation',
+        'Block insertion requires an editable text selection.'
+      );
+    const plan = surface.planRangeDeletion(replacement);
+    const expanded =
+      replacement.anchor.paragraphId !== replacement.head.paragraphId ||
+      replacement.anchor.offset !== replacement.head.offset;
+    if (expanded && !plan.ops.length)
+      return failure('unsupported-operation', 'This text selection cannot be replaced.');
+    ops.push(...plan.ops, {
+      op: 'splitParagraph',
+      paragraphId: plan.replaceAt.paragraphId,
+      offset: plan.replaceAt.offset,
+    });
+    landing = plan.replaceAt.paragraphId;
+    for (const op of ops) {
+      const applied = applyTreeOp(part, op);
+      if (!applied.ok)
+        return failure('unsupported-operation', `Block insertion refused: ${applied.reason}.`);
+      part = applied.part;
+    }
+  }
+  const placement = (
+    live: OoxmlPart
+  ): { parentControlId: string | null; beforeId: string | null } => {
+    if (!landing) return insertion;
+    const parent = parentNodeOf(live, landing);
+    const at = parent?.children.findIndex((child) => child.id === landing) ?? -1;
+    const tail = parent?.children[at + 1];
+    if (!parent || at < 0 || tail?.kind !== 'paragraph')
+      throw Error('The insertion paragraph is missing.');
+    if (parent.kind === 'body') return { parentControlId: null, beforeId: tail.id };
+    const owner = parent.kind === 'contentControlContent' && parentNodeOf(live, parent.id);
+    if (owner && owner.kind === 'contentControl')
+      return { parentControlId: owner.id, beforeId: tail.id };
+    throw Error('This container does not support atomic block insertion.');
+  };
   const store = readPayloadStore(pkg);
   if (store.status === 'invalid') return failure('invalid-document', store.reason);
   if (
@@ -185,11 +255,17 @@ export function insertBlock(
     findControl(part.root, tag) !== null
   )
     return failure('invalid-input', 'A block with this ID already exists.');
-  const container = containerOf(part, insertion.parentControlId);
+  let destination: ReturnType<typeof placement>;
+  try {
+    destination = placement(part);
+  } catch (error) {
+    return failure('unsupported-operation', String(error));
+  }
+  const container = containerOf(part, destination.parentControlId);
   if (typeof container === 'string') return failure('invalid-input', container);
   if (
-    insertion.beforeId !== null &&
-    !container.children.some((child) => child.id === insertion.beforeId)
+    destination.beforeId !== null &&
+    !container.children.some((child) => child.id === destination.beforeId)
   )
     return failure('invalid-input', 'The insertion anchor is not a child of the parent block.');
 
@@ -226,17 +302,18 @@ export function insertBlock(
     }
     const live = working.parts.get(part.name);
     if (!live) throw new Error('The document part disappeared during the insertion.');
-    const target = containerOf(live, insertion.parentControlId);
+    const point = placement(live);
+    const target = containerOf(live, point.parentControlId);
     if (typeof target === 'string') throw new Error(target);
     const terminal = target.children.findIndex(
       (child) => child.kind !== 'textValue' && child.localName === 'sectPr'
     );
     const at =
-      insertion.beforeId === null
+      point.beforeId === null
         ? terminal < 0
           ? target.children.length
           : terminal
-        : target.children.findIndex((child) => child.id === insertion.beforeId);
+        : target.children.findIndex((child) => child.id === point.beforeId);
     if (at < 0) throw new Error('The insertion anchor disappeared during the insertion.');
     const node = withFreshIds(template, createNodeIdAllocator(live, 'new'), {
       prefix: w14RootPrefix(live.root),
@@ -262,9 +339,16 @@ export function insertBlock(
 
   try {
     // Validate the complete candidate before the live transaction.
-    place(pkg);
+    place(replacement ? withPart(pkg, part) : pkg);
     placedOnce = false;
-    const result = surface.applyAutomationOps(() => [], { kind: 'body' }, [place], false, true);
+    const result = surface.applyAutomationOps(
+      () => ops,
+      { kind: 'body' },
+      [place],
+      false,
+      true,
+      replacement ? 'after' : 'before'
+    );
     if (result.rejected || !result.committed || !placedOnce)
       return failure(
         'apply-failed',
@@ -278,7 +362,15 @@ export function insertBlock(
   }
   // Collaboration can rename the new nodes during the commit, so read them back by tag.
   const live = findControl(surface.session.part().root, tag);
-  const caret = live && editableParagraphs(live)[0];
+  const liveParent = live && parentNodeOf(surface.session.part(), live.id);
+  const tail =
+    liveParent &&
+    liveParent.children[liveParent.children.findIndex((child) => child.id === live!.id) + 1];
+  const caret = replacement
+    ? tail?.kind === 'paragraph'
+      ? tail.id
+      : null
+    : live && editableParagraphs(live)[0];
   if (!live || !caret) return failure('apply-failed', 'The inserted block cannot be found.');
   const controlId = live.id;
   const position = { paragraphId: caret, offset: 0 };

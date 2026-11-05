@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Manual atomic blocks insert after the selected paragraph and leave selected text intact.",
+  "after": "One native transaction replaces the captured text range, inserts the block, and preserves both paragraph sides.",
+  "reason": "The command composes existing range deletion, paragraph split, block insertion, and payload operations. Shared identities, fields, and ownership rules remain unchanged.",
+  "tests": [
+    "packages/sciobot/src/blocks/insert-selection.test.ts",
+    "packages/sciobot/src/blocks/insert.test.ts"
+  ],
+  "changeset": "atomic-block-selection-insertion",
+  "migration": null
+}
