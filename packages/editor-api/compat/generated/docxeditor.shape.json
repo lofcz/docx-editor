@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "generatedFrom": {
     "package": "docxeditor-declarations (compat/docxeditor/declarations.ts)",
-    "version": "2.33.0"
+    "version": "2.34.0"
   },
   "symbols": {
     "Body": {
@@ -721,6 +721,48 @@
             {
               "params": [],
               "returns": "CommentCollection"
+            }
+          ]
+        },
+        "compare": {
+          "uid": "DocxEditor.Document#compare",
+          "kind": "method",
+          "requirementSet": null,
+          "overloads": [
+            {
+              "params": [
+                {
+                  "name": "filePath",
+                  "type": "string"
+                },
+                {
+                  "name": "documentCompareOptions",
+                  "type": "DocumentCompareOptions",
+                  "optional": true
+                }
+              ],
+              "returns": "void"
+            }
+          ]
+        },
+        "compareFromBase64": {
+          "uid": "DocxEditor.Document#compareFromBase64",
+          "kind": "method",
+          "requirementSet": null,
+          "overloads": [
+            {
+              "params": [
+                {
+                  "name": "base64File",
+                  "type": "string"
+                },
+                {
+                  "name": "documentCompareOptions",
+                  "type": "DocumentCompareOptions",
+                  "optional": true
+                }
+              ],
+              "returns": "void"
             }
           ]
         },

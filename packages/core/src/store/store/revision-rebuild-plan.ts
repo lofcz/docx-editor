@@ -20,6 +20,8 @@ export interface RebuildPlan {
    * class of error as removing a `w:trPr/w:del` and leaving the row.
    */
   readonly mergeForward: ReadonlySet<string>;
+  /** Rejected inserted marks retain the first paragraph identity. */
+  readonly first: ReadonlyMap<string, boolean>;
   /** Accepting: a cell's emptied last paragraph joins the one before (rejecting keeps it). */
   readonly accepting: boolean;
   /** Removed cells, rows, and tables, including containers emptied by this decision. */

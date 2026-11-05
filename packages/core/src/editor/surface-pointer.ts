@@ -28,12 +28,12 @@ import {
 } from '../layout/semantic-hit-test.ts';
 import {
   documentOrder,
-  deletedTextBoundaries,
   paragraphTextFromLayout,
   type SemanticPosition,
   type CaretGeometry,
   type SemanticSelection,
 } from '../layout/semantic-interaction.ts';
+import { controlEdgeSide, wordMotionBoundaries } from '../layout/word-navigation-boundaries.ts';
 import { wordRangeAt } from './surface-selection-ops.ts';
 import { isInHostUi } from './dom-selection.ts';
 import {
@@ -61,6 +61,7 @@ import {
   type HeaderFooterScopeBinding,
 } from './surface-scope.ts';
 import { autoScrollDelta } from './surface-drag-autoscroll.ts';
+import { isApplePlatform } from '@docx-editor.dev/i18n';
 
 /** Active header/footer scope as seen by the pointer layer. */
 export interface ActiveHeaderFooterPointerState {
@@ -409,7 +410,8 @@ export function createPointerController(
   function rangeAt(
     layout: SemanticLayout,
     position: SemanticPosition,
-    granularity: Granularity
+    granularity: Granularity,
+    hitControlId: string | null = null
   ): PositionRange {
     if (granularity === 'character') return { from: position, to: position };
     const id = position.paragraphId;
@@ -417,9 +419,10 @@ export function createPointerController(
       const text = paragraphTextFromLayout(layout, id);
       return { from: { paragraphId: id, offset: 0 }, to: { paragraphId: id, offset: text.length } };
     }
-    // A word stops at a struck half's edge: a replacement paints the old text and the new
-    // with nothing between them, so without this a double-click on either took both.
-    return wordRangeAt(layout, position, deletedTextBoundaries(layout, id));
+    // A word stops at a struck half's edge and at an inline control's edge: a replacement paints
+    // the old text and the new with nothing between them, and a control edge splits a word.
+    const side = controlEdgeSide(layout, position, hitControlId);
+    return wordRangeAt(layout, position, wordMotionBoundaries(layout, id), side);
   }
 
   /** Anchor range plus the range under the pointer, oriented so the head follows the drag. */
@@ -432,8 +435,9 @@ export function createPointerController(
   ): SemanticSelection {
     const placeholder = hit ? placeholderAtHit(layout, hit) : null;
     const headRange = placeholder
-      ? (placeholderSelectionRange(layout, placeholder) ?? rangeAt(layout, head, granularity))
-      : rangeAt(layout, head, granularity);
+      ? (placeholderSelectionRange(layout, placeholder) ??
+        rangeAt(layout, head, granularity, hit?.contentControlId))
+      : rangeAt(layout, head, granularity, hit?.contentControlId);
     const raw = isBefore(layout, headRange.from, anchorRange.from)
       ? { anchor: anchorRange.to, head: headRange.from }
       : { anchor: anchorRange.from, head: headRange.to };
@@ -567,12 +571,76 @@ export function createPointerController(
 
   const GRANULARITIES: readonly Granularity[] = ['character', 'word', 'paragraph'];
 
+  /** Targets whose own selection a right-click must keep: furniture, widgets and pictures. */
+  const SECONDARY_PRESS_KEEPS_SELECTION =
+    '[data-docx-hf], [data-docx-cc-widget], [data-docx-note-ref], [data-drawing-paragraph-id], ' +
+    '.docx-image-selection-overlay, .docx-drawing-textbox, input, textarea, select';
+
+  /** On Apple platforms Control with the primary button opens the context menu, as a right-click. */
+  const isContextClick = (event: PointerEvent): boolean =>
+    event.button === 0 && event.ctrlKey && !event.metaKey && isApplePlatform();
+
+  /**
+   * A secondary press in body text outside the selection moves the caret to the press, so the
+   * context menu acts on the text under the pointer and not on a selection the user cannot
+   * see. A press inside a range keeps that range, so Cut and Copy still act on it. This never
+   * prevents the press, so the context menu still opens.
+   */
+  function placeCaretForSecondaryPress(event: PointerEvent): void {
+    if (event.pointerType === 'touch') return;
+    if (event.button !== 2 && !isContextClick(event)) return;
+    if (host.activeHeaderFooter?.() || host.activeNote?.()) return;
+    const target = event.target as Element | null;
+    if (target?.closest?.(SECONDARY_PRESS_KEEPS_SELECTION)) return;
+    const layout = host.layout();
+    if (!isBodyContentPoint(layout, sheetPoint(event.clientX, event.clientY), host.pageOffsetX)) {
+      return;
+    }
+    const hit = resolveBody(event.clientX, event.clientY);
+    if (!hit) return;
+    if (
+      host.isReadOnlyPosition?.(hit.position) ??
+      host.isReadOnlyParagraph?.(hit.position.paragraphId)
+    ) {
+      return;
+    }
+    const current = host.selection();
+    const reversed = isBefore(layout, current.head, current.anchor);
+    const from = reversed ? current.head : current.anchor;
+    const to = reversed ? current.anchor : current.head;
+    if (!isBefore(layout, hit.position, from) && !isBefore(layout, to, hit.position)) return;
+    host.focus();
+    // A placeholder prompt is selected whole, as a primary press selects it.
+    const placeholder = placeholderAtHit(layout, hit);
+    if (placeholder) {
+      if (host.selectContentControl?.(placeholder.id)) return;
+      const unit = placeholderSelectionRange(layout, placeholder);
+      if (unit) {
+        host.setSelection({ anchor: unit.from, head: unit.to });
+        return;
+      }
+    }
+    host.setSelection({ anchor: hit.position, head: hit.position }, hit.caret);
+  }
+
   const onPointerDown = (event: PointerEvent): void => {
-    // Anything but the primary button keeps its native behaviour: a right-click must reach the
-    // context menu with the existing selection intact, not move the caret out from under it.
-    if (event.button !== 0) return;
-    // Host UI keeps its native press: focus, text selection, and its own controls.
+    // Host UI keeps its native press, selection, and controls.
     if (isInHostUi(event.target as Node | null)) return;
+    // Other non-primary buttons keep their native behaviour. A right-click, or a Control-click
+    // on Apple platforms, places the caret only when it lands outside the selection; see
+    // `placeCaretForSecondaryPress`. A Control-click is a primary press to the browser, whose
+    // native mousedown would collapse the selection, so it is prevented as every engine press
+    // is; the context menu still opens.
+    if (isContextClick(event)) {
+      const target = event.target as Element | null;
+      if (!target?.closest?.('input, textarea, select')) event.preventDefault();
+      placeCaretForSecondaryPress(event);
+      return;
+    }
+    if (event.button !== 0) {
+      placeCaretForSecondaryPress(event);
+      return;
+    }
     // Content-control widgets: prevent mousedown so chrome does not steal the caret, then
     // dispatch the engine-level interaction (checkbox toggle, dropdown menu, date picker).
     // (Furniture clicks continue below into the scoped header/footer / note enter paths.)
@@ -899,7 +967,7 @@ export function createPointerController(
       const anchorRange =
         (atomicInlineControls && granularity === 'word'
           ? atomicRangeAt(layout, hit.position)
-          : null) ?? rangeAt(layout, hit.position, granularity);
+          : null) ?? rangeAt(layout, hit.position, granularity, hit.contentControlId);
       gesture = {
         pointerId: event.pointerId,
         granularity,

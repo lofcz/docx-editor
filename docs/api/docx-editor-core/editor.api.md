@@ -590,6 +590,15 @@ export const CHROME_GROUPS: readonly [{
             readonly kind: 'command';
         };
     }, {
+        readonly defaultToolbar: false;
+        readonly id: 'compareDocuments';
+        readonly labelKey: 'review.compareDocuments';
+        readonly paths: readonly string[];
+        readonly shape: 'icon';
+        readonly state: {
+            readonly kind: 'command';
+        };
+    }, {
         readonly id: 'comments';
         readonly labelKey: 'formattingBar.commentsAndChanges';
         readonly paths: readonly string[];
@@ -933,6 +942,12 @@ export const CHROME_GROUPS: readonly [{
 export const CHROME_MENUS: readonly ChromeMenu[];
 
 // @public
+export const CHROME_PRINT_DISPLAY_MODES: readonly {
+    readonly labelKey: 'review.simpleMarkup' | 'review.allMarkup' | 'review.noMarkup' | 'review.original';
+    readonly mode: ReviewDisplayMode;
+}[];
+
+// @public
 export const CHROME_UNAVAILABLE_KEY = "formattingBar.unavailableInPreview";
 
 // @public
@@ -1036,6 +1051,7 @@ export interface ChromeExportResult {
 
 // @public
 export interface ChromeExportView {
+    readonly comments?: boolean;
     // (undocumented)
     readonly displayMode: ReviewDisplayMode;
     readonly revisionAuthorSlots?: Readonly<Record<string, number>>;
@@ -1126,10 +1142,16 @@ export interface ChromePrintOptions {
 }
 
 // @public
+export interface ChromePrintSettings {
+    readonly comments?: boolean;
+    readonly displayMode?: ReviewDisplayMode;
+}
+
+// @public
 export function chromeProbeForSlot(slotId: ChromeSlotId): EditorCommand | null;
 
 // @public
-export type ChromeSlotId = 'history.undo' | 'history.redo' | 'zoom.level' | 'styles.style' | 'font.family' | 'font.size' | 'text.bold' | 'text.italic' | 'text.underline' | 'text.strike' | 'text.color' | 'text.highlight' | 'text.link' | 'script.super' | 'script.sub' | 'alignment.left' | 'alignment.center' | 'alignment.right' | 'alignment.justify' | 'direction.ltr' | 'direction.rtl' | 'list.bullet' | 'list.numbered' | 'list.outdent' | 'list.indent' | 'list.lineSpacing' | 'format.painter' | 'format.clear' | 'review.revisionMarkup' | 'review.comments' | 'review.addComment' | 'review.paragraphMarks' | 'review.bookmarks' | 'review.protectDocument' | 'review.simpleMarkup' | 'review.allMarkup' | 'review.noMarkup' | 'review.original' | 'review.previousChange' | 'review.nextChange' | 'review.acceptAllChanges' | 'review.rejectAllChanges' | 'review.authors' | 'review.editingMode' | 'contentControl.showAll' | 'contentControl.formFill' | 'contentControl.inspector' | 'contentControl.remove' | 'image.insert' | 'image.properties' | 'image.wrap' | 'image.altText' | 'table.insert' | 'table.borderTarget' | 'table.borderColor' | 'table.borderStyle' | 'table.borderWidth' | 'table.cellFill' | 'table.mergeCells' | 'table.splitCell' | 'file.open' | 'file.save' | 'file.exportMarkdown' | 'file.exportPdf' | 'file.print' | 'paragraph.dialog' | 'file.pageSetup' | 'insert.textBox' | 'insert.footnote' | 'insert.endnote' | 'insert.pageNumber' | 'insert.totalPages' | 'insert.sectionPages' | 'insert.pageXofY' | 'insert.pageBreak' | 'insert.sectionBreakNextPage' | 'insert.sectionBreakContinuous' | 'insert.toc' | 'insert.bookmark' | 'insert.goToBookmark' | 'insert.watermark';
+export type ChromeSlotId = 'history.undo' | 'history.redo' | 'zoom.level' | 'styles.style' | 'font.family' | 'font.size' | 'text.bold' | 'text.italic' | 'text.underline' | 'text.strike' | 'text.color' | 'text.highlight' | 'text.link' | 'script.super' | 'script.sub' | 'alignment.left' | 'alignment.center' | 'alignment.right' | 'alignment.justify' | 'direction.ltr' | 'direction.rtl' | 'list.bullet' | 'list.numbered' | 'list.outdent' | 'list.indent' | 'list.lineSpacing' | 'format.painter' | 'format.clear' | 'review.revisionMarkup' | 'review.comments' | 'review.addComment' | 'review.paragraphMarks' | 'review.bookmarks' | 'review.protectDocument' | 'review.compareDocuments' | 'review.simpleMarkup' | 'review.allMarkup' | 'review.noMarkup' | 'review.original' | 'review.previousChange' | 'review.nextChange' | 'review.acceptAllChanges' | 'review.rejectAllChanges' | 'review.authors' | 'review.editingMode' | 'contentControl.showAll' | 'contentControl.formFill' | 'contentControl.inspector' | 'contentControl.remove' | 'image.insert' | 'image.properties' | 'image.wrap' | 'image.altText' | 'table.insert' | 'table.borderTarget' | 'table.borderColor' | 'table.borderStyle' | 'table.borderWidth' | 'table.cellFill' | 'table.mergeCells' | 'table.splitCell' | 'file.open' | 'file.save' | 'file.exportMarkdown' | 'file.exportPdf' | 'file.print' | 'paragraph.dialog' | 'file.pageSetup' | 'insert.textBox' | 'insert.footnote' | 'insert.endnote' | 'insert.pageNumber' | 'insert.totalPages' | 'insert.sectionPages' | 'insert.pageXofY' | 'insert.pageBreak' | 'insert.sectionBreakNextPage' | 'insert.sectionBreakContinuous' | 'insert.toc' | 'insert.bookmark' | 'insert.goToBookmark' | 'insert.watermark';
 
 // @public
 export function chromeSlotId(group: {
@@ -1191,6 +1213,192 @@ export interface CommentDraftChromeHandlers {
 
 // @public
 export type CommentMarkerStyle = 'initials' | 'icon';
+
+// @public
+export const COMPARE_DOCUMENTS_ACCEPT = ".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
+// @public
+export const COMPARE_DOCUMENTS_PHASE_ATTRIBUTE = "data-docx-compare-phase";
+
+// @public
+export type CompareDocumentsBackgroundEngine = (original: Uint8Array, revised: Uint8Array, options: CompareDocumentsEngineOptions, control: {
+    readonly onProgress: (progress: CompareDocumentsProgress) => void;
+    readonly signal: AbortSignal;
+}) => Promise<CompareDocumentsBackgroundResult>;
+
+// @public
+export type CompareDocumentsBackgroundResult = {
+    readonly bytes: Uint8Array | null;
+    readonly changed: boolean;
+    readonly ok: true;
+    readonly revisionCount: number;
+} | {
+    readonly code: CompareDocumentsEngineErrorCode;
+    readonly message: string;
+    readonly ok: false;
+    readonly reason?: CompareDocumentsRefusalReason;
+};
+
+// @public
+export interface CompareDocumentsChromeHandlers {
+    // (undocumented)
+    readonly onRequest?: (session: CompareDocumentsDialogSession) => void;
+}
+
+// @public
+export interface CompareDocumentsDialog {
+    // (undocumented)
+    destroy(): void;
+    // (undocumented)
+    open(): void;
+}
+
+// @public
+export interface CompareDocumentsDialogHost extends CompareDocumentsDialogSession {
+    // (undocumented)
+    readonly container: HTMLElement;
+    // (undocumented)
+    readonly translate?: (key: string) => string | undefined;
+}
+
+// @public
+export interface CompareDocumentsDialogSession {
+    apply(request: CompareDocumentsRequest, options?: {
+        readonly onProgress?: (progress: CompareDocumentsProgress) => void;
+    }): Promise<CompareDocumentsOutcome>;
+    canApply(): boolean;
+    cancel(): void;
+    readonly cancelable: boolean;
+    readonly defaultAuthor: string;
+    readonly originalHasTrackedChanges: boolean;
+    readonly signal: AbortSignal;
+}
+
+// @public
+export type CompareDocumentsEngine = (original: OoxmlPackage, revised: Uint8Array, options: CompareDocumentsEngineOptions) => CompareDocumentsEngineResult;
+
+// @public
+export type CompareDocumentsEngineErrorCode =
+/**
+* An option has a value of the wrong type, such as a `detectFormatChanges` that is not a
+* boolean, or the revised document is not a `Uint8Array`.
+*/
+'invalidOptions'
+/** The original document is not a readable DOCX package. */
+| 'invalidOriginal'
+/** The revised document is not a readable DOCX package. */
+| 'invalidRevised'
+/** The documents exceed the compare's size limits. */
+| 'tooLarge'
+/**
+* The original document enforces protection that the compare would break: read-only,
+* comments, forms, or tracked-changes protection. A compare also writes differences that
+* have no tracked form, such as style definitions and content control properties, so
+* tracked-changes protection refuses too.
+*/
+| 'protected'
+/** The differences include content that no tracked change can record. */
+| 'unsupportedContent';
+
+// @public
+export interface CompareDocumentsEngineOptions {
+    readonly authorName?: string;
+    readonly detectFormatChanges?: boolean;
+    readonly removeDateAndTime?: boolean;
+}
+
+// @public
+export type CompareDocumentsEngineResult = {
+    readonly changed: boolean;
+    readonly ok: true;
+    readonly package: OoxmlPackage;
+    readonly revisionCount: number;
+} | {
+    readonly code: CompareDocumentsEngineErrorCode;
+    readonly message: string;
+    readonly ok: false;
+    readonly reason?: CompareDocumentsRefusalReason;
+};
+
+// @public
+export type CompareDocumentsErrorCode = CompareDocumentsEngineErrorCode
+/** Editor only: no review module, no open document, or no mount. */
+| 'unavailable'
+/** Editor only: a collaboration session is attached. */
+| 'collaboration'
+/** Editor only: the document is open for viewing only. */
+| 'viewing'
+/** Editor only: the dialog closed, or the compare was canceled, before it finished. */
+| 'closed'
+/** Editor only: the revised file is a `Uint8Array` with no bytes. */
+| 'empty'
+/**
+* Editor only: another compare of the same dialog runs, or a preview or an external document
+* refresh blocks writes to the document. Try again when it ends.
+*/
+| 'busy'
+/**
+* Editor only: the open document changed while a background compare ran, so its result
+* no longer applies. The editor never retries by itself.
+*/
+| 'documentChanged'
+/** Editor only: any other failure. */
+| 'failed';
+
+// @public
+export function compareDocumentsErrorKey(refusal: {
+    readonly code: CompareDocumentsErrorCode;
+    readonly reason?: CompareDocumentsRefusalReason;
+}): `compareDocuments.errors.${CompareDocumentsErrorCode}` | `compareDocuments.reasons.${CompareDocumentsRefusalReason}`;
+
+// @public
+export type CompareDocumentsOutcome = {
+    readonly changed: boolean;
+    readonly ok: true;
+    readonly revisionCount: number;
+} | {
+    readonly code: CompareDocumentsErrorCode;
+    readonly message: string;
+    readonly ok: false;
+    readonly reason?: CompareDocumentsRefusalReason;
+};
+
+// @public
+export type CompareDocumentsPhase = 'reading' | 'comparing' | 'checking' | 'applying';
+
+// @public
+export interface CompareDocumentsProgress {
+    readonly fraction: number;
+    readonly phase: CompareDocumentsPhase;
+}
+
+// @public
+export type CompareDocumentsRefusalReason =
+/** The documents differ inside a content control that is locked or bound to data. */
+'lockedContent'
+/** A document holds tracked changes that cannot be accepted, so its final state is unknown. */
+| 'unresolvedRevisions'
+/** The documents differ in content with no tracked-change form, such as an embedded file. */
+| 'untrackedContent'
+/** The revised document adds section or table settings that a reject cannot restore. */
+| 'unrecordedSettings'
+/** A header or footer of an earlier section cannot be paired with one of the original. */
+| 'headerFooter'
+/** The result needs a part type that the original document does not declare. */
+| 'packageStructure'
+/**
+* The result fails the check: accepting all changes does not give the revised text, rejecting
+* them does not give the original text, or a tracked change cannot be accepted or rejected.
+*/
+| 'unverified';
+
+// @public
+export interface CompareDocumentsRequest {
+    readonly authorName?: string;
+    readonly detectFormatChanges?: boolean;
+    readonly removeDateAndTime?: boolean;
+    readonly revised: Uint8Array;
+}
 
 // @public
 export function composeFontConfiguration(base: FontConfigurationBase, ...fragments: readonly FontConfigurationFragment[]): FontConfiguration;
@@ -1529,6 +1737,7 @@ export interface DocxEditorInstance extends Editor {
     setBookmarkChrome(handlers: BookmarkChromeHandlers): Unsubscribe;
     setBookmarkMarks(options: BookmarkMarkOptions): Unsubscribe;
     setCommentDraftChrome(handlers: CommentDraftChromeHandlers): Unsubscribe;
+    setCompareDocumentsChrome(handlers: CompareDocumentsChromeHandlers | null, options?: PopupChromeRegistrationOptions): Unsubscribe;
     setContentControlWidgetChrome(handlers: ContentControlWidgetChromeHandlers, options?: PopupChromeRegistrationOptions): Unsubscribe;
     setEquationChrome(handlers: EquationChromeHandlers): Unsubscribe;
     setFonts(fonts: DocxEditorConfig['fonts']): Promise<void>;
@@ -1771,6 +1980,9 @@ export function firstDayOfWeek(locale?: string): number;
 
 // @public
 export const FIT_WIDTH_ZOOM_MODE: ZoomMode;
+
+// @public
+export function focusCompareDocumentsControl(dialog: HTMLElement | null | undefined, moment: 'busy' | 'refused' | 'unchanged'): void;
 
 // @public
 export const FONT_RESOLVER_BRAND: unique symbol;
@@ -2110,6 +2322,10 @@ export interface HyperlinkOps {
     linksInCaretParagraph(): SurfaceHyperlink[];
     removeHyperlink(linkId?: string): boolean;
     selectionIsPendingDeletion(): boolean;
+    wordAtCaret(): {
+        readonly from: SemanticPosition;
+        readonly to: SemanticPosition;
+    } | null;
 }
 
 // @public
@@ -2249,6 +2465,9 @@ export type ImageWrapTarget = 'inline' | 'square' | 'squareLeft' | 'squareRight'
 
 // @public (undocumented)
 export const inchesToTwips: (inches: number) => number;
+
+// @public
+export function initialChromePrintSettings(snapshot: Pick<EditorSnapshot, 'reviewDisplayMode'> | null | undefined): ResolvedChromePrintSettings;
 
 // @public
 export function initialSplitCellCounts(limits: SplitCellLimits | null, can: (command: Extract<EditorCommand, {
@@ -2540,7 +2759,7 @@ export function overlayHostOrigin(surfaceElement: HTMLElement | null): {
 };
 
 // @public
-export interface PaginatedSurface extends SurfaceBlockReservations {
+export interface PaginatedSurface extends SurfaceBlockReservations, SurfaceIndentAndListOps {
     activatedReviewKey(): string | null;
     activateReview(key: string, selection?: SemanticSelection, options?: {
         readonly allowExcluded?: boolean;
@@ -2579,7 +2798,6 @@ export interface PaginatedSurface extends SurfaceBlockReservations {
     author(): string | undefined;
     readonly bookmarkEditing: SurfaceBookmarks;
     bookmarks(): BookmarkIndex;
-    canAdjustIndent(direction: 'increase' | 'decrease'): boolean;
     canEditTextFormField(): boolean;
     canInsertTable(rows: number, cols: number): boolean;
     canInsertToc(): boolean;
@@ -2635,7 +2853,6 @@ export interface PaginatedSurface extends SurfaceBlockReservations {
     // (undocumented)
     readonly equations: EquationOps;
     exitHeaderFooter(): void;
-    exitListOnEmptyItem(): boolean;
     // (undocumented)
     exitNote(): void;
     flushPendingInput(): void;
@@ -2660,7 +2877,6 @@ export interface PaginatedSurface extends SurfaceBlockReservations {
     readonly hyperlinks: HyperlinkOps;
     // (undocumented)
     imageDecodePort(): ImageDecodePort;
-    indentWithTab(direction: 'increase' | 'decrease'): boolean;
     // (undocumented)
     insertImage(input: SurfaceInsertImageInput): Promise<ImageIntentResult>;
     insertLineBreak(): void;
@@ -2673,8 +2889,6 @@ export interface PaginatedSurface extends SurfaceBlockReservations {
     insertTable(rows: number, cols: number): boolean;
     insertToc(): boolean;
     isInsideToc(paragraphId: string): boolean;
-    isListActive(kind: 'bullet' | 'ordered'): boolean;
-    isListParagraph(): boolean;
     // (undocumented)
     layout(): SemanticLayout;
     layoutSession(): {
@@ -2711,7 +2925,8 @@ export interface PaginatedSurface extends SurfaceBlockReservations {
     refreshToc(tocId?: string, mode?: 'entire' | 'pageNumbers'): boolean;
     releaseSelection(pin: SelectionPin): void;
     remotePresenceColor(name: string): string | undefined;
-    removeListNumber(paragraphId: string): boolean;
+    removeToc(tocId?: string): boolean;
+    removeTocRefusal(tocId?: string): TocRemovalRefusal | null;
     repaintHighlights(): void;
     // (undocumented)
     replaceImage(drawingNodeId: string, bytes: Uint8Array, mime: SupportedImageMime, options: {
@@ -2752,11 +2967,6 @@ export interface PaginatedSurface extends SurfaceBlockReservations {
     // (undocumented)
     setEditingMode(mode: SurfaceEditingMode): void;
     setHighlightPainter(painter: SurfaceOverlayPainter | null): void;
-    setIndent(update: {
-        readonly firstLine?: number | null;
-        readonly left?: number | null;
-        readonly right?: number | null;
-    }): boolean;
     setLocale(locale: string | undefined): void;
     // (undocumented)
     setNoteProperties(args: {
@@ -2814,7 +3024,6 @@ export interface PaginatedSurface extends SurfaceBlockReservations {
     // (undocumented)
     storyScope(): StoryScope;
     textMeasurer?(): TextMeasurer;
-    toggleList(kind: 'bullet' | 'ordered'): boolean;
     toggleRunProperty(localName: string, attributes?: Record<string, string>): string | null;
     // (undocumented)
     type(text: string): void;
@@ -3315,6 +3524,9 @@ export function resizePreservesAspect(handle: ImageResizeHandle, aspectLocked: b
 export function resolveColorValueToCss(color: ColorValue | undefined | null, themeColors: readonly DocumentThemeColorEntry[], defaultHex?: string): string;
 
 // @public
+export type ResolvedChromePrintSettings = Required<ChromePrintSettings>;
+
+// @public
 export interface ResolvedReviewPane {
     readonly commentMarkers: CommentMarkerStyle;
     readonly opening: ReviewPaneOpening;
@@ -3420,6 +3632,9 @@ export interface ReviewModelInput {
 // @public
 export interface ReviewModuleContribution {
     readonly collectReviewItems: CollectReviewItems;
+    readonly compareDocuments?: CompareDocumentsEngine;
+    readonly compareDocumentsInBackground?: CompareDocumentsBackgroundEngine;
+    readonly createCompareDocumentsDialog?: (host: CompareDocumentsDialogHost) => CompareDocumentsDialog;
     readonly createRevisionMarkupDialog?: (host: RevisionMarkupDialogHost) => RevisionMarkupDialog;
     readonly displayModes: readonly ReviewDisplayMode[];
     readonly pane?: ReviewPaneOptions;
@@ -3630,10 +3845,10 @@ export interface RulerTick {
 export type RulerUnit = 'inch' | 'cm';
 
 // @public
-export function runChromeExport(editor: Pick<Editor, 'save'> & Partial<Pick<DocxEditorInstance, 'snapshot' | 'getReviewAuthors'>>, format: ChromeExportFormat, handlers?: ChromeExportHandlers): Promise<ChromeExportResult>;
+export function runChromeExport(editor: Pick<Editor, 'save'> & Partial<Pick<DocxEditorInstance, 'snapshot' | 'getReviewAuthors'>>, format: ChromeExportFormat, handlers?: ChromeExportHandlers, settings?: ChromePrintSettings): Promise<ChromeExportResult>;
 
 // @public
-export function runChromePrint(editor: Pick<Editor, 'save'> & Partial<Pick<Editor, 'snapshot'>>, handlers?: ChromeExportHandlers, container?: Document | Element): Promise<ChromePrintJob>;
+export function runChromePrint(editor: Pick<Editor, 'save'> & Partial<Pick<DocxEditorInstance, 'snapshot' | 'getReviewAuthors'>>, handlers?: ChromeExportHandlers, container?: Document | Element, settings?: ChromePrintSettings): Promise<ChromePrintJob>;
 
 // @public
 export function runSave(editor: Editor | null): Promise<ArrayBuffer>;
@@ -3743,7 +3958,11 @@ export interface SectionProperties {
     };
     // (undocumented)
     readonly titlePage: boolean;
+    readonly verticalAlign?: SectionVerticalAlign;
 }
+
+// @public
+export type SectionVerticalAlign = 'center' | 'bottom' | 'both';
 
 // @public
 export function seedFields(format: ParagraphFormatRead): ParagraphDialogFields;
@@ -4029,6 +4248,24 @@ export interface SurfaceHyperlink {
 }
 
 // @public
+export interface SurfaceIndentAndListOps {
+    adjustIndent(direction: 'increase' | 'decrease'): boolean;
+    canAdjustIndent(direction: 'increase' | 'decrease'): boolean;
+    exitListOnEmptyItem(): boolean;
+    indentWithTab(direction: 'increase' | 'decrease'): boolean;
+    isListActive(kind: 'bullet' | 'ordered'): boolean;
+    isListParagraph(): boolean;
+    removeListNumber(paragraphId: string): boolean;
+    removeParagraphIndent(paragraphId: string): boolean;
+    setIndent(update: {
+        readonly firstLine?: number | null;
+        readonly left?: number | null;
+        readonly right?: number | null;
+    }): boolean;
+    toggleList(kind: 'bullet' | 'ordered'): boolean;
+}
+
+// @public
 export type SurfaceInsertImageInput = Omit<InsertImageInput, 'decodePort' | 'actorId'>;
 
 // @public
@@ -4285,6 +4522,14 @@ export interface TextMeasurer {
     textOutline?(text: string, style: ResolvedRunStyle): TextOutline | undefined;
 }
 
+// @public
+export interface TocRemovalRefusal {
+    // (undocumented)
+    readonly code: 'notFound' | 'unsupported';
+    // (undocumented)
+    readonly reason: string;
+}
+
 // @public (undocumented)
 export function toEditorFontError(error: unknown): EditorFontError;
 
@@ -4505,8 +4750,7 @@ export interface TreeDocxSessionView extends HeadlessDocumentView {
     // (undocumented)
     endComposition(): void;
     ensureHyperlinkRelationship(url: string, scope?: StoryScope): string | null;
-    // (undocumented)
-    ensureListDefinition(kind: ListKind): string | null;
+    ensureListDefinition(kind: ListKind, geometry?: ListDefinitionGeometry): string | null;
     ensureNumberingLevel(numId: string, level: number, kind: ListKind): boolean;
     findText(query: string, options?: DocumentSearchOptions_2): DocumentSearchResult;
     findText(queries: readonly string[], options?: DocumentSearchOptions_2): readonly DocumentSearchResult[];
@@ -4535,6 +4779,7 @@ export interface TreeDocxSessionView extends HeadlessDocumentView {
     renderedFontFamilies(): readonly string[];
     rendersText(): boolean;
     replaceImage(scope: StoryScope, drawingNodeId: string, bytes: Uint8Array, mime: SupportedImageMime, decodePort: ImageDecodePort, options: ReplaceImageOptions): Promise<ImageIntentResult>;
+    replacePackage(pkg: OoxmlPackage): PackageReplacementResult;
     replyToComment(parentCommentId: string | null, anchor: {
         end: number;
         endParagraphId?: string;

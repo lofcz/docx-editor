@@ -57,6 +57,8 @@ import { spineChildren } from './materialize-spine.ts';
 import { NodeCache } from './materialize-node-cache.ts';
 import { dedupeIssues, ListingContests } from './materialize-contests.ts';
 import { splitWinnerOrder } from './split-dedup.ts';
+import { splitSiblingOrder } from './split-sibling-order.ts';
+import { splitMarkMoves, splitSiblingChanges } from './split-mark-moves.ts';
 import { AdoptionTracker } from './materialize-adoption.ts';
 import { inlineChildren, reuseEqualNodes } from './paragraph-text-view.ts';
 import { reportOrphans } from './materialize-orphans.ts';
@@ -256,6 +258,8 @@ export class PackageMaterializer {
     }
     for (const id of this.splitProjection.update(this.registry)) rawDirty.add(id);
     for (const parent of this.birthProjection.prepare(rawDirty)) rawDirty.add(parent);
+    // Concurrent split siblings: a new order, and proposals shown on another paragraph mark.
+    splitSiblingChanges(this.registry, rawDirty);
     const dirty = expandAncestors(this.registry, rawDirty);
     // Every ancestor of a changed node has to rebuild. The registry's parent index says
     // where a node lives NOW; a node a peer moved or detached is still shown
@@ -481,7 +485,7 @@ export class PackageMaterializer {
     path.add(logicalId);
     const issuesAtStart = this.issues.length;
     const seenChildren = new Set<LogicalId>();
-    let childIds = [...record.childIds];
+    let childIds = splitMarkMoves(this.registry).shownChildIds(logicalId, record.childIds);
     // A set for membership: a peer can give a merged copy as many children as a record holds.
     const listed = new Set(childIds);
     const addChild = (extra: LogicalId): void => {
@@ -508,6 +512,8 @@ export class PackageMaterializer {
             (id) => this.registry.splitLineageOf(id)
           );
     if (winnerOrder) childIds = winnerOrder.map((index) => childIds[index]!);
+    const siblings = splitSiblingOrder(childIds, this.registry.splitSiblings.ranksOf(logicalId));
+    if (siblings) childIds = siblings.map((index) => childIds[index]!);
     const children: OoxmlNode[] = [];
     // Concurrent peers can each write a child OOXML allows once; show one, in one order.
     const order = partitionWithMerges(record.kind, childIds, (id) =>

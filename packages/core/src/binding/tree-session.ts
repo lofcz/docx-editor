@@ -1,4 +1,5 @@
 import { shareUndoHistoryPosition } from '../store/store/undo-history-position.ts';
+import { replaceWholePackage } from '../store/store/tree-package-replace.ts';
 import { createSessionPackageWriter } from './session-package-writer.ts';
 // Tree-backed editing session (cutover step 2b).
 //
@@ -10,6 +11,7 @@ import { createSessionPackageWriter } from './session-package-writer.ts';
 
 import { projectedText, storyCarriesCommentAnchor } from './story-text-reads.ts';
 import { numberingRootOf, stylesPartOf } from '../store/package/ooxml-indexes.ts';
+import { refreshBoundContent } from '../store/store/bound-content-refresh.ts';
 import { materializeGlossaryPlaceholders } from '../store/store/placeholder-materialize.ts';
 import { paragraphOrderOfPart, type ReviewItem } from '@docx-editor.dev/core/store';
 import { patchDecidedReviewItems as patchDecided } from './review-decision-patch.ts';
@@ -171,7 +173,8 @@ export function openTreeSessionFromPackage(
   // The package's refusal as it is, with the limit it crossed when it names one.
   if (!loaded.ok) return loaded;
 
-  const pkgLoaded: OoxmlPackage = loaded.package;
+  // Bound controls show their store's current value, not the text cached at save.
+  const pkgLoaded: OoxmlPackage = refreshBoundContent(loaded.package);
   const main = pkgLoaded.parts.get(pkgLoaded.mainDocumentPart);
   if (!main)
     return { ok: false, reason: 'no-main-document-tree', detail: pkgLoaded.mainDocumentPart };
@@ -1233,7 +1236,7 @@ export function openTreeSessionFromPackage(
         );
       },
 
-      ensureListDefinition(kind) {
+      ensureListDefinition(kind, geometry) {
         // The numbering part lives on the PACKAGE, not the main-part tree. Definitions are
         // monotonic in-session and persist across lifecycle package undo/redo so story
         // `numId` references cannot go dead. The memoized numbering root is cleared so
@@ -1245,7 +1248,7 @@ export function openTreeSessionFromPackage(
         return runObservedStoreTransaction(
           packageStore,
           () => {
-            const ensured = ensureListDefinition(currentPackage(), kind);
+            const ensured = ensureListDefinition(currentPackage(), kind, geometry);
             if (!ensured) return null;
             packageStore.replacePackageShell(ensured.pkg);
             numberingRootPackage = null;
@@ -1295,13 +1298,9 @@ export function openTreeSessionFromPackage(
         return packageStore.deleteImageTracked(scope, drawingNodeId, revision);
       },
 
-      applyImageProperties(scope, input) {
-        return packageStore.applyImageProperties(scope, input);
-      },
-
-      applyFragmentPaste(scope, input) {
-        return packageStore.applyFragmentPaste(scope, input);
-      },
+      applyImageProperties: (scope, input) => packageStore.applyImageProperties(scope, input),
+      applyFragmentPaste: (scope, input) => packageStore.applyFragmentPaste(scope, input),
+      replacePackage: (pkg) => replaceWholePackage(packageStore, pkg),
     },
   };
   shareUndoHistoryPosition(result.session, packageStore);

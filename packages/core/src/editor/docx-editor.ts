@@ -2,15 +2,16 @@ import { createUnsupportedElementState } from './unsupported-element-state.ts';
 import { createEditorEvents } from './editor-events.ts';
 import { createEditorDiagnostics, reportEditorFontError } from './editor-diagnostics.ts';
 import { surfaceFieldResultsScope } from './field-results-scope.ts';
-import { createRevisionMarkupState } from './revision-markup-state.ts';
+import { createReviewDialogs } from './review-dialogs.ts';
+import { withCompareOutcome } from './compare-documents-state.ts';
 import { queryEditorDocument, watermarkOf } from './docx-editor-query.ts';
-import { previewAllows, refreshWriteBlocked, writeBlockReason } from './refresh-write-guard.ts';
+import { refreshWriteBlocked, writeBlockRefusal } from './refresh-write-guard.ts';
 import type { PaginatedSurfaceRuntimeOptions } from './surface-runtime-options.ts';
 import { endEditorPreview, registerEditorPreviewHost } from './editor-preview.ts';
 import { registerRefreshHost, type RefreshHost } from './document-refresh-host.ts';
 import { reviewChangesLocked } from './command-protection.ts';
 import { createPlacementKeeper, createReviewRanker } from './review-ranking.ts';
-import { resolvedFontMeasurement } from './resolved-font-measurement.ts';
+import { browserFallbackMeasurer, resolvedFontMeasurement } from './resolved-font-measurement.ts';
 import { updateSurfaceMeasurement } from './surface-measurement.ts';
 import { createLiveFontResolution, liveFontFamilies } from './live-font-resolution.ts';
 import { createFontResolutionLifetime } from './font-resolution-lifetime.ts';
@@ -95,7 +96,6 @@ import {
   FontResolutionError,
   HARD_MAX_FONT_BYTES,
   fontRequestKey,
-  resolveDefaultSurfaceMeasurer,
   type TextMeasurer,
 } from '@docx-editor.dev/core/layout';
 import { createAnchorIndex, warmAnchorsWhenIdle } from './docx-editor-anchors.ts';
@@ -149,7 +149,7 @@ import {
 } from './docx-editor-derive.ts';
 import { commentTargetRangeOf } from './docx-editor-comment-resolution.ts';
 import { createReviewWrites } from './docx-editor-review-writes.ts';
-import { registerEditorHistoryGroups } from './editor-history-group-registry.ts';
+import { registerEditorAutomation } from './editor-automation-registry.ts';
 import {
   canContentControlCommand,
   runContentControlCommand,
@@ -205,6 +205,7 @@ import {
   createLocalFontProbe,
   detectFontSubstitutions,
 } from './font-availability.ts';
+import { renderedAndUnmappedSymbolFaces } from './unmapped-symbol-faces.ts';
 import { tryCreateBrowserCanvasContext } from './browser-canvas-context.ts';
 import {
   fontFaceEnvironmentOf,
@@ -219,6 +220,7 @@ import {
   type RemoteCaretLabelHost,
 } from './paginated-surface.ts';
 import { scrollToDocumentStart } from './surface-pages.ts';
+import { openBodyStoryOf, textboxHostParagraphOf } from './review-story-entry.ts';
 import { createZoomLane, zoomFacadeMembers } from './docx-editor-zoom.ts';
 import {
   type CommandRefusal,
@@ -508,7 +510,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
   const deriveFontSubstitutions = (): readonly string[] => {
     if (!surface || fontsResolving || lateFonts.pending()) return EMPTY_FONT_SUBSTITUTIONS;
     return detectFontSubstitutions(
-      surface.session.renderedFontFamilies(),
+      renderedAndUnmappedSymbolFaces(surface.session),
       fontFamilyCovered,
       probeLocalFont,
       documentSubstitutedFamilies
@@ -578,8 +580,10 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
   });
   const suggesting = () => editingMode === 'suggesting';
 
-  const revisionMarkupState = createRevisionMarkupState(config.revisionMarkup, {
+  const reviewDialogs = createReviewDialogs(config.revisionMarkup, {
     container: () => container,
+    surface: () => surface,
+    viewing: () => editingMode === 'viewing' || hostConfig.mode() === 'view',
     destroyed: () => destroyed,
     contribution: () => modules.review,
     translate: () => hostConfig.translate(),
@@ -595,7 +599,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
 
   /** The pages now live in `document`: per-document fonts, the fit observer, and a report. */
   function followHost(document: Document): void {
-    revisionMarkupState.destroyDialog(); // its pickers listen to the window it opened in
+    reviewDialogs.destroyDialogs(); // their pickers listen to the window they opened in
     embeddedFaces?.showIn(document);
     zoomLane.detach();
     zoomLane.attach();
@@ -607,7 +611,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
   let endPreview = (): void => {};
   function teardownSurface(): void {
     endPreview();
-    revisionMarkupState.destroyDialog();
+    reviewDialogs.destroyDialogs();
     unsubscribeSession?.();
     unsubscribeSession = null;
     surface?.destroy();
@@ -679,7 +683,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
         : {}),
       reviewAuthorSlots,
       revisionAuthorVisibility: reviewAuthorVisibility,
-      revisionMarkup: revisionMarkupState.current(),
+      revisionMarkup: reviewDialogs.markup.current(),
       ...preparedOpen.sessionOpenOptions(reviewModelOption(modules, reportDiagnostic), config),
       pairsReplacements: pairedPin.lightsPair,
       ...(shapedMeasurer
@@ -941,9 +945,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
   function fallBackToDefaultFonts(): void {
     forgetFonts();
     if (surface) {
-      const fallback = resolveDefaultSurfaceMeasurer(scaleOf(), {
-        context: container ? tryCreateBrowserCanvasContext(container.ownerDocument) : null,
-      });
+      const fallback = browserFallbackMeasurer(container, scaleOf(), surface.session);
       const producer = `${fallback.producer}+fonts:${++fontMeasurementEpoch}`;
       const defaultFontFamily = configuredDefaultFontFamily(fontConfiguration());
       const measurement = { measurer: fallback.measurer, producer, defaultFontFamily };
@@ -1223,15 +1225,12 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
           shaping.fonts,
           explicit?.substitutions
         );
-        // HarfBuzz can only shape faces whose bytes reached its resource snapshot. A run may
-        // still name a locally installed browser face (Helvetica is the common macOS case):
-        // paint resolves that face through CSS, so falling back to the deterministic monospace
-        // grid here makes caret geometry drift. Use the same browser canvas and alias stack;
-        // headless environments still receive the fixed measurer from this resolver.
-        const fallbackResolution = resolveDefaultSurfaceMeasurer(scaleOf(), {
-          context: container ? tryCreateBrowserCanvasContext(container.ownerDocument) : null,
-          ...(embeddedFaces ? { fontAlias: embeddedFaces.alias } : {}),
-        });
+        const fallbackResolution = browserFallbackMeasurer(
+          container,
+          scaleOf(),
+          mounted.session,
+          embeddedFaces?.alias
+        );
         const measurement = resolvedFontMeasurement(
           shaping,
           fonts,
@@ -1349,7 +1348,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
       reviewPane: reviewPane.current(),
       ...views.snapshot(),
       documentProtection: protection.state(),
-      revisionMarkup: revisionMarkupState.current(),
+      revisionMarkup: reviewDialogs.markup.current(),
       reviewDisplayMode:
         surface && reviewEnabled ? surface.revisionDisplayMode() : reviewDisplayMode,
       hasReviewContent: surface?.session.hasReviewContent() ?? false,
@@ -1477,7 +1476,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
         reviewActivationFormattingKinds.includes(item.formattingKind ?? ''))
     );
   }
-  const anchorIndexOf = createAnchorIndex();
+  const anchorIndexOf = createAnchorIndex((id) => textboxHostParagraphOf(surface, id));
 
   // Which header, footer, or notes part a card lives in, from the part name its range carries.
   const furnitureHomeOf = (item: ReviewItem) => furnitureHomeOfItem(surface?.session, item);
@@ -1913,7 +1912,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
         pendingBytes = reclaimed;
       } else if (surface) {
         // Its settings draft belongs to chrome in the element being left.
-        revisionMarkupState.destroyDialog();
+        reviewDialogs.destroyDialogs();
         endPreview();
         surface.park();
         mountGeneration += 1;
@@ -1951,16 +1950,16 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
     },
 
     exec(command, options) {
-      if (container && refreshWriteBlocked(container) && !previewAllows(container, command))
-        return { ok: false, code: 'unsupported', reason: writeBlockReason(container) };
+      // Before every command path: a history group a command cannot join is refused, not ignored.
+      const refusal = writeBlockRefusal(container, command) ?? historyGroups.gate(command, options);
+      if (refusal) return withCompareOutcome(command, refusal);
       // A command inside the yield window addresses the just-loaded document: mount now.
       // (`can` does NOT flush — chrome polls it per render; a read must not defeat the yield.)
       openScheduler.flush();
-      if (command.type === 'openRevisionMarkupDialog') return revisionMarkupState.open();
+      const reviewDialog = reviewDialogs.exec(command);
+      if (reviewDialog) return reviewDialog;
       const dialog = views.dialog(command, true);
       if (dialog) return dialog;
-      const historyRefusal = historyGroups.gate(command, options);
-      if (historyRefusal) return historyRefusal;
       historyGroups.note(command);
       // A view command: it edits nothing, so it runs before the document gate, and it works
       // on a document that failed to open — the pane is still the reader's to close. Not on a
@@ -1993,9 +1992,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
       const toggled = views.toggle(command);
       if (toggled) return toggled;
       if (command.type === 'toggleReviewPane') {
-        if (!reviewEnabled) {
-          return { ok: false, code: 'unsupported', reason: PRO_REVIEW_REASON };
-        }
+        if (!reviewEnabled) return { ok: false, code: 'unsupported', reason: PRO_REVIEW_REASON };
         reviewPaneOpen = !reviewPaneOpen;
         bump();
         emitSelectionChange();
@@ -2050,9 +2047,10 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
     },
 
     can(command, options): CanResult {
-      if (container && refreshWriteBlocked(container) && !previewAllows(container, command))
-        return { ok: false, code: 'unsupported', reason: writeBlockReason(container) };
-      if (command.type === 'openRevisionMarkupDialog') return revisionMarkupState.canOpen();
+      const blocked = writeBlockRefusal(container, command);
+      if (blocked) return blocked;
+      const reviewDialog = reviewDialogs.can(command);
+      if (reviewDialog) return reviewDialog;
       const dialog = views.dialog(command, false);
       if (dialog) return dialog;
       const historyRefusal = historyGroups.gate(command, options);
@@ -2311,8 +2309,9 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
       surface?.setRemoteCaretLabelHost(host);
     },
     setReviewPaneOptions: reviewPane.set,
-    setRevisionMarkup: revisionMarkupState.set,
-    setRevisionMarkupChrome: revisionMarkupState.register,
+    setRevisionMarkup: reviewDialogs.markup.set,
+    setRevisionMarkupChrome: reviewDialogs.markup.register,
+    setCompareDocumentsChrome: reviewDialogs.compare.register,
     setUnsupportedElementRules: unsupported.set,
     setRevisionStyles(colors) {
       revisionStyleState.set(colors);
@@ -2401,9 +2400,8 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
         // Card to document. The caret may be parked in a furniture or note scope from the
         // PREVIOUS card — leave it first, exactly as the pointer path does, or the body
         // selection below gets clamped inside the open story and no body card can ever
-        // become active again.
-        surface.exitNote?.();
-        surface.exitHeaderFooter?.();
+        // become active again. A change in a text box opens that box (`review-story-entry.ts`).
+        openBodyStoryOf(surface, (reviewItemSpan(item!) ?? range).start);
         // A CARET AT THE START, not a selection over the span.
         //
         // Opening a card is a request to look at a change, not a request to select its
@@ -2581,7 +2579,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
   // Host calls read and write saved field results in this editor's mode.
   const instance = fieldScope.methods(editor);
   registerEditorHost(instance, () => container);
-  registerEditorHistoryGroups(instance, historyGroups);
+  registerEditorAutomation(instance, historyGroups, modules.review?.compareDocuments);
   bindPopupChromeRequests(instance, views.popupChrome);
   endPreview = () => endEditorPreview(instance);
   registerEditorPreviewHost(instance, {

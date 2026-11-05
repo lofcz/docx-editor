@@ -20,7 +20,6 @@ export {
   inlineControlStartingAt,
   paragraphOffsetIndex,
   paragraphTextOf,
-  segmentsOf,
   validateTreeOp,
   TREE_DOC_OP_KINDS,
   type ImpactClass,
@@ -37,6 +36,7 @@ export {
   type TreeOpRejection,
   type TreeOpResult,
 } from './tree-ops.ts';
+export { segmentsOfCopy as segmentsOf } from './tree-op-segments.ts';
 export {
   extractFragmentPackage,
   type FragmentCoverage,
@@ -81,6 +81,7 @@ export {
   type PackageCommentDelete,
 } from './comment-package-write.ts';
 export { insertPackageCustomNode, removePackageCustomNode } from './custom-node-package-write.ts';
+export { refreshBoundContent } from './bound-content-refresh.ts';
 export { nextCommentId } from './comment-id-mint.ts';
 export {
   addComment,
@@ -216,7 +217,11 @@ export {
   type SetLegacyCheckboxOp,
 } from './legacy-checkbox-fields.ts';
 export { type InsertBuildingBlockOp } from './building-block-insert.ts';
-export { type InsertTableOp, type MoveTableOp } from './table-placement-op-types.ts';
+export {
+  type InsertParagraphBesideTableOp,
+  type InsertTableOp,
+  type MoveTableOp,
+} from './table-placement-op-types.ts';
 export {
   enclosedBookmarkDeletions,
   withoutBookmarkInPart,

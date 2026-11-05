@@ -10,6 +10,7 @@ import type {
   HeaderFooterParts,
   HeaderFooterSectionResolution,
   HeadlessDocumentView,
+  ListDefinitionGeometry,
   ListKind,
   OoxmlElement,
   OoxmlPackage,
@@ -230,8 +231,9 @@ export interface TreeDocxSessionView extends HeadlessDocumentView {
    *
    * Separate from both other answers on purpose. It is not a DECLARATION, so it does not
    * join `documentFonts`, and it is not a face TEXT renders in, so the substitution notice
-   * must not report it — but a font resolver has to hear about it, or an app cannot supply
-   * the face a private-use glyph needs.
+   * reports it only for a private-use glyph with no Unicode equivalent
+   * (`editor/unmapped-symbol-faces.ts`) — but a font resolver has to hear about it, or an
+   * app cannot supply the face such a glyph needs.
    */
   symbolFontFamilies(): readonly string[];
   /**
@@ -472,7 +474,13 @@ export interface TreeDocxSessionView extends HeadlessDocumentView {
    * relationship.
    */
   ensureHyperlinkRelationship(url: string, scope?: StoryScope): string | null;
-  ensureListDefinition(kind: ListKind): string | null;
+  /**
+   * Find or create a `kind` list definition and answer the `w:numId` to name, or `null`.
+   *
+   * With `geometry`, the definition keeps those level positions, so an item switching
+   * between bullets and numbers stays where it was.
+   */
+  ensureListDefinition(kind: ListKind, geometry?: ListDefinitionGeometry): string | null;
   /**
    * Declare `level` in the list definition `numId` names, with Word's default format for
    * that depth, or answer false.
@@ -539,4 +547,12 @@ export interface TreeDocxSessionView extends HeadlessDocumentView {
     scope: StoryScope,
     input: import('../store/store/tree-package-fragment.ts').FragmentPasteInput
   ): import('../store/store/tree-package-fragment.ts').FragmentPasteResult;
+
+  /**
+   * Replace the whole package with one derived from {@link currentPackage}, as one package undo
+   * unit that publishes a `global` change. For writes that rebuild many parts, such as a compare.
+   */
+  replacePackage(
+    pkg: OoxmlPackage
+  ): import('../store/store/tree-package-replace.ts').PackageReplacementResult;
 }

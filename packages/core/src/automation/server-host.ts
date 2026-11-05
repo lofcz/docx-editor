@@ -38,6 +38,7 @@ import { runObservedStoreTransaction } from '../store/package/canonical-primitiv
 import { normalizeParagraphIdentity } from '../store/package/para-id.ts';
 import type { ContentLockPolicy } from '../store/package/ooxml-edit.ts';
 import { materializeGlossaryPlaceholders } from '../store/store/placeholder-materialize.ts';
+import { refreshBoundContent } from '../store/store/bound-content-refresh.ts';
 import { TreePackageStore, type StoryScope } from '../store/store/tree-package-store.ts';
 import type { TreeDocOp } from '../store/store/tree-ops.ts';
 import { ORIGIN_IDS } from '../store/registry/frozen-ids.ts';
@@ -115,6 +116,11 @@ export interface ServerAutomationHostOptions {
    */
   readonly collaborationModel?: CollaborationModuleContribution;
   /**
+   * Document compare engine from the module registry (the review module's). Absent,
+   * `compareFromBase64` refuses.
+   */
+  readonly compareDocuments?: import('../contracts/document-compare.ts').CompareDocumentsEngine;
+  /**
    * Opt-in relaxation of `w:lock` for run-property writes (`setFont`): content-locked controls
    * can be restyled but not retyped. Absent, they refuse both.
    */
@@ -142,22 +148,27 @@ export function createServerAutomationHost(
       ...(loaded.detail ? { detail: loaded.detail } : {}),
     };
   }
-  const main = loaded.package.parts.get(loaded.package.mainDocumentPart);
+  // Bound controls show their store's current value, not the text cached at save.
+  const pkg = refreshBoundContent(loaded.package);
+  const main = pkg.parts.get(pkg.mainDocumentPart);
   if (!main) {
     return {
       ok: false,
       reason: 'no-main-document-part',
-      detail: loaded.package.mainDocumentPart,
+      detail: pkg.mainDocumentPart,
     };
   }
   const store = new TreePackageStore(
-    loaded.package,
-    materializeGlossaryPlaceholders(loaded.package, normalizeParagraphIdentity(main)),
+    pkg,
+    materializeGlossaryPlaceholders(pkg, normalizeParagraphIdentity(main)),
     options.contentLockPolicy ? { contentLockPolicy: options.contentLockPolicy } : {}
   );
   const collaboration = options.collaborationModel?.session;
   let detachCollaboration = (): void => {};
-  const port = packageStorePort(store, collaboration, () => detachCollaboration());
+  const storePort = packageStorePort(store, collaboration, () => detachCollaboration());
+  const port: AutomationDocumentPort = options.compareDocuments
+    ? { ...storePort, compareDocuments: options.compareDocuments }
+    : storePort;
   if (options.pagination) {
     let snapshot: AutomationPaginationSnapshot | undefined;
     let atRevision = -1;

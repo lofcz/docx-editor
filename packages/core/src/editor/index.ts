@@ -252,6 +252,10 @@ export {
   type SurfaceFormatting,
 } from './paginated-surface.ts';
 export type { OpeningIndicatorHost } from './surface-opening-indicator.ts';
+// `PaginatedSurface` extends it, so its indent and list members need the name.
+export type { SurfaceIndentAndListOps } from './surface-indent-list-contract.ts';
+// `PaginatedSurface.removeTocRefusal` answers with it.
+export type { TocRemovalRefusal } from './surface-toc-commands.ts';
 export {
   createDocxEditor,
   type DocxEditorInstance,
@@ -311,6 +315,16 @@ export {
   type RelationshipRecord,
   type TargetMode,
   type OoxmlPackage,
+  type CompareDocumentsBackgroundEngine,
+  type CompareDocumentsBackgroundResult,
+  type CompareDocumentsEngine,
+  type CompareDocumentsEngineErrorCode,
+  type CompareDocumentsErrorCode,
+  type CompareDocumentsRefusalReason,
+  type CompareDocumentsEngineOptions,
+  type CompareDocumentsEngineResult,
+  type CompareDocumentsPhase,
+  type CompareDocumentsProgress,
   type EditorModule,
   type EditorModuleRegistry,
   type ReviewModelInput,
@@ -447,6 +461,7 @@ export type { HyperlinkActivation, SurfaceNavigation } from './surface-navigatio
 // `engine-layout` for a parameter type would be reaching past the boundary for a name.
 export type {
   SectionProperties,
+  SectionVerticalAlign,
   NavigationCommand,
   SemanticPosition,
   SemanticSelection,
@@ -631,12 +646,24 @@ export type {
 export { runChromeExport, ChromeExportError } from './chrome-export.ts';
 export type {
   ChromeExportView,
+  ChromePrintSettings,
   ChromeExportFormat,
   ChromeExportHandlers,
   ChromeExportResult,
 } from './chrome-export.ts';
-export { runChromePrint, ChromePrintError, isChromePrintShortcut } from './chrome-print.ts';
-export type { ChromePrintErrorCode, ChromePrintJob, ChromePrintOptions } from './chrome-print.ts';
+export {
+  runChromePrint,
+  ChromePrintError,
+  isChromePrintShortcut,
+  initialChromePrintSettings,
+  CHROME_PRINT_DISPLAY_MODES,
+} from './chrome-print.ts';
+export type {
+  ChromePrintErrorCode,
+  ChromePrintJob,
+  ChromePrintOptions,
+  ResolvedChromePrintSettings,
+} from './chrome-print.ts';
 
 export {
   DEFAULT_REVIEW_PANE,
@@ -672,6 +699,21 @@ export type {
 } from '../contracts/revision-markup.ts';
 export type { RevisionMarkupDialog, RevisionMarkupDialogHost } from '../contracts/modules.ts';
 export type { SurfacePaintObserver, SurfacePaintFrame } from './surface-paint-observer.ts';
+export type { CompareDocumentsDialog, CompareDocumentsDialogHost } from '../contracts/modules.ts';
+export type {
+  CompareDocumentsChromeHandlers,
+  CompareDocumentsDialogSession,
+  CompareDocumentsOutcome,
+  CompareDocumentsRequest,
+} from '../contracts/compare-documents.ts';
+export {
+  COMPARE_DOCUMENTS_ACCEPT,
+  compareDocumentsErrorKey,
+} from '../contracts/compare-documents.ts';
+export {
+  COMPARE_DOCUMENTS_PHASE_ATTRIBUTE,
+  focusCompareDocumentsControl,
+} from './compare-documents-focus.ts';
 
 /** The watermark shape box that `setWatermark` writes, for previews. */
 export {

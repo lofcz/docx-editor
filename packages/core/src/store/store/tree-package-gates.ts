@@ -214,4 +214,5 @@ export const CONTENT_REMOVING_OPS: ReadonlySet<string> = new Set([
   'mergeTableCells',
   'removeContentControl',
   'removeRepeatingSectionItem',
+  'removeToc',
 ]);

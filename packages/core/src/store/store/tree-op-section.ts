@@ -42,6 +42,7 @@ import type {
 } from './tree-op-types.ts';
 import { ownProposedParagraph, withPropertyChangeRecord } from './tree-op-tracked-properties.ts';
 import { readTwipsMeasure } from '../units.ts';
+import { withoutOwnLevelIndent } from './tree-op-list-level-indent.ts';
 import { build } from './tree-op-tracked.ts';
 import { nextRevisionId } from './tree-op-revision-ids.ts';
 import {
@@ -201,7 +202,9 @@ export function applySetSectionProperties(
  * Rewrites `w:numPr/w:ilvl` in place rather than rebuilding `w:pPr`: `w:numId` and every
  * other paragraph property have to survive, and the level is the ONLY thing this op
  * states. A paragraph without `w:numPr` is not a list item, so there is no level to move
- * and the edit is refused — Increase Indent on a plain paragraph is a different op.
+ * and the edit is refused — Increase Indent on a plain paragraph is a different op. A move
+ * to another level also drops the paragraph's own leading and first-line indent, so the
+ * item takes the new level's (`withoutOwnLevelIndent`).
  */
 
 function applySetListLevelUntracked(
@@ -223,8 +226,17 @@ function applySetListLevelUntracked(
     // own indents, so this reflows the paragraph rather than restyling it in place.
     impact: 'flow-structural',
   };
+  const ilvl = numPr.children.find(
+    (child) => child.kind !== 'textValue' && child.localName === 'ilvl'
+  );
   const updated = withNumberingValue(numPr, 'ilvl', String(level), nextId);
-  return fromEdit(replaceNode(part, numPr.id, updated, options), effect);
+  const written = replaceNode(part, numPr.id, updated, options);
+  // With no `w:ilvl` of its own, the item can take its level from its style's `w:numPr`, which
+  // this op cannot see, so writing one is a move.
+  const own = attributeValueOf(ilvl, 'val');
+  const moved = own === undefined || Number.parseInt(own, 10) !== level;
+  if (!written.ok || !moved) return fromEdit(written, effect);
+  return fromEdit(withoutOwnLevelIndent(written.part, paragraph.id, options), effect);
 }
 
 /**

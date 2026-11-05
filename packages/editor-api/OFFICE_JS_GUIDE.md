@@ -624,7 +624,7 @@ await runtime.run(async (context) => {
 
 ## Merge and split cells
 
-`Table.mergeCells(topRow, firstCell, bottomRow, lastCell)` merges a rectangle and returns the merged cell. Edits to that cell can share the sync. `TableCell.split(rowCount, columnCount)` splits one cell. A ragged rectangle refuses with `InvalidArgument` and `innerError.code` `edit.table-merge-not-rectangle`. A split the cell cannot take refuses with `InvalidArgument` and `edit.table-split-unsupported`. Both refuse with `NotSupported` in a tracking mode. Do not turn tracking off to make them succeed.
+`Table.mergeCells(topRow, firstCell, bottomRow, lastCell)` merges a rectangle and returns the merged cell. Its `value`, `shadingColor`, and `verticalAlignment` can share the sync. Sync before you edit text in the table, or the edit refuses with `ConflictingChanges`. `TableCell.split(rowCount, columnCount)` splits one cell. A ragged rectangle refuses with `InvalidArgument` and `innerError.code` `edit.table-merge-not-rectangle`. A split the cell cannot take refuses with `InvalidArgument` and `edit.table-split-unsupported`. With `TrackMineOnly`, both work inside your own proposed table, and the new shape joins that proposal: reject removes the whole table. Any other table refuses with `NotSupported`. Do not turn tracking off to make them succeed. Insert a table at the edge of the body with `body.insertTable(rows, columns, 'Start' | 'End', values)`, or beside a paragraph with `paragraph.insertTable(rows, columns, 'Before' | 'After', values)`.
 
 ```ts
 import { DocxEditor, isDocxEditorError } from '@docx-editor.dev/editor-api';
@@ -681,3 +681,23 @@ Do not substitute revision author settings for document author metadata. Other d
 Collaborative writes require an existing core-properties part. If the input omits this part, set properties before joining collaboration. Concurrent creation of this package part cannot merge safely.
 
 Load `properties.lastAuthor` to read the last saved author. This property has no setter. To remove all standard property parts, call `document.removeDocumentInformation('DocumentProperties')`, then `context.sync()`. Run this command alone. It removes core, extended, and custom properties, including the last author. It preserves document text, comments, revisions, and media. It does not anonymize their content. Other removal modes, tracked removal, and removal during collaboration refuse with `NotSupported`.
+
+## Compare two documents
+
+To record the differences between the open document and a revised copy as tracked changes, call `document.compareFromBase64(base64File, options)`. The open document is the original. This method requires `reviewModule()` from `@docx-editor.dev/pro` in the runtime `modules` list. Without it, the call refuses with `NotSupported`. Run the call alone in its sync.
+
+```ts
+const runtime = await DocxEditor.createServer(originalBytes, {
+  modules: [reviewModule()],
+});
+await runtime.run(async (context) => {
+  context.document.compareFromBase64(revisedBase64, { authorName: 'Legal' });
+  await context.sync();
+});
+```
+
+Only `CompareTargetCurrent` is supported. `CompareTargetNew`, `CompareTargetSelected`, `removePersonalInformation: true`, `document.compare(filePath)`, and collaborative sessions refuse with `NotSupported`. Invalid base64 and unreadable packages refuse with `InvalidArgument`. Pass the revised document as plain base64 data; do not pass proxies to a job queue.
+
+Without `authorName`, the revisions carry the revised document's last author, then its creator, then `Comparison`. To count the main-body result, load `document.revisions` with `'items'` after the compare's `context.sync()`.
+
+A refused compare writes nothing. Handle `error.code` first. If `debugInfo.innerError` exists, its `code` names the cause: `edit.review-module-required`, `edit.resource-limit`, `edit.invalid-argument`, `edit.protected-content`, or `edit.unsupported-content`. Do not retry the same pair; report the cause instead.

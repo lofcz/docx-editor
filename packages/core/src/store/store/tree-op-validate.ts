@@ -115,9 +115,11 @@ import {
   validateReplaceTocResult,
   validateRewriteTocPageNumbers,
 } from './tree-op-toc.ts';
+import { validateRemoveToc } from './tree-op-toc-remove.ts';
 import { validateRefreshFieldResults } from './tree-op-field-results.ts';
 import { validateInsertTable } from './tree-op-insert-table.ts';
 import { validateMoveTable } from './tree-op-move-table.ts';
+import { validateInsertParagraphBesideTable } from './tree-op-paragraph-beside-table.ts';
 import { validateReplaceStoryBlocks } from './tree-op-story-replace.ts';
 import {
   ACCEPTED_PARAGRAPH_PROPERTIES,
@@ -359,16 +361,12 @@ export function validateTreeOp(
     return validateInsertTable(part, op);
   }
   if (op.op === 'moveTable') return validateMoveTable(part, op);
+  if (op.op === 'insertParagraphBesideTable') return validateInsertParagraphBesideTable(part, op);
 
-  if (op.op === 'insertToc') {
-    return validateInsertToc(part, op);
-  }
-  if (op.op === 'replaceTocResult') {
-    return validateReplaceTocResult(part, op);
-  }
-  if (op.op === 'rewriteTocPageNumbers') {
-    return validateRewriteTocPageNumbers(part, op);
-  }
+  if (op.op === 'insertToc') return validateInsertToc(part, op);
+  if (op.op === 'replaceTocResult') return validateReplaceTocResult(part, op);
+  if (op.op === 'removeToc') return validateRemoveToc(part, op);
+  if (op.op === 'rewriteTocPageNumbers') return validateRewriteTocPageNumbers(part, op);
   if (op.op === 'commitTextFormField') return validateCommitTextFormField(part, op);
   if (op.op === 'setFieldCode') return validateSetFieldCode(part, op);
   if (op.op === 'setFieldResult') return validateSetFieldResult(part, op);

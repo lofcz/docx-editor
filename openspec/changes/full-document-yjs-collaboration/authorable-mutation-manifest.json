@@ -7,13 +7,13 @@
   "baseGitCommitDate": "2026-08-24 14:45:47 +0200",
   "inventoryNote": "Kinds, reach, properties, chrome slots, and lifecycle sets are taken from the implementation after rebase onto origin/main. Main added replaceStoryBlocks, setMathEquation, removeMathEquation, and insertFragment (rich-clipboard-fidelity).",
   "counts": {
-    "treeDocOpKinds": 94,
-    "singlePartApply": 80,
+    "treeDocOpKinds": 96,
+    "singlePartApply": 82,
     "headerFooterLifecycle": 7,
     "noteLifecycle": 5,
     "treeDocOpUnsupported": 2,
-    "chromeSlots": 81,
-    "chromeCommandWired": 47,
+    "chromeSlots": 82,
+    "chromeCommandWired": 48,
     "chromeProbe": 8,
     "acceptedRunProperties": 19,
     "acceptedParagraphProperties": 13,
@@ -89,6 +89,7 @@
       "deleteBlock",
       "insertTable",
       "moveTable",
+      "insertParagraphBesideTable",
       "insertTableRow",
       "deleteTableRow",
       "insertTableColumn",
@@ -119,6 +120,7 @@
       "transformDrawing",
       "insertToc",
       "replaceTocResult",
+      "removeToc",
       "rewriteTocPageNumbers",
       "refreshFieldResults",
       "setFieldResult",
@@ -191,6 +193,7 @@
     "deleteBlock",
     "insertTable",
     "moveTable",
+    "insertParagraphBesideTable",
     "insertTableRow",
     "deleteTableRow",
     "insertTableColumn",
@@ -233,6 +236,7 @@
     "transformDrawing",
     "insertToc",
     "replaceTocResult",
+    "removeToc",
     "rewriteTocPageNumbers",
     "refreshFieldResults",
     "setFieldResult",
@@ -766,6 +770,15 @@
       "openSpec": ["typed-ooxml-paragraph-editor"]
     },
     {
+      "kind": "insertParagraphBesideTable",
+      "commitPath": "applyTreeOp",
+      "storyScopes": ["body", "headerFooter", "notesPart"],
+      "storyParity": "same",
+      "commandExposure": ["automation"],
+      "packageIntents": [],
+      "openSpec": ["typed-ooxml-paragraph-editor"]
+    },
+    {
       "kind": "insertTableRow",
       "commitPath": "applyTreeOp",
       "storyScopes": ["body", "headerFooter", "notesPart"],
@@ -1174,6 +1187,15 @@
       "openSpec": ["typed-toc-refresh"]
     },
     {
+      "kind": "removeToc",
+      "commitPath": "applyTreeOp",
+      "storyScopes": ["body"],
+      "storyParity": "bodyOnly",
+      "commandExposure": ["removeToc"],
+      "packageIntents": [],
+      "openSpec": ["typed-toc-refresh"]
+    },
+    {
       "kind": "rewriteTocPageNumbers",
       "commitPath": "applyTreeOp",
       "storyScopes": ["body"],
@@ -1404,6 +1426,7 @@
       "review.paragraphMarks",
       "review.bookmarks",
       "review.protectDocument",
+      "review.compareDocuments",
       "review.comments",
       "review.addComment",
       "review.authors",
@@ -1478,6 +1501,7 @@
       "review.paragraphMarks",
       "review.bookmarks",
       "review.protectDocument",
+      "review.compareDocuments",
       "review.comments",
       "contentControl.remove",
       "table.mergeCells",
@@ -1784,6 +1808,11 @@
       "name": "paragraph-text-collaboration",
       "role": "collaboration-packaging",
       "notes": "Changes how paragraph inline content is shared. Adds no TreeDocOp kind, so the freeze holds."
+    },
+    {
+      "name": "collaboration-room-compaction",
+      "role": "collaboration-packaging",
+      "notes": "Compacts a live room's stored history. Adds no TreeDocOp kind, so the freeze holds."
     }
   ],
   "remainingAmbiguity": [

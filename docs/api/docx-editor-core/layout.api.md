@@ -223,6 +223,8 @@ export interface CanvasMeasurerOptions {
     readonly maxMetricsEntries?: number;
     readonly maxWidthEntries?: number;
     readonly scale?: number;
+    // @internal
+    readonly serifHangulFace?: (family: string) => boolean;
 }
 
 // @public
@@ -1064,6 +1066,30 @@ export interface EquationBarGeometry extends EquationGeometryBase {
 }
 
 // @public (undocumented)
+export interface EquationBorderBoxGeometry extends EquationGeometryBase {
+    // (undocumented)
+    readonly body: EquationGeometry;
+    readonly diagonals: readonly EquationDiagonal[];
+    // (undocumented)
+    readonly kind: 'borderBox';
+    readonly rules: readonly LayoutBox[];
+    // (undocumented)
+    readonly thickness: number;
+}
+
+// @public
+export interface EquationDiagonal {
+    // (undocumented)
+    readonly x1: number;
+    // (undocumented)
+    readonly x2: number;
+    // (undocumented)
+    readonly y1: number;
+    // (undocumented)
+    readonly y2: number;
+}
+
+// @public (undocumented)
 export interface EquationFractionGeometry extends EquationGeometryBase {
     // (undocumented)
     readonly bar: LayoutBox;
@@ -1076,7 +1102,7 @@ export interface EquationFractionGeometry extends EquationGeometryBase {
 }
 
 // @public (undocumented)
-export type EquationGeometry = EquationTextGeometry | EquationRowGeometry | EquationFractionGeometry | EquationRadicalGeometry | EquationBarGeometry | EquationScriptGeometry | EquationNaryGeometry;
+export type EquationGeometry = EquationTextGeometry | EquationRowGeometry | EquationFractionGeometry | EquationRadicalGeometry | EquationBarGeometry | EquationBorderBoxGeometry | EquationScriptGeometry | EquationNaryGeometry;
 
 // @public (undocumented)
 export interface EquationNaryGeometry extends EquationGeometryBase {
@@ -1691,6 +1717,7 @@ export interface InlineDrawingRecord {
     // (undocumented)
     readonly baselineOffset: number;
     readonly bidiLevel?: number;
+    readonly bidiRunDirection?: 'ltr' | 'rtl';
     readonly chart?: DrawingChartSummary;
     // @internal
     readonly chartFallbackResource?: ImageResourceState;
@@ -2197,7 +2224,7 @@ export const MAX_NOTE_FRAGMENTS = 512;
 // @public
 export const MAX_NOTE_OVERFLOW_PAGES = 256;
 
-// @public
+// @public @deprecated
 export const MAX_NOTE_REFLOW_ATTEMPTS = 64;
 
 // @public
@@ -3261,9 +3288,11 @@ export interface ResolvedRunStyle {
         readonly context?: ShapingContext;
         readonly direction: 'ltr' | 'rtl';
         readonly level: number;
+        readonly override?: 'ltr' | 'rtl';
         readonly runDirection?: 'ltr' | 'rtl';
         readonly script: string;
         readonly wordSpacingPt?: number;
+        readonly wrapperGroup?: true;
     };
     // (undocumented)
     readonly smallCaps: boolean;
@@ -3724,7 +3753,11 @@ export interface SectionProperties {
     };
     // (undocumented)
     readonly titlePage: boolean;
+    readonly verticalAlign?: SectionVerticalAlign;
 }
+
+// @public
+export type SectionVerticalAlign = 'center' | 'bottom' | 'both';
 
 // @public
 export function segmentGraphemes(text: string): readonly GraphemeSegment[];
@@ -3763,9 +3796,9 @@ export interface SemanticCommentArtifactRecord {
     readonly author: string;
     // (undocumented)
     readonly date?: string;
+    readonly declaredInitials?: string;
     // (undocumented)
     readonly id: string;
-    // (undocumented)
     readonly initials: string;
     // (undocumented)
     readonly kind: 'comment';
@@ -3777,6 +3810,7 @@ export interface SemanticCommentArtifactRecord {
     readonly parentId?: string;
     // (undocumented)
     readonly parentRevisionId?: string;
+    readonly referenceOrder?: number;
     // (undocumented)
     readonly replyIds: readonly string[];
     // (undocumented)
@@ -3879,6 +3913,10 @@ export interface SemanticLayoutOptions {
     // (undocumented)
     readonly measurer: TextMeasurer;
     readonly noteMarks?: NoteMarkContext;
+    // @internal
+    readonly noteRoundBlockLimit?: number;
+    // @internal
+    readonly noteRoundContext?: object;
     readonly notes?: NotesLayoutInput;
     readonly numberingIndex?: NumberingIndex;
     readonly pageBottomReserves?: ReadonlyMap<number, number>;
@@ -4125,13 +4163,17 @@ export interface SemanticTableStructure {
     readonly indentPt: number;
     readonly layoutFixed: boolean;
     readonly legacyContentAlignment?: true;
+    readonly legacyContentOffsetPt?: number;
     readonly legacyTrailingOuterEdge?: true;
     readonly outerRuleOffsetPt?: number;
     readonly pastTextColumn?: true;
     // (undocumented)
     readonly rows: readonly SemanticTableRow[];
+    readonly sharedGridLinesHold?: true;
     readonly tableBorders: TableBorderBox;
     readonly tableWidth: PreferredWidth;
+    readonly textBox?: true;
+    readonly textBoxBidiShiftPt?: number;
 }
 
 // @public
@@ -4654,6 +4696,7 @@ export interface TableAutofitContext {
     readonly listItems?: ReadonlyMap<string, ResolvedListItem>;
     readonly measurer: TextMeasurer;
     readonly paragraphToken?: (paragraph: OoxmlElement) => string;
+    readonly parentTableFixed?: true;
     readonly passToken?: string;
 }
 

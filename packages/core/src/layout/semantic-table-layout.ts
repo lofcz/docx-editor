@@ -29,8 +29,9 @@ import { emptyParagraphStyleFields } from './empty-paragraph-style.ts';
 //     not fit moves to the next page; a row taller than a fresh page fragments at
 //     paragraph/line boundaries (a w:cantSplit row first moves to a fresh page), or fails
 //     closed under hRule=exact / unsupported nested cuts;
-//   - nested tables retain their own geometry and may continue at ordinary row boundaries;
-//     cuts through nested rows, vertical merges and repeated headers remain atomic.
+//   - nested tables retain their own geometry and continue at row boundaries, also inside a
+//     vertical merge, or inside a row; a nested table with repeated headers stays whole while
+//     a page can hold it.
 //
 // All coordinates are points, relative to the page content box — exactly the space body
 // paragraph fragments already live in. Cell paragraph breaks go through the shared
@@ -193,6 +194,8 @@ export interface TableFlowDeps {
   readonly paragraphLineUnitPt?: number;
   /** Story paragraphs outside cells snap to `paragraphLineUnitPt`; see {@link withStoryLineGrid}. */
   readonly snapsStoryLines?: true;
+  /** A header or footer story keeps its last automatic space after; cells and frames drop it. */
+  readonly keepsStoryEndAutoSpacing?: true;
   /** Whether a positioned table of this story carries `w:tblOverlap w:val="never"`. */
   readonly floatRefusesOverlap?: (tableId: string) => boolean;
   readonly measurer: TextMeasurer;
@@ -236,6 +239,8 @@ export interface TableFlowDeps {
   readonly tableNestingOffset?: 1;
   /** The story is a text box's content. */
   readonly textBoxStory?: true;
+  /** The cell content belongs to a fixed-layout table (`nestedAutofitStructure`). */
+  readonly parentTableFixed?: true | undefined;
   /**
    * Turns a typed `w:hyperlink` into the sanitized record its spans carry. A link in a
    * table cell is an ordinary link; without this it would paint its text and be dead.
@@ -398,12 +403,11 @@ function placeCellParagraph(
     borders,
     shading,
   } = layoutInputs;
-  const edgeSpacing = cellEdgeAutoSpacing(
-    authoredSpacing,
-    props,
-    options?.firstInCell === true,
-    options?.lastInCell === true
-  );
+  const edgeSpacing = cellEdgeAutoSpacing(authoredSpacing, props, {
+    firstInCell: options?.firstInCell === true,
+    lastInCell: options?.lastInCell === true,
+    fixedAutoSpacing: deps.styleCascade?.fixedParagraphSpacing === true,
+  });
   const spacing = cellContextualSpacing(
     edgeSpacing,
     layoutInputs.contextualSpacing,
@@ -1122,7 +1126,8 @@ function flowBlocksInBoxBounded(
         includeAfter: true,
         includeBottomBorder: true,
         firstInCell: blockIndex === 0,
-        lastInCell: blockIndex === blocks.length - 1,
+        lastInCell:
+          blockIndex === blocks.length - 1 && (inTableCell || !deps.keepsStoryEndAutoSpacing),
         cellEndMark:
           (hideEndMark || cellEndMarkMinBottom !== undefined) && blockIndex === blocks.length - 1,
         hideEndMark: hideEndMark && blockIndex === blocks.length - 1,

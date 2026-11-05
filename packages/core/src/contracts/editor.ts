@@ -1,4 +1,5 @@
 import type { ResolvedRevisionMarkup } from './revision-markup.ts';
+import type { CompareDocumentsRequest } from './compare-documents.ts';
 import type { ResolvedReviewPane } from './review-pane.ts';
 /**
  * `@docx-editor.dev/core/contracts/editor` — the `Editor` contract adapters are written against.
@@ -977,6 +978,15 @@ export interface EditorCommands
   toggleReviewPane: Record<never, never>;
   /** Open the local review settings dialog supplied by the review module. */
   openRevisionMarkupDialog: Record<never, never>;
+  /** Open the Compare documents dialog supplied by the review module. */
+  openCompareDocumentsDialog: Record<never, never>;
+  /**
+   * Compare the open document (the original) with a revised DOCX and record the differences in
+   * it as tracked changes, as one undoable step. For hosts with their own file picker. The
+   * result's `compareDocuments` field carries the revision count, or the refusal as a code to
+   * translate (`compareDocuments.errors.<code>`).
+   */
+  compareDocuments: CompareDocumentsRequest;
   /** Word's Show/Hide paragraph marks; presentation only. */
   toggleParagraphMarks: Record<never, never>;
   /** Word's Protect Document: enforce filling-in-forms protection, or lift the enforced one. */
@@ -1310,6 +1320,13 @@ export interface EditorCommands
   /** Open options for the selected or context-clicked legacy text form. */
   editTextFormField: Record<never, never>;
   refreshToc: { tocId?: string; mode?: 'entire' | 'pageNumbers' };
+  /**
+   * Remove a table of contents: its field, or the table of contents control around it with
+   * its heading. Text before and after the field stays. Without `tocId`, removes the table of
+   * contents last right-clicked, the one at the selection, or the only one. One undo step.
+   * Refuses with `notFound` when there is none, and while suggesting.
+   */
+  removeToc: { tocId?: string };
 
   undo: Record<never, never>;
   redo: Record<never, never>;
@@ -1533,8 +1550,8 @@ export interface EditorSnapshot {
   /**
    * The table of contents the last right-click landed on, or null.
    *
-   * NOT caret context, unlike `table`: a right-click leaves the selection where it was, and
-   * a generated TOC refuses the caret outright, so a host's context menu could otherwise
+   * NOT caret context, unlike `table`: a generated TOC refuses the caret outright, so a
+   * right-click on it leaves the selection where it was, and a host's context menu could otherwise
    * never tell which table of contents it was opened over. Cleared by a right-click
    * anywhere else.
    */
@@ -1626,8 +1643,10 @@ export interface EditorSnapshot {
    * A family the app answers with a metric-compatible stand-in — Word's Times New Roman
    * with Liberation Serif — is AVAILABLE and stays out: the outlines differ, the advance
    * widths do not, so wrap and pagination land where Word puts them. The face a `w:sym`
-   * names (MS Gothic for a checkbox, Wingdings for a bullet) stays out too, because it
-   * paints one code point rather than text, and has no metric twin an app could supply.
+   * names (MS Gothic for a checkbox, Wingdings for a bullet) stays out while each glyph it
+   * draws has a Unicode equivalent, because any face can paint that. A `w:sym` face joins
+   * when one of its glyphs is a private-use code point with no equivalent, because that
+   * glyph shows as a missing-glyph box in every other face.
    *
    * Optional and additive like `canUndo`: absent means the implementation has not derived
    * it; empty means every family resolved (or no document is loaded).

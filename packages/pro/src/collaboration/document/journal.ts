@@ -14,6 +14,7 @@ import { BirthProjection } from './materialize-births.ts';
 import { projectedTextTarget } from './projected-text-target.ts';
 import { routeInlineEffects, type InlinePlan } from './paragraph-text-writer.ts';
 import { recordRelocatedMarkers } from './relocated-markers.ts';
+import { textOfRemovedContainers } from './removed-container-text.ts';
 import { writeTypedInsert, type TypedInsert } from './paragraph-text-typing.ts';
 import {
   applyInlinePlan,
@@ -39,8 +40,9 @@ import {
   rejectString,
   type LimitCode,
 } from './limits.ts';
-import type * as Y from 'yjs';
+import * as Y from 'yjs';
 import {
+  childArrayOf,
   hasPendingUpdates,
   isNodeMap,
   JOURNAL_ORIGIN,
@@ -52,6 +54,14 @@ import { SharedTextValueRefused } from './paragraph-text-codec.ts';
 import { tokensOfParagraph, type Token } from './paragraph-text-diff.ts';
 import { JournalProjection, projectEffect } from './journal-projection.ts';
 import type { DocumentRegistry } from './registry.ts';
+import { itemsWrittenSince } from './yjs-items.ts';
+import {
+  endSplitPointEdit,
+  handOnSplitPoints,
+  inheritSplitPoints,
+  lastShownIdentityOf,
+  noteMintedParagraph,
+} from './split-points.ts';
 
 export type JournalRefusalCode =
   | LimitCode
@@ -333,6 +343,8 @@ function applyEffect(
           attributes: [],
           bindings: [],
         });
+        if (effect.descriptor.kind === 'paragraph')
+          noteMintedParagraph(registry.schema.nodes.get(effect.descriptor.logicalId));
       }
       return;
     case 'spliceText':
@@ -374,11 +386,35 @@ function applyEffect(
       }
       const listed = registry.record(effect.parentLogicalId);
       const length = listed && 'childIds' in listed ? listed.childIds.length : effect.start;
+      const children = childArrayOf(registry.schema.nodes.get(effect.parentLogicalId));
+      const reordered = (id: LogicalId): boolean =>
+        registry.splitSiblings.ranksOf(effect.parentLogicalId)?.has(id) ?? false;
+      handOnSplitPoints(
+        (id) => registry.schema.nodes.get(id),
+        children,
+        effect.start,
+        effect.deleteCount,
+        reordered
+      );
+      const from = Y.getState(registry.doc.store, registry.doc.clientID);
       registry.spliceChildren(
         effect.parentLogicalId,
         appendsToPartRoot(registry, effect, length) ? length : effect.start,
         effect.deleteCount,
         effect.childLogicalIds
+      );
+      // A paragraph this edit created, or a block it moved right after a concurrent split
+      // sibling, takes the split points of the one listed before it.
+      inheritSplitPoints(
+        (id) => registry.schema.nodes.get(id),
+        (id) => {
+          const text = registry.inline.textOf(id);
+          return lastShownIdentityOf(text, text ? registry.inline.viewOf(id).shown(text) : null);
+        },
+        children,
+        effect.childLogicalIds,
+        [...itemsWrittenSince(registry.doc, from)].filter((item) => item.parent === children),
+        reordered
       );
       return;
     }
@@ -668,6 +704,21 @@ export function applyPrimitiveJournal(
     if (!(error instanceof SharedTextValueRefused)) throw error;
     return { ok: false, code: error.code, detail: error.detail };
   }
+  try {
+    applyPlannedJournal(registry, effects, planned, plan, tokens);
+  } finally {
+    endSplitPointEdit();
+  }
+  return { ok: true };
+}
+
+function applyPlannedJournal(
+  registry: DocumentRegistry,
+  effects: ReturnType<typeof sharedEffect>[],
+  planned: Exclude<ReturnType<typeof planJournal>, { ok: unknown }>,
+  plan: InlinePlan | null | undefined,
+  tokens: ReadonlyMap<LogicalId, Token[]>
+): void {
   const recordBirthGeometry = prepareBirthTableGeometry(
     registry,
     effects,
@@ -717,8 +768,9 @@ export function applyPrimitiveJournal(
     });
     tombstoneRemoved(registry, effects, planned, formerChildren);
     const removed = deleteCopiesOfRemoved(registry, planned.removed);
+    const nested = textOfRemovedContainers(registry, planned, formerChildren);
     const written: InlineWritten = plan
-      ? applyInlinePlan(registry, plan, tokens)
+      ? applyInlinePlan(registry, plan, tokens, new Set(planned.removed))
       : { copied: new Set<string>(), deleted: new Set<string>(), embedded: new Set<string>() };
     recordRelocatedMarkers(
       registry,
@@ -728,12 +780,11 @@ export function applyPrimitiveJournal(
       plan?.paragraphs.map(({ after }) => after) ?? []
     );
     deleteHeldOriginals(registry, removed.held, written.copied);
-    recordDeletions(registry, written, removed.shown);
+    recordDeletions(registry, written, new Map([...removed.shown, ...nested]));
     deleteEmbedsOfRemoved(registry, removed.embeds, planned.removed, written);
     recordBirthGeometry();
     recordGeometryWrites();
   }, JOURNAL_ORIGIN);
-  return { ok: true };
 }
 
 /**

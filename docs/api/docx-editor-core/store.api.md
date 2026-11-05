@@ -586,6 +586,9 @@ export function commentsExtendedPartNameOf(pkg: OoxmlPackage, storyPartName: str
 export function commentsOfPart(part: OoxmlPart): CommentRecord[];
 
 // @public
+export function commentsPartNameForStory(pkg: OoxmlPackage, storyPartName: string): string | null;
+
+// @public
 export interface CommentThreadState {
     // (undocumented)
     readonly done: boolean;
@@ -1546,6 +1549,8 @@ export interface EditOptions {
     // (undocumented)
     readonly deferValidation?: boolean;
     readonly fieldResults?: FieldResultsMode;
+    // @internal
+    readonly placeholderText?: (docPart: string) => string | undefined;
     readonly revisionIds?: () => string;
     readonly trackedRevisionIds?: TransactionRevisionIds;
 }
@@ -1598,10 +1603,30 @@ export interface EnsuredHyperlinkRelationship {
 export function ensureHyperlinkRelationship(pkg: OoxmlPackage, url: string, ownerPart?: string): EnsuredHyperlinkRelationship | null;
 
 // @public
-export function ensureListDefinition(pkg: OoxmlPackage, kind: ListKind): EnsuredListDefinition | null;
+export function ensureListDefinition(pkg: OoxmlPackage, kind: ListKind, geometry?: ListDefinitionGeometry): EnsuredListDefinition | null;
 
 // @public
 export function ensureNumberingLevel(pkg: OoxmlPackage, numId: string, level: number, kind: ListKind): OoxmlPackage | null;
+
+// @public
+export interface EquationBoxEdges {
+    // (undocumented)
+    readonly bottom: boolean;
+    // (undocumented)
+    readonly left: boolean;
+    // (undocumented)
+    readonly right: boolean;
+    // (undocumented)
+    readonly top: boolean;
+}
+
+// @public
+export interface EquationBoxStrikes {
+    readonly bottomLeftToTopRight: boolean;
+    readonly horizontal: boolean;
+    readonly topLeftToBottomRight: boolean;
+    readonly vertical: boolean;
+}
 
 // @public
 export interface EquationControlSource {
@@ -1650,6 +1675,11 @@ export type EquationExpression = {
     readonly lowerLimit?: EquationExpression;
     readonly operator: string;
     readonly upperLimit?: EquationExpression;
+} & EquationControlSource) | ({
+    readonly body: EquationExpression;
+    readonly hidden: EquationBoxEdges;
+    readonly kind: 'borderBox';
+    readonly strikes: EquationBoxStrikes;
 } & EquationControlSource) | {
     readonly kind: 'fallback';
     readonly text: string;
@@ -2457,6 +2487,18 @@ export interface InsertParagraphsOp {
 }
 
 // @public (undocumented)
+export interface InsertParagraphBesideTableOp {
+    readonly op: 'insertParagraphBesideTable';
+    readonly revision?: RevisionAttributionInput;
+    // (undocumented)
+    readonly tableId: string;
+    // (undocumented)
+    readonly text: string;
+    // (undocumented)
+    readonly where: 'before' | 'after';
+}
+
+// @public (undocumented)
 export interface InsertTableOp {
     // (undocumented)
     readonly beforeParagraphId: string;
@@ -2773,7 +2815,21 @@ export function linkRevisionReplies<T extends LinkableReviewItem>(items: readonl
 export function listBookmarks(part: OoxmlPart): readonly BookmarkRecord[];
 
 // @public
+export type ListDefinitionGeometry = readonly (ListLevelGeometry | undefined)[];
+
+// @public
 export type ListKind = 'bullet' | 'ordered';
+
+// @public
+export interface ListLevelGeometry {
+    readonly align?: 'left' | 'center' | 'right';
+    readonly firstLine?: number;
+    readonly hanging?: number;
+    readonly left?: number;
+    readonly paragraphProperties?: OoxmlElement;
+    readonly right?: number;
+    readonly suffix?: 'tab' | 'space' | 'nothing';
+}
 
 // @public
 export function liveDrawingReferenceCount(pkg: OoxmlPackage, partName: string): number;
@@ -3000,6 +3056,7 @@ export interface MetafileReplay {
     readonly complete: boolean;
     // (undocumented)
     readonly drawing: MetafileDrawing;
+    readonly stop?: 'resource-bound' | 'malformed-record';
 }
 
 // @public
@@ -3220,6 +3277,9 @@ export function noteTypeOf(node: OoxmlNode): NoteType | undefined;
 
 // @public
 export function nullRecord<T = unknown>(): Record<string, T>;
+
+// @public
+export function numberingRootOf(pkg: OoxmlPackage): OoxmlElement | null;
 
 // @public (undocumented)
 export function observeHistoryGroup<T>(group: HistoryGroup, report: (kind: HistoryCaptureKind, reason?: HistoryCaptureReason) => void, run: () => T): T;
@@ -4239,6 +4299,9 @@ export function readXml(xml: string, limits?: XmlLimits): XmlResult;
 export function readZip(bytes: Uint8Array, limits?: ZipLimits): ZipReadResult;
 
 // @public
+export function refreshBoundContent(pkg: OoxmlPackage): OoxmlPackage;
+
+// @public
 export class RegistryError extends Error {
     constructor(code: RegistryErrorCode, message: string,
     responsible?: readonly string[]);
@@ -4940,6 +5003,9 @@ export interface SetTextFormFieldDefaultOp {
 export function settingsPartOf(pkg: OoxmlPackage): OoxmlPart | null;
 
 // @public
+export const sha256Bytes: (bytes: Uint8Array) => string;
+
+// @public
 export interface ShapeColor {
     readonly alpha: number;
     readonly hex: string;
@@ -5167,6 +5233,7 @@ export interface TextboxStoryProjection {
     readonly chromeByVector?: true;
     readonly content: OoxmlElement;
     readonly contentNodeId: string;
+    readonly drawingFit?: true;
     readonly drawingText?: true;
     readonly fillHex: string | null;
     readonly fitHeightToText?: true;
@@ -5359,7 +5426,7 @@ export interface TransportPort {
 }
 
 // @public
-export const TREE_DOC_OP_KINDS: readonly ["replaceStoryBlocks", "insertText", "deleteText", "setParagraphMarkRevision", "proposeParagraphMerge", "insertCommentMarker", "acceptRevision", "rejectRevision", "acceptAllRevisions", "rejectAllRevisions", "setRevisionAttribution", "insertTab", "insertHardBreak", "insertPageBreak", "insertPageField", "insertComplexField", "insertEquation", "setFieldCode", "setListLevel", "setListNumbering", "setParagraphTabStops", "setParagraphMarkProperties", "splitParagraph", "splitParagraphMany", "joinParagraphs", "setRunProperties", "setParagraphProperties", "setSectionProperties", "setSectionMark", "insertHyperlink", "setHyperlinkTarget", "removeHyperlink", "setMathEquation", "removeMathEquation", "setContentControlValue", "removeContentControl", "insertInlineContentControl", "addRepeatingSectionItem", "removeRepeatingSectionItem", "deleteBlock", "insertTable", "moveTable", "insertTableRow", "deleteTableRow", "insertTableColumn", "deleteTableColumn", "mergeTableCells", "splitTableCell", "setTableColumnWidths", "setTableRightEdgeWidth", "setTableRowHeight", "setTableProperties", "authorTable", "setTableCellBorders", "setTableCellFill", "setTableCellVerticalAlignment", "createHeaderFooter", "deleteHeaderFooter", "linkToPrevious", "unlinkFromPrevious", "setSectionFurnitureOptions", "setDocumentProtection", "setWatermark", "insertNote", "deleteNote", "convertNote", "convertAllNotes", "setNoteProperties", "setContentControlProperties", "insertContentControl", "insertFragment", "insertParagraphs", "insertDrawing", "replaceDrawingResource", "deleteDrawing", "resizeDrawing", "cropDrawing", "positionDrawing", "setDrawingWrap", "setDrawingMetadata", "setDrawingLocks", "transformDrawing", "insertToc", "replaceTocResult", "rewriteTocPageNumbers", "refreshFieldResults", "setFieldResult", "setTextFormFieldDefault", "commitTextFormField", "setLegacyCheckbox", "setLegacyDropdown", "insertBuildingBlock", "insertBookmark", "deleteBookmark"];
+export const TREE_DOC_OP_KINDS: readonly ["replaceStoryBlocks", "insertText", "deleteText", "setParagraphMarkRevision", "proposeParagraphMerge", "insertCommentMarker", "acceptRevision", "rejectRevision", "acceptAllRevisions", "rejectAllRevisions", "setRevisionAttribution", "insertTab", "insertHardBreak", "insertPageBreak", "insertPageField", "insertComplexField", "insertEquation", "setFieldCode", "setListLevel", "setListNumbering", "setParagraphTabStops", "setParagraphMarkProperties", "splitParagraph", "splitParagraphMany", "joinParagraphs", "setRunProperties", "setParagraphProperties", "setSectionProperties", "setSectionMark", "insertHyperlink", "setHyperlinkTarget", "removeHyperlink", "setMathEquation", "removeMathEquation", "setContentControlValue", "removeContentControl", "insertInlineContentControl", "addRepeatingSectionItem", "removeRepeatingSectionItem", "deleteBlock", "insertTable", "moveTable", "insertParagraphBesideTable", "insertTableRow", "deleteTableRow", "insertTableColumn", "deleteTableColumn", "mergeTableCells", "splitTableCell", "setTableColumnWidths", "setTableRightEdgeWidth", "setTableRowHeight", "setTableProperties", "authorTable", "setTableCellBorders", "setTableCellFill", "setTableCellVerticalAlignment", "createHeaderFooter", "deleteHeaderFooter", "linkToPrevious", "unlinkFromPrevious", "setSectionFurnitureOptions", "setDocumentProtection", "setWatermark", "insertNote", "deleteNote", "convertNote", "convertAllNotes", "setNoteProperties", "setContentControlProperties", "insertContentControl", "insertFragment", "insertParagraphs", "insertDrawing", "replaceDrawingResource", "deleteDrawing", "resizeDrawing", "cropDrawing", "positionDrawing", "setDrawingWrap", "setDrawingMetadata", "setDrawingLocks", "transformDrawing", "insertToc", "replaceTocResult", "removeToc", "rewriteTocPageNumbers", "refreshFieldResults", "setFieldResult", "setTextFormFieldDefault", "commitTextFormField", "setLegacyCheckbox", "setLegacyDropdown", "insertBuildingBlock", "insertBookmark", "deleteBookmark"];
 
 // @public
 export type TreeDocOp = SetFieldCodeOp | {
@@ -5561,7 +5628,7 @@ export type TreeDocOp = SetFieldCodeOp | {
 } | {
     readonly blockId: string;
     readonly op: 'deleteBlock';
-} | InsertTableOp | MoveTableOp | {
+} | InsertTableOp | MoveTableOp | InsertParagraphBesideTableOp | {
     readonly op: 'insertTableRow';
     readonly revision?: RevisionAttributionInput;
     readonly rowId: string;
@@ -5709,6 +5776,7 @@ export type TreeDocOp = SetFieldCodeOp | {
 } | {
     readonly controlId: string;
     readonly op: 'setContentControlValue';
+    readonly revision?: RevisionAttributionInput;
     readonly value: string | ContentControlValueInput;
 } | {
     readonly alias?: string | null;
@@ -5809,6 +5877,9 @@ export type TreeDocOp = SetFieldCodeOp | {
     readonly op: 'replaceTocResult';
     readonly tocId: string;
 } | {
+    readonly op: 'removeToc';
+    readonly tocId: string;
+} | {
     readonly op: 'rewriteTocPageNumbers';
     readonly tocId: string;
     readonly updates: readonly {
@@ -5870,6 +5941,8 @@ export class TreeDocumentStore {
 export interface TreeDocumentStoreOptions {
     readonly contentLockPolicy?: ContentLockPolicy;
     readonly historyLimit?: number;
+    // @internal
+    readonly placeholderText?: (docPart: string) => string | undefined;
     readonly settingsPart?: () => OoxmlPart | null | undefined;
 }
 
@@ -5915,6 +5988,7 @@ export interface TreeModelChange {
 // @public
 export interface TreeOpEffect {
     readonly caret?: {
+        readonly offset?: number;
         readonly paragraphId: string;
     };
     // (undocumented)
@@ -6031,6 +6105,8 @@ export type TreeOpRejection = 'unknown-op' | 'unknown-paragraph' | 'not-a-paragr
 | 'cell-has-revision'
 /** The split cells would be narrower than the minimum column width. */
 | 'cell-too-narrow'
+/** A whole-cell value write addresses a cell that is not one plain paragraph. */
+| 'unsupported-cell-content'
 /** Without `w:tblGrid`, a cell splits only into a divisor of the columns it spans. */
 | 'split-needs-grid'
 /** The addressed grid column id is missing or ambiguous without `w:tblGrid`. */
@@ -6487,6 +6563,9 @@ export function wrapTargetToAnchorSpec(target: ImageWrapTarget): {
 
 // @public
 export function writeOoxmlPackage(pkg: OoxmlPackage): Uint8Array;
+
+// @internal
+export function writeOoxmlPackageKeepingRevisionIds(pkg: OoxmlPackage): Uint8Array;
 
 // @public
 export function writeZip(entries: ReadonlyMap<string, Uint8Array>): Uint8Array;

@@ -2,7 +2,7 @@
 // producer fingerprint invalidates all stories when document typography changes.
 // References: ECMA-376 §17.3.1.16, §17.3.1.21, §17.15.1.18, §17.15.1.58–59, §17.15.1.82.
 import type { OoxmlElement, OoxmlProperty } from '@docx-editor.dev/core/store';
-import { isEastAsianFace } from '../store/package/default-font-faces.ts';
+import { isDefaultEastAsianFace } from '../store/package/default-font-faces.ts';
 import { omittedDocDefaults } from '../store/package/application-doc-defaults.ts';
 import { WML_NAMESPACE_URI } from '../store/package/ooxml-tree.ts';
 import { resolveRunStyle, type ThemeFonts } from './run-style.ts';
@@ -66,7 +66,15 @@ export interface CjkParagraphTypography {
    * resolved) means the authored switch decides.
    */
   readonly hangingPunctuation?: boolean;
+  /** `w:wordWrap` is off: lines may open between any two characters, not only between words. */
   readonly characterWrap: boolean;
+  /**
+   * Character wrapping keeps Latin words whole in Korean text: the paragraph mark and the run
+   * on both sides of a boundary resolve to a Korean East Asian language. Set only with
+   * `characterWrap`.
+   * @internal
+   */
+  readonly koreanWordWrap?: true;
   /** Automatic spacing at number/East Asian boundaries; absent means enabled. */
   readonly autoSpaceDN?: boolean;
   /** Automatic spacing at Latin/East Asian boundaries; absent means enabled. */
@@ -170,9 +178,29 @@ function compatFlag(compat: OoxmlElement, name: string): boolean {
   return false;
 }
 
+/**
+ * Whether cascaded run properties name Korean as their East Asian language. Only
+ * `w:lang/@w:eastAsia` counts here: a Korean `w:val` alone does not make text Korean for
+ * character wrapping, and a `w:val` in another language does not cancel an inherited
+ * Korean `w:eastAsia`.
+ */
+export function eastAsiaIsKorean(props: readonly OoxmlProperty[]): boolean {
+  let korean = false;
+  for (const prop of props) {
+    const eastAsia = prop.localName === 'lang' ? prop.attributes?.eastAsia : undefined;
+    if (eastAsia) korean = /^ko(?:-|$)/i.test(eastAsia);
+  }
+  return korean;
+}
+
+/**
+ * `markRunProperties` is the paragraph mark's cascaded run properties: its East Asian language
+ * decides whether character wrapping keeps Latin words whole (`koreanWordWrap`).
+ */
 export function resolveCjkTypography(
   props: readonly OoxmlProperty[],
-  settings?: CjkTypographySettings
+  settings?: CjkTypographySettings,
+  markRunProperties?: readonly OoxmlProperty[]
 ): CjkParagraphTypography {
   let { kinsoku, overflowPunctuation, characterWrap } = DEFAULT_CJK_TYPOGRAPHY;
   let justified = false;
@@ -209,6 +237,9 @@ export function resolveCjkTypography(
     hangingPunctuation:
       overflowPunctuation && settings !== undefined && (distributed || hangingAlignment),
     characterWrap,
+    ...(characterWrap && markRunProperties && eastAsiaIsKorean(markRunProperties)
+      ? { koreanWordWrap: true as const }
+      : {}),
     autoSpaceDN,
     autoSpaceDE,
     ...(spacingOff && distributed ? { automaticSpacingNeedsEastAsianFont: true as const } : {}),
@@ -306,7 +337,7 @@ export function kinsokuCharacters(
  * Whether the authored document defaults select an East Asian face as the East Asian font.
  * Adjacent full-width punctuation compression needs one. Only `w:rPrDefault` counts: an
  * application or theme fallback alone does not. The resolved face must be a Chinese,
- * Japanese, or Korean font (`isEastAsianFace`). An empty theme slot resolves to a built-in
+ * Japanese, or Korean font (`isDefaultEastAsianFace`). An empty theme slot resolves to a built-in
  * East Asian face.
  */
 export function defaultsSelectEastAsianFace(
@@ -315,7 +346,7 @@ export function defaultsSelectEastAsianFace(
 ): boolean {
   if (!namesEastAsianFont(defaultRun)) return false;
   const face = resolveRunStyle(defaultRun, themeFonts).fontFamilyEastAsia;
-  return isEastAsianFace(face, themeFonts.eastAsianFontTableFaces);
+  return isDefaultEastAsianFace(face, themeFonts.eastAsianFontTableFaces);
 }
 
 /** Whether run defaults name an East Asian face slot (`w:eastAsia` or `w:eastAsiaTheme`). */

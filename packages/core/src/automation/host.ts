@@ -78,6 +78,9 @@ function storeTransactionError(reason: string): AutomationError {
       'this edit requires a supported review mode',
       reason
     );
+  // The refusal a plan-time cell write gives, for a cell an earlier edit in the batch reshaped.
+  if (reason === 'unsupported-cell-content')
+    return automationError('unsupported-content', 'that cell is not one plain paragraph', reason);
   if (reason === 'unsupported-revision:foreign-insertion')
     return automationError(
       'unsupported-revision',
@@ -223,6 +226,8 @@ export function createAutomationHost(composition: AutomationHostComposition): Au
       reads: start,
       capabilities,
       collaborative: port.collaborative?.() ?? false,
+      ...(port.compareDocuments ? { compareDocuments: port.compareDocuments } : {}),
+      setupOutsideUndo: port.setupOutsideUndo?.() ?? false,
       trackedRangeReplacement: port.trackedRangeReplacement?.() ?? true,
       // Read ONCE per batch: the formatting lanes must not answer one operation against
       // All Markup and the next against the resolved result.

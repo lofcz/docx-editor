@@ -136,6 +136,7 @@
     "reference:fetch": "node scripts/fetch-reference.mjs",
     "release": "bun run build:packages && bun run notices:generate && bun run collaboration:check --release && node scripts/collaboration/cli.mjs pack && bun run collaboration:test --all --candidate .cache/collaboration/publish && node scripts/collaboration/cli.mjs verify --candidate .cache/collaboration/publish && changeset publish",
     "test": "node scripts/test/run-parallel.mjs",
+    "test:no-collab": "node scripts/test/run-parallel.mjs --exclude benchmarks/collaboration-server/ --exclude packages/pro/src/collaboration/ --exclude packages/core/src/collaboration/ --exclude scripts/collaboration/ --exclude examples/collaboration-hocuspocus/",
     "test:serial": "bun test",
     "test:changed": "node scripts/test/changed.mjs",
     "test:e2e:collab": "playwright test --config e2e/collaboration.config.ts",
@@ -167,7 +168,8 @@
     "check:docs": "bun run check:agent-docs && bun run check:recipe-code && bun run check:docs-style && bun run check:example-readmes && bun run check:docs-mdx && bun run check:docs-chrome-slots && bun run check:docs-vue-refs && bun run check:public-docs-surface",
     "dev:refresh": "bun run --filter './examples/document-refresh' dev",
     "dev:anchors": "bun run --filter './examples/anchor-navigation' dev",
-    "dev:popout": "bun run --filter './examples/popout-window' dev"
+    "dev:popout": "bun run --filter './examples/popout-window' dev",
+    "compare:scorecard": "bun scripts/compare-corpus/scorecard.ts"
   },
   "devDependencies": {
     "@changesets/changelog-github": "^1.0.0",

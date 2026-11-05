@@ -37,7 +37,9 @@ import type { DocumentRegistry } from './registry.ts';
 import { inlineChildren } from './paragraph-text-view.ts';
 import { TextSources } from './paragraph-text-sources.ts';
 import { linearizeParagraph } from './paragraph-linear.ts';
+import type { TypedSplice } from './paragraph-text-diff.ts';
 import { partitionChildIds, sharedChildShell } from './singleton-children.ts';
+import { splitMarkMoves } from './split-mark-moves.ts';
 
 interface ScratchNode {
   readonly id: LogicalId;
@@ -69,6 +71,8 @@ export interface InlinePlan {
   }[];
   /** Embedded nodes the touched paragraphs held before the journal. */
   readonly embedsBefore: ReadonlySet<LogicalId>;
+  /** The characters the journal typed, when that is all it did. */
+  readonly typed?: TypedSplice;
 }
 
 const INLINE_SHELL_KINDS = new Set(['run', 'runProperties']);
@@ -396,9 +400,10 @@ export function routeInlineEffects(
       root.localName = 'p';
       // Block children as a replica shows them: concurrent property copies show as one.
       const record = registry.record(paragraphId);
+      const listed = record && 'childIds' in record ? record.childIds : [];
       const { shown } = partitionChildIds(
         'paragraph',
-        record && 'childIds' in record ? record.childIds : [],
+        splitMarkMoves(registry).shownChildIds(paragraphId, listed),
         (id) => sharedChildShell(registry, id)
       );
       for (const childId of shown) {
@@ -412,8 +417,11 @@ export function routeInlineEffects(
       // An embed shows as the materializer shows it: not when its record is deleted or has not
       // arrived. A placeholder for it put a child in this tree that the editor's tree lacks,
       // and the journal's child indexes then addressed the wrong children.
+      // A node two copies in the text embed shows once, at the first, as the materializer
+      // places it once.
       const placeholderOf = (id: LogicalId): OoxmlNode | null => {
         if (!registry.showsAsChild(id)) return null;
+        if (embedded.has(id)) return null;
         embedded.add(id);
         return embedPlaceholder(id);
       };
@@ -528,7 +536,12 @@ export function routeInlineEffects(
       after: expectElement(scratch.toTree(id)),
       ...(scratch.sources.enabled ? { sourceOf: scratch.sources.of } : {}),
     }));
-  return { passThrough, plan: { paragraphs, embedsBefore } };
+  const [only, ...more] = effects;
+  const typed =
+    more.length === 0 && only?.kind === 'spliceText' && only.deleteCount === 0
+      ? { textValueId: only.logicalId, utf16Start: only.utf16Start }
+      : undefined;
+  return { passThrough, plan: { paragraphs, embedsBefore, ...(typed ? { typed } : {}) } };
 }
 
 /**

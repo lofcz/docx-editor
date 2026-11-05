@@ -10,6 +10,7 @@ import {
   bodyParagraphOptionFlow,
   bodyParagraphPlacementFlow,
   bodyContentBounds,
+  framedParagraphFlow,
 } from './body-paragraph-flow.ts';
 import { layoutWithCharacterHeadersSteps } from './character-header-layout.ts';
 import { contextualParagraphSpacing, flowNeighbourStyle } from './contextual-paragraph-spacing.ts';
@@ -25,6 +26,7 @@ import { retainedFurnitureWrap } from './furniture-drawing-exclusion.ts';
 import { tocLinkRanges, tocLinkStyleToken } from './toc-link-formatting.ts';
 import { tocCodeRanges } from './field-code-toc.ts';
 import { tocIdsToken, type TocIdSets } from './toc-id-sets.ts';
+import { createLiveExclusionZones } from './live-exclusion-zones.ts';
 import { paragraphIsRtl } from './rtl-paragraph.ts';
 import * as sectionPrep from './section-preparation.ts';
 import { resolveListAutoSpacing } from './list-auto-spacing.ts';
@@ -94,7 +96,7 @@ import { paragraphBoxOutdent } from './paragraph-indent.ts';
 import { paragraphShadingBox } from './ooxml-shading.ts';
 import { paragraphFragmentBorders } from './paragraph-fragment-borders.ts';
 import { holdsOnlyPageBreak, lineBreakAfterFields, lineContentX } from './pending-line.ts';
-import { withSectionBreakMarks } from './section-break-marks.ts';
+import { interimSectionAligner, publishLayoutPass } from './layout-pass-publish.ts';
 import { alignLineWithPictures } from './line-picture-alignment.ts';
 import { createLeadingBreakGroups } from './leading-break-border-group.ts';
 import { type TableAnchorFrames } from './semantic-table.ts';
@@ -151,10 +153,7 @@ import {
 import { drawingModelOffsetsInParagraph } from './drawing-layout.ts';
 import { bodyLineId } from './body-line-id.ts';
 import { syntheticAnchorLines } from './anchor-frame-lines.ts';
-import {
-  drawingSourceOrderInPart,
-  drawingTokenForTableBlockMemo,
-} from './inline-drawing-source.ts';
+import { drawingTokenForTableBlockMemo, withDrawingSourceOrder } from './inline-drawing-source.ts';
 import {
   emptyTocPlaceholderParagraphIds,
   emptyTocSuppressedResultParagraphIds,
@@ -167,7 +166,6 @@ import { createPageContentInsets, registerOverflowPageShell } from './page-furni
 import { convergenceTailShiftAllowed } from './page-reuse-guards.ts';
 import { layoutPassContextKey } from './layout-pass-context-key.ts';
 import {
-  attachContentControlBoundaries,
   contentControlContextToken,
   withContentControlMetadata,
 } from './content-control-boundary-layout.ts';
@@ -179,12 +177,14 @@ import {
   sectionLineGridPt,
 } from './section-properties.ts';
 import { pageBreakBeforeRules } from './page-break-before.ts';
+import { previousBodyLayout } from './previous-body-pages.ts';
 import { columnSeparatorBoxes, resolveSectionColumns } from './section-columns.ts';
 import {
   inheritNotesLayoutInput,
   layoutSemanticDocumentWithNotesSteps,
+  noteRoundBlocks,
 } from './note-pagination.ts';
-import { closingSpaceAfterPt } from './note-area-fit.ts';
+import { closingSpaceAfterPt, droppableSpacingPt, keepNoteClosing } from './note-area-fit.ts';
 import * as blockSpace from './block-reservations.ts';
 import { passProducerOf } from './pass-producer.ts';
 import { documentProjectionProducer } from './document-property-context.ts';
@@ -205,12 +205,12 @@ import { refTokenForTableBlock } from './field-ref.ts';
 import { createListFirstLineMetrics, markerLineStart, publishListMarker } from './list-marker.ts';
 import { FlowCheckpointOwner, flowCheckpointsMatch } from './flow-checkpoint.ts';
 import { sectionReserveResume } from './note-reserve-resume.ts';
-import type { FlowCheckpoint } from './layout-session.ts';
+import { createLayoutSession, type FlowCheckpoint } from './layout-session.ts';
 import { furnitureForSection, layoutMultiSectionDocumentSteps } from './multi-section-layout.ts';
 import { hostedStoryFlowDeps, layoutTextboxStory } from './textbox-story-layout.ts';
 import { inlineDrawingFlow } from './inline-textbox-flow.ts';
 import { convergeExclusionLayout } from './exclusion-layout-steps.ts';
-import { withInterimLayout, withRelabeledProgress } from './interim-layout.ts';
+import { withAlignedProgress, withInterimLayout, withRelabeledProgress } from './interim-layout.ts';
 import { layoutWithFurnitureRetry } from './furniture-retry-layout.ts';
 import { drainLayoutSteps, stepsInFieldResultsMode, type LayoutSteps } from './layout-steps.ts';
 import { preparedBlocks } from './prepared-block-memo.ts';
@@ -261,7 +261,11 @@ export function layoutSemanticDocumentSteps(
   revision: number,
   options: SemanticLayoutOptions
 ): LayoutSteps<SemanticLayout> {
-  return stepsInFieldResultsMode(options.fieldResults, layoutInModeSteps(part, revision, options));
+  // The footnote search lays the body out several times; a private session lets each round
+  // reuse the last one's work, as a cold open with a session does.
+  const opts =
+    options.notes && !options.session ? { ...options, session: createLayoutSession() } : options;
+  return stepsInFieldResultsMode(options.fieldResults, layoutInModeSteps(part, revision, opts));
 }
 
 function* layoutInModeSteps(
@@ -299,13 +303,7 @@ function* layoutInModeSteps(
       options.emptyTocSuppressedResultParagraphIds ?? emptyTocSuppressedResultParagraphIds(part),
   };
   // Full-body list resolve so counters continue across sections and table cells.
-  let drawingSourceOrder = options.drawingSourceOrder;
-  if (!drawingSourceOrder && options.inlineDrawingLayout) {
-    drawingSourceOrder = drawingSourceOrderInPart(part, options.inlineDrawingLayout);
-  }
-  const drawingOptions = drawingSourceOrder
-    ? { ...optionsWithControlContext, drawingSourceOrder }
-    : optionsWithControlContext;
+  const drawingOptions = withDrawingSourceOrder(optionsWithControlContext, part);
   const optionsWithLists = options.session
     ? withResolvedListItemsForSession(drawingOptions, allBlocks, options.session)
     : withResolvedListItems(drawingOptions, allBlocks);
@@ -327,12 +325,13 @@ function* layoutInModeSteps(
   const optionsForBody = refFields === null ? optionsWithLists : { ...optionsWithLists, refFields };
 
   function* runBodySteps(opts: SemanticLayoutOptions): LayoutSteps<SemanticLayout> {
+    const [roundBlocks, roundSections] = noteRoundBlocks(part, blocks, sections, opts);
     if (sections.length > 1) {
       // Reports document pages as each section completes them, labelled as a single section's.
       return yield* withRelabeledProgress(
         layoutMultiSectionDocumentSteps(
-          blocks,
-          sections,
+          roundBlocks,
+          roundSections,
           revision,
           opts,
           layoutBlocksWithGeometrySteps
@@ -342,10 +341,10 @@ function* layoutInModeSteps(
       );
     }
 
-    const section = sections[0];
+    const section = roundSections[0];
     const geometry =
       opts.geometry ?? (section ? geometryOfSection(section.properties) : DEFAULT_PAGE_GEOMETRY);
-    const furniture = furnitureForSection(opts, 0, sections.length) ?? opts.furniture;
+    const furniture = furnitureForSection(opts, 0, roundSections.length) ?? opts.furniture;
     const sectionNumbering = section?.properties.pageNumbering;
     const interim = {
       revision,
@@ -353,7 +352,7 @@ function* layoutInModeSteps(
       listItems: optionsWithLists.listItems,
     };
     const laid = yield* withInterimLayout(
-      layoutBlocksWithGeometrySteps(blocks, revision, {
+      layoutBlocksWithGeometrySteps(roundBlocks, revision, {
         ...opts,
         geometry,
         furniture,
@@ -383,12 +382,12 @@ function* layoutInModeSteps(
       laid.layout
     );
     const finalized = finalizePageFieldProjection(annotated, {
-      provisional: opts.bodyBlockLimit !== undefined,
+      provisional: opts.bodyBlockLimit !== undefined || opts.noteRoundBlockLimit !== undefined,
     });
     carryLayoutReadCaches(laid.layout, finalized);
     // The notes pass mints overflow sheets from this layout; publish what index they land at.
-    registerOverflowPageShell(finalized, (_sectionAnchorIndex, documentPageIndex, box) =>
-      laid.overflowShellAt(documentPageIndex, box)
+    registerOverflowPageShell(finalized, (_sectionAnchorIndex, documentPageIndex, box, shift) =>
+      laid.overflowShellAt(documentPageIndex, box, shift)
     );
     if (opts.session) {
       opts.session.multi = null;
@@ -412,37 +411,31 @@ function* layoutInModeSteps(
     if (options.session && options.bodyBlockLimit === undefined) {
       projected = relabelListMarkers(projected, optionsWithLists.listItems, options.measurer);
     }
-    const bounded = attachContentControlBoundaries(projected, part, controlToken);
-    const withBoundaries = withSectionBreakMarks(bounded, part, allBlocks);
-    carryLayoutReadCaches(layout, withBoundaries);
-    if (options.session) {
-      options.session.previous = withBoundaries;
-    }
-    return withBoundaries;
+    const pass = publishLayoutPass(projected, part, controlToken, allBlocks, sections, blocks);
+    carryLayoutReadCaches(layout, pass.published);
+    if (options.session) options.session.previous = pass.retained;
+    return pass.published;
   };
 
-  if (!options.notes) {
-    if (options.session) {
-      options.session.notes = null;
-      options.session.notePageBottomReserves = null;
-    }
-    return finish(yield* layoutWithCharacterHeadersSteps(part, optionsForBody, runBodySteps));
+  if (!options.notes && options.session) {
+    options.session.notes = null;
+    options.session.notePageBottomReserves = null;
   }
-
   // Notes inherit the body's projector seams and document properties (link, field link, doc
   // props) unless the notes input pinned its own — see `inheritNotesLayoutInput`. The REF
   // context rides along the same way: the note flow folds each paragraph's resolved values
   // into its break key and the notes-pass fingerprint folds the values token, so a
   // renumbering edit repaints the notes that cite the renumbered target.
-  const notesInput = inheritNotesLayoutInput(
-    options.notes,
-    refFields ? { ...options, refFields } : options
+  const notesInput =
+    options.notes &&
+    inheritNotesLayoutInput(options.notes, refFields ? { ...options, refFields } : options);
+  const steps = layoutWithCharacterHeadersSteps(part, optionsForBody, (opts) =>
+    notesInput
+      ? layoutSemanticDocumentWithNotesSteps(part, sections, opts, notesInput, runBodySteps, blocks)
+      : runBodySteps(opts)
   );
-  return finish(
-    yield* layoutWithCharacterHeadersSteps(part, optionsForBody, (opts) =>
-      layoutSemanticDocumentWithNotesSteps(part, sections, opts, notesInput, runBodySteps)
-    )
-  );
+  const aligner = interimSectionAligner(part, controlToken, sections, blocks);
+  return finish(yield* withAlignedProgress(steps, aligner));
 }
 
 function* layoutBlocksPass(
@@ -638,7 +631,10 @@ function* layoutBlocksPass(
   );
   let exclusionPageIndex = -1;
   let currentPageZones: readonly ExclusionZone[] = Object.freeze([]);
-  const pageExclusionZones = (): readonly ExclusionZone[] => {
+  const liveZones = createLiveExclusionZones(options, columns, contentWidthForReflow, bodies);
+  const pageExclusionZones = (): readonly ExclusionZone[] =>
+    liveZones.zones(pages, pendingAnchoredDrawings, previousPassZones());
+  const previousPassZones = (): readonly ExclusionZone[] => {
     const index = pages.length;
     if (exclusionPageIndex === index) return currentPageZones;
     const bodyZones = options.drawingExclusionZonesByPage?.get(index) ?? Object.freeze([]);
@@ -1094,7 +1090,7 @@ function* layoutBlocksPass(
       prepared.flatMap((entry) => (entry.kind === 'table' ? [entry.table] : []))
     );
   };
-  const previous = session?.previous ?? null;
+  const previous = previousBodyLayout(session?.previous ?? null);
   // A geometry or producer change invalidates every checkpoint, because it moves every
   // break; resuming from one would place new content against a stale flow. A parity flip
   // only matters when the previous pass actually read parity (even/odd headers or an
@@ -1440,6 +1436,7 @@ function* layoutBlocksPass(
       resumable &&
       reserveResume.moved === undefined &&
       !furnitureHasWrap &&
+      // Live zones too: a pass that finds any collects them, and the next pass is not eligible.
       !options.drawingExclusionZonesByPage?.size,
     firstChanged,
     commonSuffix,
@@ -1480,7 +1477,7 @@ function* layoutBlocksPass(
     prepared.length,
     options.compatibilityMode,
     () => firstParagraphOfSection,
-    // The HTML automatic gap only: the fixed 5pt setting keeps its value.
+    // The HTML automatic gap only: under fixed spacing the authored measurement stays.
     styleCascade?.fixedParagraphSpacing !== true && pageIndexStart === 0 && flowStartY === 0
   );
 
@@ -1580,8 +1577,7 @@ function* layoutBlocksPass(
         displayMode,
         ...(authorFilter ? { revisionAuthorFilter: authorFilter } : {}),
         ...inlineDrawingFlow(options.inlineDrawingLayout, hostedStory),
-        // Line placement below clips these pictures to the sheet; frames keep the flow clip.
-        ...(!entry.frame ? { deferInlineDrawingHorizontalClip: true } : {}),
+        ...framedParagraphFlow(entry.frame !== undefined),
         ...bodyContentBounds(entry.indent, available, columnCount > 1 ? columnWidth() : undefined),
         ...bodyParagraphPlacementFlow({
           paragraphStartY,
@@ -1695,6 +1691,17 @@ function* layoutBlocksPass(
 
   const tableVerticalFrames = (anchorY: number) =>
     tableFloat.bodyTableVerticalAnchorFrames(anchorFrameBase(), anchorY, geometry.margin.top);
+  const anchorTableBand = tableWrap.anchorTableBandOf({
+    anchors: positionedTables,
+    pending: pendingFloatIds,
+    width: columnWidth,
+    deps: tableDeps,
+    frames: anchorFrames,
+    verticalFrames: tableVerticalFrames,
+    earlier: () => pageFragments,
+    signals: floatSignals,
+    pushOf: stacks.push,
+  });
 
   const layoutTableInFlow = (
     table: OoxmlElement,
@@ -1851,6 +1858,7 @@ function* layoutBlocksPass(
         prepared[at]?.kind === 'paragraph' && (!!prepared[at].frame || !!emptySectionMarkAt(at)),
       breaksBefore: (at) => prepared[at]?.kind === 'paragraph' && breaksBeforeAt(at, prepared[at]),
       sumAdjacentSpacing: styleCascade?.fixedParagraphSpacing,
+      noteClosing: () => keepNoteClosing(noteReserveHere(), pageFragments, options),
       tableOpening: (at) =>
         keptTables.opening(prepared[at], columnWidth(), contentHeight(), tableDeps),
     },
@@ -1901,7 +1909,8 @@ function* layoutBlocksPass(
             options.sectionPageBorders !== undefined &&
             options.sectionPageBorders.display !== 'allPages',
           hasNoteReserves: pageBottomReserves !== undefined && !shiftedTail,
-          hasExclusionZones: (options.drawingExclusionZonesByPage?.size ?? 0) > 0,
+          hasExclusionZones:
+            (options.drawingExclusionZonesByPage?.size ?? 0) > 0 || liveZones.sawLiveZones,
         });
         if (shiftable && flowCheckpointsMatch(mark, checkpoints[index]!)) {
           if (shiftedTail) reserveResume.adoptShiftedTail(shiftedTail);
@@ -1977,7 +1986,9 @@ function* layoutBlocksPass(
         !furnitureHoldsTables &&
         tableWrap.admitsAtAnchor(entry.table, tableDeps, {
           allowBreak: columns.count === 1,
-          zones: admission(options.drawingExclusionZonesByPage),
+          zones: admission(
+            liveZones.byPage(pages, pendingAnchoredDrawings, options.drawingExclusionZonesByPage)
+          ),
           page: pages.length,
           width: Math.min(...columns.widths),
           frames: anchorFrames(),
@@ -2068,6 +2079,9 @@ function* layoutBlocksPass(
       (pageFragments.length > 0 || cursorY > 0) &&
       index !== markOnBreakSheet
     ) {
+      const fits = () => cursorY + anchorTableBand(paragraphId, cursorY, 0) <= contentHeight();
+      if (tableWrap.staysBeforeAnchorBreak(positionedTables, pendingFloatIds, paragraphId, fits))
+        noteAnchor(paragraphId, cursorY);
       flushPage();
       previousSpaceAfter = 0;
     }
@@ -2178,22 +2192,7 @@ function* layoutBlocksPass(
         Math.max(
           firstExtent,
           paragraphFrames.requiredAnchorBand(lines),
-          tableWrap.requiredAnchorBand(
-            positionedTables,
-            pendingFloatIds,
-            paragraphId,
-            columnWidth(),
-            tableDeps,
-            {
-              anchorY: prospectiveFirstTop,
-              anchorExtent: firstExtent,
-              frames: anchorFrames(),
-              verticalFrames: tableVerticalFrames(prospectiveFirstTop),
-              earlier: pageFragments,
-              signals: floatSignals,
-              pushOf: stacks.push,
-            }
-          )
+          anchorTableBand(paragraphId, prospectiveFirstTop, firstExtent)
         );
       // A host widget's room travels with its paragraph: when the paragraph and its widget fit
       // an empty page but not the rest of this one, both move on, as Word moves the line of an
@@ -2255,7 +2254,9 @@ function* layoutBlocksPass(
     let fragmentIndex = 0;
     let pending: LineRecord[] = [];
     const closingAfter = (line: PendingLine): number =>
-      closingSpaceAfterPt(noteReserveHere(), pageFragments, pending, line, spacing.after);
+      closingSpaceAfterPt(noteReserveHere(), pageFragments, pending, line, spacing.after, options);
+    const droppedBelow = (line: PendingLine): number =>
+      droppableSpacingPt(noteReserveHere(), pageFragments, pending, line, options);
     let fragmentStart = lines[0]?.start ?? 0;
     let fragmentBefore = appliedBefore;
     // Reserved above the FIRST fragment only: a paragraph continued onto the next page opens
@@ -2558,12 +2559,12 @@ function* layoutBlocksPass(
             appliedSkipByLineIndex,
             fragmentBefore
           );
-      // Auto spacing below the glyph band may cross the bottom text margin. The painted line
-      // keeps its full box; only the pagination budget drops that trailing external depth.
+      // Auto spacing below the glyph band may cross the bottom text margin, not a footnote
+      // area. The painted line keeps its full box; only the pagination budget drops it.
       // An empty anchor's own clearance moves its mark, not the anchor onto another sheet.
       const lineExtent =
         (pendingLine.anchorClearanceBefore ?? skipBefore) +
-        Math.max(0, pendingLine.height - pendingLine.trailingSpacing) +
+        Math.max(0, pendingLine.height - droppedBelow(pendingLine)) +
         tail;
       // A leading page break's empty line stays: the break itself opens the next sheet.
       keptBreakLine =

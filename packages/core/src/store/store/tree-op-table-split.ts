@@ -42,6 +42,12 @@ import {
   type MergeableTable,
   type VisualCell,
 } from './tree-op-table-cell-shape.ts';
+import {
+  cellBlocksStructureEdit,
+  freshCellJoiningInsertion,
+  rowJoiningInsertion,
+} from './tree-op-table-pending-insertion.ts';
+import { invalidRevisionAttribution } from './tree-op-revision-attribution.ts';
 import { insertedCellParagraphContent } from './tree-op-table-row-paragraph.ts';
 import { isWmlGridCol, wmlChildNamed } from './tree-op-table-shared.ts';
 import {
@@ -223,6 +229,8 @@ function planSplit(
   ) {
     return { ok: false, reason: 'invalidArgs' };
   }
+  if (op.revision !== undefined && invalidRevisionAttribution(op.revision))
+    return { ok: false, reason: 'invalid-property-value' };
   const read = readMergeableTable(part, op.tableId, limits);
   if (!read.ok) return read;
   const { table } = read;
@@ -232,7 +240,8 @@ function planSplit(
   for (let rowIndex = visual.rowFrom; rowIndex <= visual.rowTo; rowIndex += 1) {
     const member = memberAt(table, visual, rowIndex);
     if (!member) return { ok: false, reason: 'tree-invariant' };
-    if (cellHasRevision(table, member)) return { ok: false, reason: 'cell-has-revision' };
+    if (cellBlocksStructureEdit(table, member, op.revision?.author))
+      return { ok: false, reason: 'cell-has-revision' };
   }
   const height = visual.rowTo - visual.rowFrom + 1;
   if (height > 1 && height % rows !== 0) return { ok: false, reason: 'split-rows-not-divisor' };
@@ -296,6 +305,8 @@ interface Builder {
   readonly used: Set<string>;
   readonly wml: WmlFreshNamespaceContext;
   readonly created: string[];
+  /** Inside a pending table insertion, every new row, cell, and paragraph mark joins it. */
+  readonly joining: boolean;
 }
 
 function freshCellLike(
@@ -318,7 +329,8 @@ function freshCellLike(
     wml,
     content
   );
-  const cell = freshTableCell(nextId, [tcPr, paragraph], wml) as OoxmlTableCellNode;
+  const fresh = freshTableCell(nextId, [tcPr, paragraph], wml) as OoxmlTableCellNode;
+  const cell = builder.joining ? freshCellJoiningInsertion(fresh, source, nextId, wml) : fresh;
   builder.created.push(cell.id, paragraph.id);
   return cell;
 }
@@ -400,6 +412,7 @@ export function applySplitTableCell(
     used: new Set(usedParaIds(part.root)),
     wml,
     created: [],
+    joining: op.revision !== undefined,
   };
   const { visual } = plan;
   const height = visual.rowTo - visual.rowFrom + 1;
@@ -460,11 +473,14 @@ export function applySplitTableCell(
       const copied = trPr
         ? copySafePropertyContainer(trPr, SAFE_TRPR_LEAVES, builder.nextId, wml)
         : undefined;
-      const row = freshTableRow(
+      const fresh = freshTableRow(
         builder.nextId,
         copied ? [copied, ...rows[extra]!] : rows[extra]!,
         wml
       );
+      const row = builder.joining
+        ? rowJoiningInsertion(fresh, entry.row, builder.nextId, wml)
+        : fresh;
       builder.created.push(row.id);
       replaced.push(row);
     }

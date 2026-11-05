@@ -66,6 +66,7 @@ import {
 } from './surface-toc-ranges.ts';
 import { tocBoundaryForLayout } from './surface-toc-boundary.ts';
 import { resolveTocSources } from '../store/package/toc-sources.ts';
+import { createTocCommands } from './surface-toc-commands.ts';
 import {
   commandProtectionRefusal,
   createControlWriteRefusal,
@@ -156,7 +157,6 @@ import {
   createParagraphLayoutCache,
   resolveDefaultSurfaceMeasurer,
   cellSelectionRects,
-  keyedRangeRects,
   formatPageNumber,
   emptyTocPlaceholderParagraphIds,
   paragraphFragmentsOf,
@@ -171,7 +171,6 @@ import {
   resolveNumberingLevel,
   positionPastDeletion,
   withNumberingStyleLinks,
-  deletedTextBoundaries,
   wordBoundary,
   type CellSelection,
   type ContentControlBoundaryRecord,
@@ -184,8 +183,10 @@ import {
   type SemanticPosition,
   type SemanticSelection,
 } from '@docx-editor.dev/core/layout';
+import { wordMotionBoundaries } from '../layout/word-navigation-boundaries.ts';
 import { attachListResolveChangeEvidence } from '../layout/list-resolve.ts';
 import { rangesOnPages } from '../layout/selection-rects.ts';
+import { keyedRangeRectsWithTextboxes } from './textbox-presence-layout.ts';
 import { refreshSurfaceRefFieldResults } from './surface-ref-field-refresh.ts';
 import { type RevisionAuthorFilter } from '../layout/revision-projection.ts';
 import { surfaceRevisionFilter } from './surface-unlisted-filter.ts';
@@ -245,7 +246,7 @@ import type {
 } from './paginated-surface-contract.ts';
 import type { ExecResult, SelectionPin, ViewScope } from '../contracts/editor.ts';
 import type { TableCommandPlan } from './table-command-plan.ts';
-import { suggestingStructureRefusal, tableLookupIn } from './surface-suggesting-structure.ts';
+import { suggestingRefusalIn } from './surface-suggesting-structure.ts';
 import { wholeTableDeletionPlan } from './table-select-plan.ts';
 import {
   createSurfaceTableSelectHandle,
@@ -279,6 +280,8 @@ import {
   applyPageOffsets,
   equalPageSets,
   equalSurfaceExtents,
+  centreViewportOn,
+  viewportCentreX,
   surfaceExtent,
   surfaceScroller,
   visiblePageSet,
@@ -311,11 +314,13 @@ import { createReviewViewState } from './surface-review-view.ts';
 import { selectionsEqual } from './dom-selection.ts';
 import { createSurfaceSelectionSync } from './surface-selection-sync.ts';
 import { createSurfaceStructure } from './surface-structure.ts';
+import { listDefinitionReads } from './list-level-geometry.ts';
 // Deep import, not the store barrel: re-exporting a bound from there pulls the whole store
 // namespace into the published editor-api surface for one number.
 import { MIN_TABLE_COLUMN_WIDTH_TWIPS } from '../store/store/table-constraints.ts';
 import { createFieldLinkRegistry } from './surface-field-links.ts';
 import { createHyperlinkOps } from './surface-hyperlinks.ts';
+import { createJournaledApply } from './surface-journaled-apply.ts';
 import { createEquationInteraction, createEquationOps } from './surface-equations.ts';
 import { createSurfaceNavigation } from './surface-navigation.ts';
 import { drawingLinkByIdFromLayout } from './drawing-link-index.ts';
@@ -356,6 +361,7 @@ import {
 } from './history-group-scope.ts';
 import { TypingHistory } from './typing-history.ts';
 import { settingsPartOf } from '../store/package/note-properties.ts';
+import { fontTableSerifHangulFace } from '../store/package/font-table-alternates.ts';
 import { resolveNotesPart } from '../store/package/note-references.ts';
 import type { OoxmlPart } from '../store/package/ooxml-tree.ts';
 import { contentLockedOrBound, removalLocked, treeLockRefusal } from './content-control-locks.ts';
@@ -432,6 +438,8 @@ export function mountPaginatedSurface(
   let formattingOutsideToc = false;
   /** Separates a decision's key from its per-range index. A NUL cannot occur in either. */
   const RANGE_SUFFIX = '\u0000range\u0000';
+  // The glyphs a serif Korean face lacks fall back to serif faces, in paint and measurement.
+  const serifHangulFace = fontTableSerifHangulFace(session.currentPackage());
   // Editor seam creates the canvas; layout only consumes the injected context.
   let defaults = options.measurer
     ? null
@@ -439,6 +447,7 @@ export function mountPaginatedSurface(
         context: tryCreateBrowserCanvasContext(container.ownerDocument),
         // Measure with the same face paint draws with.
         ...(options.fontAlias ? { fontAlias: options.fontAlias } : {}),
+        serifHangulFace,
       });
   const inlineWidgets = new SurfaceInlineWidgetMetrics();
   let measurer = inlineWidgets.measurer(options.measurer ?? defaults!.measurer);
@@ -1097,9 +1106,9 @@ export function mountPaginatedSurface(
     // List definitions mint `numId` on the package before the paragraph op names it, so
     // the typing transaction never binds an actor for that scan. Same wrap the hyperlink
     // mint uses.
-    ensureListDefinition: (kind) =>
+    ensureListDefinition: (kind, geometry) =>
       runWithTransactionActor(collaborationSession?.identity.actorId, () =>
-        session.ensureListDefinition(kind)
+        session.ensureListDefinition(kind, geometry)
       ),
     applyPmDoc: (doc) => {
       if (editingMode === 'view') {
@@ -1318,6 +1327,7 @@ export function mountPaginatedSurface(
         numId,
         level
       ) !== null,
+    ...listDefinitionReads(() => withNumberingStyleLinks(numberingIndex(), styleCascade())),
     styleCascade,
   });
   /** The contract's `replacementLanding`; the hyperlink lane reads the same rule. */
@@ -1332,6 +1342,7 @@ export function mountPaginatedSurface(
 
   const hyperlinks = createHyperlinkOps({
     session: gatedSession,
+    collaborative: !!collaborationSession,
     // A HYPERLINK field is not a tree node, so its link resolves from the layout projection
     // plus the field-link registry rather than the typed tree walk.
     layout: editingLayout,
@@ -1785,18 +1796,18 @@ export function mountPaginatedSurface(
     publish: (layout) => publishLayout(layout),
   });
   function publishLayout(layout: SemanticLayout): void {
-    // Release the previous layout BEFORE the new one replaces it: the roster cache held
-    // it by strong reference, and a 200-page graph kept alive beside the live one is tens
-    // of megabytes of retained records. `layout: null` means "recompute on the next read"
-    // while keeping the map itself, which that read compares against to decide whether
-    // the author set actually moved.
-    // The review queue is released with it, for the same reason and by the same rule.
+    // Release the previous layout BEFORE the new one replaces it: the roster cache held it by
+    // strong reference, and a 200-page graph kept beside the live one is tens of megabytes.
+    // `layout: null` means "recompute on the next read" while keeping the map, which that read
+    // compares against to decide whether the author set moved. The review queue goes with it.
     reviewAuthors.releaseLayout();
     currentLayout = layout;
     const carried = remoteCaret.map(selection);
-    // Peers see this caret move too, or they keep painting it at the old offset.
+    // Peers see this caret move too, or they keep painting it at the old offset. It is a model
+    // move: until the next paint, the browser still shows the old caret, which must not win.
     if (carried !== selection) {
       selection = carried;
+      selectionSync.noteModelMoved();
       publishLocalCollaborationSelection();
     }
     // Repaint from HERE, so a commit that never went through this surface — undo, or
@@ -1865,6 +1876,7 @@ export function mountPaginatedSurface(
     pendingFormats = null;
     if (!flushingTypeBuffer) typingHistory.noteForeignChange(modelChange);
     if (modelChange.origin === ORIGIN_IDS.mutationRemote) {
+      noteRemoteChange(modelChange);
       remoteCaret.note(
         selection,
         modelChange.dirty,
@@ -2429,16 +2441,17 @@ export function mountPaginatedSurface(
    * The engine paints no menu of its own. A host's context menu is one primitive with one
    * set of rows, icons, shortcut column and keyboard model; a second panel painted here
    * would be a second place for all of that to drift, and it looked like one too. What the
-   * engine owns is the part a host cannot work out for itself: a right-click does not move
-   * the caret, and a TOC refuses the caret entirely, so nothing in `selection` says which
-   * table of contents is under the pointer. That is what this publishes.
+   * engine owns is the part a host cannot work out for itself: a TOC refuses the caret, so
+   * nothing in `selection` says which table of contents is under the pointer. That is what
+   * this publishes.
    */
   function onTocContextMenu(event: MouseEvent): void {
     const toc = tocForGesture(event);
-    setContextTocId(toc && canRefreshToc(toc.id) ? toc.id : null);
+    const reachable = toc && (canRefreshToc(toc.id) || !removal.removeTocRefusal(toc.id));
+    setContextTocId(reachable ? toc.id : null);
   }
 
-  /** The TOC the last right-click addressed. Cleared by a right-click anywhere else. */
+  /** The TOC the last right-click addressed. Cleared by any other right-click or click. */
   let contextTocId: string | null = null;
 
   function setContextTocId(next: string | null): void {
@@ -2448,6 +2461,7 @@ export function mountPaginatedSurface(
   }
 
   function onTocRowClick(event: MouseEvent): void {
+    if (event.button === 0) setContextTocId(null);
     if (event.button !== 0 || (event.target as Element | null)?.closest('a.docx-hyperlink')) return;
     // A range ends a drag (see the link lane).
     if (!selectionsEqual(selection, collapsedAt(selection.head))) return;
@@ -2763,6 +2777,7 @@ export function mountPaginatedSurface(
         readOnlyParagraphIds: fullyProtectedTocParagraphs(session.part()),
         ...(emptyTocIds.size > 0 ? { emptyTocPlaceholderIds: emptyTocIds } : {}),
         ...(options.fontAlias ? { fontAlias: options.fontAlias } : {}),
+        serifHangulFace,
         ...(options.defaultFontFamily ? { defaultFontFamily: options.defaultFontFamily } : {}),
         materialize: materializedSet,
         ariaHidden: false,
@@ -2888,7 +2903,6 @@ export function mountPaginatedSurface(
 
   /** The main story. Named once so the automation entry cannot drift from the session default. */
   const BODY_STORY: StoryScope = Object.freeze({ kind: 'body' as const });
-  let collaborationOperationCounter = 0;
 
   /** Attribute every write here, so no input path silently bypasses suggestion tracking. */
   const dateLocale = createSurfaceDateLocale(options.locale, flushTypeBuffer);
@@ -2938,49 +2952,14 @@ export function mountPaginatedSurface(
     return result;
   }
 
-  /** Gate native writes without the TOC read-only rule used by ordinary input.
-   * TOC refresh needs this route. Collaboration gates and actor attribution still apply. */
-  function applyJournaledOps(
-    ops: readonly TreeDocOp[],
-    selectionBefore?: Parameters<TreeDocxSession['applyTreeOps']>[1],
-    selectionAfter?: Parameters<TreeDocxSession['applyTreeOps']>[2],
-    scope: StoryScope = storyScope(),
-    packageEdits?: TreeApplyOptions['packageEdits'],
-    packageEditsAfterOps?: TreeApplyOptions['packageEditsAfterOps'],
-    stage?: TreeApplyOptions['stage']
-  ): ReturnType<TreeDocxSession['applyTreeOps']> {
-    const collaborationRefusal = collaborationSession?.gateOperations(ops, scope);
-    if (collaborationRefusal) {
-      return {
-        committed: false,
-        rejected: true,
-        opCount: 0,
-        reason: collaborationRefusal,
-      };
-    }
-    collaborationOperationCounter += 1;
-    // The group of the commit in flight, if any: it travels with the transaction into local
-    // history and, through the journal, to the collaboration undo authority.
-    const historyGroup = commitHistoryGroup.value;
-    return session.applyTreeOps(
-      ops,
-      selectionBefore,
-      selectionAfter,
-      scope,
-      collaborationSession
-        ? {
-            packageEdits,
-            packageEditsAfterOps,
-            stage,
-            origin: ORIGIN_IDS.mutationHuman,
-            actorId: collaborationSession.identity.actorId,
-            operationId: `${collaborationSession.identity.actorId}:${collaborationSession.sessionId}:browser:${collaborationOperationCounter}`,
-            recordsHistory: false,
-            historyToken: historyGroup,
-          }
-        : { packageEdits, packageEditsAfterOps, stage, historyToken: historyGroup }
-    );
-  }
+  const { apply: applyJournaledOps, noteRemoteChange } = createJournaledApply({
+    session,
+    collaboration: collaborationSession,
+    historyGroup: () => commitHistoryGroup.value,
+    defaultScope: () => storyScope(),
+    canRepair: () => !destroyed && editingMode !== 'view' && session.editable,
+    later: (task) => timers.setTimeout(fieldScope.wrap(task), 0),
+  });
 
   /**
    * Why a write would be refused right now, or null when it would be allowed.
@@ -3022,7 +3001,7 @@ export function mountPaginatedSurface(
     }
     // Without an author, refuse every suggested edit instead of writing untracked changes.
     if (editingMode === 'suggest' && !author?.trim() && edits) return AUTHOR_WRITE_REFUSAL;
-    if (editingMode === 'suggest') return suggestingStructureRefusal(ops, tableLookupIn(session));
+    if (editingMode === 'suggest') return suggestingRefusalIn(session, author, ops);
     return null;
   }
 
@@ -3661,7 +3640,7 @@ export function mountPaginatedSurface(
         });
       }
     }
-    const byKey = keyedRangeRects(currentLayout, ranges, pages, measurer);
+    const byKey = keyedRangeRectsWithTextboxes(currentLayout, ranges, pages, measurer);
     const rects: (OverlayRect & { key: string })[] = [];
     for (const [key, found] of byKey) for (const rect of found) rects.push({ ...rect, key });
     commentRectCache = { layout: currentLayout, revision, pages, rects };
@@ -4077,19 +4056,17 @@ export function mountPaginatedSurface(
     return result;
   }
 
-  function canRefreshToc(tocId?: string): boolean {
-    if (editingMode === 'view' || !session.editable) return false;
-    const toc = targetToc(tocId);
-    if (!toc || !resolveTocSources(session.part(), session.documentOutline(), toc.instruction))
-      return false;
-    return (
-      validateTreeOp(session.part(), {
-        op: 'rewriteTocPageNumbers',
-        tocId: toc.id,
-        updates: [],
-      }) === null
-    );
-  }
+  const { canRefreshToc, pointAtToc, removal } = createTocCommands({
+    session,
+    editingMode: () => editingMode,
+    target: targetToc,
+    writeRefusal: (ops) => writeRefusal(true, ops, false),
+    apply: (ops, before) => applyJournaledOps(ops, before, undefined, BODY_STORY),
+    removed: () => setContextTocId(null),
+    select: (at) => setSelection(collapsedAt(at)),
+    pointedTocId: () => contextTocId,
+    refuse: (reason, raw) => void (lastRejection = refuse(reason, raw)),
+  });
 
   /**
    * The op behind Insert › Table, or null when the size is not one this engine authors.
@@ -4212,7 +4189,7 @@ export function mountPaginatedSurface(
     const op = insertTocOp();
     if (!op) return false;
     const existing = new Set(detectBodyTocs(session.part()).map((toc) => toc.id));
-    const inserted = applyJournaledOps([op], undefined, undefined, BODY_STORY);
+    const inserted = applyJournaledOps([op], selectionMark(), undefined, BODY_STORY);
     if (!inserted.committed) {
       lastRejection = refuse(
         inserted.reason ?? 'the table of contents could not be inserted',
@@ -4233,6 +4210,7 @@ export function mountPaginatedSurface(
     const sources = resolveTocSources(session.part(), outline, toc.instruction);
     if (!sources) return false;
     const outlineBlockIds = sources.map((entry) => entry.blockId);
+    const before = pointAtToc(toc);
 
     if (mode === 'entire') {
       const plan = planTocEntries(
@@ -4252,7 +4230,7 @@ export function mountPaginatedSurface(
             bookmarksToCreate: plan.bookmarksToCreate,
           },
         ],
-        undefined,
+        before,
         undefined,
         BODY_STORY
       );
@@ -4290,7 +4268,7 @@ export function mountPaginatedSurface(
       previousSignature = signature;
       const rewritten = applyJournaledOps(
         [{ op: 'rewriteTocPageNumbers', tocId: toc.id, updates }],
-        undefined,
+        before,
         undefined,
         BODY_STORY
       );
@@ -4379,6 +4357,7 @@ export function mountPaginatedSurface(
     createSurfaceClipboardOps({
       session,
       textFormFieldId: () => textFormInteraction?.fieldId() ?? null,
+      insertOwner: () => insertOwnerOf(contentControlAtCaret()),
       richPasteAllowed: () => !textboxEditing?.active(),
       paragraphIds: editingParagraphIds,
       layout: editingLayout,
@@ -4463,7 +4442,7 @@ export function mountPaginatedSurface(
         // Preserve the viewport centre in layout coordinates across the reflow.
         const anchor = scroller
           ? {
-              x: (scroller.scrollLeft - container.offsetLeft + scroller.clientWidth / 2) / scale,
+              x: viewportCentreX(container, scroller, scale),
               y: (scroller.scrollTop - container.offsetTop + scroller.clientHeight / 2) / scale,
             }
           : null;
@@ -4472,6 +4451,7 @@ export function mountPaginatedSurface(
           defaults = resolveDefaultSurfaceMeasurer(scale, {
             context: tryCreateBrowserCanvasContext(container.ownerDocument),
             ...(options.fontAlias ? { fontAlias: options.fontAlias } : {}),
+            serifHangulFace,
           });
           measurer = inlineWidgets.measurer(defaults.measurer);
         }
@@ -4484,21 +4464,14 @@ export function mountPaginatedSurface(
         scheduler.flush();
         payOwedPaint();
         if (scroller && anchor) {
-          const targetLeft = Math.max(
-            0,
-            anchor.x * scale + container.offsetLeft - scroller.clientWidth / 2
-          );
           const targetTop = Math.max(
             0,
             anchor.y * scale + container.offsetTop - scroller.clientHeight / 2
           );
-          const maxLeft = Number.isFinite(scroller.scrollWidth)
-            ? Math.max(0, scroller.scrollWidth - scroller.clientWidth)
-            : null;
           const maxTop = Number.isFinite(scroller.scrollHeight)
             ? Math.max(0, scroller.scrollHeight - scroller.clientHeight)
             : null;
-          scroller.scrollLeft = maxLeft === null ? targetLeft : Math.min(targetLeft, maxLeft);
+          centreViewportOn(container, scroller, anchor.x, scale);
           scroller.scrollTop = maxTop === null ? targetTop : Math.min(targetTop, maxTop);
           // The paint above chose its pages for the scroll offset the viewport had BEFORE the
           // restore. Building the destination band here keeps the zoom to one turn; leaving it
@@ -4620,8 +4593,9 @@ export function mountPaginatedSurface(
           );
           return;
         }
-        // A list item's first Backspace removes its number, not the paragraph break.
+        // Number first, then indent: Backspace reaches the paragraph break only after both.
         if (surface.removeListNumber(position.paragraphId)) return;
+        if (surface.removeParagraphIndent(position.paragraphId)) return;
         const order = paragraphOrder();
         const index = order.indexOf(position.paragraphId);
         const previous = order[index - 1];
@@ -4933,7 +4907,7 @@ export function mountPaginatedSurface(
         textOf(head.paragraphId),
         head.offset,
         -1,
-        deletedTextBoundaries(editingLayout(), head.paragraphId)
+        wordMotionBoundaries(editingLayout(), head.paragraphId)
       );
       if (target === head.offset) {
         surface.deleteBackward();
@@ -4957,7 +4931,7 @@ export function mountPaginatedSurface(
         textOf(head.paragraphId),
         head.offset,
         1,
-        deletedTextBoundaries(editingLayout(), head.paragraphId)
+        wordMotionBoundaries(editingLayout(), head.paragraphId)
       );
       if (target === head.offset) {
         surface.deleteForward();
@@ -5135,6 +5109,7 @@ export function mountPaginatedSurface(
     canEditTextFormField: () => textFormInteraction?.canEdit() ?? false,
     editTextFormField: () => textFormInteraction?.edit() ?? false,
     refreshToc,
+    ...removal,
     refreshRefFieldResults,
     save: () => saveSurfaceDocument(surface, container, () => destroyed),
     saveSteps: () => saveSurfaceDocumentSteps(surface, container, () => destroyed),
@@ -5327,7 +5302,8 @@ export function mountPaginatedSurface(
       // Viewing has no furniture EDITING scope. Switching while a header was open left the
       // body dimmed and inert under an active band and its whole options bar — a write UI
       // over a document that now refuses writes. Exiting repaints, so this runs first.
-      if (moved && mode !== 'edit') textboxEditing?.exit();
+      // Suggesting keeps the box open: its typing is tracked like any other story's.
+      if (moved && mode === 'view') textboxEditing?.exit();
       if (moved && mode === 'view') hfScope?.exitHeaderFooter();
       if (moved && mode === 'view') noteOps?.exitNote();
       // An armed format painter is a write surface too, and a more misleading one: the pages
@@ -5973,7 +5949,8 @@ export function mountPaginatedSurface(
     pagesLayer,
     part: (paragraphId?: string) =>
       partOfNodeId(session, paragraphId ?? selection.head.paragraphId) ?? session.part(),
-    editable: () => editingMode === 'edit' && !showFieldCodes,
+    // Suggesting presses through, so the write path refuses the untracked toggle with a reason.
+    editable: () => editingMode !== 'view' && !showFieldCodes,
     protected: (paragraphId) =>
       formsProtectionEnabled(session.settingsRoot()) &&
       sectionProtectsForms(partOfNodeId(session, paragraphId) ?? session.part(), paragraphId),
@@ -6074,7 +6051,8 @@ export function mountPaginatedSurface(
     setSelection: (next) => setSelection(next, false, 'none'),
     flush: flushPendingInputAndLayout,
     ...textboxOwnerDeps(session, sectionAtPage, () => ({ hfScope, noteOps })),
-    writable: () => hostEditable && editingMode === 'edit' && session.editable,
+    // Suggesting enters a box too: its typing commits through `applyOps`, which tracks it.
+    writable: () => hostEditable && editingMode !== 'view' && session.editable,
   });
   pointer = createPointerController(
     {

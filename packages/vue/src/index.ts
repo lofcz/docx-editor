@@ -227,6 +227,7 @@ export {
   ContextMenuInsertRowBelow,
   ContextMenuRefreshToc,
   ContextMenuRefreshTocPageNumbers,
+  ContextMenuRemoveToc,
   type ContextMenuAnchor,
   type ContextMenuCommandProps,
   type ContextMenuContextValue,
@@ -653,6 +654,23 @@ export {
 export type {
   RevisionMarkupDialogSession,
   RevisionMarkupChromeHandlers,
+} from '@docx-editor.dev/core/editor';
+
+export {
+  DocxEditorCompareDocumentsDialog,
+  useCompareDocumentsDialog,
+  type CompareDocumentsDialogValues,
+  type DocxEditorCompareDocumentsDialogProps,
+  type UseCompareDocumentsDialogReturn,
+} from './editor/DocxEditorCompareDocumentsDialog';
+export type {
+  CompareDocumentsChromeHandlers,
+  CompareDocumentsDialogSession,
+  CompareDocumentsEngineErrorCode,
+  CompareDocumentsErrorCode,
+  CompareDocumentsRefusalReason,
+  CompareDocumentsOutcome,
+  CompareDocumentsRequest,
 } from '@docx-editor.dev/core/editor';
 
 export type {

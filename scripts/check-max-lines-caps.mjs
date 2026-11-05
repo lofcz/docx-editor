@@ -43,11 +43,9 @@ const SLACK_EXEMPT = new Map([
  */
 const BLANKET_DISABLES = new Map([
   ['packages/core/src/editor/paginated-surface.ts', 6358],
-  // The upstream 2.34 merge keeps the fork's run-origin and inline-atom dispatch beside upstream's.
-  ['packages/core/src/store/store/tree-op-apply.ts', 3532],
-  // Inline widget advance styling and the atomic justification guard add seven composition lines.
+  ['packages/core/src/store/store/tree-op-apply.ts', 3495],
   ['packages/core/src/output/semantic-paint.ts', 2497],
-  ['packages/core/src/layout/note-pagination.ts', 2954],
+  ['packages/core/src/layout/note-pagination.ts', 2700],
   ['packages/core/src/store/package/note-lifecycle.ts', 1320],
 ]);
 

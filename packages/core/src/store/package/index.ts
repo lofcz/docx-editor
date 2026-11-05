@@ -123,6 +123,7 @@ export {
   ooxmlTreesEqual,
 } from './ooxml-tree.ts';
 export { readOnOffChild, isContentRevisionKind, isRangeMarkerKind } from './ooxml-shared.ts';
+export { sha256FontBytes as sha256Bytes } from './sha256.ts';
 export {
   relationshipsOf,
   relsPartNameFor,
@@ -182,6 +183,8 @@ export {
   linearMathToOmml,
   parseLinearMath,
   projectOmmlEquation,
+  type EquationBoxEdges,
+  type EquationBoxStrikes,
   type EquationControlSource,
   type EquationExpression,
   type LinearMathOmmlResult,
@@ -193,6 +196,7 @@ export {
 export {
   readOoxmlPackage,
   writeOoxmlPackage,
+  writeOoxmlPackageKeepingRevisionIds,
   withPart,
   DEFAULT_OOXML_PACKAGE_LIMITS,
   type OoxmlPackage,
@@ -311,6 +315,7 @@ export { resolveTocRowHeadings } from './toc-rows.ts';
 export {
   deriveOoxmlIndexes,
   indexStyles,
+  numberingRootOf,
   stylesPartOf,
   type OoxmlIndexes,
   type ParagraphIndexEntry,
@@ -336,7 +341,13 @@ export {
   usedParaIds,
   w14RootPrefix,
 } from './para-id.ts';
-export { ensureListDefinition, ensureNumberingLevel, type ListKind } from './numbering-part.ts';
+export {
+  ensureListDefinition,
+  ensureNumberingLevel,
+  type ListDefinitionGeometry,
+  type ListKind,
+  type ListLevelGeometry,
+} from './numbering-part.ts';
 export { buildBookmarkIndex, type BookmarkAnchor, type BookmarkIndex } from './bookmarks.ts';
 export { listBookmarks, type BookmarkPosition, type BookmarkRecord } from './bookmark-list.ts';
 export {
@@ -475,6 +486,7 @@ export {
   hasAnyComment,
   type CommentDeletionOwner,
 } from './comment-lifecycle.ts';
+export { commentsPartNameForStory } from './comment-lifecycle-scan.ts';
 export {
   NO_TRACKING_SETTINGS,
   readTrackingSettings,

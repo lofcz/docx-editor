@@ -113,7 +113,6 @@ export type {
   DocumentProtectionEdit,
   DocumentProtectionState,
 } from './store/package/document-protection.ts';
-
 // ─── Chrome registry: what a toolbar is built from ───────────────────────────
 export {
   CHROME_GROUPS,
@@ -132,6 +131,7 @@ export type {
   AttachOptions,
   BookmarkChromeHandlers,
   ChromeExportView,
+  ChromePrintSettings,
   CollaborationModuleContribution,
   ContentControlWidgetChromeHandlers,
   ContentControlWidgetSession,
@@ -155,6 +155,17 @@ export type {
   ToolbarValueSlot,
 } from './editor/index.ts';
 export type { RevisionMarkupDialog, RevisionMarkupDialogHost } from './contracts/modules.ts';
+export type { CompareDocumentsDialog, CompareDocumentsDialogHost } from './contracts/modules.ts';
+export type {
+  CompareDocumentsChromeHandlers,
+  CompareDocumentsDialogSession,
+  CompareDocumentsOutcome,
+  CompareDocumentsRequest,
+} from './contracts/compare-documents.ts';
+export {
+  COMPARE_DOCUMENTS_ACCEPT,
+  compareDocumentsErrorKey,
+} from './contracts/compare-documents.ts';
 
 // ─── Capability modules (what `@docx-editor.dev/pro` implements) ─────────────
 export type {
@@ -164,6 +175,16 @@ export type {
   RelationshipRecord,
   TargetMode,
   OoxmlPackage,
+  CompareDocumentsBackgroundEngine,
+  CompareDocumentsBackgroundResult,
+  CompareDocumentsEngine,
+  CompareDocumentsEngineErrorCode,
+  CompareDocumentsErrorCode,
+  CompareDocumentsRefusalReason,
+  CompareDocumentsEngineOptions,
+  CompareDocumentsEngineResult,
+  CompareDocumentsPhase,
+  CompareDocumentsProgress,
   EditorModule,
   ReviewModelInput,
   ReviewModuleContribution,
@@ -208,9 +229,16 @@ export type {
   ChromeExportHandlers,
   ChromeExportResult,
 } from './editor/chrome-export.ts';
-export { runChromePrint, ChromePrintError, isChromePrintShortcut } from './editor/chrome-print.ts';
+export {
+  runChromePrint,
+  ChromePrintError,
+  isChromePrintShortcut,
+  initialChromePrintSettings,
+  CHROME_PRINT_DISPLAY_MODES,
+} from './editor/chrome-print.ts';
 export type {
   ChromePrintErrorCode,
   ChromePrintJob,
   ChromePrintOptions,
+  ResolvedChromePrintSettings,
 } from './editor/chrome-print.ts';

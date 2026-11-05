@@ -14,6 +14,8 @@ import { retainedNestedRowSites } from './revision-table-preserve-nested.ts';
 import { unboundTableHistories } from './revision-table-unbound-history.ts';
 import { keepAlignmentRows } from './revision-table-alignment-rows.ts';
 import { trimDecidedExceptions } from './revision-row-exceptions.ts';
+import { restoreDecisionEmptiedControls } from './content-control-prompt-restore.ts';
+import { syncDecidedControlStates } from './content-control-decision-state.ts';
 import { implicitTableRowProperties } from './revision-table-implicit-height.ts';
 import { ordinaryMoveRanges, planOrdinaryMoves } from './revision-move-ranges.ts';
 import {
@@ -62,7 +64,12 @@ import {
   type OoxmlPart,
 } from '../package/ooxml-tree.ts';
 import { isContentRevisionKind } from '../package/ooxml-shared.ts';
-import { mergeRevisionParagraphs, tableParagraphMergeTarget } from './revision-paragraph-merge.ts';
+import {
+  holdsContent,
+  mergeRevisionParagraphs,
+  tableParagraphMergeTarget,
+} from './revision-paragraph-merge.ts';
+import { joinedAtSeams } from './revision-piece-seams.ts';
 import { DEPENDENCY_KEY_IDS } from '../registry/frozen-ids.ts';
 import {
   rebuildReach,
@@ -90,6 +97,9 @@ import {
 import { recordedProperties } from './tree-op-tracked-properties.ts';
 import { scopedRevisionRoot } from './tree-op-revision-scope.ts';
 import type { RevisionAddress } from './tree-op-types.ts';
+import { addressOf, revisionGroupKey, sameRevision, wmlAttribute } from './revision-address.ts';
+
+export { revisionGroupKey };
 import type { TreeOpEffect, TreeOpRejection } from './tree-op-validate.ts';
 
 export { namedMoveRanges };
@@ -158,40 +168,6 @@ export interface RevisionSite {
    * paragraph, and two sites can only cover one position if they are in the same paragraph.
    */
   readonly nesting: number;
-}
-
-function wmlAttribute(node: OoxmlElement, localName: string): string | undefined {
-  for (const attribute of node.attributes) {
-    if (attribute.localName !== localName) continue;
-    if (attribute.namespaceUri !== WML_NAMESPACE_URI) continue;
-    return attribute.value;
-  }
-  return undefined;
-}
-
-function addressOf(node: OoxmlElement): RevisionAddress | null {
-  const id = wmlAttribute(node, 'id');
-  const author =
-    wmlAttribute(node, 'author') ?? (node.localName === 'tblGridChange' ? '' : undefined);
-  if (id === undefined || author === undefined) return null;
-  const date = wmlAttribute(node, 'date');
-  return date === undefined ? { id, author } : { id, author, date };
-}
-
-function sameRevision(a: RevisionAddress, b: RevisionAddress): boolean {
-  return a.id === b.id && a.author === b.author && (a.date ?? null) === (b.date ?? null);
-}
-
-/**
- * The key a revision is grouped under: its address PLUS the element it is written on.
- *
- * `@w:id` carries no uniqueness constraint, and Word writes one `w:date` for a whole editing
- * burst — so an insertion and a deletion can legally share all three. Grouping on the triple
- * alone showed them as one card reading `insert` with both texts concatenated, and Accept
- * then deleted the half the card said it was inserting.
- */
-export function revisionGroupKey(address: RevisionAddress, localName: string): string {
-  return `${localName}\u0000${address.id}\u0000${address.author}\u0000${address.date ?? ''}`;
 }
 
 /** Revision sites of one paragraph or table subtree, memoized on the immutable node. */
@@ -469,6 +445,8 @@ export function revisionStructuralReach(
     const target = tableRevisionContentTarget(part, site, action);
     if (target) reach.set(target.id, true);
   }
+  // Child positions per container, built once: one lookup per resolved mark, not one scan.
+  const positions = new Map<string, Map<string, number>>();
   for (const site of matched) {
     if (
       !site.paragraphMark ||
@@ -482,14 +460,17 @@ export function revisionStructuralReach(
     const id = paragraphOwning(part, site.node.id);
     const container = id && parentNodeOf(part, id);
     if (!container) continue;
-    const at = container.children.findIndex((n) => n.id === id);
-    const next = container.children
-      .slice(at + 1)
-      .find(
-        (n) =>
-          !removed.has(n.id) &&
-          (n.kind === 'paragraph' || n.kind === 'table' || n.kind === 'contentControl')
-      );
+    let index = positions.get(container.id);
+    if (!index) {
+      index = new Map(container.children.map((n, i) => [n.id, i]));
+      positions.set(container.id, index);
+    }
+    let next: OoxmlNode | undefined;
+    for (let i = (index.get(id) ?? -1) + 1; i < container.children.length && !next; i++) {
+      const n = container.children[i]!;
+      const block = n.kind === 'paragraph' || n.kind === 'table' || n.kind === 'contentControl';
+      if (block && !removed.has(n.id)) next = n;
+    }
     if (next) {
       const target = tableParagraphMergeTarget(next, removed);
       if (target) reach.set(target.id, false);
@@ -514,7 +495,12 @@ function rebuildChildren(
 ): OoxmlNode[] {
   const out: OoxmlNode[] = [];
   let decided: DecidedSpan | null = null;
+  // Where a child left nothing or was unwrapped: pieces of one change that met there join.
+  const seams: number[] = [];
+  let pushed = -1;
   for (const child of children) {
+    if (pushed === out.length) seams.push(out.length);
+    pushed = out.length;
     const before = decided;
     decided = null;
     if (child.kind !== 'textValue' && !plan.reach.has(child.id)) {
@@ -543,7 +529,9 @@ function rebuildChildren(
         const preserving = withRevisionParentBindings(node, child);
         return action === 'restore' ? withDeletedTextRestored(preserving) : preserving;
       });
+      seams.push(out.length);
       decided = pushDecidedContent(out, child, kept, before, plan.mint);
+      seams.push(out.length);
       continue;
     }
 
@@ -605,7 +593,8 @@ function rebuildChildren(
     out.push(...rebuilt);
   }
 
-  return mergeRevisionParagraphs(out, plan.mergeForward, plan.mint, cell, container);
+  const joined = joinedAtSeams(plan.mint, out, seams);
+  return mergeRevisionParagraphs(joined, plan.mergeForward, plan.mint, cell, container, plan.first);
 }
 
 function rebuild(node: OoxmlNode, plan: RebuildPlan): OoxmlNode[] {
@@ -798,6 +787,7 @@ export function resolveRevisions(
     for (const id of implicitTableRowProperties(part, matched).keys()) dropMarks.add(id);
   const restoreProperties = new Set<string>();
   const mergeForward = new Set<string>();
+  const first = new Map<string, boolean>();
   const removeStructures = new Set([
     ...tableRevisionRemovals(part, matched, action).keys(),
     ...movePlan.remove,
@@ -891,6 +881,8 @@ export function resolveRevisions(
         const paragraph = paragraphOwning(part, site.node.id);
         if (paragraph === null) return { ok: false, reason: 'unsupported-revision' };
         mergeForward.add(paragraph);
+        if (action === 'reject' && site.node.localName === 'ins')
+          first.set(paragraph, !holdsContent(findNode(part, paragraph)));
       }
       continue;
     }
@@ -928,6 +920,7 @@ export function resolveRevisions(
     acceptedMarks,
     restoreProperties,
     mergeForward,
+    first,
     accepting: action === 'accept',
     removeStructures,
     mergeCells,
@@ -969,7 +962,12 @@ export function resolveRevisions(
   if (!normalized.ok) return normalized;
   return {
     ok: true,
-    part: normalized.part,
+    part: syncDecidedControlStates(
+      part,
+      decided,
+      restoreDecisionEmptiedControls(part, decided, normalized.part, options),
+      options
+    ),
     effect: {
       dirty: [],
       created: [],

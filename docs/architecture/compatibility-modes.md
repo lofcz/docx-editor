@@ -41,7 +41,7 @@ The `docx/no-raw-compatibility-mode` lint rule rejects a comparison of `compatib
 | `anchorOnlyParagraphWrapExclusion` | `modern` | An anchor-only paragraph wraps around its own anchors |
 | `anchorsLayOutInCell` | `modern` | Every anchored object in a table cell lays out in its cell |
 | `distributedLinesSpreadCharacters` | `legacy` | A distributed paragraph spreads every line after every character, kerned runs included; a space first takes up to the face average character width less its own advance |
-| `fixedTableContentEdgeOrigin` | `legacy` | A fixed left table aligns its first content edge with the text column |
+| `fixedTableContentEdgeOrigin` | `legacy` | A table with an absolute width, or a fixed table with an automatic width, aligns the content edge of its aligned outer cell with the text column. A leading-aligned table without an indent or a table style keeps its outer edge there. In a text box, only a leading-aligned table takes this rule, fixed or AutoFit, in either direction |
 | `floatingTableContentOrigin` | `legacy` | A floating table with a numeric text anchor or a right alignment positions its cell content |
 | `floatingTableOverlapMovesLeft` | `modern` | A floating table that may not overlap tries the left side before it moves down |
 | `headerFooterAnchorsWrapText` | `modern` | Header and footer text wraps around anchored objects |
@@ -49,9 +49,11 @@ The `docx/no-raw-compatibility-mode` lint rule rejects a comparison of `compatib
 | `justifiedSpaceShrink` | `modern` | Justified lines may shrink spaces |
 | `keepNextGivesTailLines` | `modern` | A keep-with-next paragraph gives its last lines to the next page |
 | `legacyPercentTableContentWidth` | `legacy` | A percent-width table resolves against the legacy content width |
-| `legacySharedGridLineSideRules` | `legacy` | Side rules center on shared grid lines |
+| `legacySharedGridLineSideRules` | `legacy` | Side rules center on shared grid lines, in left-to-right, right-to-left, and nested tables |
 | `modernBidiTableRuleShift` | `modern` | A right-to-left table sits half its mean outer side rule toward its visual left |
-| `modernGridLineSideRules` | `modern` | Side rules center on grid lines for covered shapes; edge-aligned grids move by half a rule |
+| `modernGridLineSideRules` | `modern` | Side rules center on grid lines for covered shapes, including one-rule percent widths; edge-aligned grids move by half a rule |
+| `noteAreaHoldsLineSpacing` | `modern` | Auto line spacing below a body line must fit above the footnote area |
+| `noteAreaHoldsSpaceAfter` | `modern` | A paragraph's space after must fit above the footnote area; in legacy modes, only a paragraph that cites a footnote needs it to fit |
 | `noteTableCellKeeps` | `modern` | Note bands in table rows honor cell widow control and `w:keepLines` |
 | `openingColumnBreakTakesNoLine` | `legacy` | A column break that opens a paragraph leaves no line in the column it ends |
 | `oversizedRowKeepGroupReleases` | `legacy` | Oversized kept row groups release before placement, except below authored headers |
@@ -65,12 +67,13 @@ The `docx/no-raw-compatibility-mode` lint rule rejects a comparison of `compatib
 | `rowPageBreakYieldsToKeep` | `modern` | A row with a page break follows a row that keeps with it |
 | `tallRowStaysWhole` | `legacy` | A row that cannot split and is taller than a page stays whole on its page and runs past the bottom margin |
 | `tableParagraphWidowControl` | `modern` | Paragraphs that split in table cells apply widow control |
+| `unreachedGridColumnsTakeNoWidth` | `modern` | Trailing grid columns that no cell reaches take no width, even when a row end skip spans them. Table style conditions still count the authored grid |
 | `vMergeTextMovesPastHeadRow` | `modern` | Merged cell text moves whole past a head row that cannot hold it |
 | `wrappedAnchorsStayBelowTopMargin` | `modern` | A wrapping object positioned from its paragraph never starts above the top margin |
 | `adjustLineHeightInTable` | `w:adjustLineHeightInTable` | Cell paragraphs snap to the line grid |
 | `noColumnBalance` | `w:noColumnBalance` in `legacy` modes | Columns fill in order without balancing |
 | `doNotBreakWrappedTables` | `w:doNotBreakWrappedTables` | A floating table that fits a page does not break |
-| `fixedParagraphSpacing` | `w:doNotUseHTMLParagraphAutoSpacing` | Adjacent paragraph spacing adds up |
+| `fixedParagraphSpacing` | `w:doNotUseHTMLParagraphAutoSpacing` | Adjacent paragraph spacing adds up, and automatic spacing keeps the authored measurement |
 | `ignoreIndentAsNumberingTabStop` | `w:doNotUseIndentAsNumberingTabStop` | A numbering tab ignores the hanging indent |
 | `optionalLigatures` | `enableOpenTypeFeatures`, else `modern` | Optional OpenType ligatures apply |
 | `pageBreakMarkOnNextPage` | `w:splitPgBreakAndParaMark` in a legacy mode | The paragraph mark after a closing page break takes a line at the top of the next page |

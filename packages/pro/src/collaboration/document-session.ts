@@ -15,18 +15,18 @@ Production use requires a commercial agreement: licensing@eigenpal.com
 import { STRUCTURAL_TEXT_ATTRIBUTE_KEYS } from './document/paragraph-text.ts';
 export { STRUCTURAL_TEXT_ATTRIBUTE_KEYS as DOCUMENT_STRUCTURAL_TEXT_ATTRIBUTE_KEYS } from './document/paragraph-text.ts';
 import { projectTypingOrJournal } from './document/projected-journal.ts';
+import { prepareMemberRootJournal } from './document/prepare-member-root-journal.ts';
 import { editWaits } from './document/journal.ts';
-import { markRestoredText } from './document/paragraph-text-restore.ts';
 import { awaitingUpdates } from './document/yjs-items.ts';
 import { viewRenamesPlan } from './document/paragraph-text-drift.ts';
-import { stepHistory } from './document/history-undone.ts';
+import { repairRestored, stepHistory } from './document/history-undone.ts';
 import { withoutPersistentHyperlinkUndo } from './document/persistent-hyperlink-history.ts';
 import { HistoryGroupCapture } from './document/history-group-capture.ts';
 import * as Y from 'yjs';
 import type { Awareness } from 'y-protocols/awareness';
 import {
   ORIGIN_IDS,
-  writeOoxmlPackage,
+  writeOoxmlPackageKeepingRevisionIds,
   type OoxmlPackage,
   type StoryScope,
   type TreeDocOp,
@@ -42,10 +42,9 @@ import type {
   CollaborationSelectionMove,
   CollaborationStatusSnapshot,
 } from '@docx-editor.dev/core/collaboration';
-import {
-  historyGroupOfJournal,
-  type CanonicalPrimitiveJournal,
-  type CollaborationDocumentPort,
+import type {
+  CanonicalPrimitiveJournal,
+  CollaborationDocumentPort,
 } from '@docx-editor.dev/core/collaboration/replication';
 import {
   createCollaborationStatusTracker,
@@ -55,15 +54,16 @@ import { DocumentRegistry, PackageMaterializer, applyPrimitiveJournal } from './
 import { collectJournalBlobs, putJournalBlobs } from './document-session-blobs.ts';
 import { healTargetOf, RefusalStreak, type HealTarget } from './document-session-heal.ts';
 import { HistorySelection } from './document-history-selection.ts';
-import { startAttachWatchdog } from './document-session-watchdog.ts';
+import { attachWatchdogDelay, startAttachWatchdog } from './document-session-watchdog.ts';
 import { RemoteSelectionResolver } from './document-remote-selections.ts';
 import { droppedContentDetail, packageVersionFailure } from './document/schema.ts';
-import { SHARED_BLOBS_KEY, SharedBlobStore, limitFailure } from './shared-blob-store.ts';
+import { SHARED_BLOBS_KEY, SharedBlobStore } from './shared-blob-store.ts';
 import { observeSeedRecords, initializeSharedState } from './document-bootstrap.ts';
 import { LogicalIdentityMap } from './document-identity.ts';
 import { CaretAnchors } from './document-caret-anchors.ts';
 import { EditWait } from './document-edit-wait.ts';
 import { resourceUsageOf, type CollaborationResourceUsage } from './resource-usage.ts';
+import { PressureWatches, limitFailure, type PressureArgs } from './resource-pressure.ts';
 import {
   AWARENESS_FIELD,
   MAX_AWARENESS_STATES,
@@ -81,6 +81,7 @@ import type { CollaborationHandle, CollaborationIdentityUpdate } from './types.t
 import type { DocumentCollaborationSession } from './document-session-contract.ts';
 import { UndoGroups, type CollaborationUndoGroup } from './document-undo-group.ts';
 import { restoreLostTombstones } from './document/tombstone-guard.ts';
+import { keepShownOrders, shownOrdersBefore } from './document/split-sibling-pin.ts';
 import type { CreateDocumentCollaborationOptions } from './document-session-options.ts';
 
 /**
@@ -88,18 +89,7 @@ import type { CreateDocumentCollaborationOptions } from './document-session-opti
  * paragraph a user types without a long pause. This is the `Y.UndoManager` default.
  */
 const UNDO_CAPTURE_TIMEOUT_MS = 500;
-/** After this long with no attached document port, the session warns that nothing replicates. */
-const ATTACH_WATCHDOG_MS = 2_000;
-
-/**
- * Test-only override for the attach watchdog delay. Not re-exported from
- * `@docx-editor.dev/pro/collaboration`.
- *
- * @internal
- */
-export const ATTACH_WATCHDOG_MS_FOR_TESTS: unique symbol = Symbol(
-  'createDocumentCollaboration.attachWatchdogMs'
-);
+export { ATTACH_WATCHDOG_MS_FOR_TESTS } from './document-session-watchdog.ts';
 
 class DocumentSession implements DocumentCollaborationSession {
   readonly documentId: string;
@@ -127,6 +117,12 @@ class DocumentSession implements DocumentCollaborationSession {
   private applyingRemote = false;
   /** The last publish waited for a held-back update and left the editor behind shared state. */
   private viewWaiting = false;
+  /**
+   * A full rebuild that the editor refused while shared state waited for a held-back update.
+   * Until that update arrives, another full rebuild reads the same incomplete state, so a
+   * refused view waits for it instead of rebuilding the whole document on every update.
+   */
+  private fullRefusedWhileWaiting = false;
   /** Where a degraded session returns on its next clean remote apply; null when terminal. */
   private healTo: HealTarget | null = null;
   private readonly historySelections: HistorySelection;
@@ -137,6 +133,7 @@ class DocumentSession implements DocumentCollaborationSession {
   private drainingHeldJournals = false;
   private remoteCounter = 0;
   private destroyed = false;
+  private readonly pressure = new PressureWatches();
   private readonly refusals = new RefusalStreak();
   private readonly historyGroups: HistoryGroupCapture;
   private readonly undoGroups: UndoGroups;
@@ -226,6 +223,10 @@ class DocumentSession implements DocumentCollaborationSession {
 
   resourceUsage(): CollaborationResourceUsage {
     return resourceUsageOf(this.registry, this.blobs);
+  }
+
+  subscribeResourcePressure(...args: PressureArgs): () => void {
+    return this.pressure.watch(this.ydoc, this.registry, this.blobs, ...args);
   }
 
   subscribeStatus(
@@ -432,10 +433,9 @@ class DocumentSession implements DocumentCollaborationSession {
     this.historySelections.startPop();
     const from = Y.getState(this.ydoc.store, this.ydoc.clientID);
     this.registry.takeUnlisted();
-    stepHistory(this.registry, this.undoManager, direction, () => {
-      this.registry.normalizeRestoredSplitTextAnchors();
-      markRestoredText(this.ydoc, from);
-    });
+    stepHistory(this.registry, this.undoManager, direction, () =>
+      repairRestored(this.registry, this.ydoc, from)
+    );
     return true;
   }
 
@@ -540,6 +540,7 @@ class DocumentSession implements DocumentCollaborationSession {
     this.undoGroups.close();
     this.detachPort?.();
     this.destroyed = true;
+    this.pressure.stopAll();
     this.stopBlobWatch();
     this.stopSeedWatch();
     this.ydoc.off('beforeTransaction', this.onBeforeYjsTransaction);
@@ -565,11 +566,18 @@ class DocumentSession implements DocumentCollaborationSession {
     // Custom ports and headless stores can publish without the editor's operation gate.
     // Enforce admission here too, before minting identities or publishing document/blob data.
     if (!this.canWriteSharedState()) return;
+    const translated = this.identityMap.translate(journal);
+    const memberRefusal = prepareMemberRootJournal(this.materializer, translated, () =>
+      awaitingUpdates(this.ydoc)
+    );
+    if (memberRefusal) {
+      this.refuseLocalJournal(memberRefusal.failure, memberRefusal.transient);
+      return;
+    }
+    // After the member refresh: drift it notes belongs to earlier journals, not this one.
     this.registry.inline.takeDrift();
-    const projected = projectTypingOrJournal(
-      this.registry,
-      this.identityMap.translate(journal),
-      (id) => this.materializer.shownPartChildren(id)
+    const projected = projectTypingOrJournal(this.registry, translated, (id) =>
+      this.materializer.shownPartChildren(id)
     );
     if (!projected.ok) {
       this.refuseLocalJournal({
@@ -588,34 +596,35 @@ class DocumentSession implements DocumentCollaborationSession {
     if (!this.canWriteSharedState()) return;
     let transient = false;
     this.historySelections.noteBefore();
+    const orders = shownOrdersBefore(this.registry, shared);
+    const publish = () => {
+      const failed = this.ydoc.transact((): CollaborationFailure | null => {
+        if (blobs !== null) {
+          const published = putJournalBlobs(this.blobs, blobs.payloads);
+          if (published !== null) return published;
+        }
+        const result = applyPrimitiveJournal(
+          this.registry,
+          shared,
+          projected.plan,
+          projected.typed
+        );
+        if (!result.ok) {
+          transient = result.transient === true;
+          return {
+            code: result.code as CollaborationFailureCode,
+            ...(result.detail ? { detail: result.detail } : {}),
+          };
+        }
+        return null;
+      }, this.localOrigin);
+      // The blocks the edit left show where the author saw them (`split-sibling-pin.ts`).
+      if (failed === null) keepShownOrders(this.registry, this.ydoc, this.localOrigin, orders);
+      return failed;
+    };
     const refusal = withoutPersistentHyperlinkUndo(
-      this.undoManager,
-      this.localOrigin,
-      this.registry,
-      shared,
-      () =>
-        this.historyGroups.capture(historyGroupOfJournal(journal), () =>
-          this.ydoc.transact((): CollaborationFailure | null => {
-            if (blobs !== null) {
-              const published = putJournalBlobs(this.blobs, blobs.payloads);
-              if (published !== null) return published;
-            }
-            const result = applyPrimitiveJournal(
-              this.registry,
-              shared,
-              projected.plan,
-              projected.typed
-            );
-            if (!result.ok) {
-              transient = result.transient === true;
-              return {
-                code: result.code as CollaborationFailureCode,
-                ...(result.detail ? { detail: result.detail } : {}),
-              };
-            }
-            return null;
-          }, this.localOrigin)
-        )
+      this.undoManager, this.localOrigin, this.registry, shared,
+      () => this.historyGroups.captureJournal(journal, this.localOrigin, publish)
     );
     if (refusal === null) {
       this.refusals.published();
@@ -721,6 +730,7 @@ class DocumentSession implements DocumentCollaborationSession {
       // address what shared state holds, but a view that incompleteness breaks is skipped
       // rather than reported, and the update that completes it publishes again.
       const waiting = awaitingUpdates(this.ydoc);
+      if (!waiting) this.fullRefusedWhileWaiting = false;
       const materialized = full ? this.materializer.rebuildFull() : this.materializer.current();
       // After materializing, because that is what reads the blobs and so what hashes them.
       const poisoned = this.blobs.poisonedDigest();
@@ -754,11 +764,12 @@ class DocumentSession implements DocumentCollaborationSession {
         });
       };
       let result = apply(materialized.package);
-      if (!result.ok) {
+      if (!result.ok && !(waiting && this.fullRefusedWhileWaiting)) {
         // The incremental view kept a subtree a concurrent edit invalidated. Rebuild the view
         // from shared state alone, as every replica would, before calling the room broken.
         const full = this.materializer.rebuildFull();
         if (full.ok && !droppedContentDetail(full.issues)) result = apply(full.package);
+        if (!result.ok && waiting) this.fullRefusedWhileWaiting = true;
       }
       if (!result.ok) {
         if (waiting) this.viewWaiting = true;
@@ -909,10 +920,7 @@ export { readCollaborationDocument } from './document-read.ts';
 export async function createDocumentCollaboration(
   options: CreateDocumentCollaborationOptions
 ): Promise<DocumentCollaborationHandle> {
-  const attachWatchdogMs =
-    (options as { readonly [ATTACH_WATCHDOG_MS_FOR_TESTS]?: number })[
-      ATTACH_WATCHDOG_MS_FOR_TESTS
-    ] ?? ATTACH_WATCHDOG_MS;
+  const attachWatchdogMs = attachWatchdogDelay(options);
   const documentId = validateDocumentId(options.documentId);
   const sessionId = sessionIdentity(options.sessionId);
   const identity = validateIdentity(options.identity);
@@ -972,8 +980,9 @@ async function bootstrapDocumentReplica(
       throw new CollaborationSchemaError(materialized.code);
     }
     // Serialize before the session exists: a throw here must not orphan a live session
-    // whose registry and materializer the catch below is about to tear down.
-    const document = writeOoxmlPackage(materialized.package);
+    // whose registry and materializer the catch below is about to tear down. The replica
+    // loads these bytes as the shared document, so revision ids stay as shared state holds them.
+    const document = writeOoxmlPackageKeepingRevisionIds(materialized.package);
     const session = new DocumentSession(
       options.ydoc,
       options.awareness,

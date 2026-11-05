@@ -47,14 +47,19 @@ const pairable = isReplacementPair;
 /** Pairs by deletion, so one queue revision yields the same pair object on every read. */
 const pairCache = new WeakMap<ReviewRevisionItem, ReviewRevisionItem>();
 
-function pairOf(deletion: ReviewRevisionItem, insertion: ReviewRevisionItem): ReviewRevisionItem {
+function pairOf(
+  deletion: ReviewRevisionItem,
+  insertion: ReviewRevisionItem,
+  /** The half that comes first in the document: the pair sits where it does. */
+  first: ReviewRevisionItem
+): ReviewRevisionItem {
   const cached = pairCache.get(deletion);
   if (cached && halvesOf.get(cached)?.insertion === insertion) return cached;
   const date = insertion.date ?? deletion.date;
   const pair: ReviewRevisionItem = {
     kind: 'revision',
     id: replacementPairId(deletion.id, insertion.id),
-    address: deletion.address,
+    address: first.address,
     addresses: [...deletion.addresses, ...insertion.addresses],
     replacedText: deletion.text,
     revisionKind: 'replace',
@@ -76,8 +81,8 @@ function pairOf(deletion: ReviewRevisionItem, insertion: ReviewRevisionItem): Re
 }
 
 /**
- * Replace touching deletion and insertion halves with one `replace` item at the first
- * half's queue position. Keep deletion-first address and range semantics in either order.
+ * Replace each deletion and the touching insertion from the same author next to it, in either
+ * order, among the queue's revisions, with one `replace` item at the first half's position.
  */
 function pairReplacements(items: readonly ReviewItem[]): {
   readonly items: readonly ReviewItem[];
@@ -87,23 +92,24 @@ function pairReplacements(items: readonly ReviewItem[]): {
   const pairs = new Map<ReviewItem, ReviewRevisionItem>();
   const absorbed = new Set<ReviewItem>();
   const renamed = new Map<string, string>();
-  // Preserve the established deletion-first choice when three touching halves are ambiguous.
-  for (const leadingInsertion of [false, true])
-    for (let index = 0; index + 1 < revisions.length; index += 1) {
-      const first = revisions[index]!,
-        second = revisions[index + 1]!;
-      if (pairs.has(first) || pairs.has(second) || absorbed.has(first) || absorbed.has(second))
-        continue;
-      const deletion = leadingInsertion ? second : first;
-      const insertion = leadingInsertion ? first : second;
-      if (!pairable(deletion, insertion)) continue;
-      const pair = pairOf(deletion, insertion);
-      pairs.set(first, pair);
-      absorbed.add(second);
-      renamed.set(deletion.id, pair.id);
-      renamed.set(insertion.id, pair.id);
-      index += 1;
-    }
+  for (let index = 0; index + 1 < revisions.length; index += 1) {
+    const first = revisions[index]!;
+    const second = revisions[index + 1]!;
+    const insertionFirst = first.revisionKind === 'insert';
+    // A deletion with the insertion after it, as typing over a selection writes, pairs first:
+    // an insertion before that deletion stays its own change, as it was before compare pairs.
+    const next = revisions[index + 2];
+    if (insertionFirst && next && pairable(second, next)) continue;
+    // The pair takes the place of whichever half comes first.
+    const [deletion, insertion] = insertionFirst ? [second, first] : [first, second];
+    if (!pairable(deletion, insertion)) continue;
+    const pair = pairOf(deletion, insertion, first);
+    pairs.set(first, pair);
+    absorbed.add(second);
+    renamed.set(deletion.id, pair.id);
+    renamed.set(insertion.id, pair.id);
+    index += 1;
+  }
   if (pairs.size === 0) return { items, renamed };
   const next: ReviewItem[] = [];
   for (const item of items) {

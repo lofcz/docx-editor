@@ -473,6 +473,12 @@ export function authorableCoverageFixtures(): JournalCoverageFixture[] {
         beforeBlockId: paragraphIds(store)[0]!,
       })
     ),
+    story('insertParagraphBesideTable', zipDoc({ body: TABLE }), (store) => ({
+      op: 'insertParagraphBesideTable',
+      tableId: tableIds(store).tableId,
+      where: 'before',
+      text: 'lead',
+    })),
     story('insertTableRow', zipDoc({ body: TABLE }), (store) => {
       const ids = tableIds(store);
       return {
@@ -767,6 +773,10 @@ export function authorableCoverageFixtures(): JournalCoverageFixture[] {
         bookmarksToCreate: [],
       };
     }),
+    story('removeToc', zipDoc({ body: TOC_BODY }), (store) => ({
+      op: 'removeToc',
+      tocId: detectBodyTocs(store.bodyStore().part)[0]!.id,
+    })),
     story('rewriteTocPageNumbers', zipDoc({ body: TOC_BODY }), (store) => {
       const toc = detectBodyTocs(store.bodyStore().part)[0]!;
       return {

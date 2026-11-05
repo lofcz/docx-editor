@@ -13,6 +13,7 @@ import {
 } from './tree-op-tracked-link-structure.ts';
 import { withDisplayedHyphens } from '../package/hyphen-text.ts';
 import { withTailStyle } from './tree-op-paragraph-tail.ts';
+import { withInsertionHints } from './tree-op-text-splice-hints.ts';
 import { applySetFieldCode } from './tree-op-field-code.ts';
 import { applyTableAuthoring } from './tree-op-table-batch.ts';
 import { applyTableProperties } from './tree-op-table-authoring.ts';
@@ -40,6 +41,7 @@ import {
   textWithHyphens,
 } from './tree-op-inline-elements.ts';
 import { characterStyleElement, emptyParagraphRunProperties } from './mark-character-style-run.ts';
+import { splitRunsAt } from './tree-op-split-runs.ts';
 import {
   insertAfterNoteInRun,
   noteReferenceEndingAt,
@@ -74,7 +76,10 @@ import {
   type EditOptions,
 } from '../package/ooxml-edit.ts';
 import { wmlFreshNamespaceContextAt } from '../package/wml-namespace.ts';
-import { contentControlLevelOf } from '../package/content-control-nodes.ts';
+import {
+  carryEmptyContentControlsAcrossRunPropertyEdit,
+  contentControlLevelOf,
+} from '../package/content-control-nodes.ts';
 import { resolveRevisionOperation } from './tree-op-revisions.ts';
 import { applyTrackedControlRemoval } from './tracked-content-control-remove.ts';
 import { applySetRevisionAttribution } from './revision-author-change.ts';
@@ -86,6 +91,7 @@ import {
   applyInsertTrackedElements,
   insertedRunProperties,
 } from './tree-op-tracked.ts';
+import { splicedJoined } from './revision-piece-seams.ts';
 import {
   applyParagraphMarkRevision,
   applyProposeParagraphMerge,
@@ -165,15 +171,19 @@ import { applySetFieldResult } from './tree-op-field-result-write.ts';
 import { withoutOriginalMark } from './tree-op-split-mark.ts';
 import { applyInsertEquation } from './tree-op-equation-insert.ts';
 import { applyTrackedContentControl } from './tracked-content-control-insert.ts';
+import {
+  applyContentControlValueOp,
+  trackedTextAtControlEdge,
+} from './tracked-content-control-value.ts';
 import { applyInsertContentControl as applyAutomationInsertContentControl } from './tree-op-content-control-insert.ts';
 import {
   applyRemoveContentControl as applyAutomationRemoveContentControl,
   applySetContentControlProperties as applyAutomationSetContentControlProperties,
-  applySetContentControlValue as applyAutomationSetContentControlValue,
   clearPlaceholder,
   placeholderControlForInsertion,
 } from './tree-op-content-controls.ts';
 import {
+  carrySegmentsAcrossRunPropertyEdit,
   insertionDestination,
   insertionLandingNodeId,
   fieldInsertionEndAt,
@@ -189,8 +199,10 @@ import {
   applyReplaceTocResult,
   applyRewriteTocPageNumbers,
 } from './tree-op-toc.ts';
+import { applyRemoveToc } from './tree-op-toc-remove.ts';
 import { applyInsertTable } from './tree-op-insert-table.ts';
 import { applyMoveTable } from './tree-op-move-table.ts';
+import { applyInsertParagraphBesideTable } from './tree-op-paragraph-beside-table.ts';
 import { applyReplaceStoryBlocks } from './tree-op-story-replace.ts';
 import {
   inlineWrapperProperties,
@@ -202,7 +214,6 @@ import type {
   RevisionAttributionInput,
   TreeDocOp,
   TreeOpEffect,
-  TreeOpRejection,
   TreeOpResult,
 } from './tree-op-types.ts';
 import {
@@ -254,7 +265,9 @@ import {
  * quadratic in document size.
  */
 export function applyTreeOp(part: OoxmlPart, op: TreeDocOp, options?: EditOptions): TreeOpResult {
-  return withBookmarkEditRules(part, op, options, () => applyValidatedTreeOp(part, op, options));
+  const run = () =>
+    withBookmarkEditRules(part, op, options, () => applyValidatedTreeOp(part, op, options));
+  return op.op === 'insertText' ? withInsertionHints(part, op.paragraphId, op.offset, run) : run();
 }
 
 function applyValidatedTreeOp(part: OoxmlPart, op: TreeDocOp, options?: EditOptions): TreeOpResult {
@@ -264,9 +277,8 @@ function applyValidatedTreeOp(part: OoxmlPart, op: TreeDocOp, options?: EditOpti
   if (op.op === 'replaceStoryBlocks') {
     return applyReplaceStoryBlocks(part, op.storyRootId, op.paragraphs, options);
   }
-  if (op.op === 'setContentControlValue' && typeof op.value !== 'string') {
-    return applyAutomationSetContentControlValue(part, op, options);
-  }
+  if (op.op === 'setContentControlValue')
+    return applyContentControlValueOp(part, op, options, applySetContentControlValue);
   if (op.op === 'setContentControlProperties') {
     return applyAutomationSetContentControlProperties(part, op, options);
   }
@@ -361,16 +373,18 @@ function applyValidatedTreeOp(part: OoxmlPart, op: TreeDocOp, options?: EditOpti
     return applyTableCellPropertyOp(part, op, options);
   }
   if (isDrawingTreeDocOp(op)) return applyDrawingContentEdit(part, op, options);
-
   if (op.op === 'insertFragment') return applyInsertFragment(part, op, options);
   if (op.op === 'insertParagraphs') return applyInsertParagraphs(part, op, options);
   if (op.op === 'insertBuildingBlock') return applyInsertBuildingBlock(part, op, options);
   if (isBookmarkTreeOp(op)) return applyBookmarkOp(part, op, options);
   if (op.op === 'insertTable') return applyInsertTable(part, op, options);
   if (op.op === 'moveTable') return applyMoveTable(part, op, options);
+  if (op.op === 'insertParagraphBesideTable')
+    return applyInsertParagraphBesideTable(part, op, options, applyTreeOp);
   if (op.op === 'deleteBlock') return applyDeleteBlock(part, op.blockId, options);
   if (op.op === 'insertToc') return applyInsertToc(part, op, options);
   if (op.op === 'replaceTocResult') return applyReplaceTocResult(part, op, options);
+  if (op.op === 'removeToc') return applyRemoveToc(part, op, options);
   if (op.op === 'rewriteTocPageNumbers') return applyRewriteTocPageNumbers(part, op, options);
   if (isFieldResultOp(op)) return applyFieldResultOp(part, op, options);
   if (op.op === 'setFieldCode') return applySetFieldCode(part, op, options);
@@ -459,10 +473,6 @@ function applyValidatedTreeOp(part: OoxmlPart, op: TreeDocOp, options?: EditOpti
   if (op.op === 'setRevisionAttribution') return applySetRevisionAttribution(part, op, options);
   if (op.op === 'removeContentControl')
     return applyRemoveContentControl(part, op.controlId, options);
-  if (op.op === 'setContentControlValue') {
-    if (typeof op.value !== 'string') return { ok: false, reason: 'typeMismatch' };
-    return applySetContentControlValue(part, op.controlId, op.value, options);
-  }
   if (op.op === 'setSectionProperties') return applySetSectionProperties(part, op, options);
   if (op.op === 'setSectionMark') return applySetSectionMark(part, op, options);
   // Package-lifecycle / note-part ops are refused by validateTreeOp; this arm narrows the
@@ -493,15 +503,9 @@ function applyValidatedTreeOp(part: OoxmlPart, op: TreeDocOp, options?: EditOpti
   switch (op.op) {
     case 'insertText':
       if (op.revision) {
-        return applyInsertTracked(
-          part,
-          paragraph,
-          op.offset,
-          op.text,
-          op.revision,
-          options,
-          op.bias
-        );
+        const { offset, text, revision, bias } = op;
+        const edge = op.inside && trackedTextAtControlEdge(part, paragraph, op, options);
+        return edge || applyInsertTracked(part, paragraph, offset, text, revision, options, bias);
       }
       return applyInsertContent(
         part,
@@ -2084,8 +2088,11 @@ function applyRemoveHyperlink(
   if (!link || link.kind !== 'hyperlink') return { ok: false, reason: 'tree-invariant' };
   const owner = parentOf(part, link.id);
   if (!owner) return { ok: false, reason: 'tree-invariant' };
-  const children = owner.children.flatMap((child) =>
-    child.id === link.id ? [...link.children] : [child]
+  const children = splicedJoined(
+    createNodeIdAllocator(part),
+    owner.children,
+    link.id,
+    link.children
   );
   const effect: TreeOpEffect = {
     dirty: [owner.id],
@@ -2116,7 +2123,7 @@ function applyRemoveContentControl(
   if (!owner) return { ok: false, reason: 'tree-invariant' };
   const kept = contentControlUnwrapPayload(control);
   if (!kept) return { ok: false, reason: 'tree-invariant' };
-  const children = owner.children.flatMap((child) => (child.id === control.id ? kept : [child]));
+  const children = splicedJoined(createNodeIdAllocator(part), owner.children, control.id, kept);
   const effect: TreeOpEffect = {
     dirty: [owner.id],
     created: [],
@@ -3458,75 +3465,15 @@ function applySetRunProperties(
     if (!updated.ok) return fromEdit(updated, effect);
     current = updated.part;
   }
+  // Every write above replaced a `w:rPr` and kept the rest of each run by identity.
+  const rebuilt = findNode(current, paragraph.id);
+  if (rebuilt?.kind === 'paragraph' && rebuilt !== target) {
+    const tree = current;
+    carrySegmentsAcrossRunPropertyEdit(target, rebuilt, (node) => findNode(tree, node.id) === node);
+    carryEmptyContentControlsAcrossRunPropertyEdit(target, rebuilt);
+  }
   return ok(current, effect);
 }
 
-/** Divide any run straddling `offset` so the offset falls on a run boundary. */
-export function splitRunsAt(
-  part: OoxmlPart,
-  paragraph: OoxmlParagraphNode,
-  offset: number,
-  options?: EditOptions
-): { ok: true; part: OoxmlPart } | { ok: false; reason: TreeOpRejection; detail?: string } {
-  const segments = segmentsOf(paragraph);
-  // The run the offset falls INSIDE, wherever inside: looking only for a straddling TEXT
-  // VALUE missed every boundary between two of a run's own children. A `w:tab` and a
-  // `w:br` each measure one character, so `<w:r><w:t>a</w:t><w:tab/><w:t>b</w:t></w:r>`
-  // has edges at 1 and 2 that no text value straddles — the run was left whole, the range
-  // then matched it through the tab's segment, and formatting the tab alone bolded all
-  // three characters.
-  const runIds: string[] = [];
-  for (const segment of segments) {
-    // Simple fields are paragraph children: their atom has no owning run. Grouping
-    // their empty run IDs invents one run spanning every simple field, then attempts
-    // to split that nonexistent run at an otherwise valid boundary between fields.
-    if (!segment.runId) continue;
-    if (runIds[runIds.length - 1] !== segment.runId) runIds.push(segment.runId);
-  }
-  const straddling = runIds.find((runId) => {
-    const own = segments.filter((segment) => segment.runId === runId);
-    return own[0]!.start < offset && own[own.length - 1]!.end > offset;
-  });
-  if (straddling === undefined) return { ok: true, part };
-  const run = findNode(part, straddling);
-  if (!run || run.kind !== 'run') return { ok: false, reason: 'tree-invariant' };
-  const nextId = createNodeIdAllocator(part);
-  const rPr = runPropertiesNodeOf(run);
-  const headContent: OoxmlNode[] = [];
-  const tailContent: OoxmlNode[] = [];
-  for (const child of run.children) {
-    if (isRunPropertiesNode(child)) continue;
-    const segment = segments.find(
-      (candidate) => candidate.runId === run.id && contains(child, candidate.node.id)
-    );
-    if (!segment) {
-      headContent.push(child);
-      continue;
-    }
-    if (segment.end <= offset) headContent.push(child);
-    else if (segment.start >= offset) tailContent.push(child);
-    else if (segment.node.kind === 'textValue') {
-      const local = offset - segment.start;
-      headContent.push(inlineTextSlice(nextId, segment.node.value.slice(0, local), child, 0));
-      tailContent.push(
-        inlineTextSlice(nextId, segment.node.value.slice(local), child, local, true)
-      );
-    } else headContent.push(child);
-  }
-  const head = runElement(nextId, rPr ? [rPr, ...headContent] : headContent);
-  const tail = runElement(
-    nextId,
-    rPr ? [cloneWithNewIds(rPr, nextId), ...tailContent] : tailContent
-  );
-  const parent = parentOf(part, run.id);
-  if (!parent) return { ok: false, reason: 'tree-invariant' };
-  const rebuilt = parent.children.flatMap((child) =>
-    child.id === run.id ? [head, tail] : [child]
-  );
-  const replaced = replaceChildren(part, parent.id, rebuilt, options);
-  if (!replaced.ok)
-    return { ok: false, reason: 'tree-invariant', detail: JSON.stringify(replaced.issues) };
-  return { ok: true, part: replaced.part };
-}
-
+export { splitRunsAt };
 export { paragraphTextOf } from './paragraph-model-text.ts';

@@ -51,13 +51,17 @@ export function wordRangeAt(
   layout: SemanticLayout,
   position: SemanticPosition,
   /** Where a struck half meets a live one, so a word stops at the seam. See the caller. */
-  stops: ReadonlySet<number>
+  stops: ReadonlySet<number>,
+  /** The side of `position` the pointer was on, when the caller knows it. */
+  side: 'before' | 'after' = 'after',
+  /** The text to walk, when the caller bridges what the layout leaves out. */
+  text: string = paragraphTextFromLayout(layout, position.paragraphId)
 ): { readonly from: SemanticPosition; readonly to: SemanticPosition } {
-  const text = paragraphTextFromLayout(layout, position.paragraphId);
   const id = position.paragraphId;
   const offset = Math.max(0, Math.min(position.offset, text.length));
   let anchor = -1;
-  if (isWordCharacter(text[offset])) anchor = offset;
+  if (side === 'before' && offset > 0 && isWordCharacter(text[offset - 1])) anchor = offset - 1;
+  else if (isWordCharacter(text[offset])) anchor = offset;
   else if (offset > 0 && isWordCharacter(text[offset - 1])) anchor = offset - 1;
 
   if (anchor === -1) {
