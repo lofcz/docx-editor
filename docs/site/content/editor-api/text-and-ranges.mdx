@@ -100,6 +100,8 @@ Cross-cell boundaries, pending revisions, and protected or preserved structures 
 
 For tracked deletion, see [Propose removing paragraphs](/docs/2.x/editor-api/revisions#propose-removing-paragraphs).
 
+Concurrent tracked edits retain each source character's identity, including spaces. A deletion can surround another participant's insertion in two revision fragments. Accepting the deletion removes its original spaces and retains the inserted spaces. The fork does not redistribute equal spaces between those edits. Revision fragment counts and accepted spacing can therefore differ from upstream.
+
 ## Split a paragraph
 
 `insertText()` treats `\n`, `\r`, and `\r\n` as paragraph breaks. Replace only the gap between two sentences:

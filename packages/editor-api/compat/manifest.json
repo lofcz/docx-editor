@@ -852,6 +852,10 @@
     {
       "uid": "Word.Style#unhideWhenUsed",
       "note": "Published read-only where the reference declares a setter, for the same reason as Word.Style#baseStyle. Reads w:unhideWhenUsed; false when the style does not state it."
+    },
+    {
+      "uid": "Word.Range#delete / Word.Range#insertText",
+      "note": "Concurrent tracked edits retain exact source character identities. Equal spaces are not redistributed between inserted and deleted spans. Revision fragment counts and accepted spacing can differ from upstream."
     }
   ],
   "$divergencesComment": "Members that ARE selected but differ from upstream in a documented source shape or observable behaviour. Kept apart from \"omissions\" on purpose: an omission is a member this subset does not publish, and one of these is a member it publishes and answers differently. The authored compatibility declarations remain the exact upstream reference shape; runtime conformance assertions explicitly account for any listed source-shape divergence."

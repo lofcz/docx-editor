@@ -165,12 +165,20 @@ for (const order of ORDER_NAMES)
       expect(state.text).toBe(
         'Payment is due within thirty (30) calendar days of receipt.\rSecond clause.'
       );
-      expect(state.revisions).toEqual([`${REVIEWER}:Delete`, `${COUNTERPARTY}:Insert`]);
+      // The native journal retains the original space after `(30)` in the deletion.
+      // The concurrent ` calendar` insertion owns a different leading space. The two
+      // deletion fragments stay on either side of that insertion, with their source IDs.
+      expect(state.revisions).toEqual([
+        `${REVIEWER}:Delete`,
+        `${REVIEWER}:Delete`,
+        `${COUNTERPARTY}:Insert`,
+      ]);
       const [rejected, accepted] = await expectSameDecisions(r);
       expect(rejected).toBe('Payment is due within .\rSecond clause.');
-      // Their typing joins the strike or stays beside it, by client order; the strike's own
-      // words go either way.
-      expect(accepted).not.toContain('(30)');
+      // Remove exactly the observed `(30) ` and keep exactly the unseen ` calendar`.
+      expect(accepted).toBe(
+        'Payment is due within thirty  calendardays of receipt.\rSecond clause.'
+      );
     } finally {
       r.close();
     }
