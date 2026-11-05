@@ -15,6 +15,7 @@ import {
   usedParaIds,
   w14RootPrefix,
   withPart,
+  withAtomicContentMarker,
   WML_NAMESPACE_URI,
   type OoxmlElement,
   type OoxmlNode,
@@ -46,6 +47,8 @@ export interface BlockInsertion {
    */
   readonly link?: string;
   readonly expectedRevision?: number;
+  /** Keep generated fallback descendants under one record owner in collaboration. */
+  readonly atomicContent?: boolean;
 }
 
 export type BlockInsertResult =
@@ -83,7 +86,9 @@ function blockXml(
         `<w:p>${run(insertion.generatedLabel)}</w:p></w:sdtContent></w:sdt>`;
   return (
     `<w:sdt><w:sdtPr><w:alias w:val="${escapeXml(insertion.label)}"/>` +
-    `<w:tag w:val="${escapeXml(blockTag(insertion.payload.id))}"/></w:sdtPr><w:sdtContent>` +
+    `<w:tag w:val="${escapeXml(blockTag(insertion.payload.id))}"/>` +
+    (insertion.atomicContent ? '<w:lock w:val="contentLocked"/>' : '') +
+    '</w:sdtPr><w:sdtContent>' +
     label +
     paragraphs
       .map((text, index) =>
@@ -280,7 +285,10 @@ function commitBlockInsertion(
     const body = bodyStoryRoot(parsed.part);
     if (!body || body.kind === 'textValue' || body.children.length !== 1)
       return 'The new block did not produce one native control.';
-    return body.children[0]!;
+    const control = body.children[0]!;
+    return insertion.atomicContent && control.kind === 'contentControl'
+      ? withAtomicContentMarker(control)
+      : control;
   };
   const unlinked = templateFor(null);
   if (typeof unlinked === 'string') return failure('invalid-input', unlinked);

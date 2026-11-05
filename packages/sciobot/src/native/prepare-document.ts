@@ -1,4 +1,5 @@
 import { withInitializedPayloadStore } from '../blocks/payload-opc-codec';
+import { withAtomicMathFallbacks } from '../blocks/math-ownership';
 import { withNativeNumberingInfrastructure } from './numbering-infrastructure';
 import { readOoxmlPackage } from '@docx-editor.dev/core/store';
 import type { NativeEditFailure } from '../contracts/document';
@@ -29,8 +30,8 @@ export type PreparedNativeDocument =
  * initial content; each actor's formatting remains an ordinary independent undoable edit. Derived
  * definitions for imported character styles are also initial content, so no actor owns their lifetime.
  *
- * Only changed infrastructure/relationship parts and content types are serialized. Original body,
- * furniture, media, pending revisions, and recovery metadata keep their exact input bytes.
+ * Supported equation controls gain durable fallback ownership before room creation.
+ * Only changed parts are serialized. Other parts keep their original bytes.
  * This does not invoke the Word export cleanup or reconstruct content from Markdown.
  */
 export function prepareNativeDocument(document: Uint8Array): PreparedNativeDocument {
@@ -73,10 +74,11 @@ export function prepareNativeDocument(document: Uint8Array): PreparedNativeDocum
       error: 'Cannot initialize native numbering infrastructure.',
     };
   try {
+    const owned = withAtomicMathFallbacks(prepared);
     return {
       success: true,
-      document: initializedPackageBytes(document, original, prepared),
-      changed: prepared !== original,
+      document: initializedPackageBytes(document, original, owned),
+      changed: owned !== original,
       codeStyleReady,
     };
   } catch (error) {

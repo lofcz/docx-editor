@@ -16,6 +16,7 @@ Production use requires a commercial agreement: licensing@eigenpal.com
  */
 import {
   WML_NAMESPACE_URI,
+  ATOMIC_CONTENT_NAMESPACE,
   XML_NAMESPACE_URI,
   type OoxmlAttribute,
   type OoxmlElement,
@@ -40,6 +41,8 @@ import { linearizeParagraph } from './paragraph-linear.ts';
 import type { TypedSplice } from './paragraph-text-diff.ts';
 import { partitionChildIds, sharedChildShell } from './singleton-children.ts';
 import { splitMarkMoves } from './split-mark-moves.ts';
+import { promoteInlineTree } from './inline-promotion.ts';
+import { atomicRecordOwnership } from './atomic-record-ownership.ts';
 
 interface ScratchNode {
   readonly id: LogicalId;
@@ -93,6 +96,16 @@ const WRAPPERS = new Set([
 ]);
 
 function isInlineShell(node: ScratchNode): boolean {
+  if (
+    node.kind === 'contentControl' &&
+    node.attributes.some(
+      (attribute) =>
+        attribute.namespaceUri === ATOMIC_CONTENT_NAMESPACE &&
+        attribute.localName === 'atomicContent' &&
+        attribute.value === '1'
+    )
+  )
+    return false;
   if (INLINE_SHELL_KINDS.has(node.kind)) return true;
   return (
     node.namespaceUri === WML_NAMESPACE_URI &&
@@ -156,7 +169,10 @@ interface RouteRefusal {
 }
 
 class Scratch {
-  constructor(readonly sources: TextSources) {}
+  constructor(
+    readonly sources: TextSources,
+    readonly recordOwned: ReadonlySet<LogicalId>
+  ) {}
   readonly nodes = new Map<LogicalId, ScratchNode>();
   /** The first effect whose bounds the scratch tree cannot satisfy. */
   refusal: RouteRefusal | null = null;
@@ -300,6 +316,26 @@ class Scratch {
     });
   }
 
+  /** A record promotion keeps the view's distinct IDs for synthetic wrapper properties. */
+  recordTree(id: LogicalId): OoxmlNode {
+    const node = this.nodes.get(id)!;
+    if (node.kind === 'textValue') return textNode(node.id, node.value ?? '');
+    return elementFrom({
+      id: node.id,
+      kind: node.kind,
+      namespaceUri: node.namespaceUri,
+      localName: node.localName,
+      namespaceBindings: node.bindings,
+      attributes: node.attributes,
+      children: node.opaque
+        ? []
+        : node.children
+            .filter((child) => this.nodes.get(child)?.parent === id)
+            .map((child) => this.recordTree(child)),
+      ...(node.prefix === undefined ? {} : { prefix: node.prefix }),
+    });
+  }
+
   private childTrees(node: ScratchNode, shown: Set<LogicalId>): OoxmlNode[] {
     const children: OoxmlNode[] = [];
     for (const child of node.children) {
@@ -364,11 +400,13 @@ export function routeInlineEffects(
   readonly refusal?: RouteRefusal;
 } {
   const effects = given.map(sharedEffect);
+  const recordOwned = atomicRecordOwnership(registry, effects);
   const minted = new Map<LogicalId, Extract<SharedEffect, { kind: 'putNode' }>>();
   for (const effect of effects) {
     if (effect.kind === 'putNode') minted.set(effect.descriptor.logicalId, effect);
   }
   const paragraphOf = (id: LogicalId): LogicalId | null => {
+    if (recordOwned.has(id)) return null;
     if (registry.inline.textOf(id)) return id;
     if (minted.get(id)?.descriptor.kind === 'paragraph') return id;
     // A paragraph whose shared text has not arrived yet is still one: its runs go to the text
@@ -388,7 +426,7 @@ export function routeInlineEffects(
   if (touched.size === 0) return { passThrough: [...effects], plan: null };
 
   const build = (paragraphs: ReadonlySet<LogicalId>) => {
-    const scratch = new Scratch(new TextSources(given));
+    const scratch = new Scratch(new TextSources(given), recordOwned);
     const embedsBefore = new Set<LogicalId>();
     for (const paragraphId of paragraphs) {
       const text = registry.inline.textOf(paragraphId);
@@ -497,6 +535,41 @@ export function routeInlineEffects(
   if (scratch.sources.alreadyApplied)
     return { passThrough: [], plan: { paragraphs: [], embedsBefore: new Set() } };
 
+  // Inline shells have no registry records. A move to block structure must materialize
+  // their baseline first, before the ordinary record effects can address that identity.
+  const promoted = new Set<LogicalId>();
+  const promotion: SharedEffect[] = [];
+  for (const effect of effects) {
+    const parent =
+      effect.kind === 'moveNode'
+        ? effect.destinationParentLogicalId
+        : effect.kind === 'spliceChildren'
+          ? effect.parentLogicalId
+          : null;
+    if (!parent || scratch.open(parent)) continue;
+    const children =
+      effect.kind === 'moveNode'
+        ? [effect.logicalId]
+        : effect.kind === 'spliceChildren'
+          ? effect.childLogicalIds
+          : [];
+    for (const id of children) {
+      if (
+        registry.hasNode(id) ||
+        promoted.has(id) ||
+        !scratch.open(id) ||
+        scratch.nodes.get(id)?.kind !== 'contentControl'
+      )
+        continue;
+      const created = promoteInlineTree(
+        scratch.recordTree(id),
+        (child) => registry.hasNode(child) || promoted.has(child)
+      );
+      for (const effect of created)
+        if (effect.kind === 'putNode') promoted.add(effect.descriptor.logicalId);
+      promotion.push(...created);
+    }
+  }
   const applied: boolean[] = [];
   // A paragraph splice that adds or removes a block child also goes to the record pipeline,
   // as a splice over block children only: that pipeline resolves concurrent property copies.
@@ -523,7 +596,7 @@ export function routeInlineEffects(
       };
   }
 
-  const passThrough: SharedEffect[] = [];
+  const passThrough: SharedEffect[] = [...promotion];
   effects.forEach((effect, index) => {
     const block = blockEffects.get(index);
     if (block) passThrough.push(block);
@@ -628,7 +701,11 @@ function replay(scratch: Scratch, effect: SharedEffect, registry: DocumentRegist
       node.namespaceUri = descriptor.qname.namespaceUri;
       node.localName = descriptor.qname.localName;
       if (descriptor.qname.prefix !== undefined) node.prefix = descriptor.qname.prefix;
-      if (descriptor.kind === 'paragraph' && !registry.hasNode(descriptor.logicalId)) {
+      if (
+        descriptor.kind === 'paragraph' &&
+        !registry.hasNode(descriptor.logicalId) &&
+        !scratch.recordOwned.has(descriptor.logicalId)
+      ) {
         node.paragraph = true;
       }
       return true;

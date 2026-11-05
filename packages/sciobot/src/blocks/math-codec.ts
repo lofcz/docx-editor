@@ -71,7 +71,7 @@ export function withMathSource(payload: BlockPayload, texExpression: string): Ma
     })
   ) as MathPayload;
 }
-/** Word receives readable source text; the authoritative payload never normalizes line endings. */
+/** Word receives one readable source record with folded line endings. Payload source stays exact. */
 export function mathWordFallback(payload: MathPayload): {
   readonly label: string;
   readonly inlineText: string;
@@ -80,7 +80,7 @@ export function mathWordFallback(payload: MathPayload): {
   const read = decodeMathPayload(encodeBlockPayload(payload));
   if (read.status !== 'supported') throw new TypeError('invalid-math-payload');
   const lines = read.source.split(/\r\n|\r|\n/);
-  const paragraphs = read.source.length ? lines : ['□'];
+  const paragraphs = [read.source.length ? lines.join(' ') : '□'];
   return {
     label: Array.from(lines.find((line) => line.length > 0) ?? '□')
       .slice(0, 128)

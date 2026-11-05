@@ -41,7 +41,7 @@ test('Word fallback is readable while the authoritative source stays exact', () 
   expect(mathWordFallback(payload)).toEqual({
     label: '\\frac{x}{y}',
     inlineText: '\\frac{x}{y}   α + 𝛼 ',
-    paragraphs: ['\\frac{x}{y}', '  α + 𝛼', ''],
+    paragraphs: ['\\frac{x}{y}   α + 𝛼 '],
   });
   expect(payload.attributes.texExpression).toBe('\\frac{x}{y}\r\n  α + 𝛼\r\n');
   expect(mathWordFallback(createMathPayload('empty', 'inline', '')).inlineText).toBe('□');

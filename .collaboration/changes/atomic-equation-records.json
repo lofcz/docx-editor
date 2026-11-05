@@ -1,0 +1,18 @@
+{
+  "impact": "migration-required",
+  "fields": ["sharedSchemaVersion"],
+  "before": "Equation fallback text changes owners between paragraph shared text and standalone records during display conversion.",
+  "after": "Durably marked atomic controls keep fallback descendants under one record owner in both inline and display shapes. Generated text records use the atomicText scalar replacement field; ordinary editable text keeps Y.Text.",
+  "reason": "Seed, write routing, and text field representation change for marked fallback records. Existing paragraph text and Y.Text undo histories cannot be reinterpreted as scalar record histories. Existing rooms require DOCX export and reseeding into separate rooms.",
+  "tests": [
+    "packages/core/src/store/__tests__/atomic-content-control.test.ts",
+    "packages/sciobot/src/blocks/math-edit-collaboration.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-compatibility.test.ts",
+    "packages/pro/src/collaboration/__tests__/atomic-record-ownership.test.ts",
+    "packages/sciobot/src/blocks/math-ownership.test.ts",
+    "packages/sciobot/src/blocks/math-selection.test.ts",
+    "packages/sciobot/src/blocks/insert-selection.test.ts"
+  ],
+  "changeset": "atomic-equation-records",
+  "migration": "upgrade-atomic-equation-rooms-to-format-110171"
+}

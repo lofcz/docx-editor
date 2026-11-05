@@ -84,6 +84,18 @@ export class LogicalIdentityMap {
     return Object.freeze({ effects: Object.freeze(effects) });
   }
 
+  /** New durable records adopt logical IDs through the shared-view commit boundary. */
+  introducesRecordIdentity(
+    journal: CanonicalPrimitiveJournal,
+    records: { hasNode(id: LogicalId): boolean }
+  ): boolean {
+    return journal.effects.some((effect) => {
+      if (effect.kind !== 'putNode') return false;
+      const id = this.resolve(effect.descriptor.logicalId);
+      return id !== effect.descriptor.logicalId && records.hasNode(id);
+    });
+  }
+
   /** Returns the effect itself when every id it names already stands in shared identity. */
   private translateEffect(effect: CanonicalPrimitiveEffect): CanonicalPrimitiveEffect {
     switch (effect.kind) {

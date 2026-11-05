@@ -1,6 +1,11 @@
 // Bounded package trust boundary: OPC names, content types, relationships
 // (document-engine tasks 2.2, 2.6).
 export {
+  ATOMIC_CONTENT_NAMESPACE,
+  isAtomicContentControl,
+  withAtomicContentMarker,
+} from './atomic-content-control.ts';
+export {
   type NameRejection,
   type NameResult,
   normalizePartName,

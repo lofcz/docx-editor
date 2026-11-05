@@ -634,9 +634,10 @@ class DocumentSession implements DocumentCollaborationSession {
       this.refusals.published();
       // Shared state can show this edit differently from the tree the editor computed: an ID
       // another paragraph also holds, text that follows a move. Take what shared state shows.
-      // Typing only splices text, which renames nothing; any other edit can.
       const drift =
         this.registry.inline.takeDrift() ||
+        (translated !== journal &&
+          this.identityMap.introducesRecordIdentity(journal, this.registry)) ||
         (journal.effects.some((effect) => effect.kind !== 'spliceText') &&
           viewRenamesPlan(this.registry, projected.plan));
       if (drift) this.publishSharedToPort();

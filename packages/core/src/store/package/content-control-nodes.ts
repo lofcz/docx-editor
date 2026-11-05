@@ -23,6 +23,7 @@
 // zero-click load of a target an untrusted file chose.
 
 import { isOmmlEquationAtom } from './omml-display.ts';
+import { isAtomicContentControl } from './atomic-content-control.ts';
 import { inlineCharacterTextOf } from './hyphen-text.ts';
 import { hardBreakKind } from './hard-break.ts';
 import { nextStripedDecimalId, resolveAllocationActor } from './actor-scoped-ids.ts';
@@ -441,10 +442,13 @@ export function contentControlPropertiesOf(control: OoxmlNode): ContentControlPr
     wmlAttribute(namedChild(sdtPr, WML_NAMESPACE_URI, 'id') ?? EMPTY, 'val')
   );
   const lockValue = wmlAttribute(namedChild(sdtPr, WML_NAMESPACE_URI, 'lock') ?? EMPTY, 'val');
-  const lock: ContentControlLock =
+  let lock: ContentControlLock =
     lockValue !== undefined && LOCK_VALUES.has(lockValue)
       ? (lockValue as ContentControlLock)
       : 'unlocked';
+  if (isAtomicContentControl(control))
+    lock =
+      lock === 'sdtLocked' || lock === 'sdtContentLocked' ? 'sdtContentLocked' : 'contentLocked';
   const placeholder = namedChild(sdtPr, WML_NAMESPACE_URI, 'placeholder');
   const placeholderDocPart = placeholder
     ? wmlAttribute(namedChild(placeholder, WML_NAMESPACE_URI, 'docPart') ?? EMPTY, 'val')

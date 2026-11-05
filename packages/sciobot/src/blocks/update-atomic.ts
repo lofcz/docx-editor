@@ -1,6 +1,7 @@
 import type { DocxEditorInstance } from '@docx-editor.dev/core/editor';
 import {
   bodyStoryRoot,
+  isAtomicContentControl,
   contentControlPropertiesOf,
   contentControlsIn,
   createNodeIdAllocator,
@@ -21,6 +22,9 @@ import { withInlineCodeStyle } from '../native/inline-code';
 import { activeMdxRegistry } from '../registry/active';
 import { MdxRefusal } from '../registry/mdx-fields';
 import { buildBlockIndex } from './block-index';
+import { convertMathControl } from './math-convert';
+import { decodeMathPayload } from './math-codec';
+import { encodeBlockPayload } from './payload-schema';
 import { withFreshIds } from './fresh-ids';
 import { blockTag, readPayloadStore, withPayloadRecord } from './payload-opc-codec';
 import type { BlockPayload } from './payload-schema';
@@ -160,6 +164,14 @@ export function updateAtomicBlock(
     )?.node;
     const content = control?.children.find((child) => child.kind === 'contentControlContent');
     if (!content) throw new Error('The block control is missing.');
+    const math = decodeMathPayload(encodeBlockPayload(payload));
+    if (control && isAtomicContentControl(control) && math.status === 'supported') {
+      const converted = convertMathControl(next, part.name, math.payload);
+      const stored = withPayloadRecord(converted, payload, label);
+      if (!stored.ok) throw new Error(`Block payload storage refused: ${stored.reason}`);
+      committed = true;
+      return stored.pkg;
+    }
     const allocate = createNodeIdAllocator(part, 'new');
     const identity = {
       prefix: w14RootPrefix(part.root),

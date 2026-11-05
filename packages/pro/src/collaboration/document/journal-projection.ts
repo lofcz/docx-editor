@@ -127,6 +127,13 @@ export class JournalProjection {
     return this.registry.parentOf(id);
   }
 
+  /** The final parent graph, independent of the order that two child lists were edited. */
+  hasListing(id: LogicalId): boolean {
+    for (const parent of this.listersOf(id))
+      if (this.node(parent)?.children.includes(id)) return true;
+    return false;
+  }
+
   /**
    * Every parent that may list `id`: the projected parents, because an earlier effect in this
    * journal may have reparented it, and every parent the shared state lists it under.

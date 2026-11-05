@@ -12,7 +12,12 @@ Production use requires a commercial agreement: licensing@eigenpal.com
  * what one shared text per paragraph stores; this module only converts between it and the
  * canonical tree, so the round trip can be proven on the corpus before any shared state.
  */
-import { WML_NAMESPACE_URI, type OoxmlElement, type OoxmlNode } from '@docx-editor.dev/core/store';
+import {
+  isAtomicContentControl,
+  WML_NAMESPACE_URI,
+  type OoxmlElement,
+  type OoxmlNode,
+} from '@docx-editor.dev/core/store';
 import { elementsOf, expectElement, textNode, withChildren } from './node-shapes.ts';
 
 /** An element without its content: what a run, text element, or wrapper record keeps. */
@@ -160,7 +165,9 @@ export function linearizeParagraph(
   };
   const visit = (nodes: readonly OoxmlNode[], wrap: readonly ElementShell[]): void => {
     for (const node of nodes) {
-      if (node.kind === 'run') {
+      if (isAtomicContentControl(node)) {
+        items.push({ kind: 'embed', node, attributes: { ...none, wrap } });
+      } else if (node.kind === 'run') {
         visitRun(node, wrap);
       } else if (isWml(node, WRAPPERS)) {
         const fixed = node.children.filter((child) => isWml(child, FIXED_WRAPPER_CHILDREN));

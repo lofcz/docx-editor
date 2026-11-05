@@ -13,6 +13,7 @@ import { prepareBirthTableGeometry, prepareBirthGeometryWrites } from './birth-t
 import { BirthProjection } from './materialize-births.ts';
 import { projectedTextTarget } from './projected-text-target.ts';
 import { routeInlineEffects, type InlinePlan } from './paragraph-text-writer.ts';
+import { atomicRecordOwnership } from './atomic-record-ownership.ts';
 import { recordRelocatedMarkers } from './relocated-markers.ts';
 import { textOfRemovedContainers } from './removed-container-text.ts';
 import { writeTypedInsert, type TypedInsert } from './paragraph-text-typing.ts';
@@ -318,13 +319,18 @@ function applyEffect(
   effect: SharedEffect,
   initialText: ReadonlySet<string>,
   birthSplice?: BirthChildSplice,
-  move?: ChildMovePlan
+  move?: ChildMovePlan,
+  atomic: ReadonlySet<LogicalId> = new Set()
 ): void {
   switch (effect.kind) {
     case 'putNode':
       if (effect.descriptor.kind === 'textValue') {
         if (!registry.hasNode(effect.descriptor.logicalId)) {
-          registry.putText(effect.descriptor.logicalId, '');
+          registry.putText(
+            effect.descriptor.logicalId,
+            '',
+            atomic.has(effect.descriptor.logicalId)
+          );
         }
       } else if (registry.hasNode(effect.descriptor.logicalId)) {
         registry.updateElementShell(effect.descriptor.logicalId, {
@@ -361,7 +367,8 @@ function applyEffect(
         initialText.has(effect.logicalId) &&
         effect.utf16Start === 0 &&
         effect.deleteCount === 0 &&
-        registry.textOf(effect.logicalId).toString() === effect.insert
+        registry.record(effect.logicalId)?.kind === 'textValue' &&
+        (registry.record(effect.logicalId) as { value: string }).value === effect.insert
       ) {
         return;
       }
@@ -370,7 +377,8 @@ function applyEffect(
         target?.logicalId ?? effect.logicalId,
         target?.utf16Start ?? effect.utf16Start,
         effect.deleteCount,
-        effect.insert
+        effect.insert,
+        atomic.has(target?.logicalId ?? effect.logicalId)
       );
       return;
     case 'setAttribute':
@@ -604,6 +612,10 @@ function planJournal(
     }
     projectEffect(projection, effect);
   }
+  // Canonical wrapping writes the new parent's children before removing the old listing.
+  // The final graph owns the node; the last edited child array does not decide its lifetime.
+  for (const id of unlistedAtEnd)
+    if (reinserted.has(id) && projection.hasListing(id)) unlistedAtEnd.delete(id);
   return {
     removed,
     reinserted,
@@ -719,6 +731,17 @@ function applyPlannedJournal(
   plan: InlinePlan | null | undefined,
   tokens: ReadonlyMap<LogicalId, Token[]>
 ): void {
+  const atomic = atomicRecordOwnership(registry, effects);
+  // A record moved from a block list into paragraph text remains the same object.
+  // The inline plan owns its new listing, so a record-only plan must not tombstone it.
+  const embedded = new Set<string>();
+  for (const [paragraphId, values] of tokens) {
+    if (planned.removed.includes(paragraphId) && !planned.reinserted.has(paragraphId)) continue;
+    for (const token of values)
+      if (typeof token.insert !== 'string' && 'n' in token.insert) embedded.add(token.insert.n);
+  }
+  if (embedded.size)
+    planned = { ...planned, removed: planned.removed.filter((id) => !embedded.has(id)) };
   const recordBirthGeometry = prepareBirthTableGeometry(
     registry,
     effects,
@@ -740,7 +763,8 @@ function applyPlannedJournal(
         effect,
         planned.mintedText,
         planned.birthSplices.get(effect),
-        planned.moves.get(effect)
+        planned.moves.get(effect),
+        atomic
       );
       if (effect.kind === 'spliceChildren') {
         // Only a split that moves the tail into a paragraph this journal created (Enter) can
@@ -769,8 +793,13 @@ function applyPlannedJournal(
     tombstoneRemoved(registry, effects, planned, formerChildren);
     const removed = deleteCopiesOfRemoved(registry, planned.removed);
     const nested = textOfRemovedContainers(registry, planned, formerChildren);
+    // Child-list indexes update after this transaction. A promoted embed already has a
+    // live record placement even when listingParents still reports its former inline owner.
+    const placedRecords = new Set(
+      [...planned.reinserted].filter((id) => !planned.unlistedAtEnd.has(id))
+    );
     const written: InlineWritten = plan
-      ? applyInlinePlan(registry, plan, tokens, new Set(planned.removed))
+      ? applyInlinePlan(registry, plan, tokens, new Set(planned.removed), placedRecords)
       : { copied: new Set<string>(), deleted: new Set<string>(), embedded: new Set<string>() };
     recordRelocatedMarkers(
       registry,
@@ -781,7 +810,7 @@ function applyPlannedJournal(
     );
     deleteHeldOriginals(registry, removed.held, written.copied);
     recordDeletions(registry, written, new Map([...removed.shown, ...nested]));
-    deleteEmbedsOfRemoved(registry, removed.embeds, planned.removed, written);
+    deleteEmbedsOfRemoved(registry, removed.embeds, planned.removed, written, placedRecords);
     recordBirthGeometry();
     recordGeometryWrites();
   }, JOURNAL_ORIGIN);

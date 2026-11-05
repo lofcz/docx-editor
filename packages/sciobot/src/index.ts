@@ -107,6 +107,7 @@ export * from './blocks/mention-codec';
 export * from './blocks/mention-insert';
 export * from './blocks/inline-insert';
 export * from './blocks/math-insert';
+export * from './blocks/math-edit';
 export * from './blocks/remove';
 export * from './blocks/duplicate';
 export * from './blocks/update-atomic';

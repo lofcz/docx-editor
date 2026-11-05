@@ -1,0 +1,14 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Math dialogs could only update source text. They could not replace selections or convert display mode.",
+  "after": "Math dialogs replace selected text and convert display mode in one transaction. Stable equation payload IDs retain ownership. Stale drafts refuse without replacing peer changes.",
+  "reason": "Existing shared records and paragraph embeds already represent the same canonical control. The writer now creates missing records before promotion and retains records embedded during demotion. Ownership stays on the existing control ID. Existing snapshots keep their interpretation; no shared fields or protocol messages change. Real sessions cover both client orders, peer edits, history, deletion, and reopening saved rooms. An unlisted historical record no longer displaces the only live inline shell identity; simultaneous live record and shell ownership still receives distinct view IDs.",
+  "tests": [
+    "packages/sciobot/src/blocks/math-edit.test.ts",
+    "packages/sciobot/src/blocks/math-edit-collaboration.test.ts",
+    "packages/pro/src/collaboration/__tests__/paragraph-inline-index-bounds.test.ts"
+  ],
+  "changeset": "sciobot-math-dialog",
+  "migration": null
+}

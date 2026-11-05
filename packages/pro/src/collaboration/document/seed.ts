@@ -5,6 +5,7 @@ Production use requires a commercial agreement: licensing@eigenpal.com
 */
 import {
   partNameKey,
+  isAtomicContentControl,
   type OoxmlElement,
   type OoxmlPackage,
   type OoxmlTextNode,
@@ -158,7 +159,8 @@ function visitNode(
   node: OoxmlElement | OoxmlTextNode,
   parentId: LogicalId | null,
   depth: number,
-  counts: { nodes: number }
+  counts: { nodes: number },
+  recordOwned = false
 ): LimitCode | null {
   if (depth > registry.limits.maxTreeDepth) return 'tree-too-deep';
   if (rejectDangerousKey(node.id)) return 'prototype-key';
@@ -166,7 +168,7 @@ function visitNode(
   if (counts.nodes > registry.limits.maxNodes) return 'too-many-nodes';
   if (node.kind === 'textValue') {
     if (node.value.length > registry.limits.maxTextLength) return 'text-too-long';
-    registry.putText(idOf(node), node.value);
+    registry.putText(idOf(node), node.value, recordOwned);
   } else {
     if (node.attributes.length > registry.limits.maxAttributes) return 'too-many-attributes';
     if (node.children.length > registry.limits.maxChildren) return 'too-many-children';
@@ -192,12 +194,13 @@ function visitNode(
       attributes: encodedAttributesOf(node),
       bindings: encodedBindingsOf(node),
     });
-    if (node.kind === 'paragraph') {
+    const owned = recordOwned || isAtomicContentControl(node);
+    if (node.kind === 'paragraph' && !owned) {
       const error = visitParagraph(registry, node, depth, counts);
       if (error) return error;
     } else {
       for (const child of node.children) {
-        const error = visitNode(registry, child, idOf(node), depth + 1, counts);
+        const error = visitNode(registry, child, idOf(node), depth + 1, counts, owned);
         if (error) return error;
       }
     }

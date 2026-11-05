@@ -1,3 +1,4 @@
+import { withAtomicMathFallbacks } from './math-ownership';
 import type { DocxEditorInstance } from '@docx-editor.dev/core/editor';
 import {
   applyTreeOp,
@@ -90,6 +91,7 @@ export function insertMath(editor: DocxEditorInstance, request: MathInsertion): 
       payload: request.payload,
       label: fallback.label,
       paragraphs: fallback.paragraphs,
+      atomicContent: true,
       expectedRevision: request.expectedRevision,
     });
   }
@@ -100,7 +102,7 @@ export function insertMath(editor: DocxEditorInstance, request: MathInsertion): 
     tag,
     text: fallback.inlineText,
     alias: fallback.label,
-    lock: 'sdtContentLocked',
+    lock: 'contentLocked',
   };
   const preview = applyTreeOp(surface.session.part(), op);
   if (!preview.ok)
@@ -115,11 +117,12 @@ export function insertMath(editor: DocxEditorInstance, request: MathInsertion): 
         (working) => {
           const next = withPayloadRecord(working, request.payload, fallback.label);
           if (!next.ok) throw new Error(`Equation storage refused: ${next.reason}`);
-          return next.pkg;
+          return withAtomicMathFallbacks(next.pkg);
         },
       ],
       false,
-      true
+      true,
+      'after'
     );
     if (result.rejected || !result.committed)
       return fail(

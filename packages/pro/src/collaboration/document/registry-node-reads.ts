@@ -19,6 +19,7 @@ import { asLogicalId, yjsItemKey, type LogicalId } from './identity.ts';
 import { rejectDangerousKey } from './limits.ts';
 import {
   NODE_TEXT_FIELD,
+  NODE_ATOMIC_TEXT_FIELD,
   namespaceUriOf,
   type ElementRecord,
   type PackageSchema,
@@ -45,7 +46,14 @@ export function nodeShapeOf(nodes: Y.Map<Y.Map<unknown>>, logicalId: string): No
   if (isTextNodeMap(rec)) {
     // `Y.Text.length` is a counter. `toString()` builds the whole paragraph to measure it.
     const text = rec.get(NODE_TEXT_FIELD);
-    return { isText: true, textLength: text instanceof Y.Text ? text.length : 0, children: [] };
+    const atomic = rec.get(NODE_ATOMIC_TEXT_FIELD);
+    if (atomic !== undefined && typeof atomic !== 'string') return null;
+    return {
+      isText: true,
+      textLength:
+        typeof atomic === 'string' ? atomic.length : text instanceof Y.Text ? text.length : 0,
+      children: [],
+    };
   }
   return { isText: false, textLength: 0, children: childArrayOf(rec)?.toArray() ?? [] };
 }

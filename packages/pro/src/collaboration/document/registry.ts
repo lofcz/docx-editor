@@ -17,6 +17,7 @@ import { captureInsertionBoundary } from './split-text-boundaries.ts';
 import { SplitTextSources, type SplitTextRange } from './split-text-sources.ts';
 import { SplitSiblingOrders } from './split-sibling-order.ts';
 import { NODE_SPLIT_POINTS_FIELD } from './split-points.ts';
+import { textRecord, textRecordValue, spliceAtomicText, spliceTextValue } from './record-text.ts';
 import * as Y from 'yjs';
 import type { CanonicalBinaryDescriptor } from '@docx-editor.dev/core/collaboration/replication';
 import { partNameKey } from '@docx-editor.dev/core/store';
@@ -39,7 +40,6 @@ import {
   isTextNodeMap,
   makeElementRecord,
   makePartEntry,
-  makeTextRecord,
   nodeRecordReplacedBy,
   nodeRecordSplitFrom,
   nodeRecordSplitLineage,
@@ -316,8 +316,8 @@ export class DocumentRegistry {
     // A peer can plant a scalar here; treat it as no such node (see #567).
     if (!isNodeMap(rec)) return null;
     if (isTextNodeMap(rec)) {
-      const text = rec.get(NODE_TEXT_FIELD);
-      const value = text instanceof Y.Text ? text.toString() : '';
+      const value = textRecordValue(rec);
+      if (value === null) return null;
       return { logicalId, kind: 'textValue', value } satisfies TextRecord;
     }
     return elementRecordOf(
@@ -505,12 +505,19 @@ export class DocumentRegistry {
     );
   }
 
-  putText(logicalId: LogicalId, value: string): void {
+  putText(logicalId: LogicalId, value: string, atomic = false): void {
     this.noteNodeWrite(logicalId);
-    this.schema.nodes.set(logicalId, makeTextRecord(value));
+    this.schema.nodes.set(logicalId, textRecord(value, atomic));
   }
 
-  spliceText(logicalId: LogicalId, utf16Start: number, deleteCount: number, insert: string): void {
+  spliceText(
+    logicalId: LogicalId,
+    utf16Start: number,
+    deleteCount: number,
+    insert: string,
+    atomic = false
+  ): void {
+    if (spliceAtomicText(this.require(logicalId), utf16Start, deleteCount, insert, atomic)) return;
     const range = this.splitTextSources.range(logicalId);
     const restoreBoundary = captureInsertionBoundary(
       this.schema.nodes,
@@ -522,17 +529,8 @@ export class DocumentRegistry {
     );
     const text = range?.text ?? this.textOf(logicalId);
     const start = (range?.start ?? 0) + utf16Start;
-    // A shared-text insert skips forward past deleted characters, so a replacement written
-    // after its delete sat behind the text it replaced: a peer typing at that place landed
-    // between them, and undo put the old text before the peer's words. Plain text inserts
-    // first. Split-text slices keep delete-first, which their boundary anchors are built on.
-    if (range === null && this.splitTextSources.isPlain(logicalId)) {
-      if (insert.length > 0) text.insert(start, insert);
-      if (deleteCount > 0) text.delete(start + insert.length, deleteCount);
-    } else {
-      if (deleteCount > 0) text.delete(start, deleteCount);
-      if (insert.length > 0) text.insert(start, insert);
-    }
+    const insertFirst = range === null && this.splitTextSources.isPlain(logicalId);
+    spliceTextValue(text, start, deleteCount, insert, insertFirst);
     restoreBoundary?.();
   }
 

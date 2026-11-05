@@ -522,3 +522,19 @@ The fork uses `docx-collaboration:1.9.17.1` after the upstream synchronization. 
 5. Keep the original rooms and offline updates for recovery.
 
 Never relabel room metadata or replay old updates into fresh rooms. Room undo history does not transfer through DOCX.
+
+## Upgrade atomic equation rooms to format 1.10.17.1
+
+Format `docx-collaboration:1.10.17.1` keeps marked equation fallback content under one record owner across display changes. Earlier clients store that content in paragraph text or separate records, depending on its display mode. Generated fallback text uses scalar replacement records. Ordinary editable text keeps shared character ownership. The ownership histories are incompatible. Changing the room version does not migrate them.
+
+The application keeps exact multiline TeX in equation payloads. Word's readable source fallback folds CRLF, CR, and LF line endings to spaces in one text record. Preparation normalizes only validated application equations. Imported OMML and unrelated content remain unchanged.
+
+1. Stop writes and reconnects to the old rooms.
+2. Back up room snapshots, offline updates, and the compatible application build.
+3. Export DOCX files with the previous compatible deployment.
+4. Verify each equation's source, display mode, and readable Word fallback before accepting its export.
+5. Prepare the DOCX files with the updated application. Supported equation controls gain the durable ownership marker.
+6. Create rooms with fresh document and persistence keys. Verify editing, conversion, and save/reopen with two participants.
+7. Keep old rooms and offline updates for recovery. Reconcile pending edits as document content before importing them.
+
+Do not copy old synchronization updates or undo history into replacement rooms. Do not relabel old room metadata. Earlier and replacement clients must refuse synchronization with each other.

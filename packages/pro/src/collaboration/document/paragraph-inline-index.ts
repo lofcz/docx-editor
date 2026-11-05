@@ -248,8 +248,10 @@ export class InlineIndex {
   /** The ID a paragraph shows for a shell ID in its text: tagged unless it holds it first. */
   shownId(paragraphId: LogicalId, id: string): string {
     this.ensureBuilt();
-    // A record's ID is taken: only a damaged or hostile text names one for a shell.
-    if (this.nodes.has(id)) return `${id}~${paragraphTag(paragraphId)}`;
+    // Live records own their IDs. Undo can leave a historical promoted record behind
+    // when its original inline shell becomes live again. That record has no live placement.
+    if (this.nodes.has(id) && !this.isDeleted(asLogicalId(id)))
+      return `${id}~${paragraphTag(paragraphId)}`;
     const holders = this.holders.get(id);
     // A paragraph can show an ID its own text does not hold: text that follows a move into
     // it carries the IDs of the paragraph it was typed in.

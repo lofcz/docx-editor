@@ -698,12 +698,14 @@ export function deleteEmbedsOfRemoved(
   registry: DocumentRegistry,
   embeds: ReadonlySet<string>,
   removed: readonly LogicalId[],
-  written: InlineWritten
+  written: InlineWritten,
+  placedRecords: ReadonlySet<LogicalId> = new Set()
 ): void {
   const removedSet = new Set<string>(removed);
   for (const node of embeds) {
     if (written.embedded.has(node) || rejectDangerousKey(node)) continue;
     const id = asLogicalId(node);
+    if (placedRecords.has(id)) continue;
     if ([...registry.inline.holdersOf(id)].some((holder) => !removedSet.has(holder))) continue;
     if (!registry.hasNode(id) || registry.isTombstoned(id)) continue;
     if (registry.listingParents(id).length === 0) registry.tombstone(id);
@@ -788,7 +790,8 @@ export function applyInlinePlan(
   /** Each plan paragraph's tokens, encoded before the write began. */
   encoded: ReadonlyMap<LogicalId, Token[]> = new Map(),
   /** The paragraphs this edit removes: a join moves their text, so they are written. */
-  removedHere: ReadonlySet<LogicalId> = new Set()
+  removedHere: ReadonlySet<LogicalId> = new Set(),
+  placedRecords: ReadonlySet<LogicalId> = new Set()
 ): InlineWritten {
   const typed = plan.typed;
   const embedsAfter = new Set<string>();
@@ -901,6 +904,7 @@ export function applyInlinePlan(
   // plan rewrote; only another paragraph's text keeps an object alive.
   const rewritten = new Set<LogicalId>(plan.paragraphs.map((paragraph) => paragraph.id));
   for (const id of plan.embedsBefore) {
+    if (placedRecords.has(id)) continue;
     if (embedsAfter.has(id)) continue;
     if ([...registry.inline.holdersOf(id)].some((holder) => !rewritten.has(holder))) continue;
     if (registry.hasNode(id) && !registry.isTombstoned(id)) {

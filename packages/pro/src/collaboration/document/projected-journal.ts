@@ -127,7 +127,8 @@ class TextCoordinates {
     if (range) return this.value(range.sourceId).slice(range.start, range.end);
     let value = this.strings.get(id);
     if (value === undefined) {
-      value = this.registry.hasNode(id) ? this.registry.textOf(id).toString() : '';
+      const record = this.registry.hasNode(id) ? this.registry.record(id) : null;
+      value = record && 'value' in record ? record.value : '';
       for (const splice of this.histories.get(id) ?? []) {
         value =
           value.slice(0, splice.start) +

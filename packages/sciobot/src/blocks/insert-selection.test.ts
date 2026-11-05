@@ -51,6 +51,10 @@ for (const clientIds of [
           expectedRevision: surface.session.packageRevision(),
         });
         expect(result.success).toBe(true);
+        if (!result.success) throw Error(result.error);
+        const controlId = result.controlId;
+        expect(surface.state().selection).toEqual({ anchor: result.caret, head: result.caret });
+        expect(paragraphTextOf(surface.session.part(), result.caret.paragraphId)).not.toBeNull();
         const tail = bob!.surface!.session.paragraphIds()[2]!;
         expect(
           bob!.surface!.applyAutomationOps(() => [
@@ -76,6 +80,11 @@ for (const clientIds of [
                 'Tail peer',
               ];
         for (const index of [0, 1]) {
+          expect(
+            buildBlockIndex(pair.editors[index]!.surface!.session.currentPackage()).byId.get(
+              'new-molecule'
+            )!.controlId
+          ).toBe(controlId);
           expect(texts(index)).toEqual(expected);
           expect(
             buildBlockIndex(pair.editors[index]!.surface!.session.currentPackage()).byId.get(
