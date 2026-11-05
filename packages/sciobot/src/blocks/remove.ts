@@ -102,6 +102,8 @@ function removeTargets(
 ): BlockRemoveResult {
   const surface = editor.surface;
   if (!surface) return fail('document-not-ready', 'The document is not attached.');
+  if (native && surface.activeScope().kind !== 'body')
+    return fail('unsupported-operation', 'Block selection changes require the document body.');
   surface.flushPendingInput();
   if (
     request.expectedRevision !== undefined &&

@@ -6,6 +6,7 @@
   "reason": "The shared schema, native operation format, and existing wrapper commands do not change.",
   "tests": [
     "packages/sciobot/src/blocks/selection-range.test.ts",
+    "packages/sciobot/src/blocks/selection-removal-owners.test.ts",
     "packages/sciobot/src/blocks/remove.test.ts",
     "packages/sciobot/src/blocks/block-selection.test.ts"
   ],
