@@ -25,7 +25,8 @@ interface SurfaceAutomationDeps {
     packageEditsAfterOps?: TreeApplyOptions['packageEditsAfterOps'],
     stage?: TreeApplyOptions['stage']
   ): TreeApplyResult;
-  selectionAfter(): SemanticSelection | null;
+  selectionAfter(preserveDrawing: boolean): SemanticSelection | null;
+  selectedDrawingNodeId(): string | null;
   unexplainedReason: string;
 }
 
@@ -41,6 +42,7 @@ export function createSurfaceAutomation(
     mintHyperlink,
     applyOps,
     selectionAfter,
+    selectedDrawingNodeId,
     unexplainedReason,
   } = deps;
   return (
@@ -50,8 +52,11 @@ export function createSurfaceAutomation(
     requiresReview = false,
     separateHistory = false,
     packageEditPhase = 'before',
-    stage
+    stage,
+    preserveDrawingNodeId
   ) => {
+    const preserveDrawing =
+      preserveDrawingNodeId !== undefined && selectedDrawingNodeId() === preserveDrawingNodeId;
     // Automation shares edit gates and repainting. Its story and history boundaries remain explicit.
     let result: TreeApplyResult | null = null;
     const story = scope ?? { kind: 'body' };
@@ -104,7 +109,7 @@ export function createSurfaceAutomation(
           stage
         ));
       },
-      selectionAfter,
+      () => selectionAfter(preserveDrawing),
       { automation: !separateHistory }
     );
     const reason = refusal ?? unexplainedReason; // Null means the refresh guard skipped the thunk.

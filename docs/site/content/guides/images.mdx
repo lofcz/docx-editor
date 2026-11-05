@@ -7,6 +7,8 @@ seoTitle: 'Images and floating pictures'
 
 The editor displays inline and floating DrawingML pictures (`w:drawing` with `pic:pic`). React and Vue ship controls to insert pictures, change wrapping, resize, and edit alternative text. Saving preserves the picture markup and media.
 
+Host automation can preserve an explicitly selected drawing during a property transaction without moving keyboard focus. Preservation requires the same drawing to survive the transaction. Deleting the drawing clears its selection.
+
 ## Insert an image
 
 Check the bytes with `normalizeImageBytes`, then run `insertImage`. Import from `@docx-editor.dev/vue` in Vue.

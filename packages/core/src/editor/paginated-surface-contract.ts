@@ -580,7 +580,9 @@ export interface PaginatedSurface extends SurfaceBlockReservations, SurfaceInden
     /** Run package hooks after native operations when they need newly allocated identities. */
     packageEditPhase?: 'before' | 'after',
     /** Stage dependent native operations after initial ops, inside the same guarded transaction. */
-    stage?: TreeApplyOptions['stage']
+    stage?: TreeApplyOptions['stage'],
+    /** Keep this selected drawing when its exact identity survives the transaction. */
+    preserveDrawingNodeId?: string
   ): TreeApplyResult;
   /**
    * Which revision halves this surface is SHOWING.

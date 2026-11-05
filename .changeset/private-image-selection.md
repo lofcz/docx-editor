@@ -1,5 +1,5 @@
 ---
-'@docx-editor.dev/pro': patch
+'@docx-editor.dev/core': minor
 ---
 
-Keep image selection after private image metadata changes and replacement.
+Keep image selection and control focus during image metadata changes and replacement.

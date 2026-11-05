@@ -17,7 +17,7 @@ import { groupRemovalBudget } from '../review/group-removal-budget';
 import { groupReviewFieldBudget } from '../review/group-field-budget';
 import { ancestorContentWriteRefusal } from './ancestor-content-write';
 import { decodeInlineImagePayload } from './inline-image-codec';
-import { readManagedImage, restoreManagedImageSelection } from './inline-image-update';
+import { readManagedImage } from './inline-image-update';
 import { encodeBlockPayload } from './payload-schema';
 
 export interface InlineImageReplacement {
@@ -54,7 +54,6 @@ export async function replaceInlineImage(
   const pkg = session.currentPackage();
   const image = readManagedImage(pkg, session.part().name, request.drawingNodeId);
   if (!image) return fail('invalid-input', 'The managed image is missing or ambiguous.');
-  const wasSelected = editor.getSelectedImage()?.id === request.drawingNodeId;
   const properties = contentControlPropertiesOf(image.control);
   const ancestor = ancestorContentWriteRefusal(image.part, image.control.id);
   if (
@@ -104,7 +103,6 @@ export async function replaceInlineImage(
       surface.editingMode() !== 'edit'
     )
       return fail('stale-revision', 'The document changed while the image loaded.');
-    const keepSelection = wasSelected && editor.getSelectedImage()?.id === request.drawingNodeId;
     const edit = {
       blockId: image.block.id,
       partName: image.part.name,
@@ -124,12 +122,20 @@ export async function replaceInlineImage(
     const prepared = transform(pkg);
     const result = captureReviewGroupHistory(
       collaboration,
-      () => surface.applyAutomationOps(() => [], { kind: 'body' }, [transform], false, true),
+      () =>
+        surface.applyAutomationOps(
+          () => [],
+          { kind: 'body' },
+          [transform],
+          false,
+          true,
+          'before',
+          undefined,
+          request.drawingNodeId
+        ),
       groupRemovalBudget(pkg, prepared),
       groupReviewFieldBudget(pkg, prepared)
     );
-    if (result.committed && !result.rejected && keepSelection)
-      restoreManagedImageSelection(editor, image.block.id);
     return result.rejected || !result.committed
       ? fail('apply-failed', String(result.reason ?? 'The image replacement did not commit.'))
       : { success: true, revision: session.packageRevision() };

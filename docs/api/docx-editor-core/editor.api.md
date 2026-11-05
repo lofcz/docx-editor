@@ -2777,7 +2777,8 @@ export interface PaginatedSurface extends SurfaceBlockReservations, SurfaceInden
     applyAutomationOps(staged: (relate: (url: string) => string | null) => readonly TreeDocOp[] | null, scope?: StoryScope, packageEdits?: readonly ((pkg: OoxmlPackage) => OoxmlPackage)[], requiresReview?: boolean,
     separateHistory?: boolean,
     packageEditPhase?: 'before' | 'after',
-    stage?: TreeApplyOptions['stage']): TreeApplyResult;
+    stage?: TreeApplyOptions['stage'],
+    preserveDrawingNodeId?: string): TreeApplyResult;
     // (undocumented)
     applyDrawingOps(ops: readonly DrawingTreeDocOp[]): TreeApplyResult;
     applyHeaderFooterLifecycle(op: {

@@ -178,9 +178,17 @@ for (const clientIds of [
       const id = imageOf(alice!).block.id;
       pair.pause();
       selectImage(alice!);
+      const field = document.createElement('input');
+      alice!.surface!.hostElement().parentElement!.append(field);
+      field.focus();
       expect((await replace(alice!, 'asset:replacement')).success).toBe(true);
       expect(alice!.getSelectedImage()?.id).toBe(imageOf(alice!).drawing.id);
+      expect(document.activeElement).toBe(field);
+      field.remove();
       selectImage(bob!);
+      const peerField = document.createElement('input');
+      bob!.surface!.hostElement().parentElement!.append(peerField);
+      peerField.focus();
       let peer = imageOf(bob!);
       expect(
         updateInlineImage(bob!, {
@@ -190,6 +198,7 @@ for (const clientIds of [
         }).success
       ).toBe(true);
       expect(bob!.getSelectedImage()?.id).toBe(imageOf(bob!).drawing.id);
+      expect(document.activeElement).toBe(peerField);
       peer = imageOf(bob!);
       expect(
         updateInlineImage(bob!, {
@@ -199,6 +208,8 @@ for (const clientIds of [
         }).success
       ).toBe(true);
       expect(bob!.getSelectedImage()?.id).toBe(imageOf(bob!).drawing.id);
+      expect(document.activeElement).toBe(peerField);
+      peerField.remove();
       pair.reconnect(0);
       await pair.settle();
       for (const editor of pair.editors)
@@ -276,6 +287,7 @@ test('replacement preparation refuses peer deletion and document replacement wit
   try {
     const [alice, bob] = pair.editors;
     const image = imageOf(alice!);
+    selectImage(alice!);
     let release!: () => void;
     const pending = replaceInlineImage(alice!, {
       drawingNodeId: image.drawing.id,
@@ -298,7 +310,9 @@ test('replacement preparation refuses peer deletion and document replacement wit
     expect(await pending).toMatchObject({ success: false, code: 'stale-revision' });
     expect(alice!.surface!.session.currentPackage()).toBe(before);
     expect(pair.documents.map((doc) => Y.encodeStateAsUpdate(doc))).toEqual(shared);
+    expect(alice!.getSelectedImage()).toBeNull();
     const remaining = imageOf(alice!);
+    selectImage(alice!);
     const replacing = replaceInlineImage(alice!, {
       drawingNodeId: remaining.drawing.id,
       expectedRevision: alice!.surface!.session.packageRevision(),
@@ -318,6 +332,7 @@ test('replacement preparation refuses peer deletion and document replacement wit
     expect(await replacing).toMatchObject({ success: false, code: 'stale-revision' });
     expect(alice!.surface).toBe(owner);
     expect(owner!.session.currentPackage()).toBe(reopened);
+    expect(alice!.getSelectedImage()).toBeNull();
   } finally {
     pair.destroy();
   }

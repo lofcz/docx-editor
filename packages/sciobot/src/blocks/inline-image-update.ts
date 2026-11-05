@@ -46,30 +46,6 @@ export function readManagedImage(pkg: OoxmlPackage, partName: string, drawingNod
   return null;
 }
 
-/** Preserve the selected private image through canonical publication, using its stable owner. */
-export function restoreManagedImageSelection(editor: DocxEditorInstance, blockId: string): void {
-  const surface = editor.surface;
-  if (!surface) return;
-  const pkg = surface.session.currentPackage();
-  const block = buildBlockIndex(pkg).byId.get(blockId);
-  const part = block && pkg.parts.get(block.partName);
-  const control = part && block && findNode(part, block.controlId);
-  if (!block || !part || control?.kind !== 'contentControl') return;
-  const native = nativeImageFields(control);
-  const image = native && readManagedImage(pkg, part.name, native.drawing.id);
-  if (image?.block.id !== blockId) return;
-  for (
-    let parent = parentNodeOf(part, image.drawing.id);
-    parent;
-    parent = parentNodeOf(part, parent.id)
-  ) {
-    if (parent.kind === 'paragraph') {
-      surface.selectDrawing(image.drawing.id, parent.id);
-      return;
-    }
-  }
-}
-
 export interface InlineImageUpdate {
   readonly drawingNodeId: string;
   readonly expectedRevision: number;
@@ -102,7 +78,6 @@ export function updateInlineImage(
   const pkg = session.currentPackage();
   const image = readManagedImage(pkg, session.part().name, request.drawingNodeId);
   if (!image) return fail('invalid-input', 'The managed image is missing or ambiguous.');
-  const wasSelected = editor.getSelectedImage()?.id === request.drawingNodeId;
   const properties = contentControlPropertiesOf(image.control);
   const ancestor = ancestorContentWriteRefusal(image.part, image.control.id);
   if (
@@ -199,12 +174,20 @@ export function updateInlineImage(
     const prepared = transform(pkg);
     const result = captureReviewGroupHistory(
       collaboration,
-      () => surface.applyAutomationOps(() => [], { kind: 'body' }, [transform], false, true),
+      () =>
+        surface.applyAutomationOps(
+          () => [],
+          { kind: 'body' },
+          [transform],
+          false,
+          true,
+          'before',
+          undefined,
+          request.drawingNodeId
+        ),
       groupRemovalBudget(pkg, prepared),
       groupReviewFieldBudget(pkg, prepared)
     );
-    if (result.committed && !result.rejected && wasSelected)
-      restoreManagedImageSelection(editor, image.block.id);
     return result.rejected || !result.committed
       ? fail('apply-failed', String(result.reason ?? 'The image change did not commit.'))
       : { success: true, revision: session.packageRevision() };

@@ -5269,8 +5269,16 @@ export function mountPaginatedSurface(
       mintHyperlink: (url, scope) => session.ensureHyperlinkRelationship(url, scope),
       applyOps,
       unexplainedReason: UNEXPLAINED_WRITE_REFUSAL,
-      selectionAfter: () => {
+      selectedDrawingNodeId: () =>
+        drawingIntent.kind === 'pointer' ? drawingIntent.drawingNodeId : null,
+      selectionAfter: (preserveDrawing) => {
         flushLayout();
+        if (
+          preserveDrawing &&
+          drawingIntent.kind === 'pointer' &&
+          resolveSelectedDrawingRecord(surface)
+        )
+          return null;
         selectionSync.noteModelMoved();
         const order = paragraphOrder();
         return order.length ? clampedToDocument(editingLayout(), order, selection) : null;
