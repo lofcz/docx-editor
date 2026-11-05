@@ -15,9 +15,10 @@ Production use requires a commercial agreement: licensing@eigenpal.com
  * So a strike records what it saw, in `s` next to the revision: for each client that wrote
  * characters in the struck range, one past the last clock of them. A client's clocks only grow
  * and a peer receives each client's updates in order, so a character of the range has a clock
- * below that bound, and a character inserted there later, by a peer that had not seen the
- * strike or by an undo, has one at or above it. Reading leaves that character out of the
- * strike. Typing never lands inside a deletion, so no character its author meant to strike
+ * below that bound, and a character typed there later by an unseen peer has one at or above
+ * it. Reading leaves that character out of the strike. Undo restores the observed source
+ * identity, so its original strike still applies. Typing never lands inside a deletion,
+ * so no character its author meant to strike
  * is left out. A strike without `s`, as one an older release or an insert wrote, covers every
  * character inside it, as before.
  */
@@ -25,6 +26,7 @@ import * as Y from 'yjs';
 import { firstItem } from './yjs-items.ts';
 import { textDecisionsOf, type TextDecisions } from './paragraph-text-decisions.ts';
 import { isRecord } from './paragraph-text-codec.ts';
+import { textMarksOf } from './paragraph-text-marks.ts';
 import {
   parseJson,
   REVISION_PREFIX,
@@ -232,6 +234,7 @@ export function readShared(text: Y.Text): { ops: DeltaOp[]; leftOut: boolean } {
   const attributesNow = (): Record<string, unknown> => (attributes ??= { ...current });
   let hasStrikesSeen = false;
   const recorded = text.doc ? textDecisionsOf(text.doc) : null;
+  const marks = text.doc ? textMarksOf(text.doc) : null;
   const decisions = recorded && !recorded.empty ? recorded : null;
   // The revisions of the current attributes that a record names, read again after a marker.
   let decidable: string[] | null = null;
@@ -283,6 +286,17 @@ export function readShared(text: Y.Text): { ops: DeltaOp[]; leftOut: boolean } {
       continue;
     }
     const { client, clock } = item.id;
+    // Undo restores the observed source, including embedded controls. Its new Yjs item
+    // must not turn that source into unseen peer typing and remove its deletion marker.
+    const restored = hasStrikesSeen ? marks?.origin('restore', client, clock) : null;
+    const seenClient = restored?.client ?? client;
+    const seenClock = restored ? restored.clock + clock - restored.firstClock : clock;
+    const unseenAt = (offset: number) => {
+      const unseen = unseenStrikes(attributesNow(), client, clock + offset);
+      if (!restored || !unseen) return unseen;
+      const source = unseenStrikes(attributesNow(), seenClient, seenClock + offset);
+      return source ? unseen.filter((key) => source.includes(key)) : null;
+    };
     const deciding = decisions && decidableNow().length > 0 ? decisions : null;
     if (content instanceof Y.ContentString) {
       const str = content.str;
@@ -291,14 +305,18 @@ export function readShared(text: Y.Text): { ops: DeltaOp[]; leftOut: boolean } {
         continue;
       }
       for (let at = 0; at < str.length; ) {
-        const unseen = hasStrikesSeen ? unseenStrikes(attributesNow(), client, clock + at) : null;
+        const unseen = hasStrikesSeen ? unseenAt(at) : null;
         const decided = deciding
           ? decidedRevisions(deciding, decidableNow(), client, clock + at)
           : null;
         // A record can end at any character, so a text with records is read one at a time.
         const until = deciding
           ? at + 1
-          : sameUntil(attributesNow(), client, clock + at, clock + str.length) - clock;
+          : Math.min(
+              sameUntil(attributesNow(), client, clock + at, clock + str.length) - clock,
+              sameUntil(attributesNow(), seenClient, seenClock + at, seenClock + str.length) -
+                seenClock
+            );
         const out = joined(unseen, decided);
         pushString(str.slice(at, until), out ? minus(out) : attributesNow());
         at = until;
@@ -306,7 +324,7 @@ export function readShared(text: Y.Text): { ops: DeltaOp[]; leftOut: boolean } {
       continue;
     }
     if (content instanceof Y.ContentEmbed || content instanceof Y.ContentType) {
-      const unseen = hasStrikesSeen ? unseenStrikes(attributesNow(), client, clock) : null;
+      const unseen = hasStrikesSeen ? unseenAt(0) : null;
       const decided = deciding ? decidedRevisions(deciding, decidableNow(), client, clock) : null;
       const out = joined(unseen, decided);
       push(content.getContent()[0], out ? minus(out) : { ...attributesNow() });

@@ -23,7 +23,15 @@ export const RESTORE_ORIGIN = Symbol('docx-restore-marks');
 export function markRestoredText(doc: Y.Doc, from: number): void {
   const created = new Map<Y.Text, Set<string>>();
   for (const item of itemsWrittenSince(doc, from)) {
-    if (item.deleted || !(item.content instanceof Y.ContentString)) continue;
+    if (
+      item.deleted ||
+      !(
+        item.content instanceof Y.ContentString ||
+        item.content instanceof Y.ContentEmbed ||
+        item.content instanceof Y.ContentType
+      )
+    )
+      continue;
     const parent = item.parent;
     if (!(parent instanceof Y.Text) || fieldOf(parent) !== INLINE_FIELD) continue;
     const keys = created.get(parent) ?? new Set<string>();

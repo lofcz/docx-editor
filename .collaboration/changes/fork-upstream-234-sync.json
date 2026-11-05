@@ -15,7 +15,10 @@
     "packages/core/src/store/__tests__/revision-split-change.test.ts",
     "packages/sciobot/src/review/joined-deletion-collaboration.test.ts",
     "packages/pro/src/collaboration/__tests__/document-compatibility.test.ts",
-    "packages/pro/src/collaboration/__tests__/document-tracked-foreign-revisions.test.ts"
+    "packages/pro/src/collaboration/__tests__/document-tracked-foreign-revisions.test.ts",
+    "packages/sciobot/src/chrome/checklist-indentation-collaboration.test.ts",
+    "packages/sciobot/src/chrome/list-split-collaboration.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-concurrent-strike-decision.test.ts"
   ],
   "changeset": "fork-upstream-234-sync",
   "migration": "upgrade-fork-rooms-to-format-19171"

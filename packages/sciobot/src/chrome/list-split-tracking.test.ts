@@ -3,7 +3,6 @@ import { createDocxEditor } from '@docx-editor.dev/core/editor';
 import {
   canonicalOoxmlFingerprint,
   findNode,
-  replaceNode,
   paragraphTextOf,
   readOoxmlPackage,
 } from '@docx-editor.dev/core/store';
@@ -71,28 +70,11 @@ for (const selection of [
         );
         expect(result.success).toBe(true);
         if (decision === 'reject') {
-          // Word removes the first paragraph mark. The second paragraph keeps its durable IDs.
-          const source = findNode(original, id)!,
-            survivor = findNode(s.session.part(), next)!;
-          if (source.kind !== 'paragraph' || survivor.kind !== 'paragraph')
-            throw new Error('Missing paragraph');
-          const identity = new Set(['paraId', 'textId']);
-          const attributes = source.attributes.map((attribute) =>
-            attribute.namespaceUri === 'http://schemas.microsoft.com/office/word/2010/wordml' &&
-            identity.has(attribute.localName)
-              ? survivor.attributes.find(
-                  (value) =>
-                    value.namespaceUri === attribute.namespaceUri &&
-                    value.localName === attribute.localName
-                )!
-              : attribute
-          );
-          const expected = replaceNode(original, id, { ...source, attributes });
-          if (!expected.ok) throw new Error(JSON.stringify(expected.issues));
-          expect(formattingFingerprint(s.session.part())).toEqual(
-            formattingFingerprint(expected.part)
-          );
-          expect(findNode(s.session.part(), id)).toBeNull();
+          // Rejecting the inserted mark retains the original paragraph, like undoing
+          // the split. Both actions must agree when participants perform them offline.
+          expect(findNode(s.session.part(), id)?.kind).toBe('paragraph');
+          expect(formattingFingerprint(s.session.part())).toEqual(formattingFingerprint(original));
+          expect(findNode(s.session.part(), next)).toBeNull();
         } else {
           expect(s.session.paragraphIds()).toHaveLength(3);
           expect(paragraphTextOf(s.session.part(), id)).toBe(

@@ -294,12 +294,14 @@ function writeParagraphText(
         const changes = identities
           ? recordStrikesSeen(
               run[0]!.changes!,
-              // The item each character stands in, not its identity: a reader compares a
-              // character's own item ID, and a moved copy has its own.
-              run.map(({ position }) => {
-                const [client, clock] = (identities.items[position] ?? '-1:-1').split(':');
-                return { client: Number(client), clock: Number(clock) };
-              })
+              // Record the observed item and its source. Undo can restore a moved item
+              // under another clock while keeping its source identity.
+              run.flatMap(({ position }) =>
+                [identities.items[position], identities.ids[position]].map((identity) => {
+                  const [client, clock] = (identity ?? '-1:-1').split(':');
+                  return { client: Number(client), clock: Number(clock) };
+                })
+              )
             )
           : run[0]!.changes!;
         formatDecision(text, changes, identities?.items, run);
