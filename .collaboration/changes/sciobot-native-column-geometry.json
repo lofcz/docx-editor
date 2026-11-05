@@ -1,0 +1,12 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Application columns use vertically stacked native content controls.",
+  "after": "New column groups use ordinary native table cells, with the same content controls and payload identities.",
+  "reason": "The shared node schema, repair rules, text identities, and transport stay unchanged. Existing readers already understand these native tables. Legacy groups keep their stored structure until an explicit conversion.",
+  "tests": [
+    "packages/sciobot/src/blocks/columns.test.ts"
+  ],
+  "changeset": "sciobot-native-column-geometry",
+  "migration": null
+}

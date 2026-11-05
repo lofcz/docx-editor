@@ -1,4 +1,6 @@
 import { activeStorage } from '../registry/active';
+import { readColumnGeometry } from '../blocks/column-geometry';
+import { columnReadingLayout } from './column-reading-layout';
 import { activeMdxRegistry } from '../registry/active';
 import { serializeMention, mentionInsideHyperlink } from './mention';
 import { forEachSemanticStory, forEachStoryParagraphFragment } from '@docx-editor.dev/core/layout';
@@ -117,6 +119,13 @@ export function projectBlocks(
   options: Pick<MarkdownLayoutOptions, 'tableSyntax'> = {}
 ): { readonly success: true; readonly projection: BlockProjection } | NativeEditFailure {
   const index = buildBlockIndex(pkg);
+  const geometries = [...index.byId.values()].flatMap((block) => {
+    const geometry = readColumnGeometry(pkg, block, index);
+    return geometry ? [geometry] : [];
+  });
+  const columnCells = new Set(
+    geometries.flatMap((geometry) => geometry.columns.map((column) => column.cellId))
+  );
   const anchors = new Map<string, Anchor>();
   const cellParagraphs = new Set<string>();
   for (const block of index.byId.values()) {
@@ -171,7 +180,7 @@ export function projectBlocks(
       if (labelOwner) throw new Error('Generated labels cannot contain tables.');
       for (const owner of active) owner.tableIds.add(node.id);
     }
-    if (node.kind === 'tableCell') inCell = true;
+    if (node.kind === 'tableCell') inCell = !columnCells.has(node.id);
     for (const child of node.children)
       visit(child, active, paragraph, inCell, labelOwner, depth + 1);
   };
@@ -207,7 +216,7 @@ export function projectBlocks(
         code: 'unsupported-operation',
         error: 'Cell lists need HTML table syntax.',
       };
-    const listed = projectLists(pkg, layout, revision, {
+    const listed = projectLists(pkg, columnReadingLayout(layout, geometries), revision, {
       tableSyntax: richCells || cellLists ? 'html' : (options.tableSyntax ?? 'gfm'),
       imageAssets: managedInlineImageAssets(
         pkg,

@@ -39,6 +39,8 @@ import {
   quoteSiblingInsertion,
 } from './target-quotes';
 import { planParagraphFormat } from './paragraph-format';
+import { columnWidthsTwips, readColumnGeometry } from '../blocks/column-geometry';
+import { planTableFormat } from './table-format';
 
 export interface TargetDocumentOptions {
   readonly definitions?: ReadonlyMap<string, Pick<BlockTagDefinition, 'tag' | 'kind'>>;
@@ -558,6 +560,51 @@ export function planTargetDocument(
         );
         if (!metadata.success) return metadata;
         operations.push(...metadata.plan.operations);
+        const columns = readColumnGeometry(input.pkg, block, blockIndex);
+        if (columns) {
+          if (
+            entry.block.children.length !== columns.columns.length ||
+            next.children.length !== columns.columns.length
+          )
+            return fail('Changing the number of native columns needs a column structure plan.');
+          let widths: readonly number[];
+          try {
+            widths = columnWidthsTwips(
+              next.children.map((child) => {
+                const semantic = domainNodeFromAst(astOf(child), registry);
+                if (semantic?.type !== 'column')
+                  throw new Error('A column group can contain only column blocks.');
+                return semantic.width;
+              }),
+              columns.columns.reduce((sum, column) => sum + column.width, 0)
+            );
+          } catch (error) {
+            return fail(error instanceof Error ? error.message : 'Invalid column widths.');
+          }
+          if (widths.some((width, index) => width !== columns.columns[index]!.width)) {
+            const geometry = planTableFormat(
+              { revision, part, tableId: columns.tableId },
+              { op: 'setTableProperties', columnWidthsTwips: [...widths] }
+            );
+            if (!geometry.success) return geometry;
+            operations.push(...geometry.plan.operations);
+          }
+          for (const [index, column] of columns.columns.entries()) {
+            const child = bindings.get([...oldPath, index].join('/'));
+            if (child?.structuralOwnerId !== column.block.controlId)
+              return fail('Column content differs from its native cell owner.');
+            const error = stream(
+              [entry.block.children[index]!],
+              [next.children[index]!],
+              oldPath,
+              newPath,
+              column.cellId,
+              { before: index, after: index }
+            );
+            if (error) return error;
+          }
+          continue;
+        }
         const parents = new Set(
           source.bindings
             .filter(

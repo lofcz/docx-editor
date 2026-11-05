@@ -1,4 +1,5 @@
 import { MdxRefusal } from '../registry/mdx-fields';
+import { columnTableXml, columnWidthsTwips } from '../blocks/column-geometry';
 import type { MdxComponentRegistry } from '../registry/contract';
 import { activeMdxRegistry, activeStorage } from '../registry/active';
 import { completeInlineAtomPayloads } from '../native/inline-atom-payloads';
@@ -638,6 +639,37 @@ function blockXml(node: TargetAstNode, path: readonly number[], context: RenderC
     return `<w:sdt>${properties}<w:sdtContent><w:p>${runXml(fallback ?? binding.label, [])}</w:p></w:sdtContent></w:sdt>`;
   }
   const children = (node.children ?? []) as TargetAstNode[];
+  if (binding.payload.type === 'column_group') {
+    const columns = children.map((_child, index) => {
+      const column = context.bindings.get([...path, index].join('/'));
+      if (!column || column.payload.type !== 'column')
+        refuseWrite('A column group can contain only column blocks.', 'unsupported-operation');
+      return column;
+    });
+    try {
+      const widths = columnWidthsTwips(
+        columns.map((column) => column.payload.attributes.width),
+        context.width
+      );
+      const table = columnTableXml(
+        widths,
+        (index, width) => {
+          const childContext = { ...context, width };
+          const xml = blockXml(children[index]!, [...path, index], childContext);
+          context.pkg = childContext.pkg;
+          return xml;
+        },
+        () => seedParagraph(context)
+      );
+      return `<w:sdt>${properties}<w:sdtContent>${table}${seedParagraph(context)}</w:sdtContent></w:sdt>`;
+    } catch (error) {
+      if (error instanceof NativeWriteRefusal) throw error;
+      refuseWrite(
+        error instanceof Error ? error.message : 'Invalid column geometry.',
+        'unsupported-operation'
+      );
+    }
+  }
   let content = '';
   if (binding.generatedLabel !== undefined) {
     // The Word label is generated content: it maps to no target paragraph.

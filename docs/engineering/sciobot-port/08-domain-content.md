@@ -384,7 +384,24 @@ Final verification against installed fork `929e0ea4a9bf68f3a4c9a7c133e55bc76b76d
 
 **Check:** Add a focused application integration case. Use browser input for user-facing actions. Add the focused two-session scenario described in the shared completion rules.
 
-**Claim:** claude, application branch `claude/docx-native-cutover`. **Evidence:** Not ported; recorded as out of the cutover scope. The Plate column element (`src/components/ui/column-node.tsx`) shows the stored widths side by side in a flex row and renders no resize handle; its only column actions are "insert three columns" and "turn into three columns" (`src/components/transforms.ts`). So the parity gap is the side-by-side display, not resizing. X19 stores a column group as nested content controls in reading order, so the native page and Word show the columns one after another. Each column keeps its `width` in its payload, and the projection, saves, and reopening keep it (`blocks/columns.test.ts`). The slash menu inserts three empty columns as one undo step (`columns-insert.test.ts`). A side-by-side display needs a different stored form, and both candidates break a planner invariant. A one-row borderless table puts each column control in its own cell, but the domain planner requires the children of a container to be one contiguous window of native siblings (`diff/domain-containers.ts`), so adding or removing a column has no plan. A continuous section with `w:cols` and column breaks keeps the columns contiguous, and core layout supports unequal section columns and column breaks, but it needs section-mark paragraphs that the projection must hide, a column break that every edit of a column must keep, and a `w:type` change on the section that follows the group, outside the block. Each option changes the Word form of existing documents and needs a collaboration compatibility decision. Reopen this leaf with one of these designs when side-by-side columns become a requirement.
+**Claim:** Codex, branch `codex/react-block-proof`; implementation continues.
+
+**Evidence:** New column groups use one borderless native table with one content control in each cell.
+The private projection preserves column syntax and reads each complete column before the next column.
+The complete-target planner resolves each retained column through its actual cell window.
+Width changes update the native grid and private metadata in one transaction.
+The existing column controls and paragraph identities remain stable.
+
+`packages/sciobot/src/blocks/columns.test.ts` checks empty, two-column, and three-column groups, nested tables, and save/reopen behavior.
+It checks reading order across pages and rejects unsupported widths or occupied generated separators.
+Two real collaboration sessions check concurrent typing, resize, remote selection, undo, redo, deletion, reconnect, and equal saved digests.
+The compatibility decision is `sciobot-native-column-geometry`.
+The shared format stays unchanged because existing readers already understand the native table representation.
+The focused check passed 190 tests across nine files, plus private package typecheck, formatting, and repository lint.
+
+**Remaining:** Application width handles, keyboard controls, content movement, column count changes, and installed browser checks remain open.
+Existing stacked groups retain their structure until an explicit conversion preserves their identities.
+Tracked operations also need complete application verification before this leaf closes.
 
 ## X21
 
