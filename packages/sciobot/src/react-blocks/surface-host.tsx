@@ -210,6 +210,9 @@ export function mountSurfaceBlockHost(
         // Bounded by a whole page, not the rest of this one: a widget that fits an empty page
         // reserves its full height, and the layout moves its paragraph to the next page.
         const maxHeight = blockViewportHeight(next, fragment.pageIndex, 0);
+        // A multi-page fallback may already exceed the widget's height, so it needs no
+        // reservation. Its visible viewport must still fit the first page's remaining room.
+        const viewportHeight = blockViewportHeight(next, fragment.pageIndex, fragment.box.y);
         const target = measured
           ? measuredFragment(
               block.controlId,
@@ -228,7 +231,7 @@ export function mountSurfaceBlockHost(
                     measurement: measurement!,
                     mountKey: key,
                     target,
-                    maxHeight,
+                    maxHeight: viewportHeight,
                     width: box.width * (4 / 3),
                     minHeight: nativeBox.height * (4 / 3),
                     zoom: next.scale * 0.75,
@@ -326,7 +329,9 @@ function measuredFragment(
 ): MeasuredFragment | null {
   const control = findNode(frame.part, controlId);
   const paragraphId = control ? lastBodyParagraphIn(control) : null;
-  return paragraphId ? { paragraphId, nativeHeight, scale: frame.scale, maxHeight } : null;
+  return paragraphId
+    ? { paragraphId, nativeHeight, scale: frame.scale, contentScale: frame.scale * 0.75, maxHeight }
+    : null;
 }
 
 /**

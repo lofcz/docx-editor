@@ -11,19 +11,26 @@ export interface MeasuredFragment {
   /** The complete native fallback height, in points. It never includes a reservation. */
   readonly nativeHeight: number;
   readonly scale: number;
-  /** Bounded scroll viewport, in CSS pixels. Content beyond it does not reserve flow. */
+  /** Screen pixels per CSS pixel in the widget. Intrinsic overflow keeps its full reservation. */
+  readonly contentScale?: number;
+  /** Reservation budget in screen pixels. Overflow beyond this limit does not reserve flow. */
   readonly maxHeight?: number;
 }
 
-const defaultMeasure: MeasureBlockElement = (element) => element.getBoundingClientRect().height;
+function defaultMeasure(element: HTMLElement, fragment: MeasuredFragment): number {
+  const viewportHeight = element.getBoundingClientRect().height;
+  return fragment.contentScale === undefined
+    ? viewportHeight
+    : Math.max(viewportHeight, element.scrollHeight * fragment.contentScale);
+}
 
 /**
  * Turns measured widget heights into layout-only native reservations.
  *
  * The reservation is a surface view input, so user history, collaboration peers, and saved
- * files never see a measurement. Native fragment heights exclude reservations, and widgets
- * measure their own bounded content, so a reservation cannot feed back into the next
- * measurement: each change relayouts once and the following paint measures the same value.
+ * files never see a measurement. Native fragment heights exclude reservations. Intrinsic
+ * widget content keeps the same reservation budget when page placement shrinks its viewport,
+ * so a reservation cannot feed back into the next measurement.
  */
 export class BlockMeasurement {
   private readonly tracked = new Map<
@@ -37,7 +44,7 @@ export class BlockMeasurement {
 
   constructor(
     private readonly surface: PaginatedSurface,
-    private readonly measure: MeasureBlockElement = defaultMeasure
+    private readonly measure?: MeasureBlockElement
   ) {
     this.observer =
       typeof ResizeObserver === 'function' ? new ResizeObserver(() => this.schedule()) : null;
@@ -82,7 +89,7 @@ export class BlockMeasurement {
       // A root parked with its virtual page keeps the height it last measured. Dropping its
       // room moved the content, which brought that page back and measured it again, in a loop.
       if (element.isConnected && !element.closest('[hidden]')) {
-        const height = this.measure(element);
+        const height = this.measure ? this.measure(element) : defaultMeasure(element, fragment);
         if (Number.isFinite(height)) entry.height = height;
       }
       if (entry.height === undefined || !(fragment.scale > 0)) continue;

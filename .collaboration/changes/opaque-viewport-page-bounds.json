@@ -1,0 +1,14 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "A measured widget can extend below the clipped first page of its native fallback.",
+  "after": "Each visible widget viewport fits its page while intrinsic content retains its full reservation budget.",
+  "reason": "The correction changes local chrome geometry only. Canonical document content, room formats, and shared operations remain unchanged.",
+  "tests": [
+    "packages/sciobot/src/react-blocks/measurement.test.tsx",
+    "packages/sciobot/src/react-blocks/opaque-layer.test.tsx",
+    "packages/sciobot/src/react-blocks/block-zoom.test.tsx"
+  ],
+  "changeset": null,
+  "migration": null
+}

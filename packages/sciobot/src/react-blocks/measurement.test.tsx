@@ -455,3 +455,41 @@ test('a root parked with its virtual page keeps its room until it is released', 
     element.remove();
   }
 });
+
+test('a page-clipped viewport keeps its intrinsic reservation at each document zoom', () => {
+  const published: ReadonlyMap<string, number>[] = [];
+  const surface = {
+    setBlockReservations: (next: ReadonlyMap<string, number>) => published.push(next),
+  } as unknown as ConstructorParameters<typeof BlockMeasurement>[0];
+  const measurement = new BlockMeasurement(surface);
+  const element = document.createElement('div');
+  document.body.append(element);
+  let viewport = 90;
+  Object.defineProperty(element, 'scrollHeight', { value: 900 });
+  element.getBoundingClientRect = () => ({ height: viewport }) as DOMRect;
+  try {
+    for (const contentScale of [0.75, 1, 1.5]) {
+      const scale = contentScale / 0.75;
+      measurement.track('widget:0', element, {
+        paragraphId: 'p1',
+        nativeHeight: 200,
+        scale,
+        contentScale,
+        maxHeight: 600 * contentScale,
+      });
+      for (const height of [300, 80, 240]) {
+        viewport = height * contentScale;
+        measurement.flush();
+        // Intrinsic overflow reserves the same bounded room even when page placement reduces
+        // the visible viewport. No layout feedback can shrink that room on the next paint.
+        expect(published.at(-1)).toEqual(new Map([['p1', 250]]));
+      }
+    }
+    measurement.release('widget:0');
+    measurement.flush();
+    expect(published.at(-1)).toEqual(new Map());
+  } finally {
+    measurement.dispose();
+    element.remove();
+  }
+});
