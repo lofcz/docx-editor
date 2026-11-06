@@ -41,6 +41,7 @@ export function withNativeCodeSources(
     // Imported fields, line-ending differences and modified Word fallbacks remain lossless and opaque.
     if (
       properties.dataBinding ||
+      properties.temporary ||
       (properties.lock && properties.lock !== 'unlocked') ||
       ancestorContentWriteRefusal(part, control.id) ||
       !source ||

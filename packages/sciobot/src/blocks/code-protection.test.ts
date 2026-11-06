@@ -65,6 +65,7 @@ test('source and metadata commands refuse changed, absent, or unowned code locks
     (xml: string) => xml.replace('scioCode:sourceOwner="1"', 'scioCode:sourceOwner="2"'),
     (xml: string) => xml.replace(' scioCode:sourceOwner="1"', ''),
     (xml: string) => xml.replace(/<w:lock[^>]*\/>/, ''),
+    (xml: string) => xml.replace('<w:sdtPr>', '<w:sdtPr><w:temporary/>'),
     (xml: string) =>
       xml.replace(
         '<w:sdtPr>',
@@ -107,6 +108,16 @@ test('source and metadata commands refuse changed, absent, or unowned code locks
       container.remove();
     }
   }
+});
+
+test('code preparation does not adopt temporary imported controls', async () => {
+  const entries = unzipSync(await codeDocument(ORIGINAL, false));
+  entries['word/document.xml'] = strToU8(
+    strFromU8(entries['word/document.xml']!).replace('<w:sdtPr>', '<w:sdtPr><w:temporary/>')
+  );
+  const pkg = openCode(zipSync(entries));
+  expect(withNativeCodeSources(pkg)).toBe(pkg);
+  expect(buildBlockIndex(pkg).byId.get('code')!.payload.version).toBe(1);
 });
 
 test('a peer wrapper-lock change withdraws code ownership until that exact change is undone', async () => {

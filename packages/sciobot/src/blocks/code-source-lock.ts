@@ -11,7 +11,8 @@ const MC_NAMESPACE_URI = 'http://schemas.openxmlformats.org/markup-compatibility
 export function ownedCodeSourceLock(control: OoxmlNode) {
   if (control.kind !== 'contentControl') return null;
   const properties = contentControlPropertiesOf(control);
-  if (properties.lock !== 'contentLocked' || properties.dataBinding) return null;
+  if (properties.lock !== 'contentLocked' || properties.dataBinding || properties.temporary)
+    return null;
   const propertyNodes = control.children.filter(
     (child) => child.kind === 'contentControlProperties'
   );

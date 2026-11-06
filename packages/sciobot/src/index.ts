@@ -114,6 +114,8 @@ export * from './blocks/selection-move';
 export * from './blocks/duplicate';
 export * from './blocks/update-atomic';
 export { updateCodeSource, updateCodeLanguage } from './blocks/code-edit';
+export { nativeCodeSource as readNativeCodeSource } from './blocks/code-native-source';
+export { withNativeCodeSources } from './blocks/code-preparation';
 export * from './blocks/move';
 export * from './blocks/move-column-content';
 export { readColumnGeometry, type ColumnGeometry } from './blocks/column-geometry';
