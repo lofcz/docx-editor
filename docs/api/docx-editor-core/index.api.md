@@ -1967,7 +1967,9 @@ export interface Editor extends EditorAnchorNavigation, EditorHighlights, Editor
     exec(command: EditorCommand, options?: EditorExecOptions): ExecResult;
     executeImageCommand(command: Extract<EditorCommand, {
         type: 'insertImage' | 'replaceImage';
-    }>): Promise<ExecResult>;
+    }>, options?: {
+        readonly signal?: AbortSignal;
+    }): Promise<ExecResult>;
     findMatches(query: string, options?: {
         readonly matchCase?: boolean;
         readonly wholeWord?: boolean;

@@ -1956,7 +1956,9 @@ export interface EquationOps {
 // @public
 export function executeImageCommand(editor: DocxEditorInstance, command: Extract<EditorCommand, {
     type: 'insertImage' | 'replaceImage';
-}>): Promise<ExecResult>;
+}>, options?: {
+    readonly signal?: AbortSignal;
+}): Promise<ExecResult>;
 
 // @public
 export type FieldResultsMode = 'atomic' | 'editable';
