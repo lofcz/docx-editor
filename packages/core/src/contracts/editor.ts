@@ -333,9 +333,10 @@ export interface Editor extends EditorAnchorNavigation, EditorHighlights, Editor
     command: Extract<EditorCommand, { type: 'insertImage' | 'replaceImage' }>,
     options?: { scope?: EditorScope }
   ): CanResult;
-  /** Insert or replace picture bytes as one package undo unit. */
+  /** Insert or replace picture bytes as one package undo unit. Cancellation before commit writes nothing. */
   executeImageCommand(
-    command: Extract<EditorCommand, { type: 'insertImage' | 'replaceImage' }>
+    command: Extract<EditorCommand, { type: 'insertImage' | 'replaceImage' }>,
+    options?: { readonly signal?: AbortSignal }
   ): Promise<ExecResult>;
   /**
    * Whether a formatting command is currently APPLIED at the selection — distinct from

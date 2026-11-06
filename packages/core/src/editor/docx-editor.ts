@@ -2209,10 +2209,10 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
       return canExecuteImageCommandOf(command, surface);
     },
 
-    executeImageCommand(command) {
+    executeImageCommand(command, options) {
       if (destroyed)
         return Promise.resolve({ ok: false, code: 'notFound', reason: 'the editor was destroyed' });
-      return executeImageCommandOf(editor, command);
+      return executeImageCommandOf(editor, command, options);
     },
 
     getPageSetup: () => pageSetupOf(surface),

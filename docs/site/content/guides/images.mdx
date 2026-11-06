@@ -32,6 +32,8 @@ if (result.ok) {
 
 `widthPoints` and `heightPoints` are maximums. An image that does not fit its cell, column, or page scales down proportionally. Read the committed size from `snapshot().image`.
 
+Pass `{ signal: controller.signal }` as the second argument to cancel an image command before commit. Cancellation returns `invalidArgs` with the reason `image command was cancelled` and changes no document content. The command still checks the original mount, selection, drawing identity, and package revision after decoding.
+
 | Format | Insert | Display |
 | --- | --- | --- |
 | PNG, JPEG, GIF | Yes | Yes |

@@ -1,0 +1,10 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Asynchronous image commands keep native owner and selection checks but have no caller cancellation signal.",
+  "after": "An optional cancellation signal prevents an image commit without bypassing native owner and selection checks.",
+  "reason": "Cancellation changes local command admission only. It introduces no shared fields or operations.",
+  "tests": ["packages/sciobot/src/blocks/image-request-cancellation.test.ts"],
+  "changeset": "cancellable-image-commands",
+  "migration": null
+}

@@ -975,17 +975,25 @@ function fitInsertExtent(
  */
 export async function executeImageCommand(
   editor: DocxEditorInstance,
-  command: Extract<EditorCommand, { type: 'insertImage' | 'replaceImage' }>
+  command: Extract<EditorCommand, { type: 'insertImage' | 'replaceImage' }>,
+  options?: { readonly signal?: AbortSignal }
 ): Promise<ExecResult> {
-  const result = await runImageCommand(editor, command);
+  const result = await runImageCommand(editor, command, options?.signal);
   reportCommandResult(editor, command, result);
   return result;
 }
 
 async function runImageCommand(
   editor: DocxEditorInstance,
-  command: Extract<EditorCommand, { type: 'insertImage' | 'replaceImage' }>
+  command: Extract<EditorCommand, { type: 'insertImage' | 'replaceImage' }>,
+  signal?: AbortSignal
 ): Promise<ExecResult> {
+  const cancelled: ExecResult = {
+    ok: false,
+    code: 'invalidArgs',
+    reason: 'image command was cancelled',
+  };
+  if (signal?.aborted) return cancelled;
   const surface = editor.surface;
   if (!surface) return { ok: false, code: 'notFound', reason: 'no document is loaded' };
   const modeGate = asyncImageExecutionGate(surface, command.type);
@@ -1018,11 +1026,12 @@ async function runImageCommand(
       widthPoints: fitted.widthPoints,
       heightPoints: fitted.heightPoints,
       expectedPackageRevision: expectedRevision,
-      commitGuard: () => isStaleImageMutation(editor, pre) === null,
+      commitGuard: () => !signal?.aborted && isStaleImageMutation(editor, pre) === null,
       ...(command.title !== undefined ? { title: command.title } : {}),
       ...(command.description !== undefined ? { description: command.description } : {}),
       ...(command.hyperlink !== undefined ? { hyperlink: command.hyperlink } : {}),
     });
+    if (signal?.aborted) return cancelled;
     const stale = isStaleImageMutation(editor, pre);
     if (stale) return stale;
     if (!result.ok) {
@@ -1050,11 +1059,13 @@ async function runImageCommand(
   const result = await surface.replaceImage(resolved.id, command.data, mime, {
     expectedPackageRevision: expectedRevision,
     commitGuard: () =>
+      !signal?.aborted &&
       isStaleImageMutation(editor, pre, {
         requireDrawing: true,
         drawingNodeId: resolved.id,
       }) === null,
   });
+  if (signal?.aborted) return cancelled;
   const stale = isStaleImageMutation(editor, pre, {
     requireDrawing: true,
     drawingNodeId: resolved.id,
