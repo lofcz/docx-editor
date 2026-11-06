@@ -17,6 +17,8 @@ import type { TrackedStageWriter } from './tracked-stage-writer';
 import { readCommittedView } from './committed-view';
 import { readWorkingView } from './working-view';
 import { propertyToken } from '../../test/support/property-execution';
+import { planAtomicBlock } from '../diff/atomic-blocks';
+import { createPendingPropertyProposal, projectPendingProperties } from './property-projection';
 
 const ORIGINAL = 'one\nmiddle\nlast';
 const PROPOSED = 'one\n\tmid\ndle\nlast';
@@ -78,6 +80,55 @@ test('code review reads exact native source halves without publishing payload ca
       expect(working.view.projection.text).toContain('```python\n' + PROPOSED + '\n```');
       expect(peer!.surface!.session.currentPackage()).toBe(before);
       expect(state(peer!).block.payload.attributes.value).toBe(ORIGINAL);
+    }
+  } finally {
+    pair.destroy();
+  }
+});
+
+test('pending native source review preserves a peer language change in both payload views', async () => {
+  const pair = await createTwoEditorFixture({
+    document: await codeDocument(),
+    ownedAttributes: true,
+  });
+  try {
+    const [alice, bob] = pair.editors as [DocxEditorInstance, DocxEditorInstance];
+    const initial = state(alice);
+    const plan = planAtomicBlock(
+      { pkg: initial.pkg, revision: propertyToken(alice), blockId: 'code' },
+      {
+        ...initial.block.payload,
+        attributes: { ...initial.block.payload.attributes, value: PROPOSED },
+      }
+    );
+    if (!plan.success) throw Error(plan.error);
+    const pending = createPendingPropertyProposal('native_code', plan.plan);
+    if (!pending.success) throw Error(pending.error);
+    transaction(alice, (writer) =>
+      stageTrackedCodeSource(writer, 'code', ORIGINAL, PROPOSED, attribution)
+    );
+    await pair.settle();
+    expect(updateCodeLanguage(bob, { blockId: 'code', language: 'typescript' })).toMatchObject({
+      success: true,
+    });
+    await pair.settle();
+    for (const editor of pair.editors) {
+      const current = state(editor!);
+      for (const view of ['committed', 'working'] as const) {
+        const projected = projectPendingProperties(
+          current.pkg,
+          propertyToken(editor!),
+          [pending.proposal],
+          view
+        );
+        if (!projected.success) throw Error(projected.error);
+        expect(projected.pkg).toBe(current.pkg);
+        expect(buildBlockIndex(projected.pkg).byId.get('code')!.payload.attributes.language).toBe(
+          'typescript'
+        );
+      }
+      expect(current.committed.value).toBe(ORIGINAL);
+      expect(current.working.value).toBe(PROPOSED);
     }
   } finally {
     pair.destroy();

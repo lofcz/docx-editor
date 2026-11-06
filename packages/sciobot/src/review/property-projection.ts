@@ -21,6 +21,7 @@ import { domainDiffStrategy } from '../diff/domain-strategies';
 import { jsonDataKey } from '../diff/target-key';
 import { MDX_BLOCK, MDX_INLINE, serializeOpaqueMdx } from '../projection/mdx';
 import { ATOMIC_PAYLOAD_CHANGE } from './property-record-schema';
+import { nativeCodePayload, projectedCodeMetadata } from './code-review-payload';
 
 /** Detached property/atomic data. R12/R13 and R14-R16 own persistence and live decisions. */
 export interface PendingPropertyProposal {
@@ -63,6 +64,7 @@ function atomicEdit(edit: CanonicalEdit): edit is PayloadEdit {
   ) as [BlockPayload, BlockPayload];
   if (before.id !== edit.blockId || after.id !== before.id || after.type !== before.type)
     return false;
+  if (nativeCodePayload(before)) return nativeCodePayload(after);
   if ([MDX_BLOCK, MDX_INLINE].includes(before.type)) {
     try {
       serializeOpaqueMdx(before);
@@ -237,6 +239,24 @@ export function projectPendingProperties(
       return fail('The pending property block has no exact native owner.', 'invalid-document');
     if (chain.atomic) {
       const states = chain.keys.get(ATOMIC_PAYLOAD_CHANGE)!;
+      if (nativeCodePayload(block.payload)) {
+        if (states.some((state) => !state.present))
+          return fail('A native code replacement needs both payloads.');
+        try {
+          const payload = projectedCodeMetadata(
+            block.payload,
+            states.flatMap((state) => (state.present ? [state.value as BlockPayload] : [])),
+            data.kind
+          );
+          if (payload === block.payload) continue;
+          const written = withPayloadRecord(projected, payload, entry.label);
+          if (!written.ok) return fail(written.reason, 'invalid-document');
+          projected = written.pkg;
+          continue;
+        } catch (error) {
+          return fail(error instanceof Error ? error.message : String(error), 'stale-revision');
+        }
+      }
       if (
         !states.some(
           (state) => state.present && jsonDataKey(state.value) === jsonDataKey(block.payload)

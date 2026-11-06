@@ -36,7 +36,8 @@ function payloadKey(payload: BlockPayload): string {
  * Replace one complete atomic payload through an empty payload path. No descendants are paired.
  * Supply the complete decoded target, including reconciled assets and opaque metadata.
  * Equal targets keep the original stored payload and parser locations without any edit.
- * Executors must treat a root payload change as one block replacement and update its native fallback.
+ * Atomic executors update the native fallback with the payload. Prepared code instead retains its
+ * native paragraph identities and applies source changes through the code review executor.
  */
 export function planAtomicBlock(
   source: AtomicBlockSource,
@@ -63,13 +64,19 @@ export function planAtomicBlock(
   const block = buildBlockIndex(source.pkg).byId.get(source.blockId);
   if (!block) return fail('The native atomic block does not exist.', 'invalid-document');
   const before = block.payload;
-  if (!atomic(before.type, registry))
+  const nativeCode = before.type === 'code_block' && before.version === 2;
+  if (!nativeCode && !atomic(before.type, registry))
     return fail(
       'The native block requires container or structural planning.',
       'unsupported-operation'
     );
   if (after.id !== before.id || after.type !== before.type)
     return fail('Atomic payload replacement must retain its block ID and payload type.');
+  if (nativeCode && after.version !== 2)
+    return fail(
+      'Native code plans cannot replace their source ownership version.',
+      'unsupported-operation'
+    );
   try {
     if (opaque(before.type)) serializeOpaqueMdx(before);
   } catch (error) {
