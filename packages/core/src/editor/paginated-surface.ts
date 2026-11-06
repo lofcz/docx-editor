@@ -201,6 +201,7 @@ import { bindSurfaceViewport, type SurfaceViewportBinding } from './surface-view
 import { createSurfaceHostListeners } from './surface-host-listeners.ts';
 import { hostTimers, hostWindowOf } from './host-realm.ts';
 import { createSurfaceHosting } from './surface-host-move.ts';
+import { createLocalCollaborationPresence } from './surface-local-presence.ts';
 import { reviewItemsAtSelection } from '../store/store/review-items.ts';
 import { mergedPredecessorsOf } from '../layout/line-segments.ts';
 import { surfaceSelectionMarkRects } from './surface-selection-ops.ts';
@@ -1928,16 +1929,20 @@ export function mountPaginatedSurface(
   // The host that renders its own remote-caret label content, when one registered. Part of
   // the painter's memo key by identity, so setting or clearing it rebuilds the labels.
   let remoteCaretLabelHost: RemoteCaretLabelHost | null = null;
-  /**
-   * The last payload handed to the session, so an unchanged caret publishes once.
-   *
-   * `null` means nothing has been published yet, which is distinct from the empty string a
-   * WITHDRAWN selection hashes to — the first withdrawal has to reach the room. Declared with
-   * the rest of the collaboration state, above every commit path that reads it: a commit
-   * reaching a `let` further down would throw a temporal-dead-zone `ReferenceError` out of an
-   * edit, which is how attaching the replica too early used to break the room.
-   */
-  let publishedCollaborationSelection: string | null = null;
+  const localPresence = createLocalCollaborationPresence({
+    session: collaborationSession,
+    listeners: hostListeners,
+    host: () => container,
+    read: () =>
+      collaborationPort
+        ? localCollaborationSelection(
+            cellSelection?.text ?? selection,
+            (nodeId) =>
+              collaborationParagraphAt(partOfNodeId(session, nodeId) ?? session.part(), nodeId),
+            cellSelection ? 'cells' : undefined
+          )
+        : null,
+  });
   const unsubscribeRemoteSelections = collaborationSession
     ? collaborationSession.subscribeRemoteSelections(() => {
         if (remoteSelectionRenderingReady) renderRemoteSelections();
@@ -2760,8 +2765,14 @@ export function mountPaginatedSurface(
       pointer?.cancelGesture();
       tableInteraction.cancelDrag();
     },
-    repaint: () => render(false),
-    onHostMoved: (document) => options.onHostMoved?.(document),
+    repaint: () => {
+      render(false);
+      localPresence.publish();
+    },
+    onHostMoved: (document) => {
+      localPresence.publish();
+      options.onHostMoved?.(document);
+    },
   });
 
   function render(notifyChange = true): void {
@@ -3301,24 +3312,7 @@ export function mountPaginatedSurface(
    * and typing reaches this once per COMMIT, which the type buffer already coalesces.
    */
   function publishLocalCollaborationSelection(): void {
-    const collaboration = collaborationSession;
-    if (!collaboration) return;
-    const next = collaborationPort
-      ? localCollaborationSelection(
-          cellSelection?.text ?? selection,
-          (nodeId) => {
-            const part = partOfNodeId(session, nodeId) ?? session.part();
-            return collaborationParagraphAt(part, nodeId);
-          },
-          cellSelection ? 'cells' : undefined
-        )
-      : null;
-    const key = next
-      ? `${next.anchor.paragraphId}:${next.anchor.offset}|${next.head.paragraphId}:${next.head.offset}|${next.kind ?? ''}`
-      : '';
-    if (key === publishedCollaborationSelection) return;
-    publishedCollaborationSelection = key;
-    collaboration.setLocalSelection(next);
+    localPresence.publish();
   }
 
   function setSelection(
@@ -5803,6 +5797,7 @@ export function mountPaginatedSurface(
         pagesLayer.removeEventListener('compositionstart', onCompositionStart);
         pagesLayer.removeEventListener('compositionend', onCompositionEnd);
         viewportBinding?.destroy();
+        localPresence.destroy();
         hostListeners.clear();
         hosting.destroy();
         // An open engine menu holds document-level dismiss listeners; a surface torn down

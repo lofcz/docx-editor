@@ -272,6 +272,8 @@ Controls around table rows publish boundaries for the row, its controlled cells,
 
 If you paint interactive controls inside a page, such as a form beside a control, add the `data-docx-host-ui` attribute to their container. The editor leaves presses, focus, and text selection in that container to your controls. It hides the document caret while one of your controls has focus, and a selected picture ignores keys typed there. The document selection stays unchanged until you select document text again. Stop the propagation of key, input, clipboard, and composition events at the container, so the document keyboard shortcuts do not receive them.
 
+For an uncommitted local draft, also add `data-docx-local-draft=""` inside the editor's host. For a portal outside that host, set the attribute value to the owning collaboration session's `sessionId`. While that draft has focus, the editor withdraws only its owner's remote selection. Document focus restores canonical presence. Ordinary toolbar controls keep their existing behavior. Do not mark a live editing projection that publishes canonical selection positions as a local draft.
+
 ## See also
 
 - [Content controls in the Editing API](/docs/2.x/editor-api/content-controls)

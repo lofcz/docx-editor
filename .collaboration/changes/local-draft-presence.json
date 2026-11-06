@@ -1,0 +1,10 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "An uncommitted host draft can leave its owner's remote caret at an unrelated document paragraph.",
+  "after": "An explicitly owned local draft withdraws its remote selection while it holds focus.",
+  "reason": "The existing awareness selection publishes null. No canonical operation or shared field changes.",
+  "tests": ["packages/sciobot/src/blocks/local-draft-presence.test.ts"],
+  "changeset": "local-draft-presence",
+  "migration": null
+}
