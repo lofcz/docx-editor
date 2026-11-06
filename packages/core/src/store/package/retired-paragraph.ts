@@ -9,7 +9,7 @@ import {
 import { WML_NAMESPACE_URI } from './ooxml-shared.ts';
 import type { OoxmlPackage } from './ooxml-package.ts';
 import { mergeMarkedParagraphs } from '../store/paragraph-mark-merge.ts';
-import { rootWithoutProvenanceNamespaces } from '../store/run-origin-namespaces.ts';
+import { rootWithoutProvenanceNamespaces } from '../store/run-origin-export-namespaces.ts';
 import { MAX_XML_DEPTH, XML_DEFAULT_MAX_ELEMENTS } from './xml-reader.ts';
 import { PackageEditRefusal } from '../store/package-edit-refusal.ts';
 

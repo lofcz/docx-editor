@@ -3,7 +3,7 @@ import type { OoxmlElement, OoxmlNode, OoxmlPart } from '../package/ooxml-tree.t
 import { PackageEditRefusal } from './package-edit-refusal.ts';
 import { normalizedRunOriginParagraph } from './run-origin-resolution.ts';
 import { isJoinedParagraph } from '../package/retired-paragraph.ts';
-import { rootWithoutProvenanceNamespaces } from './run-origin-namespaces.ts';
+import { rootWithoutProvenanceNamespaces } from './run-origin-export-namespaces.ts';
 import {
   readRevisionOrigins,
   readRunOrigins,

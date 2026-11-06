@@ -14,7 +14,6 @@ import { PackageEditRefusal, isPackageEditRefusal } from './package-edit-refusal
 import type { TreeOpRejection } from './tree-op-types.ts';
 import { joinOriginRuns } from './run-origin-merge.ts';
 import { pruneRunOriginNamespaces } from './run-origin-namespaces.ts';
-import { collectRevisionSites } from './tree-op-revisions.ts';
 import { isJoinedParagraph } from '../package/retired-paragraph.ts';
 import {
   mapOriginNodes,
@@ -289,6 +288,7 @@ export function normalizedRunOriginParagraph(
 export function normalizeResolvedRunOrigins(
   part: OoxmlPart,
   resolution: OriginResolution,
+  pendingScopes: ReadonlySet<string>,
   options?: EditOptions
 ):
   | { readonly ok: true; readonly part: OoxmlPart }
@@ -298,7 +298,7 @@ export function normalizeResolvedRunOrigins(
     return {
       ok: true,
       part: pruneRunOriginNamespaces(
-        normalizeOrigins(part, resolution, options),
+        normalizeOrigins(part, resolution, pendingScopes, options),
         resolution.paragraphPropertyPrefixes,
         options,
         INSERTED_PARAGRAPH_PROPERTY_NS
@@ -313,16 +313,12 @@ export function normalizeResolvedRunOrigins(
 function normalizeOrigins(
   part: OoxmlPart,
   resolution: OriginResolution,
+  pending: ReadonlySet<string>,
   options?: EditOptions
 ): OoxmlPart {
   let current = part;
   const prefixes = new Set(resolution.prefixes),
     retained = new Set(resolution.retained);
-  const pending = new Set(
-    collectRevisionSites(part)
-      .flatMap((site) => readRevisionOrigins(site.node))
-      .map((origin) => origin.scope)
-  );
   const deferredForExport = new Set<string>();
   for (const [paragraphId, scopes] of resolution.paragraphs) {
     const paragraph = findNode(part, paragraphId);

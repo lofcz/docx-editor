@@ -961,7 +961,14 @@ export function resolveRevisions(
   if (!settled) {
     return { ok: false, reason: 'tree-invariant' };
   }
-  const normalized = finishRevisionDecision(part, decided, settled, runOrigins, options);
+  const normalized = finishRevisionDecision(
+    part,
+    decided,
+    settled,
+    runOrigins,
+    collectRevisionSites,
+    options
+  );
   if (!normalized.ok) return normalized;
   return {
     ok: true,
