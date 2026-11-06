@@ -10,6 +10,9 @@ import {
   type OoxmlParagraphNode,
 } from '@docx-editor.dev/core/store';
 import { atomicFallbackParagraph, propertyFallbackParagraph } from './property-fallback';
+import type { BlockPayload } from '../blocks/payload-schema';
+import { nativeCodeSource } from '../blocks/code-native-source';
+import { ownedCodeSourceLock } from '../blocks/code-source-lock';
 
 /** Resolve native ownership, never a label search or a cached numeric span. */
 export interface PayloadFallback {
@@ -18,13 +21,31 @@ export interface PayloadFallback {
   readonly text: string;
   readonly offset: number;
   readonly inline: boolean;
+  readonly nativeCode?: true;
 }
 
 export function payloadFallback(
   part: OoxmlPart,
   controlId: string,
-  atomic: boolean
+  atomic: boolean,
+  payload?: BlockPayload
 ): PayloadFallback | null {
+  if (atomic && payload?.type === 'code_block' && payload.version === 2) {
+    const control = findNode(part, controlId);
+    const source =
+      control && ownedCodeSourceLock(control) && nativeCodeSource(part, control, 'committed');
+    const paragraph = source && source.paragraphs[0];
+    return source && paragraph?.kind === 'paragraph'
+      ? {
+          paragraph,
+          node: control!,
+          text: source.value,
+          offset: 0,
+          inline: false,
+          nativeCode: true,
+        }
+      : null;
+  }
   const paragraph = (atomic ? atomicFallbackParagraph : propertyFallbackParagraph)(part, controlId);
   if (paragraph?.kind === 'paragraph') {
     const text = paragraphTextOf(part, paragraph.id);

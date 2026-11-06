@@ -1,6 +1,6 @@
 import type { CanonicalEditPlan } from '../diff/plan';
 import { refuseWrite } from '../diff/fragment-seeds';
-import { prepareApplicationPayloadStage } from './prepare-payload-stage';
+import { prepareApplicationPayloadStage, stagePreparedPayload } from './prepare-payload-stage';
 import type { PropertyFallbackTarget } from './track-properties';
 import type { TrackedStageAttribution, TrackedStageWriter } from './tracked-stage-writer';
 
@@ -78,8 +78,7 @@ export function stageTrackedPayloads(
       executor
     );
     if (!prepared.success) refuseWrite(prepared.error, prepared.code);
-    const partName = writer.currentPackage().mainDocumentPart;
-    for (const op of prepared.ops) writer.apply(partName, op);
+    stagePreparedPayload(prepared, writer);
     writer.edit((pkg) => prepared.complete(pkg).pkg);
   }
 }

@@ -178,6 +178,7 @@ function derive(
         partName: string;
         path: readonly number[];
         paragraphId: string | null;
+        nativeCode: boolean;
         addresses: ReadonlySet<string>;
       }
     >(),
@@ -422,7 +423,7 @@ function derive(
         }
         const nativeFallback =
           payloadFallback(pkg.parts.get(native.partName)!, native.controlId, false) ??
-          payloadFallback(pkg.parts.get(native.partName)!, native.controlId, true);
+          payloadFallback(pkg.parts.get(native.partName)!, native.controlId, true, native.payload);
         const fallback = nativeFallback?.paragraph;
         bucket.anchor = {
           partName: native.partName,
@@ -438,6 +439,7 @@ function derive(
           partName: native.partName,
           path,
           paragraphId: fallback?.id ?? null,
+          nativeCode: nativeFallback?.nativeCode === true,
           addresses,
         });
         for (const site of addressedSites(addresses))
@@ -445,7 +447,7 @@ function derive(
             site.partName === native.partName &&
             within(site.path, path) &&
             fallback &&
-            site.range?.start.paragraphId === fallback.id
+            (nativeFallback?.nativeCode || site.range?.start.paragraphId === fallback.id)
           )
             attach(bucket, site);
         const labels = record.extension?.fallbackLabels,
@@ -495,7 +497,7 @@ function derive(
         !scope ||
         site.partName !== scope.partName ||
         !within(site.path, scope.path) ||
-        site.range?.start.paragraphId !== scope.paragraphId ||
+        (!scope.nativeCode && site.range?.start.paragraphId !== scope.paragraphId) ||
         !site.address ||
         !scope.addresses.has(propertyAddressKey(site.partName, site.address))
       )

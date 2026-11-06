@@ -185,6 +185,7 @@ function commitGroupDecision(
           { op: 'acceptAllRevisions', siteNodeIds: [...ids] },
         ]);
       const edits: ((pkg: OoxmlPackage) => OoxmlPackage)[] = [];
+      const beforeEdits: ((pkg: OoxmlPackage) => OoxmlPackage)[] = [];
       for (const groupId of withdrawnGroups) {
         if (!groupId.startsWith('g1:stored:'))
           throw new Error('Property ownership needs a stored native group.');
@@ -256,6 +257,7 @@ function commitGroupDecision(
             if (op.op === (input.decision === 'accept' ? 'acceptRevision' : 'rejectRevision'))
               for (const id of op.siteNodeIds ?? []) expectedSites.add(id);
           expectedPropertySites.set(prepared.partName, expectedSites);
+          if (prepared.before) beforeEdits.push(prepared.before);
           edits.push(prepared.apply);
         }
         for (const [partName, expectedSites] of expectedPropertySites) {
@@ -316,8 +318,16 @@ function commitGroupDecision(
       let previewPackage = pkg,
         flagWrites = 0,
         fieldWrites = 0;
+      for (const edit of beforeEdits) {
+        const next = edit(previewPackage);
+        if (collaboration) {
+          flagWrites += groupRemovalBudget(previewPackage, next);
+          fieldWrites += groupReviewFieldBudget(previewPackage, next);
+        }
+        previewPackage = next;
+      }
       for (const [partName, ops] of partOps) {
-        let preview = pkg.parts.get(partName);
+        let preview = previewPackage.parts.get(partName);
         if (!preview) {
           result = fail('A review part is missing.', 'invalid-document');
           return { committed: false, reason: result.error };
@@ -354,6 +364,7 @@ function commitGroupDecision(
               { kind: 'body' },
               {
                 historyToken,
+                packageEdits: beforeEdits,
                 partOps: [...partOps].map(([partName, ops]) => ({ partName, ops })),
                 packageEditsAfterOps: edits,
               }

@@ -35,6 +35,8 @@ import {
 } from './property-fallback';
 import { payloadFallback, payloadFallbackContains, type PayloadFallback } from './payload-fallback';
 import type { PropertyFallbackTarget, TrackPropertiesContext } from './track-properties';
+import { codeSourceReviewLocks, stageTrackedCodeSource } from './code-source-review';
+import type { TrackedStageWriter } from './tracked-stage-writer';
 
 const fail = (
   error: string,
@@ -43,10 +45,21 @@ const fail = (
 export interface PreparedPayloadStage {
   readonly success: true;
   readonly ops: readonly TreeDocOp[];
+  readonly stage?: (writer: TrackedStageWriter) => void;
   readonly complete: (pkg: OoxmlPackage) => {
     readonly pkg: OoxmlPackage;
     readonly receipt: PropertyReviewRecord;
   };
+}
+
+/** Native code uses dependent paragraph operations; other payloads keep their existing text plan. */
+export function stagePreparedPayload(
+  prepared: PreparedPayloadStage,
+  writer: TrackedStageWriter
+): void {
+  const partName = writer.currentPackage().mainDocumentPart;
+  for (const op of prepared.ops) writer.apply(partName, op);
+  prepared.stage?.(writer);
 }
 
 /** Validate exact payload/label before-values without a live editor or document mutation. */
@@ -190,6 +203,7 @@ export function prepareApplicationPayloadStage(
   if (data.fallbackTargets.length !== blocks.size)
     return fail('Each changed block needs one explicit generated fallback target.');
   const ops: TreeDocOp[] = [],
+    codeTargets: { blockId: string; before: string; after: string }[] = [],
     fallbacks: PayloadFallback[] = [],
     labels: {
       blockId: string;
@@ -210,8 +224,8 @@ export function prepareApplicationPayloadStage(
   const orderedTargets = [...data.fallbackTargets].sort((a, b) => {
     const left = index.byId.get(a?.blockId),
       right = index.byId.get(b?.blockId);
-    const x = left && payloadFallback(part, left.controlId, atomic),
-      y = right && payloadFallback(part, right.controlId, atomic);
+    const x = left && payloadFallback(part, left.controlId, atomic, left.payload),
+      y = right && payloadFallback(part, right.controlId, atomic, right.payload);
     return x && y ? x.paragraph.id.localeCompare(y.paragraph.id) || y.offset - x.offset : 0;
   });
   for (const target of orderedTargets) {
@@ -225,7 +239,7 @@ export function prepareApplicationPayloadStage(
     seen.add(target.blockId);
     const owner = index.byId.get(target.blockId)!,
       control = findNode(part, owner.controlId),
-      fallback = payloadFallback(part, owner.controlId, atomic),
+      fallback = payloadFallback(part, owner.controlId, atomic, owner.payload),
       paragraph = fallback?.paragraph,
       entry = payloads.entries.get(owner.id);
     if (
@@ -244,8 +258,20 @@ export function prepareApplicationPayloadStage(
         'Bound property fallbacks need their own native reconciliation.',
         'unsupported-operation'
       );
-    const restriction =
-      propertyControlRefusal(part, owner.controlId) ?? propertyControlRefusal(part, paragraph.id);
+    if (fallback.nativeCode) {
+      try {
+        codeSourceReviewLocks(pkg, [owner.id]);
+      } catch (error) {
+        return fail(
+          error instanceof Error ? error.message : String(error),
+          'unsupported-operation'
+        );
+      }
+    }
+    const restriction = fallback.nativeCode
+      ? null
+      : (propertyControlRefusal(part, owner.controlId) ??
+        propertyControlRefusal(part, paragraph.id));
     if (restriction) return fail(restriction, 'unsupported-operation');
     const text = fallback.text;
     if (
@@ -259,18 +285,26 @@ export function prepareApplicationPayloadStage(
         'The generated fallback already contains pending native revisions.',
         'unsupported-operation'
       );
-    const textPlan = planParagraphText(
-      {
-        revision: current,
-        partName: part.name,
-        paragraphId: paragraph.id,
-        text,
-        offset: fallback.offset,
-      },
-      target.after
-    );
-    if (!textPlan.success) return textPlan;
-    for (const edit of textPlan.plan.operations) {
+    if (fallback.nativeCode) {
+      const after = blocks.get(owner.id)!.changes[0]!.after;
+      if (!after.present || (after.value as BlockPayload).attributes.value !== target.after)
+        return fail('The code fallback target differs from the proposed source.');
+      codeTargets.push({ blockId: owner.id, before: target.before, after: target.after });
+    }
+    const textPlan = fallback.nativeCode
+      ? null
+      : planParagraphText(
+          {
+            revision: current,
+            partName: part.name,
+            paragraphId: paragraph.id,
+            text,
+            offset: fallback.offset,
+          },
+          target.after
+        );
+    if (textPlan && !textPlan.success) return textPlan;
+    for (const edit of textPlan?.plan.operations ?? []) {
       if (edit.kind !== 'text') return fail('Unexpected native fallback intention.');
       ops.push(
         ...trackedParagraphTextOps(edit, paragraph, attribution.author, date).map((op) =>
@@ -282,7 +316,7 @@ export function prepareApplicationPayloadStage(
     labels.push({
       blockId: owner.id,
       before: entry.label,
-      after: target.after,
+      after: fallback.nativeCode ? entry.label : target.after,
       textBefore: target.before,
       textAfter: target.after,
     });
@@ -315,6 +349,15 @@ export function prepareApplicationPayloadStage(
   return {
     success: true,
     ops,
+    stage: codeTargets.length
+      ? (writer) => {
+          for (const target of codeTargets)
+            stageTrackedCodeSource(writer, target.blockId, target.before, target.after, {
+              author: attribution.author,
+              date,
+            });
+        }
+      : undefined,
     complete(working) {
       const changed = working.parts.get(part.name)!,
         revisions = new Map<string, StoredPropertyRevision>();
@@ -335,7 +378,10 @@ export function prepareApplicationPayloadStage(
           ...address,
         });
       }
-      if (ops.length && !revisions.size)
+      if (
+        (ops.length || codeTargets.some((target) => target.before !== target.after)) &&
+        !revisions.size
+      )
         throw new Error('Native property fallback revisions are missing.');
       const receipt = { ...prototype, nativeRevisions: [...revisions.values()] };
       const written = withPropertyReviewRecord(working, receipt);

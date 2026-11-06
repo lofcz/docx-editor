@@ -16,9 +16,14 @@ import { codeSourceReviewLocks, stageTrackedCodeSource } from './code-source-rev
 import type { TrackedStageWriter } from './tracked-stage-writer';
 import { readCommittedView } from './committed-view';
 import { readWorkingView } from './working-view';
-import { propertyToken } from '../../test/support/property-execution';
+import { propertyContext, propertyToken } from '../../test/support/property-execution';
 import { planAtomicBlock } from '../diff/atomic-blocks';
 import { createPendingPropertyProposal, projectPendingProperties } from './property-projection';
+import { decideAtomicProposal, trackAtomicPlan } from './track-atomic';
+import { SCIOBOT_NATIVE_REVIEW_MODULE } from './native-module';
+import { readReviewGroups } from './groups';
+import { acceptReviewGroup } from './accept-group';
+import { rejectReviewGroup } from './reject-group';
 
 const ORIGINAL = 'one\nmiddle\nlast';
 const PROPOSED = 'one\n\tmid\ndle\nlast';
@@ -58,6 +63,97 @@ function state(editor: DocxEditorInstance) {
     working: nativeCodeSource(part, control, 'working')!,
   };
 }
+
+for (const decision of ['accept', 'reject'] as const)
+  for (const executor of ['proposal', 'group'] as const)
+    test(`the native code review executor ${decision}/${executor} retains source, peer metadata, and native group membership`, async () => {
+      const pair = await createTwoEditorFixture({
+        document: await codeDocument(),
+        ownedAttributes: true,
+        editor: { modules: [SCIOBOT_NATIVE_REVIEW_MODULE] },
+      });
+      try {
+        const alice = pair.editors[0]!;
+        const initial = state(alice);
+        const plan = planAtomicBlock(
+          { pkg: initial.pkg, revision: propertyToken(alice), blockId: 'code' },
+          {
+            ...initial.block.payload,
+            attributes: { ...initial.block.payload.attributes, value: PROPOSED },
+          }
+        );
+        if (!plan.success) throw Error(plan.error);
+        const staged = trackAtomicPlan(
+          alice,
+          plan.plan,
+          [{ blockId: 'code', before: ORIGINAL, after: PROPOSED }],
+          {
+            ...propertyContext,
+            ...attribution,
+            proposalId: 'native_code_executor',
+          }
+        );
+        if (!staged.success) throw Error(staged.error);
+        expect(staged.proposal!.nativeRevisions.length).toBeGreaterThan(0);
+        await pair.settle();
+        for (const editor of pair.editors) {
+          const current = state(editor!);
+          expect(current.committed.value).toBe(ORIGINAL);
+          expect(current.working.value).toBe(PROPOSED);
+          const groups = readReviewGroups(current.pkg);
+          if (!groups.success) throw Error(groups.error);
+          expect(groups.groups).toHaveLength(1);
+          expect(groups.groups[0]!.readOnly).toBe(false);
+          const projected = await readWorkingView(editor!.surface!.session, propertyToken(editor!));
+          if (!projected.success) throw Error(projected.error);
+          expect(projected.view.projection.text).toContain('```python\n' + PROPOSED + '\n```');
+        }
+        const bob = pair.editors[1]!;
+        expect(updateCodeLanguage(bob, { blockId: 'code', language: 'typescript' })).toMatchObject({
+          success: true,
+        });
+        await pair.settle();
+        const groups = readReviewGroups(state(alice).pkg);
+        if (!groups.success) throw Error(groups.error);
+        const decided =
+          executor === 'proposal'
+            ? decideAtomicProposal(
+                alice,
+                'native_code_executor',
+                decision,
+                propertyToken(alice),
+                propertyContext
+              )
+            : (decision === 'accept' ? acceptReviewGroup : rejectReviewGroup)(
+                alice,
+                groups.groups[0]!.id,
+                propertyToken(alice),
+                propertyContext
+              );
+        if (!decided.success) throw Error(decided.error);
+        await pair.settle();
+        for (const editor of pair.editors) {
+          const current = state(editor!);
+          expect(current.committed.value).toBe(decision === 'accept' ? PROPOSED : ORIGINAL);
+          expect(current.working.value).toBe(current.committed.value);
+          expect(current.block.payload.attributes.language).toBe('typescript');
+        }
+        expect(alice.exec({ type: 'undo' }).ok).toBe(true);
+        await pair.settle();
+        for (const editor of pair.editors) {
+          const current = state(editor!);
+          expect(current.committed.value).toBe(ORIGINAL);
+          expect(current.working.value).toBe(PROPOSED);
+          expect(current.block.payload.attributes.language).toBe('typescript');
+        }
+        expect(alice.exec({ type: 'redo' }).ok).toBe(true);
+        await pair.settle();
+        for (const editor of pair.editors)
+          expect(state(editor!).working.value).toBe(decision === 'accept' ? PROPOSED : ORIGINAL);
+      } finally {
+        pair.destroy();
+      }
+    });
 
 test('code review reads exact native source halves without publishing payload cache changes', async () => {
   const pair = await createTwoEditorFixture({

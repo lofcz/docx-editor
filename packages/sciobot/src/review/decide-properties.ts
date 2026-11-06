@@ -110,19 +110,28 @@ function commitApplicationPayloadDecision(
   if (!prepared.success) return prepared;
   try {
     const result = surface.applyAutomationOps(
-      () => prepared.ops,
+      () => [],
       { kind: 'body' },
-      [
-        (working) => {
-          const applied = prepared.apply(working);
-          const removed = withoutPropertyReviewRecord(applied, data.proposalId);
-          if (!removed.ok) throw new Error(removed.reason);
-          return removed.pkg;
-        },
-      ],
+      undefined,
       true,
       true,
-      'after'
+      'after',
+      (ctx) => {
+        if (prepared.before && !ctx.applyPackage(prepared.before))
+          throw Error('The native property decision lock stage was refused.');
+        for (const op of prepared.ops)
+          if (!ctx.applyTo(prepared.partName, op))
+            throw Error('The native property decision was refused.');
+        if (
+          !ctx.applyPackage((working) => {
+            const applied = prepared.apply(working);
+            const removed = withoutPropertyReviewRecord(applied, data.proposalId);
+            if (!removed.ok) throw new Error(removed.reason);
+            return removed.pkg;
+          })
+        )
+          throw Error('The native property decision receipt was refused.');
+      }
     );
     if (result.rejected || !result.committed)
       return fail(String(result.reason ?? 'The property decision did not commit.'), 'apply-failed');

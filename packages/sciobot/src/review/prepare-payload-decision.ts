@@ -24,6 +24,8 @@ import {
 
 import { payloadFallback, payloadFallbackContains, type PayloadFallback } from './payload-fallback';
 import { readPayloadGroupDecisions, payloadGroupDecisionKey } from './payload-group-decisions';
+import { codeSourceReviewLocks } from './code-source-review';
+import { nativeCodePayload, projectedCodeMetadata } from './code-review-payload';
 
 const fail = (
   error: string,
@@ -43,6 +45,7 @@ export function preparePayloadProposalDecision(
       readonly success: true;
       readonly ops: readonly TreeDocOp[];
       readonly partName: string;
+      readonly before?: (pkg: OoxmlPackage) => OoxmlPackage;
       readonly apply: (pkg: OoxmlPackage) => OoxmlPackage;
     }
   | NativeEditFailure {
@@ -132,6 +135,16 @@ export function preparePayloadProposalDecision(
   }
   for (const id of labelValues.keys())
     if (!record.blocks.some((block) => block.blockId === id)) labelValues.delete(id);
+  const codeIds = record.blocks.flatMap((saved) => {
+    const owner = index.byId.get(saved.blockId);
+    return owner && nativeCodePayload(owner.payload) ? [owner.id] : [];
+  });
+  let codeLocks: ReturnType<typeof codeSourceReviewLocks> | null = null;
+  try {
+    if (codeIds.length) codeLocks = codeSourceReviewLocks(pkg, codeIds);
+  } catch (error) {
+    return fail(error instanceof Error ? error.message : String(error), 'unsupported-operation');
+  }
   const fallbacks: PayloadFallback[] = [],
     changedFallbacks: PayloadFallback[] = [];
   for (const saved of record.blocks) {
@@ -150,15 +163,21 @@ export function preparePayloadProposalDecision(
       !labelValues.has(saved.blockId)
     )
       return fail('A property decision has no exact current native owner.', 'invalid-document');
-    const nativeFallback = payloadFallback(part, owner.controlId, atomic);
+    const nativeFallback = payloadFallback(part, owner.controlId, atomic, owner.payload);
     if (!nativeFallback)
       return fail('A generated property fallback is missing or ambiguous.', 'invalid-document');
-    const restriction =
-      propertyControlRefusal(part, owner.controlId) ??
-      propertyControlRefusal(part, nativeFallback.paragraph.id);
+    const restriction = nativeFallback.nativeCode
+      ? null
+      : (propertyControlRefusal(part, owner.controlId) ??
+        propertyControlRefusal(part, nativeFallback.paragraph.id));
     if (restriction) return fail(restriction, 'unsupported-operation');
     fallbacks.push(nativeFallback);
     const fallback = labelValues.get(saved.blockId)!;
+    if (nativeFallback.nativeCode && fallback.after !== fallback.before)
+      return fail(
+        'Native code review cannot replace its unrelated block label.',
+        'invalid-document'
+      );
     if ((atomic || data.decision === 'accept') && stored.label !== fallback.before)
       return fail(
         'The stored fallback label changed while this proposal was pending.',
@@ -166,6 +185,20 @@ export function preparePayloadProposalDecision(
       );
     if (fallback.textBefore !== fallback.textAfter) changedFallbacks.push(nativeFallback);
     for (const change of saved.changes) {
+      if (atomic && nativeCodePayload(owner.payload)) {
+        if (!change.before.present || !change.after.present)
+          return fail('Native code review needs both retained payloads.', 'invalid-document');
+        try {
+          projectedCodeMetadata(
+            owner.payload,
+            [change.before.value as BlockPayload, change.after.value as BlockPayload],
+            'committed'
+          );
+        } catch (error) {
+          return fail(error instanceof Error ? error.message : String(error), 'stale-revision');
+        }
+        continue;
+      }
       const attributes = owner.payload.attributes;
       if (
         (atomic ? true : Object.hasOwn(attributes, change.name)) !== change.before.present ||
@@ -307,7 +340,7 @@ export function preparePayloadProposalDecision(
         'stale-revision'
       );
   }
-  let preview = part;
+  let preview = codeLocks ? codeLocks.before(pkg).parts.get(part.name)! : part;
   for (const op of ops) {
     const result = applyTreeOp(preview, op);
     if (!result.ok)
@@ -318,8 +351,9 @@ export function preparePayloadProposalDecision(
     success: true,
     ops,
     partName: part.name,
+    before: codeLocks?.before,
     apply(working) {
-      let next = working;
+      let next = codeLocks ? codeLocks.after(working) : working;
       if (data.decision === 'accept')
         for (const saved of record.blocks) {
           const owner = buildBlockIndex(next).byId.get(saved.blockId)!,
@@ -330,13 +364,21 @@ export function preparePayloadProposalDecision(
                 change.after.present ? [[change.name, change.after.value]] : []
               ),
             ]);
-          const written = withPayloadRecord(
-            next,
-            atomic && saved.changes[0]!.after.present
-              ? (saved.changes[0]!.after.value as BlockPayload)
-              : { ...owner.payload, attributes },
-            labelValues.get(saved.blockId)!.after
-          );
+          const proposed =
+            atomic && saved.changes[0]!.before.present && saved.changes[0]!.after.present
+              ? nativeCodePayload(owner.payload)
+                ? projectedCodeMetadata(
+                    owner.payload,
+                    [
+                      saved.changes[0]!.before.value as BlockPayload,
+                      saved.changes[0]!.after.value as BlockPayload,
+                    ],
+                    'working'
+                  )
+                : (saved.changes[0]!.after.value as BlockPayload)
+              : { ...owner.payload, attributes };
+          if (nativeCodePayload(owner.payload) && proposed === owner.payload) continue;
+          const written = withPayloadRecord(next, proposed, labelValues.get(saved.blockId)!.after);
           if (!written.ok) throw new Error(written.reason);
           next = written.pkg;
         }

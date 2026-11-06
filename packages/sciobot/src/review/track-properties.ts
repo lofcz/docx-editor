@@ -1,6 +1,6 @@
 import { withReviewGroupRevisionReservations } from './group-allocation';
 import type { DocxEditorInstance } from '@docx-editor.dev/core/editor';
-import { applyTreeOp } from '@docx-editor.dev/core/store';
+import { applyTreeOp, withPart } from '@docx-editor.dev/core/store';
 import { DEFAULT_PAYLOAD_LIMITS, isBlockId } from '../blocks/payload-schema';
 import { copyBoundedJson } from '../data/json';
 import { sameRevision, type NativeEditFailure, type RevisionToken } from '../contracts/document';
@@ -9,7 +9,7 @@ import { readEditorRevision } from '../projection/revision-cache';
 import type { PropertyReviewRecord } from './property-record-schema';
 import { canonicalTrackedDate, type TrackTextContext } from './tracked-inline';
 import { persistReviewGroups } from './groups';
-import { prepareApplicationPayloadStage } from './prepare-payload-stage';
+import { prepareApplicationPayloadStage, stagePreparedPayload } from './prepare-payload-stage';
 
 /** The application supplies the exact localized label; the adapter never invents content. */
 export interface PropertyFallbackTarget {
@@ -106,8 +106,7 @@ function trackApplicationPayloadPlanReserved(
     return fail('The document is open for viewing.', 'unsupported-operation');
   if (!plan.operations.length && !data.fallbackTargets.length)
     return { success: true, revision: current, proposal: null };
-  const pkg = surface.session.currentPackage(),
-    part = surface.session.part();
+  const pkg = surface.session.currentPackage();
   const prepared = prepareApplicationPayloadStage(
     pkg,
     current,
@@ -117,34 +116,53 @@ function trackApplicationPayloadPlanReserved(
     executor
   );
   if (!prepared.success) return prepared;
-  const ops = prepared.ops;
-  let preview = part;
-  for (const op of ops) {
-    const result = applyTreeOp(preview, op);
-    if (!result.ok)
-      return fail(`Native property fallback refused: ${result.reason}.`, 'unsupported-operation');
-    preview = result.part;
-  }
   let receipt: PropertyReviewRecord | null = null;
   try {
+    let preview = pkg;
+    stagePreparedPayload(prepared, {
+      currentPackage: () => preview,
+      edit(change) {
+        preview = change(preview);
+      },
+      apply(partName, op) {
+        const result = applyTreeOp(preview.parts.get(partName)!, op);
+        if (!result.ok) throw Error(`Native property fallback refused: ${result.reason}.`);
+        preview = withPart(preview, result.part);
+      },
+    });
+    prepared.complete(preview);
     const result = surface.applyAutomationOps(
-      () => ops,
+      () => [],
       { kind: 'body' },
-      [
-        (working) => {
-          const complete = prepared.complete(working);
-          receipt = complete.receipt;
-          return persistReviewGroups(
-            pkg,
-            complete.pkg,
-            [],
-            editor.snapshot().collaborationStatus === 'inactive'
-          );
-        },
-      ],
+      undefined,
       true,
       true,
-      'after'
+      'after',
+      (ctx) => {
+        stagePreparedPayload(prepared, {
+          currentPackage: () => ctx.currentPackage(),
+          edit(change) {
+            if (!ctx.applyPackage(change)) throw Error('The property package stage was refused.');
+          },
+          apply(partName, op) {
+            if (!ctx.applyTo(partName, op))
+              throw Error(`The property operation was refused: ${op.op}.`);
+          },
+        });
+        if (
+          !ctx.applyPackage((working) => {
+            const complete = prepared.complete(working);
+            receipt = complete.receipt;
+            return persistReviewGroups(
+              pkg,
+              complete.pkg,
+              [],
+              editor.snapshot().collaborationStatus === 'inactive'
+            );
+          })
+        )
+          throw Error('The property review receipt was refused.');
+      }
     );
     if (result.rejected || !result.committed)
       return fail(String(result.reason ?? 'The property proposal did not commit.'), 'apply-failed');
