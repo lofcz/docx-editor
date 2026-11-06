@@ -3,6 +3,7 @@ import { readPropertyReviewStore } from './property-record-store';
 import { preparePresenceDecision } from './prepare-presence-decision';
 import type { TreeTransactionContext } from '@docx-editor.dev/core/store';
 import type { OwnedProposalRemovalPlan } from './owned-proposal-plan';
+import { ownedProposalCodeLocks } from './owned-proposal-code-locks';
 import {
   withInitializedReviewGroupStore,
   withPayloadGroupDecisionRecord,
@@ -30,8 +31,11 @@ export function stageOwnedProposalRemoval(
     if (!prepared.success) throw new Error(prepared.error);
     return [prepared];
   });
+  const codeLocks = ownedProposalCodeLocks(pkg, removal.propertyDecisions);
+  if (codeLocks) step(() => ctx.applyPackage(codeLocks.before));
   for (const part of removal.partOps)
     for (const op of part.ops) step(() => ctx.applyTo(part.partName, op));
+  if (codeLocks) step(() => ctx.applyPackage(codeLocks.after));
   for (const prepared of presence) step(() => ctx.applyPackage(prepared.apply));
   if (!removal.propertyDecisions.length && !removal.retainNativeGroups.length) return;
   if (allowInitialization)

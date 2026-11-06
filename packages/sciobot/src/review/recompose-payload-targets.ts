@@ -44,7 +44,7 @@ export function recomposePayloadTargets(
     if (target && target.executor !== executor)
       return fail('A block has conflicting payload executors.');
     if (!target) {
-      const fallback = payloadFallback(part, owner.controlId, executor === 'atomic');
+      const fallback = payloadFallback(part, owner.controlId, executor === 'atomic', owner.payload);
       const beforeText = fallback?.text;
       if (typeof beforeText !== 'string')
         return fail('The changed block needs an exact native fallback owner.');

@@ -23,6 +23,7 @@ import { preparePresenceDecision } from './prepare-presence-decision';
 import { preparePayloadProposalDecision } from './prepare-payload-decision';
 import { propertyAddressKey } from './property-fallback';
 import { ownedProposalSelectionProblem } from './owned-proposal-input';
+import { ownedProposalCodeLocks } from './owned-proposal-code-locks';
 
 /**
  * Host-retained ownership, not ownership inferred from an author name or document proximity.
@@ -238,9 +239,11 @@ export function planOwnedProposalRemoval(
       }
     }
 
+    const codeLocks = ownedProposalCodeLocks(source.pkg, propertyDecisions);
+    const inverseSource = codeLocks ? codeLocks.before(source.pkg) : source.pkg;
     const partOps: OwnedProposalRemovalPlan['partOps'][number][] = [];
     for (const [name, ids] of sitesByPart) {
-      const part = source.pkg.parts.get(name);
+      const part = inverseSource.parts.get(name);
       if (!part) return fail('An owned revision part is missing.', 'invalid-document');
       const op: OwnedProposalInverse = { op: 'rejectAllRevisions', siteNodeIds: [...ids] };
       const prefix = beforeByPart.get(name) ?? [];
@@ -280,7 +283,7 @@ export function planOwnedProposalRemoval(
       partOps.push({ partName: name, ops: [...prefix, op] });
     }
     for (const [partName, ops] of presenceByPart) {
-      let part = source.pkg.parts.get(partName);
+      let part = inverseSource.parts.get(partName);
       if (!part) return fail('An owned presence part is missing.', 'invalid-document');
       const existing = partOps.find((row) => row.partName === partName);
       for (const op of existing?.ops ?? []) {

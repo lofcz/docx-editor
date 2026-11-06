@@ -24,6 +24,8 @@ import { readPropertyReviewStore } from './property-record-store';
 import { decodeBlockPresenceRecord } from './block-presence-schema';
 import { bindBlockPresenceRecord } from './block-presence-plan';
 import { currentRevisionGuardContent } from './revision-property-content';
+import { codeMetadataProof, nativeCodePayload } from './code-review-payload';
+import type { BlockPayload } from '../blocks/payload-schema';
 
 export interface OwnedProposalContentProof {
   readonly schemaVersion: 1;
@@ -210,17 +212,38 @@ export function captureOwnedProposalContentProofs(
         const part = pkg.parts.get(block.partName);
         if (!saved || !part) return fail('An owned property block is missing.', 'invalid-document');
         const atomic = record.decoded.value.extension?.executor === ATOMIC_REVIEW_EXECUTOR;
+        const nativeCode = atomic && nativeCodePayload(block.payload);
+        const change = saved.changes[0];
+        if (
+          nativeCode &&
+          (saved.changes.length !== 1 || !change?.before.present || !change.after.present)
+        )
+          return fail(
+            'Native code evidence needs its exact retained payload pair.',
+            'invalid-document'
+          );
         // Property decisions own their named attributes and native revision sites, not an
-        // unrelated suffix in the generated label. Atomic decisions own the complete fallback.
-        const fallback = atomic ? payloadFallback(part, block.controlId, true)?.node : null;
-        const current = atomic
-          ? block.payload
-          : saved.changes.map((change) => [
-              change.name,
-              Object.hasOwn(block.payload.attributes, change.name)
-                ? { present: true, value: block.payload.attributes[change.name] }
-                : { present: false },
-            ]);
+        // unrelated suffix in the generated label. Prepared code also owns native source sites.
+        // Other atomic decisions own the complete fallback.
+        const fallback =
+          atomic && !nativeCode
+            ? payloadFallback(part, block.controlId, true, block.payload)?.node
+            : null;
+        const current =
+          nativeCode && change?.before.present && change.after.present
+            ? codeMetadataProof(
+                block.payload,
+                change.before.value as BlockPayload,
+                change.after.value as BlockPayload
+              )
+            : atomic
+              ? block.payload
+              : saved.changes.map((change) => [
+                  change.name,
+                  Object.hasOwn(block.payload.attributes, change.name)
+                    ? { present: true, value: block.payload.attributes[change.name] }
+                    : { present: false },
+                ]);
         const bounded = copyBoundedJson(
           { record: record.decoded.value, current },
           EDIT_PLAN_LIMITS

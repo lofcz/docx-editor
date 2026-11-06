@@ -8,6 +8,27 @@ export const nativeCodePayload = (payload: BlockPayload): boolean =>
 const valueKey = (object: JsonObject, name: string): string =>
   Object.hasOwn(object, name) ? `present:${jsonDataKey(object[name]!)}` : 'absent';
 
+/** Native sites prove source ownership. Only declared metadata changes belong to the payload proof. */
+export function codeMetadataProof(
+  current: BlockPayload,
+  before: BlockPayload,
+  after: BlockPayload
+) {
+  if (
+    ![current, before, after].every(nativeCodePayload) ||
+    before.id !== current.id ||
+    after.id !== current.id
+  )
+    throw Error('Native code evidence requires matching version-2 payload identities.');
+  return fieldChanges(before, after)
+    .filter((field) => field.kind !== ATTRIBUTE_FIELD || field.name !== 'value')
+    .map((field) => [
+      field.kind,
+      field.name,
+      valueKey(field.kind === ATTRIBUTE_FIELD ? current.attributes : current, field.name),
+    ]);
+}
+
 /** Native code source is never a payload override. Unchanged metadata retains its current owner. */
 export function projectedCodeMetadata(
   current: BlockPayload,

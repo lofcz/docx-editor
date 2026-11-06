@@ -11,6 +11,7 @@ import { domainNodeFromAst } from './domain-ast';
 import { payloadMatches } from './inserted-cell-fragments';
 import { jsonDataKey, targetAstKey } from './target-key';
 import type { EditPlanResult } from './plan';
+import { nativeCodeTargetPairable, planTargetNativeCode } from './target-native-code';
 
 const fail = (error: string): NativeEditFailure => ({
   success: false,
@@ -28,6 +29,7 @@ export function atomicTargetsPairable(
   after: TargetAstNode,
   registry: MdxComponentRegistry = activeMdxRegistry()
 ): boolean {
+  if (nativeCodeTargetPairable(payload, before, after)) return true;
   if (opaque(payload))
     return (
       before.type === after.type && ['mdxJsxFlowElement', 'mdxJsxTextElement'].includes(after.type)
@@ -188,6 +190,8 @@ export function planTargetAtomic(
   if (!atomicTargetsPairable(payload, before, after, registry))
     return fail('Atomic target syntax changes its native payload kind.');
   try {
+    if (nativeCodeTargetPairable(payload, before, after))
+      return planTargetNativeCode(source, payload, before, after);
     let target: BlockPayload;
     if (opaque(payload)) {
       const projectedBefore = JSON.parse(targetAstKey(before)) as TargetAstNode;
