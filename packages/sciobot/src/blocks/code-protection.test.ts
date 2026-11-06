@@ -19,6 +19,53 @@ import { updateAtomicBlock } from './update-atomic';
 
 const ORIGINAL = 'one\nmiddle\nlast';
 
+for (const replacement of [
+  '<w:fldSimple w:instr="DATE"><w:r><w:t>one</w:t></w:r></w:fldSimple>',
+  '<w:r><w:t>Changed in Word</w:t></w:r>',
+])
+  test(`legacy source replacement preserves unsupported imported content: ${replacement}`, async () => {
+    const entries = unzipSync(await codeDocument(ORIGINAL, false));
+    const xml = strFromU8(entries['word/document.xml']!);
+    const changed = xml.replace(
+      /<w:r><w:rPr>[\s\S]*?<\/w:rPr><w:t[^>]*>one<\/w:t><\/w:r>/,
+      replacement
+    );
+    expect(changed).not.toBe(xml);
+    entries['word/document.xml'] = strToU8(changed);
+    const container = document.createElement('div');
+    document.body.append(container);
+    const editor = createDocxEditor({ container, document: zipSync(entries) });
+    try {
+      const before = editor.surface!.session.currentPackage();
+      const block = buildBlockIndex(before).byId.get('code')!;
+      expect(
+        updateAtomicBlock(editor, {
+          blockId: 'code',
+          attributes: { ...block.payload.attributes, value: 'replacement' },
+        })
+      ).toMatchObject({ success: false, code: 'unsupported-operation' });
+      expect(editor.surface!.session.currentPackage()).toBe(before);
+      // A language-only change retains every imported source node and remains independently undoable.
+      expect(
+        updateAtomicBlock(editor, {
+          blockId: 'code',
+          attributes: { ...block.payload.attributes, language: 'typescript' },
+        })
+      ).toMatchObject({ success: true });
+      const native = serializeOoxmlPart(before.parts.get(block.partName)!);
+      expect(
+        serializeOoxmlPart(editor.surface!.session.currentPackage().parts.get(block.partName)!)
+      ).toBe(native);
+      expect(editor.exec({ type: 'undo' }).ok).toBe(true);
+      const saved = openCode(new Uint8Array(await editor.save()));
+      expect(serializeOoxmlPart(saved.parts.get(block.partName)!)).toBe(native);
+      expect(buildBlockIndex(saved).byId.get('code')!.payload.attributes.language).toBe('python');
+    } finally {
+      editor.destroy();
+      container.remove();
+    }
+  });
+
 test('code preparation preserves every authored content or wrapper lock', async () => {
   const original = openCode(await codeDocument(ORIGINAL, false));
   const block = buildBlockIndex(original).byId.get('code')!;

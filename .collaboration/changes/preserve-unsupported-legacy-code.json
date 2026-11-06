@@ -1,0 +1,13 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Legacy source replacement could regenerate an unsupported or externally changed Word fallback.",
+  "after": "Legacy source replacement refuses unsupported, changed, or content-locked native content. Metadata-only edits preserve that content.",
+  "reason": "This adds a local write guard. Accepted operations, shared fields, and review decision semantics remain unchanged.",
+  "tests": [
+    "packages/sciobot/src/blocks/code-protection.test.ts",
+    "packages/sciobot/src/blocks/code-edit.test.ts"
+  ],
+  "changeset": "preserve-unsupported-legacy-code",
+  "migration": null
+}

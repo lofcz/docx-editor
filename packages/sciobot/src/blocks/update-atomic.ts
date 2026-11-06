@@ -2,6 +2,7 @@ import type { DocxEditorInstance } from '@docx-editor.dev/core/editor';
 import {
   bodyStoryRoot,
   isAtomicContentControl,
+  lockForbidsEdit,
   contentControlPropertiesOf,
   contentControlsIn,
   createNodeIdAllocator,
@@ -24,6 +25,7 @@ import { MdxRefusal } from '../registry/mdx-fields';
 import { buildBlockIndex } from './block-index';
 import { ancestorContentWriteRefusal } from './ancestor-content-write';
 import { updateCodePayload } from './code-edit';
+import { nativeCodeSource } from './code-native-source';
 import { convertMathControl } from './math-convert';
 import { decodeMathPayload } from './math-codec';
 import { encodeBlockPayload } from './payload-schema';
@@ -119,6 +121,21 @@ export function updateAtomicBlock(
       'unsupported-operation',
       protectedAncestor ?? 'The block control is bound to custom XML.'
     );
+  if (
+    payload.type === 'code_block' &&
+    payload.attributes.value !== block.payload.attributes.value
+  ) {
+    const native = nativeCodeSource(surface.session.part(), live);
+    if (
+      !native ||
+      native.value !== block.payload.attributes.value ||
+      lockForbidsEdit(contentControlPropertiesOf(live).lock)
+    )
+      return fail(
+        'unsupported-operation',
+        'Imported code source must match its plain native content before replacement.'
+      );
+  }
   if (
     editor.snapshot().collaborationStatus !== 'inactive' &&
     live &&
