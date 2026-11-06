@@ -6,7 +6,7 @@ import { projectSourcePackage, sourceRevision } from '../../test/support/target-
 import { createTwoEditorFixture } from '../../test/support/collaboration';
 import { previewDirectPlan } from '../ai/apply-direct';
 import { buildBlockIndex } from '../blocks/block-index';
-import { updateAtomicBlock } from '../blocks/update-atomic';
+import { readGallery, updateGallery } from '../blocks/gallery';
 import { planTargetDocument } from '../diff/plan-target';
 
 const ONE = { url: 'https://img.example/one.png', caption: 'One' };
@@ -27,6 +27,18 @@ const texts = (editor: DocxEditorInstance) => {
   const session = editor.surface!.session;
   return session.paragraphIds().map((id) => paragraphTextOf(session.part(), id));
 };
+function moveLastImageFirst(editor: DocxEditorInstance) {
+  const gallery = readGallery(editor.surface!.session.currentPackage(), 'gallery-1')!;
+  return updateGallery(editor, {
+    blockId: gallery.id,
+    change: {
+      type: 'move',
+      imageId: gallery.images.at(-1)!.id,
+      beforeImageId: gallery.images[0]!.id,
+      expectedOrder: gallery.images.map((image) => image.id),
+    },
+  });
+}
 async function projected(editor: DocxEditorInstance) {
   const read = readOoxmlPackage(new Uint8Array(await editor.save()));
   if (!read.ok) throw new Error(read.reason);
@@ -75,10 +87,7 @@ test('reordering is one undo unit that changes payload and Word lines together',
     document: writeOoxmlPackage(await lesson()),
   });
   try {
-    const moved = updateAtomicBlock(editor, {
-      blockId: 'gallery-1',
-      attributes: { layout: 'row-fit', images: [TWO, ONE] },
-    });
+    const moved = moveLastImageFirst(editor);
     if (!moved.success) throw new Error(moved.error);
     expect(texts(editor)).toEqual(['Intro', TWO.url, 'One', 'After']);
     expect((await projected(editor)).projection.text).toContain(tag([TWO, ONE]));
@@ -95,12 +104,7 @@ for (const first of [0, 1] as const)
     try {
       const [alice, bob] = pair.editors as [DocxEditorInstance, DocxEditorInstance];
       pair.pause();
-      expect(
-        updateAtomicBlock(alice, {
-          blockId: 'gallery-1',
-          attributes: { layout: 'row-fit', images: [TWO, ONE] },
-        }).success
-      ).toBe(true);
+      expect(moveLastImageFirst(alice).success).toBe(true);
       const after = bob
         .surface!.session.paragraphIds()
         .find((id) => paragraphTextOf(bob.surface!.session.part(), id) === 'After')!;
