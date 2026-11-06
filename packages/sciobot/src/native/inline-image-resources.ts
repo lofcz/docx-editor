@@ -11,6 +11,7 @@ import { decodeEditPlan, serializeEditPlan, type CanonicalEditPlan } from '../di
 import type { InsertedInlineAtom } from '../diff/inserted-atoms';
 import { planGalleryAssets } from './gallery-asset-runtime';
 import { GALLERY_ASSET_PATH, type GalleryAssetImage } from '../projection/gallery-assets';
+import { copyImageBytes } from './image-bytes';
 export interface InlineImageSource {
   readonly bytes: Uint8Array;
   readonly mime: SupportedImageMime;
@@ -118,13 +119,14 @@ export async function resolveInlineImageResources(
     if (signal?.aborted) throw Error('Image resource preparation was aborted.');
     if (resources.has(reference)) continue;
     const source = await resolve(reference, signal);
-    if (!(source.bytes instanceof Uint8Array) || source.bytes.byteLength > 64 * 1024 * 1024 - total)
-      throw Error('Image resources exceed the preparation byte budget.');
     const mime = source.mime,
       requestedWidth = source.widthPoints,
       requestedHeight = source.heightPoints;
-    const bytes = new Uint8Array(source.bytes),
-      limits = resolveImageResourceLimits();
+    const limits = resolveImageResourceLimits(),
+      bytes = copyImageBytes(
+        source.bytes,
+        Math.min(limits.maxEncodedBytes, 64 * 1024 * 1024 - total)
+      );
     const header = validateRasterHeader(bytes, mime);
     if (
       !header ||

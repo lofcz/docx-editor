@@ -8,6 +8,7 @@ import {
 import type { MarkdownImageAsset } from '@docx-editor.dev/docx-to-markdown';
 import { GALLERY_ASSET_PATH } from '../projection/gallery-assets';
 import type { InlineImageResolver } from './inline-image-resources';
+import { copyImageBytes } from './image-bytes';
 
 /** Resolve an explicitly supplied Markdown attachment bundle. No network or live document is used. */
 export function imageAssetBundleResolver(
@@ -33,14 +34,10 @@ export function imageAssetBundleResolver(
       byPath.has(asset.path)
     )
       throw Error('Image attachment paths must be unique content-addressed paths.');
-    if (
-      !(asset.bytes instanceof Uint8Array) ||
-      !asset.bytes.length ||
-      asset.bytes.length > limits.maxEncodedBytes ||
-      asset.bytes.length > 64 * 1024 * 1024 - total
-    )
-      throw Error('The image attachments exceed their byte limit.');
-    const bytes = new Uint8Array(asset.bytes),
+    const bytes = copyImageBytes(
+        asset.bytes,
+        Math.min(limits.maxEncodedBytes, 64 * 1024 * 1024 - total)
+      ),
       mime = sniffImageMime(bytes);
     const header = mime && validateRasterHeader(bytes, mime as SupportedImageMime);
     if (
