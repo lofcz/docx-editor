@@ -15,7 +15,7 @@ import { codeRecordShape } from './code-record';
 import { readPayloadStore } from './payload-opc-codec';
 import { encodeBlockPayload } from './payload-schema';
 import { ancestorContentWriteRefusal } from './ancestor-content-write';
-import { markCodeSourceLock } from './code-source-lock';
+import { markCodeSourceLock, ownedCodeSourceLock } from './code-source-lock';
 
 /** Upgrade validated code before bootstrap, or only code created in the current insertion. */
 export function withNativeCodeSources(
@@ -74,4 +74,37 @@ export function withNativeCodeSources(
     });
   }
   return next;
+}
+
+/** New controls must gain complete source ownership. Preservation-only import skips are not creation success. */
+export function withNewNativeCodeSources(
+  pkg: OoxmlPackage,
+  ids: ReadonlySet<string>
+): OoxmlPackage {
+  const index = buildBlockIndex(pkg);
+  const code = [...ids].map((id) => {
+    const block = index.byId.get(id);
+    if (!block || block.payload.type !== 'code_block')
+      throw Error('New code requires an indexed native source owner.');
+    return block;
+  });
+  if (!code.length) return pkg;
+  const prepared = withNativeCodeSources(pkg, new Set(code.map((block) => block.id)));
+  const result = buildBlockIndex(prepared);
+  for (const before of code) {
+    const block = result.byId.get(before.id);
+    const part = block && prepared.parts.get(block.partName);
+    const control = part && block && findNode(part, block.controlId);
+    const source = part && control && nativeCodeSource(part, control);
+    if (
+      !block ||
+      block.payload.version !== 2 ||
+      !control ||
+      !ownedCodeSourceLock(control) ||
+      !source ||
+      source.value !== before.payload.attributes.value
+    )
+      throw Error('New code requires exact supported native source ownership.');
+  }
+  return prepared;
 }

@@ -50,6 +50,23 @@ test('the first text in a newly created empty code block retains native code for
     const properties = run.children.find((node) => node.kind === 'runProperties');
     const style = properties?.children.find((node) => node.localName === 'rStyle');
     expect(style?.attributes.find((attr) => attr.localName === 'val')?.value).toBe('SciobotCode');
+    for (const value of ['one\rtwo', 'one\r\ntwo']) {
+      const before = editor.surface!.session.currentPackage();
+      expect(
+        insertBlock(editor, {
+          parentControlId: null,
+          beforeId: null,
+          payload: {
+            version: 1,
+            id: 'unsupported-new-code',
+            type: 'code_block',
+            attributes: { language: '', value },
+          },
+          label: 'Code',
+        })
+      ).toMatchObject({ success: false, code: 'invalid-input' });
+      expect(editor.surface!.session.currentPackage()).toBe(before);
+    }
   } finally {
     editor.destroy();
     container.remove();

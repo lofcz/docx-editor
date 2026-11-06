@@ -11,7 +11,7 @@ import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
 import { decodeBlockPayload as oldDecode } from '../../test/compat/payload-reader-gallery-v2';
 import { codeDocument, openCode } from '../../test/support/code';
 import { buildBlockIndex } from './block-index';
-import { withNativeCodeSources } from './code-preparation';
+import { withNativeCodeSources, withNewNativeCodeSources } from './code-preparation';
 import { nativeCodeSource } from './code-native-source';
 import { readPayloadStore } from './payload-opc-codec';
 import { encodeBlockPayload } from './payload-schema';
@@ -95,6 +95,9 @@ test('ordinary preparation preserves version 1 unless fresh-document code prepar
   ).toBe('one');
   const repeated = prepareNativeDocument(native.document, { nativeCodeSources: true });
   expect(repeated.success && repeated.changed).toBe(false);
+  expect(() => withNewNativeCodeSources(openCode(original), new Set(['missing']))).toThrow(
+    'New code requires an indexed native source owner.'
+  );
 });
 
 for (const replacement of [
@@ -113,6 +116,9 @@ for (const replacement of [
     const before = serializeOoxmlPart(pkg.parts.get(pkg.mainDocumentPart)!);
     const prepared = withNativeCodeSources(pkg);
     expect(prepared).toBe(pkg);
+    expect(() => withNewNativeCodeSources(pkg, new Set(['code']))).toThrow(
+      'New code requires exact supported native source ownership.'
+    );
     expect(buildBlockIndex(prepared).byId.get('code')!.payload.version).toBe(1);
     expect(serializeOoxmlPart(prepared.parts.get(prepared.mainDocumentPart)!)).toBe(before);
   });

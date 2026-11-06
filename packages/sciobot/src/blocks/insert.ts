@@ -27,7 +27,7 @@ import type { NativeEditFailure } from '../contracts/document';
 import { blockTag, readPayloadStore, withPayloadRecord } from './payload-opc-codec';
 import { withFreshIds } from './fresh-ids';
 import { withGalleryImageRecords } from './gallery-record-upgrade';
-import { withNativeCodeSources } from './code-preparation';
+import { withNewNativeCodeSources } from './code-preparation';
 import { codeRecordShape } from './code-record';
 import { codeParagraphXml } from '../diff/fragment-seeds';
 import { withInlineCodeStyle } from '../native/inline-code';
@@ -367,7 +367,9 @@ function commitBlockInsertion(
     const gallery = withGalleryImageRecords(stored.pkg, new Set([insertion.payload.id]));
     if (!gallery.ok) throw new Error(`Gallery insertion refused: ${gallery.reason}`);
     placedOnce = true;
-    return withNativeCodeSources(gallery.pkg, new Set([insertion.payload.id]));
+    return insertion.payload.type === 'code_block'
+      ? withNewNativeCodeSources(gallery.pkg, new Set([insertion.payload.id]))
+      : gallery.pkg;
   };
 
   try {

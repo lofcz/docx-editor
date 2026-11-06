@@ -26,7 +26,7 @@ Preparation preserves authored content and wrapper locks without conversion. It 
 
 Preparation remains explicit for existing documents. `prepareNativeDocument(bytes, { nativeCodeSources: true })` prepares supported source before opening bytes or creating a fresh room. The default retains version 1. Unsupported structures, protected controls, and changed Word fallbacks retain their original content and version. Export through the compatible reader before preparing a fresh room; never convert existing shared histories live.
 
-Direct code insertion prepares only its new control in the existing insertion transaction. It retains every existing version-1 block. New source lines use the application code character style, including an empty line before its first character. Native source review uses the existing proposal and replacement executors. Production inline authoring, suggest controls, and complete browser acceptance remain under UX13/UX24.
+Direct code insertion prepares only its new control in the existing insertion transaction. It retains every existing version-1 block. New source lines use the application code character style, including an empty line before its first character. New controls require exact native source and lock ownership; unsupported source refuses the entire insertion. Native source review uses the existing proposal and replacement executors. Production inline authoring, suggest controls, and complete browser acceptance remain under UX13/UX24.
 
 ## Reference fixtures
 

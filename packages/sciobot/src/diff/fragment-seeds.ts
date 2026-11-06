@@ -42,7 +42,7 @@ import {
 import { blockTag, withPayloadRecord } from '../blocks/payload-opc-codec';
 import { withGalleryImageRecords } from '../blocks/gallery-record-upgrade';
 import { validGalleryAssetPayload } from '../projection/gallery-assets';
-import { withNativeCodeSources } from '../blocks/code-preparation';
+import { withNewNativeCodeSources } from '../blocks/code-preparation';
 import {
   inlineCodeRunChanges,
   inlineCodeCharacterStyles,
@@ -919,9 +919,13 @@ export function completeSiblingFragments(
   );
   if (!galleries.ok)
     refuseWrite(`New gallery storage refused: ${galleries.reason}.`, 'apply-failed');
-  pkg = withNativeCodeSources(
+  pkg = withNewNativeCodeSources(
     galleries.pkg,
-    new Set([...bindings.values()].map((binding) => binding.payload.id))
+    new Set(
+      [...bindings.values()]
+        .filter((binding) => binding.payload.type === 'code_block')
+        .map((binding) => binding.payload.id)
+    )
   );
   return { pkg, paragraphs };
 }
