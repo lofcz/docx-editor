@@ -116,7 +116,8 @@ export function mergeMarkedParagraphs(
   children: OoxmlNode[],
   marks: ReadonlySet<string>,
   mint?: () => string,
-  retain?: (paragraph: OoxmlParagraphNode, forward: boolean) => OoxmlParagraphNode
+  retain?: (paragraph: OoxmlParagraphNode, forward: boolean) => OoxmlParagraphNode,
+  keepsFirst: ReadonlySet<string> = new Set()
 ): OoxmlNode[] {
   if (!children.some((n) => marks.has(n.id))) return children;
   const sources = paragraphMergeSources(children);
@@ -125,6 +126,7 @@ export function mergeMarkedParagraphs(
   );
   const out: OoxmlNode[] = [];
   let carried: OoxmlNode[] = [];
+  let carrier: OoxmlParagraphNode | undefined;
   for (const node of children) {
     if (node.kind === 'paragraph') {
       if (marks.has(node.id) && sources.has(node.id)) {
@@ -135,6 +137,7 @@ export function mergeMarkedParagraphs(
         // A dropped paragraph only adds to the carried content; the one that keeps its mark
         // is built once, so a long run of joins stays linear.
         for (const child of node.children) if (!properties(child)) carried.push(child);
+        if (!carrier && keepsFirst.has(node.id)) carrier = node;
         continue;
       }
       // A control boundary or the container edge can prevent a forward join. The resolved
@@ -151,12 +154,30 @@ export function mergeMarkedParagraphs(
         if (retain) out.push(retain(node, false));
         continue;
       }
-      out.push(carried.length ? prepend(node, carried) : node);
+      const merged = carried.length || carrier ? prepend(node, carried) : node;
+      out.push(
+        carrier
+          ? {
+              ...merged,
+              id: carrier.id,
+              attributes: carrier.attributes,
+              namespaceBindings: [
+                ...carrier.namespaceBindings,
+                ...merged.namespaceBindings.filter(
+                  (binding) =>
+                    !carrier!.namespaceBindings.some((known) => known.prefix === binding.prefix)
+                ),
+              ],
+            }
+          : merged
+      );
       carried = [];
+      carrier = undefined;
     } else if (node.kind === 'table' && carried.length) {
       const target = tableParagraphMergeTarget(node)!;
       out.push(replaceIn(node, prepend(target, carried)));
       carried = [];
+      carrier = undefined;
     } else if (carried.length && isInertMarker(node)) {
       // A bookmark or comment boundary between the joined paragraphs marks the join point,
       // so it goes after the carried text, not before the whole joined paragraph. Native

@@ -4,6 +4,10 @@ import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const metadata = JSON.parse(readFileSync(resolve(root, 'dist/metafile.json'), 'utf8'));
+const coreManifest = JSON.parse(
+  readFileSync(fileURLToPath(import.meta.resolve('@docx-editor.dev/core/package.json')), 'utf8')
+);
+const coreExports = new Set(Object.keys(coreManifest.exports));
 const inputs = Object.keys(metadata.inputs);
 if (!inputs.length) throw new Error('The build has no recorded inputs');
 for (const input of inputs) {
@@ -28,6 +32,19 @@ for (const output of Object.values(metadata.outputs)) {
     ...Object.keys(output.inputs ?? {}).flatMap((input) => metadata.inputs[input]?.imports ?? []),
   ];
   for (const imported of imports) {
+    if (
+      imported.path === '@docx-editor.dev/core' ||
+      imported.path.startsWith('@docx-editor.dev/core/')
+    ) {
+      const subpath =
+        imported.path === '@docx-editor.dev/core'
+          ? '.'
+          : '.' + imported.path.slice('@docx-editor.dev/core'.length);
+      if (!coreExports.has(subpath))
+        throw new Error(
+          `The private adapter imports an unsupported native core subpath: ${imported.path}`
+        );
+    }
     if (entry === 'src/index.ts' && /^react(?:-dom)?(?:\/|$)/.test(imported.path)) {
       throw new Error(`Document tools load the optional React runtime: ${imported.path}`);
     }

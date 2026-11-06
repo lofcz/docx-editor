@@ -1,5 +1,7 @@
 import {
   contentControlContentNodeOf,
+  hiddenRetiredParagraphs,
+  isJoinedParagraph,
   WML_NAMESPACE_URI,
   type OoxmlNode,
 } from '@docx-editor.dev/core/store';
@@ -13,8 +15,9 @@ const wml = (node: OoxmlNode, name: string) =>
 export function codeRevisionText(control: OoxmlNode, view: CodeSourceView) {
   const content = contentControlContentNodeOf(control);
   if (!content || !content.children.length || content.children.length > 10000) return null;
-  const paragraphs = content.children;
-  if (!paragraphs.every((paragraph) => paragraph.kind === 'paragraph')) return null;
+  if (!content.children.every((paragraph) => paragraph.kind === 'paragraph')) return null;
+  const hidden = hiddenRetiredParagraphs(content.children);
+  const paragraphs = content.children.filter((paragraph) => !hidden.has(paragraph.id));
   let visited = 0,
     characters = 0;
   const runs = (nodes: readonly OoxmlNode[], depth = 0): string | null => {
@@ -59,13 +62,15 @@ export function codeRevisionText(control: OoxmlNode, view: CodeSourceView) {
   const lines: string[] = [];
   const breaks: boolean[] = [];
   for (const paragraph of paragraphs) {
-    let join = false;
+    let join = isJoinedParagraph(paragraph);
     for (const properties of paragraph.children.filter(
       (child) => child.kind === 'paragraphProperties'
     )) {
       for (const property of properties.children) {
         if (['sectPr', 'pPrChange'].includes(property.localName)) return null;
         if (wml(property, 'rPr')) {
+          // Shared history can retain the empty native mark-property owner after a decision.
+          if (!property.children.length) continue;
           if (view === 'plain') return null;
           for (const mark of property.children) {
             if (
@@ -92,5 +97,5 @@ export function codeRevisionText(control: OoxmlNode, view: CodeSourceView) {
     new TextEncoder().encode(value).byteLength > DEFAULT_PAYLOAD_LIMITS.maxBytes
   )
     return null;
-  return { content, paragraphs, lines, value };
+  return { content, paragraphs, lines, breaks, value };
 }

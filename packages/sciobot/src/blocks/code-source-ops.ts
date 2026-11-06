@@ -45,7 +45,7 @@ export function codeSourceOps(
     for (let row = 0; row < source.lines.length; row++) {
       const length = source.lines[row]!.length;
       if (offset <= length) return { row, offset };
-      offset -= length + 1;
+      offset -= length + (source.breaks[row] ? 1 : 0);
     }
     throw Error('The source position is invalid.');
   };
@@ -76,7 +76,7 @@ export function codeSourceOps(
           end: to,
           ...attribution,
         });
-      if (row > start.row)
+      if (row > start.row && source.breaks[row - 1])
         ops.push(
           revision
             ? { op: 'proposeParagraphMerge', paragraphId: source.paragraphs[row]!.id, revision }

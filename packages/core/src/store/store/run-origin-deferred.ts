@@ -14,7 +14,8 @@ export function settleDeferredRunOrigins(
   root: OoxmlNode,
   selected: ReadonlySet<string>,
   hints: readonly { readonly scope: string; readonly source: string }[] = [],
-  pendingElsewhere: ReadonlySet<string> = new Set()
+  pendingElsewhere: ReadonlySet<string> = new Set(),
+  deferredForExport: ReadonlySet<string> = new Set()
 ): {
   readonly root: OoxmlNode;
   readonly scopes: ReadonlySet<string>;
@@ -27,13 +28,19 @@ export function settleDeferredRunOrigins(
       .flatMap(readRevisionOrigins)
       .map((origin) => origin.scope),
   ]);
-  const clean = new Set([...selected].filter((scope) => !live.has(scope)));
+  const deferred = new Set(
+    [...selected].filter((scope) => !live.has(scope) && deferredForExport.has(scope))
+  );
+  const clean = new Set([...selected].filter((scope) => !live.has(scope) && !deferred.has(scope)));
   const origins = nodes
     .flatMap(readRunOrigins)
     .filter(
       (origin) =>
         origin.identity === 'source' &&
-        (clean.has(origin.scope) || live.has(origin.scope) || origin.resolved)
+        (clean.has(origin.scope) ||
+          live.has(origin.scope) ||
+          deferred.has(origin.scope) ||
+          origin.resolved)
     );
   const bySource = new Map<string, Set<string>>(),
     byScope = new Map<string, Set<string>>();
@@ -56,8 +63,7 @@ export function settleDeferredRunOrigins(
     sources.add(hint.source);
     byScope.set(hint.scope, sources);
   }
-  const visited = new Set<string>(),
-    deferred = new Set<string>();
+  const visited = new Set<string>();
   for (const scope of [...clean]) {
     if (visited.has(scope) || !byScope.has(scope)) continue;
     const component = new Set<string>(),
@@ -71,7 +77,7 @@ export function settleDeferredRunOrigins(
         for (const other of bySource.get(source) ?? [])
           if (!component.has(other)) pending.push(other);
     }
-    if ([...component].some((item) => live.has(item))) {
+    if ([...component].some((item) => live.has(item) || deferredForExport.has(item))) {
       for (const item of component) if (clean.delete(item)) deferred.add(item);
     } else for (const item of component) clean.add(item);
   }

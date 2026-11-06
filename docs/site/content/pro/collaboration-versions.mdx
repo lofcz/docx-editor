@@ -527,6 +527,10 @@ Never relabel room metadata or replay old updates into fresh rooms. Room undo hi
 
 Format `docx-collaboration:1.10.17.2` retains native source ownership across tracked paragraph splits and joins. Paragraph marks carry the same bounded source proofs as tracked text. Accepting, rejecting, copying, and exporting these marks preserve their related source fragments. Earlier readers do not consume these proofs during paragraph decisions. They can leave split source runs and stale proof attributes after rejection. Matching XML field names do not make those decision rules compatible.
 
+Shared decisions keep paragraph identities for late peer text. Version-2 retirement metadata retains the first source identity after rejecting a split. Word export joins the retained fragments and consumes completed source proofs. Earlier retirement metadata keeps its existing interpretation.
+
+Only marked paragraph-source roles can claim source run proofs. Existing unmarked paragraph scope metadata remains opaque and does not gain ownership during reading.
+
 Pause all writers and export each saved room with its compatible application build. Reopen the export and check pending revisions, source text, formatting, and opaque XML data. Seed a separate room with fresh persistence keys and empty history. Deploy matching clients, servers, agents, and export workers before editing starts. Do not rewrite live room versions or copy queued updates into replacement rooms. Keep the original room read-only until you accept the replacement.
 
 This format does not automatically convert application code blocks. Application preparation must preserve supported imported structures and run before room creation.

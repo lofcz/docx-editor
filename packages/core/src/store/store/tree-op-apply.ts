@@ -243,6 +243,7 @@ import { applyInsertParagraphs } from './tree-op-insert-paragraphs.ts';
 import {
   withoutRetiredParagraphMetadata,
   isJoinedParagraph,
+  isJoinedParagraphKeepingFirst,
   retireParagraph,
 } from '../package/retired-paragraph.ts';
 import { applyDrawingContentEdit } from './drawing-content-edit.ts';
@@ -2687,7 +2688,13 @@ function applySplit(
       return tailPPr ? [tailPPr, ...tailChildren] : tailChildren;
     })(),
   } as unknown as OoxmlParagraphNode;
-  if (joined) tailParagraph = retireParagraph(tailParagraph, nextId, true);
+  if (joined)
+    tailParagraph = retireParagraph(
+      tailParagraph,
+      nextId,
+      true,
+      isJoinedParagraphKeepingFirst(paragraph)
+    );
 
   const effect: TreeOpEffect = {
     dirty: [paragraph.id],
@@ -3040,7 +3047,11 @@ function applySplitMany(
       attributes: tailIdentityAttributes[piece] ?? [],
       children: source ? [cloneWithNewIds(source, nextId), ...pieces[piece]!] : pieces[piece]!,
     } as unknown as OoxmlParagraphNode;
-    tailParagraphs.push(joined && last ? retireParagraph(tail, nextId, true) : tail);
+    tailParagraphs.push(
+      joined && last
+        ? retireParagraph(tail, nextId, true, isJoinedParagraphKeepingFirst(paragraph))
+        : tail
+    );
   }
 
   const effect: TreeOpEffect = {
@@ -3200,7 +3211,7 @@ function applyJoin(
   const nextId = createNodeIdAllocator(part);
   let kept = withSectionMarkOf(withoutRetiredParagraphMetadata(first), second, nextId);
   if (kept.kind === 'paragraph' && isJoinedParagraph(second))
-    kept = retireParagraph(kept, nextId, true);
+    kept = retireParagraph(kept, nextId, true, isJoinedParagraphKeepingFirst(second));
   const merged = Object.freeze({ ...kept, children: [...kept.children, ...moved] }) as OoxmlNode;
   const siblings = parent.children.flatMap((child) =>
     child.id === firstId ? [merged] : child.id === secondId ? [] : [child]

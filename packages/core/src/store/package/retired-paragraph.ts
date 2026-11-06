@@ -9,14 +9,18 @@ import {
 import { WML_NAMESPACE_URI } from './ooxml-shared.ts';
 import type { OoxmlPackage } from './ooxml-package.ts';
 import { mergeMarkedParagraphs } from '../store/paragraph-mark-merge.ts';
+import { rootWithoutProvenanceNamespaces } from '../store/run-origin-namespaces.ts';
+import { MAX_XML_DEPTH, XML_DEFAULT_MAX_ELEMENTS } from './xml-reader.ts';
+import { PackageEditRefusal } from '../store/package-edit-refusal.ts';
 
 const NS = 'urn:docx-editor.dev:review:retired-paragraph:1';
+const FIRST_NS = 'urn:docx-editor.dev:review:retired-paragraph:2';
 const isProperties = (node: OoxmlNode) =>
   node.kind !== 'textValue' && node.namespaceUri === WML_NAMESPACE_URI && node.localName === 'pPr';
 export const isRetiredParagraphMarker = (node: OoxmlNode): boolean =>
   node.kind === 'generic' &&
-  node.namespaceUri === NS &&
-  (node.localName === 'retired' || node.localName === 'joined') &&
+  ((node.namespaceUri === NS && (node.localName === 'retired' || node.localName === 'joined')) ||
+    (node.namespaceUri === FIRST_NS && node.localName === 'joined')) &&
   node.children.length === 0 &&
   node.attributes.length === 0;
 const NO_HIDDEN: ReadonlySet<string> = new Set();
@@ -32,10 +36,11 @@ const BLOCK_CONTAINERS = new Set([
   'customXml',
 ]);
 
-const NO_STATE = Object.freeze({ retired: false, joined: false });
+const NO_STATE = Object.freeze({ retired: false, joined: false, keepFirst: false });
 interface ParagraphState {
   readonly retired: boolean;
   readonly joined: boolean;
+  readonly keepFirst: boolean;
 }
 const stateByParagraph = new WeakMap<OoxmlNode, ParagraphState>();
 function paragraphState(node: OoxmlNode): ParagraphState {
@@ -43,16 +48,18 @@ function paragraphState(node: OoxmlNode): ParagraphState {
   const cached = stateByParagraph.get(node);
   if (cached) return cached;
   let retired = false,
-    joined = false;
+    joined = false,
+    keepFirst = false;
   for (const child of node.children) {
     if (!isProperties(child)) continue;
     for (const marker of child.children) {
       if (marker.kind === 'textValue' || !isRetiredParagraphMarker(marker)) continue;
       retired = true;
       joined ||= marker.localName === 'joined';
+      keepFirst ||= marker.namespaceUri === FIRST_NS;
     }
   }
-  const state = retired ? { retired, joined } : NO_STATE;
+  const state = retired ? { retired, joined, keepFirst } : NO_STATE;
   stateByParagraph.set(node, state);
   return state;
 }
@@ -60,9 +67,19 @@ export function isRetiredParagraph(node: OoxmlNode): boolean {
   return paragraphState(node).retired;
 }
 
-/** A resolved paragraph mark joins forward in every review display mode. */
+/**
+ * Whether a resolved paragraph mark joins its text with the following paragraph.
+ * The retained canonical paragraph keeps its collaboration identity in every review display mode.
+ * Unknown marker versions do not imply a join.
+ * @public
+ */
 export function isJoinedParagraph(node: OoxmlNode): boolean {
   return paragraphState(node).joined;
+}
+
+/** Rejected inserted marks retain the first source paragraph's exported identity. */
+export function isJoinedParagraphKeepingFirst(node: OoxmlNode): boolean {
+  return paragraphState(node).keepFirst;
 }
 
 export function isEmptyRetiredParagraph(node: OoxmlNode): boolean {
@@ -81,7 +98,11 @@ export function isEmptyRetiredParagraph(node: OoxmlNode): boolean {
   );
 }
 
-/** Never hide the only physical paragraph a container needs. */
+/**
+ * Empty resolved paragraphs omitted from the visible children of one native block container.
+ * The required final caret paragraph remains visible. Canonical source identities remain intact.
+ * @public
+ */
 export function hiddenRetiredParagraphs(children: readonly OoxmlNode[]): ReadonlySet<string> {
   if (!children.some(isEmptyRetiredParagraph)) return NO_HIDDEN;
   const retired = children.filter(isEmptyRetiredParagraph);
@@ -104,16 +125,23 @@ export function hiddenRetiredParagraphs(children: readonly OoxmlNode[]): Readonl
 export function retireParagraph(
   paragraph: OoxmlParagraphNode,
   mint: () => string,
-  forward = false
+  forward = false,
+  keepFirst = false
 ): OoxmlParagraphNode {
-  if (isRetiredParagraph(paragraph) && isJoinedParagraph(paragraph) === forward) return paragraph;
+  if (
+    isRetiredParagraph(paragraph) &&
+    isJoinedParagraph(paragraph) === forward &&
+    isJoinedParagraphKeepingFirst(paragraph) === (forward && keepFirst)
+  )
+    return paragraph;
+  const namespaceUri = forward && keepFirst ? FIRST_NS : NS;
   const marker: OoxmlElement = {
     id: mint(),
     kind: 'generic',
     localName: forward ? 'joined' : 'retired',
-    namespaceUri: NS,
+    namespaceUri,
     prefix: 'reviewState',
-    namespaceBindings: [{ prefix: 'reviewState', namespaceUri: NS }],
+    namespaceBindings: [{ prefix: 'reviewState', namespaceUri }],
     attributes: [],
     children: [],
   };
@@ -144,6 +172,33 @@ export function retireParagraph(
 const exportCache = new WeakMap<OoxmlPart, OoxmlPart>();
 const nodeExportCache = new WeakMap<OoxmlNode, OoxmlNode>();
 const wordParagraphCache = new WeakMap<OoxmlParagraphNode, OoxmlParagraphNode>();
+const aliasCache = new WeakMap<OoxmlNode, ReadonlyMap<string, ReadonlySet<string>>>();
+function retirementAliases(root: OoxmlNode): ReadonlyMap<string, ReadonlySet<string>> {
+  let visited = 0;
+  const visit = (node: OoxmlNode, depth: number): ReadonlyMap<string, ReadonlySet<string>> => {
+    if (++visited > XML_DEFAULT_MAX_ELEMENTS * 2 + 1 || depth > MAX_XML_DEPTH + 1)
+      throw new PackageEditRefusal(
+        'Retired paragraph export exceeds its traversal limit.',
+        'resource-limit'
+      );
+    const cached = aliasCache.get(node);
+    if (cached) return cached;
+    const aliases = new Map<string, Set<string>>();
+    if (node.kind !== 'textValue') {
+      if (isRetiredParagraphMarker(node) && node.prefix)
+        aliases.set(node.namespaceUri, new Set([node.prefix]));
+      for (const child of node.children)
+        for (const [namespaceUri, names] of visit(child, depth + 1)) {
+          const prefixes = aliases.get(namespaceUri) ?? new Set<string>();
+          for (const prefix of names) prefixes.add(prefix);
+          aliases.set(namespaceUri, prefixes);
+        }
+    }
+    aliasCache.set(node, aliases);
+    return aliases;
+  };
+  return visit(root, 0);
+}
 function wordProperties(properties: OoxmlElement): OoxmlElement {
   let changed = false;
   const children: OoxmlNode[] = [];
@@ -187,6 +242,7 @@ export function withoutRetiredParagraphMetadata(paragraph: OoxmlParagraphNode): 
 function exportPart(part: OoxmlPart): OoxmlPart {
   const cached = exportCache.get(part);
   if (cached) return cached;
+  const aliases = retirementAliases(part.root);
   const visit = (node: OoxmlNode): OoxmlNode => {
     if (node.kind === 'textValue') return node;
     const cachedNode = nodeExportCache.get(node);
@@ -197,7 +253,7 @@ function exportPart(part: OoxmlPart): OoxmlPart {
     let changed = false;
     const children: OoxmlNode[] = [];
     for (const child of node.children) {
-      if (hidden.has(child.id)) {
+      if (hidden.has(child.id) && !isJoinedParagraphKeepingFirst(child)) {
         changed = true;
         continue;
       }
@@ -211,13 +267,20 @@ function exportPart(part: OoxmlPart): OoxmlPart {
     const joined = container
       ? new Set(node.children.filter(isJoinedParagraph).map((child) => child.id))
       : NO_HIDDEN;
-    const merged = joined.size ? mergeMarkedParagraphs(children, joined) : children;
+    const keepsFirst = new Set(
+      node.children.filter(isJoinedParagraphKeepingFirst).map((child) => child.id)
+    );
+    const merged = joined.size
+      ? mergeMarkedParagraphs(children, joined, undefined, undefined, keepsFirst)
+      : children;
     changed ||= merged !== children;
     const next = changed ? ({ ...node, children: merged } as OoxmlElement) : node;
     nodeExportCache.set(node, next);
     return next;
   };
-  const root = visit(part.root) as OoxmlElement;
+  let root = visit(part.root) as OoxmlElement;
+  for (const [namespaceUri, prefixes] of aliases)
+    root = rootWithoutProvenanceNamespaces(root, prefixes, namespaceUri);
   const next = root === part.root ? part : { ...part, root };
   exportCache.set(part, next);
   return next;

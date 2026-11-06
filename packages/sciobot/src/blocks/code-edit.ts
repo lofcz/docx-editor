@@ -28,7 +28,7 @@ const fail = (code: NativeEditFailure['code'], error: string): NativeEditFailure
   error,
 });
 
-function codeTarget(editor: DocxEditorInstance, blockId: string) {
+function codeTarget(editor: DocxEditorInstance, blockId: string, metadataOnly = false) {
   const surface = editor.surface;
   if (!surface) return fail('document-not-ready', 'The document is not attached.');
   surface.flushPendingInput();
@@ -45,7 +45,7 @@ function codeTarget(editor: DocxEditorInstance, blockId: string) {
     );
   const part = pkg.parts.get(block.partName)!;
   const control = findNode(part, block.controlId);
-  const source = control && nativeCodeSource(part, control);
+  const source = control && nativeCodeSource(part, control, metadataOnly ? 'committed' : 'plain');
   if (!control || !source)
     return fail('unsupported-operation', 'This code block contains unsupported native content.');
   const properties = contentControlPropertiesOf(control);
@@ -66,7 +66,7 @@ export function updateCodeLanguage(
     readonly language: string;
   }
 ): CodeEditResult {
-  const target = codeTarget(editor, request.blockId);
+  const target = codeTarget(editor, request.blockId, true);
   if (!target.success) return target;
   if (typeof request.language !== 'string' || request.language.length > 128)
     return fail('invalid-input', 'The code language is invalid.');
@@ -135,7 +135,7 @@ function commitCodeSource(
   },
   attributes?: BlockPayload['attributes']
 ): CodeEditResult {
-  const target = codeTarget(editor, request.blockId);
+  const target = codeTarget(editor, request.blockId, request.value === request.expectedSource);
   if (!target.success) return target;
   const { surface, block, source, lockNode } = target;
   if (

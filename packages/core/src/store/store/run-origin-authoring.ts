@@ -355,6 +355,9 @@ export function sealTrackedRunOrigins(
   const oldIds = new Set(prior.map((site) => site.node.id));
   const oldAddresses = new Set(prior.map((site) => address(site.node)));
   const currentSites = collectRevisionSites(part);
+  const paragraphMarks = new Set(
+    currentSites.filter((site) => site.paragraphMark).map((site) => site.node.id)
+  );
   const fresh = new Set(
     currentSites
       .filter(
@@ -465,7 +468,15 @@ export function sealTrackedRunOrigins(
     if (!fresh.has(node.id)) return node;
     if (node.attributes.some((attr) => attr.namespaceUri === sourceOrigin.namespaceUri))
       throw new PackageEditRefusal('A native revision already carries provenance.', 'unsupported');
-    return withOriginMetadata(node, { scope, ...(retained ? { retained } : {}) }, prefix);
+    return withOriginMetadata(
+      node,
+      {
+        scope,
+        ...(paragraphMarks.has(node.id) ? { paragraph: '1' } : {}),
+        ...(retained ? { retained } : {}),
+      },
+      prefix
+    );
   });
   if (next === paragraph) return part;
   const made = replaceChildren(part, paragraphId, children(next));

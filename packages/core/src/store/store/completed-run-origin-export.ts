@@ -2,10 +2,13 @@ import { MAX_XML_DEPTH, XML_DEFAULT_MAX_ELEMENTS } from '../package/xml-reader.t
 import type { OoxmlElement, OoxmlNode, OoxmlPart } from '../package/ooxml-tree.ts';
 import { PackageEditRefusal } from './package-edit-refusal.ts';
 import { normalizedRunOriginParagraph } from './run-origin-resolution.ts';
+import { isJoinedParagraph } from '../package/retired-paragraph.ts';
+import { rootWithoutProvenanceNamespaces } from './run-origin-namespaces.ts';
 import {
   readRevisionOrigins,
   readRunOrigins,
   isOriginRevisionNode,
+  originNodes,
 } from './run-origin-metadata.ts';
 
 interface SourceEvidence {
@@ -40,6 +43,10 @@ function evidenceOf(root: OoxmlNode): SourceEvidence {
     const live: string[] = [],
       retained: string[] = [],
       sources: SourceEvidence['sources'][number][] = [];
+    // Canonical shared joins retain physical source paragraphs. Word export joins them
+    // before consuming their completed run proofs; raw canonical serialization cannot.
+    if (isJoinedParagraph(node))
+      for (const origin of originNodes(node).flatMap(readRunOrigins)) live.push(origin.scope);
     if (isOriginRevisionNode(node))
       for (const origin of readRevisionOrigins(node)) {
         live.push(origin.scope);
@@ -123,6 +130,7 @@ export function projectCompletedRunOrigins(part: OoxmlPart): OoxmlPart {
     projected.set(part.root, part.root);
     return part;
   }
+  const prefixes = new Set<string>();
   const visit = (node: OoxmlNode): OoxmlNode => {
     if (node.kind === 'textValue' || /PrChange$/.test(node.localName)) return node;
     const children = node.children.map(visit);
@@ -130,10 +138,13 @@ export function projectCompletedRunOrigins(part: OoxmlPart): OoxmlPart {
       ? node
       : ({ ...node, children } as OoxmlElement);
     return current.kind === 'paragraph'
-      ? normalizedRunOriginParagraph(current, selected, new Set(), new Set(), [])
+      ? normalizedRunOriginParagraph(current, selected, prefixes, retained, [])
       : current;
   };
-  const root = visit(part.root) as OoxmlElement;
+  const root = rootWithoutProvenanceNamespaces(
+    visit(part.root) as OoxmlElement,
+    new Set([...prefixes].filter((prefix) => !retained.has(prefix)))
+  );
   projected.set(part.root, root);
   return root === part.root ? part : { ...part, root };
 }

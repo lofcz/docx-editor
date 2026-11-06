@@ -26,7 +26,9 @@ export const isOriginRevisionNode = (node: OoxmlNode): boolean =>
   node.kind !== 'textValue' &&
   (node.kind.startsWith('revision') ||
     /PrChange$/.test(node.localName) ||
-    (node.namespaceUri === WML_NAMESPACE_URI && ['ins', 'del'].includes(node.localName)));
+    (node.namespaceUri === WML_NAMESPACE_URI &&
+      ['ins', 'del'].includes(node.localName) &&
+      readRevisionOrigins(node).some((origin) => origin.paragraphMark)));
 
 function fields(
   node: OoxmlNode,
@@ -129,6 +131,7 @@ export interface RevisionOrigin {
   readonly namespaceUri: string;
   readonly scope: string;
   readonly retainedPrefixes: readonly string[];
+  readonly paragraphMark?: true;
 }
 export function readRevisionOrigins(node: OoxmlNode): readonly RevisionOrigin[] {
   return originNamespaces(node)
@@ -138,14 +141,29 @@ export function readRevisionOrigins(node: OoxmlNode): readonly RevisionOrigin[] 
 export function readRevisionOrigin(node: OoxmlNode, namespaceUri?: string): RevisionOrigin | null {
   if (namespaceUri === undefined) return readRevisionOrigins(node).at(-1) ?? null;
   if (!hasOriginMetadata(node)) return null;
-  const data = fields(node, ['scope', 'retained'], namespaceUri);
+  const data = fields(node, ['scope', 'retained', 'paragraph'], namespaceUri);
   const scope = data?.get('scope');
   const retained = data && retainedPrefixes(data.get('retained'));
+  const paragraph = data?.get('paragraph');
+  if (
+    paragraph !== undefined &&
+    (paragraph !== '1' ||
+      namespaceUri === RUN_ORIGIN_NS ||
+      node.kind !== 'generic' ||
+      node.namespaceUri !== WML_NAMESPACE_URI ||
+      !['ins', 'del'].includes(node.localName))
+  )
+    return null;
   return scope &&
     UUID.test(scope) &&
     retained &&
     (namespaceUri === RUN_ORIGIN_NS || namespaceUri === originNamespaceForScope(scope))
-    ? { namespaceUri, scope, retainedPrefixes: retained }
+    ? {
+        namespaceUri,
+        scope,
+        retainedPrefixes: retained,
+        ...(paragraph === '1' ? { paragraphMark: true as const } : {}),
+      }
     : null;
 }
 

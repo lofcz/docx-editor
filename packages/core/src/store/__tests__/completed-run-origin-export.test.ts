@@ -73,7 +73,7 @@ for (const mark of ['ins', 'del'])
   test(`live paragraph ${mark} marks protect completed source proofs during XML export`, () => {
     const input = part(
       completed +
-        `<w:p><w:pPr><w:rPr><w:${mark} xmlns:q="${ns}" q:scope="${scope}" w:id="1" w:author="Ada"/></w:rPr></w:pPr><w:r><w:t>Live</w:t></w:r></w:p>`
+        `<w:p><w:pPr><w:rPr><w:${mark} xmlns:q="${ns}" q:scope="${scope}" q:paragraph="1" w:id="1" w:author="Ada"/></w:rPr></w:pPr><w:r><w:t>Live</w:t></w:r></w:p>`
     );
     const before = canonicalOoxmlFingerprint(input);
     expect(projectCompletedRunOrigins(input)).toBe(input);

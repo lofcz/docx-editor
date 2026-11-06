@@ -15,6 +15,7 @@ import type { TreeOpRejection } from './tree-op-types.ts';
 import { joinOriginRuns } from './run-origin-merge.ts';
 import { pruneRunOriginNamespaces } from './run-origin-namespaces.ts';
 import { collectRevisionSites } from './tree-op-revisions.ts';
+import { isJoinedParagraph } from '../package/retired-paragraph.ts';
 import {
   mapOriginNodes,
   originNodes,
@@ -51,7 +52,7 @@ export function captureRunOriginResolution(
       for (const attr of site.attributes)
         if (attr.namespaceUri === INSERTED_PARAGRAPH_PROPERTY_NS && attr.prefix)
           paragraphPropertyPrefixes.add(attr.prefix);
-    const origins = readRevisionOrigins(site);
+    let origins = readRevisionOrigins(site);
     if (!origins.length) continue;
     let owner = parentNodeOf(part, site.id);
     if (site.kind !== 'textValue' && site.localName === 'rPrChange') {
@@ -66,6 +67,8 @@ export function captureRunOriginResolution(
     ) {
       owner = parentNodeOf(part, owner.id);
       if (owner?.kind !== 'paragraphProperties') continue;
+      origins = origins.filter((origin) => origin.paragraphMark);
+      if (!origins.length) continue;
       owner = parentNodeOf(part, owner.id);
       for (const origin of origins) paragraphScopes.add(origin.scope);
     } else if (site.kind !== 'revisionInsert' && site.kind !== 'revisionDelete') continue;
@@ -136,10 +139,17 @@ export function normalizedRunOriginParagraph(
   prefixes: Set<string>,
   retained: Set<string>,
   hints: readonly { readonly scope: string; readonly source: string }[],
-  pendingElsewhere: ReadonlySet<string> = new Set()
+  pendingElsewhere: ReadonlySet<string> = new Set(),
+  deferredForExport: ReadonlySet<string> = new Set()
 ): OoxmlNode {
   root = materializeTrackedSourceBindings(root, selected, false);
-  const settled = settleDeferredRunOrigins(root, selected, hints, pendingElsewhere);
+  const settled = settleDeferredRunOrigins(
+    root,
+    selected,
+    hints,
+    pendingElsewhere,
+    deferredForExport
+  );
   root = settled.root;
   const nodes = originNodes(root),
     scopes = settled.scopes;
@@ -313,6 +323,12 @@ function normalizeOrigins(
       .flatMap((site) => readRevisionOrigins(site.node))
       .map((origin) => origin.scope)
   );
+  const deferredForExport = new Set<string>();
+  for (const [paragraphId, scopes] of resolution.paragraphs) {
+    const paragraph = findNode(part, paragraphId);
+    if (paragraph && isJoinedParagraph(paragraph))
+      for (const scope of scopes) deferredForExport.add(scope);
+  }
   for (const [paragraphId, scopes] of resolution.paragraphs) {
     const paragraph = findNode(current, paragraphId);
     if (paragraph?.kind !== 'paragraph') continue;
@@ -322,7 +338,8 @@ function normalizeOrigins(
       prefixes,
       retained,
       resolution.sourceHints.get(paragraphId) ?? [],
-      pending
+      pending,
+      deferredForExport
     );
     if (normalized === paragraph) continue;
     const made = replaceNode(current, paragraphId, normalized, options);

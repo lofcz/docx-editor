@@ -2170,6 +2170,9 @@ export interface HeadlessThemeFonts {
 // @public
 export function headlessViewOfStore(store: TreePackageStore): HeadlessDocumentView;
 
+// @public
+export function hiddenRetiredParagraphs(children: readonly OoxmlNode[]): ReadonlySet<string>;
+
 // @public (undocumented)
 export type HistoryCaptureKind = 'started' | 'extended' | 'split';
 
@@ -2620,6 +2623,9 @@ export function isInstrText(node: OoxmlNode): boolean;
 
 // @public
 export function isInstrTextNode(node: OoxmlNode): node is OoxmlInstrTextNode;
+
+// @public
+export function isJoinedParagraph(node: OoxmlNode): boolean;
 
 // @public
 export function isLegalEndnotePosition(pos: string): pos is EndnotePosition;

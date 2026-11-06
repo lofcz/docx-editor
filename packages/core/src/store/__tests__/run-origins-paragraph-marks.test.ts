@@ -14,6 +14,9 @@ import {
 import { ADA, apply, paragraphId, part } from './tracked-edit-fixture';
 import { freshenCopiedRunOrigins } from '../store/run-origin-clipboard';
 import { originNodes, readRevisionOrigins, readRunOrigins } from '../store/run-origin-metadata';
+import { runWithTransactionActor } from '../package/actor-scoped-ids';
+import { retiredParagraphExportPackage, isJoinedParagraph } from '../package/retired-paragraph';
+import { singlePartPackage } from '../package/ooxml-package';
 
 for (const offsets of [[2], [0], [4], [0, 2, 2, 4]])
   test(`paragraph-mark provenance restores exact source XML after rejection: ${offsets.join('/')}`, () => {
@@ -51,6 +54,46 @@ for (const offsets of [[2], [0], [4], [0, 2, 2, 4]])
       const accepted = apply(document, { op: 'acceptAllRevisions' });
       const direct = apply(source, { op: 'splitParagraphMany', paragraphId: id, offsets });
       expect(canonicalOoxmlFingerprint(accepted)).toBe(canonicalOoxmlFingerprint(direct));
+    }
+  });
+
+for (const offsets of [[2], [0], [4], [0, 2, 2, 4]])
+  test(`shared paragraph rejection retains live source slots and exports exact original XML: ${offsets}`, () => {
+    const source = part(
+      '<w:p xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml" w14:paraId="12345678"><w:r><w:rPr><w:b/></w:rPr><w:t>ABCD</w:t></w:r></w:p>'
+    );
+    const id = paragraphId(source);
+    const prepared = prepareTrackedRunOrigins(
+      source,
+      id,
+      offsets.map((offset) => ({ start: offset, end: offset }))
+    );
+    let pending = apply(prepared.part, {
+      op: 'splitParagraphMany',
+      paragraphId: id,
+      offsets,
+      revision: ADA,
+    });
+    for (const paragraph of storyParagraphs(bodyStoryRoot(pending)!))
+      pending = sealTrackedRunOrigins(pending, paragraph.id, prepared.scope!, source);
+    const ids = storyParagraphs(bodyStoryRoot(pending)!).map((paragraph) => paragraph.id);
+    const rejected = runWithTransactionActor('alice', () =>
+      apply(pending, { op: 'rejectAllRevisions' })
+    );
+    const physical = bodyStoryRoot(rejected)!.children.filter((node) => node.kind === 'paragraph');
+    expect(physical.map((paragraph) => paragraph.id)).toEqual(ids);
+    expect(physical.filter(isJoinedParagraph)).toHaveLength(offsets.length);
+    const raw = serializeOoxmlPart(rejected);
+    expect(raw).toContain('retired-paragraph:2');
+    if (offsets.some((offset) => offset > 0 && offset < 4))
+      expect(raw).toContain('tracked-run-origins:1/');
+    const read = readOoxmlPart(raw, { name: source.name, contentType: source.contentType });
+    if (!read.ok) throw Error(read.reason);
+    for (const live of [rejected, read.part]) {
+      const before = canonicalOoxmlFingerprint(live);
+      const exported = retiredParagraphExportPackage(singlePartPackage(live)).parts.get(live.name)!;
+      expect(serializeOoxmlPart(exported)).toBe(serializeOoxmlPart(source));
+      expect(canonicalOoxmlFingerprint(live)).toBe(before);
     }
   });
 

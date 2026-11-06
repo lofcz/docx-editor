@@ -159,7 +159,15 @@ export function mergeRevisionParagraphs(
       if (marks.has(node.id) && sources.has(node.id)) {
         // Keep the source address for late peer text; Word export performs the physical join.
         if (retainSources) {
-          out.push(retireParagraph(node, mint, true));
+          out.push(
+            retireParagraph(
+              node,
+              mint,
+              true,
+              keepsFirst.has(node.id) &&
+                (keepsFirst.get(node.id) || node.children.some(bringsContent))
+            )
+          );
           continue;
         }
         // A dropped paragraph only adds to the carried content; the one that keeps its mark
