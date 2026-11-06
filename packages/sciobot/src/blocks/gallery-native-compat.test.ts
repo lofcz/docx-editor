@@ -6,6 +6,7 @@ import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
 import { createDocxEditor } from '@docx-editor.dev/core/editor';
 import {
   bodyStoryRoot,
+  canonicalOoxmlFingerprint,
   findNode,
   paragraphTextOf,
   semanticDigest,
@@ -21,6 +22,7 @@ import {
 import { createTwoEditorFixture } from '../../test/support/collaboration';
 import { openGallery } from '../../test/support/gallery';
 import { groupAdjacentImages } from './gallery-group';
+import { buildBlockIndex } from './block-index';
 import { readGallery, updateGallery } from './gallery';
 import { ungroupGallery } from './gallery-ungroup';
 import { removeBlock } from './remove';
@@ -193,6 +195,44 @@ test('recorded Runtime G reader and writer preserve version-three gallery bytes 
   expect(nativeRecords).toHaveLength(4);
   for (const record of nativeRecords)
     expect(oldDecode(record.raw).status).toBe('unsupported-version');
+});
+
+test('Runtime G neighboring text edits preserve opaque galleries and native media', () => {
+  const fixture = (name: string) =>
+    readFileSync(new URL(`../../test/compat/fixtures/${name}`, import.meta.url));
+  const input = fixture('native-gallery-v3-input.docx'),
+    output = fixture('native-gallery-v3-old-edited.docx');
+  const provenance = JSON.parse(fixture('native-gallery-v3-old-editor.json').toString());
+  expect(provenance.revision).toBe('c3bf6048a');
+  expect(provenance.coreEditorSha256).toMatch(/^[a-f0-9]{64}$/);
+  expect(createHash('sha256').update(input).digest('hex')).toBe(provenance.inputSha256);
+  expect(createHash('sha256').update(output).digest('hex')).toBe(provenance.outputSha256);
+  expect(provenance.inputSha256).not.toBe(provenance.outputSha256);
+  const before = openGallery(input),
+    after = openGallery(output);
+  const gallery = [...buildBlockIndex(before).byId.values()].find(
+    (block) => block.payload.type === 'image_gallery'
+  )!;
+  const saved = buildBlockIndex(after).byId.get(gallery.id)!;
+  expect(
+    canonicalOoxmlFingerprint(findNode(before.parts.get(gallery.partName)!, gallery.controlId)!)
+  ).toBe(canonicalOoxmlFingerprint(findNode(after.parts.get(saved.partName)!, saved.controlId)!));
+  expect([...after.partBytes].filter(([name]) => name.includes('/media/'))).toEqual(
+    [...before.partBytes].filter(([name]) => name.includes('/media/'))
+  );
+  const records = readPayloadRecords(before),
+    reopenedRecords = readPayloadRecords(after);
+  if (records.status !== 'ready' || reopenedRecords.status !== 'ready')
+    throw Error('Missing old-edited records');
+  expect([...reopenedRecords.entries.values()].map((entry) => entry.raw)).toEqual(
+    [...records.entries.values()].map((entry) => entry.raw)
+  );
+  const part = after.parts.get(after.mainDocumentPart)!;
+  expect(
+    storyParagraphs(bodyStoryRoot(part)!)
+      .map((paragraph) => paragraphTextOf(part, paragraph.id))
+      .at(-1)
+  ).toBe('Tail edited in Runtime G');
 });
 
 test('a body image request refuses while the native header owns editing', async () => {

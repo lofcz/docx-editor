@@ -13,3 +13,14 @@ bun --preload ./scripts/test/preload-dom.ts \
 
 The regression compares the recorded input and output through the current reader.
 The reproduction script executes the old reader and writer before it creates those files.
+
+`native-gallery-v3-old-edited.docx` records an actual neighboring text edit with Runtime G.
+The older editor inserts ` edited in Runtime G` after `Tail`, then saves the document.
+The gallery subtree, opaque records, and media bytes remain unchanged.
+`native-gallery-v3-old-editor.json` records the editor bundle hash and changed output hash.
+
+```bash
+bun --preload ./scripts/test/preload-dom.ts \
+  packages/sciobot/test/compat/gallery-v3-old-editor.ts \
+  /path/to/runtime-g c3bf6048a packages/sciobot/test/compat/fixtures
+```

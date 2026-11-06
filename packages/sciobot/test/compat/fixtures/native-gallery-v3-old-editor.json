@@ -1,0 +1,14 @@
+{
+  "revision": "c3bf6048a",
+  "coreEditorSha256": "004a3cae9b5686ba3964ab4ac10aad1c3d213641d76d2b7e10ddab68325ce583",
+  "coreStoreSha256": "03349b85be621043ee746d75e8dffe70291614d7e0adf0635272bb8455116b20",
+  "privateBundleSha256": "e0a866d09bb6bbfa0a5cef10453fc42eb71a791d12c5f7c2ed7f78b0db973a11",
+  "inputSha256": "b4e377d453ebd143b8c2743143244f800f36a8ab16991f64c6e1f3db008dc752",
+  "outputSha256": "1d137ee03bcca0b937c0cf7623b24f95c9f6e9f80a3df6cd8841f2733d47c30e",
+  "operation": {
+    "op": "insertText",
+    "paragraphText": "Tail",
+    "offset": 4,
+    "text": " edited in Runtime G"
+  }
+}
