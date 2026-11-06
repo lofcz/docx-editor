@@ -29,7 +29,7 @@ import { captureReviewGroupHistory, reviewGroupHistoryRefusal } from '../review/
 import { groupReviewFieldBudget } from '../review/group-field-budget';
 import { groupRemovalBudget } from '../review/group-removal-budget';
 import { ancestorContentWriteRefusal } from './ancestor-content-write';
-import { resolveBlockSelectionRange } from './selection-range';
+import { resolveExactBlockSelection } from './selection-exact';
 import { nativeGalleryRemovalSources } from './gallery-native-removal';
 
 export interface BlockRemoval {
@@ -84,7 +84,7 @@ export interface BlockSelectionRemoval {
   readonly expectedRevision?: number;
 }
 
-/** Delete a complete native sibling range and its owned payload records in one undo unit. */
+/** Delete exactly the selected complete blocks and their owned payload records in one undo unit. */
 export function removeBlockSelection(
   editor: DocxEditorInstance,
   request: BlockSelectionRemoval
@@ -123,7 +123,7 @@ function removeTargets(
   const pkg = surface.session.currentPackage(),
     part = surface.session.part();
   const index = buildBlockIndex(pkg);
-  const range = native ? resolveBlockSelectionRange(part, request.controlIds) : null;
+  const range = native ? resolveExactBlockSelection(part, request.controlIds) : null;
   if (range && !range.success) return range;
   const roots: OoxmlNode[] = range?.success ? [...range.nodes] : [];
   const targets: { block: IndexedBlock; control: OoxmlNode & { kind: 'contentControl' } }[] = [];
@@ -300,23 +300,23 @@ function removeTargets(
     const allParagraphsRemoved = surface.session
       .paragraphIds()
       .every((id) => removedParagraphs.has(id));
-    const removedRoots = new Set(range.nodes.map((node) => node.id));
-    const ownerEmpty = !range.parent.children.some(
-      (node) =>
-        !removedRoots.has(node.id) && ['paragraph', 'table', 'contentControl'].includes(node.kind)
-    );
-    const cellParagraphsRemoved =
-      range.parent.kind === 'tableCell' &&
-      !range.parent.children.some(
-        (node) => node.kind === 'paragraph' && !removedRoots.has(node.id)
+    for (const owner of range.owners) {
+      const removedRoots = new Set(owner.nodes.map((node) => node.id));
+      const remaining = owner.parent.children.filter((node) => !removedRoots.has(node.id));
+      const ownerEmpty = !remaining.some((node) =>
+        ['paragraph', 'table', 'contentControl'].includes(node.kind)
       );
-    if (allParagraphsRemoved || ownerEmpty || cellParagraphsRemoved) {
+      const cellParagraphRequired =
+        owner.parent.kind === 'tableCell' &&
+        (!remaining.some((node) => node.kind === 'paragraph') ||
+          remaining.at(-1)?.kind === 'table');
+      if (!allParagraphsRemoved && !ownerEmpty && !cellParagraphRequired) continue;
       const original = findNode(part, surface.session.paragraphIds()[0]!);
       if (!original || original.kind !== 'paragraph')
         return fail('invalid-document', 'The selected range has no native paragraph template.');
       const seed: TreeDocOp = {
         op: 'insertParagraphs',
-        parentId: range.parent.id,
+        parentId: owner.parent.id,
         beforeId: null,
         paragraphs: [{ ...original, children: [] }],
       };

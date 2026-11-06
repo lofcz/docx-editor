@@ -21,7 +21,7 @@ import { withFreshIds } from './fresh-ids';
 import { blockIdFromTag, blockTag, readPayloadStore, withPayloadRecord } from './payload-opc-codec';
 import type { BlockPayload } from './payload-schema';
 import { copiedGalleryPayload, galleryRecordOrder } from './gallery-copy';
-import { resolveBlockSelectionRange } from './selection-range';
+import { resolveExactBlockSelection } from './selection-exact';
 import { blockRangeCopyRefusal } from './selection-copy-safety';
 import { ancestorContentWriteRefusal } from './ancestor-content-write';
 import { drawingCopyRefusal } from './selection-drawing-copy';
@@ -125,7 +125,7 @@ export type BlockSelectionDuplicateResult =
   | NativeEditFailure;
 
 /**
- * Copy a complete native sibling range after itself, with independent payload and review identities.
+ * Copy selected complete blocks after the last selected root, with independent payload and review identities.
  * Ordinary ranges refuse unsupported drawings, document-wide references, section marks, and pending revisions.
  * A single registered block retains the existing registered-block copy support.
  */
@@ -162,7 +162,7 @@ function duplicateSelection(
     (!control || control.kind !== 'contentControl' || !parent || parent.kind === 'paragraph')
   )
     return fail('invalid-input', 'The registered block is missing from the active story.');
-  const range = resolveBlockSelectionRange(part, request.nodeIds);
+  const range = resolveExactBlockSelection(part, request.nodeIds);
   if (!range.success) return range;
   const drawingRefusal = drawingCopyRefusal(pkg, part.name, range.nodes);
   if (drawingRefusal) return fail('unsupported-operation', drawingRefusal);
@@ -204,10 +204,11 @@ function duplicateSelection(
     const refusal = blockRangeCopyRefusal(range.nodes);
     if (refusal) return fail('unsupported-operation', refusal);
   }
-  if (native) {
-    const refusal = ancestorContentWriteRefusal(part, range.nodes[0]!.id);
-    if (refusal) return fail('unsupported-operation', refusal);
-  }
+  if (native)
+    for (const node of range.nodes) {
+      const refusal = ancestorContentWriteRefusal(part, node.id);
+      if (refusal) return fail('unsupported-operation', refusal);
+    }
   const store = readPayloadStore(pkg);
   if (!native && store.status !== 'ready')
     return fail('invalid-document', 'The block payload store is unavailable.');

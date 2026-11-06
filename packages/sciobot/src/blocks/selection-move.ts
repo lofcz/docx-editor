@@ -15,7 +15,7 @@ import {
 } from '@docx-editor.dev/core/store';
 import type { NativeEditFailure } from '../contracts/document';
 import { ancestorContentWriteRefusal } from './ancestor-content-write';
-import { resolveBlockSelectionRange } from './selection-range';
+import { resolveExactBlockSelection } from './selection-exact';
 import { blockMovementRangeRefusal } from './selection-move-ranges';
 
 export interface BlockSelectionMove {
@@ -35,7 +35,7 @@ const fail = (code: NativeEditFailure['code'], error: string): NativeEditFailure
   error,
 });
 
-/** Move complete sibling blocks in one transaction without cloning their text, payloads, or native IDs. */
+/** Move selected complete blocks in one transaction without cloning text, payloads, or native IDs. */
 export function moveBlockSelection(
   editor: DocxEditorInstance,
   request: BlockSelectionMove
@@ -52,7 +52,7 @@ export function moveBlockSelection(
     return fail('stale-revision', 'Read the current blocks before moving this selection.');
   const pkg = surface.session.currentPackage(),
     part = surface.session.part();
-  const range = resolveBlockSelectionRange(part, request.nodeIds);
+  const range = resolveExactBlockSelection(part, request.nodeIds);
   if (!range.success) return range;
   const destination = findNode(part, request.parentId);
   const blockContainer = (node: OoxmlNode | null): node is OoxmlElement => {
@@ -66,7 +66,7 @@ export function moveBlockSelection(
       ['block', 'empty'].includes(contentControlLevelOf(owner))
     );
   };
-  if (!blockContainer(destination) || !blockContainer(range.parent))
+  if (!blockContainer(destination) || range.owners.some((owner) => !blockContainer(owner.parent)))
     return fail('unsupported-operation', 'Move complete blocks between native block containers.');
   const selected = new Set(range.nodes.map((node) => node.id));
   for (
@@ -83,37 +83,46 @@ export function moveBlockSelection(
     !destination.children.some((node) => node.id === request.beforeId)
   )
     return fail('invalid-input', 'The movement anchor is not a destination child.');
-  const sameParent = destination.id === range.parent.id;
-  if (sameParent && request.beforeId !== null && selected.has(request.beforeId))
-    return { success: true, revision, changed: false };
-  if (sameParent) {
-    const last = range.parent.children.findIndex((node) => node.id === range.nodes.at(-1)!.id);
-    const next = range.parent.children[last + 1];
+  const sameParent = range.owners.length === 1 && destination.id === range.owners[0]!.parent.id;
+  const first = destination.children.findIndex((node) => node.id === range.nodes[0]!.id);
+  const contiguous =
+    sameParent &&
+    destination.children
+      .slice(first, first + range.nodes.length)
+      .every((node) => selected.has(node.id));
+  if (request.beforeId !== null && selected.has(request.beforeId))
+    return contiguous
+      ? { success: true, revision, changed: false }
+      : fail('invalid-input', 'Choose a movement anchor outside the selected blocks.');
+  if (contiguous) {
+    const last = destination.children.findIndex((node) => node.id === range.nodes.at(-1)!.id);
+    const next = destination.children[last + 1];
     const end = !next || (next.kind !== 'textValue' && next.localName === 'sectPr');
     if ((request.beforeId === null && end) || request.beforeId === next?.id)
       return { success: true, revision, changed: false };
   }
-  const remaining = range.parent.children.filter((node) => !selected.has(node.id));
-  const seedSource =
-    !sameParent &&
-    (!remaining.some((node) => ['paragraph', 'table', 'contentControl'].includes(node.kind)) ||
-      (range.parent.kind === 'tableCell' &&
-        (!remaining.some((node) => node.kind === 'paragraph') ||
-          remaining.at(-1)?.kind === 'table')));
   const seedTemplate = findNode(part, surface.session.paragraphIds()[0]!);
-  if (seedSource && seedTemplate?.kind !== 'paragraph')
-    return fail('invalid-document', 'The source has no native paragraph template.');
-  const seed: TreeDocOp | null =
-    seedSource && seedTemplate?.kind === 'paragraph'
-      ? {
-          op: 'insertParagraphs',
-          parentId: range.parent.id,
-          beforeId: null,
-          paragraphs: [{ ...seedTemplate, children: [] }],
-        }
-      : null;
+  const seeds: TreeDocOp[] = [];
+  for (const owner of range.owners) {
+    if (owner.parent.id === destination.id) continue;
+    const remaining = owner.parent.children.filter((node) => !selected.has(node.id));
+    const seedRequired =
+      !remaining.some((node) => ['paragraph', 'table', 'contentControl'].includes(node.kind)) ||
+      (owner.parent.kind === 'tableCell' &&
+        (!remaining.some((node) => node.kind === 'paragraph') ||
+          remaining.at(-1)?.kind === 'table'));
+    if (!seedRequired) continue;
+    if (seedTemplate?.kind !== 'paragraph')
+      return fail('invalid-document', 'The source has no native paragraph template.');
+    seeds.push({
+      op: 'insertParagraphs',
+      parentId: owner.parent.id,
+      beforeId: null,
+      paragraphs: [{ ...seedTemplate, children: [] }],
+    });
+  }
   let preview = part;
-  if (seed) {
+  for (const seed of seeds) {
     const inserted = applyTreeOp(preview, seed);
     if (!inserted.ok)
       return fail(
@@ -129,12 +138,13 @@ export function moveBlockSelection(
         : { op: 'deleteBlock', blockId: node.id };
     const refusal = validateTreeOp(preview, removal);
     // Moving within one owner retains the very paragraph that a standalone removal needs.
-    if (refusal && !(sameParent && refusal === 'block-required'))
+    const staysInOwner = parentNodeOf(part, node.id)?.id === destination.id;
+    if (refusal && !(staysInOwner && refusal === 'block-required'))
       return fail('unsupported-operation', `Native block movement refused: ${refusal}.`);
   }
   const move = (working: OoxmlPackage) => {
     let current = working.parts.get(part.name)!;
-    if (seed) {
+    for (const seed of seeds) {
       const inserted = applyTreeOp(current, seed);
       if (!inserted.ok)
         throw Error(`The source paragraph could not be retained: ${inserted.reason}.`);
