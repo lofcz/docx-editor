@@ -1,0 +1,10 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "An open image request retained a canonical address that could retire during shared publication.",
+  "after": "A disposable local reference follows only exact native identity mappings and permanently refuses deleted drawings.",
+  "reason": "The reference observes the existing document session and identity resolver. It writes no canonical or shared state.",
+  "tests": ["packages/sciobot/src/blocks/image-reference.test.ts"],
+  "changeset": "native-gallery-ownership",
+  "migration": null
+}

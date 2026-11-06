@@ -209,5 +209,6 @@ export * from './blocks/gallery-ungroup';
 export * from './blocks/gallery-group';
 export * from './blocks/gallery-native-append';
 export * from './blocks/gallery-native-asset';
+export * from './blocks/image-reference';
 export * from './blocks/inline-image-update';
 export * from './blocks/inline-image-replace';
