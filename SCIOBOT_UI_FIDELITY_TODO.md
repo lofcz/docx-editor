@@ -31,16 +31,16 @@ Other sessions use the production application checkout. Feature work stays in is
 | UX02 | Math | Shared MathLive dialog, virtual keyboard, selected-text insertion, inline/display editing, draft ownership | Accepted; 19 integrated browser cases pass |
 | UX03 | SMILES | Shared chemistry editor, AI and manual entry, preview, validation, activation, block actions, failed-save recovery | Accepted; eight integrated browser cases pass |
 | UX04 | Links | Insert/edit/remove dialogs, selected text, URL validation, opening, keyboard shortcuts | Accepted; ten integrated browser cases and direct keyboard review pass |
-| UX05 | Images and galleries | Upload, resize, captions, alignment, replacement, gallery actions, loading and errors | `ux_gallery`: attachment-card import verified; ordinary archive upload and image side handles remain open |
+| UX05 | Images and galleries | Upload, resize, captions, alignment, replacement, gallery actions, loading and errors | `ux_gallery`: side handles pass integrated checks; archive cancellation and toolbar follow-up remain open |
 | UX06 | Files, audio, video, and embeds | Insert/edit controls, previews, loading, playback, removal, accessible fallback | Pending |
 | UX07 | Lists | Bullets, numbering, checklists, nesting, indentation, continuation and exit shortcuts | Accepted; seven integrated list cases and two export cases pass |
 | UX08 | Text and paragraph formatting | Marks, font size, colors, headings, alignment, spacing, mixed selection state | Accepted; nine integrated browser cases pass |
 | UX09 | Fixed and floating toolbars | Control grouping, overflow, responsive layout, tooltips, selection retention, view modes | Accepted; 27 integrated browser cases pass |
 | UX10 | Slash and insertion menus | Complete catalog, feature gates, filtering, keyboard navigation, insertion placement | Accepted; 42 integrated browser cases and coordinator query review pass |
 | UX11 | Block selection and movement | Handles, menus, keyboard selection, drag placement, duplication, deletion, nested blocks | Accepted; 51 integrated browser cases pass |
-| UX12 | Columns | Count changes, resizing, movement, empty entry, discoverability and nested content | `ux_lists`: actual Plate comparison and column control review in progress |
+| UX12 | Columns | Count changes, resizing, movement, empty entry, discoverability and nested content | `ux_lists`: controls pass; legacy conversion has a reproduced handle obstruction |
 | UX13 | Code blocks | Language picker, editing, copy, syntax display, sizing, shortcuts and exit behavior | `ux_math_review`: shared language/copy controls integrated; native source, review, and inline authoring remain open |
-| UX14 | Callouts and toggles | Variants, icons, collapse controls, body editing, focus and layout stability | Pending |
+| UX14 | Callouts and toggles | Variants, icons, collapse controls, body editing, focus and layout stability | `ux_lists`: local collapse layout and shared-session checks in progress |
 | UX15 | Stories and solutions | Editing controls, reveal states, content layout, nested editing and persistence | Pending |
 | UX16 | Mentions, dates, and emoji | Pickers, search, keyboard navigation, insertion, editing and inline selection | Pending |
 | UX17 | Contents and navigation | Heading controls, table of contents, document navigation, updates and focus | Accepted; seven integrated browser cases and coordinator keyboard review pass |
@@ -59,6 +59,10 @@ Other sessions use the production application checkout. Feature work stays in is
 ## Acceptance records
 
 UX01, UX02, UX03, UX04, UX07, UX08, UX09, UX10, UX11, and UX17 passed coordinator review. Other features remain open.
+
+Runtime P uses engine `679cd01a2`, pinned by app `a528cb2b0`. Installation resolves one core package. All 15 fresh core API reports match. App and harness types pass across 8,553 and 3,321 files. The integrated browser boundary records 56 passes and nine failures across 13 files. Image controls, replacement, side handles, and prepared inline code pass. Column controls pass except legacy conversion, where an empty handle wrapper intercepts the conversion button. Seven legacy code failures use an ambiguous source selector. Another code failure places a control outside the narrow viewport. These failures remain open until focused verification passes.
+
+Engine `e48350ca1` adds strict native ownership for newly created code. Unsupported legacy source remains unchanged. The integrated boundary passes 67 cases with 1,758 assertions. Full formatting, lint, private adapter types, and scoped collaboration policy pass. Runtime P predates these creation changes. Production activation, suggestion controls, and final inline code review remain open.
 
 - Tables: engine through `190a5cd2f`; app `9e05adfe5` and runtime `e7a050d91`. All 13 integrated browser cases pass with 111 assertions. Coordinator code and visual review pass. Coverage includes insertion, selection, formatting, resize, nested tables, repeated headers, tracked edits, concurrency, history, and reopen. The engine boundary run passes 62 tests; one resource-limit case times out during a parallel build and passes unchanged in isolation within its original five-second limit. Imported legacy horizontal merges and merged RTL resize retain documented limits. The mounted Plate workspace exposes neither RTL table controls nor header-cell formatting controls.
 - Links: app `cbe3e8884` and `61068174a` provide the shared app popover over canonical hyperlink commands. Ten integrated browser cases pass with 60 assertions. Coordinator keyboard and visual review also pass. Coverage includes stale drafts, document replacement, concurrent edits, history, save/reopen, view/suggest modes, narrow layout, and hover dismissal. Native links accept real pasted app URLs and bookmarks. The Plate reference contains a mock page catalog; this integration does not copy that mock. Field hyperlinks retain the engine's preview-only support.
