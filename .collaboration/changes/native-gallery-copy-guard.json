@@ -1,0 +1,10 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Registered embedded gallery copies reuse Word drawing identifiers.",
+  "after": "Embedded gallery copies refuse before allocation or mutation until native drawing identity preparation is available.",
+  "reason": "The refusal preserves existing shared state and operation formats.",
+  "tests": ["packages/sciobot/src/blocks/gallery-native-copy-guard.test.ts"],
+  "changeset": null,
+  "migration": null
+}

@@ -163,6 +163,20 @@ function duplicateSelection(
   const range = resolveBlockSelectionRange(part, request.nodeIds);
   if (!range.success) return range;
   const index = buildBlockIndex(pkg);
+  const selected = new Set(range.nodes.map((node) => node.id));
+  for (const block of index.byId.values()) {
+    if (
+      block.payload.version !== 3 ||
+      !['image_gallery', 'image_gallery_item'].includes(block.payload.type)
+    )
+      continue;
+    for (let node = findNode(part, block.controlId); node; node = parentNodeOf(part, node.id))
+      if (selected.has(node.id))
+        return fail(
+          'unsupported-operation',
+          'Embedded gallery duplication requires independent native drawing identities.'
+        );
+  }
   const registeredSingle =
     range.nodes.length === 1 &&
     [...index.byId.values()].some((block) => block.controlId === range.nodes[0]!.id);
