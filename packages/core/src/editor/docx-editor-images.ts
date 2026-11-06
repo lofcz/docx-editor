@@ -1031,7 +1031,7 @@ async function runImageCommand(
       ...(command.description !== undefined ? { description: command.description } : {}),
       ...(command.hyperlink !== undefined ? { hyperlink: command.hyperlink } : {}),
     });
-    if (signal?.aborted) return cancelled;
+    if (!result.ok && signal?.aborted) return cancelled;
     const stale = isStaleImageMutation(editor, pre);
     if (stale) return stale;
     if (!result.ok) {
@@ -1065,7 +1065,7 @@ async function runImageCommand(
         drawingNodeId: resolved.id,
       }) === null,
   });
-  if (signal?.aborted) return cancelled;
+  if (!result.ok && signal?.aborted) return cancelled;
   const stale = isStaleImageMutation(editor, pre, {
     requireDrawing: true,
     drawingNodeId: resolved.id,

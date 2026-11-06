@@ -83,6 +83,62 @@ for (const clientIds of [
   [41, 73],
   [73, 41],
 ] as const) {
+  for (const operation of ['insert', 'replace'] as const)
+    test(`an abort during publication keeps a committed ${operation} successful ${clientIds}`, async () => {
+      const pair = await createTwoEditorFixture({
+        document: operation === 'replace' ? await documentWithImage() : documentBytes,
+        clientIds,
+        editor: { imageDecodePort: deferredDecoder().port },
+      });
+      try {
+        const editor = pair.editors[0]!;
+        await pair.settle();
+        const id = drawings(editor)[0];
+        if (id)
+          expect(
+            editor.surface!.selectDrawing(id, editor.surface!.session.paragraphIds()[0]!)
+          ).toBe(true);
+        const controller = new AbortController();
+        const before = await pair.savedDigests();
+        const mediaBefore = media(editor);
+        const off = editor.surface!.session.subscribe(() => controller.abort());
+        const command =
+          operation === 'insert'
+            ? {
+                type: 'insertImage' as const,
+                data: replacement,
+                mime: 'image/gif' as const,
+                widthPoints: 36,
+                heightPoints: 36,
+              }
+            : {
+                type: 'replaceImage' as const,
+                data: replacement,
+                mime: 'image/gif' as const,
+                drawingNodeId: id!,
+              };
+        const result = await editor.executeImageCommand(command, { signal: controller.signal });
+        off();
+        expect(controller.signal.aborted).toBe(true);
+        expect(result).toEqual({ ok: true, changed: true });
+        await pair.settle();
+        const after = await pair.savedDigests();
+        expect(after[0]).toEqual(after[1]);
+        expect(after).not.toEqual(before);
+        const mediaAfter = media(editor);
+        expect(mediaAfter).not.toEqual(mediaBefore);
+        expect(editor.exec({ type: 'undo' }).ok).toBe(true);
+        await pair.settle();
+        expect(await pair.savedDigests()).toEqual(before);
+        expect(media(editor)).toEqual(mediaBefore);
+        expect(editor.exec({ type: 'redo' }).ok).toBe(true);
+        await pair.settle();
+        expect(await pair.savedDigests()).toEqual(after);
+        expect(media(editor)).toEqual(mediaAfter);
+      } finally {
+        pair.destroy();
+      }
+    });
   test(`native insertion cancels during decoding without shared writes ${clientIds}`, async () => {
     const decoder = deferredDecoder();
     const pair = await createTwoEditorFixture({
