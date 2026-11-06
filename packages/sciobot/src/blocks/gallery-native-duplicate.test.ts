@@ -12,12 +12,14 @@ import {
   galleryDecodePort,
   nativeGalleryDocument,
   nativeGalleryDrawings,
+  galleryPng,
 } from '../../test/support/native-gallery';
 import { buildBlockIndex } from './block-index';
 import { duplicateBlock, duplicateBlockSelection } from './duplicate';
 import { groupAdjacentImages } from './gallery-group';
 import { readGallery, updateGallery } from './gallery';
 import { removeBlock } from './remove';
+import { readGalleryImageAsset } from './gallery-native-asset';
 
 function pictureIds(pkg: OoxmlPackage) {
   const all = [...pkg.parts.values()].flatMap((part) => galleryDescendants(part.root));
@@ -88,6 +90,11 @@ for (const clientIds of [
         for (const id of [firstId, secondId]) {
           const copy = readGallery(pkg, id)!;
           expect(copy.images).toHaveLength(3);
+          for (const image of copy.images) {
+            const asset = readGalleryImageAsset(pkg, id, image.id);
+            expect(asset).not.toBeNull();
+            expect(asset?.bytes).toEqual(galleryPng);
+          }
           expect(
             copy.images.every(
               (image) => buildBlockIndex(pkg).byId.get(image.id)?.payload.galleryId === id
@@ -133,6 +140,8 @@ for (const clientIds of [
         expect(semanticDigest(reopened.parts.values())).toEqual(semanticDigest(pkg.parts.values()));
         expect(readGallery(reopened, firstId)).toBeNull();
         expect(readGallery(reopened, secondId)!.images).toHaveLength(3);
+        for (const image of readGallery(reopened, secondId)!.images)
+          expect(readGalleryImageAsset(reopened, secondId, image.id)?.bytes).toEqual(galleryPng);
         const ids = pictureIds(reopened);
         expect(ids.word).toHaveLength(6);
         expect(new Set(ids.word).size).toBe(6);
