@@ -1,4 +1,5 @@
 import { siblingBlockRemovals } from './sibling-block-removals';
+import { validGalleryAssetPayload } from '../projection/gallery-assets';
 import { buildBlockIndex } from '../blocks/block-index';
 import type { InlineImageRuntime } from '../native/inline-image-runtime';
 import { stageBornAtoms } from './tracked-born-atoms';
@@ -71,6 +72,8 @@ export function stageTrackedSiblings(
   listContext: DirectListContext,
   images?: InlineImageRuntime
 ): readonly NativeSiblingProposal[] {
+  if (edit.blocks?.some((binding) => validGalleryAssetPayload(binding.payload)))
+    refuseWrite('Gallery attachment import requires direct editing.', 'unsupported-operation');
   const before = currentStagePart(writer, edit.partName);
   const ids = gap(before, edit);
   if (

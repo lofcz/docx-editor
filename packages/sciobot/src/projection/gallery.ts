@@ -1,6 +1,7 @@
 import type { BlockPayload } from '../blocks/payload-schema';
 import type { JsonObject, JsonValue } from '../data/json';
 import type { SerializedBlockTag } from './block-tags';
+import { validGalleryAssetPayload } from './gallery-assets';
 
 /** The application's gallery grammar: `layout`, optional `align`, and an `images` list. */
 export const GALLERY_LAYOUTS: readonly string[] = ['row-fit', 'grid'];
@@ -49,16 +50,23 @@ export function validGallery(payload: BlockPayload): boolean {
 
 /** `images` is a JSX expression holding a JSON literal, as the application's Plate rules write it. */
 export function serializeGallery(payload: BlockPayload): SerializedBlockTag {
-  if (!validGallery(payload)) throw new TypeError('invalid-gallery-payload');
-  const { layout, align, images } = payload.attributes;
+  if (!validGallery(payload) && !validGalleryAssetPayload(payload))
+    throw new TypeError('invalid-gallery-payload');
+  const { layout, align, images, resourceVersion } = payload.attributes;
   const text =
     `<image_gallery layout="${layout as string}"` +
+    (resourceVersion === undefined ? '' : ` resourceVersion="1"`) +
     (align === undefined ? '' : ` align="${align as string}"`) +
     ` images={${JSON.stringify(images)}} />`;
   return {
     tag: 'image_gallery',
     text,
-    properties: ['layout', ...(align === undefined ? [] : ['align']), 'images'].map((property) => ({
+    properties: [
+      'layout',
+      ...(resourceVersion === undefined ? [] : ['resourceVersion']),
+      ...(align === undefined ? [] : ['align']),
+      'images',
+    ].map((property) => ({
       name: property,
       property,
       path: [property],

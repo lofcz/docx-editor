@@ -5,6 +5,7 @@ import { refuseWrite } from '../diff/fragment-seeds';
 import { captureReviewGroupHistory, reviewGroupHistoryRefusal } from '../review/group-history';
 import { groupRemovalBudget } from '../review/group-removal-budget';
 import { groupReviewFieldBudget } from '../review/group-field-budget';
+import { planGalleryAssets } from '../native/gallery-asset-runtime';
 
 /** Image fields and their native resource retirement must share the existing owned history scope. */
 export function directImageHistory(
@@ -16,7 +17,10 @@ export function directImageHistory(
   const session = editor.surface?.collaborationSession() ?? null;
   if (
     !session ||
-    !plan.operations.some((edit) => edit.kind === 'inline-image' || edit.kind === 'inline-remove')
+    (!plan.operations.some(
+      (edit) => edit.kind === 'inline-image' || edit.kind === 'inline-remove'
+    ) &&
+      !planGalleryAssets(plan).length)
   )
     return (run) => run();
   const refusal = reviewGroupHistoryRefusal(session);

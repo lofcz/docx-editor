@@ -4,6 +4,7 @@ import { decodeMentionPayload } from '../blocks/mention-codec';
 import { encodeBlockPayload, type BlockPayload } from '../blocks/payload-schema';
 import { ISO_DATE } from './sciobot-inline';
 import { validGallery } from '../projection/gallery';
+import { validGalleryAssetPayload } from '../projection/gallery-assets';
 
 /**
  * One SMILES or reaction SMILES string: printable ASCII without spaces, double quotes, `&`, `<`, or
@@ -23,7 +24,7 @@ export const SCIOBOT_VALIDATORS: Readonly<Record<string, (payload: BlockPayload)
   },
   mention: (payload) => decodeMentionPayload(encodeBlockPayload(payload)).status === 'supported',
   inline_image: (payload) => !!decodeInlineImagePayload(encodeBlockPayload(payload)),
-  image_gallery: validGallery,
+  image_gallery: (payload) => validGallery(payload) || validGalleryAssetPayload(payload),
   smiles: (payload) =>
     Object.keys(payload.attributes).length === 1 &&
     typeof payload.attributes.smiles === 'string' &&

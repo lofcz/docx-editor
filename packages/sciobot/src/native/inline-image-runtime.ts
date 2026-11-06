@@ -1,4 +1,5 @@
 import { imageReservationPrefix } from '../registry/adapter-names';
+import { planGalleryAssets, galleryAssetCompletion } from './gallery-asset-runtime';
 import { materializeImageReservation } from './inline-image-reservation';
 import { embedInlineImage } from './inline-image-media';
 import { inlinePicture } from './inline-picture';
@@ -34,7 +35,8 @@ export function createInlineImageRuntime(
   handle?: PreparedInlineImages
 ): { readonly success: true; readonly runtime?: InlineImageRuntime } | NativeEditFailure {
   const drawings = planInlineDrawings(plan);
-  if (!drawings.length) return { success: true };
+  const galleries = planGalleryAssets(plan);
+  if (!drawings.length && !galleries.length) return { success: true };
   const resources = preparedInlineImageResources(handle, plan);
   if (!resources)
     return {
@@ -43,6 +45,7 @@ export function createInlineImageRuntime(
       error: 'Image resources require revision-bound executor preparation.',
     };
   const bindings = drawings.map((atom) => ({ atom, id: crypto.randomUUID() }));
+  const completeGalleries = galleryAssetCompletion(galleries, resources);
   const byResource = new WeakMap(
     bindings.map((binding) => [binding.atom.resource, binding] as const)
   );
@@ -127,7 +130,7 @@ export function createInlineImageRuntime(
           if (!stored.ok) throw Error(`Image provenance storage refused: ${stored.reason}.`);
           next = stored.pkg;
         }
-        return next;
+        return completeGalleries(next);
       },
     },
   };

@@ -9,6 +9,8 @@ import {
 import type { NativeEditFailure } from '../contracts/document';
 import { decodeEditPlan, serializeEditPlan, type CanonicalEditPlan } from '../diff/plan';
 import type { InsertedInlineAtom } from '../diff/inserted-atoms';
+import { planGalleryAssets } from './gallery-asset-runtime';
+import { GALLERY_ASSET_PATH, type GalleryAssetImage } from '../projection/gallery-assets';
 export interface InlineImageSource {
   readonly bytes: Uint8Array;
   readonly mime: SupportedImageMime;
@@ -61,6 +63,9 @@ export async function prepareInlineImageResources(
     if (!decoded.success) return decoded;
     const plan = decoded.plan;
     const references = [
+      ...planGalleryAssets(plan).flatMap((binding) =>
+        (binding.payload.attributes.images as GalleryAssetImage[]).map((image) => image.asset)
+      ),
       ...planInlineDrawings(plan).map((atom) => atom.resource.reference),
       ...plan.operations.flatMap((edit) =>
         edit.kind === 'inline-image' && edit.before.attributes.reference !== edit.resource.reference
@@ -69,6 +74,24 @@ export async function prepareInlineImageResources(
       ),
     ];
     const resources = await resolveInlineImageResources(references, resolve, decodePort, signal);
+    for (const binding of planGalleryAssets(plan)) {
+      for (const image of binding.payload.attributes.images as GalleryAssetImage[]) {
+        const resource = resources.get(image.asset)!;
+        const hash = GALLERY_ASSET_PATH.exec(image.asset)?.[1];
+        const extensions: Record<string, string> = {
+          'image/png': 'png',
+          'image/jpeg': 'jpg',
+          'image/gif': 'gif',
+          'image/bmp': 'bmp',
+          'image/webp': 'webp',
+        };
+        if (
+          hash !== resource.contentHash ||
+          image.asset !== `media/${resource.contentHash}.${extensions[resource.mime]}`
+        )
+          throw Error('The gallery asset path does not match its resource bytes.');
+      }
+    }
     const images: PreparedInlineImages = Object.freeze({ kind: 'prepared-inline-images' });
     stores.set(images, { plan: serializeEditPlan(plan), resources });
     return { success: true, images };

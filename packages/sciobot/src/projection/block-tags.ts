@@ -238,7 +238,7 @@ export const DOMAIN_BLOCK_TAGS: ReadonlyMap<string, BlockTagDefinition> = new Ma
     {
       tag: 'image_gallery',
       kind: 'atomic',
-      attributes: (payload) => ordered(payload, ['layout', 'align', 'images']),
+      attributes: (payload) => ordered(payload, ['layout', 'align', 'resourceVersion', 'images']),
       serialize: serializeGallery,
     },
   ],

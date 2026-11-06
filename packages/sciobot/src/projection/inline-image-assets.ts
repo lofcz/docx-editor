@@ -5,6 +5,7 @@ import {
   resolveImageRelationship,
   sniffImageMime,
   validateRasterHeader,
+  resolveImageResourceLimits,
   type OoxmlNode,
   type OoxmlPackage,
   type SupportedImageMime,
@@ -16,6 +17,9 @@ import type {
 import { decodeInlineImagePayload, INLINE_IMAGE } from '../blocks/inline-image-codec';
 import { encodeBlockPayload } from '../blocks/payload-schema';
 import type { IndexedBlock } from '../blocks/block-index';
+import { buildBlockIndex } from '../blocks/block-index';
+import { readGallery } from '../blocks/gallery';
+import { readGalleryImageAsset } from '../blocks/gallery-native-asset';
 const extensions: Readonly<Record<string, string>> = {
   'image/png': 'png',
   'image/jpeg': 'jpg',
@@ -51,7 +55,7 @@ export function managedInlineImageAssets(
 ): readonly MarkdownImageAsset[] | undefined {
   const owners = new Map<
     string,
-    { block: IndexedBlock; data: NonNullable<ReturnType<typeof decodeInlineImagePayload>> }
+    { block: IndexedBlock; data: { attributes: { contentHash: string; mediaPartName: string } } }
   >();
   for (const block of blocks) {
     if (block.payload.type !== INLINE_IMAGE) continue;
@@ -63,6 +67,19 @@ export function managedInlineImageAssets(
     if (native.length !== 1)
       throw Error('A managed inline image needs exactly one native drawing.');
     owners.set(block.partName + '\0' + native[0]!.id, { block, data });
+  }
+  for (const block of blocks) {
+    if (block.payload.type !== 'image_gallery' || block.payload.version !== 3) continue;
+    const gallery = readGallery(pkg, block.id);
+    if (!gallery) throw Error('The embedded gallery cannot be exported.');
+    for (const image of gallery.images) {
+      const asset = readGalleryImageAsset(pkg, block.id, image.id);
+      if (!asset) throw Error('The embedded gallery resource cannot be exported safely.');
+      owners.set(block.partName + '\0' + asset.drawingNodeId, {
+        block,
+        data: { attributes: { contentHash: asset.contentHash, mediaPartName: asset.partName } },
+      });
+    }
   }
   if (!owners.size) return undefined;
   const assets = new Map<
@@ -81,7 +98,7 @@ export function managedInlineImageAssets(
       owner.block.partName,
       ids[0]!
     );
-    if (resolved.mode !== 'internal')
+    if (resolved.mode !== 'internal' || resolved.partName !== owner.data.attributes.mediaPartName)
       throw Error('A managed picture must use an embedded media part.');
     const bytes =
       pkg.partBytes.get(resolved.partName) ??
@@ -130,5 +147,34 @@ export function managedInlineImageAssets(
   });
   return [...assets.values()].map(({ data, occurrences }) =>
     Object.freeze({ ...data, occurrences: Object.freeze(occurrences) })
+  );
+}
+
+/** The existing Markdown attachment shape, read from the exact package used for the export layout. */
+export function nativeImageAssets(
+  pkg: OoxmlPackage,
+  layout: ExportSemanticLayout
+): readonly MarkdownImageAsset[] {
+  const assets =
+    managedInlineImageAssets(pkg, layout, [...buildBlockIndex(pkg).byId.values()]) ?? [];
+  const limits = resolveImageResourceLimits();
+  let total = 0;
+  if (assets.length > 10_000) throw Error('The image attachment count exceeds its limit.');
+  return Object.freeze(
+    assets.map((asset) => {
+      if (
+        !asset.bytes.length ||
+        asset.bytes.length > limits.maxEncodedBytes ||
+        asset.bytes.length > 64 * 1024 * 1024 - total ||
+        !asset.pixelWidth ||
+        !asset.pixelHeight ||
+        asset.pixelWidth > limits.maxDimension ||
+        asset.pixelHeight > limits.maxDimension ||
+        asset.pixelWidth * asset.pixelHeight > limits.maxPixels
+      )
+        throw Error('The image attachments exceed their resource limit.');
+      total += asset.bytes.length;
+      return Object.freeze({ ...asset, bytes: new Uint8Array(asset.bytes) });
+    })
   );
 }

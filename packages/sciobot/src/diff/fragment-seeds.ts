@@ -41,6 +41,7 @@ import {
 } from '@docx-editor.dev/core/store';
 import { blockTag, withPayloadRecord } from '../blocks/payload-opc-codec';
 import { withGalleryImageRecords } from '../blocks/gallery-record-upgrade';
+import { validGalleryAssetPayload } from '../projection/gallery-assets';
 import {
   inlineCodeRunChanges,
   inlineCodeCharacterStyles,
@@ -348,6 +349,8 @@ export function siblingFragmentSeeds(
   followingParagraph: boolean,
   images?: InlineImageRuntime
 ): SiblingSeedsResult {
+  if (!images && edit.blocks?.some((binding) => validGalleryAssetPayload(binding.payload)))
+    return fail('Gallery attachments require revision-bound executor preparation.');
   const styles = new Map(
     (edit.styles ?? []).map((binding) => [binding.path.join('/'), binding.styleId])
   );
@@ -604,6 +607,8 @@ function blockXml(node: TargetAstNode, path: readonly number[], context: RenderC
       'unsupported-operation'
     );
   const properties = `<w:sdtPr><w:alias w:val="${escapeXml(binding.label)}"/><w:tag w:val="${escapeXml(blockTag(binding.payload.id))}"/></w:sdtPr>`;
+  if (validGalleryAssetPayload(binding.payload))
+    return `<w:sdt>${properties}<w:sdtContent/></w:sdt>`;
   if (
     binding.payload.type === MDX_BLOCK ||
     (context.registry ?? activeMdxRegistry()).blockTags.get(binding.payload.type)?.kind === 'atomic'
@@ -887,6 +892,7 @@ export function completeSiblingFragments(
     );
   }
   for (const binding of bindings.values()) {
+    if (validGalleryAssetPayload(binding.payload)) continue;
     const stored = withPayloadRecord(pkg, binding.payload, binding.label);
     if (!stored.ok)
       refuseWrite(`New block payload storage refused: ${stored.reason}.`, 'apply-failed');
@@ -895,7 +901,11 @@ export function completeSiblingFragments(
   pkg = completeInlineAtomPayloads(pkg, partName, edit.atoms ?? []);
   const galleries = withGalleryImageRecords(
     pkg,
-    new Set([...bindings.values()].map((binding) => binding.payload.id))
+    new Set(
+      [...bindings.values()]
+        .filter((binding) => !validGalleryAssetPayload(binding.payload))
+        .map((binding) => binding.payload.id)
+    )
   );
   if (!galleries.ok)
     refuseWrite(`New gallery storage refused: ${galleries.reason}.`, 'apply-failed');

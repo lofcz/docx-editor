@@ -2,6 +2,7 @@ import { decodeMathPayload, mathWordFallback } from '../blocks/math-codec';
 import { encodeBlockPayload, type BlockPayload } from '../blocks/payload-schema';
 import type { MdxComponentDefinition } from './contract';
 import { MdxRefusal } from './mdx-fields';
+import { validGalleryAssetPayload } from '../projection/gallery-assets';
 import { SMILES } from './sciobot-valid';
 import { validGallery } from '../projection/gallery';
 import type { JsonObject } from '../data/json';
@@ -37,11 +38,15 @@ const smiles: WordFallback = (payload: BlockPayload) => {
 
 /** A gallery shows one line per image: its caption, or its address. */
 const gallery: WordFallback = (payload: BlockPayload) => {
-  if (!validGallery(payload))
+  if (!validGallery(payload) && !validGalleryAssetPayload(payload))
     throw new MdxRefusal('A gallery needs one to 100 images with http(s) addresses.');
   return {
     lines: (payload.attributes.images as JsonObject[]).map((image) =>
-      ((image.caption as string | undefined) || (image.url as string)).replace(/\r\n|\r|\n/g, ' ')
+      (
+        (image.caption as string | undefined) ||
+        (image.url as string | undefined) ||
+        (image.asset as string)
+      ).replace(/\r\n|\r|\n/g, ' ')
     ),
   };
 };

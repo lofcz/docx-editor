@@ -1,0 +1,10 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Embedded gallery resources had no paired Markdown attachment import and export.",
+  "after": "Versioned Markdown attachment references import into existing native gallery ownership records.",
+  "reason": "The shared room schema and saved version-3 gallery records do not change. Import uses the existing native resource and owned history contracts.",
+  "tests": ["packages/sciobot/src/projection/gallery-assets.test.ts"],
+  "changeset": "native-gallery-attachments",
+  "migration": null
+}

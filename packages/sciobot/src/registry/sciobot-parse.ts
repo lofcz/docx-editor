@@ -2,6 +2,7 @@ import type { JsonObject, JsonValue } from '../data/json';
 import type { MdxAttribute, MdxComponentParser } from './contract';
 import { mdxProps } from './mdx-read';
 import { galleryImages } from '../projection/gallery';
+import { validGalleryAssetPayload } from '../projection/gallery-assets';
 
 const plain = (tag: string): MdxComponentParser => ({
   tag,
@@ -115,10 +116,23 @@ const gallery: MdxComponentParser = {
       if (name === 'images') {
         const images = galleryImages(value);
         if (images !== null) props.images = images;
-      } else if ((name === 'layout' || name === 'align') && typeof value === 'string')
+      } else if (
+        (name === 'layout' || name === 'align' || name === 'resourceVersion') &&
+        typeof value === 'string'
+      )
         props[name] = value;
     }
     props.layout ??= 'row-fit';
+    if (
+      props.resourceVersion !== undefined &&
+      !validGalleryAssetPayload({
+        id: 'grammar',
+        type: 'image_gallery',
+        version: 1,
+        attributes: props,
+      })
+    )
+      return null;
     return props as JsonObject;
   },
 };

@@ -210,5 +210,6 @@ export * from './blocks/gallery-group';
 export * from './blocks/gallery-native-append';
 export * from './blocks/gallery-native-asset';
 export * from './blocks/image-reference';
+export { imageAssetBundleResolver } from './native/image-asset-bundle';
 export * from './blocks/inline-image-update';
 export * from './blocks/inline-image-replace';

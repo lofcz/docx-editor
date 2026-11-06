@@ -5,6 +5,8 @@ import { activeMdxRegistry } from '../registry/active';
 import { serializeMention, mentionInsideHyperlink } from './mention';
 import { forEachSemanticStory, forEachStoryParagraphFragment } from '@docx-editor.dev/core/layout';
 import { managedInlineImageAssets } from './inline-image-assets';
+import { galleryAssetPayload } from './native-gallery';
+import { serializeGallery } from './gallery';
 import type { ExportSemanticLayout } from '@docx-editor.dev/core/export';
 import type { MarkdownLayoutOptions, MarkdownSourceSlice } from '@docx-editor.dev/docx-to-markdown';
 import {
@@ -310,12 +312,14 @@ export function projectBlocks(
       if (anchor.definition.serialize) {
         if (!atomic) throw new Error('Only atomic blocks can serialize complete stored syntax.');
         const serialized =
-          anchor.definition.serialize === serializeMention
-            ? serializeMention(
-                anchor.block.payload,
-                mentionInsideHyperlink(part!, anchor.block.controlId)
-              )
-            : anchor.definition.serialize(anchor.block.payload);
+          anchor.definition.serialize === serializeGallery && anchor.block.payload.version === 3
+            ? serializeGallery(galleryAssetPayload(pkg, anchor.block.id))
+            : anchor.definition.serialize === serializeMention
+              ? serializeMention(
+                  anchor.block.payload,
+                  mentionInsideHyperlink(part!, anchor.block.controlId)
+                )
+              : anchor.definition.serialize(anchor.block.payload);
         if (typeof serialized.text !== 'string' || !serialized.text.length)
           throw new Error('Serialized block syntax is empty.');
         for (const property of serialized.properties) {

@@ -1,4 +1,5 @@
-import type { MarkdownLayoutOptions } from '@docx-editor.dev/docx-to-markdown';
+import type { MarkdownLayoutOptions, MarkdownImageAsset } from '@docx-editor.dev/docx-to-markdown';
+import { nativeImageAssets } from '../projection/inline-image-assets';
 import {
   openDocumentForExport,
   type ExportSemanticLayout,
@@ -28,6 +29,8 @@ export type ReviewViewOptions = Pick<
   readonly pendingProperties?: readonly PendingPropertyProposal[];
   /** GFM by default; auto preserves native merged and structured cells with HTML. */
   readonly tableSyntax?: MarkdownLayoutOptions['tableSyntax'];
+  /** Include bounded embedded image attachments from this exact projected review view. */
+  readonly includeImageAssets?: boolean;
 };
 
 /** Native immutable read records. These contain no live editor or export session. */
@@ -36,6 +39,7 @@ export interface ReviewDocumentView {
   readonly revision: RevisionToken;
   readonly layout: ExportSemanticLayout;
   readonly projection: MdxProjection;
+  readonly media?: readonly MarkdownImageAsset[];
 }
 
 export type ReviewViewResult =
@@ -96,7 +100,12 @@ export async function readNativeReviewView(
           packageRevision: () => expected.revision,
         };
   const displayMode = kind === 'committed' ? 'original' : 'proposed';
-  const { pendingProperties: _pendingProperties, tableSyntax, ...nativeOptions } = options;
+  const {
+    pendingProperties: _pendingProperties,
+    tableSyntax,
+    includeImageAssets,
+    ...nativeOptions
+  } = options;
   const opened = openDocumentForExport(layoutSource, {
     ...nativeOptions,
     displayMode,
@@ -121,6 +130,7 @@ export async function readNativeReviewView(
         revision: expected,
         layout,
         projection: projected.projection,
+        ...(includeImageAssets ? { media: nativeImageAssets(presence.pkg, layout) } : {}),
       }),
     };
   } catch (cause) {
