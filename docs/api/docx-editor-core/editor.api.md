@@ -2926,8 +2926,9 @@ export interface PaginatedSurface extends SurfaceBlockReservations, SurfaceInden
     };
     proposeTextChange(kind: 'insertion' | 'deletion' | 'replacement', text: string, author?: string): boolean;
     publishedLayout(): SemanticLayout;
-    // (undocumented)
-    redo(): void;
+    redo(options?: {
+        readonly preserveDomSelection?: boolean;
+    }): void;
     refreshRefFieldResults(): boolean;
     refreshTableInteractionLabels(): void;
     // (undocumented)
@@ -3038,7 +3039,9 @@ export interface PaginatedSurface extends SurfaceBlockReservations, SurfaceInden
     toggleRunProperty(localName: string, attributes?: Record<string, string>): string | null;
     // (undocumented)
     type(text: string): void;
-    undo(): void;
+    undo(options?: {
+        readonly preserveDomSelection?: boolean;
+    }): void;
 }
 
 // @public

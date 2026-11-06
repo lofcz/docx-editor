@@ -274,6 +274,8 @@ If you paint interactive controls inside a page, such as a form beside a control
 
 For an uncommitted local draft, also add `data-docx-local-draft=""` inside the editor's host. For a portal outside that host, set the attribute value to the owning collaboration session's `sessionId`. While that draft has focus, the editor withdraws only its owner's remote selection. Document focus restores canonical presence. Ordinary toolbar controls keep their existing behavior. Do not mark a live editing projection that publishes canonical selection positions as a local draft.
 
+Host editing projections can keep their own DOM selection during native history changes. Call `surface.undo({ preserveDomSelection: true })` or `surface.redo({ preserveDomSelection: true })`. Then map `surface.state().selection` into the projection. The canonical selection remains authoritative and supplies collaboration presence. Omit the option to restore the native document selection.
+
 ## See also
 
 - [Content controls in the Editing API](/docs/2.x/editor-api/content-controls)

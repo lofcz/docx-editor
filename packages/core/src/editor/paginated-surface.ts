@@ -9,7 +9,7 @@ import {
   unsupportedElementPaintOptions,
   validateUnsupportedElementRules,
 } from './unsupported-element-state.ts';
-import { DocumentSelectionHistory } from './document-selection-history.ts';
+import { DocumentSelectionHistory, selectionAfterHistory } from './document-selection-history.ts';
 import { timedLayout, timedPress } from './surface-timing.ts';
 import {
   armedFormatAt,
@@ -703,7 +703,7 @@ export function mountPaginatedSurface(
     () => partOfNodeId(session, selection.head.paragraphId) ?? session.part(),
     () => session.packageRevision()
   );
-  function moveDocumentHistory(direction: 'undo' | 'redo'): void {
+  function moveDocumentHistory(direction: 'undo' | 'redo', preserveDomSelection = false): void {
     let mark: ReturnType<TreeDocxSession['undo']> = null;
     // The remote caret takes the commit a collaboration step makes for history, not a peer's.
     if (collaborationSession) remoteCaret.expectHistory(true);
@@ -720,17 +720,21 @@ export function mountPaginatedSurface(
     }
     if (!result.changed) return;
     reportEdit();
-    // A shared undo restores the selection its step was made from, carried across the text
-    // peers changed since.
-    const carried =
-      direction === 'undo' ? historySelectionOf(collaborationSession, collaborationPort) : null;
-    restoreSelection(carried ?? result.selection ?? mark);
+    // Shared history carries its recorded selection across peers' later character edits.
+    const carried = historySelectionOf(collaborationSession, collaborationPort);
+    restoreSelection(carried ?? result.selection ?? mark, preserveDomSelection);
   }
-  function restoreCaretFormat(value: CaretFormatSnapshot): void {
+  function restoreCaretFormat(value: CaretFormatSnapshot, preserveDomSelection = false): void {
     selectionSync.noteModelMoved();
     flushLayout();
     const restored = restoreCaretFormatSnapshot(value, editingLayout(), paragraphOrder());
-    setSelection(restored.selection);
+    setSelection(
+      restored.selection,
+      false,
+      preserveDomSelection ? 'none' : 'caret',
+      undefined,
+      preserveDomSelection
+    );
     pendingFormats = restored.format;
     caret.update();
     options.onChange?.(currentState());
@@ -5547,7 +5551,7 @@ export function mountPaginatedSurface(
     setCellSelection,
     layoutSession: () => layoutSession,
 
-    undo: () => {
+    undo: (historyOptions) => {
       // Undo is a WRITE. It reached the session directly, so a document the toolbar called
       // read-only silently rewound under the reader's hands — the one lane that walked past
       // `applyOps`, `applyPmDoc` and `commitReviewOps` alike.
@@ -5561,9 +5565,14 @@ export function mountPaginatedSurface(
       flushTypeBuffer();
       typingHistory.end();
       collaborationSession?.flushPendingJournals();
-      caretFormatHistory.step('undo', restoreCaretFormat, () => moveDocumentHistory('undo'));
+      const preserve = historyOptions?.preserveDomSelection;
+      caretFormatHistory.step(
+        'undo',
+        (value) => restoreCaretFormat(value, preserve),
+        () => moveDocumentHistory('undo', preserve)
+      );
     },
-    redo: () => {
+    redo: (historyOptions) => {
       if (editingMode === 'view' || refreshWriteBlocked(container)) {
         lastRejection = refuse(VIEWING_REFUSAL);
         options.onChange?.(currentState());
@@ -5572,7 +5581,12 @@ export function mountPaginatedSurface(
       flushTypeBuffer();
       typingHistory.end();
       collaborationSession?.flushPendingJournals();
-      caretFormatHistory.step('redo', restoreCaretFormat, () => moveDocumentHistory('redo'));
+      const preserve = historyOptions?.preserveDomSelection;
+      caretFormatHistory.step(
+        'redo',
+        (value) => restoreCaretFormat(value, preserve),
+        () => moveDocumentHistory('redo', preserve)
+      );
     },
     sectionAtPage,
     activeScope: () => {
@@ -5846,7 +5860,8 @@ export function mountPaginatedSurface(
    * selection — so the caret stays where the user left it rather than jumping to the top.
    */
   function restoreSelection(
-    mark: { paragraphId: string; start: number; end: number } | SemanticSelection | null
+    mark: { paragraphId: string; start: number; end: number } | SemanticSelection | null,
+    preserveDomSelection = false
   ): void {
     // History restores text, input locale, and selection together. Retire pending typing
     // formats so the restored caret cannot inherit formatting armed against the old tree.
@@ -5858,28 +5873,15 @@ export function mountPaginatedSurface(
     // to offsets in the one that replaced it.
     selectionSync.noteModelMoved();
     flushLayout();
-    if (!mark) {
-      // Commands without selection metadata still need a caret within the restored tree.
-      setSelection(clampedToDocument(editingLayout(), paragraphOrder(), selection));
-      return;
-    }
-    if ('anchor' in mark) {
-      const order = paragraphOrder();
-      const local =
-        !collaborationSession &&
-        [mark.anchor, mark.head].every((p) => order.includes(p.paragraphId));
-      setSelection(local ? mark : clampedToDocument(editingLayout(), order, mark));
-      return;
-    }
-    const restored = {
-      anchor: { paragraphId: mark.paragraphId, offset: mark.start },
-      head: { paragraphId: mark.paragraphId, offset: mark.end },
-    };
-    // Another story's mark must stay outside the active editable region.
+    const order = paragraphOrder();
     setSelection(
-      paragraphOrder().includes(mark.paragraphId)
-        ? restored
-        : clampedToDocument(editingLayout(), paragraphOrder(), restored)
+      selectionAfterHistory(mark, selection, order, !!collaborationSession, (next) =>
+        clampedToDocument(editingLayout(), order, next)
+      ),
+      false,
+      preserveDomSelection ? 'none' : 'caret',
+      undefined,
+      preserveDomSelection
     );
   }
 

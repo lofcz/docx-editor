@@ -3,6 +3,27 @@ import { findNode, paraIdOf } from '../store/index.ts';
 import type { OoxmlPart } from '../store/package/ooxml-tree.ts';
 import { undoHistoryPosition } from '../store/store/undo-history-position.ts';
 
+/** Resolve a history mark in the active story without choosing a DOM selection owner. */
+export function selectionAfterHistory(
+  mark: { paragraphId: string; start: number; end: number } | SemanticSelection | null,
+  current: SemanticSelection,
+  order: readonly string[],
+  shared: boolean,
+  clamp: (selection: SemanticSelection) => SemanticSelection
+): SemanticSelection {
+  if (!mark) return clamp(current);
+  if ('anchor' in mark) {
+    const local = !shared && [mark.anchor, mark.head].every((p) => order.includes(p.paragraphId));
+    return local ? mark : clamp(mark);
+  }
+  const restored = {
+    anchor: { paragraphId: mark.paragraphId, offset: mark.start },
+    head: { paragraphId: mark.paragraphId, offset: mark.end },
+  };
+  // Another story's mark stays outside the active editable region.
+  return order.includes(mark.paragraphId) ? restored : clamp(restored);
+}
+
 interface SavedPosition {
   readonly nodeId: string;
   readonly stableId: string | null;

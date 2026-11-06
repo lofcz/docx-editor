@@ -1,0 +1,15 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Surface history always claimed the document DOM selection. Shared redo ignored its mapped selection.",
+  "after": "Host projections can preserve DOM selection during undo and redo. Shared history uses its mapped selection in both directions.",
+  "reason": "Only local selection restoration changes. Existing history metadata, shared fields, operations, and saved room formats remain unchanged.",
+  "tests": [
+    "packages/core/src/editor/__tests__/host-ui-selection.test.ts",
+    "packages/core/src/editor/__tests__/document-selection-history.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-host-window-move.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-typing-history.test.ts"
+  ],
+  "changeset": "host-projection-history-selection",
+  "migration": null
+}

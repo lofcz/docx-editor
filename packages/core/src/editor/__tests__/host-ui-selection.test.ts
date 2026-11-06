@@ -60,6 +60,64 @@ function mounted() {
 }
 
 describe('host UI selections stay outside the document selection', () => {
+  test('history restores canonical positions without claiming a host projection selection', () => {
+    const { surface, container, field } = mounted();
+    try {
+      const first = surface.session.paragraphIds()[0]!;
+      const before = {
+        anchor: { paragraphId: first, offset: 1 },
+        head: { paragraphId: first, offset: 3 },
+      };
+      surface.setSelection(before);
+      surface.type('XYZ');
+      surface.flushPendingInput();
+      const after = surface.state().selection;
+      // A portal projection is outside paint, so history cannot remove its test DOM.
+      const label = document.createTextNode('host source');
+      field.parentElement!.append(label);
+      container.append(field.parentElement!);
+      field.focus();
+      const range = document.createRange();
+      range.setStart(label, 2);
+      range.setEnd(label, 6);
+      const dom = document.getSelection()!;
+      dom.removeAllRanges();
+      dom.addRange(range);
+      for (const direction of ['undo', 'redo'] as const) {
+        surface[direction]({ preserveDomSelection: true });
+        expect(surface.state().selection).toEqual(direction === 'undo' ? before : after);
+        expect(surface.session.bodyText()).toBe(
+          direction === 'undo' ? 'alpha\nbeta' : 'aXYZha\nbeta'
+        );
+        expect(document.activeElement === field).toBe(true);
+        expect(dom.anchorNode === label).toBe(true);
+        expect(dom.anchorOffset).toBe(2);
+        expect(dom.focusOffset).toBe(6);
+      }
+      // Existing callers still claim the restored document range.
+      surface.undo();
+      expect(surface.state().selection).toEqual(before);
+      expect(dom.anchorNode).not.toBe(label);
+      // Caret-format entries use the same explicit ownership contract.
+      const end = { paragraphId: first, offset: 5 };
+      surface.setSelection({ anchor: end, head: end });
+      surface.toggleRunProperty('b');
+      field.focus();
+      dom.removeAllRanges();
+      dom.addRange(range);
+      for (const direction of ['undo', 'redo'] as const) {
+        surface[direction]({ preserveDomSelection: true });
+        expect(surface.formatting().bold).toBe(direction === 'redo');
+        expect(surface.state().selection).toEqual({ anchor: end, head: end });
+        expect(document.activeElement === field).toBe(true);
+        expect(dom.anchorNode === label).toBe(true);
+      }
+    } finally {
+      surface.destroy();
+      container.remove();
+    }
+  });
+
   test('a host projection reports canonical selection without claiming its DOM selection', async () => {
     const { surface, container, ui, field } = mounted();
     try {

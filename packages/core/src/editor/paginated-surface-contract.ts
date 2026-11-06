@@ -774,9 +774,15 @@ export interface PaginatedSurface extends SurfaceBlockReservations, SurfaceInden
   /** Remove the selection, if any. Returns whether anything was deleted. */
   deleteSelection(): boolean;
   navigate(command: NavigationCommand, extend?: boolean): void;
-  /** Reverse the last history entry and put the caret back where it was made. */
-  undo(): void;
-  redo(): void;
+  /**
+   * Reverse the last history entry and restore its canonical selection.
+   * A host editing projection can preserve its DOM selection, focus, and scroll.
+   * The host then maps the restored canonical selection into its own projection.
+   * The default claims the native document selection.
+   */
+  undo(options?: { readonly preserveDomSelection?: boolean }): void;
+  /** Restore the next history entry with the same selection ownership options as undo. */
+  redo(options?: { readonly preserveDomSelection?: boolean }): void;
   /**
    * Refresh table insertion furniture labels without remounting or relayout.
    *

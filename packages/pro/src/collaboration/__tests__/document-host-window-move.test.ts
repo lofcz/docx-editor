@@ -105,6 +105,94 @@ async function pair(peerHarness = harness) {
   return { alice, bob, text, converge, move, peers };
 }
 
+test.each([
+  [41, 73],
+  [73, 41],
+])(
+  'projection history preserves its window selection through peer edits, reconnect, and deletion (%i/%i)',
+  async (aliceId, bobId) => {
+    const projectionHarness = createPeerHarness(
+      'projection-history',
+      { offlineEditing: true },
+      { alice: aliceId, bob: bobId }
+    );
+    cleanups.push(() => projectionHarness.cleanup());
+    const { alice, bob, text, converge, move, peers } = await pair(projectionHarness);
+    caret(alice.editor, 1, 3);
+    await typeSlowly(alice, ' A');
+    converge();
+    peers.pause();
+    caret(bob.editor, 1, 0);
+    await typeSlowly(bob, 'peer ');
+    const view = popout();
+    move(alice, slotIn(view.document));
+    peers.resume();
+    converge();
+    expect(text(alice)).toBe('one\npeer two A');
+
+    const field = view.document.createElement('div');
+    field.contentEditable = 'true';
+    field.setAttribute('data-docx-host-ui', '');
+    const label = view.document.createTextNode('projected source');
+    field.append(label);
+    alice.container.append(field);
+    field.focus();
+    const dom = view.document.getSelection()!;
+    const range = view.document.createRange();
+    range.setStart(label, 2);
+    range.setEnd(label, 6);
+    dom.removeAllRanges();
+    dom.addRange(range);
+    const preserved = () => {
+      expect(view.document.activeElement === field).toBe(true);
+      expect(dom.anchorNode === label).toBe(true);
+      expect(dom.anchorOffset).toBe(2);
+      expect(dom.focusOffset).toBe(6);
+    };
+    const surface = alice.editor.surface!;
+    const paragraphId = surface.session.paragraphIds()[1]!;
+    surface.undo({ preserveDomSelection: true });
+    converge();
+    expect(text(alice)).toBe('one\npeer two');
+    expect(surface.state().selection).toEqual({
+      anchor: { paragraphId, offset: 8 },
+      head: { paragraphId, offset: 8 },
+    });
+    preserved();
+    surface.redo({ preserveDomSelection: true });
+    converge();
+    expect(text(alice)).toBe('one\npeer two A');
+    expect(surface.state().selection).toEqual({
+      anchor: { paragraphId, offset: 10 },
+      head: { paragraphId, offset: 10 },
+    });
+    preserved();
+
+    const bobSurface = bob.editor.surface!;
+    const ids = bobSurface.session.paragraphIds();
+    bobSurface.setSelection({
+      anchor: { paragraphId: ids[0]!, offset: 3 },
+      head: { paragraphId: ids[1]!, offset: 10 },
+    });
+    expect(bobSurface.deleteSelection()).toBe(true);
+    converge();
+    expect(text(alice)).toBe('one');
+    surface.undo({ preserveDomSelection: true });
+    converge();
+    expect(text(alice)).toBe('one');
+    expect(surface.session.paragraphIds()).toContain(surface.state().selection.head.paragraphId);
+    preserved();
+    bobSurface.undo();
+    converge();
+    expect(text(alice)).toBe('one\npeer two');
+    preserved();
+    const reopened = mount({ document: new Uint8Array(await alice.editor.save()) });
+    expect(saveReopenDigest(reopened.editor.surface!.session.currentPackage())).toEqual(
+      saveReopenDigest(bobSurface.session.currentPackage())
+    );
+  }
+);
+
 test('concurrent typing converges while one peer types in a pop-out, and its undo stays shared', async () => {
   const { alice, bob, text, converge, move } = await pair();
   caret(alice.editor, 0, 3);
