@@ -1,4 +1,8 @@
-import type { DocxEditorInstance } from '@docx-editor.dev/core/editor';
+import {
+  beginHistoryGroupFrames,
+  type DocxEditorInstance,
+  type HistoryGroup,
+} from '@docx-editor.dev/core/editor';
 import {
   applyTreeOp,
   contentControlPropertiesOf,
@@ -104,9 +108,15 @@ export function updateCodeSource(
     readonly blockId: string;
     readonly expectedSource: string;
     readonly value: string;
+    /** One host input gesture can span multiple canonical transactions. */
+    readonly historyGroup?: HistoryGroup;
   }
 ): CodeEditResult {
-  return commitCodeSource(editor, request);
+  if (!request.historyGroup) return commitCodeSource(editor, request);
+  const frames = beginHistoryGroupFrames(editor, request.historyGroup);
+  return frames
+    ? frames.run(() => commitCodeSource(editor, request))
+    : fail('invalid-input', 'The code history group is closed or belongs to another editor.');
 }
 
 /** Existing complete-payload callers share the source transaction instead of replacing its paragraphs. */

@@ -22,6 +22,90 @@ const read = (editor: DocxEditorInstance) => {
   return { block, source: native!.value, ids: native!.paragraphs.map((paragraph) => paragraph.id) };
 };
 
+test('inline code input groups native source history independently from peer language', async () => {
+  const pair = await createTwoEditorFixture({ document: await codeDocument() });
+  const [alice, bob] = pair.editors as [DocxEditorInstance, DocxEditorInstance];
+  try {
+    const foreign = bob.beginHistoryGroup();
+    const revision = alice.surface!.session.packageRevision();
+    expect(
+      updateCodeSource(alice, {
+        blockId: 'code',
+        expectedSource: ORIGINAL,
+        value: 'refused',
+        historyGroup: foreign,
+      })
+    ).toMatchObject({ success: false, code: 'invalid-input' });
+    expect(alice.surface!.session.packageRevision()).toBe(revision);
+    foreign.end();
+    const historyGroup = alice.beginHistoryGroup();
+    let source = ORIGINAL;
+    for (const suffix of [' A', ' AB', ' ABC']) {
+      const value = `${ORIGINAL}${suffix}`;
+      expect(
+        updateCodeSource(alice, {
+          blockId: 'code',
+          expectedSource: source,
+          value,
+          historyGroup,
+        })
+      ).toMatchObject({ success: true });
+      source = value;
+    }
+    historyGroup.end();
+    await pair.settle();
+    expect(updateCodeLanguage(bob, { blockId: 'code', language: 'typescript' })).toMatchObject({
+      success: true,
+    });
+    await pair.settle();
+    expect(alice.exec({ type: 'undo' }).ok).toBe(true);
+    await pair.settle();
+    for (const editor of pair.editors) {
+      expect(read(editor)!.source).toBe(ORIGINAL);
+      expect(read(editor)!.block.payload.attributes.language).toBe('typescript');
+    }
+    expect(alice.exec({ type: 'redo' }).ok).toBe(true);
+    await pair.settle();
+    for (const editor of pair.editors) expect(read(editor)!.source).toBe(source);
+  } finally {
+    pair.destroy();
+  }
+});
+
+test('inline code input uses native groups without collaboration and refuses closed handles', async () => {
+  const container = document.createElement('div');
+  document.body.append(container);
+  const editor = createDocxEditor({ container, document: await codeDocument(), author: 'Alice' });
+  try {
+    const historyGroup = editor.beginHistoryGroup();
+    let source = ORIGINAL;
+    for (const suffix of [' A', ' AB', ' ABC']) {
+      const value = `${ORIGINAL}${suffix}`;
+      expect(
+        updateCodeSource(editor, { blockId: 'code', expectedSource: source, value, historyGroup })
+      ).toMatchObject({ success: true });
+      source = value;
+    }
+    historyGroup.end();
+    expect(
+      updateCodeSource(editor, {
+        blockId: 'code',
+        expectedSource: source,
+        value: 'refused',
+        historyGroup,
+      })
+    ).toMatchObject({ success: false, code: 'invalid-input' });
+    expect(read(editor)!.source).toBe(source);
+    expect(editor.exec({ type: 'undo' }).ok).toBe(true);
+    expect(read(editor)!.source).toBe(ORIGINAL);
+    expect(editor.exec({ type: 'redo' }).ok).toBe(true);
+    expect(read(editor)!.source).toBe(source);
+  } finally {
+    editor.destroy();
+    container.remove();
+  }
+});
+
 test('the existing atomic API and code payload helper retain v2 metadata-only writes without source history', async () => {
   const pair = await createTwoEditorFixture({ document: await codeDocument() });
   const [alice, bob] = pair.editors as [DocxEditorInstance, DocxEditorInstance];
