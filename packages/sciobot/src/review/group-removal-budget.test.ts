@@ -1,8 +1,33 @@
 import { expect, test } from 'bun:test';
-import { applyTreeOp, withPart, writeOoxmlPackage } from '@docx-editor.dev/core/store';
+import {
+  applyTreeOp,
+  withBinaryPart,
+  withPart,
+  writeOoxmlPackage,
+} from '@docx-editor.dev/core/store';
+import { galleryPng } from '../../test/support/native-gallery';
 import { crossStoryGroupFixture } from '../../test/support/group-decisions';
 import { readReviewGroups } from './groups';
 import { groupRemovalBudget } from './group-removal-budget';
+
+test('new image descriptors reserve their one retained override flag without a general allowance', () => {
+  const before = crossStoryGroupFixture();
+  const once = withBinaryPart(before, '/word/media/new.png', galleryPng, 'image/png');
+  expect(groupRemovalBudget(before, once)).toBe(1);
+  expect(groupRemovalBudget(once, once)).toBe(0);
+  expect(
+    groupRemovalBudget(once, withBinaryPart(once, '/word/media/new.png', galleryPng, 'image/png'))
+  ).toBe(0);
+  const twice = withBinaryPart(once, '/word/media/second.png', galleryPng, 'image/png');
+  expect(groupRemovalBudget(once, twice)).toBe(1);
+  expect(groupRemovalBudget(before, twice)).toBe(2);
+  expect(
+    groupRemovalBudget(
+      before,
+      withBinaryPart(before, '/opaque.bin', galleryPng, 'application/octet-stream')
+    )
+  ).toBe(0);
+});
 
 test('the canonical removal budget counts the two unwrapped Word revision wrappers, preserving their text and other groups', () => {
   const before = crossStoryGroupFixture(),

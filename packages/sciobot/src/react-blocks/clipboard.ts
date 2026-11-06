@@ -230,7 +230,7 @@ export function repairPastedBlocks(
   const records = [...remapped].map(([old, id]) => {
     const source = known.get(old)!;
     let payload =
-      source.payload.version === 2
+      source.payload.version === 2 || source.payload.version === 3
         ? copiedGalleryPayload(source.payload, remapped)
         : (remapValue(source.payload, remapped) as BlockPayload);
     const image = pasted.filter(

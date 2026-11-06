@@ -1,4 +1,9 @@
-import type { OoxmlNode, OoxmlPackage, OoxmlPart } from '@docx-editor.dev/core/store';
+import {
+  resolveContentType,
+  type OoxmlNode,
+  type OoxmlPackage,
+  type OoxmlPart,
+} from '@docx-editor.dev/core/store';
 
 function nodeIds(root: OoxmlNode): Set<string> {
   const ids = new Set<string>(),
@@ -28,6 +33,18 @@ export function groupRemovalBudget(before: OoxmlPackage, after: OoxmlPackage): n
   let count = 0;
   for (const [name, part] of before.parts) {
     count += partRemovalBudget(part, after.parts.get(name));
+  }
+  // Native binary descriptors also carry one owned boolean: retainedOverride. Their
+  // publication integrates that flag even when the command removes no canonical node.
+  for (const [name, bytes] of after.partBytes) {
+    const type = resolveContentType(after.contentTypes, name);
+    if (!type.ok || !type.contentType.startsWith('image/')) continue;
+    const normalized = '/' + name.replace(/^\//, '');
+    if (
+      before.partBytes.get(name) !== bytes ||
+      before.contentTypes.overrides.get(normalized) !== after.contentTypes.overrides.get(normalized)
+    )
+      count++;
   }
   return count;
 }
