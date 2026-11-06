@@ -2,7 +2,11 @@ const typedArrayPrototype = Object.getPrototypeOf(Uint8Array.prototype) as objec
 const readLength = Object.getOwnPropertyDescriptor(typedArrayPrototype, 'length')!.get!;
 const readByteLength = Object.getOwnPropertyDescriptor(typedArrayPrototype, 'byteLength')!.get!;
 
-/** Authenticate and copy bounded bytes across host realms without caller-owned getters or iterators. */
+/**
+ * Copy genuine one-byte typed views into the Uint8Array resource contract.
+ * Signed and clamped byte views preserve their eight-bit values at runtime.
+ * Intrinsic access excludes caller-owned getters, iterators, and wider element types.
+ */
 export function copyImageBytes(value: unknown, maximum: number): Uint8Array {
   if (!ArrayBuffer.isView(value)) throw Error('Image resources require a genuine byte array.');
   const length = readLength.call(value) as unknown;

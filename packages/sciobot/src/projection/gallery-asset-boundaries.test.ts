@@ -154,6 +154,19 @@ test('bounded asset preparation accepts a foreign byte realm and refuses spoofed
     galleryDecodePort
   );
   expect(resources.get(path)!.bytes).toEqual(galleryPng);
+  for (const type of ['Uint8Array', 'Uint8ClampedArray', 'Int8Array']) {
+    const bytes = runInNewContext(`new ${type}(bytes)`, {
+      bytes: [...galleryPng],
+    }) as Uint8Array;
+    for (const key of ['length', 'byteLength', Symbol.iterator])
+      Object.defineProperty(bytes, key, {
+        get() {
+          throw Error('Caller-owned byte access must not run.');
+        },
+      });
+    const copy = imageAssetBundleResolver([{ id, path, bytes, mimeType: 'image/png' }]);
+    expect((await copy(path)).bytes).toEqual(galleryPng);
+  }
   for (const bytes of [
     new Uint16Array(4),
     new DataView(new ArrayBuffer(4)),
