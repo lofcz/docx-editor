@@ -18,6 +18,7 @@ import {
 import type { NativeEditFailure } from '../contracts/document';
 import { buildBlockIndex } from './block-index';
 import { readColumnGeometry } from './column-geometry';
+import { blockMovementRangeRefusal } from './selection-move-ranges';
 
 export interface ColumnContentMove {
   readonly groupId: string;
@@ -157,6 +158,9 @@ export function moveColumnContent(
     return withPart(working, current);
   };
   try {
+    const prepared = change(pkg);
+    const rangeRefusal = blockMovementRangeRefusal(part, prepared.parts.get(part.name)!);
+    if (rangeRefusal) return fail('unsupported-operation', rangeRefusal);
     const result = surface.applyAutomationOps(() => [], { kind: 'body' }, [change], false, true);
     if (result.rejected || !result.committed)
       return fail(

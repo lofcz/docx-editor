@@ -1,0 +1,14 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Private column movement could change native reference membership.",
+  "after": "Private column movement refuses reference splits before mutation and preserves complete ranges.",
+  "reason": "The private adapter reuses existing native operations and history. Shared fields and released package formats do not change.",
+  "tests": [
+    "packages/sciobot/src/blocks/column-movement-ranges.test.ts",
+    "packages/sciobot/src/blocks/columns.test.ts",
+    "packages/sciobot/src/blocks/selection-range-safety.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}
