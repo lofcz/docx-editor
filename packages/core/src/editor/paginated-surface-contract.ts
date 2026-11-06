@@ -221,8 +221,15 @@ export interface PaginatedSurface extends SurfaceBlockReservations, SurfaceInden
    * `block: 'nearest'`, so an already-visible target never yanks the viewport.
    */
   revealPosition(position: SemanticPosition, options?: RevealOptions): boolean;
-  /** Set the selection directly, for a host driving the surface programmatically. */
-  setSelection(next: SemanticSelection): void;
+  /**
+   * Set the canonical selection and publish presence. By default, claim the native DOM selection.
+   * A host-owned editing projection can preserve its DOM selection, focus, and scroll while reporting
+   * the corresponding canonical positions. This option never creates a separate model selection.
+   */
+  setSelection(
+    next: SemanticSelection,
+    options?: { readonly preserveDomSelection?: boolean }
+  ): void;
   /**
    * Select one painted drawing at its host paragraph, as a pointer press would.
    *

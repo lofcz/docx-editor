@@ -3015,7 +3015,9 @@ export interface PaginatedSurface extends SurfaceBlockReservations, SurfaceInden
         readonly pageHeightTwips?: number;
         readonly pageWidthTwips?: number;
     }): boolean;
-    setSelection(next: SemanticSelection): void;
+    setSelection(next: SemanticSelection, options?: {
+        readonly preserveDomSelection?: boolean;
+    }): void;
     setShowParagraphMarks(show: boolean): void;
     setTableInteractionLabel(resolver: (key: TableInteractionLabelKey) => string): void;
     setTocLabels(labels: NonNullable<PaginatedSurfaceOptions['tocLabels']>): void;

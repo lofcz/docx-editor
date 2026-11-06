@@ -3325,7 +3325,8 @@ export function mountPaginatedSurface(
     next: SemanticSelection,
     keepDesiredX = false,
     follow: CaretFollowMode = 'caret',
-    pointerCaret?: CaretGeometry
+    pointerCaret?: CaretGeometry,
+    preserveDomSelection = false
   ): void {
     // Compared BEFORE the flush below, which can itself move the caret.
     const moved = !selectionsEqual(next, selection);
@@ -3395,7 +3396,7 @@ export function mountPaginatedSurface(
     // asked to SHOW then highlighted nothing at all. A pointer or keyboard move already owns
     // the selection, so claiming changes nothing for them. In Chromium this write can
     // also focus the contenteditable; passive remounts must not claim the selection.
-    selectionSync.mirrorToDom(true);
+    if (!preserveDomSelection) selectionSync.mirrorToDom(true);
     followCaretIntoView(true, follow);
     renderOverlay();
     // A dismissal is dismissed for where the caret WAS; any move re-asks the question, which
@@ -5042,7 +5043,7 @@ export function mountPaginatedSurface(
     ...structure,
     ...format,
 
-    setSelection: (next) => {
+    setSelection: (next, selectionOptions) => {
       // An explicit host write that MOVES the caret is an intentional selection — a test or
       // an automation host addressing a drawing's anchor means the drawing. A same-position
       // write stays inert: the font-load remount restores the saved caret through here
@@ -5050,7 +5051,13 @@ export function mountPaginatedSurface(
       // (the carried initialDrawingSelectionIntent already preserves a real one).
       if (!selectionsEqual(next, selection)) setDrawingIntent({ kind: 'programmatic' }, false);
       remoteCaret.discard();
-      setSelection(next);
+      setSelection(
+        next,
+        false,
+        selectionOptions?.preserveDomSelection ? 'none' : 'caret',
+        undefined,
+        selectionOptions?.preserveDomSelection
+      );
     },
 
     selectDrawing(drawingNodeId, hostParagraphId) {

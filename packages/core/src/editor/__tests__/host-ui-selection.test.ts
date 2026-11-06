@@ -60,6 +60,44 @@ function mounted() {
 }
 
 describe('host UI selections stay outside the document selection', () => {
+  test('a host projection reports canonical selection without claiming its DOM selection', async () => {
+    const { surface, container, ui, field } = mounted();
+    try {
+      const [first, second] = surface.session.paragraphIds();
+      const label = document.createTextNode('host source');
+      ui.append(label);
+      field.focus();
+      const dom = document.createRange();
+      dom.setStart(label, 2);
+      dom.setEnd(label, 6);
+      const selection = document.getSelection()!;
+      selection.removeAllRanges();
+      selection.addRange(dom);
+      const revision = surface.session.packageRevision();
+      const canonical = {
+        anchor: { paragraphId: first!, offset: 2 },
+        head: { paragraphId: second!, offset: 1 },
+      };
+      surface.setSelection(canonical, { preserveDomSelection: true });
+      document.dispatchEvent(new Event('selectionchange'));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(surface.state().selection).toEqual(canonical);
+      expect(selection.anchorNode).toBe(label);
+      expect(selection.anchorOffset).toBe(2);
+      expect(selection.focusNode).toBe(label);
+      expect(selection.focusOffset).toBe(6);
+      expect(document.activeElement).toBe(field);
+      expect(surface.session.packageRevision()).toBe(revision);
+      // The existing entry point still claims native selection when the option is absent.
+      surface.setSelection(canonical);
+      expect(selection.anchorNode).not.toBe(label);
+      expect(surface.state().selection).toEqual(canonical);
+    } finally {
+      surface.destroy();
+      container.remove();
+    }
+  });
+
   test('marker reads text, element, and missing nodes', () => {
     const { surface, container, ui, field } = mounted();
     try {
