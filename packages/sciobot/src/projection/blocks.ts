@@ -1,4 +1,5 @@
 import { activeStorage } from '../registry/active';
+import { codeBlockForView } from './code-source-view';
 import { readColumnGeometry } from '../blocks/column-geometry';
 import { columnReadingLayout } from './column-reading-layout';
 import { activeMdxRegistry } from '../registry/active';
@@ -130,7 +131,14 @@ export function projectBlocks(
   );
   const anchors = new Map<string, Anchor>();
   const cellParagraphs = new Set<string>();
-  for (const block of index.byId.values()) {
+  for (const indexed of index.byId.values()) {
+    const block = codeBlockForView(pkg, indexed, layout.reviewDisplayMode);
+    if (!block)
+      return {
+        success: false,
+        code: 'unsupported-operation',
+        error: 'The native code revision view contains unsupported source.',
+      };
     const definition = definitions.get(block.payload.type);
     if (definition && block.partName === pkg.mainDocumentPart)
       anchors.set(block.controlId, {

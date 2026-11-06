@@ -14,6 +14,9 @@ import { updateCodeLanguage, updateCodeSource } from '../blocks/code-edit';
 import { nativeCodeSource } from '../blocks/code-native-source';
 import { codeSourceReviewLocks, stageTrackedCodeSource } from './code-source-review';
 import type { TrackedStageWriter } from './tracked-stage-writer';
+import { readCommittedView } from './committed-view';
+import { readWorkingView } from './working-view';
+import { propertyToken } from '../../test/support/property-execution';
 
 const ORIGINAL = 'one\nmiddle\nlast';
 const PROPOSED = 'one\n\tmid\ndle\nlast';
@@ -53,6 +56,33 @@ function state(editor: DocxEditorInstance) {
     working: nativeCodeSource(part, control, 'working')!,
   };
 }
+
+test('code review reads exact native source halves without publishing payload cache changes', async () => {
+  const pair = await createTwoEditorFixture({
+    document: await codeDocument(),
+    ownedAttributes: true,
+  });
+  try {
+    const editor = pair.editors[0]!;
+    transaction(editor, (writer) =>
+      stageTrackedCodeSource(writer, 'code', ORIGINAL, PROPOSED, attribution)
+    );
+    await pair.settle();
+    for (const peer of pair.editors) {
+      const before = peer!.surface!.session.currentPackage();
+      const committed = await readCommittedView(peer!.surface!.session, propertyToken(peer!));
+      const working = await readWorkingView(peer!.surface!.session, propertyToken(peer!));
+      if (!committed.success) throw Error(committed.error);
+      if (!working.success) throw Error(working.error);
+      expect(committed.view.projection.text).toContain('```python\n' + ORIGINAL + '\n```');
+      expect(working.view.projection.text).toContain('```python\n' + PROPOSED + '\n```');
+      expect(peer!.surface!.session.currentPackage()).toBe(before);
+      expect(state(peer!).block.payload.attributes.value).toBe(ORIGINAL);
+    }
+  } finally {
+    pair.destroy();
+  }
+});
 
 for (const clientIds of [
   [41, 73],
