@@ -3,7 +3,6 @@ import { WML_NAMESPACE_URI, type OoxmlNode } from '@docx-editor.dev/core/store';
 // These children carry document-wide identities, review ownership, or section boundaries.
 // A same-story range copy cannot duplicate them by changing only node and paragraph IDs.
 const SPECIAL_OWNERS = new Set([
-  'drawing',
   'pict',
   'object',
   'altChunk',

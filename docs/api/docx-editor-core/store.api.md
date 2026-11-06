@@ -1961,6 +1961,9 @@ export type FragmentPasteResult = (Extract<PackageTransactResult, {
 }>;
 
 // @public
+export function freshenCopiedDrawingPropertyIds(pkg: OoxmlPackage, blocks: readonly OoxmlNode[], maxNodes: number, maxDepth: number): readonly OoxmlNode[];
+
+// @public
 export function freshenCopiedRunOrigins(blocks: readonly OoxmlNode[], maxNodes: number, maxDepth: number): readonly OoxmlNode[];
 
 // @internal (undocumented)

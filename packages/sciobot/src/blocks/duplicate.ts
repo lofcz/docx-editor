@@ -5,6 +5,7 @@ import {
   createNodeIdAllocator,
   findNode,
   freshenCopiedRunOrigins,
+  freshenCopiedDrawingPropertyIds,
   insertChildren,
   parentNodeOf,
   usedParaIds,
@@ -23,6 +24,7 @@ import { copiedGalleryPayload, galleryRecordOrder } from './gallery-copy';
 import { resolveBlockSelectionRange } from './selection-range';
 import { blockRangeCopyRefusal } from './selection-copy-safety';
 import { ancestorContentWriteRefusal } from './ancestor-content-write';
+import { drawingCopyRefusal } from './selection-drawing-copy';
 
 export interface BlockDuplication {
   readonly controlId: string;
@@ -124,7 +126,7 @@ export type BlockSelectionDuplicateResult =
 
 /**
  * Copy a complete native sibling range after itself, with independent payload and review identities.
- * Ordinary ranges refuse drawings, document-wide references, section marks, and pending revisions.
+ * Ordinary ranges refuse unsupported drawings, document-wide references, section marks, and pending revisions.
  * A single registered block retains the existing registered-block copy support.
  */
 export function duplicateBlockSelection(
@@ -162,20 +164,28 @@ function duplicateSelection(
     return fail('invalid-input', 'The registered block is missing from the active story.');
   const range = resolveBlockSelectionRange(part, request.nodeIds);
   if (!range.success) return range;
+  const drawingRefusal = drawingCopyRefusal(pkg, part.name, range.nodes);
+  if (drawingRefusal) return fail('unsupported-operation', drawingRefusal);
+  // Pure preflight validates source identities before the caller allocates payload IDs.
+  // Placement repeats allocation inside the actual transaction's actor scope.
+  try {
+    freshenCopiedDrawingPropertyIds(pkg, range.nodes, 500_000, 64);
+  } catch (error) {
+    return fail('unsupported-operation', error instanceof Error ? error.message : String(error));
+  }
   const index = buildBlockIndex(pkg);
   const selected = new Set(range.nodes.map((node) => node.id));
+  const covered = (id: string) => {
+    for (let node = findNode(part, id); node; node = parentNodeOf(part, node.id))
+      if (selected.has(node.id)) return true;
+    return false;
+  };
   for (const block of index.byId.values()) {
-    if (
-      block.payload.version !== 3 ||
-      !['image_gallery', 'image_gallery_item'].includes(block.payload.type)
-    )
-      continue;
-    for (let node = findNode(part, block.controlId); node; node = parentNodeOf(part, node.id))
-      if (selected.has(node.id))
-        return fail(
-          'unsupported-operation',
-          'Embedded gallery duplication requires independent native drawing identities.'
-        );
+    if (block.payload.type !== 'image_gallery_item' || !covered(block.controlId)) continue;
+    const owner =
+      typeof block.payload.galleryId === 'string' && index.byId.get(block.payload.galleryId);
+    if (!owner || !covered(owner.controlId))
+      return fail('unsupported-operation', 'Copy gallery images together with their gallery.');
   }
   const registeredSingle =
     range.nodes.length === 1 &&
@@ -274,7 +284,8 @@ function duplicateSelection(
       used: new Set(usedParaIds(live.root)),
       seed: identitySeed,
     };
-    const nodes = templates.map((template) => withFreshIds(template, nextId, identity));
+    const independent = freshenCopiedDrawingPropertyIds(working, templates, 500_000, 64);
+    const nodes = independent.map((template) => withFreshIds(template, nextId, identity));
     insertedIds = nodes.map((node) => node.id);
     const placed = insertChildren(live, container.id, at + 1, nodes);
     if (!placed.ok) throw new Error('The copy was refused by the native store.');

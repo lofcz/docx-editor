@@ -1,0 +1,14 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Registered native gallery copies refuse, and ordinary ranges refuse native drawings.",
+  "after": "Supported embedded inline pictures copy with independent native drawing identities.",
+  "reason": "Copies reuse existing tree operations and actor-scoped drawing allocation. Shared schemas and room formats do not change.",
+  "tests": [
+    "packages/core/src/store/__tests__/copied-drawing-property-ids.test.ts",
+    "packages/sciobot/src/blocks/gallery-native-duplicate.test.ts",
+    "packages/sciobot/src/blocks/selection-drawing-copy.test.ts"
+  ],
+  "changeset": "copied-drawing-properties",
+  "migration": null
+}
