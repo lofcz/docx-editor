@@ -295,12 +295,14 @@ function removeTargets(
   // its last paragraph, so every intermediate operation meets the store's structural guards.
   if (range?.success) {
     const removedParagraphs = new Set(
-      range.nodes.flatMap((node) => storyParagraphs(node).map((p) => p.id))
+      range.nodes.flatMap((node) =>
+        node.kind === 'paragraph' ? [node.id] : storyParagraphs(node).map((p) => p.id)
+      )
     );
     const allParagraphsRemoved = surface.session
       .paragraphIds()
       .every((id) => removedParagraphs.has(id));
-    for (const owner of range.owners) {
+    const seedOwners = range.owners.filter((owner) => {
       const removedRoots = new Set(owner.nodes.map((node) => node.id));
       const remaining = owner.parent.children.filter((node) => !removedRoots.has(node.id));
       const ownerEmpty = !remaining.some((node) =>
@@ -310,7 +312,12 @@ function removeTargets(
         owner.parent.kind === 'tableCell' &&
         (!remaining.some((node) => node.kind === 'paragraph') ||
           remaining.at(-1)?.kind === 'table');
-      if (!allParagraphsRemoved && !ownerEmpty && !cellParagraphRequired) continue;
+      return ownerEmpty || cellParagraphRequired;
+    });
+    // Cell and nested-owner seeds also keep the story editable. Add a separate body-level
+    // position only when no selected owner already needs one.
+    if (!seedOwners.length && allParagraphsRemoved) seedOwners.push(range.owners[0]!);
+    for (const owner of seedOwners) {
       const original = findNode(part, surface.session.paragraphIds()[0]!);
       if (!original || original.kind !== 'paragraph')
         return fail('invalid-document', 'The selected range has no native paragraph template.');

@@ -47,6 +47,17 @@ for (const [kind, start, end] of boundaries)
         expect(canonicalOoxmlFingerprint(surface.session.part())).toBe(before);
         expect(surface.session.canUndo()).toBe(false);
       }
+      for (const nodeIds of [
+        [ids[0]!, ids[2]!],
+        [ids[1]!, ids[3]!],
+      ]) {
+        expect(moveBlockSelection(editor, { nodeIds, parentId, beforeId: null })).toMatchObject({
+          success: false,
+          code: 'unsupported-operation',
+        });
+        expect(canonicalOoxmlFingerprint(surface.session.part())).toBe(before);
+        expect(surface.session.canUndo()).toBe(false);
+      }
       for (const nodeIds of [[ids[1]!], [ids[3]!], ids.slice(1, 4)]) {
         expect(
           duplicateBlockSelection(editor, { nodeIds, allocateBlockId: () => 'unused' })

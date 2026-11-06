@@ -16,6 +16,7 @@ import {
 } from '../../test/support/native-gallery';
 import { duplicateBlockSelection } from './duplicate';
 import { isNativeGalleryCaption } from './gallery-native-record';
+import { removeBlockSelection } from './remove';
 
 function imageRange(pkg: OoxmlPackage) {
   const drawings = nativeGalleryDrawings(pkg);
@@ -106,6 +107,107 @@ for (const clientIds of [
         expect(semanticDigest(reopened.parts.values())).toEqual(
           semanticDigest(editor.surface!.session.currentPackage().parts.values())
         );
+      }
+      const saved = await pair.savedDigests();
+      expect(saved[0]).toEqual(saved[1]);
+    } finally {
+      pair.destroy();
+    }
+  });
+
+for (const clientIds of [
+  [41, 73],
+  [73, 41],
+] as const)
+  test(`disjoint image copies preserve unselected captions and independent resources (${clientIds})`, async () => {
+    const pair = await createTwoEditorFixture({
+      document: await nativeGalleryDocument(),
+      clientIds,
+      ownedAttributes: true,
+      editor: { imageDecodePort: galleryDecodePort },
+    });
+    try {
+      const [alice, bob] = pair.editors;
+      const source = alice!.surface!.session.currentPackage(),
+        sourcePart = alice!.surface!.session.part();
+      const pictures = nativeGalleryDrawings(source);
+      const nodeIds = [pictures[0]!, pictures.at(-1)!].map(
+        ({ block }) => parentNodeOf(sourcePart, block.controlId)!.id
+      );
+      const captionIds = imageRange(source).filter((id) =>
+        isNativeGalleryCaption(sourcePart, findNode(sourcePart, id)!)
+      );
+      const captions = captionIds.map((id) => paragraphTextOf(sourcePart, id)!);
+      const originalMedia = media(source);
+      pair.pause();
+      let a = 0,
+        b = 0;
+      const copied = duplicateBlockSelection(alice!, {
+        nodeIds,
+        allocateBlockId: (type) => `disjoint-a-${type}-${++a}`,
+      });
+      const peerCopy = duplicateBlockSelection(bob!, {
+        nodeIds,
+        allocateBlockId: (type) => `disjoint-b-${type}-${++b}`,
+      });
+      if (!copied.success) throw Error(copied.error);
+      if (!peerCopy.success) throw Error(peerCopy.error);
+      expect(copied.nodeIds).toHaveLength(2);
+      expect(peerCopy.nodeIds).toHaveLength(2);
+      expect(
+        bob!.surface!.applyAutomationOps(() => [
+          {
+            op: 'insertText',
+            paragraphId: captionIds[0]!,
+            offset: captions[0]!.length,
+            text: ' peer',
+          },
+        ]).committed
+      ).toBe(true);
+      pair.reconnect(clientIds[0] === 41 ? 0 : 1);
+      await pair.settle();
+      const check = (count: number) => {
+        for (const editor of pair.editors) {
+          const pkg = editor.surface!.session.currentPackage(),
+            ids = drawingIds(pkg);
+          expect(ids.nodes).toHaveLength(count);
+          expect(new Set(ids.nodes).size).toBe(count);
+          expect(new Set(ids.word).size).toBe(count);
+          expect(media(pkg)).toEqual(originalMedia);
+          expect(
+            editor
+              .surface!.session.paragraphIds()
+              .filter((id) =>
+                isNativeGalleryCaption(
+                  editor.surface!.session.part(),
+                  findNode(editor.surface!.session.part(), id)!
+                )
+              )
+          ).toEqual(captionIds);
+          expect(
+            captionIds.map((id) => paragraphTextOf(editor.surface!.session.part(), id))
+          ).toEqual([`${captions[0]} peer`, ...captions.slice(1)]);
+        }
+      };
+      check(7);
+      expect(alice!.exec({ type: 'undo' }).ok).toBe(true);
+      await pair.settle();
+      check(5);
+      expect(alice!.exec({ type: 'redo' }).ok).toBe(true);
+      await pair.settle();
+      check(7);
+      expect(removeBlockSelection(bob!, { nodeIds: [copied.nodeIds[0]!] }).success).toBe(true);
+      await pair.settle();
+      check(6);
+      expect(bob!.exec({ type: 'undo' }).ok).toBe(true);
+      await pair.settle();
+      check(7);
+      for (const editor of pair.editors) {
+        const reopened = openGallery(new Uint8Array(await editor.save())),
+          ids = drawingIds(reopened);
+        expect(ids.nodes).toHaveLength(7);
+        expect(new Set(ids.word).size).toBe(7);
+        expect(media(reopened)).toEqual(originalMedia);
       }
       const saved = await pair.savedDigests();
       expect(saved[0]).toEqual(saved[1]);

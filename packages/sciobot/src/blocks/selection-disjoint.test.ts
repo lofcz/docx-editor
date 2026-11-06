@@ -207,6 +207,42 @@ test('a protected later owner refuses disjoint commands before any history or co
   }
 });
 
+test('deleting all selected text keeps only required cell paragraphs without adding an outer gap', async () => {
+  const body = `${paragraph('A')}<w:tbl><w:tblPr/><w:tblGrid><w:gridCol w:w="2000"/></w:tblGrid><w:tr><w:tc><w:tcPr/>${paragraph('Cell')}</w:tc></w:tr></w:tbl>`;
+  const { editor, destroy } = mount(await bytes(body));
+  try {
+    const before = fingerprint(editor);
+    expect(
+      removeBlockSelection(editor, { nodeIds: [idFor(editor, 'A'), idFor(editor, 'Cell')] }).success
+    ).toBe(true);
+    expect(texts(editor)).toEqual(['']);
+    const root = bodyStoryRoot(part(editor))!;
+    expect(
+      root.kind !== 'textValue' && root.children.filter((node) => node.kind === 'paragraph')
+    ).toHaveLength(0);
+    expect(editor.exec({ type: 'undo' }).ok).toBe(true);
+    expect(fingerprint(editor)).toBe(before);
+  } finally {
+    destroy();
+  }
+});
+
+test('deleting the last text retains an editable position beside an empty native control', async () => {
+  const { editor, destroy } = mount(
+    await bytes(`${paragraph('A')}<w:sdt><w:sdtPr/><w:sdtContent/></w:sdt>`)
+  );
+  try {
+    const before = fingerprint(editor);
+    const removed = removeBlockSelection(editor, { nodeIds: [idFor(editor, 'A')] });
+    if (!removed.success) throw Error(removed.error);
+    expect(texts(editor)).toEqual(['']);
+    expect(editor.exec({ type: 'undo' }).ok).toBe(true);
+    expect(fingerprint(editor)).toBe(before);
+  } finally {
+    destroy();
+  }
+});
+
 for (const clientIds of [
   [41, 73],
   [73, 41],

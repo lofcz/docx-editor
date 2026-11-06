@@ -1,8 +1,14 @@
 import { expect, test } from 'bun:test';
 import {
   canonicalOoxmlFingerprint,
+  applyTreeOp,
+  bodyStoryRoot,
   findNode,
+  paragraphTextOf,
   semanticDigest,
+  storyParagraphs,
+  withPart,
+  writeOoxmlPackage,
   type OoxmlPackage,
 } from '@docx-editor.dev/core/store';
 import { createTwoEditorFixture } from '../../test/support/collaboration';
@@ -18,8 +24,9 @@ import { buildBlockIndex } from './block-index';
 import { duplicateBlock, duplicateBlockSelection } from './duplicate';
 import { groupAdjacentImages } from './gallery-group';
 import { readGallery, updateGallery } from './gallery';
-import { removeBlock } from './remove';
+import { removeBlock, removeBlockSelection } from './remove';
 import { readGalleryImageAsset } from './gallery-native-asset';
+import { docxFixture } from '../../test/support/document';
 
 function pictureIds(pkg: OoxmlPackage) {
   const all = [...pkg.parts.values()].flatMap((part) => galleryDescendants(part.root));
@@ -146,6 +153,104 @@ for (const clientIds of [
         expect(ids.word).toHaveLength(6);
         expect(new Set(ids.word).size).toBe(6);
         expect(media(reopened)).toEqual(sourceMedia);
+      }
+      const saved = await pair.savedDigests();
+      expect(saved[0]).toEqual(saved[1]);
+    } finally {
+      pair.destroy();
+    }
+  });
+
+for (const clientIds of [
+  [41, 73],
+  [73, 41],
+] as const)
+  test(`disjoint gallery and paragraph copies retain typed image ownership and unselected gaps (${clientIds})`, async () => {
+    const original = openGallery(await nativeGalleryDocument()),
+      part = original.parts.get(original.mainDocumentPart)!;
+    const extra = openGallery(
+      docxFixture('<w:p><w:r><w:t>Gap</w:t></w:r></w:p><w:p><w:r><w:t>Copy tail</w:t></w:r></w:p>')
+    );
+    const inserted = applyTreeOp(part, {
+      op: 'insertParagraphs',
+      parentId: bodyStoryRoot(part)!.id,
+      beforeId: null,
+      paragraphs: storyParagraphs(bodyStoryRoot(extra.parts.get(extra.mainDocumentPart)!)!).filter(
+        (node) => node.kind === 'paragraph'
+      ),
+    });
+    if (!inserted.ok) throw Error(inserted.reason);
+    const pair = await createTwoEditorFixture({
+      document: writeOoxmlPackage(withPart(original, inserted.part)),
+      clientIds,
+      ownedAttributes: true,
+      editor: { imageDecodePort: galleryDecodePort },
+    });
+    try {
+      const [alice, bob] = pair.editors;
+      const grouped = groupAdjacentImages(alice!, {
+        drawingNodeId: nativeGalleryDrawings(alice!.surface!.session.currentPackage())[0]!.drawing
+          .id,
+      });
+      if (!grouped.success) throw Error(grouped.error);
+      await pair.settle();
+      const pkg = alice!.surface!.session.currentPackage(),
+        source = readGallery(pkg, grouped.blockId)!;
+      const tail = alice!
+        .surface!.session.paragraphIds()
+        .find((id) => paragraphTextOf(alice!.surface!.session.part(), id) === 'Copy tail')!;
+      const gap = alice!
+        .surface!.session.paragraphIds()
+        .find((id) => paragraphTextOf(alice!.surface!.session.part(), id) === 'Gap')!;
+      const sourceMedia = media(pkg);
+      pair.pause();
+      let serial = 0;
+      const copied = duplicateBlockSelection(alice!, {
+        nodeIds: [tail, source.controlId],
+        allocateBlockId: (type) => `disjoint-${type}-${++serial}`,
+      });
+      if (!copied.success) throw Error(copied.error);
+      expect(copied.nodeIds).toHaveLength(2);
+      expect(
+        bob!.surface!.applyAutomationOps(() => [
+          { op: 'insertText', paragraphId: gap, offset: 3, text: ' peer' },
+        ]).committed
+      ).toBe(true);
+      pair.reconnect(clientIds[0] === 41 ? 0 : 1);
+      await pair.settle();
+      const copyId = copied.payloadIds[grouped.blockId]!;
+      const check = () => {
+        for (const editor of pair.editors) {
+          const pkg = editor.surface!.session.currentPackage(),
+            copy = readGallery(pkg, copyId)!;
+          expect(copy.images).toHaveLength(3);
+          expect(pictureIds(pkg).word).toHaveLength(6);
+          expect(new Set(pictureIds(pkg).word).size).toBe(6);
+          expect(media(pkg)).toEqual(sourceMedia);
+          for (const image of copy.images) {
+            expect(buildBlockIndex(pkg).byId.get(image.id)?.payload.galleryId).toBe(copyId);
+            expect(readGalleryImageAsset(pkg, copyId, image.id)?.bytes).toEqual(galleryPng);
+          }
+          const text = editor
+            .surface!.session.paragraphIds()
+            .map((id) => paragraphTextOf(editor.surface!.session.part(), id));
+          expect(text.filter((text) => text === 'Gap peer')).toHaveLength(1);
+          expect(text.filter((text) => text === 'Tail')).toHaveLength(1);
+          expect(text.filter((text) => text === 'Copy tail')).toHaveLength(2);
+        }
+      };
+      check();
+      expect(removeBlockSelection(bob!, { nodeIds: copied.nodeIds }).success).toBe(true);
+      await pair.settle();
+      for (const editor of pair.editors)
+        expect(readGallery(editor.surface!.session.currentPackage(), copyId)).toBeNull();
+      expect(bob!.exec({ type: 'undo' }).ok).toBe(true);
+      await pair.settle();
+      check();
+      for (const editor of pair.editors) {
+        const reopened = openGallery(new Uint8Array(await editor.save()));
+        for (const image of readGallery(reopened, copyId)!.images)
+          expect(readGalleryImageAsset(reopened, copyId, image.id)?.bytes).toEqual(galleryPng);
       }
       const saved = await pair.savedDigests();
       expect(saved[0]).toEqual(saved[1]);

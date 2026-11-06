@@ -6,6 +6,10 @@
   "reason": "The private commands reuse existing canonical operations, actor identities, and package history. Shared schemas and room formats do not change.",
   "tests": [
     "packages/sciobot/src/blocks/selection-disjoint.test.ts",
+    "packages/sciobot/src/blocks/selection-drawing-copy.test.ts",
+    "packages/sciobot/src/blocks/gallery-native-duplicate.test.ts",
+    "packages/sciobot/src/blocks/selection-move-cell.test.ts",
+    "packages/sciobot/src/blocks/selection-range-safety.test.ts",
     "packages/sciobot/src/blocks/selection-range.test.ts"
   ],
   "changeset": null,
