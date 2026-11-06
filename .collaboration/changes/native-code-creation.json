@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "New code required a separate explicit preparation step before native source editing.",
+  "after": "Direct code creation prepares only new controls in its insertion transaction. Existing source preparation requires an explicit fresh-document option.",
+  "reason": "This uses the gated model-2 code ownership format without changing shared fields or decision semantics. Existing version-1 blocks and live room handles remain unchanged. Older rooms still require compatible export and fresh-room preparation.",
+  "tests": [
+    "packages/sciobot/src/blocks/code-insertion-collaboration.test.ts",
+    "packages/sciobot/src/blocks/code-preparation.test.ts",
+    "packages/sciobot/src/blocks/code-protection.test.ts"
+  ],
+  "changeset": "native-code-creation",
+  "migration": null
+}

@@ -1,5 +1,6 @@
 import { withInitializedPayloadStore } from '../blocks/payload-opc-codec';
 import { withAtomicMathFallbacks } from '../blocks/math-ownership';
+import { withNativeCodeSources } from '../blocks/code-preparation';
 import { withPreparedPayloadFields } from '../blocks/payload-preparation';
 import { withGalleryImageRecords } from '../blocks/gallery-record-upgrade';
 import { withNativeNumberingInfrastructure } from './numbering-infrastructure';
@@ -40,7 +41,13 @@ export type PreparedNativeDocument =
  * Only changed parts are serialized. Unrelated parts keep their original bytes.
  * This does not invoke the Word export cleanup or reconstruct content from Markdown.
  */
-export function prepareNativeDocument(document: Uint8Array): PreparedNativeDocument {
+export function prepareNativeDocument(
+  document: Uint8Array,
+  options?: {
+    /** Prepare supported code before opening fresh bytes or seeding a fresh room. Never migrate live rooms. */
+    readonly nativeCodeSources?: boolean;
+  }
+): PreparedNativeDocument {
   if (!ArrayBuffer.isView(document) || document.BYTES_PER_ELEMENT !== 1)
     return {
       success: false,
@@ -99,7 +106,8 @@ export function prepareNativeDocument(document: Uint8Array): PreparedNativeDocum
       error: 'Cannot initialize native numbering infrastructure.',
     };
   try {
-    const owned = withAtomicMathFallbacks(withPreparedPayloadFields(prepared));
+    const code = options?.nativeCodeSources ? withNativeCodeSources(prepared) : prepared;
+    const owned = withAtomicMathFallbacks(withPreparedPayloadFields(code));
     return {
       success: true,
       document: initializedPackageBytes(document, original, owned),

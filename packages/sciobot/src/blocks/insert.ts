@@ -27,6 +27,10 @@ import type { NativeEditFailure } from '../contracts/document';
 import { blockTag, readPayloadStore, withPayloadRecord } from './payload-opc-codec';
 import { withFreshIds } from './fresh-ids';
 import { withGalleryImageRecords } from './gallery-record-upgrade';
+import { withNativeCodeSources } from './code-preparation';
+import { codeRecordShape } from './code-record';
+import { codeParagraphXml } from '../diff/fragment-seeds';
+import { withInlineCodeStyle } from '../native/inline-code';
 import type { BlockPayload } from './payload-schema';
 
 export interface BlockInsertion {
@@ -93,10 +97,12 @@ function blockXml(
     label +
     paragraphs
       .map((text, index) =>
-        index === 0 && linkId !== null
-          ? // The hyperlink declares its own `r` prefix: the target part may not.
-            `<w:p><w:hyperlink xmlns:r="${R_NAMESPACE}" r:id="${escapeXml(linkId)}">${run(text)}</w:hyperlink></w:p>`
-          : `<w:p>${run(text)}</w:p>`
+        codeRecordShape(insertion.payload)
+          ? codeParagraphXml(text)
+          : index === 0 && linkId !== null
+            ? // The hyperlink declares its own `r` prefix: the target part may not.
+              `<w:p><w:hyperlink xmlns:r="${R_NAMESPACE}" r:id="${escapeXml(linkId)}">${run(text)}</w:hyperlink></w:p>`
+            : `<w:p>${run(text)}</w:p>`
       )
       .join('') +
     '</w:sdtContent></w:sdt>'
@@ -193,7 +199,22 @@ function commitBlockInsertion(
       'unsupported-operation',
       'Tracked block insertion requires a review transaction.'
     );
-  const paragraphs = insertion.paragraphs ?? [''];
+  const code = codeRecordShape(insertion.payload);
+  const paragraphs =
+    insertion.paragraphs ??
+    (code ? (insertion.payload.attributes.value as string).split('\n') : ['']);
+  if (
+    code &&
+    (insertion.payload.version !== 1 ||
+      insertion.generatedLabel !== undefined ||
+      insertion.link !== undefined ||
+      insertion.atomicContent ||
+      paragraphs.join('\n') !== insertion.payload.attributes.value)
+  )
+    return failure(
+      'invalid-input',
+      'New code requires exact source paragraphs without generated labels, links, or atomic ownership.'
+    );
   if (
     !paragraphs.length ||
     paragraphs.length > MAX_PARAGRAPHS ||
@@ -298,7 +319,8 @@ function commitBlockInsertion(
   let placedOnce = false;
 
   const place = (start: OoxmlPackage): OoxmlPackage => {
-    let working = start;
+    let working = code ? withInlineCodeStyle(start) : start;
+    if (!working) throw Error('The document cannot gain the native code character style.');
     let template = unlinked;
     if (insertion.link !== undefined) {
       // The relationship ID depends on the package the transform runs on.
@@ -345,7 +367,7 @@ function commitBlockInsertion(
     const gallery = withGalleryImageRecords(stored.pkg, new Set([insertion.payload.id]));
     if (!gallery.ok) throw new Error(`Gallery insertion refused: ${gallery.reason}`);
     placedOnce = true;
-    return gallery.pkg;
+    return withNativeCodeSources(gallery.pkg, new Set([insertion.payload.id]));
   };
 
   try {

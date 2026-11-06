@@ -42,6 +42,7 @@ import {
 import { blockTag, withPayloadRecord } from '../blocks/payload-opc-codec';
 import { withGalleryImageRecords } from '../blocks/gallery-record-upgrade';
 import { validGalleryAssetPayload } from '../projection/gallery-assets';
+import { withNativeCodeSources } from '../blocks/code-preparation';
 import {
   inlineCodeRunChanges,
   inlineCodeCharacterStyles,
@@ -479,6 +480,15 @@ export function runXml(value: string, marks: readonly string[]): string {
     .join('');
 }
 
+/** New code keeps its character style even before the first source character is typed. */
+export function codeParagraphXml(value: string): string {
+  return `<w:p>${
+    value
+      ? runXml(value, ['code'])
+      : `<w:r><w:rPr><w:rStyle w:val="${SCIOBOT_CODE_STYLE_ID}"/></w:rPr></w:r>`
+  }</w:p>`;
+}
+
 interface RenderContext {
   readonly partName: string;
   readonly width: number;
@@ -632,7 +642,7 @@ function blockXml(node: TargetAstNode, path: readonly number[], context: RenderC
       const content = fallback.lines
         .map((line) => {
           seedParagraph(context);
-          return `<w:p>${runXml(line, fallback.code ? ['code'] : [])}</w:p>`;
+          return fallback.code ? codeParagraphXml(line) : `<w:p>${runXml(line, [])}</w:p>`;
         })
         .join('');
       return `<w:sdt>${properties}<w:sdtContent>${content}</w:sdtContent></w:sdt>`;
@@ -909,6 +919,9 @@ export function completeSiblingFragments(
   );
   if (!galleries.ok)
     refuseWrite(`New gallery storage refused: ${galleries.reason}.`, 'apply-failed');
-  pkg = galleries.pkg;
+  pkg = withNativeCodeSources(
+    galleries.pkg,
+    new Set([...bindings.values()].map((binding) => binding.payload.id))
+  );
   return { pkg, paragraphs };
 }

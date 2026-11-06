@@ -24,7 +24,9 @@ The evaluated native provider uses format `docx-collaboration:1.10.17.2`. Privat
 
 Preparation preserves authored content and wrapper locks without conversion. It marks only its generated `contentLocked` node with `urn:sciobot:code-source-lock:1`. Source and metadata commands require that exact ownership marker and lock value. A later lock replacement, wrapper lock, missing marker, unsupported marker, or binding refuses before writes. Undoing the lock change restores the prior ownership. Version 2 alone never permits bypassing a native lock.
 
-This preparation remains explicit. Ordinary import preparation and insertion retain version 1 and its existing review path. Version-2 native source review, inline Plate editing, selection, and cursor geometry remain unfinished. Do not enable automatic code conversion until those checks pass. Export and prepare a fresh room to adopt this ownership; never convert existing shared histories live.
+Preparation remains explicit for existing documents. `prepareNativeDocument(bytes, { nativeCodeSources: true })` prepares supported source before opening bytes or creating a fresh room. The default retains version 1. Unsupported structures, protected controls, and changed Word fallbacks retain their original content and version. Export through the compatible reader before preparing a fresh room; never convert existing shared histories live.
+
+Direct code insertion prepares only its new control in the existing insertion transaction. It retains every existing version-1 block. New source lines use the application code character style, including an empty line before its first character. Native source review uses the existing proposal and replacement executors. Production inline authoring, suggest controls, and complete browser acceptance remain under UX13/UX24.
 
 ## Reference fixtures
 

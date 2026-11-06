@@ -82,11 +82,19 @@ test('the pinned pre-change reader keeps code version 2 opaque and generic sourc
   );
 });
 
-test('ordinary preparation preserves the version-1 review path until native code review is ready', async () => {
+test('ordinary preparation preserves version 1 unless fresh-document code preparation is explicit', async () => {
   const original = await codeDocument('one', false);
   const prepared = prepareNativeDocument(original);
   if (!prepared.success) throw Error(prepared.error);
   expect(buildBlockIndex(openCode(prepared.document)).byId.get('code')!.payload.version).toBe(1);
+  const native = prepareNativeDocument(original, { nativeCodeSources: true });
+  if (!native.success) throw Error(native.error);
+  expect(buildBlockIndex(openCode(native.document)).byId.get('code')!.payload.version).toBe(2);
+  expect(
+    buildBlockIndex(openCode(native.document)).byId.get('code')!.payload.attributes.value
+  ).toBe('one');
+  const repeated = prepareNativeDocument(native.document, { nativeCodeSources: true });
+  expect(repeated.success && repeated.changed).toBe(false);
 });
 
 for (const replacement of [
