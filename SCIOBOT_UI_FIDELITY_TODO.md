@@ -15,13 +15,9 @@ The user's scope correction on November 7, 2026 replaces broader requirements in
 - Do not make additional page navigation, zoom, or search features Plate parity requirements. Keep existing DOCX controls usable.
 - Defer native archive intake enhancements and DOCX font embedding. Keep existing workspace ZIP export and completed implementation work.
 
-Production `WorkspacePanel` mounts `WorkspaceEditorKit`. The generic `EditorKit` only reaches `/demo/editor` through `PlateEditor` and `DemoEditorPage`.
-Production floating controls expose Add to chat. `block-menu-kit.tsx` disables the floating block context menu.
-The attachment editor accepts `docx`, `pptx`, `xlsx`, `pdf`, and `md`; archive intake is additional capability.
+Production `WorkspacePanel` mounts `WorkspaceEditorKit`. The generic `EditorKit` only reaches `/demo/editor` through `PlateEditor` and `DemoEditorPage`. Production floating controls expose Add to chat. `block-menu-kit.tsx` disables the floating block context menu. The attachment editor accepts `docx`, `pptx`, `xlsx`, `pdf`, and `md`; archive intake is additional capability.
 
-Ten feature groups passed coordinator review: tables, math, SMILES, links, lists, formatting, toolbars, insertion menus, block actions, and contents.
-The remaining rows are an evidence inventory, not eighteen new implementation projects.
-Lesson titles, phases, activities, recap, curriculum, sources, listening, visuals, and shared MDX already have native implementations and browser tests.
+Ten feature groups passed coordinator review: tables, math, SMILES, links, lists, formatting, toolbars, insertion menus, block actions, and contents. The remaining rows are an evidence inventory, not eighteen new implementation projects. Lesson titles, phases, activities, recap, curriculum, sources, listening, visuals, and shared MDX already have native implementations and browser tests.
 
 ## Remaining cutover work
 
@@ -41,14 +37,11 @@ The user approved steps 1–3, then steps 4–5, on November 7, 2026.
 - [ ] Step 4: compare representative production preparations with Plate on port 8080. Verify active controls, spacing, margins, padding, and interactive solution accordions. Fix reproduced failures.
 - [ ] Step 5: pin the integrated runtime and verify the real workspace, persistence, exports, shared editing, and history.
 
-Use three agents for media, inline/container controls, and lesson layout. The coordinator owns production imports, runtime integration, and final review.
-Read production data through the established import configuration. Keep imported content and credentials in private local storage.
-Compare the same material in Plate and DOCX. Verify actual pointer and keyboard activation before accepting component interactivity.
-Commit each coherent batch. Record completion and actual remaining defects here.
+Use three agents for media, inline/container controls, and lesson layout. The coordinator owns production imports, runtime integration, and final review. Read production data through the established import configuration. Keep imported content and credentials in private local storage. Compare the same material in Plate and DOCX. Verify actual pointer and keyboard activation before accepting component interactivity. Commit each coherent batch. Record completion and actual remaining defects here.
 
 ### Completed batch
 
-The approved batch is complete at app `1986deda5`. Runtime R uses engine `7914c50b2`, pinned by app `2041ac3aa`.
+Steps 1–3 are complete at app `1986deda5`. Runtime R uses engine `7914c50b2`, pinned by app `2041ac3aa`.
 
 - Code: native creation, editing, language controls, review, and history are integrated. All 13 reserved runtime R browser cases pass. Fourteen earlier control and suggestion cases also pass. Rapid picker reopening now restores focus after Escape, including a moved window.
 - Collapse: five toggle browser cases and three container cases pass on runtime R. Nineteen engine cases pass. Disclosure remains local and preserves saved content. Phone hit targets and keyboard controls pass. Production callouts have no collapse control; none was added.
@@ -57,11 +50,21 @@ The approved batch is complete at app `1986deda5`. Runtime R uses engine `7914c5
 - Cancellation: the native proposal composer checks host ownership after asynchronous preparation and before writing. Eight focused host-service tests pass.
 - Verification: app types pass across 8,565 files; harness types pass across 3,346 files. Engine formatting and lint pass. Scoped app formatting and lint pass. All 15 fresh core API reports match. Artifact hashes, installation, and single-core resolution pass.
 
-AI workflow tests use controlled backend responses. They verify application behavior, not generated content quality.
-Steps 4–5 remain deferred. This batch does not establish complete application cutover readiness.
+AI workflow tests use controlled backend responses. They verify application behavior, not generated content quality. Steps 4–5 are active. The earlier batch does not establish complete application cutover readiness.
 
-The coordinator reviews each lane and maintains one integrated runtime. Batch broader checks at integration boundaries.
-Completion requires these five steps. Extra capabilities do not extend this list without a new user request.
+### Real-material review in progress
+
+- Imported 15 production preparations into the local database through read-only production connections.
+- The corpus includes 17 material documents and 26 worksheets across subjects, grades, and Czech and Slovak content.
+- Private imports, credentials, and screenshots remain outside committed evidence.
+- Real Plate comparisons reproduced retained solution height, visible formulas behind blur, and missing phase and recap controls.
+- Image blocks lost 16px vertical spacing. The integrated fix passes shared editing, history, export, and reopen checks.
+- Native date controls lacked keyboard activation. The integrated fix passes three browser cases.
+- Fixed page zoom caused clipping. Automatic fitting exposed paragraph handles that intercepted text clicks and unscaled domain controls.
+- Engine `88225c025` adds local complete-body collapse. Its focused layout, input, and collaboration checks pass.
+- Final runtime integration, combined browser checks, and real workspace save/export verification remain open.
+
+The coordinator reviews each lane and maintains one integrated runtime. Batch broader checks at integration boundaries. Completion requires these five steps. Extra capabilities do not extend this list without a new user request.
 
 ### Verified status at the scope correction
 
