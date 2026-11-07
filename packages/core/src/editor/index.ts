@@ -237,6 +237,8 @@ export type {
   SurfaceContentControlCollapse,
   CollapsedContentControl,
   ContentControlCollapseResult,
+  ContentControlCollapsePlaceholder,
+  ContentControlCollapseTarget,
 } from './surface-content-control-collapse.ts';
 export type { BlockInset } from '../layout/block-reservations.ts';
 export {

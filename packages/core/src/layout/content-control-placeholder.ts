@@ -5,11 +5,13 @@ import {
 } from '@docx-editor.dev/core/store';
 
 const placeholders = new WeakSet<OoxmlElement>();
-const cache = new WeakMap<OoxmlElement, OoxmlElement>();
+const cache = new WeakMap<OoxmlElement, Map<number, OoxmlElement>>();
 
 /** A local header uses the original paragraph identity, never its text or formatting. */
-export function contentControlPlaceholder(source: OoxmlElement): OoxmlElement {
-  const known = cache.get(source);
+export function contentControlPlaceholder(source: OoxmlElement, heightPt = 24): OoxmlElement {
+  let sizes = cache.get(source);
+  if (!sizes) cache.set(source, (sizes = new Map()));
+  const known = sizes.get(heightPt);
   if (known) return known;
   const property = (name: string, attributes: Record<string, string>): OoxmlGenericElementNode => ({
     kind: 'generic',
@@ -45,7 +47,12 @@ export function contentControlPlaceholder(source: OoxmlElement): OoxmlElement {
         namespaceBindings: [],
         attributes: [],
         children: [
-          property('spacing', { before: '0', after: '0', line: '480', lineRule: 'exact' }),
+          property('spacing', {
+            before: '0',
+            after: '0',
+            line: String(heightPt * 20),
+            lineRule: 'exact',
+          }),
           property('ind', { left: '0', right: '0', firstLine: '0', hanging: '0' }),
           property('pageBreakBefore', { val: '0' }),
           property('keepNext', { val: '0' }),
@@ -55,7 +62,7 @@ export function contentControlPlaceholder(source: OoxmlElement): OoxmlElement {
     ],
   };
   placeholders.add(paragraph);
-  cache.set(source, paragraph);
+  sizes.set(heightPt, paragraph);
   return paragraph;
 }
 

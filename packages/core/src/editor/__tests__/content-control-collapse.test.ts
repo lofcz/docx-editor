@@ -128,6 +128,69 @@ test('a null summary replaces the whole answer with a local header and reveals b
   }
 });
 
+test('explicit zero-height placeholders remove all flow and reject invalid heights atomically', async () => {
+  const doc = open(p('Before') + sdt(p('Summary'), p('Hidden body')) + p('After'));
+  const reference = open(p('Before') + p('After'));
+  try {
+    const owner = doc.ownerOf('Summary');
+    const saved = await digest(new Uint8Array(await doc.editor.save()));
+    expect(
+      doc.surface.setCollapsedContentControls(new Map([[owner, { placeholderHeightPt: 0 }]]))
+    ).toEqual({ ok: true });
+    doc.surface.flushPendingInput();
+    expect(doc.caret('After')!.y).toBeCloseTo(reference.caret('After')!.y, 8);
+    expect(doc.caret('Summary')).toBeNull();
+    expect(doc.container.querySelector('[data-docx-collapse-placeholder]')).toBeNull();
+    const snapshot = doc.surface.collapsedContentControls();
+    expect(snapshot).toEqual([
+      { controlId: owner, summaryParagraphId: null, placeholderHeightPt: 0 },
+    ]);
+    for (const height of [-1, NaN, Infinity, 1584.1]) {
+      expect(
+        doc.surface.setCollapsedContentControls(new Map([[owner, { placeholderHeightPt: height }]]))
+      ).toEqual({ ok: false, reason: 'invalid-placeholder-height' });
+      expect(doc.surface.collapsedContentControls()).toBe(snapshot);
+    }
+    expect(await digest(new Uint8Array(await doc.editor.save()))).toEqual(saved);
+    expect(doc.surface.state().canUndo).toBe(false);
+    expect(
+      doc.surface.setCollapsedContentControls(new Map([[owner, { placeholderHeightPt: 12.5 }]]))
+    ).toEqual({ ok: true });
+    doc.surface.flushPendingInput();
+    const header = doc.surface
+      .layout()
+      .pages.flatMap(paragraphFragmentsOf)
+      .find((fragment) => fragment.localPlaceholder)!;
+    expect(header.box.height).toBeCloseTo(12.5, 8);
+    expect(header.lines).toEqual([]);
+  } finally {
+    doc.close();
+    reference.close();
+  }
+});
+
+test('a zero-height fold accepts a leading table without inventing a paragraph anchor', () => {
+  const doc = open(
+    p('Before') + sdt(table(row(cell(p('Cell answer')))), p('Body answer')) + p('After')
+  );
+  const reference = open(p('Before') + p('After'));
+  try {
+    const owner = doc.ownerOf('Body answer');
+    expect(
+      doc.surface.setCollapsedContentControls(new Map([[owner, { placeholderHeightPt: 0 }]]))
+    ).toEqual({ ok: true });
+    expect(doc.caret('After')!.y).toBeCloseTo(reference.caret('After')!.y, 8);
+    expect(doc.caret('Cell answer')).toBeNull();
+    expect(doc.surface.setCollapsedContentControls(new Map([[owner, null]]))).toEqual({
+      ok: false,
+      reason: 'invalid-summary',
+    });
+  } finally {
+    doc.close();
+    reference.close();
+  }
+});
+
 for (const ranged of [false, true])
   test(`typing reveals its exact hidden destination before editing (range=${ranged})`, () => {
     const doc = open(sdt(p('Summary'), p('Body')) + p('After'));

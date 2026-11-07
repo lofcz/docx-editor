@@ -2,4 +2,4 @@
 '@docx-editor.dev/core': minor
 ---
 
-Allow hosts to collapse a complete content control into a local header without changing saved content.
+Allow hosts to collapse complete content controls with optional local headers without changing saved content.

@@ -11,6 +11,7 @@ import {
 import type {
   CollapsedContentControl,
   ContentControlCollapseResult,
+  ContentControlCollapseTarget,
 } from '../contracts/content-control-collapse.ts';
 
 const MAX_CONTROLS = 4096;
@@ -57,7 +58,7 @@ export function collapseOwnerRefusal(
 /** No mutations or callbacks occur while validating an entire replacement view. @internal */
 export function prepareContentControlCollapse(
   part: OoxmlPart,
-  requests: ReadonlyMap<string, string | null>,
+  requests: ReadonlyMap<string, ContentControlCollapseTarget>,
   budget = { visited: 0 }
 ):
   | { readonly ok: true; readonly entries: readonly PreparedContentControlCollapse[] }
@@ -66,7 +67,24 @@ export function prepareContentControlCollapse(
   const body = bodyStoryRoot(part);
   if (!body && requests.size) return { ok: false, reason: 'invalid-owner' };
   const entries: PreparedContentControlCollapse[] = [];
-  for (const [controlId, summaryParagraphId] of requests) {
+  for (const [controlId, target] of requests) {
+    const custom = typeof target === 'object' && target !== null;
+    const requestedHeight = custom ? target.placeholderHeightPt : undefined;
+    if (
+      custom &&
+      (typeof requestedHeight !== 'number' ||
+        !Number.isFinite(requestedHeight) ||
+        requestedHeight < 0 ||
+        requestedHeight > 1584)
+    )
+      return { ok: false, reason: 'invalid-placeholder-height' };
+    const placeholderHeightPt =
+      requestedHeight === undefined
+        ? undefined
+        : requestedHeight === 0
+          ? 0
+          : Math.max(1, Math.round(requestedHeight * 20)) / 20;
+    const summaryParagraphId = custom ? null : target;
     if (entries.length >= MAX_CONTROLS) return { ok: false, reason: 'limit-exceeded' };
     const owner = typeof controlId === 'string' ? findNode(part, controlId) : null;
     if (owner?.kind !== 'contentControl') return { ok: false, reason: 'invalid-owner' };
@@ -75,10 +93,11 @@ export function prepareContentControlCollapse(
     const content = contentControlContentNodeOf(owner);
     const first = content?.children[0];
     const summary = summaryParagraphId === null ? undefined : first;
-    const placeholder = summaryParagraphId === null ? firstParagraph(first) : undefined;
+    const placeholder =
+      summaryParagraphId === null && placeholderHeightPt !== 0 ? firstParagraph(first) : undefined;
     if (
       summaryParagraphId === null
-        ? !placeholder
+        ? !content || (placeholderHeightPt !== 0 && !placeholder)
         : summary?.kind !== 'paragraph' || summary.id !== summaryParagraphId
     )
       return { ok: false, reason: 'invalid-summary' };
@@ -109,6 +128,7 @@ export function prepareContentControlCollapse(
       Object.freeze({
         controlId,
         summaryParagraphId,
+        ...(placeholderHeightPt === undefined ? {} : { placeholderHeightPt }),
         hiddenIds,
         ...(placeholder ? { placeholder } : {}),
       })

@@ -8,6 +8,7 @@ import {
 import type {
   CollapsedContentControl,
   ContentControlCollapseResult,
+  ContentControlCollapseTarget,
 } from '../contracts/content-control-collapse.ts';
 import {
   collapseOwnerRefusal,
@@ -116,15 +117,20 @@ export function createContentControlCollapseState() {
         const other = next[index]!;
         return (
           entry.controlId === other.controlId &&
-          entry.summaryParagraphId === other.summaryParagraphId
+          entry.summaryParagraphId === other.summaryParagraphId &&
+          entry.placeholderHeightPt === other.placeholderHeightPt
         );
       });
     entries = next;
     sourcePart = part;
     if (!same)
       snapshot = Object.freeze(
-        next.map(({ controlId, summaryParagraphId }) =>
-          Object.freeze({ controlId, summaryParagraphId })
+        next.map(({ controlId, summaryParagraphId, placeholderHeightPt }) =>
+          Object.freeze({
+            controlId,
+            summaryParagraphId,
+            ...(placeholderHeightPt === undefined ? {} : { placeholderHeightPt }),
+          })
         )
       );
     const hiddenIds = new Set<string>();
@@ -133,7 +139,10 @@ export function createContentControlCollapseState() {
     const placeholderAncestors = new Set<string>();
     for (const entry of next) {
       if (!entry.placeholder || hiddenIds.has(entry.controlId)) continue;
-      placeholders.set(entry.placeholder.id, contentControlPlaceholder(entry.placeholder));
+      placeholders.set(
+        entry.placeholder.id,
+        contentControlPlaceholder(entry.placeholder, entry.placeholderHeightPt)
+      );
       let ancestor = parentNodeOf(part, entry.placeholder.id);
       while (ancestor && ancestor.id !== entry.controlId) {
         placeholderAncestors.add(ancestor.id);
@@ -158,7 +167,7 @@ export function createContentControlCollapseState() {
     option: () => layout,
     set(
       part: OoxmlPart,
-      requests: ReadonlyMap<string, string | null>
+      requests: ReadonlyMap<string, ContentControlCollapseTarget>
     ): ContentControlCollapseResult & { readonly changed?: boolean } {
       const prepared = prepareContentControlCollapse(part, requests);
       if (!prepared.ok) return prepared;
@@ -191,7 +200,14 @@ export function createContentControlCollapseState() {
         }
         const prepared = prepareContentControlCollapse(
           part,
-          new Map([[controlId, summaryId]]),
+          new Map([
+            [
+              controlId,
+              entry.placeholderHeightPt === undefined
+                ? summaryId
+                : { placeholderHeightPt: entry.placeholderHeightPt },
+            ],
+          ]),
           budget
         );
         if (prepared.ok) next.push(prepared.entries[0]!);
