@@ -35,7 +35,7 @@ The user approved steps 1–3, then steps 4–5, on November 7, 2026.
 - [x] Step 2: fix and verify gallery handle interception and activity border overlap.
 - [x] Step 3: connect and verify the production material tools menu.
 - [ ] Step 4: compare representative production preparations with Plate on port 8080. Verify active controls, spacing, margins, padding, and interactive solution accordions. Fix reproduced failures.
-- [ ] Step 5: pin the integrated runtime and verify the real workspace, persistence, exports, shared editing, and history.
+- [x] Step 5: pin the integrated runtime and verify the real workspace, persistence, exports, shared editing, and history.
 
 Use three agents for media, inline/container controls, and lesson layout. The coordinator owns production imports, runtime integration, and final review. Read production data through the established import configuration. Keep imported content and credentials in private local storage. Compare the same material in Plate and DOCX. Verify actual pointer and keyboard activation before accepting component interactivity. Commit each coherent batch. Record completion and actual remaining defects here.
 
@@ -52,26 +52,39 @@ Steps 1–3 are complete at app `1986deda5`. Runtime R uses engine `7914c50b2`, 
 
 AI workflow tests use controlled backend responses. They verify application behavior, not generated content quality. Steps 4–5 are active. The earlier batch does not establish complete application cutover readiness.
 
-### Real-material review in progress
+### Real-material review results
 
-- Imported 15 production preparations into the local database through read-only production connections.
-- The corpus includes 17 material documents and 26 worksheets across subjects, grades, and Czech and Slovak content.
-- Private imports, credentials, and screenshots remain outside committed evidence.
-- Real Plate comparisons reproduced retained solution height, visible formulas behind blur, and missing phase and recap controls.
-- Image blocks lost 16px vertical spacing. The integrated fix passes shared editing, history, export, and reopen checks.
-- Native date controls lacked keyboard activation. The integrated fix passes three browser cases.
-- Fixed page zoom caused clipping. Automatic fitting exposed paragraph handles that intercepted text clicks and unscaled domain controls.
-- Engine `88225c025` adds local complete-body collapse. Its focused layout, input, and collaboration checks pass.
-- Runtime V uses engine `1c1d9967f`, pinned by app `56c39aeea`. All five archive hashes and dependency pins match. Core and Yjs each resolve once.
-- Real biology, ethics, calculations, technical drawing, and photoalbum preparations received visual or interaction review against Plate.
-- Real phase, recap, and solution controls respond to pointer and keyboard input. Hidden-answer typing passes on runtime V.
-- Title badges follow painted font geometry. Fresh conversion uses the Plate title size and keeps generated activity labels with their body.
-- Real page fitting passes at 1100, 1440, and 1600 pixels. Recap columns still use vertical document flow.
-- Import repair preserves each linked material's owner. All 17 imported documents have the correct local owner. Real photoalbum save, reload, and cleanup pass.
-- Both recap collaboration orders pass. One solution collaboration order passes on V; the other exposes lost typed characters.
-- Active fixes: solution header padding lost through list spacing; ancestor bottom padding lost through hidden summaries; merged recap goal backgrounds; lost keyboard input; missing exported pictures.
-- The actual export dialog causes image insertion to reject a stale selection. Isolated exports alone do not satisfy the acceptance check.
-- Final combined browser checks, real export verification, and the final runtime pin remain open.
+Step 5 passes. Step 4 remains open for the visual differences listed below. Full Plate visual parity is not complete.
+
+- Imported 15 production preparations through read-only production connections: 17 material documents and 26 worksheets.
+- Compared biology, ethics, calculations, technical drawing, and photoalbum preparations with Plate on port 8080.
+- Private imports, credentials, screenshots, and downloaded documents remain outside committed evidence.
+- Runtime X uses engine `402483905`, pinned by app `6b8c0a889`. App `014318450` contains the final frame correction.
+- All five archive hashes and dependency pins match. Core and Yjs each resolve once.
+- Solutions, phases, and recap now respond to pointer and keyboard input. Closed solutions remove their complete body from page flow.
+- Collapse remains local. Shared edits, history, reconnect, and save/reopen preserve canonical content in both participant orders.
+- Solution headers keep their space between list paragraphs. Their frames stay inside activity cards.
+- Real answer gaps measure 8px at desktop size and 5.36px at narrow fit. Native text clicks retain editor focus.
+- Fast typing preserves every character. Hidden-caret recovery checks canonical collapsed ownership before changing the selection.
+- Date controls support keyboard activation. Mention, emoji, callout, and image controls pass their focused checks.
+- Image blocks retain 16px vertical spacing. Goal backgrounds preserve paragraph gaps. Recap bottom borders remain visible.
+- Title badges follow painted font geometry. Fresh conversion uses the Plate title size and keeps generated labels with their body.
+- Real page fitting passes at 1100, 1440, and 1600 pixels. Painted recap text measures 14px Inter.
+- Import repair preserves linked material owners. All 17 imported documents have the correct local owner.
+- Real photoalbum save, reload, and cleanup pass through normal access policies.
+- Actual workspace export contains two pictures in both DOCX and PDF. Both PDF picture pages passed visual inspection.
+- Export insertion now addresses its private document copy. Failed pictures retain their readable fallback text.
+
+Remaining visual differences keep step 4 open:
+
+- Native goal gaps measure 4px at full size; Plate gaps measure 6px.
+- Native row padding follows document paragraph geometry. Plate uses 10px vertical padding.
+- Some Plate recap sections use columns. Native recap retains vertical Word flow.
+- Page fitting reduces native text size on narrow screens. Plate uses fluid layout.
+
+These differences were measured, not accepted as full visual parity. Existing saved document formatting remains intact.
+
+Verification and existing gate failures are recorded in [Real-material verification](docs/engineering/sciobot-port/evidence/real-material-review-2026-11-07.json).
 
 The coordinator reviews each lane and maintains one integrated runtime. Batch broader checks at integration boundaries. Completion requires these five steps. Extra capabilities do not extend this list without a new user request.
 

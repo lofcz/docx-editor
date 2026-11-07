@@ -1,0 +1,111 @@
+{
+  "date": "2026-11-07",
+  "status": "interaction-fixes-verified-visual-parity-partial",
+  "engine": "402483905904098be6146b04ebfeb17232a5c3a2",
+  "app": "014318450",
+  "runtimePin": "6b8c0a889",
+  "runtime": "X",
+  "steps": {
+    "1": "complete",
+    "2": "complete",
+    "3": "complete",
+    "4": "active-remaining-visual-differences",
+    "5": "verified"
+  },
+  "corpus": {
+    "preparations": 15,
+    "materialDocuments": 17,
+    "worksheets": 26,
+    "productionAccess": "read-only",
+    "reviewedCategories": [
+      "biology",
+      "ethics",
+      "calculations",
+      "technical drawing",
+      "digital safety"
+    ],
+    "privateArtifactsCommitted": false,
+    "missingLocalDocumentOwnersAfterRepair": 0
+  },
+  "realWorkspace": {
+    "solutionPointerAndSpace": "pass-at-1440-and-1100",
+    "solutionTextSelectionAndFocus": "pass",
+    "solutionAnswerGapPx": [8, 5.36],
+    "solutionFrameInsideActivityPx": [20.03, 13.44],
+    "phaseAndRecapPointerAndKeyboard": "pass",
+    "horizontalOverflow": "none-at-1100-1440-1600",
+    "recapFrameBoundaryErrorPx": -0.026,
+    "paintedRecapFont": "14px Inter, weight 400",
+    "photoalbumSaveReloadAndCleanup": "pass-with-normal-access-policies",
+    "export": {
+      "runtime": "W",
+      "fixPresentInFinalRuntime": true,
+      "source": "actual-workspace-download",
+      "docxMediaParts": 2,
+      "docxDrawings": 2,
+      "docxPictures": 2,
+      "docxImageRelationships": 2,
+      "pdfImageObjects": 2,
+      "pdfPicturePagesVisuallyInspected": [1, 3],
+      "generationRequests": 0
+    }
+  },
+  "verification": {
+    "finalSolutionGeometry": { "passed": 1, "failed": 0, "zoom": [1, 0.5] },
+    "finalSolutionInteractions": { "passed": 5, "failed": 0, "assertions": 67 },
+    "finalRecapCases": { "passed": 4, "failed": 0 },
+    "finalPhaseAndRecapDisclosureCases": { "passed": 4, "failed": 0 },
+    "imageCollaborationCases": { "passed": 2, "failed": 0 },
+    "exportFocusAndFallbackCases": { "passed": 2, "failed": 0 },
+    "workspaceFitCase": "pass",
+    "wordSpacingRegressionCases": { "passed": 58, "failed": 0 },
+    "paddingAndKeepChainCases": { "passed": 150, "failed": 0 },
+    "inputOwnershipCases": { "passed": 23, "failed": 0 },
+    "importOwnerRegression": { "passed": 1, "failed": 0 },
+    "coreTypecheckFiles": 1904,
+    "privateAdapterTypecheckFiles": 3026,
+    "appTypecheckFiles": 8568,
+    "freshCoreApiEntries": 15,
+    "freshCoreApiErrors": 0,
+    "freshCoreApiExistingWarnings": 2530,
+    "archiveHashesAndPins": "5-of-5-match",
+    "runtimeIdentity": "one-core-one-yjs",
+    "rootLint": "pass-with-existing-warnings",
+    "changedSourceFormattingAndAppLint": "pass",
+    "fullSuite": "not-run"
+  },
+  "existingOrInterruptedGates": [
+    {
+      "gate": "collaboration:check",
+      "status": "fails-existing-record",
+      "record": ".collaboration/changes/locked-paragraph-alignment.json",
+      "missingTest": "packages/core/src/store/__tests__/content-control-paragraph-alignment.test.ts"
+    },
+    {
+      "gate": "backend-typecheck",
+      "status": "7-errors-in-2-unchanged-files",
+      "files": [
+        "supabase/functions/_shared/chat-phone-uploads.test.ts",
+        "supabase/functions/ai-chat/room-assistant-surface.test.ts"
+      ]
+    },
+    {
+      "gate": "typecheck:fe-wrapper",
+      "status": "generated-board-declaration-line-ending-check-fails",
+      "directFrontendTypecheck": "pass"
+    },
+    {
+      "gate": "root-full-format-rerun",
+      "status": "interrupted-SIGTERM-143",
+      "changedSourceFormatCheck": "pass"
+    }
+  ],
+  "remainingVisualDifferences": [
+    "Native goal gaps are 4px; Plate goal gaps are 6px.",
+    "Native rows follow paragraph geometry; Plate rows have 10px vertical padding.",
+    "Some Plate recap sections use columns; native recap uses vertical Word flow.",
+    "Native page fitting reduces text size on narrow screens; Plate uses fluid layout."
+  ],
+  "fullPlateVisualParity": false,
+  "productionDeployment": false
+}
