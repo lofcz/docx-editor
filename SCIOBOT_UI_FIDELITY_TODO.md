@@ -62,7 +62,16 @@ AI workflow tests use controlled backend responses. They verify application beha
 - Native date controls lacked keyboard activation. The integrated fix passes three browser cases.
 - Fixed page zoom caused clipping. Automatic fitting exposed paragraph handles that intercepted text clicks and unscaled domain controls.
 - Engine `88225c025` adds local complete-body collapse. Its focused layout, input, and collaboration checks pass.
-- Final runtime integration, combined browser checks, and real workspace save/export verification remain open.
+- Runtime V uses engine `1c1d9967f`, pinned by app `56c39aeea`. All five archive hashes and dependency pins match. Core and Yjs each resolve once.
+- Real biology, ethics, calculations, technical drawing, and photoalbum preparations received visual or interaction review against Plate.
+- Real phase, recap, and solution controls respond to pointer and keyboard input. Hidden-answer typing passes on runtime V.
+- Title badges follow painted font geometry. Fresh conversion uses the Plate title size and keeps generated activity labels with their body.
+- Real page fitting passes at 1100, 1440, and 1600 pixels. Recap columns still use vertical document flow.
+- Import repair preserves each linked material's owner. All 17 imported documents have the correct local owner. Real photoalbum save, reload, and cleanup pass.
+- Both recap collaboration orders pass. One solution collaboration order passes on V; the other exposes lost typed characters.
+- Active fixes: solution header padding lost through list spacing; ancestor bottom padding lost through hidden summaries; merged recap goal backgrounds; lost keyboard input; missing exported pictures.
+- The actual export dialog causes image insertion to reject a stale selection. Isolated exports alone do not satisfy the acceptance check.
+- Final combined browser checks, real export verification, and the final runtime pin remain open.
 
 The coordinator reviews each lane and maintains one integrated runtime. Batch broader checks at integration boundaries. Completion requires these five steps. Extra capabilities do not extend this list without a new user request.
 
