@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Complete-payload metadata updates refused supported native code with pending source revisions.",
+  "after": "Metadata-only updates validate the committed source without changing pending native revisions or their ownership.",
+  "reason": "The fix uses the existing committed source reader consistently. Shared fields, operations, version gates, and review decisions stay unchanged.",
+  "tests": [
+    "packages/sciobot/src/review/code-metadata-review.test.ts",
+    "packages/sciobot/src/blocks/update-atomic.test.ts",
+    "packages/sciobot/src/review/code-source-review-collaboration.test.ts"
+  ],
+  "changeset": "native-code-review-metadata",
+  "migration": null
+}

@@ -145,7 +145,8 @@ function commitCodeSource(
   },
   attributes?: BlockPayload['attributes']
 ): CodeEditResult {
-  const target = codeTarget(editor, request.blockId, request.value === request.expectedSource);
+  const metadataOnly = request.value === request.expectedSource;
+  const target = codeTarget(editor, request.blockId, metadataOnly);
   if (!target.success) return target;
   const { surface, block, source, lockNode } = target;
   if (
@@ -198,7 +199,11 @@ function commitCodeSource(
     const run = (readPart: () => OoxmlPart, apply: (op: TreeDocOp) => void) => {
       for (const op of ops) apply(op);
       const part = readPart();
-      const changed = nativeCodeSource(part, findNode(part, block.controlId)!);
+      const changed = nativeCodeSource(
+        part,
+        findNode(part, block.controlId)!,
+        metadataOnly ? 'committed' : 'plain'
+      );
       if (changed?.value !== request.value)
         throw Error('The native code source did not match the requested edit.');
     };
