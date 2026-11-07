@@ -1,0 +1,15 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Empty retained paragraphs appear in fallback projection metadata after code review decisions.",
+  "after": "Projection metadata follows native story visibility and restores retained paragraphs when late peer text makes them visible.",
+  "reason": "The read projection uses the existing hiddenRetiredParagraphs rule. Canonical nodes, shared ownership, and revision history stay unchanged.",
+  "tests": [
+    "packages/sciobot/src/review/recompose-code-source-retirement.test.ts",
+    "packages/sciobot/src/review/code-source-review-collaboration.test.ts",
+    "packages/sciobot/src/diff/target-source.test.ts",
+    "packages/sciobot/src/projection/blocks.test.ts"
+  ],
+  "changeset": "retained-code-source-projection",
+  "migration": null
+}

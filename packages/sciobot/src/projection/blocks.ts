@@ -12,6 +12,7 @@ import type { ExportSemanticLayout } from '@docx-editor.dev/core/export';
 import type { MarkdownLayoutOptions, MarkdownSourceSlice } from '@docx-editor.dev/docx-to-markdown';
 import {
   contentControlPropertiesOf,
+  hiddenRetiredParagraphs,
   paragraphOffsetIndex,
   paragraphTextOf,
   type OoxmlNode,
@@ -191,8 +192,11 @@ export function projectBlocks(
       for (const owner of active) owner.tableIds.add(node.id);
     }
     if (node.kind === 'tableCell') inCell = !columnCells.has(node.id);
+    // Recovery identities stay canonical but do not own visible projection metadata.
+    // Late peer text makes a retained paragraph visible through the same story rule.
+    const hidden = hiddenRetiredParagraphs(node.children);
     for (const child of node.children)
-      visit(child, active, paragraph, inCell, labelOwner, depth + 1);
+      if (!hidden.has(child.id)) visit(child, active, paragraph, inCell, labelOwner, depth + 1);
   };
   try {
     visit(part.root, [], undefined, false, undefined, 0);

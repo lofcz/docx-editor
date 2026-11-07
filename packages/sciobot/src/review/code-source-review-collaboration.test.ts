@@ -18,6 +18,7 @@ import { readCommittedView } from './committed-view';
 import { readWorkingView } from './working-view';
 import { propertyContext, propertyToken } from '../../test/support/property-execution';
 import { planAtomicBlock } from '../diff/atomic-blocks';
+import { indexTargetSource } from '../diff/target-source';
 import { createPendingPropertyProposal, projectPendingProperties } from './property-projection';
 import { decideAtomicProposal, trackAtomicPlan } from './track-atomic';
 import { SCIOBOT_NATIVE_REVIEW_MODULE } from './native-module';
@@ -387,6 +388,22 @@ for (const clientIds of [
           }
         };
         verify(joined, joined);
+        const projected = async (expected: string) => {
+          for (const editor of pair.editors) {
+            const revision = propertyToken(editor);
+            const view = await readWorkingView(editor.surface!.session, revision);
+            if (!view.success) throw Error(view.error);
+            expect(view.view.projection.text).toContain(`\`\`\`python\n${expected}\n\`\`\``);
+            expect(
+              indexTargetSource({
+                pkg: editor.surface!.session.currentPackage(),
+                revision,
+                projection: view.view.projection,
+              })
+            ).toMatchObject({ success: true });
+          }
+        };
+        await projected(joined);
         expect(alice.exec({ type: 'undo' }).ok).toBe(true);
         await pair.settle();
         verify(joined, pending);
@@ -396,9 +413,11 @@ for (const clientIds of [
         expect(bob.exec({ type: 'undo' }).ok).toBe(true);
         await pair.settle();
         verify(ORIGINAL, ORIGINAL);
+        await projected(ORIGINAL);
         expect(bob.exec({ type: 'redo' }).ok).toBe(true);
         await pair.settle();
         verify(joined, joined);
+        await projected(joined);
         const authored = joined.replace('PEER', 'USER\n\t');
         expect(
           updateCodeSource(bob, { blockId: 'code', expectedSource: joined, value: authored })
