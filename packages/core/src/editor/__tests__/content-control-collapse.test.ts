@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test';
+import { expect, spyOn, test } from 'bun:test';
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
 import { createDocxEditor } from '../docx-editor.ts';
 import {
@@ -263,6 +263,33 @@ test('browser input preflight leaves host controls, prevented events, and compos
       { controlId: owner, summaryParagraphId: null },
     ]);
     expect(paragraphTextOf(doc.surface.session.part(), doc.idOf('Answer'))).toBe('Answer');
+  } finally {
+    doc.close();
+  }
+});
+
+test('browser input preflight leaves visible typing alone when an unrelated fold has stale geometry', () => {
+  const doc = open(sdt(p('Hidden answer')) + p('Visible text'));
+  const surface = doc.surface;
+  try {
+    surface.setCollapsedContentControls(new Map([[doc.ownerOf('Hidden answer'), null]]));
+    surface.flushPendingInput();
+    const point = { paragraphId: doc.idOf('Visible text'), offset: 0 };
+    surface.setSelection({ anchor: point, head: point });
+    const current = surface.layout();
+    // A queued edit can advance selection before the next native paint publishes geometry.
+    const stale = spyOn(surface, 'layout').mockReturnValue({ ...current, pages: [] });
+    const reselect = spyOn(surface, 'setSelection');
+    try {
+      const event = new KeyboardEvent('keydown', { key: 'x', cancelable: true });
+      createKeyDownHandler(surface)(event);
+      expect(event.defaultPrevented).toBe(false);
+      expect(reselect).not.toHaveBeenCalled();
+      expect(surface.collapsedContentControls()).toHaveLength(1);
+    } finally {
+      stale.mockRestore();
+      reselect.mockRestore();
+    }
   } finally {
     doc.close();
   }
