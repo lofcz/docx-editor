@@ -2,9 +2,20 @@ import { expect, test } from 'bun:test';
 import { act } from 'react';
 import { createDocxEditor, type DocxEditorInstance } from '@docx-editor.dev/core/editor';
 import { caretAt } from '@docx-editor.dev/core/layout';
-import { canonicalOoxmlFingerprint, paragraphTextOf } from '@docx-editor.dev/core/store';
+import {
+  canonicalOoxmlFingerprint,
+  paragraphTextOf,
+  readOoxmlPackage,
+} from '@docx-editor.dev/core/store';
 import { createTwoEditorFixture } from '../../test/support/collaboration';
-import { nativeSlotDocument } from '../../test/support/react-block-document';
+import {
+  hostControl,
+  hostParagraph,
+  nativeSlotDocument,
+} from '../../test/support/react-block-document';
+import { docxFixture } from '../../test/support/document';
+import { withPayloadRecord } from '../blocks/payload-opc-codec';
+import { containerInsets } from './block-insets';
 import { mountReactBlockHost, type ReactBlockRegistry, type ReactBlockViewProps } from './host';
 import { buildBlockIndex } from '../blocks/block-index';
 import { paragraphFragmentsOf } from '@docx-editor.dev/core/layout';
@@ -19,6 +30,62 @@ function Frame({ children }: ReactBlockViewProps) {
 const REGISTRY: ReactBlockRegistry = new Map([
   ['native_container', { view: Frame, inset: { left: 20, right: 8 } }],
 ]);
+
+test('ancestor padding follows visible edges around hidden summaries and collapsed answers', () => {
+  const parsed = readOoxmlPackage(
+    docxFixture(
+      hostControl(
+        'outer',
+        hostControl('hidden', hostParagraph('Hidden summary')) +
+          hostParagraph('Visible body') +
+          hostControl('answer', hostParagraph('Answer start') + hostParagraph('Answer tail'))
+      )
+    )
+  );
+  if (!parsed.ok) throw new Error(parsed.reason);
+  let pkg = parsed.package;
+  for (const id of ['outer', 'hidden', 'answer']) {
+    const written = withPayloadRecord(
+      pkg,
+      { id, type: 'native_container', version: 1, attributes: {} },
+      id
+    );
+    if (!written.ok) throw new Error(written.reason);
+    pkg = written.pkg;
+  }
+  const index = buildBlockIndex(pkg);
+  const block = (id: string) => index.byId.get(id)!;
+  const part = pkg.parts.get(block('outer').partName)!;
+  const paragraph = (text: string) => {
+    const walk = (
+      nodes: readonly import('@docx-editor.dev/core/store').OoxmlNode[]
+    ): string | undefined => {
+      for (const node of nodes) {
+        if (node.kind === 'paragraph' && paragraphTextOf(part, node.id) === text) return node.id;
+        if ('children' in node) {
+          const found = walk(node.children);
+          if (found) return found;
+        }
+      }
+    };
+    return walk([part.root])!;
+  };
+  const before = canonicalOoxmlFingerprint(part);
+  const insets = containerInsets(
+    part,
+    index,
+    () => ({ left: 12, right: 12, top: 40, bottom: 12 }),
+    [
+      { controlId: block('hidden').controlId, summaryParagraphId: null, placeholderHeightPt: 0 },
+      { controlId: block('answer').controlId, summaryParagraphId: null },
+    ]
+  );
+  expect(insets.get(paragraph('Visible body'))).toEqual({ left: 9, right: 9, top: 30 });
+  expect(insets.get(paragraph('Answer start'))).toEqual({ left: 18, right: 18, bottom: 9 });
+  expect(insets.has(paragraph('Answer tail'))).toBe(false);
+  expect(insets.has(paragraph('Hidden summary'))).toBe(false);
+  expect(canonicalOoxmlFingerprint(part)).toBe(before);
+});
 
 test('a collapsed local header removes only its own vertical inset and retains the native host', async () => {
   const previous = environment.IS_REACT_ACT_ENVIRONMENT;
@@ -68,7 +135,7 @@ test('a collapsed local header removes only its own vertical inset and retains t
     surface.flushPendingInput();
     const header = surface
       .layout()
-      .pages.flatMap(paragraphFragmentsOf)
+      .pages.flatMap((page) => paragraphFragmentsOf(page))
       .find((fragment) => fragment.localPlaceholder)!;
     expect(header.box.height).toBeCloseTo(24, 8);
     expect(header.box.y).toBeLessThan(originalY);

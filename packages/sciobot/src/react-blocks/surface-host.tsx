@@ -97,16 +97,11 @@ export function mountSurfaceBlockHost(
     if (!options.inlineOnly && (insetsFor !== pkg || insetCollapses !== collapses)) {
       insetsFor = pkg;
       insetCollapses = collapses;
-      const placeholders = new Set(
-        collapses
-          .filter((entry) => entry.summaryParagraphId === null)
-          .map((entry) => entry.controlId)
-      );
       const insets = containerInsets(
         next.part,
         index!,
         (type) => registry.get(type)?.inset,
-        placeholders
+        collapses
       );
       // Outside the paint: a changed inset lays the document out again.
       queueMicrotask(() => {

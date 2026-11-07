@@ -1521,17 +1521,20 @@ function* layoutBlocksPass(
       const sameStyle =
         entry.styleId !== null &&
         flowNeighbourStyle(entry.paragraph, -1, previous, styleCascade) === entry.styleId;
+      const insetTop = options.blockReservations?.insetOf?.(paragraphId)?.top ?? 0;
       const before =
         entry.contextualSpacing && sameStyle
           ? 0
           : spaceBeforeAt(entryIndex, entry, entry.spacing.before);
       const continuesBorder = leadingBreakGroups.joins(previous, entry);
-      paragraphSpaceBefore = appliedSpaceBefore(
-        before,
-        previousSpaceAfter,
-        cursorY === 0 && !regionHasFragments(),
-        keepsBeforeAtPageStart(entryIndex, entry)
-      );
+      paragraphSpaceBefore =
+        insetTop +
+        appliedSpaceBefore(
+          before,
+          previousSpaceAfter,
+          cursorY === 0 && !regionHasFragments(),
+          keepsBeforeAtPageStart(entryIndex, entry)
+        );
       paragraphStartY +=
         paragraphSpaceBefore +
         paragraphBorderExtentPt(continuesBorder ? undefined : entry.borders.top);
@@ -2037,6 +2040,9 @@ function* layoutBlocksPass(
     const preparedEntry = prepared[index]!;
     const preparedSpacing =
       preparedEntry.kind === 'paragraph' ? preparedEntry.spacing : entry.spacing;
+    const inset = frame ? undefined : options.blockReservations?.insetOf?.(paragraph.id);
+    const insetTop = inset?.top ?? 0;
+    const insetBottom = inset?.bottom ?? 0;
     const startBefore = spaceBeforeAt(index, entry, preparedSpacing.before);
     const authoredSpacing =
       startBefore === preparedSpacing.before
@@ -2125,12 +2131,16 @@ function* layoutBlocksPass(
       flowNeighbourStyle(paragraph, -1, previousEntry, styleCascade),
       flowNeighbourStyle(paragraph, 1, nextEntry, styleCascade)
     );
+    // Host chrome owns this view padding. Word can suppress authored spacing, but cannot
+    // remove room reserved for a disclosure header or the surrounding container frame.
+    const chromeTop = collapsedMark ? 0 : insetTop;
+    const chromeBottom = collapsedMark ? 0 : insetBottom;
     // A host widget's flow room after the paragraph. It joins after contextual suppression
     // and stays outside the paragraph's box: the room belongs to the rendered widget, so the
     // paragraph, its control boundary, and hit testing keep their native extent.
     const reservedAfter = collapsedMark
       ? 0
-      : blockSpace.reservedAfterOf(options.blockReservations, paragraphId);
+      : blockSpace.reservedAfterOf(options.blockReservations, paragraphId) + chromeBottom;
     // Whether a line's own wrapping objects still cross the margin (`wrappedAnchorsEndAtBottomMargin`).
     const pageFit = createOwnAnchorPageFit(paragraph, {
       ...anchorScope,
@@ -2172,7 +2182,7 @@ function* layoutBlocksPass(
     let markPastBottom = false;
     // Fit uses unsuppressed lead; top-of-page suppression applies after any flush below.
     if (!frame) {
-      const lead = collapsedSpaceBefore(spacing.before, previousSpaceAfter);
+      const lead = chromeTop + collapsedSpaceBefore(spacing.before, previousSpaceAfter);
       const emptyStyle = markStyleOf(markRunProperties, styleCascade?.themeFonts);
       // Spacing-after never decides its own line's fit (§17.3.1.33): trailing space clips at the
       // break. Only the closing border rule is painted below the last line, so only it joins the
@@ -2219,8 +2229,8 @@ function* layoutBlocksPass(
           topExtent,
           pricedLead: collapsedMark
             ? 0
-            : collapsedSpaceBefore(authoredSpacing.before, previousSpaceAfter),
-          freshLead: keepsBeforeAtPageStart(index, entry) ? spacing.before : 0,
+            : chromeTop + collapsedSpaceBefore(authoredSpacing.before, previousSpaceAfter),
+          freshLead: chromeTop + (keepsBeforeAtPageStart(index, entry) ? spacing.before : 0),
         });
         if (need !== null) needed = Math.max(needed, need);
       }
@@ -2245,7 +2255,8 @@ function* layoutBlocksPass(
       : 0;
     const appliedBefore = breakLinesOnly
       ? 0
-      : appliedSpaceBefore(
+      : chromeTop +
+        appliedSpaceBefore(
           spacing.before,
           previousSpaceAfter,
           frame ? false : atTopOfPage,
@@ -2775,7 +2786,7 @@ function* layoutBlocksPass(
     flushFragment(true);
     releasePlacedBreaks(paragraphId);
     previousSpaceAfter = collapsingSpaceAfter(
-      endedWithPageBreak ? 0 : spacing.after + reservedAfter,
+      endedWithPageBreak ? 0 : spacing.after + reservedAfter - chromeBottom,
       styleCascade
     );
     if (savedFrameFlow) {

@@ -22,9 +22,9 @@ export interface BlockInset {
   readonly left: number;
   /** Extra indent on the right, in points. */
   readonly right: number;
-  /** Raises a paragraph's `w:spacing/@before`; Word's collapse with the space after above applies. Tables ignore it. */
+  /** View padding above a paragraph, retained after Word spacing suppression. Tables ignore it. */
   readonly top?: number;
-  /** Raises a paragraph's `w:spacing/@after`. Tables ignore it. */
+  /** View padding below a paragraph, retained after Word contextual spacing suppression. Tables ignore it. */
   readonly bottom?: number;
 }
 
@@ -102,15 +102,6 @@ export function resolveInsetParagraph<
             ...inputs.indent,
             left: inputs.indent.left + inset.left,
             right: inputs.indent.right + inset.right,
-          },
-        }
-      : {}),
-    ...(room.top || room.bottom
-      ? {
-          spacing: {
-            ...inputs.spacing,
-            before: inputs.spacing.before + (room.top ?? 0),
-            after: inputs.spacing.after + (room.bottom ?? 0),
           },
         }
       : {}),

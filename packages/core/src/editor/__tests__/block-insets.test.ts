@@ -60,6 +60,51 @@ function open(document: Uint8Array) {
 
 const settle = () => new Promise((resolve) => setTimeout(resolve, 20));
 
+test('view header padding survives contextual list spacing and the first page edge', async () => {
+  const item = (text: string) =>
+    `<w:p><w:pPr><w:pStyle w:val="ListParagraph"/><w:contextualSpacing/>` +
+    `<w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr>` +
+    `<w:spacing w:before="120" w:after="120"/></w:pPr><w:r><w:t>${text}</w:t></w:r></w:p>`;
+  const doc = open(withNumbering(docx(item('Question') + item('Answer') + item('Next'))));
+  try {
+    const before = ['Question', 'Answer', 'Next'].map((text) => doc.caretOf(text).y);
+    const revision = doc.surface.session.packageRevision();
+    const saved = new Uint8Array(await doc.editor.save());
+    doc.surface.setBlockInsets(
+      new Map([
+        [doc.idOf('Question'), { left: 0, right: 0, top: 24 }],
+        [doc.idOf('Answer'), { left: 0, right: 0, top: 30, bottom: 9 }],
+      ])
+    );
+    await settle();
+    expect(doc.caretOf('Question').y - before[0]!).toBeCloseTo(24, 6);
+    expect(doc.caretOf('Answer').y - before[1]!).toBeCloseTo(54, 6);
+    expect(doc.caretOf('Next').y - before[2]!).toBeCloseTo(63, 6);
+    expect(doc.surface.session.packageRevision()).toBe(revision);
+    expect(doc.surface.state().canUndo).toBe(false);
+    expect(new Uint8Array(await doc.editor.save())).toEqual(saved);
+  } finally {
+    doc.close();
+  }
+});
+
+test('view bottom padding stays separate from the following authored space before', async () => {
+  const doc = open(
+    docx(
+      p('Answer') +
+        '<w:p><w:pPr><w:spacing w:before="600" w:after="0"/></w:pPr><w:r><w:t>Next</w:t></w:r></w:p>'
+    )
+  );
+  try {
+    const gap = doc.caretOf('Next').y - doc.caretOf('Answer').y;
+    doc.surface.setBlockInsets(new Map([[doc.idOf('Answer'), { left: 0, right: 0, bottom: 12 }]]));
+    await settle();
+    expect(doc.caretOf('Next').y - doc.caretOf('Answer').y).toBeCloseTo(gap + 12, 6);
+  } finally {
+    doc.close();
+  }
+});
+
 test('an inset indents only its paragraph and narrows the column it breaks in', async () => {
   const doc = open(docx(p('Alpha') + p(LONG) + p('Gamma')));
   try {
@@ -204,7 +249,7 @@ test('a list marker moves with its inset paragraph', async () => {
   }
 });
 
-test('top and bottom room raise the space before and after a paragraph', async () => {
+test('top and bottom view room remain separate from authored paragraph spacing', async () => {
   const doc = open(docx(p('Alpha') + p('Beta') + p('Gamma')));
   try {
     const y = (text: string) => doc.caretOf(text).y;
@@ -215,10 +260,9 @@ test('top and bottom room raise the space before and after a paragraph', async (
       new Map([[doc.idOf('Beta'), { left: 0, right: 0, top: 40, bottom: 10 }]])
     );
     await settle();
-    // Word's collapse still applies: the larger of the previous space after and the raised
-    // space before separates two paragraphs, and the raised space after joins the next gap.
+    // Host padding surrounds the unchanged Word gap and cannot collapse into that gap.
     const after = y('Beta') - y('Alpha');
-    expect(after).toBeGreaterThan(step);
+    expect(after).toBeCloseTo(step + 40, 6);
     expect(y('Gamma') - y('Beta')).toBeCloseTo(step + 10, 6);
     expect(doc.caretOf('Beta').x).toBe(doc.caretOf('Alpha').x);
     doc.surface.setBlockInsets(new Map());

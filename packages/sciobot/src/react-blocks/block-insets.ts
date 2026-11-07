@@ -1,7 +1,6 @@
-import type { BlockInset } from '@docx-editor.dev/core/editor';
+import type { BlockInset, CollapsedContentControl } from '@docx-editor.dev/core/editor';
 import {
   blockStoryContainerChildren,
-  contentControlContentNodeOf,
   findNode,
   MAX_STORY_SDT_NESTING,
   type OoxmlNode,
@@ -30,9 +29,10 @@ export function containerInsets(
   part: OoxmlPart,
   index: BlockIndex,
   insetOf: (type: string) => ReactBlockInset | undefined,
-  placeholders: ReadonlySet<string> = new Set()
+  collapsed: readonly CollapsedContentControl[] = []
 ): Map<string, BlockInset> {
   const out = new Map<string, BlockInset>();
+  const folds = new Map(collapsed.map((entry) => [entry.controlId, entry]));
   const add = (node: OoxmlNode, room: Required<ReactBlockInset>) => {
     const old = out.get(node.id);
     const top = (old?.top ?? 0) + room.top,
@@ -49,10 +49,29 @@ export function containerInsets(
       if (child.kind === 'paragraph' || child.kind === 'table') into.push(child);
       else {
         const nested = blockStoryContainerChildren(child);
-        if (nested && depth < MAX_STORY_SDT_NESTING) blocks(nested, into, depth + 1);
+        if (!nested || depth >= MAX_STORY_SDT_NESTING) continue;
+        const fold = folds.get(child.id);
+        if (fold) {
+          if (fold.placeholderHeightPt === 0) continue;
+          const anchor = fold.summaryParagraphId
+            ? findNode(part, fold.summaryParagraphId)
+            : firstParagraph(nested, depth + 1);
+          if (anchor?.kind === 'paragraph') into.push(anchor);
+        } else blocks(nested, into, depth + 1);
       }
     }
     return into;
+  };
+  const firstParagraph = (children: readonly OoxmlNode[], depth: number): OoxmlNode | undefined => {
+    for (const child of children) {
+      if (child.kind === 'paragraph' || child.kind === 'table') return child;
+      const nested = blockStoryContainerChildren(child);
+      if (nested && depth < MAX_STORY_SDT_NESTING) {
+        const first = firstParagraph(nested, depth + 1);
+        if (first) return first;
+      }
+    }
+    return undefined;
   };
   for (const block of index.byId.values()) {
     if (block.partName !== part.name) continue;
@@ -61,13 +80,12 @@ export function containerInsets(
     const room = {
       left: points(inset?.left),
       right: points(inset?.right),
-      top: placeholders.has(block.controlId) ? 0 : points(inset?.top),
-      bottom: placeholders.has(block.controlId) ? 0 : points(inset?.bottom),
+      top: folds.get(block.controlId)?.summaryParagraphId === null ? 0 : points(inset?.top),
+      bottom: folds.get(block.controlId)?.summaryParagraphId === null ? 0 : points(inset?.bottom),
     };
     if (!room.left && !room.right && !room.top && !room.bottom) continue;
     const control = findNode(part, block.controlId);
-    const content = control ? contentControlContentNodeOf(control) : null;
-    const members = content ? blocks(content.children, [], 0) : [];
+    const members = control ? blocks([control], [], 0) : [];
     // Top and bottom room belong to the first and last paragraph; a table edge takes none.
     members.forEach((member, at) =>
       add(member, {
