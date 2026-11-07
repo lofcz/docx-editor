@@ -17,6 +17,7 @@ import { partOfNodeId } from './surface-scope.ts';
 import { collapsedAt } from './surface-selection-ops.ts';
 import { paintedTextIn } from './surface-composition-readback.ts';
 import { historyShortcutOf } from './history-shortcut.ts';
+import { prepareCollapsedBrowserInput } from './surface-input-collapse.ts';
 import {
   moveByTabInTable,
   selectionHeadInTableCell,
@@ -449,7 +450,9 @@ export function createKeyDownHandler(
       if (history === 'redo') surface.redo();
       else surface.undo();
       event.preventDefault();
+      return;
     }
+    if (!readOnly) prepareCollapsedBrowserInput(surface, event);
   };
 }
 

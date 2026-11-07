@@ -12,6 +12,7 @@ import {
 } from '../../automation/__tests__/support/protocol.ts';
 import { caretAt } from '../../layout/semantic-interaction.ts';
 import { paragraphFragmentsOf } from '../../layout/semantic-records.ts';
+import { createKeyDownHandler } from '../surface-input.ts';
 import {
   canonicalOoxmlFingerprint,
   paragraphTextOf,
@@ -188,6 +189,82 @@ test('a zero-height fold accepts a leading table without inventing a paragraph a
   } finally {
     doc.close();
     reference.close();
+  }
+});
+
+for (const input of [
+  { key: 'x' },
+  { key: 'Dead' },
+  { key: 'Process' },
+  { key: '€', ctrlKey: true, altKey: true },
+])
+  test(`browser input preflight reveals a hidden caret without replaying ${input.key}`, () => {
+    const doc = open(sdt(p('Answer')));
+    try {
+      const answer = doc.idOf('Answer');
+      const point = { paragraphId: answer, offset: 0 };
+      doc.surface.setSelection({ anchor: point, head: point });
+      doc.surface.setCollapsedContentControls(new Map([[doc.ownerOf('Answer'), null]]));
+      doc.surface.flushPendingInput();
+      const before = canonicalOoxmlFingerprint(doc.surface.session.part());
+      const event = new KeyboardEvent('keydown', { ...input, cancelable: true });
+      createKeyDownHandler(doc.surface)(event);
+      expect(event.defaultPrevented).toBe(false);
+      expect(doc.surface.collapsedContentControls()).toEqual([]);
+      expect(caretAt(doc.surface.layout(), point)).not.toBeNull();
+      expect(canonicalOoxmlFingerprint(doc.surface.session.part())).toBe(before);
+      expect(doc.surface.state().canUndo).toBe(false);
+      const pages = doc.container.querySelector<HTMLElement>('.docx-pages')!;
+      pages.dispatchEvent(
+        new InputEvent('beforeinput', {
+          inputType: 'insertText',
+          data: 'X',
+          bubbles: true,
+          cancelable: true,
+        })
+      );
+      doc.surface.flushPendingInput();
+      expect(paragraphTextOf(doc.surface.session.part(), answer)).toBe('XAnswer');
+      expect(doc.editor.exec({ type: 'undo' }).ok).toBe(true);
+      expect(canonicalOoxmlFingerprint(doc.surface.session.part())).toBe(before);
+    } finally {
+      doc.close();
+    }
+  });
+
+test('browser input preflight leaves host controls, prevented events, and composition alone', () => {
+  const doc = open(sdt(p('Answer')));
+  try {
+    const owner = doc.ownerOf('Answer');
+    const fold = () => {
+      doc.surface.setCollapsedContentControls(new Map([[owner, null]]));
+      doc.surface.flushPendingInput();
+    };
+    const handle = createKeyDownHandler(doc.surface);
+    fold();
+    const prevented = new KeyboardEvent('keydown', { key: 'x', cancelable: true });
+    prevented.preventDefault();
+    handle(prevented);
+    handle(new KeyboardEvent('keydown', { key: 'x', isComposing: true }));
+    handle(new KeyboardEvent('keydown', { key: 'q', ctrlKey: true }));
+    const host = document.createElement('div');
+    host.dataset.docxHostUi = '';
+    const input = document.createElement('input');
+    host.append(input);
+    doc.container.append(host);
+    input.addEventListener('keydown', handle);
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'x', bubbles: true }));
+    expect(doc.surface.collapsedContentControls()).toEqual([
+      { controlId: owner, summaryParagraphId: null },
+    ]);
+    doc.editor.setEditingMode('viewing');
+    handle(new KeyboardEvent('keydown', { key: 'x' }));
+    expect(doc.surface.collapsedContentControls()).toEqual([
+      { controlId: owner, summaryParagraphId: null },
+    ]);
+    expect(paragraphTextOf(doc.surface.session.part(), doc.idOf('Answer'))).toBe('Answer');
+  } finally {
+    doc.close();
   }
 });
 
