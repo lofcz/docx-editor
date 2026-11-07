@@ -35,13 +35,27 @@ Lesson titles, phases, activities, recap, curriculum, sources, listening, visual
 
 The user approved steps 1–3 on November 7, 2026. Steps 4–5 remain deferred.
 
-- [ ] Step 1: integrate and verify code editing, review, and collapse controls.
-- [ ] Step 2: fix and verify gallery handle interception and activity border overlap.
-- [ ] Step 3: connect and verify the production material tools menu.
+- [x] Step 1: integrate and verify code editing, review, and collapse controls.
+- [x] Step 2: fix and verify gallery handle interception and activity border overlap.
+- [x] Step 3: connect and verify the production material tools menu.
 
 Use three agents for code editing, collapse controls, and layout defects. The coordinator owns material tools and integration.
 Build the engine runtime when these fixes require it. Run focused feature verification without starting the deferred application-wide review.
 Commit each coherent batch. Record completion and actual remaining defects here.
+
+### Completed batch
+
+The approved batch is complete at app `1986deda5`. Runtime R uses engine `7914c50b2`, pinned by app `2041ac3aa`.
+
+- Code: native creation, editing, language controls, review, and history are integrated. All 13 reserved runtime R browser cases pass. Fourteen earlier control and suggestion cases also pass. Rapid picker reopening now restores focus after Escape, including a moved window.
+- Collapse: five toggle browser cases and three container cases pass on runtime R. Nineteen engine cases pass. Disclosure remains local and preserves saved content. Phone hit targets and keyboard controls pass. Production callouts have no collapse control; none was added.
+- Layout: gallery fallback paragraphs no longer create obstructing handles. Activity borders stay inside their reserved space. Eight focused browser cases pass. The original gallery reproduction also passes shared captions, exact history, and phone hit targets.
+- Material tools: the fixed toolbar uses the shared production menu and backend stream. Final results use native commands. Pending review remains intact. Seven workflow cases, one menu-layout case, and the fixed-toolbar case pass. They cover both participant orders, native history, review, cancellation, peer changes, document switches, and phone navigation.
+- Cancellation: the native proposal composer checks host ownership after asynchronous preparation and before writing. Eight focused host-service tests pass.
+- Verification: app types pass across 8,565 files; harness types pass across 3,346 files. Engine formatting and lint pass. Scoped app formatting and lint pass. All 15 fresh core API reports match. Artifact hashes, installation, and single-core resolution pass.
+
+AI workflow tests use controlled backend responses. They verify application behavior, not generated content quality.
+Steps 4–5 remain deferred. This batch does not establish complete application cutover readiness.
 
 The coordinator reviews each lane and maintains one integrated runtime. Batch broader checks at integration boundaries.
 Completion requires these five steps. Extra capabilities do not extend this list without a new user request.
@@ -87,7 +101,7 @@ Other sessions use the production application checkout. Feature work stays in is
 | UX02 | Math | Shared MathLive dialog, virtual keyboard, selected-text insertion, inline/display editing, draft ownership | Accepted; 19 integrated browser cases pass |
 | UX03 | SMILES | Shared chemistry editor, AI and manual entry, preview, validation, activation, block actions, failed-save recovery | Accepted; eight integrated browser cases pass |
 | UX04 | Links | Insert/edit/remove dialogs, selected text, URL validation, opening, keyboard shortcuts | Accepted; ten integrated browser cases and direct keyboard review pass |
-| UX05 | Images and galleries | Upload, resize, captions, alignment, replacement, gallery actions, loading and errors | Implemented; gallery handle interception remains open; archive enhancements are deferred |
+| UX05 | Images and galleries | Upload, resize, captions, alignment, replacement, gallery actions, loading and errors | Gallery handle interception fixed and verified; remaining active-control review is deferred to step 4 |
 | UX06 | Files, audio, video, and embeds | Insert/edit controls, previews, loading, playback, removal, accessible fallback | Pending |
 | UX07 | Lists | Bullets, numbering, checklists, nesting, indentation, continuation and exit shortcuts | Accepted; seven integrated list cases and two export cases pass |
 | UX08 | Text and paragraph formatting | Marks, font size, colors, headings, alignment, spacing, mixed selection state | Accepted; nine integrated browser cases pass |
@@ -95,17 +109,17 @@ Other sessions use the production application checkout. Feature work stays in is
 | UX10 | Slash and insertion menus | Complete catalog, feature gates, filtering, keyboard navigation, insertion placement | Accepted; 42 integrated browser cases and coordinator query review pass |
 | UX11 | Block selection and movement | Handles, menus, keyboard selection, drag placement, duplication, deletion, nested blocks | Accepted; 51 integrated browser cases pass |
 | UX12 | Columns | Count changes, resizing, movement, empty entry, discoverability and nested content | Handle repair integrated in `f2b61e6b2`; six focused browser cases pass |
-| UX13 | Code blocks | Language picker, editing, copy, syntax display, sizing, shortcuts and exit behavior | Engine creation committed; app activation and review fixes need integration |
-| UX14 | Callouts and toggles | Variants, icons, collapse controls, body editing, focus and layout stability | Collapse implemented in isolation; 18 focused cases pass; integration remains open |
+| UX13 | Code blocks | Language picker, editing, copy, syntax display, sizing, shortcuts and exit behavior | Integrated and verified; 13 runtime R cases plus earlier control and suggestion checks pass |
+| UX14 | Callouts and toggles | Variants, icons, collapse controls, body editing, focus and layout stability | Toggle collapse integrated and verified; remaining active callout controls belong to deferred step 4 |
 | UX15 | Stories and solutions | Editing controls, reveal states, content layout, nested editing and persistence | Implemented with existing browser tests; focused review remains open |
 | UX16 | Mentions, dates, and emoji | Pickers, search, keyboard navigation, insertion, editing and inline selection | Pending |
 | UX17 | Contents and navigation | Heading controls, table of contents, document navigation, updates and focus | Accepted; seven integrated browser cases and coordinator keyboard review pass |
 | UX18 | Lesson titles and phases | Title fields, phase controls, placement, compact layout and editing state | Implemented with existing browser tests; focused lesson review remains open |
-| UX19 | Activities and recap | Metadata, duration, goals, materials, adaptations, nested content and field controls | Implemented with existing browser tests; activity border overlap remains open |
+| UX19 | Activities and recap | Metadata, duration, goals, materials, adaptations, nested content and field controls | Activity border overlap fixed and verified; focused lesson review remains deferred |
 | UX20 | Curriculum and sources | Search and selection, source chips, excerpts, actions and contextual detail | Implemented with shared production controls; focused lesson review remains open |
 | UX21 | Listening and lesson visuals | Established media controls, transcript fields, generation states, editing and sizing | Implemented with shared production controls; focused lesson review remains open |
 | UX22 | Shared MDX and custom blocks | Actual registered renderers, inline/block geometry, controls, opaque content and fallbacks | Implemented with shared MDX renderer; widget reload verified; focused lesson review remains open |
-| UX23 | AI and material tools | Full material tools menu, selection quotes, prompts, progress, cancellation and result review | Pending; native toolbar opens a reduced menu |
+| UX23 | AI and material tools | Production material menu, selection quotes, prompts, progress, cancellation and result review | Production material menu integrated; nine focused browser cases pass; existing selection prompt remains available |
 | UX24 | Suggestions and review | Discovery, navigation, attribution, accept/reject controls, grouping and conflict feedback | Pending |
 | UX25 | Core editing interactions | Caret, range selection, clipboard, shortcuts, undo/redo, text entry and focus boundaries | Pending |
 | UX26 | Existing DOCX view controls | Keep existing controls usable during the combined workspace flow | Additional page-view and search capabilities are outside Plate parity scope |
