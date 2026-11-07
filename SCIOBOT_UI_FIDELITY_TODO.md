@@ -25,13 +25,24 @@ Lesson titles, phases, activities, recap, curriculum, sources, listening, visual
 
 ## Remaining cutover work
 
-1. Finish existing editing work. Integrate native code creation, its review fixes, and callout/toggle collapse. Fix gallery handle interception and activity border overlap.
-2. Check remaining reachable controls against production. Use existing media, date, mention, emoji, and container implementations. Fix reproduced differences only.
+1. Integrate existing native code editing, its review fixes, and callout/toggle collapse.
+2. Fix gallery handle interception and activity border overlap.
 3. Connect the actual material tools menu to native commands. Preserve progress, cancellation, review, and history.
-4. Review one realistic lesson containing the existing domain blocks. Run their existing focused tests together. Fix reproduced failures only.
+4. Check remaining active controls and one realistic lesson. Use existing media, inline controls, containers, and domain blocks. Fix reproduced failures only.
 5. Pin one integrated runtime. Verify the combined workspace flow, saving, reopening, existing exports, shared editing, and history.
 
-Use three delivery lanes during implementation: editing fixes, production controls and material tools, and lesson flows with integration.
+### Authorized implementation batch
+
+The user approved steps 1–3 on November 7, 2026. Steps 4–5 remain deferred.
+
+- [ ] Step 1: integrate and verify code editing, review, and collapse controls.
+- [ ] Step 2: fix and verify gallery handle interception and activity border overlap.
+- [ ] Step 3: connect and verify the production material tools menu.
+
+Use three agents for code editing, collapse controls, and layout defects. The coordinator owns material tools and integration.
+Build the engine runtime when these fixes require it. Run focused feature verification without starting the deferred application-wide review.
+Commit each coherent batch. Record completion and actual remaining defects here.
+
 The coordinator reviews each lane and maintains one integrated runtime. Batch broader checks at integration boundaries.
 Completion requires these five steps. Extra capabilities do not extend this list without a new user request.
 
