@@ -33,14 +33,17 @@ Lesson titles, phases, activities, recap, curriculum, sources, listening, visual
 
 ### Authorized implementation batch
 
-The user approved steps 1–3 on November 7, 2026. Steps 4–5 remain deferred.
+The user approved steps 1–3, then steps 4–5, on November 7, 2026.
 
 - [x] Step 1: integrate and verify code editing, review, and collapse controls.
 - [x] Step 2: fix and verify gallery handle interception and activity border overlap.
 - [x] Step 3: connect and verify the production material tools menu.
+- [ ] Step 4: compare representative production preparations with Plate on port 8080. Verify active controls, spacing, margins, padding, and interactive solution accordions. Fix reproduced failures.
+- [ ] Step 5: pin the integrated runtime and verify the real workspace, persistence, exports, shared editing, and history.
 
-Use three agents for code editing, collapse controls, and layout defects. The coordinator owns material tools and integration.
-Build the engine runtime when these fixes require it. Run focused feature verification without starting the deferred application-wide review.
+Use three agents for media, inline/container controls, and lesson layout. The coordinator owns production imports, runtime integration, and final review.
+Read production data through the established import configuration. Keep imported content and credentials in private local storage.
+Compare the same material in Plate and DOCX. Verify actual pointer and keyboard activation before accepting component interactivity.
 Commit each coherent batch. Record completion and actual remaining defects here.
 
 ### Completed batch
