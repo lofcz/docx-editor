@@ -170,8 +170,8 @@ for (const receiver of [0, 1] as const)
           hosts.push(mountReactBlockHost(editor, new Map([['test_counter', widgets[i]!.Counter]])))
         );
       });
-      const buttons = pair.containers.map(
-        (node) => node.querySelector('[data-sciobot-block-host] button')!
+      const buttons = pair.containers.map((node) =>
+        node.querySelector('[data-sciobot-block-host] button')!
       );
       await act(async () => {
         click(buttons[0]!);

@@ -36,8 +36,7 @@ export function withoutGeneratedCellSeparator(
   )
     return before;
   const position = first.position as
-    | { start?: { offset?: number }; end?: { offset?: number } }
-    | undefined;
+    { start?: { offset?: number }; end?: { offset?: number } } | undefined;
   if (
     !Number.isSafeInteger(position?.start?.offset) ||
     !Number.isSafeInteger(position?.end?.offset)

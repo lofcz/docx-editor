@@ -43,8 +43,7 @@ export interface ReviewDocumentView {
 }
 
 export type ReviewViewResult =
-  | { readonly success: true; readonly view: ReviewDocumentView }
-  | NativeEditFailure;
+  { readonly success: true; readonly view: ReviewDocumentView } | NativeEditFailure;
 
 function actualRevision(source: HeadlessDocumentView, expected: RevisionToken): RevisionToken {
   return { ...expected, revision: source.packageRevision() };

@@ -61,8 +61,7 @@ export function planImageReplacements(
   });
   for (const { old, next } of changes) {
     const position = old.ast.position as
-      | { start?: { offset?: number }; end?: { offset?: number } }
-      | undefined;
+      { start?: { offset?: number }; end?: { offset?: number } } | undefined;
     if (position?.start?.offset === undefined || position.end?.offset === undefined)
       return fail('The replaced image has no bound source range.');
     const range = targetSourceRangeAt(

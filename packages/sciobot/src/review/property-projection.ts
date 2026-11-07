@@ -30,8 +30,7 @@ export interface PendingPropertyProposal {
   readonly intent?: DomainPropertyIntent;
 }
 export type PropertyProposalResult =
-  | { readonly success: true; readonly proposal: PendingPropertyProposal }
-  | NativeEditFailure;
+  { readonly success: true; readonly proposal: PendingPropertyProposal } | NativeEditFailure;
 export type PropertyProjectionResult =
   | {
       readonly success: true;

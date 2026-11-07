@@ -29,8 +29,7 @@ import { blockTag, readPayloadStore, withPayloadRecord } from './payload-opc-cod
 import { encodeBlockPayload, type BlockPayload } from './payload-schema';
 
 export type MathEditResult =
-  | { readonly success: true; readonly revision: number }
-  | NativeEditFailure;
+  { readonly success: true; readonly revision: number } | NativeEditFailure;
 const fail = (code: NativeEditFailure['code'], error: string): NativeEditFailure => ({
   success: false,
   code,

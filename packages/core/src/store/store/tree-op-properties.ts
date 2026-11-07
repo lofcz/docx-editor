@@ -9,7 +9,12 @@
 
 import { WML_NAMESPACE_URI, type OoxmlNode } from '../package/ooxml-tree.ts';
 import { isValidXmlText } from '../package/sinks.ts';
-import { CT_PPR_SEQUENCE, CT_RPR_SEQUENCE } from '../package/ooxml-property-order.ts';
+import {
+  CT_PPR_SEQUENCE,
+  CT_RPR_SEQUENCE,
+  inSchemaOrder,
+  rankOf,
+} from '../package/ooxml-property-order.ts';
 import {
   ACCEPTED_PARAGRAPH_PROPERTIES,
   ACCEPTED_RUN_PROPERTIES,
@@ -101,13 +106,6 @@ function sameAttributes(
   return true;
 }
 
-/** Position in the container's declared sequence; an unmodelled name sorts last. */
-function rankOf(sequence: readonly string[], node: OoxmlNode): number {
-  if (node.kind === 'textValue') return sequence.length;
-  const index = sequence.indexOf(node.localName);
-  return index === -1 ? sequence.length : index;
-}
-
 /**
  * The children a rewritten `w:pPr` / `w:rPr` gets: the op's properties, merged over what the
  * container already held.
@@ -181,15 +179,15 @@ export function mergedPropertyChildren(
       else children.splice(at, 0, node);
     }
   }
-  return inSchemaOrder(children, vocabulary.sequence);
+  return [...inSchemaOrder(children, vocabulary.sequence)];
 }
 
 /**
  * Where a new child belongs in an `xsd:sequence` container: BEFORE the first modelled
  * child that outranks it.
  *
- * `CT_PPrBase` is a strict sequence, so an element dropped in the wrong slot makes the
- * file unreadable in Word even though every value in it is correct. Children the sequence
+ * `CT_PPrBase` is a strict sequence, so consumers refuse a file with an element in the
+ * wrong slot even though every value in it is correct. Children the sequence
  * does not model (a `w14:` effect, an `mc:AlternateContent`) are skipped rather than
  * ranked — their position is not ours to decide, the same rule {@link inSchemaOrder} follows.
  */
@@ -202,43 +200,11 @@ export function schemaInsertIndex(
   if (rank < 0) return children.length;
   for (let index = 0; index < children.length; index += 1) {
     const child = children[index];
-    if (!child || child.kind === 'textValue') continue;
-    const childRank = sequence.indexOf(child.localName);
-    if (childRank >= 0 && childRank > rank) return index;
+    if (!child) continue;
+    const childRank = rankOf(sequence, child);
+    if (childRank < sequence.length && childRank > rank) return index;
   }
   return children.length;
-}
-
-/**
- * The container's MODELLED children in `CT_PPr` order, leaving everything else where it was
- * authored.
- *
- * Placing only the NEW children by rank is enough when the container was already ordered,
- * and not otherwise: `CT_PPr` is a strict `xsd:sequence`, an out-of-order `w:pPr` still
- * reads as a typed container (only the mark's position is checked), and a rewrite that
- * preserved the authored positions of the children it rewrote emitted the same invalid
- * order back — `<w:pPr><w:jc/><w:pStyle/></w:pPr>` centred through the op came out
- * `<w:ind/><w:jc/><w:pStyle/>`, which Word reports as unreadable. An element the sequence
- * does not model (a `w14:` text effect, an `mc:AlternateContent`) keeps its authored slot:
- * its position is not ours to decide, and moving it could reorder it past the very child
- * it was written to modify.
- */
-function inSchemaOrder(children: readonly OoxmlNode[], sequence: readonly string[]): OoxmlNode[] {
-  const slots: number[] = [];
-  const modelled: OoxmlNode[] = [];
-  children.forEach((child, index) => {
-    if (rankOf(sequence, child) === sequence.length) return;
-    slots.push(index);
-    modelled.push(child);
-  });
-  const result = [...children];
-  if (modelled.length < 2) return result;
-  // Stable, so repeats of one name keep their authored order relative to each other.
-  const sorted = [...modelled].sort((a, b) => rankOf(sequence, a) - rankOf(sequence, b));
-  slots.forEach((slot, index) => {
-    result[slot] = sorted[index]!;
-  });
-  return result;
 }
 
 /** Longest `w:rStyle` reference a run write accepts; matches the hyperlink style bound. */

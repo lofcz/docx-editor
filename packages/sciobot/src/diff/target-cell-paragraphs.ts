@@ -120,8 +120,7 @@ export function prepareTargetCellParagraphs(
         right = contributions[index + 1]!;
       const candidates = old.breaks.filter((item) => {
         const position = item.node.position as
-          | { start?: { offset?: number }; end?: { offset?: number } }
-          | undefined;
+          { start?: { offset?: number }; end?: { offset?: number } } | undefined;
         if (position?.start?.offset === undefined || position.end?.offset === undefined)
           return false;
         const range = targetSourceRangeAt(

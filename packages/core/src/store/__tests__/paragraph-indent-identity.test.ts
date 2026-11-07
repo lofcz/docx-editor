@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { withoutOwnLevelIndent } from '../store/tree-op-list-level-indent.ts';
 import {
   applyTreeOp,
   directParagraphProperties,
@@ -60,3 +61,32 @@ for (const tracked of [false, true])
       canonicalOoxmlFingerprint(changed.part)
     );
   });
+
+test('a list indent reset retains its empty scalar holder through save and reopen', () => {
+  const parsed = readOoxmlPart(
+    `<w:document xmlns:w="${W}"><w:body><w:p><w:pPr><w:ind w:left="720" w:hanging="360"/></w:pPr><w:r><w:t>Item</w:t></w:r></w:p></w:body></w:document>`,
+    {
+      name: '/word/document.xml',
+      contentType:
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml',
+    }
+  );
+  if (!parsed.ok) throw new Error(parsed.reason);
+  const body = parsed.part.root.children[0]!;
+  if (body.kind === 'textValue') throw new Error('Missing body.');
+  const original = indent(parsed.part.root)!;
+  const changed = withoutOwnLevelIndent(parsed.part, body.children[0]!.id, undefined);
+  if (!changed.ok) throw new Error(changed.reason);
+  const next = indent(changed.part.root)!;
+  expect(next.id).toBe(original.id);
+  if (next.kind === 'textValue') throw new Error('Missing indentation.');
+  expect(next.attributes).toEqual([]);
+  const saved = serializeOoxmlPart(changed.part);
+  expect(saved).toContain('<w:ind/>');
+  const reopened = readOoxmlPart(saved, {
+    name: changed.part.name,
+    contentType: changed.part.contentType,
+  });
+  if (!reopened.ok) throw new Error(reopened.reason);
+  expect(canonicalOoxmlFingerprint(reopened.part)).toEqual(canonicalOoxmlFingerprint(changed.part));
+});

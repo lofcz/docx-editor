@@ -22,9 +22,7 @@ import type { SemanticLayout, TextMeasurer } from './semantic-records.ts';
 import type { StyleCascadeTable } from './style-cascade.ts';
 
 type SemanticLayoutOptionRole =
-  | 'document-coordinator'
-  | 'low-level-test-override'
-  | 'layout-internal';
+  'document-coordinator' | 'low-level-test-override' | 'layout-internal';
 
 /**
  * Evolution ratchet for the low-level layout call.
@@ -86,9 +84,9 @@ export const SEMANTIC_LAYOUT_OPTION_ROLES = Object.freeze({
 } satisfies Readonly<Record<keyof SemanticLayoutOptions, SemanticLayoutOptionRole>>);
 
 type SemanticOptionsWithRole<Role extends SemanticLayoutOptionRole> = {
-  [Key in keyof typeof SEMANTIC_LAYOUT_OPTION_ROLES]: (typeof SEMANTIC_LAYOUT_OPTION_ROLES)[Key] extends Role
-    ? Key
-    : never;
+  [
+    Key in keyof typeof SEMANTIC_LAYOUT_OPTION_ROLES
+  ]: (typeof SEMANTIC_LAYOUT_OPTION_ROLES)[Key] extends Role ? Key : never;
 }[keyof typeof SEMANTIC_LAYOUT_OPTION_ROLES];
 
 type DocumentCoordinatedSemanticOption = SemanticOptionsWithRole<'document-coordinator'>;
@@ -164,11 +162,9 @@ const _LAYOUT_DOCUMENT_VIEW_OPTION_SINKS = {
 } as const satisfies Readonly<Record<keyof LayoutDocumentViewOptions, LayoutDocumentViewSink>>;
 
 type CoordinatorInputsFor<Sink extends Exclude<LayoutDocumentViewSink, 'both'>> = {
-  [Key in keyof typeof _LAYOUT_DOCUMENT_VIEW_OPTION_SINKS]: (typeof _LAYOUT_DOCUMENT_VIEW_OPTION_SINKS)[Key] extends
-    | Sink
-    | 'both'
-    ? Key
-    : never;
+  [
+    Key in keyof typeof _LAYOUT_DOCUMENT_VIEW_OPTION_SINKS
+  ]: (typeof _LAYOUT_DOCUMENT_VIEW_OPTION_SINKS)[Key] extends Sink | 'both' ? Key : never;
 }[keyof typeof _LAYOUT_DOCUMENT_VIEW_OPTION_SINKS];
 
 /**

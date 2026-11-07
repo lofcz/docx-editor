@@ -110,8 +110,7 @@ export function retainedAtomGaps(
     const next = candidates[cursor]!;
     cursors.set(key, cursor + 1);
     const position = atom.ast.position as
-      | { start?: { offset?: number }; end?: { offset?: number } }
-      | undefined;
+      { start?: { offset?: number }; end?: { offset?: number } } | undefined;
     if (position?.start?.offset === undefined || position.end?.offset === undefined) return null;
     const range = targetSourceRangeAt(source.parsed, position.start.offset, position.end.offset);
     const native = range && ranges.get(`${range.start}:${range.end}`);

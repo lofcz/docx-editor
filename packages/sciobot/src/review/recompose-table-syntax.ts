@@ -16,8 +16,7 @@ function tables(ast: TargetAstNode): TableSyntax[] {
   const visit = (node: TargetAstNode) => {
     if (node.type === 'table') {
       const position = node.position as
-        | { start?: { offset?: number }; end?: { offset?: number } }
-        | undefined;
+        { start?: { offset?: number }; end?: { offset?: number } } | undefined;
       if (position?.start?.offset !== undefined && position.end?.offset !== undefined)
         found.push({
           key: targetAstKey(node),

@@ -329,8 +329,7 @@ test('every independent parser reference and C01 stream retains output/AST behav
     });
     for (const node of nodes(target.ast)) {
       const position = node.position as
-        | { start: { offset: number }; end: { offset: number } }
-        | undefined;
+        { start: { offset: number }; end: { offset: number } } | undefined;
       if (!position) continue;
       const start = position.start.offset,
         end = position.end.offset,

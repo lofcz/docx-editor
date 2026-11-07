@@ -36,8 +36,8 @@ for (const clientIds of [
       });
     };
     const roots = () =>
-      pair.containers.map(
-        (container) => container.querySelector<HTMLElement>('[data-sciobot-block-measure]')!
+      pair.containers.map((container) =>
+        container.querySelector<HTMLElement>('[data-sciobot-block-measure]')!
       );
     const tails = () =>
       pair.editors.map((editor) => {

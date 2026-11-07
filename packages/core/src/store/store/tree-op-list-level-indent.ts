@@ -10,7 +10,6 @@
 import { WML_NAMESPACE_URI, type OoxmlNode, type OoxmlPart } from '../package/ooxml-tree.ts';
 import {
   findNode,
-  removeNode,
   replaceNode,
   type EditOptions,
   type OoxmlEditResult,
@@ -19,9 +18,12 @@ import { namedChild, paragraphPropertiesNodeOf } from './tree-op-nodes.ts';
 
 /**
  * The `w:ind` attributes a list level states: the leading edge and the first line, in twips
- * and in character units, in both spellings of the leading edge.
+ * and in character units, in both spellings of the leading edge. A level change drops these
+ * from the paragraph's own `w:ind`, whether the change goes through `w:numPr` or a style.
+ *
+ * @internal
  */
-const LEVEL_INDENT_ATTRIBUTES: ReadonlySet<string> = new Set([
+export const LEVEL_INDENT_ATTRIBUTES: ReadonlySet<string> = new Set([
   'left',
   'start',
   'leftChars',
@@ -34,8 +36,9 @@ const LEVEL_INDENT_ATTRIBUTES: ReadonlySet<string> = new Set([
 
 /**
  * `part` without the paragraph's own leading-edge and first-line indent, so the list level it
- * moved to places it. `w:right`, `w:end` and their character units stay; a `w:ind` left with
- * no attribute goes. A paragraph with no such attribute is returned unchanged.
+ * moved to places it. `w:right`, `w:end` and their character units stay. An empty `w:ind`
+ * keeps its identity so a concurrent peer attribute edit survives the reset. An empty
+ * holder supplies no indent override. A paragraph with no such attribute stays unchanged.
  */
 export function withoutOwnLevelIndent(
   part: OoxmlPart,
@@ -51,7 +54,6 @@ export function withoutOwnLevelIndent(
       !LEVEL_INDENT_ATTRIBUTES.has(attribute.localName)
   );
   if (kept.length === ind.attributes.length) return { ok: true, part };
-  if (kept.length === 0 && ind.children.length === 0) return removeNode(part, ind.id, options);
   // The same element with fewer of its own attributes, as `withoutSectionMark` narrows children.
   return replaceNode(part, ind.id, { ...ind, attributes: kept } as OoxmlNode, options);
 }

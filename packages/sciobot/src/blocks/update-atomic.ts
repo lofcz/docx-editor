@@ -41,8 +41,7 @@ export interface AtomicBlockUpdate {
 }
 
 export type AtomicBlockUpdateResult =
-  | { readonly success: true; readonly revision: number }
-  | NativeEditFailure;
+  { readonly success: true; readonly revision: number } | NativeEditFailure;
 
 const fail = (code: NativeEditFailure['code'], error: string): NativeEditFailure => ({
   success: false,

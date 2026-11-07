@@ -86,8 +86,8 @@ test('horizontal merge preserves reading-order text, paragraph identities, marks
     oldCells = cells(input),
     owner = oldCells[0]![0]!,
     removed = oldCells[0]![1]!;
-  const paragraphs = [owner, removed].map(
-    (cell) => nodeChildren(cell).find((node) => node.kind === 'paragraph')!
+  const paragraphs = [owner, removed].map((cell) =>
+    nodeChildren(cell).find((node) => node.kind === 'paragraph')!
   );
   const planned = plan(input, { kind: 'merge', cellIds: [removed.id, owner.id] });
   expect(planned.operations).toEqual([

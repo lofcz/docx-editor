@@ -138,12 +138,7 @@ export interface ExportSemanticLayout extends SemanticLayout {
 export class ExportResourceError extends Error {
   constructor(
     readonly code:
-      | 'aborted'
-      | 'timedOut'
-      | 'nonConvergent'
-      | 'disposed'
-      | 'layoutInvariant'
-      | 'layoutFailed',
+      'aborted' | 'timedOut' | 'nonConvergent' | 'disposed' | 'layoutInvariant' | 'layoutFailed',
     message: string,
     options?: ErrorOptions
   ) {

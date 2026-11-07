@@ -33,8 +33,7 @@ export interface CompiledInlineTarget {
   readonly plainText: string | null;
 }
 export type InlineTargetResult =
-  | { readonly success: true; readonly target: CompiledInlineTarget }
-  | NativeEditFailure;
+  { readonly success: true; readonly target: CompiledInlineTarget } | NativeEditFailure;
 export const INLINE_TARGET_LIMITS = DEFAULT_TARGET_PARSE_LIMITS;
 
 const markOrder: readonly InlineTargetMark[] = ['bold', 'italic', 'strike', 'code'];

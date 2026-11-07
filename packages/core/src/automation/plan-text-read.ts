@@ -16,12 +16,10 @@ export function planTextRead(
   handles: AutomationHandleTable,
   packageReads: AutomationPackageReads
 ): PlannedOperation {
-  if (
-    !(
-      operation.projection === undefined ||
-      ['allMarkup', 'original', 'model'].includes(operation.projection)
-    )
-  )
+  if (!(
+    operation.projection === undefined ||
+    ['allMarkup', 'original', 'model'].includes(operation.projection)
+  ))
     return refuse('unsupported-content', 'unknown text projection', 'projection');
   const body = handles.resolve(operation.target, 'body');
   if (body) {

@@ -34,8 +34,7 @@ import {
 } from './group-record-store';
 
 export type GroupDecisionResult =
-  | { readonly success: true; readonly revision: RevisionToken }
-  | NativeEditFailure;
+  { readonly success: true; readonly revision: RevisionToken } | NativeEditFailure;
 const fail = (
   error: string,
   code: NativeEditFailure['code'] = 'invalid-input'

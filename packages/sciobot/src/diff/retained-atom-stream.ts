@@ -26,8 +26,7 @@ export function retainedAtomStreams(
       continue;
     }
     const position = token.ast.position as
-      | { start?: { offset?: number }; end?: { offset?: number } }
-      | undefined;
+      { start?: { offset?: number }; end?: { offset?: number } } | undefined;
     if (position?.start?.offset === undefined || position.end?.offset === undefined) return null;
     const range = targetSourceRangeAt(
       context.source.parsed,

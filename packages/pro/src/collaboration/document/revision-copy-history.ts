@@ -28,7 +28,7 @@ export function captureRevisionCopyHistory(
   const keys = new Map<Y.Text, Set<string>>();
   const inserted = (step as { insertions?: unknown } | undefined)?.insertions;
   for (const run of deleteSetRuns(inserted)) {
-    for (let clock = run.clock; clock < run.clock + run.length; ) {
+    for (let clock = run.clock; clock < run.clock + run.length;) {
       const item = structAt(registry.doc, { client: run.client, clock });
       if (!item) break;
       if (
@@ -107,7 +107,7 @@ export function restoreRevisionCopyHistory(
             return at === undefined ? [] : [at];
           })
           .sort((a, b) => a - b);
-        for (let at = selected.length - 1; at >= 0; ) {
+        for (let at = selected.length - 1; at >= 0;) {
           const end = selected[at]!;
           let start = end;
           at--;

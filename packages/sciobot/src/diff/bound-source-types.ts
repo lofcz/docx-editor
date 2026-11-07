@@ -24,12 +24,7 @@ export interface BoundSourceTable {
   readonly gridColumn: number | null;
   readonly gridSpan: number | null;
   readonly role:
-    | 'table'
-    | 'row'
-    | 'cell'
-    | 'horizontal-placeholder'
-    | 'vertical-placeholder'
-    | 'missing-slot';
+    'table' | 'row' | 'cell' | 'horizontal-placeholder' | 'vertical-placeholder' | 'missing-slot';
 }
 export interface BoundSourceBlock {
   /** Index path through logical sibling streams, distinct from the original AST path. */
@@ -67,13 +62,8 @@ export interface BoundLogicalSource {
   readonly unrepresented: readonly {
     readonly ownerId: string;
     readonly reason:
-      | 'generated'
-      | 'atomic-fallback'
-      | 'unprojected'
-      | 'empty-extent'
-      | 'not-parsed';
+      'generated' | 'atomic-fallback' | 'unprojected' | 'empty-extent' | 'not-parsed';
   }[];
 }
 export type BoundSourceResult =
-  | { readonly success: true; readonly source: BoundLogicalSource }
-  | NativeEditFailure;
+  { readonly success: true; readonly source: BoundLogicalSource } | NativeEditFailure;

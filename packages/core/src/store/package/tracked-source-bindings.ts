@@ -175,7 +175,7 @@ export function withTrackedSourceBindings(
       continue;
     }
     let index = 0;
-    for (let start = 0; start < raw.length; ) {
+    for (let start = 0; start < raw.length;) {
       let end = Math.min(start + CHUNK_LENGTH, raw.length);
       const code = raw.charCodeAt(end - 1);
       if (end < raw.length && code >= 0xd800 && code <= 0xdbff) end--;

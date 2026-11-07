@@ -15,8 +15,7 @@ export interface EditEcho {
   readonly message: string;
 }
 export type EditEchoResult =
-  | { readonly success: true; readonly echo: EditEcho }
-  | NativeEditFailure;
+  { readonly success: true; readonly echo: EditEcho } | NativeEditFailure;
 export const EDIT_ECHO_CONTEXT_LINES = 2;
 export const EDIT_ECHO_MAX_LINES = 40;
 

@@ -12,8 +12,7 @@ type NativeBorderSpec = Extract<
 export class TargetPropertyError extends Error {}
 export type HorizontalTarget = 'left' | 'center' | 'right' | 'both' | 'start' | 'end' | null;
 export type BorderTarget =
-  | { readonly clear: true }
-  | { readonly clear: false; readonly spec: NativeBorderSpec };
+  { readonly clear: true } | { readonly clear: false; readonly spec: NativeBorderSpec };
 const invalid = (message: string): never => {
   throw new TargetPropertyError(message);
 };

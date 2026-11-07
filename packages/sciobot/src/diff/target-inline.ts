@@ -318,8 +318,7 @@ export function planTargetParagraph(context: TargetParagraphSource): EditPlanRes
       if (old.kind !== 'atom' || next.kind !== 'atom') return fail('Opaque inline kinds differ.');
       if (targetAstKey(old.ast) === targetAstKey(next.ast)) continue;
       const position = old.ast.position as
-        | { start?: { offset?: number }; end?: { offset?: number } }
-        | undefined;
+        { start?: { offset?: number }; end?: { offset?: number } } | undefined;
       const range =
         position?.start?.offset === undefined || position.end?.offset === undefined
           ? null

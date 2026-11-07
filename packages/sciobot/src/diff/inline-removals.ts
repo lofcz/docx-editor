@@ -60,8 +60,7 @@ export function planInlineRemovals(
       if (alignment[i]! >= 0) continue;
       const atom = oldAtoms[i]!,
         position = atom.ast.position as
-          | { start?: { offset?: number }; end?: { offset?: number } }
-          | undefined;
+          { start?: { offset?: number }; end?: { offset?: number } } | undefined;
       if (position?.start?.offset === undefined || position.end?.offset === undefined)
         throw Error('The removed atom has no bound source range.');
       const range = targetSourceRangeAt(

@@ -55,8 +55,7 @@ export interface NativeReviewGroup {
   readonly readOnly: boolean;
 }
 export type ReviewGroupsResult =
-  | { readonly success: true; readonly groups: readonly NativeReviewGroup[] }
-  | NativeEditFailure;
+  { readonly success: true; readonly groups: readonly NativeReviewGroup[] } | NativeEditFailure;
 export interface ReviewGroupReceipt {
   readonly partName: string;
   readonly addresses: readonly RevisionAddress[];

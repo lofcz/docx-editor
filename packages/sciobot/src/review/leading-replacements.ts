@@ -49,7 +49,7 @@ export function leadingReplacementEdit(
         throw new Error('A replacement container disappeared.');
       const children: OoxmlNode[] = [];
       let changed = false;
-      for (let at = 0; at < current.children.length; ) {
+      for (let at = 0; at < current.children.length;) {
         if (!matches(current.children[at], 'revisionDelete')) {
           children.push(current.children[at++]!);
           continue;

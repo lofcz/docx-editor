@@ -57,5 +57,4 @@ export interface LogicalBlockDocument {
   readonly blocks: readonly LogicalBlock[];
 }
 export type LogicalBlockResult =
-  | { readonly success: true; readonly document: LogicalBlockDocument }
-  | NativeEditFailure;
+  { readonly success: true; readonly document: LogicalBlockDocument } | NativeEditFailure;

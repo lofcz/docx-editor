@@ -1,0 +1,56 @@
+{
+  "forkBaseline": "589dc8d671a03cca4aef308e3086210d02ec3111",
+  "upstreamCommit": "bac199e196492ecc3fb5fea249942ffd3657ea66",
+  "upstreamCommitsMerged": 26,
+  "strategy": "Merge upstream/main into codex/react-block-proof and retain fork history.",
+  "resolutions": [
+    "Keep native widget reservations and local collapse alongside upstream anchor pagination.",
+    "Keep fork property identity and review ownership alongside upstream schema ordering and table healing.",
+    "Clear list indentation attributes without deleting their shared holder, preserving concurrent peer edits.",
+    "Align the private core peer with 2.35.0 and share Yjs 13.6.33 with Pro.",
+    "Align Vite's PostCSS override with upstream PostCSS 8.5.32.",
+    "Export the paragraph appearance types already used by Markdown export options.",
+    "Extract internal edit and selection helpers to keep existing file limits unchanged."
+  ],
+  "verification": {
+    "upstreamBehaviorTests": "All 55 upstream behavior test files pass across scoped batches and focused repairs.",
+    "forkCoverage": [
+      "Native code preparation, selection, metadata, review, retirement, and insertion.",
+      "Host cancellation and local content-control collapse.",
+      "Real collaboration sessions, concurrent edits, undo, redo, deletion, reconnect, and save/reopen.",
+      "Widget reservations with anchored drawings, incremental layout, and unchanged canonical content.",
+      "Stable indentation ownership and list review rejection in both actor orders."
+    ],
+    "build": "All published packages and the private adapter build successfully.",
+    "typecheck": "All workspace targets pass; telemetry targets passed after the PostCSS correction.",
+    "format": "Full repository formatting and focused formatting of final repairs passed.",
+    "lint": "Passed with existing warnings.",
+    "publicApi": "All package API snapshots pass against fresh builds.",
+    "adapterParity": "Passed.",
+    "translations": "All 1034 keys and 13 locale files passed validation.",
+    "collaborationPolicy": "Passed against the fork baseline.",
+    "officeSignatures": "Compatibility report completed successfully.",
+    "notices": "Generated and checked against fresh package builds.",
+    "lockfile": "Frozen installation passed. Pro and Sciobot resolve one Yjs copy and one core copy."
+  },
+  "limits": [
+    "The full repository test suite was not rerun; verification used upstream changes and fork integration regressions.",
+    "The store lane compiler check fails before and after this merge. Other four lanes pass.",
+    "The store baseline has 1349 diagnostics; the merged version has 1347, with no new diagnostic messages.",
+    "OpenSpec validation could not run because the openspec command is unavailable.",
+    "The experimental ScioBot app retains its existing runtime pin. This detour updates the engine fork."
+  ],
+  "logs": [
+    "/tmp/docx-upstream-sync-remaining-tests.log",
+    "/tmp/docx-sync-layout-tests.log",
+    "/tmp/docx-upstream-sync-store-tests.log",
+    "/tmp/docx-sync-dependency-regressions.log",
+    "/tmp/docx-upstream-sync-fork-tests.log",
+    "/tmp/docx-sync-list-ownership-final.log",
+    "/tmp/docx-sync-heading-list-history.log",
+    "/tmp/docx-upstream-sync-list-final-integration.log",
+    "/tmp/docx-upstream-sync-final-build.log",
+    "/tmp/docx-upstream-sync-api.log",
+    "/tmp/docx-sync-store-lane-baseline.log"
+  ]
+}

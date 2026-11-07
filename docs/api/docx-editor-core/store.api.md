@@ -2170,6 +2170,9 @@ export interface HeadlessThemeFonts {
 // @public
 export function headlessViewOfStore(store: TreePackageStore): HeadlessDocumentView;
 
+// @internal
+export function healedTableView<Table extends OoxmlElement>(table: Table): Table;
+
 // @public
 export function hiddenRetiredParagraphs(children: readonly OoxmlNode[]): ReadonlySet<string>;
 
@@ -2751,6 +2754,9 @@ export interface LegacyTextArtProjection {
     readonly text: string;
     readonly trim?: true;
 }
+
+// @internal
+export const LEVEL_INDENT_ATTRIBUTES: ReadonlySet<string>;
 
 // @public
 export const LIMIT_KEYS: (keyof ResourceLimits)[];
@@ -4462,7 +4468,7 @@ export interface Reservation {
 // @public
 export function resolve(bundles: readonly FeatureBundle[], options?: ResolveOptions): ResolvedRegistry;
 
-// @internal (undocumented)
+// @internal
 export function resolveColorNode(color: OoxmlNode, resolveSchemeColor?: ShapeSchemeColorResolver, placeholder?: ShapeColor): ShapeColor | null;
 
 // @public

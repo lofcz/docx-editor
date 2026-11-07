@@ -35,9 +35,7 @@ for (const inline of [false, true])
     const fixture = inline ? inlineWidgetDocument : reactBlockDocument;
     const editor = createDocxEditor({ container, document: fixture() });
     let host:
-      | ReturnType<typeof mountReactBlockHost>
-      | ReturnType<typeof mountReactInlineHost>
-      | undefined;
+      ReturnType<typeof mountReactBlockHost> | ReturnType<typeof mountReactInlineHost> | undefined;
     try {
       let release: () => void;
       await act(async () => {

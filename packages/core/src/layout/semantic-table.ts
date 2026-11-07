@@ -37,17 +37,12 @@ import { withRowMinimumContentInsets } from './table-row-minimum-insets.ts';
 // covering it across every row, not any one node visited here.
 import {
   flattenContentControls,
+  healedTableView,
   WML_NAMESPACE_URI,
   type OoxmlElement,
   type OoxmlNode,
 } from '@docx-editor.dev/core/store';
-import {
-  readFlag,
-  readGridSkip,
-  readGridSpan,
-  readRowHeight,
-  readShading,
-} from './table-row-properties.ts';
+import { readFlag, readGridSkip, readGridSpan, readRowHeight } from './table-row-properties.ts';
 import { readTableFloatPosition, type TableFloatPosition } from './table-float-properties.ts';
 export type {
   TableFloatAnchor,
@@ -116,6 +111,7 @@ import { modernSharedPercentWidth, resolveTableWidthPlacement } from './table-wi
 import { legacyFixedTableContentOffset } from './legacy-fixed-table-content.ts';
 import { withLegacyTableSideRules } from './legacy-table-side-rules.ts';
 import { conditionalTypesFor, readTableLook } from './table-conditional-formats.ts';
+import { cellShading } from './table-cell-shading.ts';
 import {
   autofitColumnWidthsPt,
   narrowNestedReader,
@@ -170,8 +166,7 @@ export type TableRowHeightRule = 'auto' | 'atLeast' | 'exact';
  * optional number.
  */
 export type TableRowHeight =
-  | { readonly rule: 'auto' }
-  | { readonly rule: 'atLeast' | 'exact'; readonly valuePt: number };
+  { readonly rule: 'auto' } | { readonly rule: 'atLeast' | 'exact'; readonly valuePt: number };
 
 /** Highest grid column a cell may start on; keeps a row's total span bounded. */
 const LAST_GRID_COLUMN = MAX_TABLE_COLUMNS - 1;
@@ -412,7 +407,7 @@ export function readTableStructure(
 }
 
 function readTableStructureUncached(
-  table: OoxmlNode,
+  source: OoxmlNode,
   contentWidthPt: number,
   depth: number,
   styleCascade: StyleCascadeTable | undefined,
@@ -422,7 +417,8 @@ function readTableStructureUncached(
   textBox = false
 ): SemanticTableStructure | null {
   if (depth >= MAX_TABLE_NESTING) return null;
-  if (table.kind !== 'table') return null;
+  if (source.kind !== 'table') return null;
+  const table = healedTableView(source); // Repeated row/cell containers show as a save merges them.
 
   const tblPr = childNamed(table, 'tblPr');
   // A table's appearance mostly lives in its STYLE. Word writes
@@ -668,7 +664,6 @@ function readTableStructureUncached(
         cellProperties,
       });
       cellIndex += 1;
-      let conditionalShading: string | undefined;
       let conditionalBorders = EMPTY_CELL_BORDER_BOX;
       // Whole-table tcPr and basedOn layers contribute diagonals before conditions.
       for (const node of tableStyle.tableCellPropertyNodes ?? []) {
@@ -678,7 +673,6 @@ function readTableStructureUncached(
         const format = tableStyle.conditional.get(conditionType);
         if (!format) continue;
         const conditionTcPr = childNamed(format, 'tcPr');
-        conditionalShading = readShading(conditionTcPr) ?? conditionalShading;
         conditionalBorders = mergeCellBorders(
           conditionalBorders,
           readConditionalCellBorders(
@@ -687,7 +681,7 @@ function readTableStructureUncached(
           )
         );
       }
-      const shading = readShading(cellProperties) ?? conditionalShading;
+      const shading = cellShading(tableStyle, conditions, cellProperties);
       const cellMargins = mergeMargins(
         defaultMargins,
         readMarginSides(cellProperties && childNamed(cellProperties, 'tcMar'))

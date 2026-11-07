@@ -194,7 +194,7 @@ export function persistRevisionCopyMembership(
     if (changes) pending.push({ position, changes, key: JSON.stringify(changes) });
   }
   pending.sort((a, b) => b.position - a.position);
-  for (let index = 0; index < pending.length; ) {
+  for (let index = 0; index < pending.length;) {
     const first = pending[index]!;
     let start = first.position;
     let next = index + 1;

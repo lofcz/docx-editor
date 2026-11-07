@@ -1,4 +1,4 @@
-export type { OoxmlProperty } from '@docx-editor.dev/core/store';
+export type { ContentControlKind, OoxmlProperty } from '@docx-editor.dev/core/store';
 export type { InlineDrawingFormatting, SpanLinkRecord } from '@docx-editor.dev/core/layout';
 import {
   checkExportAbort,
@@ -117,6 +117,10 @@ export type {
   ExportSession,
   OpenDocumentForExportOptions,
   OpenDocumentForExportResult,
+  ParagraphAppearanceContribution,
+  ParagraphAppearanceContext,
+  ParagraphAppearanceControl,
+  ParagraphAppearanceDefaults,
   PreservedImageConverter,
 } from '@docx-editor.dev/core/export';
 export type {

@@ -13,8 +13,7 @@ import type { NativeTextPoint } from './text';
 
 /** Native text positions or explicit edges of a selected application block. */
 export type QuotePoint =
-  | NativeTextPoint
-  | { readonly blockId: string; readonly edge: 'start' | 'end' };
+  NativeTextPoint | { readonly blockId: string; readonly edge: 'start' | 'end' };
 export interface QuoteSelection {
   readonly anchor: QuotePoint;
   readonly head: QuotePoint;

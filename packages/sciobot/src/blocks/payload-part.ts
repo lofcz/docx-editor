@@ -14,8 +14,7 @@ export interface BlockPayloadWrite {
 }
 
 export type BlockPayloadWriteResult =
-  | { readonly success: true; readonly revision: number; readonly tag: string }
-  | NativeEditFailure;
+  { readonly success: true; readonly revision: number; readonly tag: string } | NativeEditFailure;
 
 /** Update an existing block's metadata and native fallback in one gated transaction. */
 export function writeBlockPayload(

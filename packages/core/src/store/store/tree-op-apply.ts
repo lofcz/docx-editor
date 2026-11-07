@@ -13,7 +13,6 @@ import {
 } from './tree-op-tracked-link-structure.ts';
 import { withDisplayedHyphens } from '../package/hyphen-text.ts';
 import { withTailStyle } from './tree-op-paragraph-tail.ts';
-import { withInsertionHints } from './tree-op-text-splice-hints.ts';
 import { applySetFieldCode } from './tree-op-field-code.ts';
 import { applyTableAuthoring } from './tree-op-table-batch.ts';
 import { applyTableProperties } from './tree-op-table-authoring.ts';
@@ -248,7 +247,8 @@ import {
 } from '../package/retired-paragraph.ts';
 import { applyDrawingContentEdit } from './drawing-content-edit.ts';
 import { applyInsertBuildingBlock } from './building-block-insert.ts';
-import { applyBookmarkOp, isBookmarkTreeOp, withBookmarkEditRules } from './tree-op-bookmarks.ts';
+import { applyBookmarkOp, isBookmarkTreeOp } from './tree-op-bookmarks.ts';
+import { withTreeOpEditRules } from './tree-op-edit-rules.ts';
 import { closesAnOpenRange, opensARange, zeroLengthGoesToHead } from './tree-op-split-markers.ts';
 import {
   promptInsertionOffset,
@@ -267,9 +267,7 @@ import {
  * quadratic in document size.
  */
 export function applyTreeOp(part: OoxmlPart, op: TreeDocOp, options?: EditOptions): TreeOpResult {
-  const run = () =>
-    withBookmarkEditRules(part, op, options, () => applyValidatedTreeOp(part, op, options));
-  return op.op === 'insertText' ? withInsertionHints(part, op.paragraphId, op.offset, run) : run();
+  return withTreeOpEditRules(part, op, options, applyValidatedTreeOp);
 }
 
 function applyValidatedTreeOp(part: OoxmlPart, op: TreeDocOp, options?: EditOptions): TreeOpResult {

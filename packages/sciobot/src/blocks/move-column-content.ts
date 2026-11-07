@@ -30,8 +30,7 @@ export interface ColumnContentMove {
   readonly expectedRevision: number;
 }
 export type ColumnContentMoveResult =
-  | { readonly success: true; readonly revision: number }
-  | NativeEditFailure;
+  { readonly success: true; readonly revision: number } | NativeEditFailure;
 const fail = (code: NativeEditFailure['code'], error: string): NativeEditFailure => ({
   success: false,
   code,

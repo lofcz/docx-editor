@@ -9,8 +9,7 @@ import type { NativeEditFailure } from '../contracts/document';
 
 export type ExitDirection = 'after' | 'before';
 export type ExitBlockResult =
-  | { readonly success: true; readonly paragraphId: string }
-  | NativeEditFailure;
+  { readonly success: true; readonly paragraphId: string } | NativeEditFailure;
 
 const fail = (error: string): NativeEditFailure => ({
   success: false,
@@ -37,7 +36,7 @@ export function exitBlock(editor: DocxEditorInstance, direction: ExitDirection):
   const body = bodyStoryRoot(part);
   if (!body || body.kind === 'textValue') return fail('The document has no body.');
   let top = surface.state().selection.head.paragraphId;
-  for (let parent = parentNodeOf(part, top); parent && parent.id !== body.id; ) {
+  for (let parent = parentNodeOf(part, top); parent && parent.id !== body.id;) {
     top = parent.id;
     parent = parentNodeOf(part, top);
   }

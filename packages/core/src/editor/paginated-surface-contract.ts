@@ -872,8 +872,7 @@ export interface PaginatedSurface
     readonly sectionIndex?: number;
     /** `setWatermark` only: the new watermark, or null to remove it. */
     readonly watermark?:
-      | import('../store/package/watermark-package.ts').PackageWatermarkWrite
-      | null;
+      import('../store/package/watermark-package.ts').PackageWatermarkWrite | null;
     /** `setDocumentProtection` only: enforce filling-in-forms protection, or lift it. */
     readonly enforce?: boolean;
     readonly kind?: 'header' | 'footer';

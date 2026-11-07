@@ -335,8 +335,7 @@ export interface InlineCodeRunChange {
 }
 
 export type InlineCodeRunChangesResult =
-  | { readonly success: true; readonly changes: readonly InlineCodeRunChange[] }
-  | NativeEditFailure;
+  { readonly success: true; readonly changes: readonly InlineCodeRunChange[] } | NativeEditFailure;
 
 /**
  * Resolve the per-run character style changes for one paragraph range, without writing.

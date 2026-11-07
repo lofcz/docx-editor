@@ -12,8 +12,7 @@ import { prepareGeneratedMarkdown } from './generated-markdown';
 import { beginStreamInsertion, type StreamAppendResult } from './stream-insert';
 
 export type MarkdownStreamResult =
-  | StreamAppendResult
-  | { readonly success: true; readonly committed: false };
+  StreamAppendResult | { readonly success: true; readonly committed: false };
 export interface MarkdownInsertionStream {
   readonly state: 'active' | 'ended';
   /** Incomplete syntax stays request-local, available to the application's stream preview. */

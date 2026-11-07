@@ -20,8 +20,7 @@ export interface RestoredReviewState {
 }
 
 export type RestoreReviewResult =
-  | { readonly success: true; readonly state: RestoredReviewState }
-  | NativeEditFailure;
+  { readonly success: true; readonly state: RestoredReviewState } | NativeEditFailure;
 
 /**
  * Recover review availability from persisted native/application records without writes.

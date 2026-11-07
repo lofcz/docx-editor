@@ -2514,6 +2514,7 @@ export interface NumberingLevel {
     // (undocumented)
     readonly numFmt: string;
     readonly picBulletId?: string;
+    readonly pStyle?: string;
     readonly runProperties: readonly OoxmlProperty[];
     // (undocumented)
     readonly start: number;
@@ -4222,7 +4223,7 @@ export function setHarfBuzzWasmUrl(url: string | URL): void;
 export const sha256FontBytes: (bytes: Uint8Array) => string;
 
 // @public
-export function shadingFillFromElement(shd: OoxmlElement | undefined): string | undefined;
+export function shadingFillFromElement(shd: OoxmlElement | null | undefined): string | undefined;
 
 // @public
 export interface ShapeColor {

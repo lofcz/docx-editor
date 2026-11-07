@@ -44,8 +44,7 @@ for (const fixture of ['legacy', 'dynamic', 'layered'])
       for (const receiver of [0, 1] as const)
         for (const inside of [false, true])
           for (const action of (inside ? ['accept'] : ['accept', 'reject']) as readonly (
-            | 'accept'
-            | 'reject'
+            'accept' | 'reject'
           )[])
             test(`later link proposal after ${fixture} older-core ${priorAction} ${clientIds}/${receiver}/${action}/${inside ? 'inside-copy' : 'suffix'}`, async () => {
               const pair = await createTwoEditorFixture({

@@ -40,6 +40,7 @@ import {
   isQNameValuedAttribute,
 } from './ooxml-serialize-namespaces.ts';
 import type { OoxmlAttribute, OoxmlElement, OoxmlNode, OoxmlPart } from './ooxml-tree.ts';
+import { serializedPropertyOrder } from './ooxml-property-order.ts';
 
 export interface ControlledPrefixes {
   /** Element-name prefixes; may map a root-default URI to `''`. */
@@ -387,7 +388,7 @@ function serializeElement(
       ` ${attributeName}="${escapeXmlAttributeChecked(value, `attribute ${attributeName}`)}"`
     );
   }
-  const children = significantChildren(node, preserve);
+  const children = serializedPropertyOrder(node, significantChildren(node, preserve));
   if (children.length === 0) {
     out.push('/>');
     return;

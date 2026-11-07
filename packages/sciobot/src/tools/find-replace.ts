@@ -48,8 +48,7 @@ function normalizeForMatch(s: string): string {
 }
 
 export type FindAndReplaceResult =
-  | { success: true; newContent: string }
-  | { success: false; error: string };
+  { success: true; newContent: string } | { success: false; error: string };
 
 /**
  * Locate `oldString` in `content`. Returns the exact substring of `content`

@@ -5,9 +5,7 @@
  * fragments than the limit allows.
  */
 export type TablePaginationErrorCode =
-  | 'table-row-overheight'
-  | 'table-row-split-unsupported'
-  | 'table-row-fragment-limit';
+  'table-row-overheight' | 'table-row-split-unsupported' | 'table-row-fragment-limit';
 
 /**
  * Bounded table pagination failure. Prefer this over emitting a fragment that overflows

@@ -66,8 +66,7 @@ export function mixedInlineAtoms(
     ordinals.set(key, ordinal + 1);
     nextAt = next + 1;
     const position = atom.ast.position as
-      | { start?: { offset?: number }; end?: { offset?: number } }
-      | undefined;
+      { start?: { offset?: number }; end?: { offset?: number } } | undefined;
     if (position?.start?.offset === undefined || position.end?.offset === undefined) return null;
     const range = targetSourceRangeAt(
       context.source.parsed,

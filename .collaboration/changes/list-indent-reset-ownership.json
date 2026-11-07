@@ -1,0 +1,16 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "List joins and level changes delete an empty indentation holder and hide concurrent attribute edits on its stable identity.",
+  "after": "List joins and level changes clear observed indentation attributes and retain the existing holder. Concurrent peer indentation remains visible through history and save/reopen.",
+  "reason": "The writer uses existing attribute deletion primitives on the existing node. Empty Word indentation holders supply no geometry override. Shared fields, protocol versions, and limits stay unchanged. Existing readers support these operations and empty holders; older writers keep their prior deletion behavior. No room migration is required.",
+  "tests": [
+    "packages/core/src/store/__tests__/paragraph-indent-identity.test.ts",
+    "packages/core/src/editor/__tests__/list-level-own-indent.test.ts",
+    "packages/core/src/editor/__tests__/list-join-indent-level.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-list-heading-numbering.test.ts",
+    "packages/sciobot/src/chrome/list-toggle-collaboration.test.ts"
+  ],
+  "changeset": "list-indent-reset-ownership",
+  "migration": null
+}

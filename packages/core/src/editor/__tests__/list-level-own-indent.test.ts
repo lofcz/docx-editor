@@ -206,12 +206,30 @@ describe('a level change on a list item with its own indent', () => {
 
   test('Enter on an empty item with its own indent outdents it to the outer level', () => {
     const editor = mount(item('Peer', 0) + item('', 1, OWN));
+    const placement = (value: DocxEditorInstance) => {
+      const paragraphId = ids(value)[1]!;
+      const fragment = value
+        .surface!.layout()
+        .pages.flatMap((page) => page.fragments)
+        .find((fragment) => fragment.kind === 'paragraph' && fragment.paragraphId === paragraphId);
+      if (!fragment || fragment.kind !== 'paragraph') throw new Error('Missing empty item.');
+      return { level: fragment.marker?.level, marker: fragment.marker?.box.x };
+    };
+    expect(placement(editor).level).toBe(1);
     const point = { paragraphId: ids(editor)[1]!, offset: 0 };
     editor.surface!.setSelection({ anchor: point, head: point });
     expect(editor.surface!.exitListOnEmptyItem()).toBe(true);
     const xml = documentXml(editor.surface!.save());
     expect(xml).not.toContain('<w:ilvl w:val="1"/>');
-    expect(xml).not.toContain('<w:ind');
+    expect(xml).toContain('<w:ind/>');
+    expect(savedIndent(editor, '')).toBeNull();
+    expect(placement(editor)).toEqual({ level: 0, marker: geometry(editor, 'Peer').marker });
+    const reopened = createDocxEditor({
+      container: document.createElement('div'),
+      document: editor.surface!.save(),
+    });
+    open.push(reopened);
+    expect(placement(reopened)).toEqual(placement(editor));
   });
 
   test('an item numbered through its style loses its own indent too', () => {

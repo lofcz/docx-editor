@@ -10,8 +10,7 @@ export interface TargetListPair {
   readonly paragraphId: string;
 }
 export type TargetListResolution =
-  | { readonly success: true; readonly targets: readonly ListTarget[] }
-  | NativeEditFailure;
+  { readonly success: true; readonly targets: readonly ListTarget[] } | NativeEditFailure;
 const fail = (error: string): NativeEditFailure => ({
   success: false,
   code: 'unsupported-operation',

@@ -139,8 +139,7 @@ function containerState(
 ): ContainerState {
   const changeName = `${container}Change`;
   const existing = prior?.children.find((child) => isW(child, changeName)) as
-    | OoxmlElement
-    | undefined;
+    OoxmlElement | undefined;
   const original = recordable(
     (existing ? recordedProperties(existing) : null) ?? prior?.children ?? [],
     container

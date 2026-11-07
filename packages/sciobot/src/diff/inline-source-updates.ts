@@ -58,8 +58,7 @@ export function planInlineSourceUpdates(
     )
       continue;
     const position = atom.ast.position as
-      | { start?: { offset?: number }; end?: { offset?: number } }
-      | undefined;
+      { start?: { offset?: number }; end?: { offset?: number } } | undefined;
     if (position?.start?.offset === undefined || position.end?.offset === undefined)
       return fail('The changed source has no bound native range.');
     const range = targetSourceRangeAt(

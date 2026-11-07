@@ -58,8 +58,7 @@ export interface ExternalReviewReport {
   readonly hasConflicts: boolean;
 }
 export type ExternalReviewRead =
-  | { readonly success: true; readonly report: ExternalReviewReport }
-  | NativeEditFailure;
+  { readonly success: true; readonly report: ExternalReviewReport } | NativeEditFailure;
 export interface ExternalFallbackLabel {
   readonly before: string;
   readonly after: string;

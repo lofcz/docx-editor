@@ -39,6 +39,9 @@ export interface AnchoredDrawingRecord extends Omit<InlineDrawingRecord, 'kind' 
 }
 
 // @public
+export type ContentControlKind = 'richText' | 'plainText' | 'checkbox' | 'dropDownList' | 'comboBox' | 'date' | 'picture' | 'docPartObj' | 'docPartList' | 'group' | 'citation' | 'bibliography' | 'equation' | 'untyped';
+
+// @public
 export function createFontSource(bytes: Uint8Array, request: FontFaceRequest & {
     readonly faceIndex?: number;
 }, options?: {
@@ -816,6 +819,7 @@ export interface OpenDocumentForExportOptions {
     readonly displayMode?: ReviewDisplayMode;
     readonly imageDecodePort?: ImageDecodePort;
     readonly measurer?: TextMeasurer;
+    readonly paragraphAppearance?: ParagraphAppearanceContribution;
     readonly producer?: string;
     readonly resourceTimeoutMs?: number;
     readonly reuseAcrossRevisions?: boolean;
@@ -851,6 +855,50 @@ export type OpenMarkdownDocumentForExportResult = {
 } | Exclude<OpenDocumentForExportResult, {
     readonly ok: true;
 }>;
+
+// @public
+export interface ParagraphAppearanceContext {
+    readonly controls: readonly ParagraphAppearanceControl[];
+    // (undocumented)
+    readonly displayMode: RevisionDisplayMode;
+    // (undocumented)
+    readonly paragraphId: string;
+}
+
+// @public
+export interface ParagraphAppearanceContribution {
+    readonly id: string;
+    // (undocumented)
+    readonly resolve: (context: ParagraphAppearanceContext) => ParagraphAppearanceDefaults | null;
+}
+
+// @public
+export interface ParagraphAppearanceControl {
+    // (undocumented)
+    readonly checked?: boolean;
+    // (undocumented)
+    readonly controlType: ContentControlKind;
+    // (undocumented)
+    readonly end: number;
+    // (undocumented)
+    readonly id: string;
+    // (undocumented)
+    readonly start: number;
+    // (undocumented)
+    readonly tag?: string;
+}
+
+// @public
+export interface ParagraphAppearanceDefaults {
+    // (undocumented)
+    readonly color?: {
+        readonly themeColor?: string;
+        readonly themeTint?: string;
+        readonly val: string;
+    };
+    // (undocumented)
+    readonly strike?: boolean;
+}
 
 // @public
 export interface PictureFrameEffects {

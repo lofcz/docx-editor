@@ -380,22 +380,21 @@ function commit(
         ownership = Object.freeze(
           requireSuccess(readReviewGroups(ctx.currentPackage()))
             .groups.filter((group) => !prior.has(group.id))
-            .map(
-              (group): OwnedProposalGroup =>
-                Object.freeze({
-                  groupId: group.id,
-                  native: Object.freeze(
-                    group.native.map((member) =>
-                      Object.freeze({
-                        partName: member.partName,
-                        addresses: Object.freeze([Object.freeze({ ...member.address })]),
-                      })
-                    )
-                  ),
-                  properties: Object.freeze(
-                    group.properties.map((member) => Object.freeze({ ...member }))
-                  ),
-                })
+            .map((group): OwnedProposalGroup =>
+              Object.freeze({
+                groupId: group.id,
+                native: Object.freeze(
+                  group.native.map((member) =>
+                    Object.freeze({
+                      partName: member.partName,
+                      addresses: Object.freeze([Object.freeze({ ...member.address })]),
+                    })
+                  )
+                ),
+                properties: Object.freeze(
+                  group.properties.map((member) => Object.freeze({ ...member }))
+                ),
+              })
             )
         );
         contentProofs = requireSuccess(

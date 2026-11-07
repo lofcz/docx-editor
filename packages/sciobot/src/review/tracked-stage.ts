@@ -182,7 +182,7 @@ export function stageTrackedPlan(
     );
     formatReceipts.set(identity, entries);
   };
-  for (let at = 0; at < plan.operations.length; ) {
+  for (let at = 0; at < plan.operations.length;) {
     const edit = plan.operations[at]!;
     if (edit.partName !== writer.currentPackage().mainDocumentPart)
       refuseWrite(

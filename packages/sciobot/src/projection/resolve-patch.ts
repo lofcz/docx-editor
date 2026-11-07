@@ -70,8 +70,7 @@ export type CanonicalPatchTarget = PatchTargetBase &
   );
 
 export type PatchResolutionResult =
-  | { readonly success: true; readonly target: CanonicalPatchTarget }
-  | NativeEditFailure;
+  { readonly success: true; readonly target: CanonicalPatchTarget } | NativeEditFailure;
 
 type MappedProjection = MarkdownProjection &
   Partial<Pick<BlockProjection, 'blocks' | 'attributes'>>;

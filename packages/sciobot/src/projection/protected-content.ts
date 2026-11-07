@@ -50,8 +50,7 @@ export interface ProtectedContentIndex {
   readonly packageMetadata: string;
 }
 export type ProtectedContentResult =
-  | { readonly success: true; readonly index: ProtectedContentIndex }
-  | NativeEditFailure;
+  { readonly success: true; readonly index: ProtectedContentIndex } | NativeEditFailure;
 export type ProtectedContentCheck =
   | { readonly success: true }
   | (NativeEditFailure & {

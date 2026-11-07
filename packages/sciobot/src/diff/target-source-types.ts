@@ -53,5 +53,4 @@ export interface TargetSourceIndex {
   readonly windows: readonly TargetSourceWindow[];
 }
 export type TargetSourceResult =
-  | { readonly success: true; readonly index: TargetSourceIndex }
-  | NativeEditFailure;
+  { readonly success: true; readonly index: TargetSourceIndex } | NativeEditFailure;

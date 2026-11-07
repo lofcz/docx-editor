@@ -74,8 +74,7 @@ function equalDomainValue(before: unknown, after: unknown): boolean {
 }
 
 export type PropertyState =
-  | { readonly present: false }
-  | { readonly present: true; readonly value: unknown };
+  { readonly present: false } | { readonly present: true; readonly value: unknown };
 
 export interface DomainPropertyChange {
   readonly key: string;

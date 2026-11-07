@@ -84,6 +84,15 @@ export function collapsedAt(position: SemanticPosition): SemanticSelection {
   return { anchor: position, head: position };
 }
 
+/** Compare positions against the surface's current paragraph order. */
+export function createPositionComparator(paragraphOrder: () => readonly string[]) {
+  return (a: SemanticPosition, b: SemanticPosition): number => {
+    if (a.paragraphId === b.paragraphId) return a.offset - b.offset;
+    const order = paragraphOrder();
+    return order.indexOf(a.paragraphId) - order.indexOf(b.paragraphId);
+  };
+}
+
 /**
  * A selection as a history mark, or null when it spans paragraphs.
  *

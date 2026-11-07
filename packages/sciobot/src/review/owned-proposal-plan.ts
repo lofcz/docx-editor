@@ -62,8 +62,7 @@ export interface OwnedProposalRemovalPlan {
 }
 
 export type OwnedProposalRemovalResult =
-  | { readonly success: true; readonly plan: OwnedProposalRemovalPlan }
-  | NativeEditFailure;
+  { readonly success: true; readonly plan: OwnedProposalRemovalPlan } | NativeEditFailure;
 
 const fail = (
   error: string,

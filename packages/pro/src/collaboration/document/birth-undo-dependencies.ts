@@ -73,7 +73,7 @@ export class BirthUndoDependencies {
     };
     const changed: Y.Item[] = [];
     for (const run of deleteSetRuns(step.insertions)) {
-      for (let clock = run.clock; clock < run.clock + run.length; ) {
+      for (let clock = run.clock; clock < run.clock + run.length;) {
         const item = Y.getItem(this.registry.doc.store, Y.createID(run.client, clock));
         clock = item.id.clock + item.length;
         // A collected character range must not hide later births in the same history step.

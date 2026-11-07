@@ -33,8 +33,7 @@ import {
 } from './list-types';
 
 export type PlannedValue =
-  | { readonly present: false }
-  | { readonly present: true; readonly value: JsonValue };
+  { readonly present: false } | { readonly present: true; readonly value: JsonValue };
 
 export interface PlannedPropertyChange {
   readonly name: string;
@@ -178,8 +177,7 @@ export interface CanonicalEditPlan {
   readonly operations: readonly CanonicalEdit[];
 }
 export type EditPlanResult =
-  | { readonly success: true; readonly plan: CanonicalEditPlan }
-  | NativeEditFailure;
+  { readonly success: true; readonly plan: CanonicalEditPlan } | NativeEditFailure;
 
 export const EDIT_PLAN_LIMITS = Object.freeze({
   maxBytes: 16 * 1024 * 1024,

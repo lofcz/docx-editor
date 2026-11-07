@@ -9,8 +9,7 @@ import { preparePayloadProposalDecision } from './prepare-payload-decision';
 import { withReviewDecisionGuard } from './decision-guard';
 
 export type PropertyDecisionResult =
-  | { readonly success: true; readonly revision: RevisionToken }
-  | NativeEditFailure;
+  { readonly success: true; readonly revision: RevisionToken } | NativeEditFailure;
 const fail = (
   error: string,
   code: NativeEditFailure['code'] = 'invalid-input'

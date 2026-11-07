@@ -259,6 +259,7 @@ import {
   clampedToDocument,
   collapsedAt,
   cellsPlainText,
+  createPositionComparator,
   orderedRangeOf,
   rangePlainText,
   type RangeDeletionPlan,
@@ -669,12 +670,7 @@ export function mountPaginatedSurface(
     for (const retained of retainedSelections.values()) retainedSelection = retained;
   }
 
-  /** Document-order comparison of two positions: negative, zero or positive. */
-  function comparePositions(a: SemanticPosition, b: SemanticPosition): number {
-    if (a.paragraphId === b.paragraphId) return a.offset - b.offset;
-    const order = paragraphOrder();
-    return order.indexOf(a.paragraphId) - order.indexOf(b.paragraphId);
-  }
+  const comparePositions = createPositionComparator(() => paragraphOrder());
 
   /**
    * Drop the retained range once the caret leaves it.
@@ -1363,6 +1359,7 @@ export function mountPaginatedSurface(
       ) !== null,
     ...listDefinitionReads(() => withNumberingStyleLinks(numberingIndex(), styleCascade())),
     styleCascade,
+    defaultTabStopPt,
   });
   /** The contract's `replacementLanding`; the hyperlink lane reads the same rule. */
   function replacementLanding(paragraphId: string, start: number, end: number): number | null {

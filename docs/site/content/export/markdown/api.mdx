@@ -25,6 +25,7 @@ const result = await exportMarkdown(await readFile('contract.docx'), {
 | Option | Default | Behavior |
 | --- | --- | --- |
 | `displayMode` | `'all-markup'` | `'proposed'` hides deletions. `'original'` hides insertions. Never modifies the DOCX. |
+| `paragraphAppearance` | None | Supplies deterministic paragraph appearance defaults through the native style cascade. Does not change the source DOCX. |
 | `images` | `false` | `true` for image links and bytes, or an object with `syntax`, `resolveUrl`, and `maxTotalBytes`. See [Images in Markdown exports](/docs/2.x/export/markdown/images). |
 | `sourceMap` | `false` | Use `true` for native paragraph IDs and UTF-16 boundaries in logical Markdown. |
 | `tableSyntax` | `'gfm'` | Use `'html'` for structured cells or `'auto'` for spans and rich cells. |
@@ -36,6 +37,8 @@ const result = await exportMarkdown(await readFile('contract.docx'), {
 | `onFontResolution` | None | Receives the font report. The exporter does not await callback promises. |
 
 `fontPolicy` and `onFontResolution` need byte input with default font resolution. With a live view or a custom measurer, they throw `TypeError`. For custom measurement, image decoders, and session controls, see the [complete option reference](https://github.com/eigenpal/docx-editor/blob/main/packages/docx-to-markdown/docs/api.md#options).
+
+Import `ParagraphAppearanceContribution`, `ParagraphAppearanceContext`, `ParagraphAppearanceControl`, and `ParagraphAppearanceDefaults` from this package to type appearance callbacks.
 
 ## Read the result
 

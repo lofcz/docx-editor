@@ -48,8 +48,7 @@ export interface TextProjection {
 }
 
 export type TextProjectionResult =
-  | { readonly success: true; readonly projection: TextProjection }
-  | NativeEditFailure;
+  { readonly success: true; readonly projection: TextProjection } | NativeEditFailure;
 
 /**
  * Project raw canonical body text. Review views supply their derived part separately.

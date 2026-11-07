@@ -123,7 +123,7 @@ function keyAlignment(before: readonly string[], after: readonly string[]): [num
           ? table[i + 1]![j + 1]! + 1
           : Math.max(table[i + 1]![j]!, table[i]![j + 1]!);
   const out: [number, number][] = [];
-  for (let i = 0, j = 0; i < n && j < m; ) {
+  for (let i = 0, j = 0; i < n && j < m;) {
     if (before[i] === after[j]) out.push([i++, j++]);
     else if (table[i + 1]![j]! >= table[i]![j + 1]!) i++;
     else j++;
@@ -233,7 +233,7 @@ export function planTargetDocument(
         (window) => window.parentId === parentId && window.ids.length
       );
       const cover: { window: (typeof source.windows)[number]; start: number }[] = [];
-      for (let at = 0; at < ids.length; ) {
+      for (let at = 0; at < ids.length;) {
         const window = candidates.find((item) =>
           item.ids.every((id, index) => ids[at + index] === id)
         );

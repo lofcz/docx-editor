@@ -169,8 +169,7 @@ export async function normalizeRecompositionTarget(
     if (!text.trimStart().startsWith('<table')) continue;
     const node = astAt(target.ast, table.path),
       position = node?.position as
-        | { start?: { offset?: number }; end?: { offset?: number } }
-        | undefined;
+        { start?: { offset?: number }; end?: { offset?: number } } | undefined;
     const start = position?.start?.offset,
       end = position?.end?.offset;
     if (start === undefined || end === undefined)

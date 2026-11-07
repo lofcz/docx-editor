@@ -295,8 +295,7 @@ export interface SiblingFragmentSeeds {
   readonly placed: readonly (TableSeed | BlockSeed)[];
 }
 export type SiblingSeedsResult =
-  | { readonly success: true; readonly seeds: SiblingFragmentSeeds }
-  | NativeEditFailure;
+  { readonly success: true; readonly seeds: SiblingFragmentSeeds } | NativeEditFailure;
 const fail = (error: string): NativeEditFailure => ({
   success: false,
   code: 'unsupported-operation',
