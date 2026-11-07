@@ -1,10 +1,55 @@
 # Sciobot editor UI fidelity
 
-The native DOCX editor must match or improve the production Plate editor's user experience. The earlier migration ledger proves implementation coverage. It does not close this fidelity review.
+The target is the Plate behavior used by the production ScioBot workspace. Generic Plate demos do not define this target. The earlier migration ledger records implementation coverage. This ledger records review evidence and remaining cutover work.
+
+## Production cutover scope
+
+The user's scope correction on November 7, 2026 replaces broader requirements in the historical records below.
+
+- Keep reachable workspace controls, generated lesson content, and existing document workflows. Preserve math, chemistry, and foreign-language insertion gates.
+- Reuse implemented native features and production components. A pending review does not mean an implementation is missing.
+- Keep production AI suggestions, review, and the material tools menu.
+- Exclude demo-only Copilot autocomplete, general comments, and discussion threads.
+- Exclude the disabled Plate block context menu and additional floating formatting controls. Keep block selection and movement.
+- Do not add font-family or line-spacing pickers for parity. Preserve existing document formatting.
+- Do not make additional page navigation, zoom, or search features Plate parity requirements. Keep existing DOCX controls usable.
+- Defer native archive intake enhancements and DOCX font embedding. Keep existing workspace ZIP export and completed implementation work.
+
+Production `WorkspacePanel` mounts `WorkspaceEditorKit`. The generic `EditorKit` only reaches `/demo/editor` through `PlateEditor` and `DemoEditorPage`.
+Production floating controls expose Add to chat. `block-menu-kit.tsx` disables the floating block context menu.
+The attachment editor accepts `docx`, `pptx`, `xlsx`, `pdf`, and `md`; archive intake is additional capability.
+
+Ten feature groups passed coordinator review: tables, math, SMILES, links, lists, formatting, toolbars, insertion menus, block actions, and contents.
+The remaining rows are an evidence inventory, not eighteen new implementation projects.
+Lesson titles, phases, activities, recap, curriculum, sources, listening, visuals, and shared MDX already have native implementations and browser tests.
+
+## Remaining cutover work
+
+1. Finish existing editing work. Integrate native code creation, its review fixes, and callout/toggle collapse. Fix gallery handle interception and activity border overlap.
+2. Check remaining reachable controls against production. Use existing media, date, mention, emoji, and container implementations. Fix reproduced differences only.
+3. Connect the actual material tools menu to native commands. Preserve progress, cancellation, review, and history.
+4. Review one realistic lesson containing the existing domain blocks. Run their existing focused tests together. Fix reproduced failures only.
+5. Pin one integrated runtime. Verify the combined workspace flow, saving, reopening, existing exports, shared editing, and history.
+
+Use three delivery lanes during implementation: editing fixes, production controls and material tools, and lesson flows with integration.
+The coordinator reviews each lane and maintains one integrated runtime. Batch broader checks at integration boundaries.
+Completion requires these five steps. Extra capabilities do not extend this list without a new user request.
+
+### Verified status at the scope correction
+
+- Engine HEAD is `1148d7c74`; app HEAD is `f2b61e6b2`. The installed app runtime still uses engine `679cd01a2`.
+- Column handle obstruction is fixed and integrated. Its focused run passes six tests and 105 assertions. The integrated rerun stopped after three passes.
+- Gallery alignment still hits an invisible paragraph handle at 390 pixels and 0.75 zoom.
+- Native code creation is committed in the engine. App activation and review fixes still need integration and a fresh runtime.
+- Collapse supports body content and table cells in isolated work. Its focused boundary passes 18 tests and 362 assertions. It remains uncommitted.
+- The native toolbar still opens a reduced AI menu instead of the production material tools menu.
+- Existing domain tests cover shared editing, history, and reopening. Final domain review remains open, including activity border overlap.
+
+These are recorded results, not a new passing integrated run. The scope audit ran no builds or tests.
 
 ## Working agreement
 
-- Keep three feature agents active. Use isolated feature worktrees and commit coherent changes.
+- Use three feature agents during implementation. Use isolated feature worktrees and commit coherent changes.
 - Compare the actual Plate controls and native controls before implementation.
 - Reuse established application components, including the `@lofcz/mathlive` fork.
 - Test pointer and keyboard input, focus, cancellation, validation, history, persistence, and applicable shared editing.
@@ -15,7 +60,7 @@ The native DOCX editor must match or improve the production Plate editor's user 
 
 ## Sources
 
-- Production Plate application: `/run/media/lofcz/ssd_external/GitHub/sciobot-next`, reference commit `17e785deb`.
+- Production Plate application: `/run/media/lofcz/ssd_external/GitHub/sciobot-next`, reference commit `1f8e53b9b9467cc594f57d98abdf481cce4889ac`.
 - Plate fork: `/run/media/lofcz/ssd_external/GitHub/plate`.
 - MathLive fork: `/run/media/lofcz/ssd_external/GitHub/mathlive`.
 - Native integration: `/run/media/lofcz/ssd_external/GitHub/sciobot-next-docx-work`, starting commit `3326720a2`.
@@ -31,32 +76,34 @@ Other sessions use the production application checkout. Feature work stays in is
 | UX02 | Math | Shared MathLive dialog, virtual keyboard, selected-text insertion, inline/display editing, draft ownership | Accepted; 19 integrated browser cases pass |
 | UX03 | SMILES | Shared chemistry editor, AI and manual entry, preview, validation, activation, block actions, failed-save recovery | Accepted; eight integrated browser cases pass |
 | UX04 | Links | Insert/edit/remove dialogs, selected text, URL validation, opening, keyboard shortcuts | Accepted; ten integrated browser cases and direct keyboard review pass |
-| UX05 | Images and galleries | Upload, resize, captions, alignment, replacement, gallery actions, loading and errors | `ux_gallery`: side handles pass integrated checks; archive cancellation and toolbar follow-up remain open |
+| UX05 | Images and galleries | Upload, resize, captions, alignment, replacement, gallery actions, loading and errors | Implemented; gallery handle interception remains open; archive enhancements are deferred |
 | UX06 | Files, audio, video, and embeds | Insert/edit controls, previews, loading, playback, removal, accessible fallback | Pending |
 | UX07 | Lists | Bullets, numbering, checklists, nesting, indentation, continuation and exit shortcuts | Accepted; seven integrated list cases and two export cases pass |
 | UX08 | Text and paragraph formatting | Marks, font size, colors, headings, alignment, spacing, mixed selection state | Accepted; nine integrated browser cases pass |
 | UX09 | Fixed and floating toolbars | Control grouping, overflow, responsive layout, tooltips, selection retention, view modes | Accepted; 27 integrated browser cases pass |
 | UX10 | Slash and insertion menus | Complete catalog, feature gates, filtering, keyboard navigation, insertion placement | Accepted; 42 integrated browser cases and coordinator query review pass |
 | UX11 | Block selection and movement | Handles, menus, keyboard selection, drag placement, duplication, deletion, nested blocks | Accepted; 51 integrated browser cases pass |
-| UX12 | Columns | Count changes, resizing, movement, empty entry, discoverability and nested content | `ux_lists`: controls pass; legacy conversion has a reproduced handle obstruction |
-| UX13 | Code blocks | Language picker, editing, copy, syntax display, sizing, shortcuts and exit behavior | `ux_math_review`: shared language/copy controls integrated; native source, review, and inline authoring remain open |
-| UX14 | Callouts and toggles | Variants, icons, collapse controls, body editing, focus and layout stability | `ux_lists`: local collapse layout and shared-session checks in progress |
-| UX15 | Stories and solutions | Editing controls, reveal states, content layout, nested editing and persistence | Pending |
+| UX12 | Columns | Count changes, resizing, movement, empty entry, discoverability and nested content | Handle repair integrated in `f2b61e6b2`; six focused browser cases pass |
+| UX13 | Code blocks | Language picker, editing, copy, syntax display, sizing, shortcuts and exit behavior | Engine creation committed; app activation and review fixes need integration |
+| UX14 | Callouts and toggles | Variants, icons, collapse controls, body editing, focus and layout stability | Collapse implemented in isolation; 18 focused cases pass; integration remains open |
+| UX15 | Stories and solutions | Editing controls, reveal states, content layout, nested editing and persistence | Implemented with existing browser tests; focused review remains open |
 | UX16 | Mentions, dates, and emoji | Pickers, search, keyboard navigation, insertion, editing and inline selection | Pending |
 | UX17 | Contents and navigation | Heading controls, table of contents, document navigation, updates and focus | Accepted; seven integrated browser cases and coordinator keyboard review pass |
-| UX18 | Lesson titles and phases | Title fields, phase controls, placement, compact layout and editing state | Pending |
-| UX19 | Activities and recap | Metadata, duration, goals, materials, adaptations, nested content and field controls | Pending |
-| UX20 | Curriculum and sources | Search and selection, source chips, excerpts, actions and contextual detail | Pending |
-| UX21 | Listening and lesson visuals | Established media controls, transcript fields, generation states, editing and sizing | Pending |
-| UX22 | Shared MDX and custom blocks | Actual registered renderers, inline/block geometry, controls, opaque content and fallbacks | Widget reload fix verified; remaining comparison open |
+| UX18 | Lesson titles and phases | Title fields, phase controls, placement, compact layout and editing state | Implemented with existing browser tests; focused lesson review remains open |
+| UX19 | Activities and recap | Metadata, duration, goals, materials, adaptations, nested content and field controls | Implemented with existing browser tests; activity border overlap remains open |
+| UX20 | Curriculum and sources | Search and selection, source chips, excerpts, actions and contextual detail | Implemented with shared production controls; focused lesson review remains open |
+| UX21 | Listening and lesson visuals | Established media controls, transcript fields, generation states, editing and sizing | Implemented with shared production controls; focused lesson review remains open |
+| UX22 | Shared MDX and custom blocks | Actual registered renderers, inline/block geometry, controls, opaque content and fallbacks | Implemented with shared MDX renderer; widget reload verified; focused lesson review remains open |
 | UX23 | AI and material tools | Full material tools menu, selection quotes, prompts, progress, cancellation and result review | Pending; native toolbar opens a reduced menu |
 | UX24 | Suggestions and review | Discovery, navigation, attribution, accept/reject controls, grouping and conflict feedback | Pending |
 | UX25 | Core editing interactions | Caret, range selection, clipboard, shortcuts, undo/redo, text entry and focus boundaries | Pending |
-| UX26 | Page view and search | Zoom, scrolling, find/replace, page navigation, resizing and selection visibility | Pending |
-| UX27 | Document lifecycle | Loading, saving, recovery, import/export, document switches and error feedback | Widget reload verified; font embedding, app TOC export, and remaining comparison open |
-| UX28 | Final comparison | Every production kit mapped; cross-feature flows, accessibility, responsive and visual review | Coordinator: pending |
+| UX26 | Existing DOCX view controls | Keep existing controls usable during the combined workspace flow | Additional page-view and search capabilities are outside Plate parity scope |
+| UX27 | Document lifecycle | Existing loading, saving, recovery, import/export, document switches and error feedback | Widget reload verified; existing export review remains open; font embedding and archive enhancements are deferred |
+| UX28 | Final comparison | Reachable production controls and generated content; combined lesson and document workflow | Coordinator: one integrated acceptance boundary remains open |
 
 ## Acceptance records
+
+These records preserve earlier results and defects. The production scope above controls remaining work. Historical extra-capability notes do not add cutover requirements.
 
 UX01, UX02, UX03, UX04, UX07, UX08, UX09, UX10, UX11, and UX17 passed coordinator review. Other features remain open.
 
