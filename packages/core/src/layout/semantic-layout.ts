@@ -2146,7 +2146,7 @@ function* layoutBlocksPass(
     // paragraph, its control boundary, and hit testing keep their native extent.
     const reservedAfter = collapsedMark
       ? 0
-      : blockSpace.reservedAfterOf(options.blockReservations, paragraphId) + chromeBottom;
+      : blockSpace.reservedAfterOf(options.blockReservations, paragraphId);
     // Whether a line's own wrapping objects still cross the margin (`wrappedAnchorsEndAtBottomMargin`).
     const pageFit = createOwnAnchorPageFit(paragraph, {
       ...anchorScope,
@@ -2218,9 +2218,10 @@ function* layoutBlocksPass(
       // A host widget's room travels with its paragraph: when the paragraph and its widget fit
       // an empty page but not the rest of this one, both move on, as Word moves the line of an
       // inline picture. Larger widgets stay, and their room clips at the page end.
-      if (reservedAfter > 0) {
+      const reservedRoom = reservedAfter + chromeBottom;
+      if (reservedRoom > 0) {
         const whole =
-          lead + topExtent + lines.reduce((sum, line) => sum + line.height, 0) + reservedAfter;
+          lead + topExtent + lines.reduce((sum, line) => sum + line.height, 0) + reservedRoom;
         if (whole <= contentHeight()) needed = Math.max(needed, whole);
       }
       // An own object that cannot end at the bottom margin takes the paragraph along.
@@ -2344,7 +2345,7 @@ function* layoutBlocksPass(
       const top = linesTop - fragmentBefore - fragmentTopExtent;
       const linesBottom =
         pending[pending.length - 1]!.box.y + pending[pending.length - 1]!.box.height;
-      const appliedAfter = isLast ? spacing.after : 0;
+      const appliedAfter = isLast ? spacing.after + chromeBottom : 0;
       const {
         strokes,
         bottomBorder: bottomBorderRecord,
@@ -2792,7 +2793,7 @@ function* layoutBlocksPass(
     flushFragment(true);
     releasePlacedBreaks(paragraphId);
     previousSpaceAfter = collapsingSpaceAfter(
-      endedWithPageBreak ? 0 : spacing.after + reservedAfter - chromeBottom,
+      endedWithPageBreak ? 0 : spacing.after + reservedAfter,
       styleCascade
     );
     if (savedFrameFlow) {

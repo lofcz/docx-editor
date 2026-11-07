@@ -100,6 +100,15 @@ test('view bottom padding stays separate from the following authored space befor
     doc.surface.setBlockInsets(new Map([[doc.idOf('Answer'), { left: 0, right: 0, bottom: 12 }]]));
     await settle();
     expect(doc.caretOf('Next').y - doc.caretOf('Answer').y).toBeCloseTo(gap + 12, 6);
+    const fragment = doc.surface
+      .layout()
+      .pages.flatMap((page) => page.fragments)
+      .find((entry) => entry.kind === 'paragraph' && entry.paragraphId === doc.idOf('Answer'))!;
+    if (fragment.kind !== 'paragraph') throw new Error('Missing answer paragraph');
+    const lastLine = fragment.lines.at(-1)!;
+    expect(
+      fragment.box.y + fragment.box.height - lastLine.box.y - lastLine.box.height
+    ).toBeGreaterThanOrEqual(12);
   } finally {
     doc.close();
   }
