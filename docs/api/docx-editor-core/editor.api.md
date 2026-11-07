@@ -1185,7 +1185,8 @@ export interface CollaborationModuleContribution {
 // @public
 export interface CollapsedContentControl {
     readonly controlId: string;
-    readonly summaryParagraphId: string;
+    readonly placeholderHeightPt?: number;
+    readonly summaryParagraphId: string | null;
 }
 
 // @internal
@@ -1450,12 +1451,20 @@ export function computeResizedImageExtentEmu(startWidthEmu: number, startHeightE
 export const CONTENT_CONTROL_PICTURE_ACCEPT = "image/png,image/jpeg,image/gif,image/bmp,image/webp";
 
 // @public
+export interface ContentControlCollapsePlaceholder {
+    readonly placeholderHeightPt: number;
+}
+
+// @public
 export type ContentControlCollapseResult = {
     readonly ok: true;
 } | {
     readonly ok: false;
-    readonly reason: 'document-not-ready' | 'invalid-owner' | 'invalid-summary' | 'unsupported-content' | 'limit-exceeded';
+    readonly reason: 'document-not-ready' | 'invalid-owner' | 'invalid-summary' | 'invalid-placeholder-height' | 'unsupported-content' | 'limit-exceeded';
 };
+
+// @public
+export type ContentControlCollapseTarget = string | null | ContentControlCollapsePlaceholder;
 
 // @public
 export type ContentControlKind = 'richText' | 'plainText' | 'checkbox' | 'dropDownList' | 'comboBox' | 'date' | 'picture' | 'docPartObj' | 'docPartList' | 'group' | 'citation' | 'bibliography' | 'equation' | 'untyped';
@@ -4236,7 +4245,7 @@ export interface SurfaceBlockReservations {
 // @public
 export interface SurfaceContentControlCollapse {
     collapsedContentControls(): readonly CollapsedContentControl[];
-    setCollapsedContentControls(controls: ReadonlyMap<string, string>): ContentControlCollapseResult;
+    setCollapsedContentControls(controls: ReadonlyMap<string, ContentControlCollapseTarget>): ContentControlCollapseResult;
 }
 
 // @public

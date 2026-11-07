@@ -2803,6 +2803,7 @@ export interface ParagraphFragmentRecord {
     readonly kind: 'paragraph';
     // (undocumented)
     readonly lines: readonly LineRecord[];
+    readonly localPlaceholder?: true;
     readonly markChangeSites?: readonly RevisionAttribution[];
     readonly marker?: ListMarkerRecord;
     readonly markFormatRevision?: RevisionAttribution;
@@ -3892,6 +3893,8 @@ export interface SemanticLayoutOptions {
     // @internal
     readonly contentControlCollapse?: {
         readonly hiddenIds: ReadonlySet<string>;
+        readonly placeholderAncestors?: ReadonlySet<string>;
+        readonly placeholders?: ReadonlyMap<string, OoxmlElement>;
         readonly token: string;
     };
     readonly defaultTabStopPt?: number;
