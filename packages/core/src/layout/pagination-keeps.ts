@@ -179,6 +179,10 @@ export interface KeepNextLookahead {
   /** Space before the first block, when the caller has already placed it. */
   readonly headLead?: number;
   readonly linesFor: (index: number) => readonly KeepNextLine[];
+  /** Host-owned flow padding, separate from collapsible Word paragraph spacing. */
+  readonly paddingAt?: (
+    index: number
+  ) => { readonly top?: number; readonly bottom?: number } | undefined;
   readonly skipBlock?: (index: number) => boolean;
   readonly breaksBefore?: (index: number) => boolean;
   readonly sumAdjacentSpacing?: boolean;
@@ -316,12 +320,17 @@ export function keepNextPlan(
     if (index === start && look.headLead !== undefined) total += look.headLead;
     else if (look.sumAdjacentSpacing) total += block.spacing.before;
     else total += Math.max(block.spacing.before, after) - after;
+    const padding = look.paddingAt?.(index);
+    if (index !== start || look.headLead === undefined) total += padding?.top ?? 0;
     const lines = look.linesFor(index);
     const hardBreak = lines.findIndex((line) => line.pageBreakAfter || line.columnBreakAfter);
     const openingLength = hardBreak < 0 ? lines.length : hardBreak + 1;
     const openingLines = shortestOpeningLines(lines.length, openingLength, block.keeps);
     cited ||= !!look.closingSpaceAfter?.cites(lines);
-    const closing = look.closingSpaceAfter && cited && hardBreak < 0 ? block.spacing.after : 0;
+    const closing =
+      hardBreak < 0
+        ? (look.closingSpaceAfter && cited ? block.spacing.after : 0) + (padding?.bottom ?? 0)
+        : 0;
     const opening =
       total + fitExtent(lines, openingLines) + (openingLines === lines.length ? closing : 0);
     // The story's LAST block keeps with nothing, so it terminates the chain however authored.
@@ -337,7 +346,7 @@ export function keepNextPlan(
     if (fits && total + whole <= room) lastWhole = index;
     else fits = false;
     for (let line = 0; line < openingLength; line += 1) total += lines[line]!.height;
-    total += block.spacing.after;
+    total += block.spacing.after + (padding?.bottom ?? 0);
     after = block.spacing.after;
     if (total - after > (look.maxHeight ?? Infinity))
       return finish({ height: Infinity, lastWhole });
@@ -519,6 +528,8 @@ function indexedKeepSource(source: KeepNextSource, end: readonly number[]): Keep
     source.blocks.length,
     (at) => {
       if (source.dynamicBlock?.(at)) return null;
+      const padding = source.paddingAt?.(at);
+      if (padding?.top || padding?.bottom) return null;
       if (source.skipBlock?.(at)) return empty;
       const block = source.blocks[at]!;
       if (

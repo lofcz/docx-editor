@@ -1833,6 +1833,12 @@ function* layoutBlocksPass(
   const keepChains = keepNextChains(
     {
       blocks: prepared,
+      paddingAt: (at) => {
+        const block = prepared[at];
+        return block?.kind === 'paragraph'
+          ? options.blockReservations?.insetOf?.(block.paragraph.id)
+          : undefined;
+      },
       dynamicBlock: (at) =>
         prepared[at]?.kind === 'paragraph' &&
         anchorsSpacingDependentBand(prepared[at].paragraph, options.inlineDrawingLayout),

@@ -105,6 +105,29 @@ test('view bottom padding stays separate from the following authored space befor
   }
 });
 
+test('a generated label stays with body padding when its kept group moves to the next page', async () => {
+  const preceding = Array.from({ length: 18 }, (_, index) => p(`Line ${index}`)).join('');
+  const label = '<w:p><w:pPr><w:keepNext/></w:pPr><w:r><w:t>Generated label</w:t></w:r></w:p>';
+  const doc = open(docx(preceding + label + p('Body')));
+  try {
+    expect(doc.caretOf('Generated label').pageIndex).toBe(0);
+    const body = doc.caretOf('Body');
+    const room = doc.surface.layout().pages[0]!.contentBox.height - body.y;
+    expect(room + 12).toBeLessThan(324);
+    doc.surface.setBlockInsets(
+      new Map([
+        [doc.idOf('Generated label'), { left: 0, right: 0, top: 8, bottom: 8 }],
+        [doc.idOf('Body'), { left: 0, right: 0, top: room + 12 }],
+      ])
+    );
+    await settle();
+    expect(doc.caretOf('Generated label').pageIndex).toBe(1);
+    expect(doc.caretOf('Body').pageIndex).toBe(1);
+  } finally {
+    doc.close();
+  }
+});
+
 test('an inset indents only its paragraph and narrows the column it breaks in', async () => {
   const doc = open(docx(p('Alpha') + p(LONG) + p('Gamma')));
   try {
