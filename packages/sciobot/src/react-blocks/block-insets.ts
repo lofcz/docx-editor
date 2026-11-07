@@ -29,7 +29,8 @@ const POINTS_PER_PIXEL = 0.75;
 export function containerInsets(
   part: OoxmlPart,
   index: BlockIndex,
-  insetOf: (type: string) => ReactBlockInset | undefined
+  insetOf: (type: string) => ReactBlockInset | undefined,
+  placeholders: ReadonlySet<string> = new Set()
 ): Map<string, BlockInset> {
   const out = new Map<string, BlockInset>();
   const add = (node: OoxmlNode, room: Required<ReactBlockInset>) => {
@@ -60,8 +61,8 @@ export function containerInsets(
     const room = {
       left: points(inset?.left),
       right: points(inset?.right),
-      top: points(inset?.top),
-      bottom: points(inset?.bottom),
+      top: placeholders.has(block.controlId) ? 0 : points(inset?.top),
+      bottom: placeholders.has(block.controlId) ? 0 : points(inset?.bottom),
     };
     if (!room.left && !room.right && !room.top && !room.bottom) continue;
     const control = findNode(part, block.controlId);

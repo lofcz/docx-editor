@@ -19,6 +19,8 @@ export interface SurfaceContentControlCollapse {
    * every control. Validation refuses the whole request before changing the existing view.
    *
    * A summary must be the first direct paragraph of a block content control in the main story.
+   * A null summary hides the whole body behind a blank 24-point local header. Its first flow
+   * paragraph can sit within nested controls. A leading table refuses this placeholder mode.
    * The supported body contains paragraphs, tables, and nested block content controls. Section
    * boundaries and unsupported wrappers refuse collapse. Table cells use the same local view.
    * The input and traversal are bounded.
@@ -29,5 +31,7 @@ export interface SurfaceContentControlCollapse {
    * opens its enclosing controls; remote changes keep this reader's remaining entries closed.
    * Local text edits reveal the selected hidden content before planning their operations.
    */
-  setCollapsedContentControls(controls: ReadonlyMap<string, string>): ContentControlCollapseResult;
+  setCollapsedContentControls(
+    controls: ReadonlyMap<string, string | null>
+  ): ContentControlCollapseResult;
 }

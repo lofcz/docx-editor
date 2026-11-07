@@ -1,5 +1,5 @@
 import type { BlockLayoutOptions as ColumnBalanceBlockLayoutOptions } from './column-balance-layout.ts';
-import type { DocumentProperties, OoxmlNode } from '@docx-editor.dev/core/store';
+import type { DocumentProperties, OoxmlNode, OoxmlElement } from '@docx-editor.dev/core/store';
 import type { FieldResultsMode } from '../store/package/field-result-mode.ts';
 import type { ExclusionZone } from './drawing-exclusion.ts';
 import type { InlineDrawingLayoutContext } from './drawing-layout.ts';
@@ -225,6 +225,8 @@ export interface SemanticLayoutOptions {
   readonly contentControlCollapse?: {
     readonly token: string;
     readonly hiddenIds: ReadonlySet<string>;
+    readonly placeholders?: ReadonlyMap<string, OoxmlElement>;
+    readonly placeholderAncestors?: ReadonlySet<string>;
   };
   /** Per-paragraph identity for projected links and live document-property text. */
   readonly projectionTokenForParagraph?: (paragraph: OoxmlNode) => string;

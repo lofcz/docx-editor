@@ -442,6 +442,8 @@ export interface ParagraphFragmentRecord {
   readonly paragraphId: string;
   /** 0 for the first fragment of the paragraph, 1 for its continuation, and so on. */
   readonly fragmentIndex: number;
+  /** Local content-control header geometry. It has no editable lines and is never exported. */
+  readonly localPlaceholder?: true;
   /** This fragment contains the visible paragraph end. */
   readonly paragraphEnd?: true;
   /** Resolved paragraph-mark style when this fragment has no text spans, including picture-only fragments. */

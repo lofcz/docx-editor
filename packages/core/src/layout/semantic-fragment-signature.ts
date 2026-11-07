@@ -40,6 +40,7 @@ const PARAGRAPH_FIELDS = {
   paragraphId: 'covered',
   fragmentIndex: 'covered',
   clipToBox: 'hashed',
+  localPlaceholder: 'hashed',
   outOfFlow: 'hashed',
   positionedFrame: 'hashed',
   range: 'hashed',

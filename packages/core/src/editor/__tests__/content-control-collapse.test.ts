@@ -11,6 +11,7 @@ import {
   cell,
 } from '../../automation/__tests__/support/protocol.ts';
 import { caretAt } from '../../layout/semantic-interaction.ts';
+import { paragraphFragmentsOf } from '../../layout/semantic-records.ts';
 import {
   canonicalOoxmlFingerprint,
   paragraphTextOf,
@@ -81,6 +82,47 @@ test('collapse removes body flow while canonical content, history, and saved sem
     expect(doc.surface.collapsedContentControls()).toBe(snapshot);
     expect(doc.surface.setCollapsedContentControls(new Map())).toEqual({ ok: true });
     expect(doc.caret('After')!.y).toBe(afterY);
+  } finally {
+    doc.close();
+  }
+});
+
+test('a null summary replaces the whole answer with a local header and reveals before typing', async () => {
+  const doc = open(p('Before') + sdt(p('Secret answer'), p('Hidden details')) + p('After'));
+  try {
+    const original = canonicalOoxmlFingerprint(doc.surface.session.part());
+    const saved = await digest(new Uint8Array(await doc.editor.save()));
+    const beforeY = doc.caret('After')!.y;
+    const answer = doc.idOf('Secret answer');
+    const owner = doc.ownerOf('Secret answer');
+    const point = { paragraphId: answer, offset: 6 };
+    doc.surface.setSelection({ anchor: point, head: point });
+    expect(doc.surface.setCollapsedContentControls(new Map([[owner, null]]))).toEqual({ ok: true });
+    doc.surface.flushPendingInput();
+    const header = doc.surface
+      .layout()
+      .pages.flatMap(paragraphFragmentsOf)
+      .find((p) => p.paragraphId === answer)!;
+    expect(header.box.height).toBeCloseTo(24, 8);
+    expect(header.lines).toEqual([]);
+    expect(caretAt(doc.surface.layout(), { paragraphId: answer, offset: 0 })).toBeNull();
+    expect(
+      doc.container
+        .querySelector('[data-docx-collapse-placeholder]')
+        ?.getAttribute('contenteditable')
+    ).toBe('false');
+    expect(doc.caret('After')!.y).toBeLessThan(beforeY);
+    expect(doc.container.textContent).not.toContain('Secret');
+    expect(doc.container.textContent).not.toContain('Hidden details');
+    expect(canonicalOoxmlFingerprint(doc.surface.session.part())).toBe(original);
+    expect(doc.surface.state().canUndo).toBe(false);
+    expect(await digest(new Uint8Array(await doc.editor.save()))).toEqual(saved);
+    doc.surface.type('new ');
+    doc.surface.flushPendingInput();
+    expect(doc.surface.collapsedContentControls()).toEqual([]);
+    expect(paragraphTextOf(doc.surface.session.part(), answer)).toBe('Secretnew  answer');
+    expect(doc.editor.exec({ type: 'undo' }).ok).toBe(true);
+    expect(canonicalOoxmlFingerprint(doc.surface.session.part())).toBe(original);
   } finally {
     doc.close();
   }

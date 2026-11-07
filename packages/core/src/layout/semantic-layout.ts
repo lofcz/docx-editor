@@ -1,4 +1,5 @@
 import { sectionPrepassInputsMatch } from './section-prepass-inputs.ts';
+import { isContentControlPlaceholder } from './content-control-placeholder.ts';
 import { drawingInputsUnchangedByTextEdit } from './drawing-text-only-change.ts';
 import { tryUpdateTableSession, reuseUnchangedLayout } from './table-text-session.ts';
 import { carryLayoutReadCaches } from './layout-read-caches.ts';
@@ -818,7 +819,7 @@ function* layoutBlocksPass(
         }),
       };
     } else {
-      const listItem = listItems?.get(block.id);
+      const listItem = isContentControlPlaceholder(block) ? undefined : listItems?.get(block.id);
       let preparedParagraph = blockSpace.resolveInsetParagraph(
         options.blockReservations,
         block.id,
@@ -2046,7 +2047,9 @@ function* layoutBlocksPass(
     let available = entry.available;
     const previousEntry = index > 0 ? prepared[index - 1] : undefined;
     const nextEntry = prepared[index + 1];
-    const listItem = listItems?.get(paragraph.id) ?? entry.listItem;
+    const listItem = isContentControlPlaceholder(paragraph)
+      ? undefined
+      : (listItems?.get(paragraph.id) ?? entry.listItem);
     // `w:firstLine` moves the first line right of the indent, `w:hanging` moves it left.
     // The schema treats them as mutually exclusive; where a producer writes both, hanging
     // wins, which is how Word reads it.
@@ -2438,7 +2441,8 @@ function* layoutBlocksPass(
         ...(isLast ? { paragraphEnd: true as const } : {}),
         ...(isLast && showsMarkup ? markRevisionFields(markRevisions, markFormatRevision) : {}),
         ...(isLast && markChangeSites.length > 0 ? { markChangeSites } : {}),
-        lines: mergedLines ?? pending,
+        ...(isContentControlPlaceholder(paragraph) ? { localPlaceholder: true as const } : {}),
+        lines: isContentControlPlaceholder(paragraph) ? [] : (mergedLines ?? pending),
         ...emptyParagraphStyleFields(pending, markRunProperties, styleCascade?.themeFonts, isLast),
         box: { x: columnX + indent.left, y: top, width: available, height },
       };

@@ -2,8 +2,8 @@
 export interface CollapsedContentControl {
   /** Canonical content-control node ID in the main document story. */
   readonly controlId: string;
-  /** Canonical paragraph ID of the control's first direct content child. */
-  readonly summaryParagraphId: string;
+  /** First direct paragraph ID, or null for a blank local header hiding the whole body. */
+  readonly summaryParagraphId: string | null;
 }
 
 /** Validation outcome for a complete replacement of the local collapse view. @public */

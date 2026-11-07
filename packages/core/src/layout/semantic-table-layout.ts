@@ -1,4 +1,5 @@
 import { withStoryLineGrid } from './line-grid.ts';
+import { isContentControlPlaceholder } from './content-control-placeholder.ts';
 import { listLayoutToken } from './list-marker-reuse.ts';
 import { reuseParagraphAtWidth } from './paragraph-cache-width-reuse.ts';
 import { cellParagraphInputs, cellParagraphBreakInputs } from './cell-paragraph-inputs.ts';
@@ -383,7 +384,9 @@ function placeCellParagraph(
 } {
   const paragraphId = paragraph.id;
   const keyFor = deps.cache?.keyFor?.bind(deps.cache) ?? paragraphLayoutKey;
-  const listItem = deps.listItems?.get(paragraphId);
+  const listItem = isContentControlPlaceholder(paragraph)
+    ? undefined
+    : deps.listItems?.get(paragraphId);
   const layoutInputs = withStoryLineGrid(
     cellParagraphInputs(
       paragraph,
@@ -935,7 +938,8 @@ function placeCellParagraph(
     ...(marker ? { marker } : {}),
     ...markRevisionFields(markRevisions, markFormatRevision),
     ...(markChangeSites.length > 0 ? { markChangeSites } : {}),
-    lines: records,
+    ...(isContentControlPlaceholder(paragraph) ? { localPlaceholder: true as const } : {}),
+    lines: isContentControlPlaceholder(paragraph) ? [] : records,
     ...(clipToBox ? { clipToBox: true as const } : {}),
     ...emptyParagraphStyleFields(
       records,

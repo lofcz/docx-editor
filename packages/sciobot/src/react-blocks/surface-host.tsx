@@ -60,6 +60,7 @@ export function mountSurfaceBlockHost(
   let providers = options.providers;
   // Insets are computed again when the package or the registry changes.
   let insetsFor: OoxmlPackage | null = null;
+  let insetCollapses = surface!.collapsedContentControls();
   const measurement = options.inlineOnly ? null : new BlockMeasurement(surface, options.measure);
   for (const [type, view] of initial) {
     validateBlockViewType(type);
@@ -92,9 +93,21 @@ export function mountSurfaceBlockHost(
       indexedPackage = pkg;
       index = buildBlockIndex(pkg);
     }
-    if (!options.inlineOnly && insetsFor !== pkg) {
+    const collapses = surface!.collapsedContentControls();
+    if (!options.inlineOnly && (insetsFor !== pkg || insetCollapses !== collapses)) {
       insetsFor = pkg;
-      const insets = containerInsets(next.part, index!, (type) => registry.get(type)?.inset);
+      insetCollapses = collapses;
+      const placeholders = new Set(
+        collapses
+          .filter((entry) => entry.summaryParagraphId === null)
+          .map((entry) => entry.controlId)
+      );
+      const insets = containerInsets(
+        next.part,
+        index!,
+        (type) => registry.get(type)?.inset,
+        placeholders
+      );
       // Outside the paint: a changed inset lays the document out again.
       queueMicrotask(() => {
         if (!disposed) surface!.setBlockInsets(insets);

@@ -5,6 +5,7 @@ import {
   parentNodeOf,
   WML_NAMESPACE_URI,
   type OoxmlNode,
+  type OoxmlElement,
   type OoxmlPart,
 } from '@docx-editor.dev/core/store';
 import type {
@@ -19,6 +20,16 @@ const MAX_DEPTH = 64;
 /** Validated ownership and visibility for one local disclosure. @internal */
 export interface PreparedContentControlCollapse extends CollapsedContentControl {
   readonly hiddenIds: ReadonlySet<string>;
+  readonly placeholder?: OoxmlElement;
+}
+
+/** Find the first flow paragraph without entering tables or unsupported wrappers. */
+function firstParagraph(node: OoxmlNode | undefined, depth = 0): OoxmlElement | undefined {
+  if (!node || depth > MAX_DEPTH) return undefined;
+  if (node.kind === 'paragraph') return node;
+  if (node.kind === 'contentControl')
+    return firstParagraph(contentControlContentNodeOf(node)?.children[0], depth + 1);
+  return undefined;
 }
 
 /** Recheck placement even when a moved control keeps its unchanged subtree identity. */
@@ -46,7 +57,7 @@ export function collapseOwnerRefusal(
 /** No mutations or callbacks occur while validating an entire replacement view. @internal */
 export function prepareContentControlCollapse(
   part: OoxmlPart,
-  requests: ReadonlyMap<string, string>,
+  requests: ReadonlyMap<string, string | null>,
   budget = { visited: 0 }
 ):
   | { readonly ok: true; readonly entries: readonly PreparedContentControlCollapse[] }
@@ -62,8 +73,14 @@ export function prepareContentControlCollapse(
     const refusal = collapseOwnerRefusal(part, owner);
     if (refusal) return refusal;
     const content = contentControlContentNodeOf(owner);
-    const summary = content?.children[0];
-    if (summary?.kind !== 'paragraph' || summary.id !== summaryParagraphId)
+    const first = content?.children[0];
+    const summary = summaryParagraphId === null ? undefined : first;
+    const placeholder = summaryParagraphId === null ? firstParagraph(first) : undefined;
+    if (
+      summaryParagraphId === null
+        ? !placeholder
+        : summary?.kind !== 'paragraph' || summary.id !== summaryParagraphId
+    )
       return { ok: false, reason: 'invalid-summary' };
     if (
       content!.children.some(
@@ -88,7 +105,14 @@ export function prepareContentControlCollapse(
       for (const node of current.node.children)
         pending.push({ node, hidden: current.hidden, depth: current.depth + 1 });
     }
-    entries.push(Object.freeze({ controlId, summaryParagraphId, hiddenIds }));
+    entries.push(
+      Object.freeze({
+        controlId,
+        summaryParagraphId,
+        hiddenIds,
+        ...(placeholder ? { placeholder } : {}),
+      })
+    );
   }
   return { ok: true, entries: Object.freeze(entries) };
 }

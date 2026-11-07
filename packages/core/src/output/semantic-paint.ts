@@ -1393,6 +1393,12 @@ function paintFragment(
   if (fragment.clipToBox) element.style.overflow = 'hidden';
   if (!ctx.unbound) element.dataset.paragraphId = fragment.paragraphId;
   element.dataset.fragmentIndex = String(fragment.fragmentIndex);
+  if (fragment.localPlaceholder) {
+    element.dataset.docxMarker = '';
+    element.dataset.docxCollapsePlaceholder = '';
+    element.setAttribute('contenteditable', 'false');
+    return element;
+  }
   if (!ctx.unbound) applyParagraphFormatAnchor(element, fragment);
   if (ctx.readOnlyParagraphIds?.has(fragment.paragraphId)) {
     element.classList.add('docx-generated-region');

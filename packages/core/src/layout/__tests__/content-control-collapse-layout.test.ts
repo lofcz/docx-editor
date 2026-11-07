@@ -94,6 +94,35 @@ test('folds invalidate paginated flow while unchanged paragraph measurements rem
   expect(cache.stats.misses).toBe(misses);
 });
 
+test('placeholder folds retain one blank header through nested labels and table cells', () => {
+  for (const inCell of [false, true]) {
+    const nested = sdt(sdt(p('Generated label')) + p('Answer') + p('Details'));
+    const part = load(
+      (inCell ? `<w:tbl><w:tr><w:tc>${nested}</w:tc></w:tr></w:tbl>` : nested) + p('After')
+    );
+    const root = body(part);
+    const owner = inCell
+      ? root.children[0]!.children[0]!.children[0]!.children[0]!
+      : root.children[0]!;
+    const label = contentControlContentNodeOf(contentControlContentNodeOf(owner)!.children[0]!)!
+      .children[0]!;
+    const collapse = createContentControlCollapseState();
+    expect(collapse.set(part, new Map([[owner.id, null]])).ok).toBe(true);
+    const closed = layoutSemanticDocument(part, 1, {
+      ...options,
+      contentControlCollapse: collapse.option(),
+    });
+    const fragments = closed.pages.flatMap(paragraphFragmentsOf);
+    expect(fragments.map((fragment) => fragment.paragraphId)).toContain(label.id);
+    expect(fragments).toHaveLength(2);
+    expect(fragments.find((fragment) => fragment.paragraphId === label.id)!.box.height).toBe(24);
+    expect(collapse.set(part, new Map()).ok).toBe(true);
+    expect(
+      layoutSemanticDocument(part, 1, options).pages.flatMap(paragraphFragmentsOf)
+    ).toHaveLength(4);
+  }
+});
+
 test('numbered items and their references retain canonical counters across hidden paragraphs', () => {
   const numbering = read(
     `<w:numbering xmlns:w="${W}"><w:abstractNum w:abstractNumId="0"><w:lvl w:ilvl="0">` +

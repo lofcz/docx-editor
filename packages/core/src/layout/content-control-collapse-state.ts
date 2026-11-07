@@ -1,5 +1,6 @@
 import {
   findNode,
+  parentNodeOf,
   type OoxmlElement,
   type OoxmlNode,
   type OoxmlPart,
@@ -14,6 +15,7 @@ import {
   type PreparedContentControlCollapse,
 } from './content-control-collapse.ts';
 import type { SemanticLayoutOptions } from './semantic-layout-options.ts';
+import { contentControlPlaceholder } from './content-control-placeholder.ts';
 
 /** One immutable input for visible body flow and its cache identity. @internal */
 export type ContentControlCollapseLayout = NonNullable<
@@ -47,7 +49,13 @@ function visibleTableNode(
   let changed = false;
   const children: OoxmlNode[] = [];
   for (const child of node.children) {
-    if (collapse.hiddenIds.has(child.id)) {
+    const placeholder = collapse.placeholders?.get(child.id);
+    if (placeholder) {
+      changed = true;
+      children.push(placeholder);
+      continue;
+    }
+    if (collapse.hiddenIds.has(child.id) && !collapse.placeholderAncestors?.has(child.id)) {
       changed = true;
       continue;
     }
@@ -75,6 +83,12 @@ export function visibleCollapsedControlFlow(
   let changed = false;
   const visible: OoxmlElement[] = [];
   for (const block of blocks) {
+    const placeholder = collapse.placeholders?.get(block.id);
+    if (placeholder) {
+      changed = true;
+      visible.push(placeholder);
+      continue;
+    }
     if (collapse.hiddenIds.has(block.id)) {
       changed = true;
       continue;
@@ -115,11 +129,28 @@ export function createContentControlCollapseState() {
       );
     const hiddenIds = new Set<string>();
     for (const entry of next) for (const id of entry.hiddenIds) hiddenIds.add(id);
+    const placeholders = new Map<string, OoxmlElement>();
+    const placeholderAncestors = new Set<string>();
+    for (const entry of next) {
+      if (!entry.placeholder || hiddenIds.has(entry.controlId)) continue;
+      placeholders.set(entry.placeholder.id, contentControlPlaceholder(entry.placeholder));
+      let ancestor = parentNodeOf(part, entry.placeholder.id);
+      while (ancestor && ancestor.id !== entry.controlId) {
+        placeholderAncestors.add(ancestor.id);
+        ancestor = parentNodeOf(part, ancestor.id);
+      }
+    }
     const unchanged =
       hiddenIds.size === (layout?.hiddenIds.size ?? 0) &&
-      [...hiddenIds].every((id) => layout?.hiddenIds.has(id));
+      [...hiddenIds].every((id) => layout?.hiddenIds.has(id)) &&
+      placeholders.size === (layout?.placeholders?.size ?? 0) &&
+      [...placeholders].every(([id, node]) => layout?.placeholders?.get(id) === node) &&
+      placeholderAncestors.size === (layout?.placeholderAncestors?.size ?? 0) &&
+      [...placeholderAncestors].every((id) => layout?.placeholderAncestors?.has(id));
     if (!unchanged)
-      layout = hiddenIds.size ? { token: `collapse:${++epoch}`, hiddenIds } : undefined;
+      layout = hiddenIds.size
+        ? { token: `collapse:${++epoch}`, hiddenIds, placeholders, placeholderAncestors }
+        : undefined;
     return !same || !unchanged;
   };
   return {
@@ -127,7 +158,7 @@ export function createContentControlCollapseState() {
     option: () => layout,
     set(
       part: OoxmlPart,
-      requests: ReadonlyMap<string, string>
+      requests: ReadonlyMap<string, string | null>
     ): ContentControlCollapseResult & { readonly changed?: boolean } {
       const prepared = prepareContentControlCollapse(part, requests);
       if (!prepared.ok) return prepared;
@@ -145,10 +176,13 @@ export function createContentControlCollapseState() {
         const controlId = findNode(part, entry.controlId)
           ? entry.controlId
           : resolveNodeId?.(entry.controlId);
-        const summaryId = findNode(part, entry.summaryParagraphId)
-          ? entry.summaryParagraphId
-          : resolveNodeId?.(entry.summaryParagraphId);
-        if (!controlId || !summaryId) continue;
+        const summaryId =
+          entry.summaryParagraphId === null
+            ? null
+            : findNode(part, entry.summaryParagraphId)
+              ? entry.summaryParagraphId
+              : resolveNodeId?.(entry.summaryParagraphId);
+        if (!controlId || summaryId === undefined) continue;
         const owner = findNode(part, controlId)!;
         if (collapseOwnerRefusal(part, owner)) continue;
         if (sourcePart && findNode(sourcePart, entry.controlId) === owner) {

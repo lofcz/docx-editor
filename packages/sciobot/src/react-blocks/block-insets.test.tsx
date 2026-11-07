@@ -6,6 +6,8 @@ import { canonicalOoxmlFingerprint, paragraphTextOf } from '@docx-editor.dev/cor
 import { createTwoEditorFixture } from '../../test/support/collaboration';
 import { nativeSlotDocument } from '../../test/support/react-block-document';
 import { mountReactBlockHost, type ReactBlockRegistry, type ReactBlockViewProps } from './host';
+import { buildBlockIndex } from '../blocks/block-index';
+import { paragraphFragmentsOf } from '@docx-editor.dev/core/layout';
 
 const environment = globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean };
 const settle = () => new Promise((resolve) => setTimeout(resolve, 30));
@@ -17,6 +19,82 @@ function Frame({ children }: ReactBlockViewProps) {
 const REGISTRY: ReactBlockRegistry = new Map([
   ['native_container', { view: Frame, inset: { left: 20, right: 8 } }],
 ]);
+
+test('a collapsed local header removes only its own vertical inset and retains the native host', async () => {
+  const previous = environment.IS_REACT_ACT_ENVIRONMENT;
+  environment.IS_REACT_ACT_ENVIRONMENT = true;
+  const container = document.createElement('div');
+  document.body.append(container);
+  const editor = createDocxEditor({ container, document: nativeSlotDocument() });
+  let host: ReturnType<typeof mountReactBlockHost> | undefined;
+  try {
+    const surface = editor.surface!;
+    const block = [...buildBlockIndex(surface.session.currentPackage()).byId.values()].find(
+      (block) => block.id === 'outer'
+    )!;
+    expect(block).toBeDefined();
+    await act(async () => {
+      host = mountReactBlockHost(
+        editor,
+        new Map([
+          [
+            'native_container',
+            {
+              view: ({ children }) => (
+                <div data-test-disclosure="" style={{ display: 'contents' }}>
+                  {children}
+                </div>
+              ),
+              nativeContent: true,
+              inset: { left: 12, right: 12, top: 40, bottom: 12 },
+            },
+          ],
+        ])
+      );
+      await settle();
+    });
+    const before = canonicalOoxmlFingerprint(surface.session.part());
+    const originalY = caretAt(surface.layout(), {
+      paragraphId: idOf(editor, 'Outer start'),
+      offset: 0,
+    })!.y;
+    await act(async () => {
+      expect(surface.setCollapsedContentControls(new Map([[block.controlId, null]]))).toEqual({
+        ok: true,
+      });
+      surface.flushPendingInput();
+      await settle();
+    });
+    surface.flushPendingInput();
+    const header = surface
+      .layout()
+      .pages.flatMap(paragraphFragmentsOf)
+      .find((fragment) => fragment.localPlaceholder)!;
+    expect(header.box.height).toBeCloseTo(24, 8);
+    expect(header.box.y).toBeLessThan(originalY);
+    expect(
+      container.querySelector('[data-test-disclosure] [data-docx-collapse-placeholder]')
+    ).not.toBeNull();
+    expect(canonicalOoxmlFingerprint(surface.session.part())).toBe(before);
+    await act(async () => {
+      surface.setCollapsedContentControls(new Map());
+      surface.flushPendingInput();
+      await settle();
+    });
+    surface.flushPendingInput();
+    expect(
+      caretAt(surface.layout(), { paragraphId: idOf(editor, 'Outer start'), offset: 0 })!.y
+    ).toBeCloseTo(originalY, 8);
+  } finally {
+    await act(async () => {
+      host?.dispose();
+      await settle();
+    });
+    editor.destroy();
+    container.remove();
+    environment.IS_REACT_ACT_ENVIRONMENT = previous;
+  }
+});
 
 function idOf(editor: DocxEditorInstance, text: string) {
   const session = editor.surface!.session;

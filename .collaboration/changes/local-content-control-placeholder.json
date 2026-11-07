@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Local collapse requires a visible canonical summary paragraph.",
+  "after": "Hosts can hide the complete body behind a local blank header.",
+  "reason": "Only local layout changes. Canonical content, operations, transport, and saved rooms remain unchanged.",
+  "tests": [
+    "packages/sciobot/src/blocks/content-control-placeholder-collaboration.test.ts",
+    "packages/core/src/editor/__tests__/content-control-collapse.test.ts"
+  ],
+  "changeset": null,
+  "migration": null
+}
