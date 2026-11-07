@@ -60,6 +60,8 @@ export interface RecomposeRequest {
 }
 
 export interface RecomposeOptions {
+  /** The host must still own this request at each preparation boundary and before publication. */
+  readonly isCurrent?: () => boolean;
   /** Trusted executor services; resources resolve after planning and before the revision check. */
   readonly images?: {
     readonly resolve: InlineImageResolver;
@@ -132,7 +134,7 @@ export async function recomposeOwnedProposals(
     const { surface, actual, allowGroupInitialization } = checked.input;
     const pkg = surface.session.currentPackage();
     const fresh = () => {
-      if (editor.surface !== surface)
+      if (options.isCurrent?.() === false || editor.surface !== surface)
         return fail(
           'The native document changed while recomposition was prepared.',
           'document-not-ready'
@@ -149,6 +151,8 @@ export async function recomposeOwnedProposals(
         };
       return null;
     };
+    const unavailable = fresh();
+    if (unavailable) return unavailable;
     const selected = reconcileRecompositionOwnership(pkg, actual, input.request.ownership);
     if (!selected.success) return selected;
     const proofs = input.request.contentProofs ?? [];

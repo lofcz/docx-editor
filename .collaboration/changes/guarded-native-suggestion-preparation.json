@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "A host cancellation or document-owner change during asynchronous suggestion preparation could still publish changes.",
+  "after": "The optional host ownership guard refuses publication without changing the shared document or history.",
+  "reason": "This local request guard does not change shared fields, operation formats, or review ownership.",
+  "tests": [
+    "packages/sciobot/src/review/recompose-payload-host.test.ts",
+    "packages/sciobot/src/review/recompose-host-services.test.ts"
+  ],
+  "changeset": "guarded-native-suggestion-preparation",
+  "migration": null
+}
