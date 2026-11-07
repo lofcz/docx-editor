@@ -93,7 +93,7 @@ import { bodyBlockCountOf, bodyBlockLimitAfter, bodyBlocksOf } from '../layout/b
 import { snapshotLayoutSession } from '../layout/layout-session-snapshot.ts';
 import { graphemeEndAfter, graphemeStartBefore } from './grapheme-step.ts';
 import { furnitureLaterSteps } from './surface-furniture-later.ts';
-import { createBlockReservationState } from '../layout/block-reservations.ts';
+import { createSurfaceBlockView } from './surface-block-view.ts';
 import {
   createContentControlWidgetSessions,
   contentControlValueOps,
@@ -1015,7 +1015,13 @@ export function mountPaginatedSurface(
   });
   // Layout, furniture, and formatting writes share the view's current projection (#497).
   let showFieldCodes = false;
-  const blockReservations = createBlockReservationState();
+  const blockView = createSurfaceBlockView(session, {
+    scope: storyScope,
+    destroyed: () => destroyed,
+    resolveNodeId: (id) => collaborationSession?.resolveNodeId?.(id),
+    invalidate: (reason) => scheduler.invalidateAll(session.packageRevision(), reason),
+    flush: flushLayout,
+  });
   const reviewView = createReviewViewState(
     options.revisionDisplayMode,
     !!options.reviewModel,
@@ -1413,6 +1419,7 @@ export function mountPaginatedSurface(
   const enterStoryHolding = (paragraphId: string): boolean => {
     const scope = storyScopeOfNodeId(session, paragraphId, { kind: 'body' });
     if (scope.kind === 'body') {
+      blockView.reveal([paragraphId]);
       // Leaving is unconditional here, unlike entering: a body target is not somewhere
       // staying in the open story could help.
       noteOps?.exitNote();
@@ -1495,6 +1502,7 @@ export function mountPaginatedSurface(
     // Any full layout of the live session completes an opening still in slices.
     if (!context && bodyBlockLimit === undefined) openingBlockLimit = null;
     drawingBundle.sync(session);
+    blockView.reconcile();
     return yield* layoutDocumentViewSteps({
       view: unsupportedProjection.view(session),
       revision,
@@ -1524,7 +1532,8 @@ export function mountPaginatedSurface(
       displayMode: revisionDisplayMode(),
       showFieldCodes: context && !context.live ? false : showFieldCodes,
       fieldResults: fieldScope.mode,
-      blockReservations: context && !context.live ? undefined : blockReservations.option(),
+      blockReservations: context && !context.live ? undefined : blockView.reservations(),
+      contentControlCollapse: context && !context.live ? undefined : blockView.collapseOption(),
       revisionAuthorFilter: activeAuthorFilter,
       bodyBlockLimit,
     } satisfies LayoutDocumentViewOptions & Record<keyof LayoutDocumentViewOptions, unknown>);
@@ -1888,6 +1897,8 @@ export function mountPaginatedSurface(
   // Every committed transaction, whatever produced it — this surface, undo, or another
   // editor sharing the store — reaches layout the same way.
   const unsubscribe = session.subscribe((modelChange) => {
+    // Shared node aliases remain valid during this synchronous publication only.
+    blockView.reconcile();
     drawingIntent = remapDrawingIntent(
       drawingIntent,
       collaborationSession,
@@ -3188,6 +3199,7 @@ export function mountPaginatedSurface(
     // itself commits through here with an empty buffer.
     flushTypeBuffer();
     if (!flushingTypeBuffer) typingHistory.end();
+    if (!options?.automation) blockView.revealSelection(selection);
     const finishSelectionHistory = documentSelectionHistory.begin();
     // An edit invalidates the rectangle: its cells' content has changed, and the collapsed
     // DOM selection it installed still points at the PRE-edit anchor. Left standing it kept
@@ -3237,6 +3249,7 @@ export function mountPaginatedSurface(
         if (next) {
           retireActivationPin();
           selection = next;
+          if (!options?.automation) blockView.revealSelection(next);
           // An edit placed a TEXT caret — typing beside an anchored image must not ring it.
           // Image property edits commit with no selectionAfter, so a resize or move drag
           // keeps its object selection, exactly as Word does.
@@ -3355,6 +3368,7 @@ export function mountPaginatedSurface(
     const previousToc = tocAtPosition(session.part(), selection.head)?.id;
     retireActivationPin();
     selection = next;
+    blockView.reveal([next.anchor.paragraphId, next.head.paragraphId]);
     // Any plain selection cancels a rectangle. A caret placed by a click, a keystroke or an
     // edit is a text selection by definition, and leaving the rectangle behind would keep
     // painting cells that are no longer chosen.
@@ -4365,6 +4379,7 @@ export function mountPaginatedSurface(
     replacementOffset,
   } = createSurfaceRangeEditOps({
     session,
+    beforeRangeEdit: blockView.revealSelection,
     layout: editingLayout,
     selection: () => selection,
     cellSelection: () => cellSelection,
@@ -5080,6 +5095,7 @@ export function mountPaginatedSurface(
 
     revealParagraph(paragraphId, options) {
       beginReveal();
+      blockView.reveal([paragraphId]);
       // The paragraph's own line, not the top of its page: a heading two thirds down a
       // page is the thing the caller asked to see.
       const start = { paragraphId, offset: 0 };
@@ -5099,6 +5115,7 @@ export function mountPaginatedSurface(
 
     revealPosition(position, options) {
       beginReveal();
+      blockView.reveal([position.paragraphId]);
       const caret = caretAt(editingLayout(), position);
       if (!caret && laterOnOpening(position, () => surface.revealPosition(position, options)))
         return true;
@@ -5393,14 +5410,7 @@ export function mountPaginatedSurface(
       applyRevisionAuthorVisibility(revisionAuthorVisibility.setPredicate(predicate, mode));
     },
     collaborationSession: () => collaborationSession ?? null,
-    setBlockReservations(next) {
-      if (!destroyed && blockReservations.set(next))
-        scheduler.invalidateAll(session.packageRevision(), 'block-reservations');
-    },
-    setBlockInsets(next) {
-      if (!destroyed && blockReservations.setInsets(next))
-        scheduler.invalidateAll(session.packageRevision(), 'block-reservations');
-    },
+    ...blockView.commands,
     observePaint(observer) {
       paintObservers.add(observer);
       render(false);

@@ -221,6 +221,11 @@ export interface SemanticLayoutOptions {
    * only; it never changes the document, and save-time passes omit it.
    */
   readonly blockReservations?: import('./block-reservations.ts').BlockReservations;
+  /** Validated local disclosure view; omitted by save/export passes. @internal */
+  readonly contentControlCollapse?: {
+    readonly token: string;
+    readonly hiddenIds: ReadonlySet<string>;
+  };
   /** Per-paragraph identity for projected links and live document-property text. */
   readonly projectionTokenForParagraph?: (paragraph: OoxmlNode) => string;
   /** Memoized aggregate projection identity for an immutable table subtree. */

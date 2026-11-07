@@ -3888,6 +3888,11 @@ export interface SemanticLayoutOptions {
     readonly bodyBlockLimit?: number;
     readonly cache?: ParagraphLayoutCache<readonly PendingLine[]>;
     readonly compatibilityMode?: number;
+    // @internal
+    readonly contentControlCollapse?: {
+        readonly hiddenIds: ReadonlySet<string>;
+        readonly token: string;
+    };
     readonly defaultTabStopPt?: number;
     readonly displayMode?: RevisionDisplayMode;
     readonly documentProperties?: DocumentProperties;

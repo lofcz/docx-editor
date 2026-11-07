@@ -233,6 +233,11 @@ export {
   type ChromeSlotId,
 } from './chrome-controls.ts';
 export type { SurfaceBlockReservations } from './surface-block-reservations.ts';
+export type {
+  SurfaceContentControlCollapse,
+  CollapsedContentControl,
+  ContentControlCollapseResult,
+} from './surface-content-control-collapse.ts';
 export type { BlockInset } from '../layout/block-reservations.ts';
 export {
   mountPaginatedSurface,

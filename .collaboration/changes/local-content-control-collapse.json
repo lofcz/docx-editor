@@ -1,0 +1,14 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Hosts could hide painted content without updating native page flow or navigation.",
+  "after": "A validated local collapse view updates native flow and reveals explicit local destinations. Shared edits and presence retain canonical IDs.",
+  "reason": "Collapse state belongs to one surface. It writes no canonical operations, payloads, shared attributes, history entries, or snapshot fields.",
+  "tests": [
+    "packages/core/src/editor/__tests__/content-control-collapse.test.ts",
+    "packages/core/src/layout/__tests__/content-control-collapse-layout.test.ts",
+    "packages/sciobot/src/blocks/content-control-collapse-collaboration.test.ts"
+  ],
+  "changeset": "local-content-control-collapse",
+  "migration": null
+}

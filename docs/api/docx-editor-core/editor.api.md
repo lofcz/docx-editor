@@ -1182,6 +1182,12 @@ export interface CollaborationModuleContribution {
     readonly session: EditorCollaborationSession;
 }
 
+// @public
+export interface CollapsedContentControl {
+    readonly controlId: string;
+    readonly summaryParagraphId: string;
+}
+
 // @internal
 export function collapseOrder(groups: readonly string[], order?: readonly string[], priorities?: ReadonlyMap<string, number>): readonly string[];
 
@@ -1442,6 +1448,14 @@ export function computeResizedImageExtentEmu(startWidthEmu: number, startHeightE
 
 // @public
 export const CONTENT_CONTROL_PICTURE_ACCEPT = "image/png,image/jpeg,image/gif,image/bmp,image/webp";
+
+// @public
+export type ContentControlCollapseResult = {
+    readonly ok: true;
+} | {
+    readonly ok: false;
+    readonly reason: 'document-not-ready' | 'invalid-owner' | 'invalid-summary' | 'unsupported-content' | 'limit-exceeded';
+};
 
 // @public
 export type ContentControlKind = 'richText' | 'plainText' | 'checkbox' | 'dropDownList' | 'comboBox' | 'date' | 'picture' | 'docPartObj' | 'docPartList' | 'group' | 'citation' | 'bibliography' | 'equation' | 'untyped';
@@ -2768,7 +2782,7 @@ export function overlayHostOrigin(surfaceElement: HTMLElement | null): {
 };
 
 // @public
-export interface PaginatedSurface extends SurfaceBlockReservations, SurfaceIndentAndListOps {
+export interface PaginatedSurface extends SurfaceBlockReservations, SurfaceContentControlCollapse, SurfaceIndentAndListOps {
     activatedReviewKey(): string | null;
     activateReview(key: string, selection?: SemanticSelection, options?: {
         readonly allowExcluded?: boolean;
@@ -4217,6 +4231,12 @@ export type SupportedImageMime = 'image/png' | 'image/jpeg' | 'image/gif' | 'ima
 export interface SurfaceBlockReservations {
     setBlockInsets(insets: ReadonlyMap<string, BlockInset>): void;
     setBlockReservations(reservations: ReadonlyMap<string, number>): void;
+}
+
+// @public
+export interface SurfaceContentControlCollapse {
+    collapsedContentControls(): readonly CollapsedContentControl[];
+    setCollapsedContentControls(controls: ReadonlyMap<string, string>): ContentControlCollapseResult;
 }
 
 // @public

@@ -67,6 +67,7 @@ export type { RemoteCaretLabelAnchor, RemoteCaretLabelHost };
 
 import type { PaginatedSurfaceOptions } from './paginated-surface-options.ts';
 import type { SurfaceBlockReservations } from './surface-block-reservations.ts';
+import type { SurfaceContentControlCollapse } from './surface-content-control-collapse.ts';
 import type { SurfaceBookmarks } from './surface-bookmarks.ts';
 
 export type { PaginatedSurfaceOptions } from './paginated-surface-options.ts';
@@ -105,7 +106,8 @@ export type SectionBreakInsertType = 'nextPage' | 'continuous';
  * Every write goes through the guarded mutation path on this object. Reaching past it into
  * `session` to apply ops directly bypasses the layout invalidation and the caret bookkeeping.
  */
-export interface PaginatedSurface extends SurfaceBlockReservations, SurfaceIndentAndListOps {
+export interface PaginatedSurface
+  extends SurfaceBlockReservations, SurfaceContentControlCollapse, SurfaceIndentAndListOps {
   readonly session: TreeDocxSessionView;
   /** The collaboration replica a `collaborationModule` attached, or null. */
   collaborationSession(): import('../collaboration/index.ts').EditorCollaborationSession | null;

@@ -181,10 +181,10 @@ import { columnSeparatorBoxes, resolveSectionColumns } from './section-columns.t
 import {
   inheritNotesLayoutInput,
   layoutSemanticDocumentWithNotesSteps,
-  noteRoundBlocks,
 } from './note-pagination.ts';
 import { closingSpaceAfterPt, droppableSpacingPt, keepNoteClosing } from './note-area-fit.ts';
 import * as blockSpace from './block-reservations.ts';
+import { bodyFlowProjectionEpoch, visibleBodyRound } from './content-control-collapse-flow.ts';
 import { passProducerOf } from './pass-producer.ts';
 import { documentProjectionProducer } from './document-property-context.ts';
 
@@ -324,7 +324,7 @@ function* layoutInModeSteps(
   const optionsForBody = refFields === null ? optionsWithLists : { ...optionsWithLists, refFields };
 
   function* runBodySteps(opts: SemanticLayoutOptions): LayoutSteps<SemanticLayout> {
-    const [roundBlocks, roundSections] = noteRoundBlocks(part, blocks, sections, opts);
+    const [roundBlocks, roundSections] = visibleBodyRound(part, blocks, sections, opts);
     if (sections.length > 1) {
       // Reports document pages as each section completes them, labelled as a single section's.
       return yield* withRelabeledProgress(
@@ -939,10 +939,7 @@ function* layoutBlocksPass(
     options.drawingLayoutEpoch === undefined
       ? null
       : withDrawingContext(options.drawingLayoutEpoch ?? '', hasInlineDrawingContext);
-  const projectionEpoch =
-    options.projectionTokenForParagraph !== undefined && options.projectionEpoch === undefined
-      ? null
-      : (options.projectionEpoch ?? '') + (options.blockReservations?.epoch ?? '');
+  const projectionEpoch = bodyFlowProjectionEpoch(options);
   // A bare section mark's borders depend on the next section's break (`marksPageBreak`).
   const framePolicy =
     sectionPrep.framePolicy(columns.count, options.disabledParagraphFrameIds) +

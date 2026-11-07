@@ -87,6 +87,8 @@ export interface SurfaceRangeEditDeps {
    * plan built from the pre-buffer selection edits beside text the user has already typed.
    */
   flushPendingInputAndLayout(): void;
+  /** Reveal a local edit's hidden destination before reading its visible text and order. */
+  beforeRangeEdit?(selection: SemanticSelection): void;
   /** The author a tracked edit is attributed to, or undefined when the edit lands direct. */
   trackedAuthorOrNone(): string | undefined;
   /** `w:next` lane: whether an offset sits at the end of a paragraph's MODEL text. */
@@ -217,6 +219,7 @@ export function createSurfaceRangeEditOps(deps: SurfaceRangeEditDeps): SurfaceRa
   ): AtomicControlDeletion | null {
     // Queued typing lands first, so the caret and the layout are the ones the reader sees.
     deps.flushPendingInputAndLayout();
+    deps.beforeRangeEdit?.(planSelection());
     if (deps.cellSelection()) return null;
     return planAtomicControlDeletion({
       layout: deps.layout(),
@@ -317,6 +320,7 @@ export function createSurfaceRangeEditOps(deps: SurfaceRangeEditDeps): SurfaceRa
     // as its text oracle, so a deferred layout pass lands with it. (No-op
     // mid-flush.)
     deps.flushPendingInputAndLayout();
+    deps.beforeRangeEdit?.(planSelection());
     const rectangle = planCells();
     // A RECTANGLE is not the range it stands in for. Rows one and two of column one, read as
     // a range, run through every cell between them — so deleting through the range empties

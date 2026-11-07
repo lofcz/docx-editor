@@ -71,6 +71,7 @@ export const SEMANTIC_LAYOUT_OPTION_ROLES = Object.freeze({
   projectionTokenForParagraph: 'document-coordinator',
   projectionTokenForTable: 'document-coordinator',
   blockReservations: 'document-coordinator',
+  contentControlCollapse: 'document-coordinator',
   drawingLayoutToken: 'layout-internal',
   drawingExclusionPass: 'layout-internal',
   drawingExclusionConverged: 'layout-internal',
@@ -126,6 +127,7 @@ export interface LayoutDocumentViewOptions {
   readonly bodyBlockLimit?: number;
   /** Live-view widget reservations; see `SemanticLayoutOptions.blockReservations`. */
   readonly blockReservations?: BlockReservations;
+  readonly contentControlCollapse?: SemanticLayoutOptions['contentControlCollapse'];
 }
 
 type LayoutDocumentViewSink = 'notes' | 'semantic-layout' | 'both';
@@ -158,6 +160,7 @@ const _LAYOUT_DOCUMENT_VIEW_OPTION_SINKS = {
   revisionAuthorFilter: 'both',
   bodyBlockLimit: 'semantic-layout',
   blockReservations: 'semantic-layout',
+  contentControlCollapse: 'semantic-layout',
 } as const satisfies Readonly<Record<keyof LayoutDocumentViewOptions, LayoutDocumentViewSink>>;
 
 type CoordinatorInputsFor<Sink extends Exclude<LayoutDocumentViewSink, 'both'>> = {
@@ -240,6 +243,7 @@ function* layoutDocumentViewInModeSteps(
     revisionAuthorFilter: options.revisionAuthorFilter,
     bodyBlockLimit: options.bodyBlockLimit,
     blockReservations: options.blockReservations,
+    contentControlCollapse: options.contentControlCollapse,
   } satisfies Record<CoordinatorInputsFor<'semantic-layout'>, unknown>;
   const semanticOptions = {
     measurer: semanticInputs.measurer,
@@ -273,6 +277,7 @@ function* layoutDocumentViewInModeSteps(
     revisionAuthorFilter: semanticInputs.revisionAuthorFilter,
     bodyBlockLimit: semanticInputs.bodyBlockLimit,
     blockReservations: semanticInputs.blockReservations,
+    contentControlCollapse: semanticInputs.contentControlCollapse,
   } satisfies SemanticLayoutOptions & Record<DocumentCoordinatedSemanticOption, unknown>;
   return yield* layoutSemanticDocumentSteps(
     semanticInputs.view.part(),

@@ -176,6 +176,29 @@ These creation options and props change lock behavior. The editor reads each one
 
 `formFill` changes Tab navigation only. It does not prevent edits outside controls. Use [document protection](/docs/2.x/guides/document-protection) to restrict edits.
 
+### Local collapse views
+
+Host chrome can collapse a block content control through `editor.surface`. This surface operation changes one reader's view. It leaves document content, collaboration history, and exported content unchanged.
+
+Pass canonical node IDs for the control and its first direct paragraph:
+
+```ts
+const result = editor.surface?.setCollapsedContentControls(
+  new Map([[controlNodeId, summaryParagraphId]])
+);
+if (result && !result.ok) {
+  showCollapseRefusal(result.reason);
+}
+```
+
+The map replaces the complete collapse view. An empty map opens every control. Validation refuses the complete request before changing existing entries. The first paragraph remains visible. Later content leaves the page flow. Canonical list numbering and bookmark references still include hidden content.
+
+This subset supports body controls with paragraphs, tables, and nested block controls, including controls inside table cells. Section boundaries and unsupported wrappers refuse collapse. Validation limits each request to 4,096 controls and 500,000 visited nodes. Nesting cannot exceed 64 levels.
+
+`collapsedContentControls()` returns a frozen snapshot with stable identity until its entries change. Use `surface.observePaint()` to update disclosure chrome after view changes. Explicit navigation into hidden text opens its enclosing controls. Local text edits reveal hidden content within the selection before changing it.
+
+Peer edits do not open another reader's controls. Deleting a control or its exact summary removes that entry. Host moves preserve the view. Loading another document resets it.
+
 ### Caret movement in content-locked controls
 
 By default, the caret walks through each character of a content-locked inline control. Set `lockedControlNavigation` to `'atomic'` to step over it:

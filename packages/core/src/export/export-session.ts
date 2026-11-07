@@ -656,6 +656,7 @@ export function openDocumentForExport(
         fieldResults: 'atomic',
         // Exported pages follow the document alone, never a live view's widget measurements.
         blockReservations: undefined,
+        contentControlCollapse: undefined,
       } satisfies LayoutDocumentViewOptions & Record<keyof LayoutDocumentViewOptions, unknown>);
       if (!layoutHasPendingImages(layout)) {
         const restartedBeforePublish = restartOnRevisionDrift();
