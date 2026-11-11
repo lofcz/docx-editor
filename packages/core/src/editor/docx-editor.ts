@@ -1,3 +1,4 @@
+import { capturePointPosition, createEditorPointMembers } from './editor-point-target.ts';
 import { createUnsupportedElementState } from './unsupported-element-state.ts';
 import { createEditorEvents } from './editor-events.ts';
 import { createEditorDiagnostics, reportEditorFontError } from './editor-diagnostics.ts';
@@ -157,6 +158,7 @@ import {
   isContentControlEditorCommand,
 } from './content-controls.ts';
 import { imageContextEqual } from './image-state-rules.ts';
+import { createChartStateCache } from './chart-commands.ts';
 import {
   selectedImageStateOf,
   canExecuteImageCommand as canExecuteImageCommandOf,
@@ -735,6 +737,13 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
       ...preparedOpen.takePreparedOpen(bytes),
       ...(modules.collaboration ? { collaborationModel: modules.collaboration } : {}),
       onHostMoved: followHost,
+      onDragEvent: (kind, event, position) => {
+        if (surface && container)
+          events.emitDragEvent(kind, {
+            event,
+            position: capturePointPosition(surface, position),
+          });
+      },
       onTrackedChange: () => {
         if (reviewPaneOpen || !reviewPane.opensOnTrackedChange()) return;
         reviewPaneOpen = true;
@@ -1286,6 +1295,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
 
   /** The right-click TOC context, reference-stable while the id holds — see support. */
   const tocContextOf = createTocContextCache();
+  const chartStateOf = createChartStateCache();
 
   function deriveSnapshot(): EditorSnapshot {
     const state = surface?.state() ?? null;
@@ -1341,6 +1351,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
       table: tableContextOf(surface),
       tocContext: tocContextOf(state?.contextTocId ?? null),
       image: selectedImageStateOf(surface),
+      chart: chartStateOf(surface),
       page: { current: currentPageOf(surface), total: totalPagesOf(surface) },
       canUndo: state?.canUndo ?? false,
       canRedo: state?.canRedo ?? false,
@@ -2035,6 +2046,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
         const result = execEditorCommand(mounted, command, {
           ...(gated.tablePlan ? { admittedTablePlan: gated.tablePlan } : {}),
           editor,
+          translate: hostConfig.translate(),
         });
         if (result) return result;
         // `changed` is read from the model, not assumed: reporting `changed: true` where the
@@ -2506,17 +2518,10 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
     ...highlights.members,
     ...createReviewItemsAt({ frame: highlights.frame, placements: reviewPlacements }),
 
-    relayout(options?: { sync?: boolean }) {
-      // `layout()` flushes any commit the scheduler has not published yet; the surface
-      // repaints from its own publish path, so there is nothing further to trigger — which
-      // is what `sync: true` asks for, and the only thing this can do. Read rather than
-      // ignored: a declared parameter that vanishes into nothing is how a caller comes to
-      // believe it changed something.
-      void options?.sync;
-      surface?.layout();
-    },
-    retainSelection: () => (container ? (surface?.retainSelection() ?? null) : null),
-    releaseSelection: (pin) => surface?.releaseSelection(pin),
+    ...createEditorPointMembers(
+      () => surface,
+      () => !!container && !destroyed
+    ),
     focus(scope?: EditorScope) {
       // Same yield-window rule as `exec`: focusing the just-loaded document mounts it.
       openScheduler.flush();

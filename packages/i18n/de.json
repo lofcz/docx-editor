@@ -423,7 +423,20 @@
     "addComment": "Kommentar hinzufügen...",
     "replyPlaceholder": "Antworten oder andere mit @ erwähnen",
     "reopen": "Erneut öffnen",
-    "resolve": "Auflösen"
+    "resolve": "Auflösen",
+    "edit": "Bearbeiten",
+    "editConflict": "Dieser Kommentar wurde geändert. Ihr Entwurf bleibt erhalten. Brechen Sie ab, um den aktuellen Text anzuzeigen.",
+    "editEmpty": "Geben Sie vor dem Speichern einen Kommentartext ein.",
+    "editPermission": "Sie können nur Ihre eigenen Kommentare bearbeiten.",
+    "editRefused": "Dieser Kommentar konnte nicht gespeichert werden. Ihr Entwurf bleibt erhalten.",
+    "editText": "Kommentartext",
+    "saveEdit": "Änderungen speichern",
+    "deletedDraft": "Dieser Kommentar ist hier nicht mehr verfügbar. Ihr ungespeicherter Entwurf bleibt zum Kopieren erhalten.",
+    "discardDraft": "Entwurf verwerfen",
+    "recoveredDraft": "Ungespeicherter Kommentarentwurf",
+    "actions": "Kommentaraktionen",
+    "replyActions": "Antwortaktionen",
+    "delete": "Löschen"
   },
   "contextMenu": {
     "ariaLabel": "KI-Aktionsmenü",
@@ -705,6 +718,7 @@
       "fontFamily": "Schriftart",
       "fontSize": "Schriftgrad",
       "hangingIndent": "Hängender Einzug",
+      "highlight": "Hervorhebung",
       "italic": "Kursiv",
       "left": "Links",
       "leftIndent": "Linker Einzug",
@@ -932,6 +946,13 @@
     "panelTitle": "Alternativtext",
     "title": "Titel"
   },
+  "drop": {
+    "errors": {
+      "readOnly": "Dieses Dokument ist schreibgeschützt.",
+      "noTarget": "Ziehen Sie das Element auf bearbeitbaren Text.",
+      "unsupported": "Ziehen Sie ein PNG-, JPEG- oder GIF-Bild oder Text hierher."
+    }
+  },
   "imageInsert": {
     "errors": {
       "title": "Das Bild kann nicht eingefügt werden",
@@ -939,7 +960,8 @@
       "invalidSignature": "Die Datei ist kein unterstütztes PNG-, JPEG- oder GIF-Bild.",
       "oversize": "Das Bild überschreitet die maximal zulässige Größe.",
       "refused": "Das Bild konnte nicht eingefügt werden.",
-      "unsupportedFormat": "Dieses Bildformat wird beim Einfügen nicht unterstützt."
+      "unsupportedFormat": "Dieses Bildformat wird beim Einfügen nicht unterstützt.",
+      "staleTarget": "Das Dokument oder die Ablageposition hat sich geändert. Ziehen Sie das Bild erneut an die gewünschte Stelle."
     }
   },
   "imageProperties": {
@@ -1029,7 +1051,11 @@
     "suggestingNeedsAuthor": "Vorschläge benötigen einen Autor. Legen Sie den Autor in der Editorkonfiguration fest.",
     "pictureSelected": "Ein Bild ist ausgewählt. Setzen Sie den Cursor in den Text, um ein Bild einzufügen.",
     "chartDrawing": "Dies ist ein Diagramm. Sie können es löschen, aber nicht wie ein Bild bearbeiten.",
-    "chartClipboard": "Die Auswahl enthält ein Diagramm. Diagramme können nicht kopiert, ausgeschnitten oder eingefügt werden.",
+    "chartFrame": "Dies ist ein Diagramm. Sie können Größe, Position, Textumbruch und Alternativtext ändern.",
+    "diagramFrame": "Dies ist ein Schaubild. Sie können Größe, Position, Textumbruch und Alternativtext ändern.",
+    "diagramRescale": "Die Größe dieses Schaubilds kann nicht geändert werden. Seine gespeicherte Zeichnung wird geteilt oder lässt sich nicht auf diese Größe skalieren.",
+    "chartClipboard": "Ein Diagramm kann nur allein kopiert, ausgeschnitten oder eingefügt werden, nicht zusammen mit anderen Inhalten.",
+    "chartClipboardStale": "Das kopierte Diagramm ist nicht mehr verfügbar. Kopieren Sie das Diagramm erneut.",
     "nothingToUndo": "Es gibt nichts rückgängig zu machen",
     "nothingToRedo": "Es gibt nichts wiederherzustellen",
     "outermostLevel": "Die Auswahl ist bereits auf der äußersten Ebene",
@@ -1220,6 +1246,119 @@
       "unresolvedRevisions": "Ein Dokument enthält nachverfolgte Änderungen, die nicht angenommen werden können. Nehmen Sie sie in diesem Dokument an oder lehnen Sie sie ab und vergleichen Sie erneut.",
       "untrackedContent": "Die Dokumente unterscheiden sich in Inhalten, die nicht als nachverfolgte Änderungen angezeigt werden können, zum Beispiel einer eingebetteten Datei.",
       "unverified": "Das Vergleichsergebnis würde nicht beide Dokumente wiedergeben und wurde daher nicht übernommen."
+    }
+  },
+  "chart": {
+    "insert": "Diagramm",
+    "insertType": "Diagramm vom Typ {type} einfügen",
+    "edit": "Diagramm bearbeiten…",
+    "sample": {
+      "category": "Kategorie {number}",
+      "series": "Reihe {number}",
+      "name": "Diagramm {number}"
+    },
+    "pane": {
+      "title": "Diagramm",
+      "close": "Diagrammbereich schließen",
+      "emptyTitle": "Kein Diagramm ausgewählt",
+      "emptyBody": "Wählen Sie ein Diagramm im Dokument aus, um es zu bearbeiten.",
+      "notEditableTitle": "Dieses Diagramm kann nicht bearbeitet werden"
+    },
+    "types": {
+      "columnClustered": "Säule",
+      "columnStacked": "Gestapelte Säule",
+      "columnPercentStacked": "Gestapelte Säule (100 %)",
+      "barClustered": "Balken",
+      "barStacked": "Gestapelter Balken",
+      "barPercentStacked": "Gestapelter Balken (100 %)",
+      "line": "Linie",
+      "lineMarkers": "Linie mit Datenpunkten",
+      "area": "Fläche",
+      "areaStacked": "Gestapelte Fläche",
+      "areaPercentStacked": "Gestapelte Fläche (100 %)",
+      "pie": "Kreis",
+      "doughnut": "Ring",
+      "radar": "Netz",
+      "scatter": "Punkt (XY)",
+      "scatterLines": "Punkt mit Linien",
+      "other": "Anderer Typ"
+    },
+    "format": {
+      "type": "Diagrammtyp",
+      "elements": "Diagrammelemente",
+      "showTitle": "Titel",
+      "titleText": "Titeltext",
+      "defaultTitle": "Diagrammtitel",
+      "legend": "Legende",
+      "legendPositions": {
+        "none": "Keine",
+        "top": "Oben",
+        "bottom": "Unten",
+        "left": "Links",
+        "right": "Rechts"
+      },
+      "dataLabels": "Datenbeschriftungen",
+      "gridlines": "Gitternetzlinien",
+      "axes": "Achsen",
+      "categoryAxisTitle": "Titel der Rubrikenachse",
+      "valueAxisTitle": "Titel der Größenachse",
+      "xAxisTitle": "Titel der X-Achse",
+      "yAxisTitle": "Titel der Y-Achse",
+      "axisTitleHelp": "Lassen Sie einen Achsentitel leer, um keinen Titel anzuzeigen.",
+      "axesOff": "Aktivieren Sie „Achsen“, um dies zu verwenden.",
+      "typeChangeRemoved": "Dieser Diagrammtyp behält die festgelegten Farben und Achsentitel nicht bei. Mit „Rückgängig“ stellen Sie sie wieder her.",
+      "typeChangeHint": "Einige Diagrammtypen behalten die festgelegten Farben und Achsentitel nicht bei.",
+      "pieFirstSeries": "Ein Kreisdiagramm zeigt nur die erste Reihe.",
+      "colors": "Farben",
+      "seriesColor": "Farbe von {name}",
+      "openColors": "Farbe für {name} auswählen",
+      "colorLighter": "{color}, {percent} % heller",
+      "colorDarker": "{color}, {percent} % dunkler"
+    },
+    "data": {
+      "categories": "Kategorien",
+      "xValues": "X-Werte",
+      "seriesName": "Name der Reihe {number}",
+      "categoryLabel": "Kategorie {number}",
+      "xValueLabel": "X-Wert {number}",
+      "cellLabel": "{series}, {category}",
+      "addCategory": "Kategorie hinzufügen",
+      "addSeries": "Reihe hinzufügen",
+      "help": "Drücken Sie die Eingabetaste oder verlassen Sie ein Feld, um es zu übernehmen. Lassen Sie einen Wert leer, um keinen Wert festzulegen.",
+      "workbookKept": "Die eingebettete Arbeitsmappe behält ihre alten Werte. Das Diagramm zeigt die eingegebenen Werte.",
+      "workbookExternal": "Das Diagramm bezieht seine Daten aus einer verknüpften Arbeitsmappe. Das Diagramm zeigt die eingegebenen Werte und wird nicht mehr über die Verknüpfung aktualisiert.",
+      "name": "Name",
+      "series": "Reihe",
+      "unnamed": "Unbenannte Reihe",
+      "removeCategoryNamed": "Kategorie {name} entfernen",
+      "removeSeriesNamed": "Reihe {name} entfernen",
+      "fieldErrors": {
+        "number": "Geben Sie eine Zahl ein oder lassen Sie die Zelle leer.",
+        "xNumber": "Geben Sie für jeden X-Wert eine Zahl ein.",
+        "tooLong": "Verwenden Sie höchstens 255 Zeichen.",
+        "limit": "Ein Diagramm hat mindestens eine Reihe und eine Kategorie sowie höchstens 255 Reihen und 4.000 Kategorien."
+      },
+      "removeSeries": "Reihe entfernen"
+    },
+    "errors": {
+      "noChart": "Wählen Sie ein Diagramm aus.",
+      "noData": "Das Diagramm hat keine Datenreihen.",
+      "combination": "Das Diagramm kombiniert mehrere Diagrammtypen.",
+      "unsupportedType": "Der Editor bearbeitet die Daten dieses Diagrammtyps nicht.",
+      "filtered": "Das Diagramm blendet einige seiner Reihen aus.",
+      "multiLevel": "Das Diagramm hat Kategorien auf mehreren Ebenen.",
+      "mixedCategories": "Die Reihen des Diagramms verwenden unterschiedliche Kategorien.",
+      "tooLarge": "Das Diagramm hat mehr Daten, als der Editor bearbeitet.",
+      "empty": "Ein Diagramm benötigt mindestens eine Reihe und eine Kategorie.",
+      "invalidText": "Ein Name oder eine Beschriftung enthält Zeichen, die ein Diagramm nicht speichern kann.",
+      "notNumber": "Jeder Wert muss eine Zahl sein.",
+      "layout": "Die Zellbezüge des Diagramms bilden keine zusammenhängende Tabelle. Sie können daher nur Namen und Werte ändern.",
+      "workbook": "Die eingebettete Arbeitsmappe kann diese Änderung nicht übernehmen. Geben Sie jeder Reihe einen anderen Namen und lassen Sie die Zellen neben den Daten leer.",
+      "noAxes": "Dieser Diagrammtyp hat keine Achsen.",
+      "sameType": "Das Diagramm hat bereits diesen Typ.",
+      "unsupported": "Der Editor unterstützt diese Diagrammänderung nicht.",
+      "invalidValue": "Das Diagramm kann diesen Wert nicht verwenden.",
+      "suggesting": "Diagramme können im Vorschlagsmodus nicht geändert werden. Wechseln Sie zu „Bearbeiten“, um dieses Diagramm zu ändern."
     }
   }
 }

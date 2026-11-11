@@ -6,6 +6,7 @@ import {
   serializeOoxmlPart,
 } from '@docx-editor.dev/core/store';
 import { createFixedMeasurer } from '../fixed-measurer.ts';
+import { buildStyleCascadeTable } from '../style-cascade.ts';
 import { layoutSemanticDocument } from '../semantic-layout.ts';
 import { linesOf, type TextMeasurer } from '../semantic-records.ts';
 import { caretAt } from '../semantic-interaction.ts';
@@ -36,6 +37,48 @@ const measure = (width = 40, revision = '1'): TextMeasurer => ({
       request.tag === 'chip:source' ? { width, ascent: 20, descent: 4 } : null,
     revision,
   },
+});
+
+test('balanced width justification leaves spaces inside measured widgets untouched', () => {
+  const settings = readOoxmlPart(
+    `<w:settings xmlns:w="${W}"><w:compat><w:balanceSingleByteDoubleByteWidth/>` +
+      '<w:compatSetting w:name="compatibilityMode" ' +
+      'w:uri="http://schemas.microsoft.com/office/word" w:val="15"/></w:compat></w:settings>',
+    { name: '/word/settings.xml', contentType: 'application/xml' }
+  );
+  if (!settings.ok) throw new Error(settings.reason);
+  const styleCascade = buildStyleCascadeTable(undefined, undefined, settings.part.root);
+  const measurer: TextMeasurer = {
+    ...measure(),
+    measure: (text, style) =>
+      [...text].reduce((sum, c) => sum + (c === ' ' ? 4 : 10) + style.characterSpacingPt, 0),
+  };
+  for (const alignment of ['both', 'distribute']) {
+    let expectedBoxes: unknown;
+    for (const fallback of ['source', 'source ', 'source  ']) {
+      const content = preserved(
+        `<w:p><w:pPr><w:jc w:val="${alignment}"/></w:pPr>` +
+          run('aa  ') +
+          chip.replace('>source<', `>${fallback}<`) +
+          run('bb  cc dddddddddddddddddddd') +
+          '</w:p>'
+      );
+      const layout = layoutSemanticDocument(part(content), 1, {
+        geometry: { ...geometry, width: 200 },
+        compatibilityMode: 15,
+        styleCascade,
+        measurer,
+      });
+      const spans = linesOf(layout)[0]!.spans;
+      const index = spans.findIndex((span) => span.inlineWidget);
+      const widget = spans[index]!;
+      expect(widget.box.width).toBe(30);
+      expect(spans[index + 1]!.box.x).toBeCloseTo(widget.box.x + widget.box.width, 6);
+      const boxes = spans.map((span) => [span.box.x, span.box.width]);
+      if (expectedBoxes === undefined) expectedBoxes = boxes;
+      else expect(boxes).toEqual(expectedBoxes);
+    }
+  }
 });
 
 test('CSS measurements reserve exact point advances and adjacent native caret coordinates without source writes', () => {

@@ -208,10 +208,7 @@ export function applyInsertTracked(
 /**
  * Insert ONE run-level element — a tab or a break — at `offset` as a tracked insertion.
  *
- * The element builder comes from the caller because the element vocabulary lives with the
- * untracked appliers; this module owns only the wrapper and the placement rules, which are
- * the same ones typed text follows. A tab or break inserted in suggesting mode used to pass
- * through unwrapped, so the file recorded an unattributed edit Accept/Reject could not act on.
+ * The caller supplies the element builder. This module supplies tracked placement.
  */
 export function applyInsertTrackedElement(
   part: OoxmlPart,
@@ -219,16 +216,17 @@ export function applyInsertTrackedElement(
   offset: number,
   element: (mint: () => string) => OoxmlNode,
   revision: RevisionAttributionInput,
-  options?: EditOptions
+  options?: EditOptions,
+  bias?: 'left' | 'right'
 ): TreeOpResult {
-  return applyInsertTrackedElements(
+  return applyTrackedInsertion(
     part,
     paragraph,
     offset,
-    (mint) => [element(mint)],
-    1,
+    { length: 1, nodes: (mint) => [element(mint)] },
     revision,
-    options
+    options,
+    bias
   );
 }
 
@@ -277,7 +275,8 @@ export function applyInsertTrackedRun(
   run: (mint: () => string) => OoxmlNode | readonly OoxmlNode[],
   revision: RevisionAttributionInput,
   options?: EditOptions,
-  length = 1
+  length = 1,
+  bias?: 'left' | 'right'
 ): TreeOpResult {
   const runs = (mint: () => string) => [run(mint)].flat();
   return applyTrackedInsertion(
@@ -286,7 +285,8 @@ export function applyInsertTrackedRun(
     offset,
     { length, nodes: null, runs },
     revision,
-    options
+    options,
+    bias
   );
 }
 

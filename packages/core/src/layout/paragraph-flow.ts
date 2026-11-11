@@ -36,7 +36,7 @@ import { spacedLine } from './positioned-run-spacing.ts';
 import { paragraphMarkStyles } from './paragraph-mark-styles.ts';
 import { splitAtSpacedSoundMarks } from './sound-mark-pieces.ts';
 import { returnUncoveredHintedText } from './east-asia-hint-coverage.ts';
-import { paragraphSpanMetadata } from './paragraph-span-metadata.ts';
+import { markSyntheticBoldSpans, paragraphSpanMetadata } from './paragraph-span-metadata.ts';
 import {
   endsAtHyphenBreak,
   spaceShrinkFit,
@@ -820,6 +820,7 @@ export function breakParagraph(
       glyphBaseline += raised;
     }
     growRunBorderLineMetrics(line, measurer);
+    markSyntheticBoldSpans(line, measurer);
     syncPendingDrawingBaselines(line, pageBreaksIgnored);
     growPendingLineDrawingExtent(line);
     // Apply paragraph line spacing once to the finished box.

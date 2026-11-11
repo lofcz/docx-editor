@@ -53,6 +53,7 @@ import type {
 } from './surface-format-painter-contract.ts';
 import type { PaginatedSurfacePerf } from './surface-perf-contract.ts';
 import type { SurfaceIndentAndListOps } from './surface-indent-list-contract.ts';
+import type { SurfaceChartOps } from './surface-chart-ops.ts';
 export type { ReviewWriteIntent, ContentControlOps, ContentControlSurfaceState };
 export type {
   FormatPainterLevel,
@@ -107,7 +108,11 @@ export type SectionBreakInsertType = 'nextPage' | 'continuous';
  * `session` to apply ops directly bypasses the layout invalidation and the caret bookkeeping.
  */
 export interface PaginatedSurface
-  extends SurfaceBlockReservations, SurfaceContentControlCollapse, SurfaceIndentAndListOps {
+  extends
+    SurfaceBlockReservations,
+    SurfaceContentControlCollapse,
+    SurfaceIndentAndListOps,
+    SurfaceChartOps {
   readonly session: TreeDocxSessionView;
   /** The collaboration replica a `collaborationModule` attached, or null. */
   collaborationSession(): import('../collaboration/index.ts').EditorCollaborationSession | null;
@@ -134,6 +139,7 @@ export interface PaginatedSurface
       readonly commitGuard?: () => boolean;
     }
   ): Promise<import('../store/store/tree-package-images.ts').ImageIntentResult>;
+  pointAt(clientX: number, clientY: number): import('./surface-pointer.ts').SurfacePointHit | null;
   layout(): SemanticLayout;
   /** The measurer layout uses; sizes engine-authored shapes such as a watermark. */
   textMeasurer?(): import('../layout/semantic-records.ts').TextMeasurer;
@@ -756,12 +762,15 @@ export interface PaginatedSurface
    * Every clipboard flavour for the current selection: plain text, and the interop HTML
    * carrying the embedded fragment when the selection is a body-story range. A cell rectangle
    * answers grid text plus a flattened table; `html` is null where only plain text should be
-   * written. A chart refuses as `'chart-content'`, another object as `'unsupported-content'`.
+   * written. One selected chart copies whole and names its drawing in `chartDrawingNodeId`,
+   * which a cut deletes. A chart inside a wider selection refuses as `'chart-content'`, another
+   * object as `'unsupported-content'`.
    */
   copyFlavours(): {
     readonly text: string;
     readonly html: string | null;
     readonly reason?: 'unsupported-content' | 'chart-content';
+    readonly chartDrawingNodeId?: string;
   };
   /**
    * Route one paste payload by fidelity: embedded fragment, then external HTML, then

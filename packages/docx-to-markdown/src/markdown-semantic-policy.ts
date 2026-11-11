@@ -75,6 +75,7 @@ const MARKDOWN_SEMANTIC_POLICY_RATCHETS = Object.freeze({
     noteNav: 'represented',
     noteSeparator: 'layout-only',
     fontSlot: 'layout-only',
+    syntheticBold: 'layout-only',
     glyphOffsetPt: 'layout-only',
     borderBaselinePt: 'layout-only',
     tabAlignment: 'layout-only',
@@ -147,6 +148,8 @@ const MARKDOWN_SEMANTIC_POLICY_RATCHETS = Object.freeze({
     id: 'layout-only',
     paragraphId: 'represented',
     fragmentIndex: 'represented',
+    // Local collapse geometry does not change exported canonical content.
+    localPlaceholder: 'layout-only',
     range: 'layout-only',
     props: 'explicitly-omitted',
     styleId: 'layout-only',

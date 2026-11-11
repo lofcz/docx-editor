@@ -1543,7 +1543,7 @@ export interface DrawingTextDefaults {
 
 // @public
 export type DrawingTreeDocOp = Extract<TreeDocOp, {
-    readonly op: 'insertDrawing' | 'replaceDrawingResource' | 'deleteDrawing' | 'resizeDrawing' | 'cropDrawing' | 'positionDrawing' | 'setDrawingWrap' | 'setDrawingMetadata' | 'setDrawingLocks' | 'transformDrawing';
+    readonly op: 'moveInlineDrawing' | 'insertDrawing' | 'replaceDrawingResource' | 'deleteDrawing' | 'resizeDrawing' | 'cropDrawing' | 'positionDrawing' | 'setDrawingWrap' | 'setDrawingMetadata' | 'setDrawingLocks' | 'transformDrawing';
 }>;
 
 // @public
@@ -3062,6 +3062,9 @@ export interface MetafileRasterImage {
 }
 
 // @internal
+export function metafileRasterScale(longEdge: number): number;
+
+// @internal
 export interface MetafileRenderer {
     readonly rasterize?: (bytes: Uint8Array, mime: MetafileImageMime, options: Readonly<{
         maxEdge: number;
@@ -3138,6 +3141,9 @@ export const NO_TRACKING_SETTINGS: DocumentTrackingSettings;
 
 // @public
 export const NON_CANONICAL_ORIGINS: readonly string[];
+
+// @public
+export function normalizeCommentBodyText(text: string): string;
 
 // @public
 export function normalizeParagraphIdentity(part: OoxmlPart): OoxmlPart;
@@ -4696,7 +4702,7 @@ export interface ReviewRevisionItem {
     // (undocumented)
     readonly date?: string;
     readonly formattingChanges?: readonly {
-        readonly property: 'bold' | 'italic' | 'underline' | 'strike' | 'fontFamily' | 'fontSize' | 'color' | 'alignment' | 'leftIndent' | 'rightIndent' | 'firstLineIndent' | 'hangingIndent' | 'spaceBefore' | 'spaceAfter' | 'direction';
+        readonly property: 'bold' | 'italic' | 'underline' | 'strike' | 'fontFamily' | 'fontSize' | 'color' | 'highlight' | 'alignment' | 'leftIndent' | 'rightIndent' | 'firstLineIndent' | 'hangingIndent' | 'spaceBefore' | 'spaceAfter' | 'direction';
         readonly value: string | null;
     }[];
     readonly formattingKind?: string;
@@ -4971,6 +4977,19 @@ export type SetCommentResolvedResult = {
 };
 
 // @public
+export function setCommentText(store: TreeDocumentStore, commentId: string, text: string): SetCommentTextResult;
+
+// @public
+export type SetCommentTextResult = {
+    readonly change: TreeModelChange | null;
+    readonly changed: boolean;
+    readonly ok: true;
+} | {
+    readonly ok: false;
+    readonly reason: TreeOpRejection | 'unknown-comment' | 'unsupported-comment-body';
+};
+
+// @public
 export interface SetFieldResultOp {
     readonly fieldNodeId: string;
     // (undocumented)
@@ -5007,6 +5026,15 @@ export interface SetLegacyDropdownOp {
 
 // @public
 export function setPackageCommentResolved(packageStore: TreePackageStore, commentId: string, resolved: boolean, historyGroup?: HistoryGroup): SetCommentResolvedResult;
+
+// @public
+export function setPackageCommentText(packageStore: TreePackageStore, commentId: string, text: string, historyGroup?: HistoryGroup): SetCommentTextResult;
+
+// @public
+export function setPackageCommentTexts(packageStore: TreePackageStore, edits: readonly {
+    readonly commentId: string;
+    readonly text: string;
+}[], historyGroup?: HistoryGroup): SetCommentTextResult;
 
 // @public
 export interface SetTextFormFieldDefaultOp {
@@ -5450,7 +5478,7 @@ export interface TransportPort {
 }
 
 // @public
-export const TREE_DOC_OP_KINDS: readonly ["replaceStoryBlocks", "insertText", "deleteText", "setParagraphMarkRevision", "proposeParagraphMerge", "insertCommentMarker", "acceptRevision", "rejectRevision", "acceptAllRevisions", "rejectAllRevisions", "setRevisionAttribution", "insertTab", "insertHardBreak", "insertPageBreak", "insertPageField", "insertComplexField", "insertEquation", "setFieldCode", "setListLevel", "setListNumbering", "setParagraphTabStops", "setParagraphMarkProperties", "splitParagraph", "splitParagraphMany", "joinParagraphs", "setRunProperties", "setParagraphProperties", "setSectionProperties", "setSectionMark", "insertHyperlink", "setHyperlinkTarget", "removeHyperlink", "setMathEquation", "removeMathEquation", "setContentControlValue", "removeContentControl", "insertInlineContentControl", "addRepeatingSectionItem", "removeRepeatingSectionItem", "deleteBlock", "insertTable", "moveTable", "insertParagraphBesideTable", "insertTableRow", "deleteTableRow", "insertTableColumn", "deleteTableColumn", "mergeTableCells", "splitTableCell", "setTableColumnWidths", "setTableRightEdgeWidth", "setTableRowHeight", "setTableProperties", "authorTable", "setTableCellBorders", "setTableCellFill", "setTableCellVerticalAlignment", "createHeaderFooter", "deleteHeaderFooter", "linkToPrevious", "unlinkFromPrevious", "setSectionFurnitureOptions", "setDocumentProtection", "setWatermark", "insertNote", "deleteNote", "convertNote", "convertAllNotes", "setNoteProperties", "setContentControlProperties", "insertContentControl", "insertFragment", "insertParagraphs", "insertDrawing", "replaceDrawingResource", "deleteDrawing", "resizeDrawing", "cropDrawing", "positionDrawing", "setDrawingWrap", "setDrawingMetadata", "setDrawingLocks", "transformDrawing", "insertToc", "replaceTocResult", "removeToc", "rewriteTocPageNumbers", "refreshFieldResults", "setFieldResult", "setTextFormFieldDefault", "commitTextFormField", "setLegacyCheckbox", "setLegacyDropdown", "insertBuildingBlock", "insertBookmark", "deleteBookmark"];
+export const TREE_DOC_OP_KINDS: readonly ["replaceStoryBlocks", "insertText", "deleteText", "setParagraphMarkRevision", "proposeParagraphMerge", "insertCommentMarker", "acceptRevision", "rejectRevision", "acceptAllRevisions", "rejectAllRevisions", "setRevisionAttribution", "insertTab", "insertHardBreak", "insertPageBreak", "insertPageField", "insertComplexField", "insertEquation", "setFieldCode", "setListLevel", "setListNumbering", "setParagraphTabStops", "setParagraphMarkProperties", "splitParagraph", "splitParagraphMany", "joinParagraphs", "setRunProperties", "setParagraphProperties", "setSectionProperties", "setSectionMark", "insertHyperlink", "setHyperlinkTarget", "removeHyperlink", "setMathEquation", "removeMathEquation", "setContentControlValue", "removeContentControl", "insertInlineContentControl", "addRepeatingSectionItem", "removeRepeatingSectionItem", "deleteBlock", "insertTable", "moveTable", "insertParagraphBesideTable", "insertTableRow", "deleteTableRow", "insertTableColumn", "deleteTableColumn", "mergeTableCells", "splitTableCell", "setTableColumnWidths", "setTableRightEdgeWidth", "setTableRowHeight", "setTableProperties", "authorTable", "setTableCellBorders", "setTableCellFill", "setTableCellVerticalAlignment", "createHeaderFooter", "deleteHeaderFooter", "linkToPrevious", "unlinkFromPrevious", "setSectionFurnitureOptions", "setDocumentProtection", "setWatermark", "insertNote", "deleteNote", "convertNote", "convertAllNotes", "setNoteProperties", "setContentControlProperties", "insertContentControl", "insertFragment", "insertParagraphs", "moveInlineDrawing", "insertDrawing", "replaceDrawingResource", "deleteDrawing", "resizeDrawing", "cropDrawing", "positionDrawing", "setDrawingWrap", "setDrawingMetadata", "setDrawingLocks", "transformDrawing", "insertToc", "replaceTocResult", "removeToc", "rewriteTocPageNumbers", "refreshFieldResults", "setFieldResult", "setTextFormFieldDefault", "commitTextFormField", "setLegacyCheckbox", "setLegacyDropdown", "insertBuildingBlock", "insertBookmark", "deleteBookmark"];
 
 // @public
 export type TreeDocOp = SetFieldCodeOp | {
@@ -5514,16 +5542,19 @@ export type TreeDocOp = SetFieldCodeOp | {
     readonly scopeRootId?: string;
     readonly siteNodeIds?: readonly string[];
 } | {
+    readonly bias?: 'left' | 'right';
     readonly offset: number;
     readonly op: 'insertTab';
     readonly paragraphId: string;
     readonly revision?: RevisionAttributionInput;
 } | {
+    readonly bias?: 'left' | 'right';
     readonly offset: number;
     readonly op: 'insertHardBreak';
     readonly paragraphId: string;
     readonly revision?: RevisionAttributionInput;
 } | {
+    readonly bias?: 'left' | 'right';
     readonly offset: number;
     readonly op: 'insertPageBreak';
     readonly paragraphId: string;
@@ -5840,6 +5871,12 @@ export type TreeDocOp = SetFieldCodeOp | {
     readonly scope: 'document' | 'section';
     readonly sectionIndex?: number;
 } | InsertFragmentOp | {
+    readonly drawingNodeId: string;
+    readonly offset: number;
+    readonly op: 'moveInlineDrawing';
+    readonly paragraphId: string;
+} | {
+    readonly bias?: 'left' | 'right';
     readonly drawing: OoxmlDrawingNode;
     readonly offset: number;
     readonly op: 'insertDrawing';

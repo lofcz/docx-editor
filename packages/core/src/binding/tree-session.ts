@@ -1,5 +1,7 @@
 import { shareUndoHistoryPosition } from '../store/store/undo-history-position.ts';
 import { replaceWholePackage } from '../store/store/tree-package-replace.ts';
+import { applyDrawingFrameOps } from '../store/store/tree-package-diagram-frame.ts';
+import { chartLanesFor } from '../store/store/tree-package-charts.ts';
 import { createSessionPackageWriter } from './session-package-writer.ts';
 // Tree-backed editing session (cutover step 2b).
 //
@@ -23,11 +25,7 @@ import {
 } from './review-patch.ts';
 import { createReviewItemsMemo } from './review-items-memo.ts';
 import { reviewItemFiltering } from './review-item-filter.ts';
-import {
-  addPackageComment,
-  deletePackageComments,
-  setPackageCommentResolved,
-} from '../store/store/comment-package-write.ts';
+import { sessionCommentWrites } from './tree-session-comments.ts';
 import { commentPartNameOf, commentsExtendedPartNameOf } from '../store/store/comment-writes.ts';
 import {
   insertPackageCustomNode,
@@ -1147,56 +1145,7 @@ export function openTreeSessionFromPackage(
         return reviewContentCache.present;
       },
 
-      replyToComment(
-        parentCommentId,
-        anchor,
-        text,
-        author,
-        date,
-        scope = BODY_SCOPE,
-        actorId,
-        options = {}
-      ) {
-        // The story that OWNS the anchor. Resolving a refused scope falls back to the body
-        // rather than throwing: the caller's next check is the null return either way.
-        const result = addPackageComment(
-          packageStore,
-          {
-            anchor: {
-              paragraphId: anchor.paragraphId,
-              start: anchor.start,
-              end: anchor.end,
-              // A range that ends in a LATER paragraph is ordinary in OOXML: the start and end
-              // markers are independent elements. Dropping the end paragraph would anchor the
-              // comment to an offset in the wrong one.
-              ...(anchor.endParagraphId === undefined
-                ? {}
-                : { endParagraphId: anchor.endParagraphId }),
-            },
-            author,
-            text,
-            ...(date === undefined ? {} : { date }),
-            ...(parentCommentId === null ? {} : { replyToCommentId: parentCommentId }),
-            ...(actorId === undefined ? {} : { actorId }),
-          },
-          scope,
-          options.historyToken
-        );
-        return result.ok ? result.commentId : null;
-      },
-
-      setCommentResolved(commentId, resolved, options = {}) {
-        return setPackageCommentResolved(packageStore, commentId, resolved, options.historyToken)
-          .ok;
-      },
-
-      deleteComment(commentId, scope = BODY_SCOPE, noteId, options) {
-        return this.deleteComments([{ commentId }], scope, noteId, options);
-      },
-
-      deleteComments(comments, scope = BODY_SCOPE, noteId, options = {}) {
-        return deletePackageComments(packageStore, comments, scope, noteId, options.historyToken);
-      },
+      ...sessionCommentWrites(packageStore, BODY_SCOPE),
 
       insertCustomNode(write, scope = BODY_SCOPE, options = {}) {
         return insertPackageCustomNode(packageStore, write, scope, options.historyToken);
@@ -1299,6 +1248,8 @@ export function openTreeSessionFromPackage(
       },
 
       applyImageProperties: (scope, input) => packageStore.applyImageProperties(scope, input),
+      applyDrawingFrameOps: (scope, ops) => applyDrawingFrameOps(packageStore, scope, ops),
+      charts: () => chartLanesFor(packageStore),
       applyFragmentPaste: (scope, input) => packageStore.applyFragmentPaste(scope, input),
       replacePackage: (pkg) => replaceWholePackage(packageStore, pkg),
     },

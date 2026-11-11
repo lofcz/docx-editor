@@ -15,7 +15,7 @@ export function committedInsertionWithinRevision(
   site: InsertionSite,
   options: EditOptions | undefined,
   owner: OoxmlNode | null,
-  bias: 'left' | 'right'
+  bias?: 'left' | 'right'
 ): TreeOpResult | null {
   if (length === 0) return null;
   const landing =

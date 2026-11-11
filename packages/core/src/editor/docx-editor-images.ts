@@ -1,3 +1,5 @@
+import { fitInsertExtent } from './image-insert-extent.ts';
+import { pointTargetRefusal } from './editor-point-target.ts';
 import { SUGGESTING_IMAGE_REPLACE_REASON } from './opening-editing-mode.ts';
 import {
   hasBorderPayload,
@@ -7,9 +9,10 @@ import {
 import { drawingAtomProjection } from '../store/package/drawing-atom-projection.ts';
 import { commandProtectionRefusal } from './command-protection.ts';
 import { inlineToFloatingPosition } from './inline-wrap-placement.ts';
+import { reanchorMovedDrawing } from './drawing-reanchor.ts';
 import { preserveWrapExtentOps, type WrapExtentOverrides } from './image-wrap-extent.ts';
 import { reportCommandResult } from './command-reporting.ts';
-import { chartDrawingRefusal, drawingGate } from './image-state-rules.ts';
+import { chartDrawingRefusal, drawingGate, type ChartGate } from './image-state-rules.ts';
 export { imageContextEqual } from './image-state-rules.ts';
 // Selected-image derivation and image command dispatch for `createDocxEditor` (task 13).
 //
@@ -23,9 +26,8 @@ import type {
   ImageContext,
   SelectedImageState,
 } from '../contracts/editor.ts';
-import { geometryOfSection, lineAtPosition } from '../layout/index.ts';
-import { verticalMarginInsets } from '../layout/page-body-margins.ts';
-import { lineAtIndexedPosition } from '../layout/paragraph-lines.ts';
+import { lineAtPosition } from '../layout/index.ts';
+import { lineAtIndexedPosition, paragraphLinesFor } from '../layout/paragraph-lines.ts';
 import type { AnchoredDrawingRecord, InlineDrawingRecord } from '../layout/drawing-layout.ts';
 import { findDrawingOverlayFrameInLayout } from '../layout/semantic-hit-test.ts';
 import { editedTextboxOverlayFrame, textboxTextEditable } from './textbox-overlay-frame.ts';
@@ -40,6 +42,7 @@ import {
   DEFAULT_DRAWING_PROJECTION_LIMITS,
   DEFAULT_SUPPORTED_MC_REQUIRES,
   projectDrawing,
+  type DrawingLocks,
   type DrawingProjection,
   type ImageWrapTarget,
 } from '../store/package/drawing-projection.ts';
@@ -129,6 +132,25 @@ function inlineDrawingAtOffset(
   return null;
 }
 
+/**
+ * The named inline drawing when it starts the next line. A drawing that does not fit after the
+ * text wraps, and its anchor offset is also the end of the line before it, which the offset
+ * lookup finds first.
+ */
+function namedDrawingOnOtherLine(
+  surface: PaginatedSurface,
+  paragraphId: string,
+  offset: number,
+  wanted: string | null
+): InlineDrawingRecord | null {
+  if (!wanted) return null;
+  for (const placed of paragraphLinesFor(surface.layout(), paragraphId)) {
+    const found = inlineDrawingAtOffset(placed.line, paragraphId, offset, wanted);
+    if (found) return found;
+  }
+  return null;
+}
+
 function anchoredDrawingAtSelection(
   surface: PaginatedSurface,
   paragraphId: string,
@@ -181,6 +203,7 @@ export function resolveSelectedDrawingRecord(
   const wanted = intent.kind === 'pointer' ? intent.drawingNodeId : null;
   return (
     inlineDrawingAtOffset(line, anchor.paragraphId, anchor.offset, wanted) ??
+    namedDrawingOnOtherLine(surface, anchor.paragraphId, anchor.offset, wanted) ??
     anchoredDrawingAtSelection(surface, anchor.paragraphId, anchor.offset, wanted)
   );
 }
@@ -237,17 +260,25 @@ function intrinsicOf(record: SelectedDrawingRecord): SelectedImageState['intrins
 
 function capabilityFlags(
   projection: DrawingProjection,
-  chart: boolean
+  chart: ChartGate,
+  gateLocks: DrawingLocks
 ): Pick<SelectedImageState, 'canResize' | 'canMove' | 'canChangeWrap' | 'canCrop'> {
-  const locks = chart ? { resize: true, move: true, changeAspect: true } : projection.locks;
+  const locks = chart === 'locked' ? { resize: true, move: true, changeAspect: true } : gateLocks;
   // An inline text box flows with its line: it resizes in place but is never dragged.
   const fixed = projection.kind === 'inline' && projection.textboxStory !== null;
   return Object.freeze({
     canResize: !locks.resize && !projection.hidden,
     canMove: !fixed && !locks.move && !projection.hidden,
-    canChangeWrap: !chart && projection.picture !== null && !locks.move && !projection.hidden,
+    canChangeWrap:
+      (chart === 'frame' || (chart === 'none' && projection.picture !== null)) &&
+      !locks.move &&
+      !projection.hidden,
     canCrop:
-      projection.picture !== null && !locks.resize && !locks.changeAspect && !projection.hidden,
+      chart === 'none' &&
+      projection.picture !== null &&
+      !locks.resize &&
+      !locks.changeAspect &&
+      !projection.hidden,
   });
 }
 
@@ -257,14 +288,16 @@ function wrapOf(record: SelectedDrawingRecord): ImageWrapTarget {
 }
 
 /**
- * Image commands reach pictures, text boxes and charts (drawn, by their fallback, or as a
- * placeholder); the overlay offers handles on the same gate. A chart selects as an object.
+ * Image commands reach pictures, text boxes, charts (drawn, by their fallback, or as a
+ * placeholder) and diagrams (`chart` is not `none`); the overlay offers handles on the same
+ * gate. A chart or a diagram selects as an object.
  */
-const imageCommandsReach = (record: SelectedDrawingRecord): boolean =>
+const imageCommandsReach = (record: SelectedDrawingRecord, chart: ChartGate): boolean =>
   record.placeholderGraphicKind === null ||
   !!record.textboxStory ||
   record.placeholderGraphicKind === 'chart' ||
-  !!record.chart;
+  !!record.chart ||
+  chart !== 'none';
 
 /**
  * The selected image and what may be done to it, or null when nothing image-like is selected.
@@ -274,10 +307,10 @@ const imageCommandsReach = (record: SelectedDrawingRecord): boolean =>
 export function selectedImageStateOf(surface: PaginatedSurface | null): SelectedImageState | null {
   const record = resolveSelectedDrawingRecord(surface);
   if (!record) return null;
-  if (!imageCommandsReach(record)) return null;
   const projection = surface ? projectDrawingForRecord(surface, record) : null;
   if (!projection) return null;
   const { chart, locks } = drawingGate(surface!, record.drawingNodeId, projection);
+  if (!imageCommandsReach(record, chart)) return null;
   if (projection.hidden || locks.select) return null;
   const transform = record.transform;
   return Object.freeze({
@@ -297,7 +330,7 @@ export function selectedImageStateOf(surface: PaginatedSurface | null): Selected
     hidden: projection.hidden,
     resourceStatus: record.resource.kind,
     intrinsic: intrinsicOf(record),
-    ...capabilityFlags(projection, chart),
+    ...capabilityFlags(projection, chart, locks),
   });
 }
 
@@ -576,7 +609,11 @@ export function gateImageCommand(
   const protectedWrite = commandProtectionRefusal(command, surface);
   if (protectedWrite) return protectedWrite;
   if (command.type === 'insertImage') {
-    if (resolveSelectedDrawingRecord(surface)) {
+    if (command.at) {
+      const stale = pointTargetRefusal(surface, command.at);
+      if (stale) return stale;
+    }
+    if (!command.at && resolveSelectedDrawingRecord(surface)) {
       return { ok: false, code: 'invalidArgs', reason: PICTURE_SELECTED_INSERT_REASON };
     }
     if (!(command.data instanceof Uint8Array) || command.data.byteLength === 0) {
@@ -850,6 +887,7 @@ export function execImageCommand(
       if ('ok' in resolved) return resolved;
       const selected = selectedImageStateOf(surface);
       const position = positionInputFromCommand(command, selected);
+      if (reanchorMovedDrawing(surface, resolved.id, position)) return null;
       return applyDrawingOps(surface, [
         { op: 'positionDrawing', drawingNodeId: resolved.id, position },
       ]);
@@ -936,37 +974,6 @@ export function execImageCommand(
 }
 
 /**
- * Scale a natural extent down to fit where the caret flows, preserving aspect ratio —
- * Word's insert behavior: an image that fits keeps its size, a wider or taller one lands at
- * the width of its cell, column, or page. Only ever shrinks.
- *
- * Width fits the caret LINE's measure, not the section box alone: a table cell or a text
- * column is narrower than the page, and layout hard-clips an inline drawing that overflows
- * its box. `geometryOfSection` carries layout's own degenerate-margins fallback, so a page
- * whose margins swallow it still fits against the box it actually paginates into.
- */
-function fitInsertExtent(
-  surface: PaginatedSurface,
-  paragraphId: string,
-  offset: number,
-  widthPoints: number,
-  heightPoints: number
-): { readonly widthPoints: number; readonly heightPoints: number } {
-  const geometry = geometryOfSection(surface.sectionPropertiesAt(paragraphId));
-  const contentWidth = geometry.width - geometry.margin.left - geometry.margin.right;
-  const margins = verticalMarginInsets(geometry);
-  const contentHeight = geometry.height - margins.top - margins.bottom;
-  const line = lineAtIndexedPosition(surface.layout(), paragraphId, offset);
-  const flowWidth =
-    line && line.box.width > 0 ? Math.min(line.box.width, contentWidth) : contentWidth;
-  const scale = Math.min(1, flowWidth / widthPoints, contentHeight / heightPoints);
-  if (scale >= 1) return { widthPoints, heightPoints };
-  // ONE shared scale, unrounded: independent per-axis rounding or floors distort an
-  // extreme-aspect image (a hairline rule, a tall banner).
-  return { widthPoints: widthPoints * scale, heightPoints: heightPoints * scale };
-}
-
-/**
  * Run an insert or replace, re-checking the same gates {@link canExecuteImageCommand} applies.
  *
  * Async because image bytes must be decoded to derive their natural extent before the drawing can
@@ -1003,7 +1010,13 @@ async function runImageCommand(
   const pre = captureImageMutationPreconditions(editor);
   if (!pre) return { ok: false, code: 'notFound', reason: 'no document is loaded' };
   if (command.type === 'insertImage') {
-    const { anchor } = surface.state().selection;
+    const anchor = command.at ?? surface.state().selection.anchor;
+    const current = () =>
+      command.at
+        ? editor.surface === surface &&
+          editor.mountGeneration === pre.mountGeneration &&
+          pointTargetRefusal(surface, command.at) === null
+        : isStaleImageMutation(editor, pre) === null;
     const expectedRevision = command.expectedPackageRevision ?? pre.packageRevision;
     if (
       command.expectedPackageRevision !== undefined &&
@@ -1026,14 +1039,26 @@ async function runImageCommand(
       widthPoints: fitted.widthPoints,
       heightPoints: fitted.heightPoints,
       expectedPackageRevision: expectedRevision,
-      commitGuard: () => !signal?.aborted && isStaleImageMutation(editor, pre) === null,
+      commitGuard: () => !signal?.aborted && current(),
       ...(command.title !== undefined ? { title: command.title } : {}),
       ...(command.description !== undefined ? { description: command.description } : {}),
       ...(command.hyperlink !== undefined ? { hyperlink: command.hyperlink } : {}),
     });
     if (!result.ok && signal?.aborted) return cancelled;
-    const stale = isStaleImageMutation(editor, pre);
+    const stale = command.at
+      ? editor.surface !== surface || editor.mountGeneration !== pre.mountGeneration
+        ? {
+            ok: false as const,
+            code: 'notFound' as const,
+            reason: 'the drop target is no longer attached',
+          }
+        : null
+      : isStaleImageMutation(editor, pre);
     if (stale) return stale;
+    if (!result.ok && command.at) {
+      const targetRefusal = pointTargetRefusal(surface, command.at);
+      if (targetRefusal) return targetRefusal;
+    }
     if (!result.ok) {
       return {
         ok: false,
@@ -1166,16 +1191,17 @@ export interface SelectedDrawingOverlayTarget {
 function overlayCapabilityFlags(
   record: SelectedDrawingRecord,
   projection: DrawingProjection | null,
-  chart: boolean
+  chart: ChartGate,
+  locks: DrawingLocks
 ): Pick<SelectedDrawingOverlayTarget, 'canResize' | 'canMove' | 'aspectLocked'> {
-  if (!projection || projection.hidden || !imageCommandsReach(record)) {
+  if (!projection || projection.hidden || !imageCommandsReach(record, chart)) {
     return Object.freeze({ canResize: false, canMove: false, aspectLocked: true });
   }
-  const caps = capabilityFlags(projection, chart);
+  const caps = capabilityFlags(projection, chart, locks);
   return Object.freeze({
     canResize: caps.canResize,
     canMove: caps.canMove,
-    aspectLocked: chart || projection.locks.changeAspect,
+    aspectLocked: chart === 'locked' || projection.locks.changeAspect,
   });
 }
 
@@ -1222,7 +1248,7 @@ export function selectedDrawingOverlayTargetOf(
   const shapeSelectable = gate !== null && !gate.locks.select;
   if (!shapeSelectable && scope.kind !== 'frame') return null;
   const caps = shapeSelectable
-    ? overlayCapabilityFlags(record, projection, gate.chart)
+    ? overlayCapabilityFlags(record, projection, gate.chart, gate.locks)
     : { canResize: false, canMove: false, aspectLocked: true };
   // The MODE, on top of the drawing's own OOXML locks. Without it a viewing-mode reader got
   // eight resize handles, a `move` cursor and a live drag preview that auto-scrolled the

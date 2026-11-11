@@ -71,6 +71,112 @@ export type CanResult = {
 };
 
 // @public
+export type ChartColor = string | {
+    readonly shift?: number;
+    readonly theme: ChartThemeColor;
+};
+
+// @public
+export interface ChartColorEntry {
+    readonly automatic: ChartColor;
+    readonly color: ChartColor | null;
+    readonly name: string;
+}
+
+// @public
+export interface ChartData {
+    // (undocumented)
+    readonly categories: readonly ChartDataCategory[];
+    // (undocumented)
+    readonly kind: ChartDataKind;
+    // (undocumented)
+    readonly series: readonly ChartDataSeries[];
+    readonly workbook?: ChartWorkbookState;
+}
+
+// @public
+export interface ChartDataCategory {
+    readonly label: string;
+    readonly source?: number;
+}
+
+// @public
+export type ChartDataKind = 'category' | 'xy';
+
+// @public
+export type ChartDataRead = {
+    readonly data: ChartData;
+    readonly ok: true;
+} | {
+    readonly ok: false;
+    readonly reason: string;
+};
+
+// @public
+export interface ChartDataSeries {
+    readonly name: string;
+    readonly source?: number;
+    readonly values: readonly (number | null)[];
+}
+
+// @public
+export interface ChartFormat {
+    readonly axes: boolean | null;
+    readonly axisTitles: {
+        readonly category: string | null;
+        readonly value: string | null;
+    } | null;
+    // (undocumented)
+    readonly colors: readonly ChartColorEntry[];
+    readonly colorsBy: 'series' | 'point';
+    readonly dataLabels: boolean;
+    readonly gridlines: boolean | null;
+    // (undocumented)
+    readonly legend: ChartLegendPosition;
+    readonly title: string | null;
+    readonly type: ChartType | null;
+}
+
+// @public
+export interface ChartFormatChange {
+    // (undocumented)
+    readonly axes?: boolean;
+    // (undocumented)
+    readonly categoryAxisTitle?: string | null;
+    // (undocumented)
+    readonly dataLabels?: boolean;
+    // (undocumented)
+    readonly gridlines?: boolean;
+    // (undocumented)
+    readonly legend?: ChartLegendPosition;
+    // (undocumented)
+    readonly title?: string | null;
+    // (undocumented)
+    readonly valueAxisTitle?: string | null;
+}
+
+// @public
+export type ChartFormatRead = {
+    readonly format: ChartFormat;
+    readonly ok: true;
+} | {
+    readonly ok: false;
+    readonly reason: string;
+};
+
+// @public
+export type ChartLegendPosition = 'none' | 'top' | 'bottom' | 'left' | 'right';
+
+// @public
+export type ChartThemeColor = 'bg1' | 'tx1' | 'bg2' | 'tx2' | 'accent1' | 'accent2' | 'accent3' | 'accent4' | 'accent5' | 'accent6';
+
+// @public
+export type ChartType = 'columnClustered' | 'columnStacked' | 'columnPercentStacked' | 'barClustered' | 'barStacked' | 'barPercentStacked' | 'line' | 'lineMarkers' | 'area' | 'areaStacked' | 'areaPercentStacked' | 'pie' | 'doughnut' | 'radar' | 'scatter' | 'scatterLines';
+
+// @public
+export type ChartWorkbookState = 'embedded' | 'kept' | 'external' | 'none';
+
+// @public
 export interface ClearAnchorHighlightOptions {
     readonly animation?: boolean | AnchorHighlightAnimation;
 }
@@ -154,6 +260,11 @@ export interface CommentRecord {
     readonly initials?: string;
     readonly paraId?: string;
     readonly parentCommentId?: string;
+}
+
+// @public
+export interface CommentTextOptions extends HistoryGroupOptions {
+    readonly expectedText?: string;
 }
 
 // @public
@@ -794,7 +905,7 @@ export interface DrawingPositionInput {
 export type DrawingVerticalReferenceFrame = 'bottomMargin' | 'insideMargin' | 'line' | 'margin' | 'outsideMargin' | 'page' | 'paragraph' | 'topMargin';
 
 // @public
-export type EditDiagnosticCode = 'edit.read-only' | 'edit.protected-content' | 'edit.suggesting-needs-author' | 'edit.review-module-required' | 'edit.tracked-drawing-delete-unsupported' | 'edit.tracked-structure-unsupported' | 'edit.tracked-operation-unsupported' | 'edit.tracking-mode-unsupported' | 'edit.tracking-author-required' | 'edit.comment-author-required' | 'edit.tracking-unsupported-host' | 'edit.revision-unsupported' | 'edit.tracking-required' | 'edit.tracked-image-replace-unsupported' | 'edit.tracked-deleted-text-only' | 'edit.tracked-foreign-revision-unsupported' | 'edit.tracked-own-pending-change' | 'edit.picture-selected' | 'edit.cross-structure-join' | 'edit.indivisible-content' | 'edit.field-structure' | 'edit.field-unsupported' | 'edit.field-result-unsupported' | 'edit.ooxml-unsupported' | 'edit.style-not-defined' | 'edit.no-styles-defined' | 'edit.section-mark' | 'edit.table-structure-unsupported' | 'edit.table-merge-not-rectangle' | 'edit.table-split-unsupported' | 'edit.table-insert-refused' | 'edit.table-of-contents-refused' | 'edit.unsupported-content' | 'edit.operation-unsupported' | 'edit.unsupported-story' | 'edit.unmapped-change' | 'edit.stale-target' | 'edit.invalid-argument' | 'edit.resource-limit' | 'edit.refresh-in-progress' | 'edit.preview-active' | 'edit.preview-unsupported' | 'edit.preview-composing' | 'edit.preview-diverged' | 'edit.read-after-commit' | 'edit.collaboration-not-ready' | 'edit.collaboration-text-limit' | 'edit.internal-invariant' | 'edit.refused';
+export type EditDiagnosticCode = 'edit.read-only' | 'edit.protected-content' | 'edit.suggesting-needs-author' | 'edit.review-module-required' | 'edit.tracked-drawing-delete-unsupported' | 'edit.tracked-structure-unsupported' | 'edit.tracked-operation-unsupported' | 'edit.tracking-mode-unsupported' | 'edit.tracking-author-required' | 'edit.comment-author-required' | 'edit.comment-author-mismatch' | 'edit.tracking-unsupported-host' | 'edit.revision-unsupported' | 'edit.tracking-required' | 'edit.tracked-image-replace-unsupported' | 'edit.tracked-deleted-text-only' | 'edit.tracked-foreign-revision-unsupported' | 'edit.tracked-own-pending-change' | 'edit.picture-selected' | 'edit.cross-structure-join' | 'edit.indivisible-content' | 'edit.field-structure' | 'edit.field-unsupported' | 'edit.field-result-unsupported' | 'edit.ooxml-unsupported' | 'edit.style-not-defined' | 'edit.no-styles-defined' | 'edit.section-mark' | 'edit.table-structure-unsupported' | 'edit.table-merge-not-rectangle' | 'edit.table-split-unsupported' | 'edit.table-insert-refused' | 'edit.table-of-contents-refused' | 'edit.unsupported-content' | 'edit.operation-unsupported' | 'edit.unsupported-story' | 'edit.unmapped-change' | 'edit.stale-target' | 'edit.invalid-argument' | 'edit.resource-limit' | 'edit.refresh-in-progress' | 'edit.preview-active' | 'edit.preview-unsupported' | 'edit.preview-composing' | 'edit.preview-diverged' | 'edit.read-after-commit' | 'edit.collaboration-not-ready' | 'edit.collaboration-text-limit' | 'edit.internal-invariant' | 'edit.refused';
 
 // @public
 export interface Editor extends EditorAnchorNavigation, EditorHighlights, EditorReviewHits {
@@ -929,6 +1040,7 @@ export interface Editor extends EditorAnchorNavigation, EditorHighlights, Editor
     load(document: DocumentSource): void;
     // (undocumented)
     on<E extends keyof EditorEvents>(event: E, handler: EditorEvents[E]): Unsubscribe;
+    positionAtPoint(clientX: number, clientY: number): EditorPointPosition | null;
     // (undocumented)
     query<K extends keyof EditorQueries>(query: {
         type: K;
@@ -951,6 +1063,7 @@ export interface Editor extends EditorAnchorNavigation, EditorHighlights, Editor
     setActiveReviewItem(key: string | null, options?: ReviewActivationOptions): ExecResult;
     setActiveScope(scope: ViewScope): void;
     setCommentResolved(key: string, resolved: boolean, options?: HistoryGroupOptions): ExecResult;
+    setCommentText(key: string, text: string, options?: CommentTextOptions): ExecResult;
     // (undocumented)
     setEditingMode(mode: DocumentEditingMode): ExecResult;
     setReviewActivationExclusions(kinds: readonly ReviewRevisionKind[] | null, options?: {
@@ -995,6 +1108,51 @@ export interface EditorBookmarkCommands {
 }
 
 // @public
+export interface EditorChartCommands {
+    insertChart: {
+        chartType: ChartType;
+        data?: NewChartData;
+    };
+    setChartColor: {
+        color: ChartColor | null;
+        drawingNodeId?: string;
+        index: number;
+    };
+    setChartData: {
+        data: Omit<ChartData, 'workbook'>;
+        drawingNodeId?: string;
+    };
+    setChartFormat: {
+        drawingNodeId?: string;
+        format: ChartFormatChange;
+    };
+    setChartType: {
+        chartType: ChartType;
+        drawingNodeId?: string;
+    };
+}
+
+// @public
+export interface EditorChartQueries {
+    // (undocumented)
+    chartData: {
+        drawingNodeId?: string;
+    };
+    // (undocumented)
+    chartFormat: {
+        drawingNodeId?: string;
+    };
+}
+
+// @public
+export interface EditorChartQueryResults {
+    // (undocumented)
+    chartData: ChartDataRead;
+    // (undocumented)
+    chartFormat: ChartFormatRead;
+}
+
+// @public
 export type EditorCommand = {
     [K in keyof EditorCommands]: {
         type: K;
@@ -1002,7 +1160,7 @@ export type EditorCommand = {
 }[keyof EditorCommands];
 
 // @public
-export interface EditorCommands extends EditorCommandShape<DocEdits>, EditorHeaderFooterCommands, EditorNoteCommands, EditorFormatPainterCommands, EditorBookmarkCommands {
+export interface EditorCommands extends EditorCommandShape<DocEdits>, EditorHeaderFooterCommands, EditorNoteCommands, EditorFormatPainterCommands, EditorBookmarkCommands, EditorChartCommands {
     clearFormatting: Record<never, never>;
     commitTableColumnDividerResize: {
         leftWidthTwips: number;
@@ -1039,6 +1197,7 @@ export interface EditorCommands extends EditorCommandShape<DocEdits>, EditorHead
     };
     // (undocumented)
     insertImage: {
+        at?: EditorPointPosition;
         data: Uint8Array;
         description?: string;
         expectedPackageRevision?: number;
@@ -1257,6 +1416,14 @@ export type EditorDiagnostic = DocumentOpenDiagnostic | EditRejectedDiagnostic |
 export type EditorDiagnosticKind = EditorDiagnostic['kind'];
 
 // @public
+export interface EditorDropEvent {
+    // (undocumented)
+    readonly event: EditorHostDragEvent;
+    // (undocumented)
+    readonly position: EditorPointPosition;
+}
+
+// @public
 export interface EditorError extends Error {
     // (undocumented)
     readonly code?: string;
@@ -1266,6 +1433,8 @@ export interface EditorError extends Error {
 export interface EditorEvents {
     change: (change: DocumentChange) => void;
     diagnostic: (event: EditorDiagnostic) => void;
+    dragOver: (event: EditorDropEvent) => void;
+    drop: (event: EditorDropEvent) => void;
     // (undocumented)
     error: (error: EditorError) => void;
     // (undocumented)
@@ -1352,6 +1521,13 @@ export type EditorHostDocument = typeof globalThis extends {
 } ? D : object;
 
 // @public
+export type EditorHostDragEvent = typeof globalThis extends {
+    readonly DragEvent: {
+        readonly prototype: infer E;
+    };
+} ? E : object;
+
+// @public
 export interface EditorNoteCommands {
     convertAllNotes: {
         fromKind: NoteKind;
@@ -1386,10 +1562,20 @@ export interface EditorNoteCommands {
 }
 
 // @public
+export interface EditorPointPosition {
+    // (undocumented)
+    readonly offset: number;
+    // (undocumented)
+    readonly paragraphId: string;
+    // (undocumented)
+    readonly part: string;
+}
+
+// @public
 export type EditorPosition = DocAnchor | SemanticPosition;
 
 // @public
-export interface EditorQueries extends DocQueries {
+export interface EditorQueries extends DocQueries, EditorChartQueries {
     bookmarks: Record<never, never>;
     // (undocumented)
     contentControlAt: {
@@ -1428,7 +1614,7 @@ export type EditorQuery = {
 }[keyof EditorQueries];
 
 // @public
-export interface EditorQueryResults extends DocQueryResults {
+export interface EditorQueryResults extends DocQueryResults, EditorChartQueryResults {
     // (undocumented)
     bookmarks: readonly BookmarkSummary[];
     // (undocumented)
@@ -1507,6 +1693,7 @@ export interface EditorSnapshot {
     // (undocumented)
     readonly canRedo?: boolean;
     readonly canUndo?: boolean;
+    readonly chart: SelectedChartState | null;
     readonly collaborationStatus: CollaborationStatus | 'inactive';
     readonly documentProtection?: DocumentProtectionState | null;
     readonly editable: boolean;
@@ -1919,6 +2106,17 @@ export type InteractionOutcome<T> = {
 
 // @public
 export type InteractionOutcomeCode = 'pendingLayout' | 'pendingSelection' | 'readOnly' | 'invalidTarget' | 'unsupported';
+
+// @public
+export interface NewChartData {
+    // (undocumented)
+    readonly categories: readonly string[];
+    // (undocumented)
+    readonly series: readonly {
+        readonly name: string;
+        readonly values: readonly (number | null)[];
+    }[];
+}
 
 // @public
 export type NoteKind = 'footnote' | 'endnote';
@@ -2365,7 +2563,7 @@ export interface ReviewRevisionItem {
     // (undocumented)
     readonly date?: string;
     readonly formattingChanges?: readonly {
-        readonly property: 'bold' | 'italic' | 'underline' | 'strike' | 'fontFamily' | 'fontSize' | 'color' | 'alignment' | 'leftIndent' | 'rightIndent' | 'firstLineIndent' | 'hangingIndent' | 'spaceBefore' | 'spaceAfter' | 'direction';
+        readonly property: 'bold' | 'italic' | 'underline' | 'strike' | 'fontFamily' | 'fontSize' | 'color' | 'highlight' | 'alignment' | 'leftIndent' | 'rightIndent' | 'firstLineIndent' | 'hangingIndent' | 'spaceBefore' | 'spaceAfter' | 'direction';
         readonly value: string | null;
     }[];
     readonly formattingKind?: string;
@@ -2660,6 +2858,16 @@ export interface SectionProperties {
         widthTwips: number;
     };
     readonly titlePage?: boolean;
+}
+
+// @public
+export interface SelectedChartState {
+    readonly drawingNodeId: string;
+    readonly editable: boolean;
+    readonly formatReason?: string;
+    readonly formattable: boolean;
+    readonly reason?: string;
+    readonly version: number;
 }
 
 // @public

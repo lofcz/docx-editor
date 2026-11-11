@@ -1249,6 +1249,8 @@ export interface TextMeasurer {
     };
     measure(text: string, style: ResolvedRunStyle): number;
     strikeoutMetrics?(style: ResolvedRunStyle): StrikeoutStrokePt | undefined;
+    // @internal
+    syntheticBold?(style: ResolvedRunStyle): boolean;
     textOutline?(text: string, style: ResolvedRunStyle): TextOutline | undefined;
 }
 

@@ -259,6 +259,7 @@ export {
   type SurfaceFormatting,
 } from './paginated-surface.ts';
 export type { OpeningIndicatorHost } from './surface-opening-indicator.ts';
+export type { SurfacePointHit } from './surface-pointer.ts';
 // `PaginatedSurface` extends it, so its indent and list members need the name.
 export type { SurfaceIndentAndListOps } from './surface-indent-list-contract.ts';
 // `PaginatedSurface.removeTocRefusal` answers with it.
@@ -651,6 +652,7 @@ export type {
   ScrollToAnchorOptions,
   HistoryGroup,
   HistoryGroupOptions,
+  CommentTextOptions,
   // What `findMatches` returns and `selectMatch`/`replaceMatch` take.
   TextMatch,
 } from '../contracts/editor.ts';
@@ -772,3 +774,102 @@ export type {
   DrawingPreviewPackageLimits,
   DrawingPreviewPackageResult,
 } from '../store/package/drawing-preview-package.ts';
+export {
+  CHART_INSERT_CHOICES,
+  chartTypeLabelKey,
+  chartTypeIconPaths,
+  listenPaneRequests,
+  requestPane,
+  takePaneRequest,
+  openChartPaneFor,
+  chartPaneAvailable,
+  openChartPaneAt,
+  type EditorPaneId,
+  type PaneRequest,
+  type PaneRequestOptions,
+} from './chart-chrome.ts';
+export {
+  CHART_LEGEND_CHOICES,
+  CHART_STANDARD_COLORS,
+  CHART_THEME_SLOTS,
+  CHART_TYPE_CHOICES,
+  MAX_CHART_POINTS,
+  MAX_CHART_SERIES,
+  chartAxisTitleLabels,
+  chartColorCommand,
+  chartColorGrid,
+  chartColorLabel,
+  chartColorOfPick,
+  chartColorPick,
+  chartColorPickOf,
+  chartColorPicks,
+  chartPaneCommand,
+  chartPaneDraftContinues,
+  chartPaneDraftKey,
+  chartPaneNumericX,
+  chartPickHex,
+  chartRowFocusAfterRemove,
+  chartSeriesNote,
+  chartThemeHexes,
+  chartTitleCommand,
+  chartTypeChangeNote,
+  chartTypeHint,
+  chartValueText,
+  focusChartPane,
+  focusChartSwatch,
+  moveChartSwatchFocus,
+  nextChartCategoryLabel,
+  parseChartValue,
+  type ChartColorPick,
+  type ChartPaneChange,
+  type ChartPaneResult,
+  type ChartSwatch,
+  type ChartTranslate,
+} from './chart-pane.ts';
+export {
+  editSelectedChartData,
+  execSelectedChart,
+  readSelectedChart,
+  type SelectedChartCommand,
+  type SelectedChartView,
+} from './selected-chart.ts';
+export type { SurfaceChartOps } from './surface-chart-ops.ts';
+export type {
+  ChartCopySource,
+  ChartIntentResult,
+  ChartLanes,
+  DuplicateChartInput,
+  InsertChartInput,
+} from '../store/store/tree-package-charts.ts';
+export type {
+  ChartColor,
+  ChartColorEntry,
+  ChartData,
+  ChartDataCategory,
+  ChartDataKind,
+  ChartDataRead,
+  ChartDataSeries,
+  ChartFormat,
+  ChartFormatChange,
+  ChartFormatRead,
+  ChartLegendPosition,
+  ChartThemeColor,
+  ChartType,
+  ChartWorkbookState,
+  NewChartData,
+  SelectedChartState,
+} from '../contracts/chart.ts';
+
+export { editorDropHandled } from './surface-drop.ts';
+export type {
+  SemanticHit,
+  SemanticHitDrawing,
+  TableCellAddress,
+} from '../layout/semantic-hit-test.ts';
+export type { CaretGeometry } from '../layout/semantic-interaction.ts';
+export type {
+  EditorPointPosition,
+  EditorDropEvent,
+  EditorHostDragEvent,
+} from '../contracts/editor-drop.ts';
+export { canMoveInlineImage, beginInlineImageDrag } from './inline-image-drag.ts';

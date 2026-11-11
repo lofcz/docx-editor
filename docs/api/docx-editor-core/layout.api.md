@@ -240,6 +240,7 @@ export interface CanvasTextContext {
     textAlign?: 'left' | 'right' | 'center' | 'start' | 'end';
     // (undocumented)
     textBaseline?: 'top' | 'hanging' | 'middle' | 'alphabetic' | 'ideographic' | 'bottom';
+    textRendering?: 'auto' | 'optimizeSpeed' | 'optimizeLegibility' | 'geometricPrecision';
 }
 
 // @public
@@ -399,6 +400,8 @@ export type CellVerticalAlign = 'top' | 'center' | 'bottom';
 // @public
 export interface CjkTypographySettings {
     readonly after: Readonly<Record<string, string>>;
+    // @internal
+    readonly balancedSpaceShrink?: true;
     // @internal
     readonly balancedWidths?: true;
     readonly before: Readonly<Record<string, string>>;
@@ -3544,7 +3547,7 @@ export interface ReviewRevisionItem {
     // (undocumented)
     readonly date?: string;
     readonly formattingChanges?: readonly {
-        readonly property: 'bold' | 'italic' | 'underline' | 'strike' | 'fontFamily' | 'fontSize' | 'color' | 'alignment' | 'leftIndent' | 'rightIndent' | 'firstLineIndent' | 'hangingIndent' | 'spaceBefore' | 'spaceAfter' | 'direction';
+        readonly property: 'bold' | 'italic' | 'underline' | 'strike' | 'fontFamily' | 'fontSize' | 'color' | 'highlight' | 'alignment' | 'leftIndent' | 'rightIndent' | 'firstLineIndent' | 'hangingIndent' | 'spaceBefore' | 'spaceAfter' | 'direction';
         readonly value: string | null;
     }[];
     readonly formattingKind?: string;
@@ -4651,6 +4654,8 @@ export interface StyleSpanRecord {
     readonly revisions?: readonly RevisionAttribution[];
     readonly style: ResolvedRunStyle;
     // @internal
+    readonly syntheticBold?: true;
+    // @internal
     readonly tabAlignment?: Exclude<TabAlignment, 'left'>;
     readonly tabLeader?: TabLeader;
     readonly tabLeaderAdvancePt?: number;
@@ -5028,6 +5033,8 @@ export interface TextMeasurer {
     };
     measure(text: string, style: ResolvedRunStyle): number;
     strikeoutMetrics?(style: ResolvedRunStyle): StrikeoutStrokePt | undefined;
+    // @internal
+    syntheticBold?(style: ResolvedRunStyle): boolean;
     textOutline?(text: string, style: ResolvedRunStyle): TextOutline | undefined;
 }
 

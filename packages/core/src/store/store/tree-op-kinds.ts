@@ -81,6 +81,7 @@ export const TREE_DOC_OP_KINDS = [
   'insertContentControl',
   'insertFragment',
   'insertParagraphs',
+  'moveInlineDrawing',
   'insertDrawing',
   'replaceDrawingResource',
   'deleteDrawing',

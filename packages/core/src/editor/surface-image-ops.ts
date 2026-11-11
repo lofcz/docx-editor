@@ -14,6 +14,8 @@ import type {
 } from '../store/store/tree-package-images.ts';
 import type { DrawingTreeDocOp } from '../store/store/tree-op-types.ts';
 import type { SurfaceEditingMode } from './paginated-surface-contract.ts';
+import { resizesDiagram } from '../store/store/tree-package-diagram-frame.ts';
+import { partOfNodeId } from './surface-scope.ts';
 
 /**
  * What a host may set on a surface image insert.
@@ -40,6 +42,7 @@ export function createImageOps(deps: {
     selectionAfter?: () => SemanticSelection | null
   ) => void;
   storyScope: () => StoryScope;
+  outsidePromptAt?: (paragraphId: string, offset: number) => boolean;
   selectionMark: () => { paragraphId: string; start: number; end: number } | null;
   editingMode: () => SurfaceEditingMode;
   author: () => string | undefined;
@@ -88,6 +91,25 @@ export function createImageOps(deps: {
       // scheduler's timer task — after the host's `change` handlers had already read the
       // superseded geometry — so the selection overlay kept the drawing's old frame.
       let result: TreeApplyResult = { committed: false, rejected: true, opCount: 0 };
+      // A diagram resize also rescales the diagram's saved drawing part, in the same unit.
+      const first = ops.find((op) => 'drawingNodeId' in op);
+      const part =
+        first && 'drawingNodeId' in first
+          ? (partOfNodeId(deps.session, first.drawingNodeId) ?? deps.session.part())
+          : null;
+      if (part && resizesDiagram(part, ops)) {
+        deps.commit(() => {
+          const outcome = deps.session.applyDrawingFrameOps(deps.storyScope(), ops);
+          result = {
+            committed: outcome.ok,
+            rejected: !outcome.ok,
+            opCount: outcome.ok ? ops.length : 0,
+            ...(outcome.ok ? {} : { reason: outcome.detail ?? outcome.reason }),
+          };
+          return result;
+        });
+        return result;
+      }
       deps.commit(() => {
         result = deps.applyOps(ops, mark, mark);
         return result;
@@ -163,6 +185,9 @@ export function createImageOps(deps: {
       const actorId = deps.actorId();
       return deps.session.insertImage(deps.storyScope(), {
         ...input,
+        ...(deps.outsidePromptAt?.(input.paragraphId, input.offset)
+          ? { bias: 'left' as const }
+          : {}),
         decodePort: deps.decodePort(),
         ...(tracked ? { revision: { author: author!, date: deps.trackedDate() } } : {}),
         ...(actorId ? { actorId } : {}),

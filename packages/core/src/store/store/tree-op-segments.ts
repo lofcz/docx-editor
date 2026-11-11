@@ -1,4 +1,5 @@
 import { contentHolder } from './tree-op-text-node-lookup.ts';
+import { leadingPromptSite, siteLandingNodeId } from './tree-op-leading-prompt-site.ts';
 // UTF-16 paragraph segmentation for tree ops (tree-ops seam).
 //
 // Flattens a paragraph into addressable units — text, tab, hard break, atomic field, and
@@ -573,9 +574,13 @@ export function insertionSite(
   paragraph: OoxmlParagraphNode,
   offset: number,
   owner: OoxmlNode | null,
-  bias: 'left' | 'right' = 'left'
+  bias?: 'left' | 'right'
 ): InsertionSite {
-  const raw = rawInsertionSite(paragraph, offset, owner, bias);
+  const before =
+    owner === null && bias === 'left'
+      ? leadingPromptSite(paragraph, offset, paragraphOffsetIndex(paragraph))
+      : null;
+  const raw = before ?? rawInsertionSite(paragraph, offset, owner, bias);
   if (owner !== null) {
     // A named link owns its wrapper, not the protected controls nested inside it.
     // Keep edge insertions in that link while preserving every outer protection gate.
@@ -602,14 +607,6 @@ export function insertionSite(
   const index = holder.children.findIndex((child) => child.id === revision.id);
   const span = paragraphOffsetIndex(paragraph).spanOf(revision);
   return { kind: 'newRun', holder, index: index + (span && offset > span.start ? 1 : 0) };
-}
-
-/** The node a site writes into: the run it joins, or the node a run is minted in. */
-function siteLandingNodeId(site: InsertionSite): string {
-  if (site.kind === 'withinValue' || site.kind === 'atBoundary') {
-    return segmentAncestryNodeId(site.segment);
-  }
-  return site.kind === 'newRun' ? site.holder.id : site.run.id;
 }
 
 function besideRestrictedControlAt(
@@ -873,7 +870,7 @@ export function insertionDestination(
   paragraph: OoxmlParagraphNode,
   offset: number,
   owner: OoxmlNode | null,
-  bias: 'left' | 'right' = 'left'
+  bias?: 'left' | 'right'
 ): InsertionDestination {
   const site = insertionSite(paragraph, offset, owner, bias);
   const landingNodeId =
@@ -909,7 +906,7 @@ export function insertionLandingNodeId(
   paragraph: OoxmlParagraphNode,
   offset: number,
   owner: OoxmlNode | null,
-  bias: 'left' | 'right' = 'left'
+  bias?: 'left' | 'right'
 ): string {
   return insertionDestination(paragraph, offset, owner, bias).landingNodeId;
 }

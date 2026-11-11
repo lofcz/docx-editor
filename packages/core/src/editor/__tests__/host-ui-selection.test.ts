@@ -13,6 +13,8 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import { zipSync, strToU8 } from 'fflate';
 import { domSelectionInHostUi, isInHostUi } from '../dom-selection.ts';
 import { mountPaginatedSurface } from '../paginated-surface.ts';
+import { createDocxEditor } from '../docx-editor.ts';
+import { decodePort, PNG_1X1 } from './image-decode-harness.ts';
 
 const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 const CT = 'http://schemas.openxmlformats.org/package/2006/content-types';
@@ -60,6 +62,89 @@ function mounted() {
 }
 
 describe('host UI selections stay outside the document selection', () => {
+  for (const kind of ['image', 'chart'] as const) {
+    test(`${kind} history restores the selected object without claiming host focus or selection`, async () => {
+      const container = document.createElement('div');
+      document.body.append(container);
+      const editor = createDocxEditor({
+        container,
+        document: docx(BODY),
+        imageDecodePort: decodePort(),
+      });
+      try {
+        const surface = editor.surface!;
+        const paragraphId = surface.session.paragraphIds()[0]!;
+        const at = { paragraphId, offset: 2 };
+        surface.setSelection({ anchor: at, head: at });
+        if (kind === 'image') {
+          expect(
+            (
+              await editor.executeImageCommand({
+                type: 'insertImage',
+                data: PNG_1X1,
+                mime: 'image/png',
+                widthPoints: 72,
+                heightPoints: 72,
+              })
+            ).ok
+          ).toBe(true);
+          surface.setSelection({ anchor: at, head: at });
+        } else {
+          expect(editor.exec({ type: 'insertChart', chartType: 'columnClustered' }).ok).toBe(true);
+        }
+        const selectedId = () =>
+          kind === 'image' ? editor.snapshot().image?.id : editor.snapshot().chart?.drawingNodeId;
+        const drawingId = selectedId();
+        expect(drawingId).toBeDefined();
+        expect(
+          editor.exec(
+            kind === 'image'
+              ? { type: 'setImageProperties', widthEmu: 457_200, heightEmu: 457_200 }
+              : { type: 'setChartType', chartType: 'line' }
+          ).ok
+        ).toBe(true);
+        const away = { paragraphId, offset: 0 };
+        surface.setSelection({ anchor: away, head: away });
+        expect(selectedId()).toBeUndefined();
+
+        const ui = document.createElement('div');
+        ui.setAttribute('data-docx-host-ui', '');
+        const field = document.createElement('textarea');
+        const label = document.createTextNode('host source');
+        ui.append(field, label);
+        container.append(ui);
+        field.focus();
+        const range = document.createRange();
+        range.setStart(label, 2);
+        range.setEnd(label, 6);
+        const dom = document.getSelection()!;
+        dom.removeAllRanges();
+        dom.addRange(range);
+        for (const direction of ['undo', 'redo'] as const) {
+          surface[direction]({ preserveDomSelection: true });
+          expect(selectedId()).toBe(drawingId);
+          if (kind === 'image') {
+            expect(editor.snapshot().image!.widthEmu).toBe(
+              direction === 'undo' ? 914_400 : 457_200
+            );
+          } else {
+            const format = editor.query({ type: 'chartFormat' });
+            expect(format.ok && format.format.type).toBe(
+              direction === 'undo' ? 'columnClustered' : 'line'
+            );
+          }
+          expect(document.activeElement).toBe(field);
+          expect(dom.anchorNode).toBe(label);
+          expect(dom.anchorOffset).toBe(2);
+          expect(dom.focusOffset).toBe(6);
+        }
+      } finally {
+        editor.destroy();
+        container.remove();
+      }
+    });
+  }
+
   test('history restores canonical positions without claiming a host projection selection', () => {
     const { surface, container, field } = mounted();
     try {

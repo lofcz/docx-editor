@@ -10,6 +10,7 @@ import {
   joinedParagraphGroups,
   logicalParagraphRange,
 } from './joined-paragraphs.ts';
+import { createCommentTextPlanner } from './comment-text-plan.ts';
 import { areInsertableTexts } from '../store/store/tree-op-inline-elements.ts';
 import { TARGET_REMOVED } from './target-removed.ts';
 import { planShapes } from './plan-shapes.ts';
@@ -175,8 +176,6 @@ import {
 } from './custom-node-plan.ts';
 import type { OoxmlNode } from '../store/package/ooxml-tree.ts';
 
-/** Most delimiters one split accepts, and the longest each may be. Both are host input. */
-
 /** A position in the symbolic story order. Bound to a real id after the commit. */
 interface Slot {
   id: string | null;
@@ -229,6 +228,7 @@ export function createBatchPlanner(host: BatchPlannerHost): BatchPlanner {
   const packageReads = host.reads;
 
   const plans = new Map<string, StoryPlan>();
+  const commentTextEdits = createCommentTextPlanner(packageReads);
   // Partial flag writes through aliases compose against earlier writes in this batch.
   // Only own flags are staged; canonical validation still enforces ancestor protection.
   const controlLocks = new Map<StoryPlan, Map<string, ContentControlLock>>();
@@ -2272,12 +2272,11 @@ export function createBatchPlanner(host: BatchPlannerHost): BatchPlanner {
         return query({ kind: 'text', text: found.item.comment.date ?? '' });
       }
 
-      case 'getCommentText': {
-        const found = commentAt(operation.comment);
-        if (!found.ok) return found.planned;
-        const comments = commentsOf(found.reads);
-        return query({ kind: 'text', text: comments?.textOf(found.item.id) ?? '' });
-      }
+      case 'getCommentText':
+        return commentTextEdits.read(
+          commentAt(operation.comment),
+          (reads, id) => commentsOf(reads)?.textOf(id) ?? ''
+        );
 
       case 'getCommentRange': {
         const found = commentAt(operation.comment);
@@ -2302,6 +2301,14 @@ export function createBatchPlanner(host: BatchPlannerHost): BatchPlanner {
 
       case 'insertComment':
         return planInsertComment(operation, handles, packageReads, pinCommentStory);
+
+      case 'setCommentText': {
+        const found = commentAt(operation.comment);
+        if (!found.ok) return found.planned;
+        return commentTextEdits.edit(operation, found.item, found.reads, () =>
+          pinWrite(planFor(found.reads))
+        );
+      }
 
       case 'setCommentResolved': {
         const found = commentAt(operation.comment);

@@ -11,6 +11,7 @@ import {
   isTrackedHyperlinkStructure,
   applyTrackedHyperlinkStructure,
 } from './tree-op-tracked-link-structure.ts';
+import { insertsBeforePrompt } from './tree-op-prompt-bias.ts';
 import { withDisplayedHyphens } from '../package/hyphen-text.ts';
 import { withTailStyle } from './tree-op-paragraph-tail.ts';
 import { applySetFieldCode } from './tree-op-field-code.ts';
@@ -297,7 +298,13 @@ function applyValidatedTreeOp(part: OoxmlPart, op: TreeDocOp, options?: EditOpti
   // would leave the typed characters appended to "Click here to enter text.".
   if (op.op === 'insertText' && !op.revision) {
     const prompt = placeholderControlForInsertion(part, op.paragraphId, op.offset);
-    if (prompt) {
+    const paragraph = findNode(part, op.paragraphId);
+    const before =
+      prompt &&
+      paragraph?.kind === 'paragraph' &&
+      op.inside === undefined &&
+      insertsBeforePrompt(paragraph, op.offset, prompt.control, op.bias);
+    if (prompt && !before) {
       // The caret's paragraph is the one the prompt is emptied into, so the insert below
       // still finds it. A prompt whose content cannot be emptied in place is refused, not
       // flattened by the insertion path: that path would replace the wrapped cell too.
@@ -526,9 +533,26 @@ function applyValidatedTreeOp(part: OoxmlPart, op: TreeDocOp, options?: EditOpti
       // would let suggesting mode insert a different element than edit mode for the same key.
       const element = RUN_ELEMENT_INSERTS[op.op];
       if (op.revision) {
-        return applyInsertTrackedElement(part, paragraph, op.offset, element, op.revision, options);
+        return applyInsertTrackedElement(
+          part,
+          paragraph,
+          op.offset,
+          element,
+          op.revision,
+          options,
+          op.bias
+        );
       }
-      return applyInsertContent(part, paragraph, op.offset, [element], 1, options);
+      return applyInsertContent(
+        part,
+        paragraph,
+        op.offset,
+        [element],
+        1,
+        options,
+        undefined,
+        op.bias
+      );
     }
     case 'setListLevel':
       return applySetListLevel(part, paragraph, op.level, options, nextId, op.revision);
@@ -742,7 +766,7 @@ function applyInsertContent(
   options?: EditOptions,
   /** The content control the caller says this content belongs to, if it named one. */
   inside?: string,
-  bias: 'left' | 'right' = 'left'
+  bias?: 'left' | 'right'
 ): TreeOpResult {
   const named = inside === undefined ? null : findNode(part, inside);
   const control =
@@ -857,7 +881,7 @@ function applyInsertContent(
   }
 
   if (site.kind === 'atRunIndex') {
-    if (bias === 'left' && noteReferenceEndingAt(paragraph, offset)) {
+    if (bias !== 'right' && noteReferenceEndingAt(paragraph, offset)) {
       const edited = insertAfterNoteInRun(
         part,
         paragraph,
@@ -959,7 +983,7 @@ function applyInsertContent(
           ? findNode(part, leftSegment.runId)
           : null;
     const inheritedProperties =
-      bias === 'left' && noteReferenceEndingAt(paragraph, offset)
+      bias !== 'right' && noteReferenceEndingAt(paragraph, offset)
         ? noteTypingProperties(paragraph, offset, nextId)
         : leftRun && leftRun.kind === 'run'
           ? fieldInsertionEndAt(paragraph, offset)
@@ -998,7 +1022,7 @@ function applyInsertContent(
   const before = findLast(segments, (segment) => segment.end === offset);
   const after = segments.find((segment) => segment.start === offset);
   if (
-    bias === 'left' &&
+    bias !== 'right' &&
     before &&
     before.removeNodeIds === undefined &&
     !fieldInsertionEndAt(paragraph, offset) &&

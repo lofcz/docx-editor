@@ -1,5 +1,53 @@
 # @docx-editor.dev/core
 
+## 2.37.0
+
+### Minor Changes
+
+- 98c0537: Insert and edit charts through React, Vue, or editor commands. Resize, move, wrap, copy, and paste charts.
+- 6ed6c40: Edit your own comments and replies through the actions menu or `content` property. Edits support undo, redo, and collaboration.
+- 329587e: Resize, move, wrap, and delete DrawingML diagrams, and drag inline charts like inline images. A diagram resize scales its saved drawing to the new frame.
+- 9eef508: Add image drops and inline image movement with destination previews, refusal messages, edge scrolling, and custom drop handling. Fixes #1136
+- b19ea8f: Preserve content-control prompts during partial selection typing and rich paste. Add insertion bias for tabs, breaks, images, and charts.
+- c5b12fb: Add `textRendering` to the canvas measurement context and align painted text with unhinted glyph advances. Canvas-measured text can change line and page breaks in Chromium on Linux.
+
+### Patch Changes
+
+- 32042df: Fix character spacing in distributed paragraphs with balanced space widths.
+- 6eb82e6: Reduce browser startup work with native font hashing and remove unused JavaScript from consumer bundles.
+- 67f463b: Respect content-control locks and data bindings when editing chart data and formatting.
+- a095122: Speed up chart paste in documents with many parts.
+- 5dc9dac: Synthesize bold text when an embedded bold font contains regular outlines.
+- 6642951: Update `fast-xml-parser` to 5.12.0, which stops quadratic CPU use on unterminated stop-node tags.
+- 13f0855: Preserve balanced space widths beside East Asian text and in repeated spaces, including justified lines.
+- 329587e: Fix adding a hyperlink to a picture whose DrawingML namespace is declared on its graphic.
+- 2294aa0: Delete and Backspace select content-control prompts before removing the control. Copy and cut include the complete prompt.
+- Updated dependencies: @docx-editor.dev/i18n@2.37.0
+
+## 2.36.0
+
+### Minor Changes
+
+- c8ed53d: Formatting cards describe tracked highlight changes, such as “Highlight: yellow”. `ReviewRevisionItem.formattingChanges` includes `highlight` with the `w:highlight` color name.
+
+### Patch Changes
+
+- bac199e: Floating objects that wrap text near page bottoms stay on the page when compatibility settings require it. Paragraph-relative and line-relative objects use the correct position on each page.
+- 63a5c8f: AutoFit tables preserve cell margins and distribute width reductions proportionally when unbreakable text exceeds the available width. Fixes #1838
+- fd9ee96: Input method composition at a text control’s end stays inside the control, including under forms protection. Typing and composition at placeholder boundaries keep the caret after inserted text, including in suggesting mode.
+- b131138: Custom shape paths with no current point display nothing. Arcs that sweep more than one turn keep smooth outlines. Fixes #1833
+- 44774ad: Shapes, text, charts, and diagrams support all DrawingML color models and transforms, including tints and shades. Fixes #1831
+- 304dd92: Paragraphs joining lists with style-linked levels use their indent to select a level. Paragraphs joining ordinary lists use the preceding item’s level. Fixes #1847
+- ede53f5: All-capital list numbers leave enough space before paragraph text. List numbers and bullets ignore small-capital formatting. Fixes #1834
+- 4d9451d: List space suffixes keep consistent widths across marker fonts. The Normal Table style uses its built-in properties regardless of document overrides.
+- e404652: List buttons start a separate list for selections containing list items and plain paragraphs. Selections starting with a plain paragraph join a preceding compatible ordinary list instead. Fixes #1851
+- cf257ca: List buttons create independent lists without reusing heading numbering. Paragraphs joining numbered headings take the heading style for their level. Fixes #1842
+- a0825f1: Active tracked changes display without an extra underline. Remove the unused `--doc-revision-insertion-active-border` and `--doc-revision-deletion-active-border` tokens.
+- 5da2ca2: Saved documents keep paragraph and run properties in schema order, including after concurrent formatting changes. Fixes #1850
+- 8eaccb6: Tables remain editable after concurrent formatting changes. Saved documents combine repeated table, row, and cell property elements and keep their contents in schema order. Fixes #1853
+- b983305: Cells display table style shading, including after you clear a cell fill. Pattern shading blends the pattern and background colors. Fixes #1844, fixes #1848
+- Updated dependencies: @docx-editor.dev/i18n@2.36.0
+
 ## 2.35.0
 
 ### Minor Changes

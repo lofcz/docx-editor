@@ -33,6 +33,8 @@ import type { ParagraphSummary } from '../contracts/document.ts';
 import { classifyCommand } from './docx-editor-support.ts';
 import { NO_COPIED_FORMATTING } from './surface-format-painter-contract.ts';
 import { gateImageCommand, resolveSelectedDrawingRecord } from './docx-editor-images.ts';
+import { chartTargetIn } from '../store/store/tree-package-charts.ts';
+import { chartCommandContentRefusal } from './chart-commands.ts';
 
 /** Whether a command may run, and the engine's own refusal when it may not. */
 export type CommandGate =
@@ -355,6 +357,8 @@ export function gateCommand(
   }
   const protection = support.mutating ? commandProtectionRefusal(command, surface) : null;
   if (protection) return { ok: false, refusal: protection };
+  const chartProtection = chartCommandContentRefusal(surface, command);
+  if (chartProtection) return { ok: false, refusal: chartProtection };
   const locked = contentLockFormatRefusal(command, surface, contentLockPolicyFor(surface));
   if (locked) return { ok: false, refusal: locked };
   const paragraphLocked = paragraphFormatLockRefusal(
@@ -397,6 +401,12 @@ export function gateCommand(
   // selectors that re-run on every tick — the exact cost `EditorSnapshot.selectionCollapsed`
   // exists to avoid, which it would be absurd to reintroduce here.
   if (command.type === 'deleteText' && resolveSelectedDrawingRecord(surface)) {
+    const refusal = gateImageCommand({ type: 'deleteImage' }, surface);
+    return refusal && !refusal.ok ? { ok: false, refusal } : { ok: true };
+  }
+  // One selected chart copies whole; a cut also deletes it, so it asks the delete's gate.
+  if ((command.type === 'copy' || command.type === 'cut') && selectedChartOf(surface)) {
+    if (command.type === 'copy') return { ok: true };
     const refusal = gateImageCommand({ type: 'deleteImage' }, surface);
     return refusal && !refusal.ok ? { ok: false, refusal } : { ok: true };
   }
@@ -708,4 +718,12 @@ export function isInsideTocOf(surface: PaginatedSurface | null): boolean {
   return (
     !!surface && tocAtPosition(surface.session.part(), surface.state().selection.head) !== undefined
   );
+}
+
+/** Whether the selection is one chart drawing. */
+function selectedChartOf(surface: PaginatedSurface): boolean {
+  const record = resolveSelectedDrawingRecord(surface);
+  if (!record) return false;
+  const pkg = surface.session.currentPackage();
+  return chartTargetIn(pkg, record.ownerPartName, record.drawingNodeId) !== null;
 }

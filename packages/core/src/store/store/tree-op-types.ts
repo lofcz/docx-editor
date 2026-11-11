@@ -300,6 +300,8 @@ export type TreeDocOp =
       readonly op: 'insertTab';
       readonly paragraphId: string;
       readonly offset: number;
+      /** Explicit left bias keeps a leading prompt outside the insertion. */
+      readonly bias?: 'left' | 'right';
       /** Write this as a TRACKED insertion, on the same terms as `insertText`. */
       readonly revision?: RevisionAttributionInput;
     }
@@ -307,6 +309,8 @@ export type TreeDocOp =
       readonly op: 'insertHardBreak';
       readonly paragraphId: string;
       readonly offset: number;
+      /** Explicit left bias keeps a leading prompt outside the insertion. */
+      readonly bias?: 'left' | 'right';
       /** Write this as a TRACKED insertion, on the same terms as `insertText`. */
       readonly revision?: RevisionAttributionInput;
     }
@@ -314,6 +318,8 @@ export type TreeDocOp =
       readonly op: 'insertPageBreak';
       readonly paragraphId: string;
       readonly offset: number;
+      /** Explicit left bias keeps a leading prompt outside the insertion. */
+      readonly bias?: 'left' | 'right';
       /** Write this as a TRACKED insertion, on the same terms as `insertText`. */
       readonly revision?: RevisionAttributionInput;
     }
@@ -981,7 +987,15 @@ export type TreeDocOp =
     }
   | InsertFragmentOp
   | {
+      readonly op: 'moveInlineDrawing';
+      readonly drawingNodeId: string;
+      readonly paragraphId: string;
+      readonly offset: number;
+    }
+  | {
       readonly op: 'insertDrawing';
+      /** Explicit left bias inserts before a leading prompt. */
+      readonly bias?: 'left' | 'right';
       readonly paragraphId: string;
       readonly offset: number;
       readonly drawing: OoxmlDrawingNode;
@@ -1100,6 +1114,7 @@ export type DrawingTreeDocOp = Extract<
   TreeDocOp,
   {
     readonly op:
+      | 'moveInlineDrawing'
       | 'insertDrawing'
       | 'replaceDrawingResource'
       | 'deleteDrawing'

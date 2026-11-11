@@ -1,3 +1,5 @@
+import type { EditorPointPosition } from './editor-drop.ts';
+export type { EditorPointPosition, EditorDropEvent, EditorHostDragEvent } from './editor-drop.ts';
 import type { ResolvedRevisionMarkup } from './revision-markup.ts';
 import type { CompareDocumentsRequest } from './compare-documents.ts';
 import type { ResolvedReviewPane } from './review-pane.ts';
@@ -83,6 +85,7 @@ export type { RevisionBatchResult } from '../store/store/revision-batch.ts';
 export type { RevisionAuthorResult } from '../store/store/revision-author-change.ts';
 import type { ContentControlSummary, DocEdits, DocQueries, DocQueryResults } from './document.ts';
 import type {
+  CommentTextOptions,
   EditorExecOptions,
   EditorScope,
   HistoryGroup,
@@ -90,6 +93,7 @@ import type {
   ViewScope,
 } from './editor-scope.ts';
 export type {
+  CommentTextOptions,
   EditorExecOptions,
   EditorScope,
   HistoryGroup,
@@ -109,7 +113,8 @@ import type { InteractionOutcome } from './interaction';
 // The selection vocabulary the painted surface actually speaks. Type-only, and re-exported
 // below for the same reason the review types are: an adapter is not allowed to import the
 // layout lane, so a form it must construct has to be nameable from this contract.
-import type { SemanticPosition, SemanticSelection } from '../layout/semantic-interaction.ts';
+import type { EditorSelection } from './editor-position.ts';
+export type { EditorPosition, EditorSelection } from './editor-position.ts';
 import type { CollaborationStatus } from '../collaboration/index.ts';
 import type {
   ColorValue,
@@ -142,6 +147,12 @@ import type { DocumentProtectionState } from '../store/package/document-protecti
 import type { SupportedImageMime } from '../store/package/image-resources.ts';
 import type { ImageCropPercent } from '../store/package/image-crop-units.ts';
 import type { ImageContext, SelectedImageState } from './editor-image-state.ts';
+import type {
+  EditorChartCommands,
+  EditorChartQueries,
+  EditorChartQueryResults,
+  SelectedChartState,
+} from './chart.ts';
 import type { BookmarkSummary, EditorBookmarkCommands } from './editor-bookmarks.ts';
 export type * from './types';
 export type * from './interaction';
@@ -150,6 +161,7 @@ export type * from './editor-format-painter.ts';
 export type * from './editor-bookmarks.ts';
 export type * from './editor-image-state.ts';
 export type * from './diagnostics.ts';
+export type * from './chart.ts';
 export type { ImageCropPercent } from '../store/package/image-crop-units.ts';
 
 // Everything below is named by a signature IN this file, so it has to be nameable FROM this
@@ -245,30 +257,6 @@ export class EditorFontError extends Error {
     this.diagnostic = details.diagnostic;
   }
 }
-
-/**
- * A selection endpoint, in either vocabulary the engine resolves.
- *
- * {@link DocAnchor} addresses a paragraph by its `w14:paraId`, which is what an LLM or an
- * automation script can name in a payload. {@link SemanticPosition} addresses it by the
- * paragraph id the painted surface and the ops already use, with a UTF-16 offset inside it.
- *
- * Neither subsumes the other. A paraId survives being written to a file and read back, so it
- * is the one an out-of-process caller can hold; but it is OPTIONAL in the document, and
- * `ParagraphSummary.paraId` says so — a paragraph the file gave no `w14:paraId` cannot be
- * reached by a `DocAnchor` at all. The paragraph id reaches every paragraph.
- */
-export type EditorPosition = DocAnchor | SemanticPosition;
-
-/**
- * A selection, in one endpoint vocabulary or the other.
- *
- * The two do NOT mix: a range is a pair of paraId anchors, or a semantic anchor/head pair,
- * and `can()` refuses anything else with the engine's own reason. Spelled as two arms rather
- * than `{ from: EditorPosition; to: EditorPosition }` for exactly that reason — the looser
- * shape would type a mixed pair the engine rejects at runtime.
- */
-export type EditorSelection = SemanticSelection | { from: DocAnchor; to: DocAnchor };
 
 /**
  * Whether a command would be accepted, and why not when it would not.
@@ -731,6 +719,22 @@ export interface Editor extends EditorAnchorNavigation, EditorHighlights, Editor
   setCommentResolved(key: string, resolved: boolean, options?: HistoryGroupOptions): ExecResult;
 
   /**
+   * Replace the text of the comment, or of the reply, behind a review card.
+   *
+   * The body becomes one paragraph of plain text, as {@link addComment} writes it; a line break in
+   * `text` does not start a new paragraph. The author, the date, the thread state, the replies and
+   * the range the comment covers stay, so the comment keeps its place in its thread when the file
+   * opens again. The write is one package transaction and one undo step, and it joins an open
+   * history group. Text the card already shows succeeds without adding an undo entry.
+   *
+   * Requires the configured nonempty author to match the comment author exactly. This host
+   * identity policy is not authentication. Refused on blank text, in viewing mode, and for
+   * bodies with revisions or unsupported structures. Formatting becomes plain text.
+   * Use {@link CommentTextOptions.expectedText} to preserve a draft when another edit arrives.
+   */
+  setCommentText(key: string, text: string, options?: CommentTextOptions): ExecResult;
+
+  /**
    * Discard the item behind a card: the destructive half of the review verbs.
    *
    * On a COMMENT it deletes the thread — the `w:comment` body, the `w15:commentEx` record and
@@ -863,6 +867,12 @@ export interface Editor extends EditorAnchorNavigation, EditorHighlights, Editor
   // layout lane (`layout/semantic-hit-test.ts`) and the paginated surface calls it directly.
   // Re-exposing any of it here is a small wiring job on the day a host actually needs it.
 
+  /**
+   * Resolve client pixels in the active story without moving the selection.
+   * Returns null outside that story, while detached, and for unsupported text boxes.
+   * Pass the exact result to `insertImage.at` before the document or scope changes.
+   */
+  positionAtPoint(clientX: number, clientY: number): EditorPointPosition | null;
   /** Page boxes in stack coordinates, each with the text area the engine laid out.
    * `contentBox` is the page inset by the section margin. Rulers use it for margin zones.
    * The engine's margin is uniform, so do not present this as per-side fidelity.
@@ -964,7 +974,8 @@ export interface EditorCommands
     EditorHeaderFooterCommands,
     EditorNoteCommands,
     EditorFormatPainterCommands,
-    EditorBookmarkCommands {
+    EditorBookmarkCommands,
+    EditorChartCommands {
   /** Switch how edits are written. A view command: it changes no document state. */
   setEditingMode: { mode: DocumentEditingMode };
   /**
@@ -1284,6 +1295,8 @@ export interface EditorCommands
   insertTextBox: Record<never, never>;
 
   insertImage: {
+    /** Exact result from `positionAtPoint` or a drop event; stale targets refuse the insert. */
+    at?: EditorPointPosition;
     data: Uint8Array;
     mime: SupportedImageMime;
     widthPoints: number;
@@ -1412,7 +1425,7 @@ export type EditorCommand = {
  * Extends {@link DocQueries} with the reads that only mean something against a live, laid-out
  * document: the selection, its formatting, the table or hyperlink under the caret.
  */
-export interface EditorQueries extends DocQueries {
+export interface EditorQueries extends DocQueries, EditorChartQueries {
   selection: Record<never, never>;
   selectionFormatting: Record<never, never>;
   tableContext: Record<never, never>;
@@ -1437,7 +1450,7 @@ export type EditorQuery = {
 }[keyof EditorQueries];
 
 /** What each editor query returns. Keyed identically to `EditorQueries`. */
-export interface EditorQueryResults extends DocQueryResults {
+export interface EditorQueryResults extends DocQueryResults, EditorChartQueryResults {
   selection: DocRange | null;
   selectionFormatting: RunFormatting | null;
   tableContext: TableContext | null;
@@ -1556,6 +1569,8 @@ export interface EditorSnapshot {
    */
   readonly tocContext: { readonly id: string } | null;
   readonly image: ImageContext | null;
+  /** The selected chart, while exactly one chart drawing is selected; else null. */
+  readonly chart: SelectedChartState | null;
   readonly page: { readonly current: number; readonly total: number };
   /**
    * Whether undo/redo have anything to apply, derived from the session's history.
