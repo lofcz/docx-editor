@@ -81,7 +81,16 @@ export function stageTrackedChecklist(
           value,
           edit.partName,
           [{ paragraphId: edit.paragraphId, before: edit.before, target: edit.after }],
-          { instances: new Map(context.instances), levels: new Set(context.levels) }
+          {
+            instances: new Map(context.instances),
+            levels: new Set(context.levels),
+            kinds: new Map(
+              [...context.kinds].map(([key, value]) => [
+                key,
+                { ...value, levels: new Map(value.levels) },
+              ])
+            ),
+          }
         )
       );
     },

@@ -17,7 +17,7 @@ import {
   type OoxmlPart,
   type TreeDocOp,
 } from '@docx-editor.dev/core/store';
-import type { ListSourceState, ListTarget } from '../diff/list-types';
+import type { ListSourceState, ListStyle, ListTarget } from '../diff/list-types';
 
 const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 const W14 = 'http://schemas.microsoft.com/office/word/2010/wordml';
@@ -30,13 +30,39 @@ export interface DirectListAssignment {
   readonly target: ListTarget;
 }
 
+type CounterKind = 'bullet' | 'ordered';
+
+/**
+ * The marker kinds a new instance's definition holds: the kind it was created with, and each
+ * level written with another kind. One Markdown list can nest an ordered list in a bullet list.
+ */
+export interface NewListKinds {
+  readonly base: CounterKind;
+  readonly style?: ListStyle;
+  readonly levels: Map<number, CounterKind>;
+}
+
 /** Allocation state belongs to one plan execution, never its preview or a later plan. */
 export interface DirectListContext {
   readonly instances: Map<string, string>;
   readonly levels: Set<string>;
+  /** Marker kinds by new instance key. */
+  readonly kinds: Map<string, NewListKinds>;
 }
 export function createDirectListContext(): DirectListContext {
-  return { instances: new Map(), levels: new Set() };
+  return { instances: new Map(), levels: new Set(), kinds: new Map() };
+}
+
+const styleKind = (style: ListStyle): CounterKind =>
+  style === 'disc' || style === 'circle' || style === 'square' ? 'bullet' : 'ordered';
+
+/** The style of each level: the instance style where its kind matches, otherwise the default. */
+function levelStyles(kinds: NewListKinds): (level: number) => ListStyle {
+  return (level) => {
+    const kind = kinds.levels.get(level) ?? kinds.base;
+    if (kinds.style && styleKind(kinds.style) === kind) return kinds.style;
+    return kind === 'ordered' ? 'decimal' : 'disc';
+  };
 }
 
 class ListWriteError extends Error {}
@@ -106,7 +132,16 @@ export function applyDirectListAssignments(
     throw new ListWriteError('Tracked checkbox changes need the checklist executor.');
   let pkg = input,
     seeds = 0;
-  const { instances, levels } = context;
+  const { instances, levels, kinds } = context;
+  // Every level a new instance uses in this call, so a mixed list gets one definition.
+  const requested = new Map<string, Map<number, CounterKind>>();
+  for (const { target } of assignments) {
+    if (target.kind !== 'ordered' && target.kind !== 'bullet') continue;
+    if (target.instance.kind !== 'new' || target.instance.templateNumId !== undefined) continue;
+    const byLevel = requested.get(target.instance.key) ?? new Map<number, CounterKind>();
+    if (!byLevel.has(target.level)) byLevel.set(target.level, target.kind);
+    requested.set(target.instance.key, byLevel);
+  }
   const part = () => pkg.parts.get(partName)!;
   const apply = (op: TreeDocOp) => {
     const result = applyTreeOp(part(), op);
@@ -115,17 +150,35 @@ export function applyDirectListAssignments(
   };
   const numId = (target: Extract<ListTarget, { kind: 'ordered' | 'bullet' }>): string => {
     if (target.instance.kind === 'existing') return target.instance.numId;
-    let id = instances.get(target.instance.key);
+    const key = target.instance.key;
+    let id = instances.get(key);
     if (!id) {
       const made = ensureListDefinition(pkg, target.kind);
       if (!made) throw new ListWriteError('The native engine refused a new list definition.');
-      pkg = target.instance.templateNumId
-        ? copyListInstanceTemplate(made.pkg, target.instance.templateNumId, made.numId)
-        : target.style
-          ? styleListInstance(made.pkg, made.numId, target.style)
-          : made.pkg;
       id = made.numId;
-      instances.set(target.instance.key, id);
+      if (target.instance.templateNumId) {
+        pkg = copyListInstanceTemplate(made.pkg, target.instance.templateNumId, id);
+      } else {
+        const created: NewListKinds = {
+          base: target.kind,
+          ...(target.style ? { style: target.style } : {}),
+          levels: new Map(requested.get(key)),
+        };
+        kinds.set(key, created);
+        const mixed = [...created.levels.values()].some((kind) => kind !== created.base);
+        pkg = mixed
+          ? styleListInstance(made.pkg, id, levelStyles(created))
+          : target.style
+            ? styleListInstance(made.pkg, id, target.style)
+            : made.pkg;
+      }
+      instances.set(key, id);
+    }
+    const known = kinds.get(key);
+    // A later call can add a level of another kind; the instance then gets its own definition.
+    if (known && (known.levels.get(target.level) ?? known.base) !== target.kind) {
+      known.levels.set(target.level, target.kind);
+      pkg = styleListInstance(pkg, id, levelStyles(known));
     }
     const ancestorKey = `${id}:ancestors`;
     if (target.instance.ancestorStarts && !levels.has(ancestorKey)) {

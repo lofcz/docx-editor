@@ -303,6 +303,48 @@ for (const name of ['complete rewrite', 'tables and links', 'nested MDX and attr
       }
     }, 60_000);
 
+test('two sessions converge on a numbered list nested in a new bullet list', async () => {
+  const input = await protectedTargetInput(p('Intro.') + p('Peer.')),
+    pair = await createTwoEditorFixture({ document: writeOoxmlPackage(input.pkg) });
+  try {
+    const [alice, bob] = pair.editors as [DocxEditorInstance, DocxEditorInstance],
+      list = '- Level:\n  1. Eight\n  2. Nine\n- Last',
+      planned = await plan(alice, `Intro.\n\n${list}\n\nPeer.`),
+      peerId = bob.surface!.session.paragraphIds().at(-1)!;
+    pair.pause();
+    const result = applyDirectPlan(alice, planned, context);
+    if (!result.success) throw new Error(result.error);
+    expect(
+      bob.surface!.applyAutomationOps(() => [
+        { op: 'insertText', paragraphId: peerId, offset: 5, text: ' Bob' },
+      ]).committed
+    ).toBe(true);
+    pair.reconnect(0);
+    await pair.settle();
+    const expected = `Intro.\n\n${list}\n\nPeer. Bob`;
+    for (const editor of pair.editors) expect(await landedAt(editor, expected)).toEqual([]);
+    expect(alice.exec({ type: 'undo' }).ok).toBe(true);
+    await pair.settle();
+    for (const editor of pair.editors)
+      expect(await landedAt(editor, 'Intro.\n\nPeer. Bob')).toEqual([]);
+    expect(alice.exec({ type: 'redo' }).ok).toBe(true);
+    await pair.settle();
+    for (const editor of pair.editors) {
+      expect(await landedAt(editor, expected)).toEqual([]);
+      const reopened = mount(new Uint8Array(await editor.save()));
+      try {
+        expect(await landedAt(reopened, expected)).toEqual([]);
+      } finally {
+        reopened.destroy();
+      }
+    }
+    const saved = await pair.savedDigests();
+    expect(saved[0]).toEqual(saved[1]);
+  } finally {
+    pair.destroy();
+  }
+}, 60_000);
+
 const headingStyle = (depth: number) => `Heading${depth}`;
 const kinds: readonly [string, string, string, string, readonly CanonicalEdit['kind'][]][] = [
   ['run marks', p('Bold and italic.'), 'Bold *and* italic.', 'Bold and italic.', ['format']],
@@ -319,6 +361,20 @@ const kinds: readonly [string, string, string, string, readonly CanonicalEdit['k
     'inserted ordered list with a new instance',
     p('Intro.'),
     'Intro.\n\n3. Three\n4. Four',
+    'Intro.',
+    ['siblings'],
+  ],
+  [
+    'inserted ordered list nested in a new bullet list',
+    p('Intro.'),
+    'Intro.\n\n- Level:\n  1. Eight\n  2. Nine\n- Last',
+    'Intro.',
+    ['siblings'],
+  ],
+  [
+    'inserted bullet list nested in a new ordered list',
+    p('Intro.'),
+    'Intro.\n\n1. Step\n   - Note\n2. Next',
     'Intro.',
     ['siblings'],
   ],

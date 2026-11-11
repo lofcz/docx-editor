@@ -33,9 +33,12 @@ const bullets: Readonly<Record<string, string>> = { disc: '•', circle: '○', 
 export function styleListInstance(
   pkg: OoxmlPackage,
   numId: string,
-  style: ListStyle
+  /** One style for every level, or one per level for a list that nests another kind. */
+  style: ListStyle | ((level: number) => ListStyle)
 ): OoxmlPackage {
-  if (!/^\d{1,9}$/.test(numId) || !LIST_STYLES.includes(style))
+  const styleAt = typeof style === 'function' ? style : () => style;
+  const styles = Array.from({ length: 9 }, (_, level) => styleAt(level));
+  if (!/^\d{1,9}$/.test(numId) || !styles.every((value) => LIST_STYLES.includes(value)))
     throw new Error('Invalid new list style.');
   const part = pkg.parts.get('/word/numbering.xml');
   if (!part) throw new Error('The list numbering part is missing.');
@@ -58,11 +61,12 @@ export function styleListInstance(
   }
   const abstractId = used.has(Number(numId)) ? next : Number(numId);
   if (abstractId > 2147483647) throw new Error('No list definition identity is free.');
-  const levels = Array.from(
-    { length: 9 },
-    (_, level) =>
-      `<w:lvl w:ilvl="${level}"><w:start w:val="1"/><w:numFmt w:val="${formats[style]}"/><w:lvlText w:val="${bullets[style] ?? '%' + (level + 1) + '.'}"/><w:lvlJc w:val="left"/><w:pPr><w:ind w:left="${720 * (level + 1)}" w:hanging="360"/></w:pPr>${bullets[style] ? '<w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/></w:rPr>' : ''}</w:lvl>`
-  ).join('');
+  const levels = styles
+    .map(
+      (style, level) =>
+        `<w:lvl w:ilvl="${level}"><w:start w:val="1"/><w:numFmt w:val="${formats[style]}"/><w:lvlText w:val="${bullets[style] ?? '%' + (level + 1) + '.'}"/><w:lvlJc w:val="left"/><w:pPr><w:ind w:left="${720 * (level + 1)}" w:hanging="360"/></w:pPr>${bullets[style] ? '<w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/></w:rPr>' : ''}</w:lvl>`
+    )
+    .join('');
   const read = readOoxmlPart(
     `<w:numbering xmlns:w="${W}"><w:abstractNum w:abstractNumId="${abstractId}"><w:multiLevelType w:val="hybridMultilevel"/>${levels}</w:abstractNum><w:abstractNumId w:val="${abstractId}"/></w:numbering>`,
     { name: '/manual-list-style.xml', contentType: part.contentType }

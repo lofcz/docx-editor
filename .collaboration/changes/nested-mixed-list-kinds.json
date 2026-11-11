@@ -1,0 +1,10 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "A new list instance used the marker kind of its first item on every level, so an inserted numbered list nested in a bullet list became bullets.",
+  "after": "Each level of a new list instance gets the marker kind its items request. Mixed instances get their own numbering definition.",
+  "reason": "Executor-only change. It writes the same setListNumbering operations and numbering part elements as styled lists. Operation payloads, collaboration schemas, shared state, and transport remain unchanged.",
+  "tests": ["packages/sciobot/src/ai/apply-direct.test.ts"],
+  "changeset": "nested-mixed-list-kinds",
+  "migration": null
+}
