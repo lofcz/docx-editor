@@ -1,4 +1,5 @@
 import { createSurfaceAutomation } from './surface-automation.ts';
+import { sectionAtPage as sectionAtLayoutPage } from './section-scope.ts';
 import { withParagraphAppearance } from '../layout/paragraph-appearance.ts';
 import {
   SurfaceInlineWidgetMetrics,
@@ -904,31 +905,8 @@ export function mountPaginatedSurface(
   const storyScope = () =>
     storyScopeOf(hfScope?.getActive() ?? null, noteOps?.activeNoteScope() ?? null);
   const noteScopeId = () => noteOps?.activeNoteScope()?.id ?? null;
-  /**
-   * The section a page belongs to, and where that section starts.
-   *
-   * A page is the only thing a pointer entry knows, and a header belongs to a SECTION: one
-   * header may be referenced by several, and their page geometry can differ. Without this the
-   * entry defaulted to section 0, so double-clicking the header on a landscape page answered
-   * with the first section's portrait width — which is the ruler's clamp and the grid width
-   * `insertTableOp` divides.
-   *
-   * A single-section document has no spans and every page belongs to section 0.
-   */
-  const sectionAtPage = (pageIndex: number): { sectionIndex: number; sectionStart: number } => {
-    const spans = layoutSession.multi?.spans;
-    let sectionIndex = 0;
-    let sectionStart = 0;
-    if (spans && spans.length > 0) {
-      for (let index = 0; index < spans.length; index += 1) {
-        const span = spans[index]!;
-        sectionIndex = index;
-        sectionStart = span.startIndex;
-        if (pageIndex < span.startIndex + span.pageCount) break;
-      }
-    }
-    return { sectionIndex, sectionStart };
-  };
+  const sectionAtPage = (pageIndex: number) =>
+    sectionAtLayoutPage(layoutSession.multi?.spans, pageIndex);
   /** The split's tail now: its own id, or the paragraph after the head once renamed. */
   const splitTailNow = (tail: string, head: string): string | null => {
     if (textboxEditing?.active()) {

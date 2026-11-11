@@ -1,0 +1,52 @@
+{
+  "forkBaseline": "16f0d92e00df2bd183c1e7919c18b1ecde884cf9",
+  "upstreamCommit": "dca9c042f866d1a27422c8833328e5b3b4f2bae5",
+  "mergeCommit": "dfcad4a13",
+  "upstreamCommitsMerged": 31,
+  "conflictedFilesResolved": 16,
+  "resolutions": [
+    "Retain fork collapse, block insets, widgets, edit ownership, and host selection controls.",
+    "Retain upstream chart editing, image movement, prompt boundaries, and comment text editing.",
+    "Preserve host focus during image and chart undo and redo.",
+    "Exclude measured widget fallback spaces from balanced text justification.",
+    "Preserve omitted insertion bias through committed revision insertion.",
+    "Align the private adapter core peer with 2.37.0 and retain one shared core and Yjs copy.",
+    "Regenerate core API reports and retain both insertParagraphs and moveInlineDrawing."
+  ],
+  "verification": {
+    "workspaceTypecheck": "All 27 workspace targets passed. Filesystem read failures passed on targeted retries.",
+    "coreBuild": "Passed, including declarations and compiled editor CSS.",
+    "publishedBuilds": "All published package builds passed. Remaining builds resumed after a transient filesystem read failure.",
+    "privateAdapterBuild": "Passed. The native core remains external.",
+    "coreApiExtraction": "Passed for all 15 entries with no errors.",
+    "storeConflictTests": "125 passed across seven files; 49 insertion tests passed after the optional-bias correction.",
+    "layoutAndAutomationConflictTests": "115 passed across nine files.",
+    "extendedGeometryTests": "319 distinct tests passed across 19 files, including padding, collapse, images, fonts, and widgets.",
+    "editorTests": "98 local tests and 10 real collaboration tests passed.",
+    "additionalCollaborationTests": "38 passed. Six existing paragraph-undo failures also occurred on the unchanged fork baseline.",
+    "operationManifest": "11 passed. The inventory retains all 97 operations.",
+    "dependencyTests": "Seven passed. React, Pro, and Sciobot resolve one core; Pro and Sciobot share Yjs 13.6.33.",
+    "adapterParity": "Passed.",
+    "translations": "All 1151 keys and 13 locale files passed validation.",
+    "format": "Full repository formatting completed. All 163 files affected by transient read failures passed targeted retries.",
+    "officeSignatures": "Compatibility report completed successfully.",
+    "lockfile": "Frozen installation passed."
+  },
+  "limits": [
+    "The full test suite was not rerun. Verification covers merge conflicts and affected fork and upstream behavior.",
+    "Six document-undo-inserted-paragraph tests fail on both the merged code and the original fork baseline.",
+    "The default collaboration policy check references a removed locked-paragraph-alignment test on both revisions.",
+    "The HEAD-based policy check references a Changeset consumed by the upstream release.",
+    "The merge commit bypassed the pre-commit hook. Repository formatting and lint checks run separately.",
+    "OpenSpec validation could not run because the openspec command is unavailable.",
+    "Some tests required a longer runner timeout under machine pressure. Assertions and explicit performance limits stayed unchanged.",
+    "The experimental ScioBot app retains its existing runtime pin."
+  ],
+  "baselineLogs": [
+    "/tmp/docx-merge-collab-ownership.log",
+    "/tmp/docx-merge-collab-baseline-ownership.log",
+    "/tmp/docx-merge-collaboration-check.log",
+    "/tmp/docx-merge-collaboration-check-baseline.log",
+    "/tmp/docx-merge-collaboration-check-head.log"
+  ]
+}

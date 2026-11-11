@@ -4,9 +4,7 @@
   "before": "Balanced space justification counted fallback spaces inside measured inline widgets.",
   "after": "Measured inline widgets keep their reserved geometry during balanced space justification.",
   "reason": "Layout-only change. Canonical content, operation payloads, collaboration schemas, shared state, and transport remain unchanged.",
-  "tests": [
-    "packages/core/src/layout/__tests__/inline-widget-layout.test.ts"
-  ],
+  "tests": ["packages/core/src/layout/__tests__/inline-widget-layout.test.ts"],
   "changeset": "balanced-spaces-preserve-inline-widgets",
   "migration": null
 }

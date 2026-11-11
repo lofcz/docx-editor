@@ -2,6 +2,17 @@ import { geometryOfSection } from '../layout/index.ts';
 import { verticalMarginInsets } from '../layout/page-body-margins.ts';
 import { lineAtIndexedPosition } from '../layout/paragraph-lines.ts';
 import type { PaginatedSurface } from './paginated-surface-contract.ts';
+import type { SelectedImageState } from '../contracts/editor.ts';
+
+export function naturalExtentEmu(
+  image: SelectedImageState
+): { readonly cx: number; readonly cy: number } | null {
+  if (!image.intrinsic) return null;
+  const cx = Math.round((image.intrinsic.pixelWidth * 914_400) / image.intrinsic.dpiX);
+  const cy = Math.round((image.intrinsic.pixelHeight * 914_400) / image.intrinsic.dpiY);
+  if (!Number.isFinite(cx) || !Number.isFinite(cy) || cx <= 0 || cy <= 0) return null;
+  return { cx, cy };
+}
 
 /**
  * Scale a natural extent down to fit where the caret flows, preserving aspect ratio —

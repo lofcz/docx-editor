@@ -1,4 +1,4 @@
-import { fitInsertExtent } from './image-insert-extent.ts';
+import { fitInsertExtent, naturalExtentEmu } from './image-insert-extent.ts';
 import { pointTargetRefusal } from './editor-point-target.ts';
 import { SUGGESTING_IMAGE_REPLACE_REASON } from './opening-editing-mode.ts';
 import {
@@ -462,16 +462,6 @@ function applyDrawingOps(
   ops: readonly DrawingTreeDocOp[]
 ): ExecResult | null {
   return drawingOpsResult(surface.applyDrawingOps(ops));
-}
-
-function naturalExtentEmu(
-  image: SelectedImageState
-): { readonly cx: number; readonly cy: number } | null {
-  if (!image.intrinsic) return null;
-  const cx = Math.round((image.intrinsic.pixelWidth * 914_400) / image.intrinsic.dpiX);
-  const cy = Math.round((image.intrinsic.pixelHeight * 914_400) / image.intrinsic.dpiY);
-  if (!Number.isFinite(cx) || !Number.isFinite(cy) || cx <= 0 || cy <= 0) return null;
-  return { cx, cy };
 }
 
 function positionInputFromCommand(

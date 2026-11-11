@@ -11,7 +11,6 @@ import {
   isTrackedHyperlinkStructure,
   applyTrackedHyperlinkStructure,
 } from './tree-op-tracked-link-structure.ts';
-import { insertsBeforePrompt } from './tree-op-prompt-bias.ts';
 import { withDisplayedHyphens } from '../package/hyphen-text.ts';
 import { withTailStyle } from './tree-op-paragraph-tail.ts';
 import { applySetFieldCode } from './tree-op-field-code.ts';
@@ -179,8 +178,6 @@ import { applyInsertContentControl as applyAutomationInsertContentControl } from
 import {
   applyRemoveContentControl as applyAutomationRemoveContentControl,
   applySetContentControlProperties as applyAutomationSetContentControlProperties,
-  clearPlaceholder,
-  placeholderControlForInsertion,
 } from './tree-op-content-controls.ts';
 import {
   carrySegmentsAcrossRunPropertyEdit,
@@ -252,7 +249,7 @@ import { applyBookmarkOp, isBookmarkTreeOp } from './tree-op-bookmarks.ts';
 import { withTreeOpEditRules } from './tree-op-edit-rules.ts';
 import { closesAnOpenRange, opensARange, zeroLengthGoesToHead } from './tree-op-split-markers.ts';
 import {
-  promptInsertionOffset,
+  applyPromptTextInsertion,
   restoreEmptiedPlaceholder,
 } from './content-control-prompt-restore.ts';
 
@@ -293,37 +290,9 @@ function applyValidatedTreeOp(part: OoxmlPart, op: TreeDocOp, options?: EditOpti
       ? applyTrackedContentControl(part, op, options)
       : applyAutomationInsertContentControl(part, op, options);
   }
-  // Typing into a prompt REPLACES it. The transition belongs here rather than beside the
-  // caret: an automation call and a paste insert text too, and a prompt that survived them
-  // would leave the typed characters appended to "Click here to enter text.".
   if (op.op === 'insertText' && !op.revision) {
-    const prompt = placeholderControlForInsertion(part, op.paragraphId, op.offset);
-    const paragraph = findNode(part, op.paragraphId);
-    const before =
-      prompt &&
-      paragraph?.kind === 'paragraph' &&
-      op.inside === undefined &&
-      insertsBeforePrompt(paragraph, op.offset, prompt.control, op.bias);
-    if (prompt && !before) {
-      // The caret's paragraph is the one the prompt is emptied into, so the insert below
-      // still finds it. A prompt whose content cannot be emptied in place is refused, not
-      // flattened by the insertion path: that path would replace the wrapped cell too.
-      const emptied = clearPlaceholder(part, prompt.control.id, options, op.paragraphId);
-      if (!emptied) return { ok: false, reason: 'unsupported' };
-      const result = applyTreeOp(
-        emptied,
-        {
-          ...op,
-          offset: promptInsertionOffset(emptied, op.paragraphId, prompt.offset),
-          inside: prompt.control.id,
-        },
-        options
-      );
-      // Emptying the prompt may drop its other paragraphs; the insert's effect must say so.
-      const cleared = findNode(emptied, prompt.control.id);
-      if (!result.ok || !cleared) return result;
-      return { ...result, effect: withParagraphDiff(result.effect, prompt.control, cleared) };
-    }
+    const replaced = applyPromptTextInsertion(part, op, options, applyTreeOp);
+    if (replaced) return replaced;
   }
 
   if (op.op === 'authorTable') return applyTableAuthoring(part, op, options);

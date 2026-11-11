@@ -22,14 +22,22 @@ import {
 import { MAX_INLINE_CONTAINER_DEPTH } from '../package/ooxml-shared.ts';
 import type { OoxmlElement, OoxmlNode, OoxmlPart } from '../package/ooxml-tree.ts';
 import { isInlineControl, isWml } from './content-control-checkbox.ts';
-import { contentWithText, editedProperties, promptFor } from './tree-op-content-controls.ts';
+import {
+  clearPlaceholder,
+  contentWithText,
+  editedProperties,
+  placeholderControlForInsertion,
+  promptFor,
+} from './tree-op-content-controls.ts';
+import { withParagraphDiff } from './content-control-value-content.ts';
+import { insertsBeforePrompt } from './tree-op-prompt-bias.ts';
 import {
   contentControlContentOf,
   findContentControl,
   isRunPropertiesNode,
 } from './tree-op-nodes.ts';
 import { paragraphLength } from './tree-op-segments.ts';
-import type { TreeOpEffect, TreeOpResult } from './tree-op-types.ts';
+import type { TreeDocOp, TreeOpEffect, TreeOpResult } from './tree-op-types.ts';
 
 /** The kinds whose empty content shows a prompt. A checkbox or a picture has none. */
 const PROMPT_KINDS: ReadonlySet<ContentControlKind> = new Set<ContentControlKind>([
@@ -216,4 +224,44 @@ export function promptInsertionOffset(
   const paragraph = findNode(part, paragraphId);
   if (!paragraph || paragraph.kind !== 'paragraph') return planned;
   return Math.min(planned, paragraphLength(paragraph));
+}
+
+/**
+ * Typing into a prompt REPLACES it. The transition belongs in the store rather than beside
+ * the caret: an automation call and a paste insert text too, and a prompt that survived them
+ * would leave the typed characters appended to "Click here to enter text.".
+ */
+export function applyPromptTextInsertion(
+  part: OoxmlPart,
+  op: Extract<TreeDocOp, { readonly op: 'insertText' }>,
+  options: EditOptions | undefined,
+  apply: (part: OoxmlPart, op: TreeDocOp, options?: EditOptions) => TreeOpResult
+): TreeOpResult | null {
+  const prompt = placeholderControlForInsertion(part, op.paragraphId, op.offset);
+  if (!prompt) return null;
+  const paragraph = findNode(part, op.paragraphId);
+  if (
+    paragraph?.kind === 'paragraph' &&
+    op.inside === undefined &&
+    insertsBeforePrompt(paragraph, op.offset, prompt.control, op.bias)
+  )
+    return null;
+  // The caret's paragraph is the one the prompt is emptied into, so the insert below
+  // still finds it. A prompt whose content cannot be emptied in place is refused, not
+  // flattened by the insertion path: that path would replace the wrapped cell too.
+  const emptied = clearPlaceholder(part, prompt.control.id, options, op.paragraphId);
+  if (!emptied) return { ok: false, reason: 'unsupported' };
+  const result = apply(
+    emptied,
+    {
+      ...op,
+      offset: promptInsertionOffset(emptied, op.paragraphId, prompt.offset),
+      inside: prompt.control.id,
+    },
+    options
+  );
+  // Emptying the prompt may drop its other paragraphs; the insert's effect must say so.
+  const cleared = findNode(emptied, prompt.control.id);
+  if (!result.ok || !cleared) return result;
+  return { ...result, effect: withParagraphDiff(result.effect, prompt.control, cleared) };
 }

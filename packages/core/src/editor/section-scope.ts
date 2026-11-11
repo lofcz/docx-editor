@@ -20,6 +20,35 @@ import { collectNoteReferences, resolveNotesPart } from '../store/package/note-r
 import { noteIdOf, notesOf } from '../store/package/note-nodes.ts';
 import type { OoxmlNode, OoxmlPart } from '../store/package/ooxml-tree.ts';
 import { findNode } from '../store/package/ooxml-edit.ts';
+import type { SectionStackSpan } from '../layout/layout-session.ts';
+
+/**
+ * The section a page belongs to, and where that section starts.
+ *
+ * A page is the only thing a pointer entry knows, and a header belongs to a SECTION: one
+ * header may be referenced by several, and their page geometry can differ. Without this the
+ * entry defaulted to section 0, so double-clicking the header on a landscape page answered
+ * with the first section's portrait width — which is the ruler's clamp and the grid width
+ * `insertTableOp` divides.
+ *
+ * A single-section document has no spans and every page belongs to section 0.
+ */
+export function sectionAtPage(
+  spans: readonly Pick<SectionStackSpan, 'startIndex' | 'pageCount'>[] | undefined,
+  pageIndex: number
+): { sectionIndex: number; sectionStart: number } {
+  let sectionIndex = 0;
+  let sectionStart = 0;
+  if (spans && spans.length > 0) {
+    for (let index = 0; index < spans.length; index += 1) {
+      const span = spans[index]!;
+      sectionIndex = index;
+      sectionStart = span.startIndex;
+      if (pageIndex < span.startIndex + span.pageCount) break;
+    }
+  }
+  return { sectionIndex, sectionStart };
+}
 
 /** Depth cap for the note-body walk, matching the shared tree-walk bound. */
 const MAX_NOTE_WALK_DEPTH = 32;
