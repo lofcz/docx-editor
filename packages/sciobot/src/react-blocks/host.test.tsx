@@ -165,7 +165,7 @@ test('native repaints retain a widget view and explicit host refresh renders it 
   let host: ReturnType<typeof mountReactBlockHost> | undefined;
   function View() {
     renders++;
-    return <button>Widget</button>;
+    return <button data-test-widget="" disabled={editor.surface!.editingMode() === 'view'} />;
   }
   try {
     await act(async () => {
@@ -180,6 +180,13 @@ test('native repaints retain a widget view and explicit host refresh renders it 
     expect(renders).toBe(initial);
     await act(async () => host!.refresh());
     expect(renders).toBeGreaterThan(initial);
+    const button = editor
+      .surface!.hostElement()
+      .querySelector<HTMLButtonElement>('[data-test-widget]')!;
+    await act(async () => editor.surface!.setEditingMode('view'));
+    expect(button.disabled).toBe(true);
+    await act(async () => editor.surface!.setEditingMode('edit'));
+    expect(button.disabled).toBe(false);
   } finally {
     await act(async () => {
       host?.dispose();

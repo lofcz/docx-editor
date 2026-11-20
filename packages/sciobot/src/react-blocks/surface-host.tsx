@@ -65,6 +65,7 @@ export function mountSurfaceBlockHost(
   let generation = 0;
   let disposed = false;
   let frame: SurfacePaintFrame | null = null;
+  let editingMode = surface.editingMode();
   let focused: HTMLElement | null = null;
   let indexedPackage: OoxmlPackage | null = null;
   let index: BlockIndex | null = null;
@@ -101,13 +102,16 @@ export function mountSurfaceBlockHost(
     // A pending native paint will publish its own matching frame.
     if (pkg.parts.get(next.part.name) !== next.part) return;
     const collapses = surface!.collapsedContentControls();
+    const mode = surface!.editingMode();
     if (
       frame?.layout !== next.layout ||
       frame.scale !== next.scale ||
       pkg !== indexedPackage ||
+      mode !== editingMode ||
       (!options.inlineOnly && insetCollapses !== collapses)
     )
       generation++;
+    editingMode = mode;
     frame = next;
     if (pkg !== indexedPackage) {
       indexedPackage = pkg;
