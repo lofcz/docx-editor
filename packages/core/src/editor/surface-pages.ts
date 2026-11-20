@@ -128,7 +128,8 @@ export function scrollToDocumentStart(container: HTMLElement): void {
 function viewportInLayout(
   container: HTMLElement,
   scroller: HTMLElement,
-  scale: number
+  scale: number,
+  height: number
 ): { top: number; height: number } {
   const containerRect = container.getBoundingClientRect();
   const scrollerRect = scroller.getBoundingClientRect();
@@ -136,7 +137,7 @@ function viewportInLayout(
     scroller.scrollTop !== 0 && containerRect.top === 0 && scrollerRect.top === 0
       ? scroller.scrollTop - container.offsetTop
       : scrollerRect.top + scroller.clientTop - containerRect.top;
-  return { top: topPx / scale, height: scroller.clientHeight / scale };
+  return { top: topPx / scale, height: height / scale };
 }
 
 export function viewportPage(
@@ -145,10 +146,11 @@ export function viewportPage(
   scale: number
 ): number | null {
   const scroller = surfaceScroller(container);
-  if (!scroller || scroller.clientHeight <= 0 || layout.pages.length === 0 || scale <= 0) {
+  const height = scroller?.clientHeight ?? 0;
+  if (!scroller || height <= 0 || layout.pages.length === 0 || scale <= 0) {
     return null;
   }
-  const viewport = viewportInLayout(container, scroller, scale);
+  const viewport = viewportInLayout(container, scroller, scale, height);
   const centerY = viewport.top + viewport.height / 2;
   for (const page of layout.pages) {
     if (centerY < page.box.y + page.box.height) return page.index + 1;
@@ -163,8 +165,9 @@ export function visiblePageSet(
   scale: number
 ): ReadonlySet<number> | undefined {
   const scroller = surfaceScroller(container);
-  if (!scroller || scroller.clientHeight === 0) return undefined;
-  const viewport = viewportInLayout(container, scroller, scale);
+  const height = scroller?.clientHeight ?? 0;
+  if (!scroller || height === 0) return undefined;
+  const viewport = viewportInLayout(container, scroller, scale, height);
   const pinned: number[] = [];
   for (const position of [selection.anchor, selection.head]) {
     const caret = caretAt(layout, position);

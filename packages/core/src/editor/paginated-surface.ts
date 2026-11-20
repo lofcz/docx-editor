@@ -2803,9 +2803,10 @@ export function mountPaginatedSurface(
     // than erase it — see `adoptBeforePaint`.
     commitPaintOwed = false;
     const adopted = selectionSync.adoptBeforePaint();
-    paintObservers.beforePaint();
     const paintBegan = now();
+    // Read the viewport before custom controls change the DOM for this paint.
     materializedSet = visiblePages();
+    paintObservers.beforePaint();
     // Shared furniture: keep the visual occurrence on a built page before paint marks
     // `data-docx-hf-active`, so scroll cannot leave the caret host on a dematerialized sheet.
     hfScope?.reconcileOccurrence();

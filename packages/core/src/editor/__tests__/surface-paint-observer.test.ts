@@ -157,3 +157,35 @@ test('passive observers can subscribe to the current frame without repainting ot
     editor.destroy();
   }
 });
+
+test('the surface reads its viewport before a host prepares its widgets for paint', () => {
+  const scroller = document.createElement('div');
+  scroller.className = 'docx-editor__scroll-container';
+  const container = document.createElement('div');
+  scroller.append(container);
+  document.body.append(scroller);
+  let preparing = false;
+  const reads: boolean[] = [];
+  Object.defineProperty(scroller, 'clientHeight', {
+    get: () => {
+      reads.push(preparing);
+      return 640;
+    },
+  });
+  const editor = createDocxEditor({ container, document: docx(p('Text')) });
+  try {
+    editor.surface!.observePaint({
+      beforePaint: () => {
+        preparing = true;
+      },
+      afterPaint: () => {
+        preparing = false;
+      },
+    });
+    expect(reads).toContain(false);
+    expect(reads).not.toContain(true);
+  } finally {
+    editor.destroy();
+    scroller.remove();
+  }
+});

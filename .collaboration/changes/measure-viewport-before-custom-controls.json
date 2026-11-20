@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "A custom control could trigger a second browser layout during page measurement.",
+  "after": "The surface measures visible pages before custom controls prepare their DOM.",
+  "reason": "Viewport reads affect only local painting. Shared operations and selection mapping keep the same format.",
+  "tests": [
+    "packages/core/src/editor/__tests__/surface-paint-observer.test.ts",
+    "packages/core/src/editor/__tests__/paginated-surface-layout.test.ts"
+  ],
+  "changeset": "measure-viewport-before-custom-controls",
+  "migration": null
+}
