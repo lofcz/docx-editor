@@ -4,14 +4,42 @@ import {
   contentControlsIn,
   isStoryPart,
   withoutCustomXmlNode,
+  type OoxmlElement,
   type OoxmlNode,
   type OoxmlPackage,
   type OoxmlPart,
 } from '@docx-editor.dev/core/store';
 import { blockIdFromTag, readPayloadStore } from '../blocks/payload-opc-codec';
 import { activeStorage } from '../registry/active';
-import { wmlElement } from '../diff/fragment-seeds';
-import type { PlannedTableOperation } from '../diff/plan';
+import { refuseWrite, wmlElement } from '../diff/fragment-seeds';
+import type { CanonicalEdit, PlannedTableOperation } from '../diff/plan';
+
+type SiblingEdit = Extract<CanonicalEdit, { kind: 'siblings' }>;
+const SIBLING_PARENTS = new Set(['body', 'tc', 'sdtContent']);
+
+function validatedSiblingGap(part: OoxmlPart, edit: SiblingEdit): readonly string[] {
+  const parent = findNode(part, edit.parentId);
+  if (!parent || parent.kind === 'textValue' || !SIBLING_PARENTS.has(parent.localName))
+    refuseWrite('The planned sibling parent is not a native story container.', 'ambiguous-target');
+  const children = (parent as OoxmlElement).children,
+    before = edit.beforeId === null ? -1 : children.findIndex((node) => node.id === edit.beforeId),
+    terminal = children.findIndex((node) => wmlElement(node, 'sectPr')),
+    after =
+      edit.afterId === null
+        ? terminal < 0
+          ? children.length
+          : terminal
+        : children.findIndex((node) => node.id === edit.afterId);
+  if ((edit.beforeId !== null && before < 0) || after < 0 || before >= after)
+    refuseWrite('The original native sibling gap no longer matches the plan.', 'stale-revision');
+  const gap = children.slice(before + 1, after).map((node) => node.id);
+  if (gap.length !== edit.removedIds.length || gap.some((id, i) => id !== edit.removedIds[i]))
+    refuseWrite('The original native sibling gap no longer matches the plan.', 'stale-revision');
+  return gap;
+}
+
+const hasSection = (node: OoxmlNode): boolean =>
+  wmlElement(node, 'sectPr') || (node.kind !== 'textValue' && node.children.some(hasSection));
 
 const blockId = (node: OoxmlNode): string | null =>
   node.kind === 'contentControl'
@@ -61,14 +89,10 @@ export interface SiblingRemoval {
  * Check direct sibling removals: complete paragraphs, tables, and application blocks without
  * section marks. Returns the refusal text, or the removed blocks and their payload IDs.
  */
-export function siblingRemoval(
-  part: OoxmlPart,
-  removedIds: readonly string[],
-  hasSection: (node: OoxmlNode) => boolean
-): SiblingRemoval | string {
+export function siblingRemoval(part: OoxmlPart, edit: SiblingEdit): SiblingRemoval | string {
   const blocks = new Set<string>();
   const payloads: string[] = [];
-  for (const id of removedIds) {
+  for (const id of validatedSiblingGap(part, edit)) {
     const node = findNode(part, id);
     const owned = node && blockId(node) !== null;
     if (

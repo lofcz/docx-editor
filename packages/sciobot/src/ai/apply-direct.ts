@@ -116,10 +116,7 @@ const failure = (error: unknown): NativeEditFailure =>
         code: 'apply-failed',
         error: error instanceof Error ? error.message : String(error),
       };
-const SIBLING_PARENTS = new Set(['body', 'tc', 'sdtContent']);
 const wml = wmlElement;
-const hasSection = (node: OoxmlNode): boolean =>
-  wml(node, 'sectPr') || (node.kind !== 'textValue' && node.children.some(hasSection));
 const attributesOf = (value: PlannedValue): Record<string, string> => {
   if (
     !value.present ||
@@ -136,26 +133,6 @@ const sameState = (actual: Readonly<Record<string, string>> | undefined, expecte
     ? actual !== undefined && jsonDataKey(actual) === jsonDataKey(attributesOf(expected))
     : actual === undefined;
 
-function sibling(part: OoxmlPart, edit: Edit<'siblings'>): readonly string[] {
-  const parent = findNode(part, edit.parentId);
-  if (!parent || parent.kind === 'textValue' || !SIBLING_PARENTS.has(parent.localName))
-    refuse('The planned sibling parent is not a native story container.', 'ambiguous-target');
-  const children = (parent as OoxmlElement).children,
-    before = edit.beforeId === null ? -1 : children.findIndex((node) => node.id === edit.beforeId),
-    terminal = children.findIndex((node) => wml(node, 'sectPr')),
-    after =
-      edit.afterId === null
-        ? terminal < 0
-          ? children.length
-          : terminal
-        : children.findIndex((node) => node.id === edit.afterId);
-  if ((edit.beforeId !== null && before < 0) || after < 0 || before >= after)
-    refuse('The original native sibling gap no longer matches the plan.', 'stale-revision');
-  const gap = children.slice(before + 1, after).map((node) => node.id);
-  if (gap.length !== edit.removedIds.length || gap.some((id, i) => id !== edit.removedIds[i]))
-    refuse('The original native sibling gap no longer matches the plan.', 'stale-revision');
-  return gap;
-}
 /** New paragraphs between the sibling anchors that were absent before this transaction. */
 function freshInGap(
   part: OoxmlPart,
@@ -382,8 +359,7 @@ function lowerDirectPlan(
         break;
       }
       case 'siblings': {
-        sibling(preview, edit);
-        const removal = siblingRemoval(preview, edit.removedIds, hasSection);
+        const removal = siblingRemoval(preview, edit);
         if (typeof removal === 'string') refuse(removal, 'unsupported-operation');
         const removedBlocks = removal.blocks;
         const removedPayloads = removal.payloads;
