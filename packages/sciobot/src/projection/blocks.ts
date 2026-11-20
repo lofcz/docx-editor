@@ -1,6 +1,6 @@
 import { activeStorage } from '../registry/active';
 import { codeBlockForView } from './code-source-view';
-import { readColumnGeometry } from '../blocks/column-geometry';
+import { readPresentationColumns } from '../blocks/column-geometry';
 import { columnReadingLayout } from './column-reading-layout';
 import { activeMdxRegistry } from '../registry/active';
 import { serializeMention, mentionInsideHyperlink } from './mention';
@@ -124,7 +124,7 @@ export function projectBlocks(
 ): { readonly success: true; readonly projection: BlockProjection } | NativeEditFailure {
   const index = buildBlockIndex(pkg);
   const geometries = [...index.byId.values()].flatMap((block) => {
-    const geometry = readColumnGeometry(pkg, block, index);
+    const geometry = readPresentationColumns(pkg, block, index);
     return geometry ? [geometry] : [];
   });
   const columnCells = new Set(

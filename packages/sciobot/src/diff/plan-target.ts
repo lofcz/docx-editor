@@ -7,7 +7,11 @@ import {
   documentQuoteStyle,
   insertedBlockProblem,
 } from './inserted-fragment-policy';
-import { findNode, paragraphTextOf } from '@docx-editor.dev/core/store';
+import {
+  contentControlContentNodeOf,
+  findNode,
+  paragraphTextOf,
+} from '@docx-editor.dev/core/store';
 import { buildBlockIndex } from '../blocks/block-index';
 import type { NativeEditFailure } from '../contracts/document';
 import type { JsonObject } from '../data/json';
@@ -39,7 +43,11 @@ import {
   quoteSiblingInsertion,
 } from './target-quotes';
 import { planParagraphFormat } from './paragraph-format';
-import { columnWidthsTwips, readColumnGeometry } from '../blocks/column-geometry';
+import {
+  columnWidthsTwips,
+  readColumnGeometry,
+  readPresentationColumns,
+} from '../blocks/column-geometry';
 import { planTableFormat } from './table-format';
 
 export interface TargetDocumentOptions {
@@ -600,6 +608,64 @@ export function planTargetDocument(
               newPath,
               column.cellId,
               { before: index, after: index }
+            );
+            if (error) return error;
+          }
+          continue;
+        }
+        const recap =
+          block.payload.type === 'preparation_recap' &&
+          readPresentationColumns(input.pkg, block, blockIndex);
+        if (recap) {
+          const oldStart = entry.block.children.findIndex(
+            (_, i) =>
+              bindings.get([...oldPath, i].join('/'))?.structuralOwnerId ===
+              recap.columns[0]!.block.controlId
+          );
+          const newStart = next.children.findIndex((_, i) =>
+            recap.columns.every(
+              (column, n) =>
+                next.children[i + n] &&
+                domainNodeFromAst(astOf(next.children[i + n]!), registry)?.type ===
+                  column.block.payload.type
+            )
+          );
+          if (oldStart < 0 || newStart < 0)
+            return fail(
+              'Moving or removing an overview column requires changing its native table.'
+            );
+          const owner = findNode(part, block.controlId);
+          const parent = owner && contentControlContentNodeOf(owner);
+          if (!parent) return fail('The overview content is missing.');
+          const regions = [
+            [0, oldStart, 0, newStart, parent.id],
+            ...recap.columns.map(
+              (column, i) =>
+                [
+                  oldStart + i,
+                  oldStart + i + 1,
+                  newStart + i,
+                  newStart + i + 1,
+                  column.cellId,
+                ] as const
+            ),
+            [
+              oldStart + 2,
+              entry.block.children.length,
+              newStart + 2,
+              next.children.length,
+              parent.id,
+            ],
+          ] as const;
+          for (const [from, end, nextFrom, nextEnd, region] of regions) {
+            if (from === end && nextFrom === nextEnd) continue;
+            const error = stream(
+              entry.block.children.slice(from, end),
+              next.children.slice(nextFrom, nextEnd),
+              oldPath,
+              newPath,
+              region,
+              { before: from, after: nextFrom }
             );
             if (error) return error;
           }

@@ -3,6 +3,7 @@ import { withAtomicMathFallbacks } from '../blocks/math-ownership';
 import { withNativeCodeSources } from '../blocks/code-preparation';
 import { withPreparedPayloadFields } from '../blocks/payload-preparation';
 import { withGalleryImageRecords } from '../blocks/gallery-record-upgrade';
+import { withRecapColumns } from '../blocks/recap-columns';
 import { withNativeNumberingInfrastructure } from './numbering-infrastructure';
 import { withPreparedTaskCompletion } from './prepare-task-completion';
 import { withBlockTypeStyles } from './block-control-styles';
@@ -107,7 +108,7 @@ export function prepareNativeDocument(
     };
   try {
     const code = options?.nativeCodeSources ? withNativeCodeSources(prepared) : prepared;
-    const owned = withAtomicMathFallbacks(withPreparedPayloadFields(code));
+    const owned = withRecapColumns(withAtomicMathFallbacks(withPreparedPayloadFields(code)));
     return {
       success: true,
       document: initializedPackageBytes(document, original, owned),

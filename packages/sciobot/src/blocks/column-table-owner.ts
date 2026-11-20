@@ -1,6 +1,6 @@
 import type { OoxmlPackage } from '@docx-editor.dev/core/store';
 import { buildBlockIndex } from './block-index';
-import { readColumnGeometry } from './column-geometry';
+import { readPresentationColumns } from './column-geometry';
 
 /** Cache only immutable packages. Nested ordinary tables retain their native controls. */
 export function createColumnTableRefusal(
@@ -14,8 +14,7 @@ export function createColumnTableRefusal(
       cache.set(pkg, tables);
       const index = buildBlockIndex(pkg);
       for (const block of index.byId.values()) {
-        if (block.payload.type !== 'column_group') continue;
-        const geometry = readColumnGeometry(pkg, block, index);
+        const geometry = readPresentationColumns(pkg, block, index);
         if (geometry) tables.add(geometry.tableId);
       }
     }

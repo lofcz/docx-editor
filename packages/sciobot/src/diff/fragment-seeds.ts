@@ -1,5 +1,5 @@
 import { MdxRefusal } from '../registry/mdx-fields';
-import { columnTableXml, columnWidthsTwips } from '../blocks/column-geometry';
+import { columnTableXml, columnWidthsTwips, recapColumnPair } from '../blocks/column-geometry';
 import type { MdxComponentRegistry } from '../registry/contract';
 import { activeMdxRegistry, activeStorage } from '../registry/active';
 import { completeInlineAtomPayloads } from '../native/inline-atom-payloads';
@@ -689,7 +689,31 @@ function blockXml(node: TargetAstNode, path: readonly number[], context: RenderC
     context.paragraphs.push('');
     content += `<w:sdt><w:sdtPr><w:tag w:val="${escapeXml(activeStorage().labelTag)}"/></w:sdtPr><w:sdtContent><w:p>${runXml(binding.generatedLabel, [])}</w:p></w:sdtContent></w:sdt>`;
   }
-  content += children.map((child, index) => blockXml(child, [...path, index], context)).join('');
+  let paired = false;
+  for (let i = 0; i < children.length; i++) {
+    const type = (index: number) => context.bindings.get([...path, index].join('/'))?.payload.type;
+    if (
+      !paired &&
+      binding.payload.type === 'preparation_recap' &&
+      recapColumnPair(type(i), type(i + 1))
+    ) {
+      const widths = columnWidthsTwips([undefined, undefined], context.width);
+      content += columnTableXml(
+        widths,
+        (column, width) => {
+          const childContext = { ...context, width };
+          const child = blockXml(children[i + column]!, [...path, i + column], childContext);
+          context.pkg = childContext.pkg;
+          return child;
+        },
+        true
+      );
+      i++;
+      paired = true;
+    } else {
+      content += blockXml(children[i]!, [...path, i], context);
+    }
+  }
   // A story container needs a paragraph after a final table, and an empty container one seed.
   if (!children.length || children.at(-1)!.type === 'table') content += seedParagraph(context);
   return `<w:sdt>${properties}<w:sdtContent>${content}</w:sdtContent></w:sdt>`;

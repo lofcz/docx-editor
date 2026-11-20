@@ -19,6 +19,14 @@ const MAX_WIDTH = 31680;
 // rounding a boundary, so equivalent ratios retain the same half-twip tie direction.
 const roundedTwip = (value: number) => Math.round(Number(value.toFixed(7)));
 const caption = () => `${activeStorage().adapterPrefix}:columns:1`;
+const recapCaption = () => `${activeStorage().adapterPrefix}:recap-columns:1`;
+
+export function recapColumnPair(a: string | undefined, b: string | undefined): boolean {
+  return (
+    (a === 'recap_curriculum' && b === 'recap_materials') ||
+    (a === 'recap_materials' && b === 'recap_curriculum')
+  );
+}
 const children = (node: OoxmlNode | undefined | null): readonly OoxmlNode[] =>
   !node || node.kind === 'textValue' ? [] : node.children;
 const word = (node: OoxmlNode, name: string) =>
@@ -75,7 +83,8 @@ export function columnWidthsTwips(
 /** Only renderer-produced column XML enters this builder. Attribute values remain escaped. */
 export function columnTableXml(
   widths: readonly number[],
-  render: (index: number, width: number) => string
+  render: (index: number, width: number) => string,
+  recap = false
 ): string {
   if (
     !widths.length ||
@@ -97,7 +106,13 @@ export function columnTableXml(
   // Width authoring uses an absolute grid. Keep creation in that same coordinate system;
   // Word's percentage table width also includes outside cell margins and would jump on resize.
   const total = widths.reduce((sum, width) => sum + width, 0);
-  return `<w:tbl><w:tblPr><w:tblW w:w="${total}" w:type="dxa"/><w:tblBorders>${borders}</w:tblBorders><w:tblLayout w:type="fixed"/><w:tblCaption w:val="${escapeXml(caption())}"/></w:tblPr><w:tblGrid>${grid}</w:tblGrid><w:tr>${cells}</w:tr></w:tbl>`;
+  const width = recap
+    ? '<w:tblW w:w="5000" w:type="pct"/>'
+    : `<w:tblW w:w="${total}" w:type="dxa"/>`;
+  const margins = recap
+    ? '<w:tblCellMar><w:left w:w="100" w:type="dxa"/><w:right w:w="100" w:type="dxa"/></w:tblCellMar>'
+    : '';
+  return `<w:tbl><w:tblPr>${width}<w:tblBorders>${borders}</w:tblBorders><w:tblLayout w:type="fixed"/>${margins}<w:tblCaption w:val="${escapeXml(recap ? recapCaption() : caption())}"/></w:tblPr><w:tblGrid>${grid}</w:tblGrid><w:tr>${cells}</w:tr></w:tbl>`;
 }
 
 export interface ColumnGeometry {
@@ -119,19 +134,41 @@ export function readColumnGeometry(
   index: BlockIndex = buildBlockIndex(pkg)
 ): ColumnGeometry | null {
   if (group.payload.type !== 'column_group') return null;
+  return readPresentationColumns(pkg, group, index);
+}
+
+/** The preparation overview uses the same native cell ownership as explicit columns. */
+export function readPresentationColumns(
+  pkg: OoxmlPackage,
+  group: IndexedBlock,
+  index: BlockIndex
+): ColumnGeometry | null {
+  const recap = group.payload.type === 'preparation_recap';
+  if (!recap && group.payload.type !== 'column_group') return null;
   const part = pkg.parts.get(group.partName);
   const control = part && findNode(part, group.controlId);
   if (!part || !control) return null;
   const content = contentControlContentNodeOf(control),
     blocks = children(content);
-  const table = blocks[0];
+  const table = recap
+    ? blocks.find(
+        (node) =>
+          node.kind === 'table' &&
+          attr(
+            children(children(node).find((child) => word(child, 'tblPr'))).find((child) =>
+              word(child, 'tblCaption')
+            ),
+            'val'
+          ) === recapCaption()
+      )
+    : blocks[0];
   if (table?.kind !== 'table') return null;
   const properties = children(table).find((node) => word(node, 'tblPr'));
   if (
     attr(
       children(properties).find((node) => word(node, 'tblCaption')),
       'val'
-    ) !== caption()
+    ) !== (recap ? recapCaption() : caption())
   )
     return null;
   const rows = children(table).filter((node) => node.kind === 'tableRow');
@@ -163,7 +200,7 @@ export function readColumnGeometry(
     separatorIds.add(node.id);
     return true;
   };
-  if (!blocks.slice(1).every(separator)) return null;
+  if (!recap && !blocks.slice(1).every(separator)) return null;
   for (const [position, cell] of cells.entries()) {
     const contents = children(cell).filter((node) => !word(node, 'tcPr'));
     const control = contents[0];
@@ -178,7 +215,7 @@ export function readColumnGeometry(
       column.controlId !== control?.id ||
       column.partName !== group.partName ||
       column.parentId !== group.id ||
-      column.payload.type !== 'column' ||
+      (!recap && column.payload.type !== 'column') ||
       !Number.isInteger(width) ||
       width < MIN_WIDTH ||
       width > MAX_WIDTH ||
@@ -190,6 +227,12 @@ export function readColumnGeometry(
       return null;
     columns.push({ block: column, cellId: cell.id, width });
   }
+  if (
+    recap &&
+    (columns.length !== 2 ||
+      !recapColumnPair(columns[0]?.block.payload.type, columns[1]?.block.payload.type))
+  )
+    return null;
   const total = columns.reduce((sum, column) => sum + column.width, 0);
   if (total > MAX_WIDTH) return null;
   const preferred = children(properties).find((node) => word(node, 'tblW'));
