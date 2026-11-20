@@ -56,6 +56,11 @@ import { readFile } from 'node:fs/promises';
 import * as api from '@docx-editor.dev/docx-to-markdown';
 import { writeMarkdownBundle } from '@docx-editor.dev/docx-to-markdown/node';
 async function main() {
+  const mdx = await import('@docx-editor.dev/docx-to-markdown/mdx');
+  const word = mdx.importMdxDocument('<Instrument serial="A1">Read the dial.</Instrument>');
+  assert.ok(mdx.isMdxDocument(word));
+  assert.equal(mdx.readMdxComponents(word)[0]?.attributes.serial, 'A1');
+  assert.ok(mdx.exportMdxDocument(word).includes('Read the dial.'));
   const error: api.MarkdownMediaError = new api.MarkdownMediaError('media-limit', 'Limit');
   const bundleError: api.MarkdownBundleError = new api.MarkdownBundleError('output-not-empty', 'Folder');
   void [error, bundleError];

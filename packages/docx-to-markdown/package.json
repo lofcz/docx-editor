@@ -24,6 +24,7 @@
     "./mdx": {
       "require": {
         "types": "./types/mdx.d.cts",
+        "bun": "./dist/mdx.cjs",
         "module-sync": "./dist/mdx.cjs"
       },
       "types": "./dist/mdx.d.ts",
