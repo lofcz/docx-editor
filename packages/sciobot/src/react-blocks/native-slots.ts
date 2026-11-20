@@ -61,11 +61,9 @@ export class NativeSlotLease {
   }
 
   set(elements: readonly HTMLElement[]): void {
-    preserveNativeSelection(this.pages, () => {
-      this.restore();
-      this.elements = elements;
-      this.adopt();
-    });
+    this.restore();
+    this.elements = elements;
+    this.adopt();
   }
 
   // Stable across renders. React owns the empty slot; the native engine owns its children.

@@ -23,17 +23,19 @@ export class OpaqueBlockLayer {
       this.element.dataset.sciobotBlockLayer = '';
       this.element.dataset.docxHostUi = '';
       this.element.contentEditable = 'false';
-      Object.assign(this.element.style, { position: 'absolute', pointerEvents: 'none' });
+      // Use the same surface origin as the native selection and drawing overlays.
+      Object.assign(this.element.style, {
+        position: 'absolute',
+        left: '0',
+        top: '0',
+        pointerEvents: 'none',
+      });
     }
     if (this.element.parentElement !== parent) parent.append(this.element);
-    // All widgets share the same origin. A DOM write between two offset reads forces layout.
+    // Page extents are known to the painter. Reading offsets here forces layout after every paint.
     if (this.frame !== frame) {
       this.frame = frame;
-      const left = frame.pagesLayer.offsetLeft;
-      const top = frame.pagesLayer.offsetTop;
       Object.assign(this.element.style, {
-        left: `${left}px`,
-        top: `${top}px`,
         width: frame.pagesLayer.style.width,
         height: frame.pagesLayer.style.height,
       });

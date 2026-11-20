@@ -225,8 +225,9 @@ export function mountSurfaceBlockHost(
           display: nativeContent ? 'contents' : 'block',
           position: nativeContent ? 'static' : 'absolute',
           pointerEvents: nativeContent ? 'auto' : 'none',
-          left: `${box.x * next.scale}px`,
-          top: `${box.y * next.scale}px`,
+          ...(nativeContent
+            ? { left: `${box.x * next.scale}px`, top: `${box.y * next.scale}px` }
+            : {}),
           width: `${box.width * next.scale}px`,
           height: `${box.height * next.scale}px`,
         });

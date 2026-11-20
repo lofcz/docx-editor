@@ -1,7 +1,7 @@
 import type { SurfacePaintFrame } from '@docx-editor.dev/core/editor';
 import { parentNodeOf } from '@docx-editor.dev/core/store';
 import type { IndexedBlock } from '../blocks/block-index';
-import type { NativeSlotLease } from './native-slots';
+import { preserveNativeSelection, type NativeSlotLease } from './native-slots';
 
 export interface NativeSlotMount {
   readonly block: IndexedBlock;
@@ -84,21 +84,24 @@ export function attachNativeSlots(frame: SurfacePaintFrame, mounts: readonly Nat
       mount = parents.get(mount);
     }
   }
-  // Place every root before moving any native element. Wrappers preserve native coordinates.
-  for (const mount of mounts) {
-    const first = anchors.get(mount);
-    if (first?.parentElement) first.before(mount.element);
-  }
-  for (const mount of mounts) {
-    const parent = parents.get(mount);
-    if (!parent || mount.element.parentElement !== parent.element.parentElement) continue;
-    const list = owned.get(parent) ?? [];
-    list.push(mount.element);
-    owned.set(parent, list);
-  }
-  for (const mount of mounts) {
-    const elements = owned.get(mount) ?? [];
-    elements.sort((a, b) => (a.compareDocumentPosition(b) & 4 ? -1 : 1));
-    mount.slot.set(elements);
-  }
+  // Preserve one browser range across the entire move, including root placement.
+  preserveNativeSelection(frame.pagesLayer, () => {
+    // Place every root before moving any native element. Wrappers preserve native coordinates.
+    for (const mount of mounts) {
+      const first = anchors.get(mount);
+      if (first?.parentElement) first.before(mount.element);
+    }
+    for (const mount of mounts) {
+      const parent = parents.get(mount);
+      if (!parent || mount.element.parentElement !== parent.element.parentElement) continue;
+      const list = owned.get(parent) ?? [];
+      list.push(mount.element);
+      owned.set(parent, list);
+    }
+    for (const mount of mounts) {
+      const elements = owned.get(mount) ?? [];
+      elements.sort((a, b) => (a.compareDocumentPosition(b) & 4 ? -1 : 1));
+      mount.slot.set(elements);
+    }
+  });
 }
