@@ -209,7 +209,8 @@ test('a selected image collapsed into More shows clickable rows', async () => {
   );
   await selectDrawing(await ready(editor));
   const toolbar = container.querySelector<HTMLElement>('[data-testid="docx-toolbar"]')!;
-  Object.defineProperty(toolbar, 'clientWidth', { configurable: true, get: () => 200 });
+  // Picture Format has one 150px group. Make the ribbon narrower than that group.
+  Object.defineProperty(toolbar, 'clientWidth', { configurable: true, get: () => 90 });
   for (const node of toolbar.querySelectorAll('[data-toolbar-group], [data-toolbar-fixed]')) {
     Object.defineProperty(node, 'offsetWidth', { configurable: true, get: () => 150 });
   }

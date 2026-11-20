@@ -164,3 +164,8 @@
   align-items: center;
   gap: var(--doc-ribbon-gap);
 }
+
+.docx-toolbar[data-ribbon]:not([data-overflow]) .docx-ribbon__band {
+  max-width: 100%;
+  flex-wrap: wrap;
+}

@@ -371,7 +371,13 @@ describe('DocxEditorToolbar composition', () => {
 
   test('Table Design moves its border pickers into More and follows the caret', async () => {
     globalThis.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver;
-    const view = mountEditorTree(() => h(DocxEditorToolbar), SOURCE_WITH_TABLE);
+    const view = mountEditorTree(
+      () =>
+        h(DocxEditorToolbar, null, {
+          default: () => h(DocxEditorToolbar.TableBorderStyle, { hidden: true }),
+        }),
+      SOURCE_WITH_TABLE
+    );
     await flush();
     const toolbar = view.container.querySelector<HTMLElement>('[data-testid="docx-toolbar"]')!;
     expect(toolbar.querySelector('[data-ribbon-tab="tableDesign"]')).toBeNull();

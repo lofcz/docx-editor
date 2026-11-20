@@ -232,7 +232,8 @@ test('a selected image collapsed into More shows clickable rows', async () => {
     // Other test files can leave mounts in the body, so query inside this mount only.
     const scope = within(view.container);
     const toolbar = scope.getByTestId('docx-toolbar');
-    Object.defineProperty(toolbar, 'clientWidth', { configurable: true, get: () => 200 });
+    // Picture Format has one 150px group. Make the ribbon narrower than that group.
+    Object.defineProperty(toolbar, 'clientWidth', { configurable: true, get: () => 90 });
     for (const node of toolbar.querySelectorAll('[data-toolbar-group], [data-toolbar-fixed]')) {
       Object.defineProperty(node, 'offsetWidth', { configurable: true, get: () => 150 });
     }
