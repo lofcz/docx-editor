@@ -1687,6 +1687,21 @@ a.docx-hyperlink:focus-visible {
   opacity: 1;
 }
 
+.docx-table-append-controls button[hidden] {
+  display: none;
+}
+
+.docx-table-append-row > span {
+  flex: 1;
+  margin-inline: 2px;
+}
+
+.docx-table-append-controls .docx-table-append-column > span {
+  display: grid;
+  height: calc(100% - 4px);
+  place-items: center;
+}
+
 .docx-table-append-controls button:hover > span,
 .docx-table-append-controls button:focus-visible > span {
   opacity: 1;

@@ -85,11 +85,38 @@ test('append controls support authored tables without a column grid', async () =
   expect(shape()).toEqual([2, 2]);
 });
 
-test('append buttons have a 24-pixel target and refresh visible labels', async () => {
+test('edge appends preserve locked cell content and obey enclosing control locks', async () => {
+  const math =
+    '<w:sdt><w:sdtPr><w:lock w:val="sdtContentLocked"/></w:sdtPr><w:sdtContent><w:r><w:t>2+2</w:t></w:r></w:sdtContent></w:sdt>';
+  const worksheet = table.replace(p('D'), `<w:p>${math}</w:p>`);
+  const { editor, control, shape } = await mount(false, worksheet);
+  expect(control('both').disabled).toBe(false);
+  control('both').click();
+  expect(shape()).toEqual([3, 3]);
+  expect(editor.exec({ type: 'undo' }).ok).toBe(true);
+  expect(shape()).toEqual([2, 2]);
+  expect(editor.exec({ type: 'redo' }).ok).toBe(true);
+  const xml = strFromU8(unzipSync(new Uint8Array(await editor.save()))['word/document.xml']!);
+  expect(xml.match(/2\+2/g)).toHaveLength(1);
+  expect(xml).toContain('sdtContentLocked');
+  const enclosed = `<w:sdt><w:sdtPr><w:lock w:val="contentLocked"/></w:sdtPr><w:sdtContent>${worksheet}</w:sdtContent></w:sdt>`;
+  expect((await mount(false, enclosed)).control('both').disabled).toBe(true);
+});
+
+test('append buttons follow the bottom and right edges and refresh visible labels', async () => {
   const { surface, control } = await mount();
   const row = control('row');
-  expect(row.style.width).toBe('24px');
+  expect(parseFloat(row.style.width)).toBeGreaterThan(0);
   expect(row.style.height).toBe('24px');
+  const column = control('column');
+  expect(column.style.width).toBe('24px');
+  expect(parseFloat(column.style.height)).toBeGreaterThan(0);
+  expect(parseFloat(column.style.left)).toBeCloseTo(
+    parseFloat(row.style.left) + parseFloat(row.style.width)
+  );
+  expect(parseFloat(row.style.top)).toBeCloseTo(
+    parseFloat(column.style.top) + parseFloat(column.style.height)
+  );
   surface.setTableInteractionLabel((key) => `localized:${key}`);
   expect(row.title).toBe('localized:table.insertRowBelow');
   expect(row.getAttribute('aria-label')).toBe(row.title);

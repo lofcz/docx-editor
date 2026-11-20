@@ -185,7 +185,11 @@ export function createTableAppendControls(host: SurfaceTableInteractionHost) {
     return next;
   }
 
-  function update(input: SurfaceTableInteractionInput, hoveredTableId?: string) {
+  function update(
+    input: SurfaceTableInteractionInput,
+    hoveredTableId?: string,
+    hoveredPage?: number
+  ) {
     const tableId =
       hoveredTableId ??
       input.cellSelection?.tableId ??
@@ -199,15 +203,17 @@ export function createTableAppendControls(host: SurfaceTableInteractionHost) {
       clear();
       return;
     }
-    const key = `${tableId}:${input.storeRevision}:${input.editingMode}:${input.suggestingAuthor ?? ''}:${host.scale()}`;
+    const key = `${tableId}:${hoveredPage ?? ''}:${input.storeRevision}:${input.editingMode}:${input.suggestingAuthor ?? ''}:${host.scale()}`;
     if (painted?.layout === input.layout && painted.key === key) return;
     painted = { layout: input.layout, key };
-    const found = targetOf(input, tableId);
-    if (!found) {
+    const last = targetOf(input, tableId);
+    if (!last) {
       clear();
       return;
     }
-    target = found;
+    const hovered =
+      hoveredPage === undefined ? null : findTableOnPage(input.layout, tableId, hoveredPage);
+    target = hovered && hoveredPage !== undefined ? { ...hovered, pageIndex: hoveredPage } : last;
     sourceRevision = input.storeRevision;
     const scale = host.scale();
     const left =
@@ -219,13 +225,14 @@ export function createTableAppendControls(host: SurfaceTableInteractionHost) {
     layer.style.height = host.pagesLayer.style.height;
     for (const kind of ['row', 'column', 'both'] as const) {
       const control = button(kind);
+      control.hidden = kind !== 'column' && target.pageIndex !== last.pageIndex;
       control.setAttribute('aria-label', label(kind));
       control.title = label(kind);
       Object.assign(control.style, {
-        left: `${kind === 'row' ? left - 26 : left + width + 2}px`,
-        top: `${kind === 'column' ? top + Math.max(0, height / 2 - 12) : top + height - 24}px`,
-        width: '24px',
-        height: '24px',
+        left: `${kind === 'row' ? left : left + width}px`,
+        top: `${kind === 'column' ? top : top + height}px`,
+        width: `${kind === 'row' ? width : 24}px`,
+        height: `${kind === 'column' ? height : 24}px`,
       });
     }
     // Chrome probes run after the document transaction, once per completed layout update.

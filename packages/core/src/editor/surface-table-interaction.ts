@@ -765,7 +765,7 @@ export function createSurfaceTableInteraction(
     if (!hoverHit || drag || input.editingMode === 'view') return;
     clearTimers();
     const hit = hitAtLastPointer(input);
-    appendControls.update(input, hit?.tableId);
+    appendControls.update(input, hit?.tableId, hit?.pageIndex);
     const offered = offeredHit(
       host.session(),
       hit,
@@ -875,7 +875,7 @@ export function createSurfaceTableInteraction(
           pageIndex >= 0 ? pageIndex : undefined
         )
       : null;
-    appendControls.update(input, hit?.tableId);
+    appendControls.update(input, hit?.tableId, hit?.pageIndex);
     const offered = offeredHit(
       host.session(),
       hit,

@@ -71,6 +71,7 @@ import {
   type ParagraphOffsetIndex,
 } from './tree-op-segments.ts';
 import { scopedRevisionRoot } from './tree-op-revision-scope.ts';
+import { appendsOutsideExistingCells } from './table-append-reach.ts';
 import { strikesWholeControl } from './tree-op-control-strike.ts';
 import { holdsRevisionContainer } from './revision-container-presence.ts';
 import {
@@ -561,7 +562,13 @@ const TREE_OP_REACH: {
 export const TREE_OP_REACH_CLASSIFIED: ReadonlySet<string> = new Set(Object.keys(TREE_OP_REACH));
 
 /** What an op would change. An op name nothing declares reaches the whole part. */
-export function treeOpReach(op: TreeDocOp): TreeOpReach {
+export function treeOpReach(op: TreeDocOp, part?: OoxmlPart): TreeOpReach {
+  if (
+    part &&
+    (op.op === 'insertTableRow' || op.op === 'insertTableColumn') &&
+    appendsOutsideExistingCells(part, op)
+  )
+    return { kind: 'nodes', targets: [{ nodeId: op.tableId }] };
   const classify = TREE_OP_REACH[op.op] as ((one: TreeDocOp) => TreeOpReach) | undefined;
   if (!classify) return { kind: 'part' };
   return classify(op);
@@ -1028,7 +1035,7 @@ export function contentControlLockRefusal(part: OoxmlPart, op: TreeDocOp): TreeO
   // Alignment, indents, and spacing place the paragraph around the locked text; binding and
   // forms checks still run.
   if (changesOnlyLockFreeParagraphProperties(part, op)) return null;
-  const reach = treeOpReach(op);
+  const reach = treeOpReach(op, part);
   const revisionDecision = op.op === 'acceptAllRevisions' || op.op === 'rejectAllRevisions';
   // Changing a control's METADATA and REMOVING it are refused by different halves of `ST_Lock`
   // than an edit is — `contentLocked` protects the contents and lets the control go, `sdtLocked`
@@ -1088,7 +1095,7 @@ export function contentControlBindingRefusal(
   part: OoxmlPart,
   op: TreeDocOp
 ): TreeOpRejection | null {
-  const reach = treeOpReach(op);
+  const reach = treeOpReach(op, part);
   // Metadata and removal do not touch the NAMED control's bound value. A VALUE write does, and is
   // refused here rather than left to an applier: `setContentControlValue` has one that answers
   // this, but an insertion that merely NAMES the control it writes into reaches the same content
@@ -1159,7 +1166,7 @@ export function formsProtectionRefusal(
         return 'locked';
     }
   }
-  const reach = treeOpReach(op);
+  const reach = treeOpReach(op, part);
   if (reach.kind === 'none') return null;
   for (const node of resolveReach(part, reach).unprotected) {
     // A section may switch form protection back off (`w:sectPr/w:formProt`), and the part root

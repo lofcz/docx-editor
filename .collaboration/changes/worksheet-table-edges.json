@@ -1,0 +1,10 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "A table with protected cell contents refused edge insertions.",
+  "after": "Appending ordinary rows or columns preserves existing cells and their protected content.",
+  "reason": "Peers already read the inserted OOXML rows and cells. The operation changes no existing cell content or lock.",
+  "tests": ["packages/core/src/editor/__tests__/surface-table-append-controls.test.ts"],
+  "changeset": "worksheet-table-edges",
+  "migration": null
+}
