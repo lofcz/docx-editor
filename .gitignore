@@ -140,4 +140,3 @@ packages/*/.test-dist-*/
 # Browser proof run artifacts
 screenshots/react-blocks-test-results/
 
-screenshots/sciobot-block-host-test-results/

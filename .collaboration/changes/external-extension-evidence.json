@@ -1,0 +1,10 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Application extensions and their historical collaboration evidence were kept in the engine checkout.",
+  "after": "Consumers own extension sources and preserved decision records. Release checks read the original decisions from pinned Git objects.",
+  "reason": "Moving source and verification records between repositories does not change the collaboration format or document operations.",
+  "tests": ["scripts/collaboration/workflow.test.ts"],
+  "changeset": null,
+  "migration": null
+}

@@ -50,7 +50,13 @@
   },
   "dependencies": {
     "@docx-editor.dev/fonts": "~2.39.0",
-    "fflate": "^0.8.2"
+    "fflate": "^0.8.2",
+    "remark-gfm": "4.0.1",
+    "remark-math": "6.0.0",
+    "remark-mdx": "3.1.1",
+    "remark-parse": "11.0.0",
+    "remark-stringify": "11.0.0",
+    "unified": "11.0.5"
   },
   "devDependencies": {
     "@happy-dom/global-registrator": "^21.0.4",

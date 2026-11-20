@@ -1,5 +1,7 @@
 # Collaboration compatibility policy
 
+When an extension moves to another repository, preserve its decisions and tests there with their original Git blobs. Record the source and consumer commits in `.collaboration/extension-archives.json`. The index identifies the transferred decisions and test files or directories by Git object ID. The policy reads each decision from its original commit and still checks every test that remains here. Keep the source history available in release checkouts. Archive entries are append-only.
+
 Use this process when you change how full-document collaboration stores, edits, or synchronizes a document. It starts with the published 2.18.0 release. It covers clients, servers, export workers, and background agents.
 
 If you operate an application, see [Collaboration versions and upgrades](../site/content/pro/collaboration-versions.mdx). Experimental text collaboration has a separate contract.

@@ -99,6 +99,41 @@ function repository() {
   return { dir, write, data, git, commit, check, base, addDecision };
 }
 
+test('archived decisions retain their original evidence and still require retained tests', () => {
+  const repo = repository();
+  repo.addDecision();
+  const file = '.collaboration/changes/test-change.json';
+  const moved = 'packages/extension/src/archived.test.ts';
+  const retained = 'packages/core/src/remaining.test.ts';
+  repo.write(moved, readFileSync(join(repo.dir, 'scripts/collaboration/policy.test.ts'), 'utf8'));
+  repo.write(
+    retained,
+    readFileSync(join(repo.dir, 'scripts/collaboration/catalog-merge.test.ts'), 'utf8')
+  );
+  const record = JSON.parse(readFileSync(join(repo.dir, file), 'utf8'));
+  repo.data(file, { ...record, tests: [moved, retained] });
+  const source = repo.commit();
+  const archive = '.collaboration/extension-archives.json';
+  repo.data(archive, [
+    {
+      sourceCommit: source,
+      consumerCommit: source,
+      decisions: [repo.git('rev-parse', `${source}:${file}`)],
+      evidence: [repo.git('rev-parse', `${source}:packages/extension`)],
+      renamedChangesets: {},
+    },
+  ]);
+  rmSync(join(repo.dir, file));
+  rmSync(join(repo.dir, moved));
+  const relocated = repo.commit();
+  expect(repo.check('--base', source).status).toBe(0);
+  expect(repo.check('--base', relocated).status).toBe(0);
+  rmSync(join(repo.dir, retained));
+  expect(repo.check('--base', source).stderr).toContain(`missing test ${retained}`);
+  repo.data(archive, []);
+  expect(repo.check('--base', relocated).stderr).toContain('Evidence archives are immutable');
+});
+
 test('workflow and compatibility-tooling changes need no decision in PR or release checks', () => {
   const repo = repository();
   repo.write('.github/workflows/release.yml', 'permissions:\n  contents: read\n');

@@ -15,6 +15,7 @@ import {
   versions,
 } from './common.mjs';
 import { catalog, table } from './catalog.mjs';
+import { archivedDecisions, archivedFilesAt } from './extension-archives.mjs';
 
 export function relevant(path) {
   // Require impact decisions for implementation changes, not release metadata,
@@ -143,13 +144,14 @@ export function validateRecordSet(entries, merged, checked = entries.map((entry)
         mergedListers.set(test, [...(mergedListers.get(test) ?? []), file]);
   }
   const wanted = new Set(checked);
-  for (const { file, record } of entries) {
+  for (const { file, record, tests: transferredTests } of entries) {
     if (!wanted.has(file)) continue;
     const isMerged = merged.has(file);
     validateRecord(record, file, {
       merged: isMerged,
       superseded: (test) =>
-        isMerged && (supersededBy.get(test) ?? []).some((other) => other !== file),
+        transferredTests?.has(test) ||
+        (isMerged && (supersededBy.get(test) ?? []).some((other) => other !== file)),
     });
     for (const entry of record.supersedesTests ?? [])
       assert.ok(
@@ -244,17 +246,22 @@ export function check(base, release = false) {
     release && latest.version === currentPackage ? (value.releases.at(-2) ?? latest) : latest;
   base = release ? comparison.commit : base;
   const paths = changedPaths(base);
+  const archived = archivedDecisions(base);
   const oldFiles = new Set(
     git('ls-tree', '-r', '--name-only', base, '.collaboration/changes').split('\n').filter(Boolean)
   );
   for (const file of oldFiles) {
-    assert.ok(existsSync(resolve(ROOT, file)), `Historical decision deleted: ${file}`);
+    assert.ok(
+      archived.has(file) || existsSync(resolve(ROOT, file)),
+      `Historical decision deleted: ${file}`
+    );
     assert.equal(
-      read(file).trim(),
+      archived.get(file)?.raw ?? read(file).trim(),
       git('show', `${base}:${file}`),
       `Historical decision changed: ${file}`
     );
   }
+  for (const file of archivedFilesAt(base, archived)) oldFiles.add(file);
   // Protect the catalog and fixture history against silent golden updates.
   const oldCatalogText = git('ls-tree', '--name-only', base, CATALOG);
   if (oldCatalogText) {
@@ -272,9 +279,12 @@ export function check(base, release = false) {
           'Historical release artifacts are immutable'
         );
   }
-  const recordFiles = readdirSync(resolve(ROOT, '.collaboration/changes'))
+  const localFiles = readdirSync(resolve(ROOT, '.collaboration/changes'))
     .filter((name) => name.endsWith('.json'))
     .map((name) => `.collaboration/changes/${name}`);
+  for (const file of localFiles)
+    assert.ok(!archived.has(file), `Archived decision still present: ${file}`);
+  const recordFiles = [...localFiles, ...archived.keys()];
   // Records already merged where this check starts. A PR check uses its base; a release check
   // runs on merged history, where every committed record has passed its own PR check.
   const merged = release
@@ -284,10 +294,15 @@ export function check(base, release = false) {
           .filter(Boolean)
       )
     : oldFiles;
-  const entries = recordFiles.map((file) => ({ file, record: json(file) }));
+  if (release) for (const file of archived.keys()) merged.add(file);
+  const entries = recordFiles.map((file) => archived.get(file) ?? { file, record: json(file) });
+  const renamedChangesets = new Map(
+    entries.filter((entry) => entry.changeset).map((entry) => [entry.record, entry.changeset])
+  );
   const validate = (files) => {
     validateRecordSet(entries, merged, files);
-    return files.map((file) => json(file));
+    const wanted = new Set(files);
+    return entries.filter(({ file }) => wanted.has(file)).map(({ record }) => record);
   };
   const records = validate(recordFiles.filter((file) => !oldFiles.has(file)));
   const affected = paths
@@ -306,6 +321,7 @@ export function check(base, release = false) {
   const releasedFiles = new Set(
     git('ls-tree', '-r', '--name-only', publishedBase.commit, '.collaboration/changes').split('\n')
   );
+  for (const file of archivedFilesAt(publishedBase.commit, archived)) releasedFiles.add(file);
   // Released records are not checked again: their tests may since have been superseded.
   const releaseRecords = validate(recordFiles.filter((file) => !releasedFiles.has(file)));
   const baseVersions = versions(git('show', `${base}:${VERSION_SOURCE}`));
@@ -333,7 +349,7 @@ export function check(base, release = false) {
     );
   for (const record of records) {
     if (!record.changeset) continue;
-    const path = `.changeset/${record.changeset}.md`;
+    const path = `.changeset/${renamedChangesets.get(record) ?? record.changeset}.md`;
     if (existsSync(resolve(ROOT, path))) {
       const contents = read(path);
       const group = json('.changeset/config.json').fixed.find((names) =>
