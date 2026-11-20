@@ -1,0 +1,13 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Undo could remove the width of a table while a column inserted by another participant remained.",
+  "after": "Each participant can undo and redo a column insertion while preserving the other participant’s width and content.",
+  "reason": "Both versions use the existing table property and column operations. The stored width uses the same Word element and optional attributes.",
+  "tests": [
+    "packages/core/src/editor/__tests__/table-column-insert-width.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-table-property-containers.test.ts"
+  ],
+  "changeset": "retain-table-width-on-column-insert",
+  "migration": null
+}
