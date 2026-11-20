@@ -2410,7 +2410,9 @@ function* layoutBlocksPass(
             measurer,
             pending[0],
             listMarkerAlignShift(fragmentFirstAlignOffset, alignment, rtl) +
-              (rtl ? 0 : blockSpace.insetLeftOf(options.blockReservations, paragraphId, columnWidth())),
+              (rtl
+                ? 0
+                : blockSpace.insetLeftOf(options.blockReservations, paragraphId, columnWidth())),
             rtl ? indent.left + available + indent.right : undefined,
             options.inlineDrawingLayout?.pictureBulletResource
           )

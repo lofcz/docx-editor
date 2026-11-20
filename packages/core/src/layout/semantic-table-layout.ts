@@ -406,7 +406,7 @@ function placeCellParagraph(
 } {
   const paragraphId = paragraph.id;
   const keyFor = deps.cache?.keyFor?.bind(deps.cache) ?? paragraphLayoutKey;
-    const storyListItem = isContentControlPlaceholder(paragraph)
+  const storyListItem = isContentControlPlaceholder(paragraph)
     ? undefined
     : deps.listItems?.get(paragraphId);
   // The marker is measured and painted with the table style's run formatting.

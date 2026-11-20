@@ -33,3 +33,21 @@ export function applySurfaceStrings(
     else pages.style.removeProperty(property);
   }
 }
+
+/** Create the editing host for native keyboard input, selections, and IME. */
+export function createEditablePages(
+  doc: Document,
+  translate: PaginatedSurfaceOptions['translate']
+) {
+  const pages = doc.createElement('div');
+  pages.className = 'docx-pages';
+  pages.style.position = 'relative';
+  // Focus and selection must share this host for the browser to deliver beforeinput.
+  pages.contentEditable = 'true';
+  pages.spellcheck = false;
+  pages.setAttribute('role', 'textbox');
+  pages.setAttribute('aria-multiline', 'true');
+  applySurfaceStrings(pages, translate);
+  pages.style.outline = 'none';
+  return pages;
+}

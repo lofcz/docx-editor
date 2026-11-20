@@ -42,7 +42,7 @@ import { remapDrawingIntent } from './surface-drawing-identity.ts';
 import { createTextboxEditing } from './surface-textbox-editing.ts';
 import { storyOutsideTextbox, textboxOwnerDeps } from './surface-textbox-owner.ts';
 import { createCaretComplexScriptResolver } from './surface-complex-script.ts';
-import { applySurfaceStrings } from './surface-accessibility.ts';
+import { applySurfaceStrings, createEditablePages } from './surface-accessibility.ts';
 import { refreshWriteBlocked, registerRefreshComposition } from './refresh-write-guard.ts';
 import { UNEXPLAINED_WRITE_REFUSAL, writeBlockReason } from './refresh-write-guard.ts';
 import { createLegacyDropdownInteraction } from './surface-legacy-dropdown.ts';
@@ -491,29 +491,9 @@ export function mountPaginatedSurface(
   // resolves from `pagesLayer`, because `moveTo` can carry the pages to another window.
   const mountDocument = container.ownerDocument;
 
-  const pagesLayer = mountDocument.createElement('div');
+  const pagesLayer = createEditablePages(mountDocument, options.translate);
   const hostListeners = createSurfaceHostListeners(() => pagesLayer);
-  pagesLayer.className = 'docx-pages';
-  pagesLayer.style.position = 'relative';
   fieldScope.listeners(pagesLayer);
-
-  // THE PAINTED PAGES ARE THE EDITABLE SURFACE.
-  //
-  // An offscreen input host cannot coexist with a selection on the page: a document has one
-  // selection, so focusing the host destroys the page's, and a contenteditable host holding
-  // focus with no selection inside it stops firing `beforeinput` at all — typing and
-  // Backspace simply stopped working. Putting focus on the pages themselves gives the
-  // browser one place for selection, caret, highlight, keystrokes and IME.
-  //
-  // The DOM is still a PICTURE: every mutation the browser proposes is prevented and
-  // translated into a tree op, and each commit repaints from layout records, so a stray
-  // edit cannot survive. Geometry still comes only from layout.
-  pagesLayer.contentEditable = 'true';
-  pagesLayer.spellcheck = false;
-  pagesLayer.setAttribute('role', 'textbox');
-  pagesLayer.setAttribute('aria-multiline', 'true');
-  applySurfaceStrings(pagesLayer, options.translate);
-  pagesLayer.style.outline = 'none';
 
   // The one highlight the browser cannot draw. A SIBLING of the pages, never a child: the
   // page painter sweeps anything it did not paint out of its own subtree, and a stray child
@@ -6272,6 +6252,7 @@ export function mountPaginatedSurface(
     }),
     (next) => {
       options = { ...options, ...next };
+      if (!options.measurer) defaults = defaultMeasurer();
       measurer = surfaceMeasurer();
       producer = producerIdentity();
     },
