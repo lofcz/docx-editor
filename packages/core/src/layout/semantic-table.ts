@@ -716,6 +716,9 @@ function readTableStructureUncached(
         gridSpan,
         gridColumn,
         ...(gridCols[gridColumn]?.id ? { gridColumnId: gridCols[gridColumn]!.id } : {}),
+        ...(gridSpan > 1 && gridCols[gridColumn + gridSpan - 1]
+          ? { lastGridColumnId: gridCols[gridColumn + gridSpan - 1]!.id }
+          : {}),
         vMergeContinue: vMerge === 'continue' && mergedAbove.has(gridColumn),
         hideEndMark: cellIgnoresEndMark(tableStyle, conditions, cellProperties),
         ...(cellNoWrap(tableStyle, conditions, cellProperties) ? { noWrap: true as const } : {}),

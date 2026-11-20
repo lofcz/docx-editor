@@ -2,6 +2,7 @@
 // paginated fragments, repeated headers, revision stamps, and coordinate conversion.
 
 import { describe, expect, test } from 'bun:test';
+import { readEditableTableTopology } from '../../store/store/tree-op-table-topology.ts';
 import { readOoxmlPart, type OoxmlPart } from '../../store/package/ooxml-tree.ts';
 import {
   columnEdgesFromWidths,
@@ -377,6 +378,37 @@ describe('table interaction geometry', () => {
       expect(hit.leftGridColumnId).toBeTruthy();
       expect(hit.rightGridColumnId).toBeTruthy();
       expect(hit.sourceRevision).toBe(result.revision);
+    }
+  });
+
+  test('dividers retain the stored columns when every row uses the same horizontal spans', () => {
+    const merged = '<w:tcPr><w:gridSpan w:val="2"/></w:tcPr>';
+    const grid = '<w:tblGrid>' + '<w:gridCol w:w="1300"/>'.repeat(4) + '</w:tblGrid>';
+    const row = tr(tc(p('Left'), merged) + tc(p('Right'), merged));
+    for (const rtl of [false, true]) {
+      const props = rtl ? '<w:tblPr><w:bidiVisual/></w:tblPr>' : '';
+      const part = load('<w:tbl>' + props + grid + row + row + '</w:tbl>');
+      const result = layout(part);
+      const table = tablesOf(result)[0]!;
+      const topo = readEditableTableTopology(part.root, table.tableId);
+      if (!topo.ok) throw Error('Missing table topology');
+      const ids = topo.topology.gridColumns.map((column) => column.id);
+      const at = (edge: number) => {
+        const sheet = pageContentToSheet(
+          0,
+          table.box.x + table.columnEdges[edge]!,
+          table.box.y + table.rows[0]!.box.height / 2,
+          result
+        );
+        return findTableInteractionAt(tableInteractionIndex(result), sheet.x, sheet.y, result);
+      };
+      expect(at(2)).toMatchObject({
+        kind: 'columnDivider',
+        leftGridColumnId: ids[rtl ? 2 : 1],
+        rightGridColumnId: ids[rtl ? 1 : 2],
+      });
+      expect(at(1)?.kind).not.toBe('columnDivider');
+      if (!rtl) expect(at(4)).toMatchObject({ kind: 'rightEdge', gridColumnId: ids[3] });
     }
   });
 

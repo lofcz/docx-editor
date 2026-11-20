@@ -311,6 +311,7 @@ function continuationRecord(
       ? {}
       : { logicalGridColumn: placed.logicalGridColumn }),
     ...(authored.gridColumnId ? { gridColumnId: authored.gridColumnId } : {}),
+    ...(authored.lastGridColumnId ? { lastGridColumnId: authored.lastGridColumnId } : {}),
     gridSpan: placed.gridSpan,
     vMergeContinue: true,
     vAlign: authored.vAlign,

@@ -1642,6 +1642,7 @@ export function layoutRowFragmentBounded(
         ? {}
         : { logicalGridColumn: entry.cell.logicalGridColumn }),
       ...(entry.cell.gridColumnId ? { gridColumnId: entry.cell.gridColumnId } : {}),
+      ...(entry.cell.lastGridColumnId ? { lastGridColumnId: entry.cell.lastGridColumnId } : {}),
       gridSpan: entry.cell.gridSpan,
       vMergeContinue: entry.cell.vMergeContinue,
       vAlign: entry.cell.vAlign,

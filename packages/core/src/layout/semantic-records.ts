@@ -827,6 +827,8 @@ export interface TableCellFragmentRecord {
   readonly logicalGridColumn?: number;
   /** Canonical `w:gridCol` node id for this cell's start column, when authored. */
   readonly gridColumnId?: string;
+  /** Last stored grid column of a horizontally merged cell, when authored. */
+  readonly lastGridColumnId?: string;
   /** Grid columns spanned, already clamped at read time. */
   readonly gridSpan: number;
   /** A vertical-merge continuation paints its box but holds no blocks. */

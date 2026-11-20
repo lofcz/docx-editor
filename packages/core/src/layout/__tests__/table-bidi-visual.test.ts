@@ -235,7 +235,7 @@ describe('w:bidiVisual table grid', () => {
     }
   });
   test.each([false, true])(
-    'horizontal merged tables expose resize handles only for supported direction (RTL=%s)',
+    'merged tables expose dividers only at visible cell edges (RTL=%s)',
     (rtl) => {
       const result = layout(
         table(
@@ -247,18 +247,20 @@ describe('w:bidiVisual table grid', () => {
       const t = tables(result)[0]!;
       const index = tableInteractionIndex(result);
       for (const r of t.rows) {
-        for (const edge of t.columnEdges!.slice(1)) {
+        for (const [i, edge] of t.columnEdges.slice(1).entries()) {
           const hit = findTableInteractionAt(
             index,
             10 + t.box.x + edge,
             10 + r.box.y + r.box.height / 2,
             result
           );
-          if (rtl) {
-            expect(hit?.kind).not.toBe('columnDivider');
-            expect(hit?.kind).not.toBe('rightEdge');
-          } else if (r.cells.length === 3) {
-            expect(['columnDivider', 'rightEdge']).toContain(hit?.kind);
+          const boundary = i + 1;
+          const outer = boundary === t.columnEdges.length - 1;
+          if (outer) {
+            expect(hit?.kind === 'rightEdge').toBe(!rtl);
+          } else {
+            const visible = r.cells.some((cell) => cell.gridColumn === boundary);
+            expect(hit?.kind === 'columnDivider').toBe(visible);
           }
         }
       }

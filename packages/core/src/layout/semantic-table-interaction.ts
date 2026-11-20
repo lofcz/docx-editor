@@ -143,7 +143,7 @@ export interface TableInteractionIndex {
 const indexCache = new WeakMap<SemanticLayout, TableInteractionIndex>();
 
 interface MergedTableColumns {
-  /** Grid column index to its `w:gridCol` id, read from the cells that start there. */
+  /** Physical grid column to its authored `w:gridCol` id at a cell boundary. */
   readonly ids: ReadonlyMap<number, string>;
 }
 
@@ -167,11 +167,11 @@ function tablesWithMergedCells(
     }
     for (const cell of occurrence.row.cells) {
       if (cell.gridSpan > 1 || cell.vMergeContinue || (cell.rowSpan ?? 1) > 1) entry.merged = true;
-      if (cell.gridColumnId !== undefined) {
-        const physical =
-          cell.gridColumn + (cell.logicalGridColumn !== undefined ? cell.gridSpan - 1 : 0);
-        entry.ids.set(physical, cell.gridColumnId);
-      }
+      const first = cell.gridColumn;
+      const last = first + cell.gridSpan - 1;
+      const rtl = cell.logicalGridColumn !== undefined;
+      if (cell.gridColumnId) entry.ids.set(rtl ? last : first, cell.gridColumnId);
+      if (cell.lastGridColumnId) entry.ids.set(rtl ? first : last, cell.lastGridColumnId);
     }
   }
   const result = new Map<string, MergedTableColumns>();
@@ -469,7 +469,7 @@ function dividerHit(
     return null;
   }
   // In a table with merged cells a divider shows only where this row has a cell edge, and it
-  // names the grid columns on either side from authored cell starts across all rows.
+  // names the grid columns on either side from the authored edges of the cells.
   const merged = tablesWithMergedCells(index).get(table.tableId);
   for (let edgeIndex = 1; edgeIndex < table.columnEdges.length - 1; edgeIndex += 1) {
     const edgeX = table.columnEdges[edgeIndex]!;

@@ -36,6 +36,8 @@ export interface SemanticTableCell {
   readonly logicalGridColumn?: number;
   /** Canonical `w:gridCol` node id for this cell's start column, when the grid is authored. */
   readonly gridColumnId?: string;
+  /** Last stored grid column of a horizontally merged cell, when authored. */
+  readonly lastGridColumnId?: string;
   /** A vMerge cell that is not the restart continues the cell above: box, no content. */
   readonly vMergeContinue: boolean;
   /** This cell starts a vertical merge that the next row continues. */
