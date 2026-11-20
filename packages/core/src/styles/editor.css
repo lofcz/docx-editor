@@ -10380,3 +10380,46 @@ p.docx-review__refused {
   height: 18px;
   fill: currentColor;
 }
+
+/* A disclosure occupies the margin beside its editable, printable summary. */
+.docx-mdx-component-view {
+  position: absolute;
+  pointer-events: none;
+}
+.docx-mdx-disclosure-toggle {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-end: 100%;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 3px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--doc-text-muted);
+  cursor: pointer;
+}
+.docx-mdx-disclosure-toggle:is(:hover, :focus-visible) {
+  background: var(--doc-primary-light);
+  color: var(--doc-primary);
+}
+.docx-mdx-disclosure-toggle svg {
+  width: 16px;
+  height: 16px;
+}
+.docx-mdx-disclosure-toggle[aria-expanded='true'] svg {
+  transform: rotate(90deg);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .docx-mdx-disclosure-toggle svg {
+    transition: transform 140ms ease-out;
+  }
+}
+@media print {
+  .docx-mdx-disclosure-toggle,
+  .docx-mdx-component-view {
+    display: none;
+  }
+}
