@@ -29,7 +29,8 @@ import { CaretFormatHistory } from './caret-format-history.ts';
 import { createTypedDirectionOps } from './surface-typed-direction.ts';
 import {
   captureTableCaret,
-  withTableCommandCaret,
+  commitTableWithCaret,
+  restoreFocusedTableCaret,
   tableInsertionSelection,
 } from './table-insertion-selection.ts';
 import {
@@ -5624,24 +5625,13 @@ export function mountPaginatedSurface(
       const scope = storyScope();
       const setup = tableStyleEdits(plan.ops, session);
       const write = () => applyOps(plan.ops, before, undefined, scope, true, setup);
-      if (plan.selection.kind === 'adoptCommittedCaret') {
-        withTableCommandCaret(
-          session,
-          () => session.partFor(scope) ?? session.part(),
-          plan.ops,
-          selection.head.paragraphId,
-          (after) => commit(write, after)
-        );
-      } else commit(write, undefined, { keepCellSelection: true });
+      commitTableWithCaret(plan, session, scope, selection.head.paragraphId, (after) =>
+        commit(write, after, { keepCellSelection: !after })
+      );
       if (lastRejection) {
         return { ok: false, code: 'invalidArgs', reason: lastRejection };
       }
-      // Replacing a table can park Chromium's range at the first paragraph after the
-      // commit. Keep the editor's cell caret when the queued selectionchange reports it.
-      if (pagesLayer.ownerDocument.activeElement === pagesLayer) {
-        selectionSync.mirrorToDom();
-        selectionSync.noteBrowserSelectionFixup();
-      }
+      restoreFocusedTableCaret(pagesLayer, selectionSync);
       return { ok: true, changed: true };
     },
     enterHeaderFooter: (args) => {

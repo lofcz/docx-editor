@@ -6,6 +6,7 @@ import {
 } from '@docx-editor.dev/core/store';
 import type { SemanticSelection } from '@docx-editor.dev/core/layout';
 import { readMergeableTable } from '../store/store/tree-op-table-cell-shape.ts';
+import type { TableCommandPlan } from './table-command-plan.ts';
 import type { TreeDocxSessionView } from '../binding/tree-session.ts';
 
 /** Capture the operation hint once and always remove the temporary subscription. */
@@ -163,18 +164,36 @@ function columnInsertionSelection(
   return null;
 }
 
-/** Keep the selection subscription scoped to the transaction, including a rejected write. */
-export function withTableCommandCaret<T>(
+/** Resolve the table command's selection inside its write, including shared package replacements. */
+export function commitTableWithCaret(
+  plan: Extract<TableCommandPlan, { ok: true }>,
   session: TreeDocxSessionView,
-  part: () => OoxmlPart,
-  ops: readonly TreeDocOp[],
+  scope: Parameters<TreeDocxSessionView['partFor']>[0],
   sourceParagraphId: string,
-  run: (after: () => SemanticSelection | null) => T
-): T {
+  commit: (after?: () => SemanticSelection | null) => void
+): void {
+  if (plan.selection.kind !== 'adoptCommittedCaret') return commit();
   const capture = captureTableCaret(session);
   try {
-    return run(() => tableCommandSelection(capture.read(), part(), ops, sourceParagraphId));
+    commit(() =>
+      tableCommandSelection(
+        capture.read(),
+        session.partFor(scope) ?? session.part(),
+        plan.ops,
+        sourceParagraphId
+      )
+    );
   } finally {
     capture.dispose();
   }
+}
+
+/** A replaced table can park Chromium's range in the first paragraph after its structural edit. */
+export function restoreFocusedTableCaret(
+  pages: HTMLElement,
+  sync: { mirrorToDom(): void; noteBrowserSelectionFixup(): void }
+): void {
+  if (pages.ownerDocument.activeElement !== pages) return;
+  sync.mirrorToDom();
+  sync.noteBrowserSelectionFixup();
 }
