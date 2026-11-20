@@ -4196,6 +4196,7 @@ export interface SemanticTableCell {
     readonly hideEndMark?: boolean;
     // (undocumented)
     readonly id: string;
+    readonly lastGridColumnId?: string;
     readonly legacyContentAlignment?: true;
     readonly logicalGridColumn?: number;
     readonly margins: CellMarginsPt;
@@ -4926,6 +4927,7 @@ export interface TableCellFragmentRecord {
     readonly gridColumnId?: string;
     readonly gridSpan: number;
     readonly id: string;
+    readonly lastGridColumnId?: string;
     readonly logicalGridColumn?: number;
     readonly paintInert?: boolean;
     readonly resolvedGridColumn?: number;
