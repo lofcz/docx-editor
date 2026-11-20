@@ -442,6 +442,15 @@ export function isInHostUi(node: Node | null | undefined): boolean {
   return !!element?.closest(`[${HOST_UI_ATTRIBUTE}]`);
 }
 
+/** Pass document input to the engine while host controls keep their native events. */
+export function documentInputHandler<E extends Event>(
+  handle: (event: E) => void
+): (event: E) => void {
+  return (event) => {
+    if (!isInHostUi(event.target as Node | null)) handle(event);
+  };
+}
+
 /** Whether either end of a native selection lies inside host-owned UI. */
 export function domSelectionInHostUi(domSelection: Selection | null): boolean {
   if (!domSelection || domSelection.rangeCount === 0) return false;

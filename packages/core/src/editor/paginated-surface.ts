@@ -341,7 +341,7 @@ import {
 } from './surface-note-story.ts';
 import { absorbAtomicControls, leaveAtomicControl } from './surface-atomic-controls.ts';
 import { createReviewViewState } from './surface-review-view.ts';
-import { selectionsEqual } from './dom-selection.ts';
+import { documentInputHandler, selectionsEqual } from './dom-selection.ts';
 import { createSurfaceSelectionSync } from './surface-selection-sync.ts';
 import { createSurfaceStructure } from './surface-structure.ts';
 import { listDefinitionReads } from './list-level-geometry.ts';
@@ -5858,7 +5858,9 @@ export function mountPaginatedSurface(
   // themselves are factories over the surface interface: keys, clipboard and `beforeinput` in
   // surface-input.ts, the selection mirror and the IME lane in surface-selection-sync.ts.
   // The document-level selection listener runs in this editor's field-result mode too.
-  const { onSelectionChange, onCompositionEnd } = fieldScope.methods({ ...selectionSync });
+  const scopedSelection = fieldScope.methods({ ...selectionSync });
+  const { onSelectionChange } = scopedSelection;
+  const onCompositionEnd = documentInputHandler<CompositionEvent>(scopedSelection.onCompositionEnd);
   // The IME owns the DOM from compositionstart on; buffered plain typing must be in the
   // document before that handover, not woven into the readback. The handover is of the
   // PAINTED DOM, so a layout pass or paint a commit deferred under input pressure must land
@@ -5870,12 +5872,12 @@ export function mountPaginatedSurface(
   // — and its `applyingSelection` echo guard is still up (it clears on a microtask) when
   // `onCompositionStart` performs its own mandatory adoption, which would skip it: the #383
   // lane choice would again be made from a selection the user no longer has.
-  const onCompositionStart: typeof selectionSync.onCompositionStart = (...args) => {
+  const onCompositionStart = documentInputHandler<CompositionEvent>(() => {
     inputMethod.repair.stop();
     selectionSync.adoptBeforeInput();
     if (!selectionSync.continuesComposition()) flushToPaint();
-    selectionSync.onCompositionStart(...args);
-  };
+    selectionSync.onCompositionStart();
+  });
 
   // The selection mirror uses this handle to avoid adopting selection mid-drag.
   let pointer: PointerController | null = null;
@@ -5974,7 +5976,7 @@ export function mountPaginatedSurface(
     surface,
     () => (partOfNodeId(session, selection.head.paragraphId) ?? session.part()).root
   );
-  const onKeyDown = (event: KeyboardEvent): void => {
+  const onKeyDown = documentInputHandler((event: KeyboardEvent): void => {
     selectionSync.noteKeyDown(event);
     directionChord.keydown(event);
     if (legacyDropdownInteraction?.keydown(event)) return;
@@ -5983,7 +5985,7 @@ export function mountPaginatedSurface(
     if (!event.defaultPrevented) selectionSync.adoptBeforeInput();
     if (legacyCheckboxInteraction?.keydown(event) || textFormInteraction?.keydown(event)) return;
     dispatchKeyDown(event);
-  };
+  });
   const { onCopy, onCut, onPaste } = createClipboardHandlers(surface);
   const inputMethod = createInputMethodLane({
     pagesLayer,
@@ -6009,11 +6011,11 @@ export function mountPaginatedSurface(
     },
     ...inputMethod.hooks,
   });
-  const onBeforeInput = (event: InputEvent): void => {
+  const onBeforeInput = documentInputHandler((event: InputEvent): void => {
     selectionSync.adoptBeforeInput();
     dispatchBeforeInput(event);
     if (!selectionSync.isComposing()) inputMethod.repair.watch(event);
-  };
+  });
 
   // One header and footer entry for the pointer and the drawing presses: no scroll, unlike the
   // programmatic entry, because the press is already on screen.

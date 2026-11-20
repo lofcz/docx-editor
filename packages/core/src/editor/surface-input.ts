@@ -14,7 +14,7 @@ import type { PaginatedSurface } from './paginated-surface-contract.ts';
 
 type CopyFlavours = ReturnType<PaginatedSurface['copyFlavours']>;
 import { plainTextFromTransfer } from './clipboard-plain-text.ts';
-import { selectionsEqual, spanSearchRoots } from './dom-selection.ts';
+import { documentInputHandler, selectionsEqual, spanSearchRoots } from './dom-selection.ts';
 import { partOfNodeId } from './surface-scope.ts';
 import { collapsedAt } from './surface-selection-ops.ts';
 import { paintedTextIn, type CompositionSpanChanges } from './surface-composition-readback.ts';
@@ -531,7 +531,11 @@ export function createClipboardHandlers(surface: PaginatedSurface): {
     surface.pasteRich(text, html.length > 0 ? html : null);
   };
 
-  return { onCopy, onCut, onPaste };
+  return {
+    onCopy: documentInputHandler(onCopy),
+    onCut: documentInputHandler(onCut),
+    onPaste: documentInputHandler(onPaste),
+  };
 }
 
 /** Plain text from an input event's data transfer, if it carries any. */

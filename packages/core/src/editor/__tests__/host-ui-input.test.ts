@@ -94,6 +94,41 @@ function mounted() {
   return { editor, surface, container, pages, ui, field };
 }
 
+test('a host control owns keyboard, clipboard, and text input inside a Word page', () => {
+  const { editor, surface, container, ui, field } = mounted();
+  try {
+    const state = surface.session.packageRevision();
+    const button = ui.ownerDocument.createElement('button');
+    ui.append(button);
+    button.focus();
+    const enter = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+    expect(button.dispatchEvent(enter)).toBe(true);
+    field.focus();
+    const data = new DataTransfer();
+    data.setData('text/plain', 'Form input');
+    const paste = new ClipboardEvent('paste', {
+      bubbles: true,
+      cancelable: true,
+      clipboardData: data,
+    });
+    const input = new InputEvent('beforeinput', {
+      bubbles: true,
+      cancelable: true,
+      inputType: 'insertText',
+      data: 'x',
+    });
+    expect(field.dispatchEvent(paste)).toBe(true);
+    expect(field.dispatchEvent(input)).toBe(true);
+    field.dispatchEvent(new Event('compositionstart', { bubbles: true }));
+    field.dispatchEvent(new Event('compositionend', { bubbles: true }));
+    surface.flushPendingInput();
+    expect(surface.session.packageRevision()).toBe(state);
+  } finally {
+    editor.destroy();
+    container.remove();
+  }
+});
+
 /** Select the picture the way a press on it does: model position plus pointer intent. */
 function selectPicture(editor: DocxEditorInstance, pages: HTMLElement): string {
   const surface = editor.surface!;
