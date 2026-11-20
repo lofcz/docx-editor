@@ -40,7 +40,8 @@ export const ribbonTabs = {
 /** @internal */
 export type RibbonTab = keyof typeof ribbonTabs;
 
-interface RibbonGroup {
+/** @internal */
+export interface RibbonGroup {
   id: string;
   tab: RibbonTab;
   labelKey: string;

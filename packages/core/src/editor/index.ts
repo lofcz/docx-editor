@@ -975,6 +975,7 @@ export {
   ribbonKeyTab,
   ribbonTableCommands,
   ribbonTabs,
+  type RibbonGroup,
   type RibbonSlot,
   type RibbonTab,
   type RibbonTabControls,
