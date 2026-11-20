@@ -18,6 +18,8 @@ Use `@docx-editor.dev/docx-to-markdown` to convert DOCX files to Markdown. The r
 
 For Node.js, use version 20.16.0 or later in the 20.x release line, or version 22.3.0 or later. The converter requires WebAssembly and uses bundled fonts by default.
 
+Use `import('@docx-editor.dev/docx-to-markdown/mdx')` to load the MDX entry point from CommonJS. Synchronous `require()` also works on Node.js 20.19 or later in the 20.x line, or Node.js 22.12 or later.
+
 ## Install the package
 
 ```sh

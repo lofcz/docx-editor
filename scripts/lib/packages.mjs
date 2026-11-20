@@ -308,6 +308,8 @@ export const PACKAGES = [
       allowlist: {
         // The filesystem subpath consumes the result type exported by the main facade.
         node: ['MarkdownExportResult'],
+        // MDX conversion and view mounting accept the existing public engine objects.
+        mdx: ['DocxEditorInstance', 'OoxmlPackage'],
         index: [
           'BlockFragmentRecord',
           'ContentControlBoundaryRecord',
