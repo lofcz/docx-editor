@@ -24,7 +24,7 @@ import { annotateTableFragmentGeometry } from './semantic-table-interaction.ts';
 import type { TableFragmentRecord, TableRowFragmentRecord } from './semantic-records.ts';
 import type { SemanticTableRow } from './semantic-table.ts';
 import { initialCellCursors, type NestedTableCursor } from './table-cell-cursor.ts';
-import { closingCellSpacingPt } from './table-cell-spacing.ts';
+import { fragmentClosingGapPt } from './table-cell-spacing.ts';
 
 /**
  * A nested table inside a cell. Ordinary rows continue at row boundaries, and a row that does
@@ -35,6 +35,8 @@ import { closingCellSpacingPt } from './table-cell-spacing.ts';
  * one. Returns null for an empty table or past the nesting ceiling.
  *
  * `freshBand`: nothing precedes the table on this page, so moving it gains no room.
+ * `originX`: the grid left a cell float resolved (`cell-float-tables.ts`), in place of the
+ * position the table's own alignment and indent give it in the cell.
  */
 export function emitNestedTable(
   table: OoxmlElement,
@@ -45,7 +47,8 @@ export function emitNestedTable(
   deps: TableFlowDeps,
   maxBottom = Number.POSITIVE_INFINITY,
   continuation?: NestedTableCursor,
-  freshBand = false
+  freshBand = false,
+  originX?: number
 ): {
   readonly fragment: TableFragmentRecord | null;
   readonly bottom: number;
@@ -94,7 +97,7 @@ export function emitNestedTable(
   };
   // A nested table is placed inside its CELL's content box by the same rules a top-level one
   // is placed inside the text column.
-  const tableLeft = left + tableOriginX(structure, containerWidth);
+  const tableLeft = originX ?? left + tableOriginX(structure, containerWidth);
   const rawRows: TableRowFragmentRecord[] = [];
   const sourceRows: SemanticTableRow[] = [];
   const occurrenceInsets = new Map<
@@ -239,8 +242,8 @@ export function emitNestedTable(
   layRows(keepsWhole);
   if (keepsWhole && bounded && freshBand && y > maxBottom + 0.001) layRows(false);
   if (rawRows.length === 0 || y > maxBottom + 0.001) return { fragment: null, bottom: top };
-  if (nextRowIndex >= structure.rows.length)
-    y = Math.min(y + closingCellSpacingPt(structure), Math.max(y, maxBottom));
+  // At the table's end and at a break alike, as the page holds it.
+  y += fragmentClosingGapPt(structure.cellSpacingPt, sourceRows.at(-1), maxBottom - y);
   const rows = finalizeTableRows(
     rawRows,
     structure,

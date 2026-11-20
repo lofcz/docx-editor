@@ -39,7 +39,9 @@ import type {
   AutomationStagedOps,
 } from '../automation/document-port.ts';
 import type { ReviewWriteIntent } from './paginated-surface-contract.ts';
-import { createAutomationHost } from '../automation/host.ts';
+import { automationParagraphNodeId, createAutomationHost } from '../automation/host.ts';
+import type { HighlightRange } from '../contracts/editor-highlights.ts';
+import { replaceDocumentError } from '../automation/plan-replace-document.ts';
 import { runAsAutomation } from './editor-diagnostics.ts';
 import { publicRefusal } from './diagnostic-codes.ts';
 import type { OoxmlPackage } from '../store/package/ooxml-package.ts';
@@ -47,7 +49,11 @@ import type { TreeDocOp } from '../store/store/tree-ops.ts';
 import type { StoryScope } from '../store/store/tree-package-store.ts';
 import type { TreeDocxSessionView } from '../binding/tree-session.ts';
 import type { DocxEditorInstance } from './docx-editor-types.ts';
-import type { AutomationBatchRequest, AutomationBatchResponse } from '../automation/index.ts';
+import type {
+  AutomationBatchRequest,
+  AutomationBatchResponse,
+  AutomationSpan,
+} from '../automation/index.ts';
 import type { HistoryGroup } from '../contracts/editor.ts';
 import {
   editorAutomationFrames,
@@ -83,6 +89,14 @@ export interface BrowserAutomationHost extends AutomationHost {
    * @internal
    */
   beginHistoryGroupRun(group: HistoryGroup): HistoryGroupRun | null;
+  /**
+   * The editor highlight range for a span this host answered, or `null` when the span is empty,
+   * crosses a paragraph boundary, or names a paragraph this host did not mint. The browser
+   * runtime paints proofing annotations through it.
+   *
+   * @internal
+   */
+  highlightRangeOf(span: AutomationSpan): HighlightRange | null;
 }
 
 /**
@@ -177,6 +191,13 @@ export function createBrowserAutomationHost(editor: DocxEditorInstance): Browser
       host.dispose();
     },
     execute,
+    highlightRangeOf: (span) => {
+      const blockId = automationParagraphNodeId(host, span.start.paragraph);
+      if (blockId === null || automationParagraphNodeId(host, span.end.paragraph) !== blockId)
+        return null;
+      const length = span.end.offset - span.start.offset;
+      return length > 0 ? { blockId, start: span.start.offset, length } : null;
+    },
     beginHistoryGroupRun: (group) => {
       const frames = disposed ? null : editorAutomationFrames(editor, group);
       if (frames === null) return null;
@@ -452,6 +473,39 @@ function sessionPort(
       );
       // Null only when a gate or the refresh guard stopped the write before `run`.
       return outcome ?? { ok: false, reason: publicRefusal(refused ?? 'refused') };
+    },
+    // THROUGH THE EDITOR COMMAND, so a script's replacement passes the same gates and makes
+    // the same single undo step as `exec({ type: 'replaceDocument' })`.
+    replaceDocument(docx) {
+      sync();
+      const refused = (code: string, message: string) => ({
+        ok: false as const,
+        error: replaceDocumentError({ code, message }),
+      });
+      if (editorPreviewActive(editor))
+        return {
+          ok: false,
+          error: {
+            code: 'transaction-refused',
+            message: PREVIEW_WRITE_REFUSAL,
+            detail: 'edit.preview-active',
+          },
+        };
+      // A replacement is always its own undo step, so it cannot join a history group.
+      if (bound() !== undefined)
+        return {
+          ok: false,
+          error: {
+            code: 'unsupported-capability',
+            message: 'a document replacement cannot join a history group',
+            detail: 'edit.operation-unsupported',
+          },
+        };
+      const result = editor.exec({ type: 'replaceDocument', docx });
+      const outcome = result.replaceDocument;
+      if (outcome?.ok) return { ok: true, changed: outcome.changed };
+      if (outcome) return { ok: false, error: replaceDocumentError(outcome) };
+      return refused('unavailable', result.ok ? 'no outcome' : result.reason);
     },
     save: () => (sync() ? (editor.surface?.save() ?? null) : null),
     // The one genuinely browser-only operation, and the reason the port declares it optional:

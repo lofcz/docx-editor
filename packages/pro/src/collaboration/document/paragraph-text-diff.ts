@@ -7,6 +7,7 @@ Production use requires a commercial agreement: licensing@eigenpal.com
  * The smallest change from a paragraph's shared text to the inline sequence a local edit
  * left: an edit script over tokens, one per character, embed or empty element.
  */
+import { joinInserts, keepLettersTypedOverByNothing } from './paragraph-text-diff-cleanup.ts';
 import type * as Y from 'yjs';
 import type { OoxmlElement, OoxmlNode } from '@docx-editor.dev/core/store';
 import { linearizeParagraph } from './paragraph-linear.ts';
@@ -432,7 +433,8 @@ const MAX_CLEANUP_PASSES = 16;
  * position peers anchored to it. Text kept at the ends of a change, as typing inside a
  * word keeps, is longer than the change or has no change on one side, so it stays. Only
  * plain letters are replaced: an embed, a surrogate pair, or an element the model holds as
- * a control character keeps its identity.
+ * a control character keeps its identity. A change that types nothing in the end keeps every
+ * letter ({@link keepLettersTypedOverByNothing}).
  */
 function dropScatteredLetters(
   steps: Step[],
@@ -459,6 +461,8 @@ function dropScatteredLetters(
       JSON.stringify(keys) === JSON.stringify(newContents.get(holder)) ? [holder] : []
     )
   );
+  // The `before` index of each letter written again, by its `after` index.
+  const rewritten = new Map<number, number>();
   for (let pass = 0; pass < MAX_CLEANUP_PASSES; pass += 1) {
     const groups: Step[][] = [];
     for (const step of steps) {
@@ -506,35 +510,16 @@ function dropScatteredLetters(
       }
       changed = true;
       for (const step of group) if (step.op === 'eq') out.push({ op: 'del', before: step.before });
-      for (const step of group) if (step.op === 'eq') out.push({ op: 'ins', after: step.after });
+      for (const step of group) {
+        if (step.op !== 'eq') continue;
+        out.push({ op: 'ins', after: step.after });
+        rewritten.set(step.after, step.before);
+      }
     });
     steps = out;
     if (!changed) break;
   }
-  return steps;
-}
-
-/**
- * Join inserts that a kept character splits, when the second insert ends with that same
- * letter: keep the later copy instead, and the inserted text is one piece, as it was typed.
- * Both scripts keep as many characters; only which of two equal letters stays differs.
- */
-function joinInserts(steps: Step[], after: readonly Token[]): Step[] {
-  for (let at = 1; at < steps.length; at += 1) {
-    const kept = steps[at]!;
-    if (kept.op !== 'eq' || steps[at - 1]!.op !== 'ins') continue;
-    let end = at + 1;
-    while (end < steps.length && steps[end]!.op === 'ins') end += 1;
-    const last = steps[end - 1]!;
-    if (end === at + 1 || last.op !== 'ins') continue;
-    if (after[last.after]!.key !== after[kept.after]!.key) continue;
-    steps.splice(at, end - at, { op: 'ins', after: kept.after }, ...steps.slice(at + 1, end - 1), {
-      op: 'eq',
-      before: kept.before,
-      after: last.after,
-    });
-  }
-  return steps;
+  return keepLettersTypedOverByNothing(steps, rewritten);
 }
 
 /** How many separate places a script changes: runs of steps that are not equal. */

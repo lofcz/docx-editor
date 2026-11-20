@@ -46,6 +46,13 @@ function sameAttributes(a: OoxmlElement, b: OoxmlElement): boolean {
   );
 }
 
+/** Whether two tables carry `w:tblpPr` elements with identical attributes. */
+export function sameTablePosition(a: OoxmlElement, b: OoxmlElement): boolean {
+  const own = tblpPr(a);
+  const theirs = tblpPr(b);
+  return own !== undefined && theirs !== undefined && sameAttributes(own, theirs);
+}
+
 /** The table `table` stacks below: the floating table right before it with the same position. */
 export function stackPartner(
   positioned: readonly PositionedTableAnchor[],
@@ -53,9 +60,7 @@ export function stackPartner(
 ): PositionedTableAnchor | undefined {
   const previous = positioned.find((candidate) => candidate.sourceIndex === table.sourceIndex - 1);
   if (!previous || previous.anchorId !== table.anchorId) return undefined;
-  const own = tblpPr(table.table);
-  const theirs = tblpPr(previous.table);
-  return own && theirs && sameAttributes(own, theirs) ? previous : undefined;
+  return sameTablePosition(table.table, previous.table) ? previous : undefined;
 }
 
 /** The last fragment of `tableId` among `fragments`, when that table is on the page. */
@@ -105,8 +110,11 @@ interface StackFlow {
   /** The fragments of the page being filled. */
   readonly fragments: () => readonly BlockFragmentRecord[];
   readonly cursorY: () => number;
-  /** How far the raised tables of one anchor pushed the earlier lines on this page. */
-  readonly pushOf: (anchorId: string) => number;
+  /**
+   * How far the raised tables of one anchor pushed the earlier lines on this page, for the
+   * table at `sourceOrder` (see `earlier-line-push.ts`).
+   */
+  readonly pushOf: (anchorId: string, sourceOrder: number) => number;
 }
 
 /** Stack placement over one story's positioned tables, reading the flow as it advances. */
@@ -122,7 +130,11 @@ export function createStackPlacement(
      */
     push(tableId: string): number {
       const own = byId.get(tableId);
-      return own && own.float.yPt < -0.051 && !own.float.ySpec ? flow.pushOf(own.anchorId) : 0;
+      // A band that rises above the anchor through `w:topFromText` takes the push too.
+      const rise = own ? own.float.yPt - (own.float.distances?.top ?? 0) : 0;
+      return own && rise < -0.051 && !own.float.ySpec
+        ? flow.pushOf(own.anchorId, own.sourceIndex)
+        : 0;
     },
     /** The top a waiting table stacks at on this page, when it stacks. */
     top(tableId: string): number | undefined {

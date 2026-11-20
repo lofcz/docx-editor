@@ -10,6 +10,7 @@ import { fontSizePoints } from '../store/package/font-size.ts';
 
 import { hyphenDisplayOf } from '../layout/field-run-text.ts';
 import { readOoxmlPackage, type OoxmlPackage } from '../store/package/ooxml-package.ts';
+import { withoutStoryEndParagraph } from '../store/package/ooxml-story-end-repair.ts';
 import { resolveContentType } from '../store/package/content-types.ts';
 import {
   WML_NAMESPACE_URI,
@@ -935,7 +936,7 @@ export function interopHtmlFromFragment(
 ): string {
   const read = readOoxmlPackage(fragmentBytes);
   if (!read.ok) return '';
-  return interopHtmlFromFragmentPackage(read.package, options);
+  return interopHtmlFromFragmentPackage(withoutStoryEndParagraph(read.package), options);
 }
 
 /** The same writer over an ALREADY-ASSEMBLED fragment package (the copy path),

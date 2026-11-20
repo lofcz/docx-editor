@@ -43,6 +43,8 @@ interface PaintedPiece {
   readonly end: number;
   readonly text: string;
   readonly seq: number;
+  /** Text the browser wrote into a copy of a span: see `placeCopiedText`. */
+  readonly copied?: true;
 }
 
 /**
@@ -65,7 +67,7 @@ interface PaintedPiece {
  * paragraph carries the attribute on its own fragment, and the body content box carries it
  * whenever a header is open.
  */
-const PAINTED_FURNITURE =
+export const PAINTED_FURNITURE =
   '[data-docx-marker],[data-docx-tab-leader],[aria-hidden="true"],[contenteditable="false"],[data-drawing-node-id]';
 
 /** A `data-end` is only believed when it is a plausible model end for its own start. */
@@ -137,13 +139,115 @@ function spanPiece(
   return { start, end: modelEndOf(element, start, start + text.length), text, seq };
 }
 
+/**
+ * The text spans a paragraph shows, taken when a composition starts, so its end can tell a
+ * span the browser REMOVED from a range that never painted one.
+ *
+ * Both leave a gap in the readback, and a gap is filled from the model (see `joinPieces`).
+ * That is right for an inline drawing or hidden text, and wrong for a word the input method
+ * erased: Chromium removes a span whose text it deleted entirely, so filling its range from
+ * the model brought the word back.
+ */
+export function snapshotPaintedSpans(
+  root: Element,
+  paragraphId: string
+): readonly PaintedSpanSnapshot[] {
+  const spans: PaintedSpanSnapshot[] = [];
+  for (const candidate of paragraphElements(root, paragraphId, '[data-start]')) {
+    const element = candidate as HTMLElement;
+    const start = modelStartOf(element, paragraphId);
+    if (start === null) continue;
+    const end = modelEndOf(element, start, start + (element.textContent ?? '').length);
+    spans.push({ element, holder: spanHolder(element), key: `${start}:${end}` });
+  }
+  return spans;
+}
+
+/**
+ * The element a painted span belongs to, for telling the browser's edits from a repaint.
+ *
+ * The fragment, not the parent or the line: Chromium also removes a link wrapper it emptied,
+ * and a line it merged into the one before. A repaint replaces the fragment.
+ */
+function spanHolder(element: HTMLElement): HTMLElement | null {
+  return (
+    element.closest<HTMLElement>('.docx-paragraph-fragment') ??
+    element.closest<HTMLElement>('.docx-line') ??
+    element.parentElement
+  );
+}
+
+/** One span a composition started over, with the element that held it. */
+export interface PaintedSpanSnapshot {
+  readonly element: HTMLElement;
+  readonly holder: HTMLElement | null;
+  /** Its model range, `start:end`, read before the input method could change its text. */
+  readonly key: string;
+}
+
+/** What the browser did to a paragraph's spans during one composition. */
+export interface CompositionSpanChanges {
+  /** The model ranges (`start:end`) whose snapshotted span the browser has since removed. */
+  readonly erased: ReadonlySet<string>;
+  /** Whether the browser ADDED this span during the composition; paint did not stamp it. */
+  readonly added: (element: HTMLElement) => boolean;
+}
+
+/** No composition snapshot: nothing erased, and every span is paint's own. */
+export const NO_SPAN_CHANGES: CompositionSpanChanges = { erased: new Set(), added: () => false };
+
+/**
+ * Compare the spans a paragraph shows now with the ones it showed when the composition began.
+ *
+ * Both answers count only inside a paragraph fragment that is still the one the snapshot saw.
+ * A repaint mid-composition (a collaborator's edit) replaces the fragment. A span lost to it
+ * says nothing about what the input method deleted, and a span it painted is not the browser's.
+ */
+export function compositionSpanChanges(
+  snapshot: readonly PaintedSpanSnapshot[]
+): CompositionSpanChanges {
+  if (snapshot.length === 0) return NO_SPAN_CHANGES;
+  const erased = new Set<string>();
+  const painted = new Set<HTMLElement>();
+  const holders = new Set<HTMLElement>();
+  for (const { element, holder, key } of snapshot) {
+    painted.add(element);
+    if (holder) holders.add(holder);
+    if (!element.isConnected && holder?.isConnected) erased.add(key);
+  }
+  const added = (element: HTMLElement): boolean => {
+    if (painted.has(element)) return false;
+    const holder = spanHolder(element);
+    return holder !== null && holders.has(holder);
+  };
+  return { erased, added };
+}
+
+/** The span that contributed a model range, when the browser added it during the composition. */
+interface RangeContribution {
+  readonly added: {
+    readonly element: HTMLElement;
+    /** Its entry in `pieces`. */
+    readonly index: number;
+    /** The model offset the walk had reached before it: where it sits as a stray. */
+    readonly at: number;
+  } | null;
+}
+
+/** Text the browser added in a span, read as a stray at the offset the walk had reached. */
+function strayOf(element: HTMLElement, at: number, seq: number): PaintedPiece {
+  return { start: at, end: at, text: element.textContent ?? '', seq, copied: true };
+}
+
 /** State threaded through the DOM-order walk. */
 interface ReadbackWalk {
   readonly paragraphId: string;
   readonly modelText: string;
   readonly pieces: PaintedPiece[];
   /** Model ranges already contributed, so a repeat cannot contribute twice. */
-  readonly ranges: Set<string>;
+  readonly ranges: Map<string, RangeContribution>;
+  /** What the browser did to the spans during the composition. */
+  readonly changes: CompositionSpanChanges;
   /** The model offset just past the last span walked: where a stray text node sits. */
   end: number;
   /** DOM order, so a stray keeps the side of a span the browser put it on. */
@@ -195,15 +299,40 @@ function walkContainer(container: Element, walk: ReadbackWalk): void {
       walkContainer(element, walk);
       continue;
     }
+    const at = walk.end;
     const piece = spanPiece(element, start, walk.modelText, walk.seq);
     walk.seq += 1;
     walk.end = Math.max(walk.end, piece.end);
     // ONCE PER RANGE. A field's result splits at its spaces and every resulting span
     // republishes the same model range; a paragraph crossing a page paints its ranges on both
     // sheets. Either way the second one is the same characters, not more of them.
+    //
+    // UNLESS THE BROWSER MADE IT. Composing over a selection set in another face than the text
+    // on both sides of it (a Latin word between Hangul), Chromium removes the selected spans
+    // and writes the composed text into a copy of an adjacent span, range attributes included,
+    // beside the original. Read once, the composition erased the selection and kept nothing of
+    // what was typed. The copy is text the browser wrote, so it reads as a stray where it sits,
+    // whichever of the two comes first in the DOM.
+    //
+    // The composition-start snapshot says which span is the copy, never the DOM's shape: a
+    // field result cut into words paints one range many times in a line, and a repaint
+    // mid-composition paints only spans the snapshot never saw, in a fragment it never saw.
     const key = `${piece.start}:${piece.end}`;
-    if (walk.ranges.has(key)) continue;
-    walk.ranges.add(key);
+    const added = walk.changes.added(element);
+    const first = walk.ranges.get(key);
+    if (first) {
+      if (added) {
+        walk.pieces.push(strayOf(element, at, piece.seq));
+      } else if (first.added) {
+        // The copy came first and took the range: give the range to the original.
+        const copy = first.added;
+        walk.pieces[copy.index] = strayOf(copy.element, copy.at, walk.pieces[copy.index]!.seq);
+        walk.ranges.set(key, { added: null });
+        walk.pieces.push(piece);
+      }
+      continue;
+    }
+    walk.ranges.set(key, { added: added ? { element, index: walk.pieces.length, at } : null });
     walk.pieces.push(piece);
   }
 }
@@ -256,7 +385,12 @@ function paragraphContainers(
  * that member's text — and the diff, seeing the model hold characters the page did not, took
  * the composition as licence to delete them.
  */
-function sweepUncoveredSpans(root: Element, covered: readonly Element[], walk: ReadbackWalk): void {
+function sweepUncoveredSpans(
+  root: Element,
+  covered: readonly Element[],
+  walk: ReadbackWalk,
+  erased: ReadonlySet<string>
+): void {
   for (const candidate of paragraphElements(root, walk.paragraphId, '[data-start]')) {
     const element = candidate as HTMLElement;
     const start = modelStartOf(element, walk.paragraphId);
@@ -265,8 +399,10 @@ function sweepUncoveredSpans(root: Element, covered: readonly Element[], walk: R
     const piece = spanPiece(element, start, walk.modelText, walk.seq);
     walk.seq += 1;
     const key = `${piece.start}:${piece.end}`;
-    if (walk.ranges.has(key)) continue;
-    walk.ranges.add(key);
+    // An erased range keeps its other painted copies (a repeated header row) out: the copy the
+    // input method wrote into is the one that says what the text is now.
+    if (walk.ranges.has(key) || erased.has(key)) continue;
+    walk.ranges.set(key, { added: null });
     walk.pieces.push(piece);
   }
 }
@@ -308,19 +444,63 @@ export function paintedTextIn(
   root: Element,
   paragraphId: string,
   modelText: string,
-  anchor: Node | null
+  anchor: Node | null,
+  /** What the browser did to the spans during the composition: `compositionSpanChanges`. */
+  changes: CompositionSpanChanges = NO_SPAN_CHANGES
 ): string | null {
+  const { erased } = changes;
   const containers = paragraphContainers(root, paragraphId, anchor, sheetOf(anchor));
   const walk: ReadbackWalk = {
     paragraphId,
     modelText,
     pieces: [],
-    ranges: new Set<string>(),
+    ranges: new Map(),
+    changes,
     end: 0,
     seq: 0,
   };
   for (const container of containers) walkContainer(container, walk);
-  sweepUncoveredSpans(root, containers, walk);
-  if (walk.pieces.length === 0) return null;
-  return joinPieces(walk.pieces, modelText);
+  sweepUncoveredSpans(root, containers, walk, erased);
+  // A removed span reads as empty, never as a gap the model fills, unless the copy that was
+  // composed into still paints that range.
+  const removed = [...erased].filter((key) => !walk.ranges.has(key));
+  // The containers must still be on the page: an erased range says nothing about a paragraph
+  // this root does not show.
+  if (walk.pieces.length === 0 && (removed.length === 0 || containers.length === 0)) return null;
+  const gaps: PaintedPiece[] = [];
+  for (const key of removed) {
+    const [start, end] = key.split(':').map(Number) as [number, number];
+    gaps.push({ start, end, text: '', seq: walk.seq });
+    walk.seq += 1;
+  }
+  const pieces = placeCopiedText(walk.pieces, gaps);
+  return joinPieces([...pieces, ...gaps], modelText);
+}
+
+/**
+ * Move text the browser wrote into a span copy to the selection it replaced.
+ *
+ * The copy sits beside the span it copied, so the walk places its text at the end of the
+ * painted text before it. Text nothing paints (a `w:vanish` run, a picture's atom) can lie
+ * between that offset and the removed selection. Read there, the composed text went in front
+ * of the hidden run, and the diff deleted that run and inserted it again as typed text. So the
+ * text moves to the first removed range it reaches with only unpainted offsets in between.
+ */
+function placeCopiedText(
+  pieces: readonly PaintedPiece[],
+  removed: readonly PaintedPiece[]
+): readonly PaintedPiece[] {
+  if (removed.length === 0) return pieces;
+  const painted = pieces.filter((piece) => piece.end > piece.start);
+  return pieces.map((piece) => {
+    if (!piece.copied) return piece;
+    const at = piece.start;
+    let target: number | null = null;
+    for (const gap of removed) {
+      if (gap.start < at || (target !== null && gap.start >= target)) continue;
+      if (painted.some((other) => other.start < gap.start && other.end > at)) continue;
+      target = gap.start;
+    }
+    return target === null || target === at ? piece : { ...piece, start: target, end: target };
+  });
 }

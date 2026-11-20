@@ -34,6 +34,11 @@ export {
   type TreeDocOp,
   type TreeDocOpKind,
   type DrawingTreeDocOp,
+  type ShapeFillInput,
+  type ShapeOutlineDash,
+  type ShapeOutlineInput,
+  type ShapeThemeColorInput,
+  type ShapeThemeColorName,
   type TreeOpEffect,
   type TreeOpRejection,
   type TreeOpResult,
@@ -54,6 +59,7 @@ export {
   MAX_FRAGMENT_DECODED_BYTES,
   applyFragmentPaste,
   type FragmentPasteInput,
+  type FragmentPasteEnd,
   type FragmentPasteResult,
 } from './tree-package-fragment.ts';
 export {
@@ -245,6 +251,11 @@ export type { InsertTextOp, DeleteTextOp } from './text-edit-op-types.ts';
 export type { InsertComplexFieldOp, InsertPageFieldOp } from './tree-op-field-insert.ts';
 export type { SetFieldResultOp } from './tree-op-field-result-write.ts';
 export type { InsertEquationOp } from './tree-op-equation-insert.ts';
+export type {
+  ParagraphBorderEdgeName,
+  ParagraphBorderEdgeWrite,
+  SetParagraphBordersOp,
+} from './tree-op-paragraph-borders.ts';
 export type { SetTextFormFieldDefaultOp } from './text-form-fields.ts';
 
 export { type TextFormFieldOptions, type TextFormFieldType } from './text-form-field-options.ts';

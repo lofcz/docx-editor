@@ -46,6 +46,14 @@ export function vmlShapeNumber(shape: OoxmlElement): number | null {
   const value = Number(digits);
   return value <= 0xffffffff ? value : null;
 }
+/**
+ * `raw`, a VML shape id such as `_x0000_s1025`, with its number replaced by `number`. Null when
+ * `raw` is not a numbered shape id, such as an author's own `id="Box"`. @internal
+ */
+export function withVmlShapeNumber(raw: string, number: string): string | null {
+  const match = raw.trim().match(/^(_x0000_[a-z])\d{1,10}$/i);
+  return match ? `${match[1]}${number}` : null;
+}
 /** Whether a VML boolean is false (`f`, `false`, `0`). @internal */
 export const off = (value: string | undefined) => /^(f|false|0)$/i.test(value ?? '');
 export const escapeXml = (value: string) =>
@@ -145,7 +153,18 @@ export function color(value: string | undefined, fallback: string): string | nul
   if (/^#[\da-f]{6}$/.test(raw)) return raw;
   // The three-digit form doubles each digit, as in CSS.
   if (/^#[\da-f]{3}$/.test(raw)) return '#' + Array.from(raw.slice(1), (d) => d + d).join('');
-  return NAMED_COLORS.get(raw) ?? null;
+  return NAMED_COLORS.get(raw) ?? rgbColor(raw);
+}
+
+/** The CSS `rgb(r, g, b)` form, each channel 0 to 255; null otherwise. */
+function rgbColor(raw: string): string | null {
+  // Bounded digit runs and no nested repeats: no backtracking on a hostile value.
+  const match =
+    /^rgb\(\s{0,8}(\d{1,3})\s{0,8},\s{0,8}(\d{1,3})\s{0,8},\s{0,8}(\d{1,3})\s{0,8}\)$/.exec(raw);
+  if (!match) return null;
+  const channels = match.slice(1, 4).map(Number);
+  if (channels.some((channel) => channel > 255)) return null;
+  return '#' + channels.map((channel) => channel.toString(16).padStart(2, '0')).join('');
 }
 
 /** The sixteen basic color names a VML color attribute can spell. */

@@ -8,6 +8,7 @@ import {
   carryPartialSimpleSideGrid,
   hasPartialSimpleSideGrid,
   mixedSimpleSideGridLeadPt,
+  partialSimpleSideGridLeadPt,
 } from './table-partial-side-grid.ts';
 import { carryWidenedCellContentInsets } from './cell-content-insets-memo.ts';
 
@@ -137,6 +138,30 @@ export function withLegacyTableSideRules(
   unequalSides = false
 ): readonly SemanticTableRow[] {
   return mapCells(rows, 'centeredSideRules', simpleSidesOnly, unequalSides);
+}
+
+/**
+ * True when every side rule of the table's cells is a simple rule of one width, and at least
+ * one cell has such a rule. Rows may skip grid columns. A cell rule that loses a conflict to a
+ * rule of another width on its grid line is outside the geometry the controls cover.
+ */
+function sideRulesShareOneWidth(rows: readonly SemanticTableRow[]): boolean {
+  let width: number | undefined;
+  const check = (side: TableBorderSide): boolean => {
+    if (side.state !== 'edge') return true;
+    const rule = simpleSideRuleWidth(side);
+    if (rule === undefined || (width !== undefined && rule !== width)) return false;
+    width = rule;
+    return true;
+  };
+  for (const row of rows) {
+    for (const cell of row.cells) {
+      const shown = cell.contentBorders ?? cell.borders;
+      for (const side of [shown.left, shown.right, cell.borders.left, cell.borders.right])
+        if (!check(side)) return false;
+    }
+  }
+  return width !== undefined;
 }
 
 /** The table-level facts that decide whether its side rules share the grid line. */
@@ -460,6 +485,14 @@ function sharedGridLineDecision(
       ? null
       : { legacyMode, modernGridWidth, outerRuleOffsetPt: lead / 2, unequalSides: true };
   }
+  // A left-aligned partial grid whose rows all open with one leading rule moves inward by
+  // half that rule, as a complete grid does.
+  const partialLead =
+    partialGrid && table.alignment === 'left'
+      ? partialSimpleSideGridLeadPt(rows, table.columnWidthsPt.length)
+      : undefined;
+  if (partialLead !== undefined)
+    return { legacyMode, modernGridWidth, outerRuleOffsetPt: partialLead / 2 };
   return { legacyMode, modernGridWidth, outerRuleOffsetPt };
 }
 
@@ -573,10 +606,18 @@ export function withSharedGridLineSideRules(
   if (!decision) return { rows };
   const { legacyMode, modernGridWidth, outerRuleOffsetPt, unequalSides = false } = decision;
   const painted = withCentredSideRulePaint(rows, !legacyMode, unequalSides);
+  // A legacy automatic-width AutoFit table whose side rules all share one simple width sizes
+  // and fills its columns from the margins alone where they clear half a rule (17.4.53,
+  // 17.4.64): captured controls at 0.5 to 3pt single and thick rules, with 0 to 10pt margins,
+  // with and without `w:gridBefore`, in modes 12 and 14.
+  const legacyAutoFit =
+    legacyMode && table.widthType === 'auto' && !table.layoutFixed && sideRulesShareOneWidth(rows);
   const shared =
     table.widthType === 'dxa' || modernGridWidth
       ? withLegacyTableSideRules(painted, !legacyMode, unequalSides)
-      : painted;
+      : legacyAutoFit
+        ? withLegacyTableSideRules(painted, true, unequalSides)
+        : painted;
   // A legacy, nested or one-rule percentage table keeps the shared lines at any widths; a
   // mode-15 absolute or automatic width can lose them as it widens, so it does not hold.
   const holds =

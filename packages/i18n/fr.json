@@ -78,7 +78,9 @@
       "image": "Image",
       "table": "Tableau",
       "format": "Format",
-      "direction": "Orientation du texte"
+      "direction": "Orientation du texte",
+      "chart": "Graphique",
+      "shape": "Forme"
     },
     "undo": "Annuler",
     "undoShortcut": "Annuler (Ctrl+Z)",
@@ -226,7 +228,11 @@
       "background2": "Arrière-plan 2",
       "text1": "Texte 1",
       "text2": "Texte 2"
-    }
+    },
+    "lighterPercent": "{color}, plus clair de {percent} %",
+    "darkerPercent": "{color}, plus foncé de {percent} %",
+    "hexColor": "Couleur hexadécimale",
+    "invalidHex": "Tapez une couleur au format #RRGGBB."
   },
   "dialogs": {
     "imageProperties": {
@@ -588,7 +594,9 @@
     "fontSubstitutionNotice": "Certaines polices de ce document ne sont pas disponibles ; des polices de substitution sont affichées : {fonts}",
     "documentContent": "Contenu du document",
     "previewContent": "Aperçu des modifications proposées",
-    "documentViewport": "Pages du document"
+    "documentViewport": "Pages du document",
+    "grammarIssueCount": "{count, plural, =0 {Aucune faute de grammaire.} one {# faute de grammaire.} other {# fautes de grammaire.}}",
+    "spellingIssueCount": "{count, plural, =0 {Aucune faute d'orthographe.} one {# faute d'orthographe.} other {# fautes d'orthographe.}}"
   },
   "hyperlinkPopup": {
     "displayTextPlaceholder": "Texte à afficher",
@@ -667,7 +675,8 @@
     },
     "selection": "Image sélectionnée",
     "locked": "Ce cadre ne peut être ni déplacé ni redimensionné",
-    "textLocked": "Le texte de ce cadre ne peut pas être modifié"
+    "textLocked": "Le texte de ce cadre ne peut pas être modifié",
+    "selectionShape": "Forme sélectionnée"
   },
   "ruler": {
     "horizontal": "Règle horizontale",
@@ -891,7 +900,8 @@
     "endnoteKind": "Note de fin",
     "convertAllFootnotes": "Convertir toutes les notes de bas de page en notes de fin",
     "convertAllEndnotes": "Convertir toutes les notes de fin en notes de bas de page",
-    "inheritedValue": "(hérité)"
+    "inheritedValue": "(hérité)",
+    "menuAriaLabel": "Actions de note"
   },
   "review": {
     "accept": "Accepter",
@@ -1061,7 +1071,15 @@
     "outermostLevel": "La sélection est déjà au niveau le plus externe",
     "cannotIndentFurther": "Impossible d’augmenter davantage le retrait de la sélection",
     "noGoToView": "Atteindre n’est pas disponible ici",
-    "noBookmarkDialog": "Impossible d’ajouter des signets ici"
+    "noBookmarkDialog": "Impossible d’ajouter des signets ici",
+    "groupMemberMove": "Une forme dans un groupe ne se déplace pas, ne se redimensionne pas et ne se supprime pas seule. Appuyez sur Échap pour sélectionner le groupe.",
+    "groupMemberProperties": "Une forme dans un groupe prend l'habillage, le texte de remplacement et les propriétés du groupe. Appuyez sur Échap pour sélectionner le groupe.",
+    "drawingClipboardParts": "Ce dessin est lié à des données qui ne peuvent pas être copiées, comme un diagramme ou un objet incorporé.",
+    "linkedTextBoxClipboard": "Une zone de texte liée ne peut pas être copiée.",
+    "drawingClipboardStory": "Les dessins ne peuvent être copiés, coupés ou collés que dans le corps du document, pas dans un en-tête, un pied de page, une note ou une zone de texte.",
+    "groupMemberClipboard": "Une forme dans un groupe est copiée ou coupée avec son groupe. Appuyez sur Échap pour sélectionner le groupe.",
+    "drawingClipboardSize": "Ce dessin est trop volumineux pour être copié.",
+    "drawingPasteCells": "Placez le curseur dans le texte pour coller un dessin."
   },
   "equationPopup": {
     "apply": "Appliquer",
@@ -1359,6 +1377,71 @@
       "unsupported": "L’éditeur ne prend pas en charge cette modification du graphique.",
       "invalidValue": "Le graphique ne peut pas utiliser cette valeur.",
       "suggesting": "Les graphiques ne peuvent pas être modifiés pendant que vous suggérez des modifications. Passez en mode Édition pour modifier ce graphique."
+    }
+  },
+  "shape": {
+    "errors": {
+      "legacyTransparency": "Cet ancien type de forme n'a pas de réglage de transparence.",
+      "noShape": "Sélectionnez une forme, une zone de texte ou une ligne.",
+      "noSolidFill": "La forme n'a pas de remplissage uni. Choisissez d'abord une couleur de remplissage.",
+      "outOfRange": "La valeur est hors limites.",
+      "staleSelection": "La sélection a changé. Sélectionnez de nouveau la forme.",
+      "mixedFill": "Les formes de ce groupe ont des remplissages différents. Choisissez une couleur pour toutes."
+    },
+    "formatShape": "Format de la forme…",
+    "pane": {
+      "close": "Fermer le volet Format de la forme",
+      "emptyBody": "Sélectionnez une forme, une zone de texte ou une ligne dans le document pour la mettre en forme.",
+      "emptyTitle": "Aucune forme sélectionnée",
+      "errors": {
+        "color": "Saisissez une couleur au format #RRGGBB ou un nom de couleur.",
+        "noSolidFill": "Choisissez d'abord une couleur de remplissage.",
+        "transparency": "Saisissez un nombre de 0 à 100.",
+        "width": "Saisissez une épaisseur de 0,25 à 1584 points.",
+        "dash": "Choisissez un type de tiret dans la liste."
+      },
+      "fill": "Remplissage",
+      "fillColor": "Couleur de remplissage",
+      "fillHex": "Couleur hexadécimale du remplissage",
+      "fillTypes": {
+        "gradient": "Dégradé",
+        "mixed": "Mixte",
+        "none": "Aucun remplissage",
+        "pattern": "Motif",
+        "picture": "Image",
+        "solid": "Uni"
+      },
+      "hexHelp": "Saisissez #RRGGBB ou un nom de couleur, puis appuyez sur Entrée.",
+      "mixedOutline": "Les formes de ce groupe ont des contours différents.",
+      "noFill": "Aucun remplissage",
+      "noOutline": "Aucun trait",
+      "openFillColors": "Choisir une couleur de remplissage",
+      "openOutlineColors": "Choisir une couleur de contour",
+      "otherWidth": "Autre épaisseur",
+      "outline": "Contour",
+      "outlineColor": "Couleur du contour",
+      "outlineHex": "Couleur hexadécimale du contour",
+      "readOnlyFill": "Type de remplissage : {fill}. Choisissez une couleur ou Aucun remplissage pour le remplacer.",
+      "title": "Format de la forme",
+      "transparency": "Transparence (%)",
+      "width": "Épaisseur (pt)",
+      "widthPoints": "{value} pt",
+      "widthPreset": "Épaisseur prédéfinie",
+      "dash": "Type de tiret",
+      "dashes": {
+        "custom": "Personnalisé",
+        "dash": "Tiret",
+        "dashDot": "Tiret-point",
+        "dot": "Point",
+        "lgDash": "Tiret long",
+        "lgDashDot": "Tiret long-point",
+        "lgDashDotDot": "Tiret long-point-point",
+        "solid": "Plein",
+        "sysDash": "Point carré",
+        "sysDashDot": "Tiret carré-point",
+        "sysDashDotDot": "Tiret carré-point-point",
+        "sysDot": "Point rond"
+      }
     }
   }
 }

@@ -122,12 +122,13 @@ describe('server-first defaults', () => {
         // Small table text no longer reserves an inherited, taller cell-end mark.
         pages: 25,
         bodyLineCount: 280,
-        // Includes the four checkbox symbols, two authored nonbreaking hyphens, the operator
-        // of the one n-ary equation, and three bookmark links.
-        markdownLength: 17_242,
+        // Includes the four checkbox symbols, two authored nonbreaking hyphens, and the
+        // operator of the one n-ary equation, and three bookmark links. A leading column break writes no whitespace-only
+        // line in front of its paragraph.
+        markdownLength: 17_239,
         headers: 24,
         footers: 24,
-        markdownHash: '20daa38adba518ad09706e71447e03ce67b442a87087a85cac831a493073c888',
+        markdownHash: '771e49de38a04144ec683a68e54cf1d9bdeff6a363b511a27545ead9391fea04',
       });
       expect(translated.markdown).toContain('[Section 1](#section1)');
       expect(translated.markdown).toContain('[Section 6 – Nested Tables](#section6)');

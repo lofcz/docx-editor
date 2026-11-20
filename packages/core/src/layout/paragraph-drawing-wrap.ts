@@ -26,7 +26,14 @@ export function createParagraphDrawingWrap(options: {
   readonly paragraphAt: (index: number) => WrapParagraph | undefined;
   readonly paragraphOrder: ReadonlyMap<string, number>;
   readonly paragraphIndex: (id: string) => number;
-  readonly columnCount: number;
+  /** The block index of an in-flow table that a floating table anchors at, else -1. */
+  readonly tableIndex?: (id: string) => number;
+  /** The section's text columns, in the zones' coordinates. */
+  readonly columns: {
+    readonly count: number;
+    readonly lefts: readonly number[];
+    readonly widths: readonly number[];
+  };
   readonly seedForwardOnly?: boolean;
   readonly compatibilityMode?: number;
   readonly displayMode?: RevisionDisplayMode;
@@ -39,6 +46,8 @@ export function createParagraphDrawingWrap(options: {
   // its own wrap caused there, just as a top-and-bottom anchor excludes its own skip.
   const displacements = new Map<string, number>();
   const liftedDisplacements = new Map<string, Map<string, number>>();
+  // The lines a rising table band adds to each earlier paragraph on its page, by table anchor.
+  const tableWrapShares = new Map<string, Map<string, number>>();
   const followingAnchors = new Map<string, ReadonlySet<string>>();
   const followingAnchor = (zone: ExclusionZone, index: number): boolean => {
     if (
@@ -100,6 +109,33 @@ export function createParagraphDrawingWrap(options: {
   };
   const extent = (lines: readonly PendingLine[]) =>
     lines.reduce((sum, line) => sum + line.height + (line.exclusionSkipBefore ?? 0), 0);
+  /** Records the lines each rising table band anchored after paragraph `entryId` adds to it. */
+  const measureTableShares = (
+    pageIndex: number,
+    entryId: string,
+    zones: readonly ExclusionZone[],
+    lines: readonly PendingLine[],
+    breakWithout: (anchorId: string) => readonly PendingLine[]
+  ): void => {
+    for (const [key, shares] of tableWrapShares)
+      if (key.startsWith(`${pageIndex}:`)) shares.delete(entryId);
+    const entryOrder = options.paragraphOrder.get(entryId);
+    if (entryOrder === undefined || options.seedForwardOnly) return;
+    const anchors = new Set<string>();
+    for (const zone of zones) {
+      const anchorOrder = options.paragraphOrder.get(zone.anchorParagraphId);
+      if (zone.wrapsEarlierLines && anchorOrder !== undefined && anchorOrder > entryOrder)
+        anchors.add(zone.anchorParagraphId);
+    }
+    for (const anchorId of anchors) {
+      const share = Math.max(0, extent(lines) - extent(breakWithout(anchorId)));
+      if (share <= 0.001) continue;
+      const key = `${pageIndex}:${anchorId}`;
+      const shares = tableWrapShares.get(key) ?? new Map<string, number>();
+      shares.set(entryId, share);
+      tableWrapShares.set(key, shares);
+    }
+  };
   return {
     breakZones(
       entry: WrapParagraph,
@@ -160,15 +196,29 @@ export function createParagraphDrawingWrap(options: {
             (!options.seedForwardOnly &&
               (zone.pageFramedBand === true ||
                 zone.reachesEarlierLines === true ||
+                zone.wrapsEarlierLines === true ||
                 liftedAnchor(zone, index))) ||
             (!placement && followingAnchor(zone, index));
           if (entryOrder !== undefined && anchorOrder !== undefined) {
             if (anchorOrder > entryOrder && !reachesBack) return false;
           } else {
             const anchorIndex = options.paragraphIndex(zone.anchorParagraphId);
-            if (anchorIndex < 0 || (anchorIndex > index && !reachesBack)) return false;
+            if (anchorIndex < 0) {
+              // A floating table anchored at an in-flow table wraps the text after that table.
+              const tableIndex = options.tableIndex?.(zone.anchorParagraphId) ?? -1;
+              if (tableIndex < 0 || tableIndex > index) return false;
+            } else if (anchorIndex > index && !reachesBack) return false;
           }
-          if (options.columnCount > 1 && zone.columnIndex !== columnIndex) return false;
+          if (
+            options.columns.count > 1 &&
+            zone.columnIndex !== columnIndex &&
+            !reachesAcross(
+              zone,
+              options.columns.lefts[columnIndex],
+              options.columns.widths[columnIndex]
+            )
+          )
+            return false;
           return !(
             placement &&
             !zone.sourceKind &&
@@ -219,6 +269,7 @@ export function createParagraphDrawingWrap(options: {
       if (entryId === undefined) return;
       for (const [key, shares] of liftedDisplacements)
         if (key.startsWith(`${pageIndex}:`)) shares.delete(entryId);
+      measureTableShares(pageIndex, entryId, zones, lines, breakWithout);
       if (!lines.some((line) => (line.exclusionSkipBefore ?? 0) > 0.001)) return;
       const anchors = new Set(
         zones
@@ -234,6 +285,13 @@ export function createParagraphDrawingWrap(options: {
         liftedDisplacements.set(key, shares);
       }
     },
+    /** The lines rising table bands of `anchorId` added to earlier paragraphs on the page. */
+    tablePush(pageIndex: number, anchorId: string): number {
+      let push = 0;
+      for (const share of tableWrapShares.get(`${pageIndex}:${anchorId}`)?.values() ?? [])
+        push += share;
+      return push;
+    },
     displacement(pageIndex: number, paragraphId: string): number {
       const key = `${pageIndex}:${paragraphId}`;
       let lifted = 0;
@@ -241,4 +299,18 @@ export function createParagraphDrawingWrap(options: {
       return (displacements.get(key) ?? 0) + lifted;
     },
   };
+}
+
+/**
+ * A raised table that moves the earlier lines it covers moves them in every column its band
+ * crosses, not only in the column of its anchor.
+ */
+function reachesAcross(
+  zone: ExclusionZone,
+  left: number | undefined,
+  width: number | undefined
+): boolean {
+  if (zone.reachesEarlierLines !== true || left === undefined || width === undefined) return false;
+  const band = zone.verticalBand;
+  return band.x < left + width && band.x + band.width > left;
 }

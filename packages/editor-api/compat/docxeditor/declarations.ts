@@ -194,6 +194,7 @@ export declare namespace DocxEditor {
     getBookmarkRange(name: string): Range;
     getBookmarkRangeOrNullObject(name: string): Range;
     getStyles(): StyleCollection;
+    getAnnotationById(id: string): Annotation;
   }
 
   export class DocumentProperties {
@@ -219,6 +220,7 @@ export declare namespace DocxEditor {
     getComments(): CommentCollection;
     insertParagraph(paragraphText: string, insertLocation: 'Start' | 'End'): Paragraph;
     insertText(text: string, insertLocation: 'Replace' | 'Start' | 'End'): Range;
+    insertFileFromBase64(base64File: string, insertLocation: 'Replace' | 'Start' | 'End'): Range;
     search(searchText: string, searchOptions?: SearchOptions): RangeCollection;
   }
 
@@ -259,6 +261,7 @@ export declare namespace DocxEditor {
 
   export class Paragraph {
     alignment: 'Mixed' | 'Unknown' | 'Left' | 'Centered' | 'Right' | 'Justified';
+    readonly borders: BorderUniversalCollection;
     readonly contentControls: ContentControlCollection;
     firstLineIndent: number;
     readonly font: Font;
@@ -275,7 +278,9 @@ export declare namespace DocxEditor {
     delete(): void;
     getReviewedText(changeTrackingVersion?: ChangeTrackingVersion): ClientResult<string>;
     getReviewedText(changeTrackingVersion?: 'Original' | 'Current'): ClientResult<string>;
+    getAnnotations(): AnnotationCollection;
     getTextRanges(endingMarks: string[], trimSpacing?: boolean): RangeCollection;
+    insertAnnotations(annotations: AnnotationSet): ClientResult<string[]>;
     insertParagraph(paragraphText: string, insertLocation: 'Before' | 'After'): Paragraph;
     insertText(text: string, insertLocation: 'Replace' | 'Start' | 'End'): Range;
     search(searchText: string, searchOptions?: SearchOptions): RangeCollection;
@@ -315,6 +320,67 @@ export declare namespace DocxEditor {
     italic: boolean;
     name: string;
     size: number;
+  }
+
+  // Five items in a fixed order: top, left, bottom, right, then the border between paragraphs.
+  // `applyPageBordersToAllSections`, `artStyle`, `artWidth`, and `set` are recorded omissions.
+  export class BorderUniversalCollection {
+    readonly items: BorderUniversal[];
+  }
+
+  export class BorderUniversal {
+    color: string;
+    colorIndex:
+      | 'Auto'
+      | 'Black'
+      | 'Blue'
+      | 'Turquoise'
+      | 'BrightGreen'
+      | 'Pink'
+      | 'Red'
+      | 'Yellow'
+      | 'White'
+      | 'DarkBlue'
+      | 'Teal'
+      | 'Green'
+      | 'Violet'
+      | 'DarkRed'
+      | 'DarkYellow'
+      | 'Gray50'
+      | 'Gray25'
+      | 'ClassicRed'
+      | 'ClassicBlue'
+      | 'ByAuthor';
+    readonly inside: boolean;
+    isVisible: boolean;
+    lineStyle:
+      | 'None'
+      | 'Single'
+      | 'Dot'
+      | 'DashSmallGap'
+      | 'DashLargeGap'
+      | 'DashDot'
+      | 'DashDotDot'
+      | 'Double'
+      | 'Triple'
+      | 'ThinThickSmallGap'
+      | 'ThickThinSmallGap'
+      | 'ThinThickThinSmallGap'
+      | 'ThinThickMedGap'
+      | 'ThickThinMedGap'
+      | 'ThinThickThinMedGap'
+      | 'ThinThickLargeGap'
+      | 'ThickThinLargeGap'
+      | 'ThinThickThinLargeGap'
+      | 'SingleWavy'
+      | 'DoubleWavy'
+      | 'DashDotStroked'
+      | 'Emboss3D'
+      | 'Engrave3D'
+      | 'Outset'
+      | 'Inset';
+    lineWidth:
+      'Pt025' | 'Pt050' | 'Pt075' | 'Pt100' | 'Pt150' | 'Pt225' | 'Pt300' | 'Pt450' | 'Pt600';
   }
 
   // ---------------------------------------------------------------------
@@ -538,5 +604,50 @@ export declare namespace DocxEditor {
     readonly items: Style[];
     getByNameOrNullObject(name: string): Style;
     getCount(): ClientResult<number>;
+  }
+
+  // ---------------------------------------------------------------------
+  // proofingAnnotations
+  // ---------------------------------------------------------------------
+
+  // Annotations are runtime view state: never saved, never shared with collaborators. The three
+  // popup resource ids are declared with the upstream type; only an empty string is accepted.
+  // The annotation and paragraph events are recorded omissions: the runtime has no event model.
+  export interface AnnotationSet {
+    critiques: Critique[];
+  }
+
+  export interface Critique {
+    colorScheme: 'Red' | 'Green' | 'Blue' | 'Lavender' | 'Berry';
+    length: number;
+    popupOptions?: CritiquePopupOptions;
+    start: number;
+  }
+
+  export interface CritiquePopupOptions {
+    brandingTextResourceId: string;
+    subtitleResourceId: string;
+    suggestions: string[];
+    titleResourceId: string;
+  }
+
+  export class Annotation extends ClientObject {
+    readonly critiqueAnnotation: CritiqueAnnotation;
+    readonly id: string;
+    readonly state: 'Created' | 'Accepted' | 'Rejected';
+    delete(): void;
+  }
+
+  export class AnnotationCollection {
+    readonly items: Annotation[];
+    getFirst(): Annotation;
+    getFirstOrNullObject(): Annotation;
+  }
+
+  export class CritiqueAnnotation {
+    readonly critique: Critique;
+    readonly range: Range;
+    accept(): void;
+    reject(): void;
   }
 }

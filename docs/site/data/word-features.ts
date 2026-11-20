@@ -100,7 +100,7 @@ export const wordFeatures: WordFeature[] = [
     roundTrip: 'none',
     tier: 'premium',
     notes:
-      'Export PDF on Node.js with a configured menu.exporters.pdf handler and the EigenPal Pro License. Export supports review markup and comments, with font and drawing limits. Missing handlers show a setup error.',
+      'Export PDF on Node.js with a configured menu.exporters.pdf handler and the EigenPal Pro License. Export supports review markup and comments, with font and drawing limits; empty shape geometry adds no paint. Missing handlers show a setup error.',
     docsLink: '/docs/2.x/guides/export',
   },
   {
@@ -306,7 +306,7 @@ export const wordFeatures: WordFeature[] = [
     roundTrip: 'full',
     tier: 'community',
     notes:
-      'Document settings control spacing between scripts, punctuation compression, and punctuation at line ends. Behavior depends on document fonts, language, and compatibility settings. The editor has no typography controls or vertical Japanese composition.',
+      'Document settings control spacing between scripts, balanced space widths, punctuation compression, and line-end punctuation. Behavior depends on document fonts, language, and compatibility settings. The editor has no typography controls or vertical Japanese composition.',
     docsLink: '/docs/2.x/guides/cjk',
   },
   {
@@ -374,7 +374,7 @@ export const wordFeatures: WordFeature[] = [
     roundTrip: 'full',
     tier: 'community',
     notes:
-      'Edit paragraph shading and display existing paragraph borders. Common line borders display; decorative and three-dimensional borders use approximations. Saving preserves borders, but you cannot add, change, or remove them through the editor.',
+      'Edit paragraph shading in the editor, and paragraph borders through the editing API. The editor has no border controls. Wave borders display as approximations.',
   },
   {
     id: 'paragraphs.tabs',
@@ -407,7 +407,7 @@ export const wordFeatures: WordFeature[] = [
     roundTrip: 'preserved',
     tier: 'community',
     notes:
-      'The editor preserves document hyphenation settings but does not hyphenate automatically. An optional hyphen permits a line break and appears at that line end. U+00AD displays as a hyphen without permitting a break.',
+      'The editor preserves document hyphenation settings but does not hyphenate automatically. In compatibility mode 15, autofit table columns size for hyphenated words, but those words break without a hyphen. An optional hyphen permits a line break and appears at that line end.',
   },
 
   // --- Lists & numbering -------------------------------------------------
@@ -479,7 +479,7 @@ export const wordFeatures: WordFeature[] = [
     roundTrip: 'full',
     tier: 'community',
     notes:
-      'Insert tables and edit cell text with fixed or automatic column widths. Document settings control widths, indents, and cell spacing. Compatibility modes can change alignment and sizing. The canonical setTableProperties operation accepts signed indentTwips values, including zero, while preserving imported table properties.',
+      'Table settings control column widths, alignment, spacing, and signed indents. Document compatibility settings affect sizing. A final table keeps a paragraph below it for the caret.',
   },
   {
     id: 'tables.rtl',
@@ -512,7 +512,7 @@ export const wordFeatures: WordFeature[] = [
     roundTrip: 'full',
     tier: 'community',
     notes:
-      'Both adapters let you edit cell borders and fill. Diagonal borders display, but you cannot edit or copy them through HTML. Direct table shading stays saved but does not display; use cell shading instead.',
+      'Both adapters let you edit cell borders and fill. Diagonal borders display, but you cannot edit or copy them through HTML. With cell spacing, outer borders frame the table, each cell draws its own borders, and table shading fills the gaps.',
   },
   {
     id: 'tables.merge',
@@ -567,7 +567,7 @@ export const wordFeatures: WordFeature[] = [
     roundTrip: 'full',
     tier: 'community',
     notes:
-      'Text wraps around floating tables at their saved positions. Page breaks depend on the anchor, available space, and document compatibility settings. You cannot edit floating-table positions from the interface.',
+      'Text and narrower tables wrap around floating tables at their saved positions, also in table cells. Page breaks depend on the anchor, available space, and document compatibility settings. You cannot edit floating-table positions from the interface.',
   },
   {
     id: 'tables.text-direction',
@@ -640,7 +640,7 @@ export const wordFeatures: WordFeature[] = [
     tier: 'community',
     docsLink: '/docs/2.x/guides/images',
     notes:
-      'WMF and EMF images display as raster images in the editor and as vectors in PDF export. Failed conversions show a placeholder in the editor; PDF export omits them and reports a diagnostic. Saving preserves the original image bytes.',
+      'WMF and EMF images display as editor raster images up to 2,048 pixels per side and as PDF vectors. Failed conversions show a placeholder in the editor; PDF export omits them and reports a diagnostic. Saving preserves the original image bytes.',
   },
   {
     id: 'images.tiff',
@@ -675,19 +675,19 @@ export const wordFeatures: WordFeature[] = [
     tier: 'community',
     docsLink: '/docs/2.x/guides/images',
     notes:
-      'Edit text in supported upright text boxes in the body, headers, and footers, including during collaboration. Tables and rotated text remain read-only. Nested boxes, linked boxes, and automatic text shrinking can clip or show a placeholder.',
+      'Edit the text, size, and text wrap of supported upright text boxes in the body, headers, and footers. A height change turns off Resize shape to fit text, so the box keeps that height. Tables and rotated text are read-only; nested boxes, linked boxes, and text shrinking can clip.',
   },
   {
     id: 'images.shapes',
     name: 'Drawing shapes & geometry',
     category: 'images',
-    editing: 'none',
+    editing: 'partial',
     rendering: 'partial',
     roundTrip: 'preserved',
     tier: 'community',
     docsLink: '/docs/2.x/guides/images',
     notes:
-      'Preset shapes and supported custom shapes display with fills, outlines, and outer shadows. Shapes and grouped text remain read-only; additional effects require the drawing module. Unsupported shapes or groups show a placeholder and retain their text wrap area.',
+      'Preset and supported custom shapes and groups display with fills, outlines, outer shadows, rotation, and flips. You can set solid fills, outline colors, widths, dashes, and text wrap, and move or delete shapes. Resizing, rotation, shape text, gradients, and patterns are read-only, and some rotated or flipped groups show placeholders.',
   },
   {
     id: 'images.legacy-vml',
@@ -861,7 +861,7 @@ export const wordFeatures: WordFeature[] = [
     roundTrip: 'full',
     tier: 'community',
     notes:
-      'Both adapters let you insert, edit, delete, and convert footnotes and endnotes. Notes continue across pages according to their placement and paragraph settings. The automation API edits existing notes but cannot create them; notes in headers and footers are unsupported.',
+      'Both adapters let you insert, edit, delete, and convert notes, and select across notes of one kind. Notes continue across pages according to their placement and paragraph settings. Automation cannot create notes, and notes in headers and footers are unsupported.',
     docsLink: '/docs/2.x/guides/footnotes-and-endnotes',
   },
   {
@@ -1308,7 +1308,7 @@ export const wordFeatures: WordFeature[] = [
     roundTrip: 'full',
     tier: 'community',
     notes:
-      'Rich paste restores supported formatting, tables, images, notes, equations, fields, and tracked changes from compatible clipboard content. Sections, headers, footers, and comments do not transfer. Paste outside the body uses plain text.',
+      'Rich paste restores supported formatting, tables, images, notes, equations, fields, and tracked changes from compatible clipboard content. A selected picture, shape, line, text box, or group in the body copies whole. Sections, headers, footers, and comments do not transfer, and paste outside the body uses plain text.',
   },
   {
     id: 'collab.undo-redo',
@@ -1335,14 +1335,14 @@ export const wordFeatures: WordFeature[] = [
   },
   {
     id: 'collab.i18n',
-    name: 'Editor UI in 14 languages',
+    name: 'Editor UI in 15 languages',
     category: 'collaboration',
     editing: 'full',
     rendering: 'full',
     roundTrip: 'full',
     tier: 'community',
     notes:
-      'Use @docx-editor.dev/i18n to translate editor controls into 14 languages. Arabic and Hebrew interfaces use right-to-left layouts. LocaleProvider also accepts an explicit direction for other languages.',
+      'Use @docx-editor.dev/i18n to translate editor controls into 15 languages, including Italian. Arabic and Hebrew interfaces use right-to-left layouts. LocaleProvider also accepts an explicit direction for other languages.',
     docsLink: '/docs/2.x/i18n',
   },
   {
@@ -1365,7 +1365,7 @@ export const wordFeatures: WordFeature[] = [
     roundTrip: 'full',
     tier: 'community',
     notes:
-      'Load server-generated DOCX updates without replacing the editor instance, with optional change highlights. Updates preserve scroll but reset selection and undo history. Local edits, stale results, and collaborative sessions prevent replacement; this API does not compare or merge files.',
+      'Load server-generated DOCX updates without replacing the editor instance, with optional change highlights. An update can apply as one undoable edit that keeps selection and works in collaborative sessions. A reload resets selection and undo history.',
     docsLink: '/docs/2.x/guides/document-refresh',
   },
   {

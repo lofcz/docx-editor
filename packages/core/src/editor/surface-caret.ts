@@ -26,7 +26,16 @@
 //
 // Everything here fails soft. A range selection, an unfocused surface, an active IME
 // composition, a position layout does not place, or a page that is not materialized all
-// leave the native caret alone rather than leaving the user with no caret at all.
+// leave the native caret alone rather than leaving the user with no caret at all. The one
+// state that keeps the suppression without a painted caret is a range the browser itself
+// shows as a range: it draws no caret there, and lifting the suppression would restyle
+// every painted page for nothing.
+//
+//   state                                         painted caret   native caret
+//   collapsed, focused, placed by layout          shown           suppressed
+//   range the browser shows with text             none            suppressed (it draws none)
+//   range the browser shows as a caret            none            handed back
+//   unfocused, composing, suppressed, unplaced    none            handed back
 
 import {
   caretAt,
@@ -45,6 +54,18 @@ import { clipParagraphBox } from '../layout/paragraph-frame-clip.ts';
 import { selectionRunStyle } from './surface-formatting.ts';
 import { hostTimers } from './host-realm.ts';
 import { isInHostUi } from './dom-selection.ts';
+import type { HighlightRect } from '../contracts/editor-highlights.ts';
+
+/** Where the insertion point paints: its host and its offset there, in CSS pixels. */
+interface CaretPlacement {
+  readonly host: HTMLElement;
+  readonly left: number;
+  readonly top: number;
+  readonly height: number;
+  readonly bottomToTop: boolean;
+  /** Identifies the placement, so a repaint in place is told from a real move. */
+  readonly key: string;
+}
 
 /** What the caret reads at paint time. Both move independently of the caret itself. */
 export interface SurfaceCaretInput {
@@ -82,12 +103,41 @@ export interface SurfaceCaretInput {
 export interface SurfaceCaret {
   /** Repaint from the current layout and selection. Safe to call on every render. */
   update(): void;
+  /**
+   * Repaint for the selection that `write` is about to put in the browser, then run `write`.
+   *
+   * Whether a range hands the native caret back depends on what the browser shows AFTER the
+   * write, so that decision waits for it, and it is made even when `write` throws. `write`
+   * runs once, after the repaint; a repaint that throws leaves it unrun.
+   */
+  updateAround(write: () => void): void;
+  /** The insertion point at the selection head in client pixels, or null when unplaced. */
+  clientRect(): HighlightRect | null;
   destroy(): void;
 }
 
 /** Appearance — width, colour, blink — lives in the stylesheet under these names. */
 const CARET_CLASS = 'docx-editor-one-surface__caret';
 const STEADY_CLASS = 'docx-editor-one-surface__caret--steady';
+
+/** `Node.TEXT_NODE`, as a number: a node from another window is no instance of this one's. */
+const TEXT_NODE = 3;
+
+/**
+ * Whether a selection end sits in painted run text with a character on the range's side.
+ *
+ * Both ends in ONE text node of a selection that is not collapsed hold the characters between
+ * them. An end in another node than the other end can be the range's start or its end, so one
+ * character beside it is not proof; a character on BOTH sides of it in its own text node is.
+ * Anything else answers false and leaves the question to the selection's text.
+ */
+function endsInRunText(node: Node | null, offset: number, other: Node | null): boolean {
+  if (!node || node.nodeType !== TEXT_NODE) return false;
+  if (!node.parentElement?.closest('[data-paragraph-id][data-start]')) return false;
+  const length = (node as Text).length;
+  if (node === other) return length > 0;
+  return offset > 0 && offset < length;
+}
 
 /**
  * How long a moved caret stays solid before it resumes blinking.
@@ -153,8 +203,17 @@ export function createSurfaceCaret(
     );
   }
 
-  /** Stop painting and give the native caret back. */
-  function hide(): void {
+  /**
+   * Whether a range took the insertion point down while the native caret is still to settle.
+   *
+   * The mirror repaints the caret BEFORE it writes the browser's selection, so at that
+   * moment the browser still shows the caret it is about to replace with the range. Only
+   * {@link updateAround} leaves this set, and only for the length of its write.
+   */
+  let nativeCaretOwed = false;
+
+  /** Stop painting the insertion point. The native caret's suppression is a separate step. */
+  function takeDown(): void {
     placed = null;
     if (steadyTimer !== null) {
       timers.clearTimeout(steadyTimer);
@@ -162,9 +221,53 @@ export function createSurfaceCaret(
     }
     element.classList.remove(STEADY_CLASS);
     element.remove();
+  }
+
+  /** Stop painting and give the native caret back. */
+  function hide(): void {
+    takeDown();
+    nativeCaretOwed = false;
     pagesLayer.style.removeProperty('caret-color');
     suppressedHost?.style.removeProperty('caret-color');
     suppressedHost = null;
+  }
+
+  /**
+   * Whether the browser's own selection is a range, which draws a highlight and no caret.
+   *
+   * `caret-color` is inherited, so writing it on the pages layer restyles every painted
+   * page. While the browser shows a range there is no native caret for it to colour, so the
+   * suppression can stay as it is and a caret-to-range move costs no restyle. A collapsed or
+   * absent browser selection still gets the native caret back.
+   *
+   * Two cases answer false although the selection is not collapsed. A range that holds no
+   * text, such as the two sides of hidden text, can be drawn as a caret. A text control in
+   * the pages that has focus draws its own caret and inherits the same property.
+   */
+  function browserShowsRange(): boolean {
+    const document = pagesLayer.ownerDocument;
+    const selection = document.getSelection();
+    if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return false;
+    const active = document.activeElement;
+    if (active && active !== pagesLayer && /^(?:INPUT|TEXTAREA|SELECT)$/.test(active.tagName)) {
+      return false;
+    }
+    // A selection end inside painted run text settles it without reading the selected text,
+    // whose length a held range would otherwise pay for on every repaint.
+    if (
+      endsInRunText(selection.anchorNode, selection.anchorOffset, selection.focusNode) ||
+      endsInRunText(selection.focusNode, selection.focusOffset, selection.anchorNode)
+    ) {
+      return true;
+    }
+    return selection.toString() !== '';
+  }
+
+  /** Decide the native caret for a range, once the browser's selection is the one to show. */
+  function settle(): void {
+    if (!nativeCaretOwed) return;
+    if (browserShowsRange()) nativeCaretOwed = false;
+    else hide();
   }
 
   /** Hold the caret solid while it is moving, then let the blink resume. */
@@ -177,11 +280,12 @@ export function createSurfaceCaret(
     }, STEADY_MS);
   }
 
-  function update(): void {
-    if (composing || !hasFocus() || read().suppress) {
-      hide();
-      return;
-    }
+  /**
+   * Where the insertion point at the selection head paints: the host it is placed in and its
+   * offset there in CSS pixels. Null when layout does not place the head on a painted page.
+   * `armed` applies the typing format's metrics, which only describe a collapsed caret.
+   */
+  function placement(input: SurfaceCaretInput, armed: boolean): CaretPlacement | null {
     const {
       layout,
       selection,
@@ -192,14 +296,8 @@ export function createSurfaceCaret(
       preferredLineId,
       measurer,
       typingStyle,
-    } = read();
+    } = input;
     const currentScale = scale();
-    // A range selection shows the browser's highlight; an insertion point inside it would
-    // claim a position the selection does not have.
-    if (!isCollapsed(selection)) {
-      hide();
-      return;
-    }
     // Measured, not interpolated: the caret has to sit at a glyph edge, and a span's advance
     // divided by its character count only lands there in a monospaced face.
     let geometry = caretAt(layout, selection.head, {
@@ -207,11 +305,8 @@ export function createSurfaceCaret(
       ...(preferredPageIndex !== undefined ? { preferredPageIndex } : {}),
       ...(preferredLineId !== undefined ? { preferredLineId } : {}),
     });
-    if (!geometry || !Number.isInteger(geometry.pageIndex)) {
-      hide();
-      return;
-    }
-    if (typingStyle && measurer) {
+    if (!geometry || !Number.isInteger(geometry.pageIndex)) return null;
+    if (armed && typingStyle && measurer) {
       const { pageIndex, lineId } = geometry;
       const placedLine = paragraphLinesFor(layout, selection.head.paragraphId)?.find(
         (placed) => placed.pageIndex === pageIndex && placed.line.id === lineId
@@ -246,10 +341,7 @@ export function createSurfaceCaret(
               },
               placedLine?.clipBox
             );
-            if (!box) {
-              hide();
-              return;
-            }
+            if (!box) return null;
             geometry = box;
           }
         }
@@ -262,41 +354,98 @@ export function createSurfaceCaret(
       pagesLayer.querySelector<HTMLElement>(
         `[data-page-index="${geometry.pageIndex}"] > .docx-page-content`
       );
-    if (!host) {
-      hide();
-      return;
-    }
+    if (!host) return null;
     // A caret with no height is not a caret. The engine suppresses the native one for
     // exactly as long as it paints its own, so a zero-height geometry would leave the user
     // with no caret at all rather than a short one. Hand the native caret back instead —
     // the same fail-soft the surface already applies to a range selection or an unplaced
     // position.
-    if (!(geometry.height > 0)) {
+    if (!(geometry.height > 0)) return null;
+    const hostKind = host === scopedHost ? (scopedHostKind ?? 'scoped') : 'body';
+    return {
+      host,
+      left: (geometry.x - (scopedOrigin?.x ?? 0)) * currentScale,
+      top: (geometry.y - (scopedOrigin?.y ?? 0)) * currentScale,
+      height: geometry.height * currentScale,
+      bottomToTop: isBottomToTopCaret(geometry),
+      key: `${geometry.pageIndex}:${hostKind}:${geometry.x}:${geometry.y}:${geometry.height}`,
+    };
+  }
+
+  function update(): void {
+    repaint(false);
+  }
+
+  function updateAround(write: () => void): void {
+    repaint(true);
+    try {
+      write();
+    } finally {
+      settle();
+    }
+  }
+
+  function repaint(selectionWriteFollows: boolean): void {
+    const input = read();
+    if (composing || !hasFocus() || input.suppress) {
       hide();
       return;
     }
-    element.style.left = `${(geometry.x - (scopedOrigin?.x ?? 0)) * currentScale}px`;
-    element.style.top = `${(geometry.y - (scopedOrigin?.y ?? 0)) * currentScale}px`;
-    element.style.height = `${geometry.height * currentScale}px`;
-    const bottomToTop = isBottomToTopCaret(geometry);
-    element.style.transformOrigin = bottomToTop ? '0 0' : '';
-    element.style.transform = bottomToTop ? 'rotate(-90deg)' : '';
+    // A range selection shows the browser's highlight; an insertion point inside it would
+    // claim a position the selection does not have.
+    if (!isCollapsed(input.selection)) {
+      takeDown();
+      nativeCaretOwed = true;
+      if (!selectionWriteFollows) settle();
+      return;
+    }
+    nativeCaretOwed = false;
+    const at = placement(input, true);
+    if (!at) {
+      hide();
+      return;
+    }
+    const { host } = at;
+    const { scopedHost } = input;
+    element.style.left = `${at.left}px`;
+    element.style.top = `${at.top}px`;
+    element.style.height = `${at.height}px`;
+    element.style.transformOrigin = at.bottomToTop ? '0 0' : '';
+    element.style.transform = at.bottomToTop ? 'rotate(-90deg)' : '';
     if (element.parentNode !== host) host.append(element);
     // Suppress the native caret only while ours is up, and inline so it beats the
     // `[contenteditable='true']` rule in the stylesheet — pages layer AND scoped story.
-    pagesLayer.style.caretColor = 'transparent';
+    if (pagesLayer.style.caretColor !== 'transparent') pagesLayer.style.caretColor = 'transparent';
     if (suppressedHost && suppressedHost !== scopedHost) {
       suppressedHost.style.removeProperty('caret-color');
     }
     suppressedHost = scopedHost ?? null;
     suppressedHost?.style.setProperty('caret-color', 'transparent');
 
-    const hostKind = host === scopedHost ? (scopedHostKind ?? 'scoped') : 'body';
-    const key = `${geometry.pageIndex}:${hostKind}:${geometry.x}:${geometry.y}:${geometry.height}`;
-    if (key !== placed) {
-      placed = key;
+    if (at.key !== placed) {
+      placed = at.key;
       markMoving();
     }
+  }
+
+  /**
+   * The insertion point at the selection head in client coordinates, from the same
+   * placement the painted caret uses. Independent of focus, composition and viewing mode,
+   * which only decide whether the caret PAINTS, not where it is.
+   */
+  function clientRect(): HighlightRect | null {
+    if (!pagesLayer.isConnected || !(scale() > 0)) return null;
+    const input = read();
+    const at = placement(input, isCollapsed(input.selection));
+    if (!at || !at.host.isConnected) return null;
+    const origin = at.host.getBoundingClientRect();
+    // The caret is absolutely positioned inside the host's padding box.
+    const left = origin.left + at.host.clientLeft + at.left;
+    const top = origin.top + at.host.clientTop + at.top;
+    // A bottom-to-top caret is rotated a quarter turn about its top-left corner.
+    const width = at.bottomToTop ? at.height : 0;
+    const height = at.bottomToTop ? 0 : at.height;
+    return { x: left, y: top, left, top, width, height, right: left + width, bottom: top + height };
   }
 
   // The caret's own state lives on these events, so the surface does not have to relay
@@ -306,9 +455,11 @@ export function createSurfaceCaret(
     composing = true;
     update();
   };
+  // The end does not place the caret here: the commit that follows does, through its paint.
+  // Placed now, it stood against the layout from before the composed text, and its native
+  // caret's restyle covered every painted page; an unpainted commit keeps the native caret.
   const onCompositionEnd = (): void => {
     composing = false;
-    update();
   };
   const onFocusIn = (): void => update();
   const onFocusOut = (event: FocusEvent): void => {
@@ -326,6 +477,8 @@ export function createSurfaceCaret(
 
   return {
     update,
+    updateAround,
+    clientRect,
     destroy() {
       pagesLayer.removeEventListener('compositionstart', onCompositionStart);
       pagesLayer.removeEventListener('compositionend', onCompositionEnd);

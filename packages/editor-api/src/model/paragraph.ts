@@ -42,6 +42,7 @@ import { List, ListItem } from './lists.ts';
 import { requireStyleName, spanRefOf } from './addressing.ts';
 import { Table, tableInsertion } from './tables.ts';
 import { Font } from './font.ts';
+import { BorderUniversalCollection, type BorderEdge, type BorderWritableField } from './borders.ts';
 import {
   besideLocation,
   insertableText,
@@ -53,9 +54,14 @@ import { Range } from './range.ts';
 import { searchOptions as readSearchOptions, type SearchOptions } from './search-options.ts';
 import { optionalFlag, reviewedTextVersion, textRangeMarks } from './text-ranges.ts';
 import { clientResult, type ClientResult } from '../runtime/client-result.ts';
+import { AnnotationCollection, insertAnnotations } from './annotations.ts';
+import type { AnnotationSet } from './annotation-input.ts';
 
 /** Most delimiters one `split` may name. The host applies its own cap as well. */
 const MAX_DELIMITERS = 16;
+
+/** Widest line spacing a write may author, in points: the host refuses anything past 31680 twips. */
+const MAX_LINE_SPACING = 1584;
 
 /** Paragraph alignment values readable and writable through this object model. */
 export type ParagraphAlignment =
@@ -67,6 +73,24 @@ export type ParagraphAlignment =
  * @public
  */
 export type ParagraphReadingOrder = 'LeftToRight' | 'RightToLeft';
+
+/**
+ * How a paragraph's line spacing is measured, as {@link Paragraph.lineSpacingRule} reads and
+ * writes it.
+ *
+ * @public
+ */
+export type ParagraphLineSpacingRule =
+  'Single' | 'OnePointFive' | 'Double' | 'AtLeast' | 'Exactly' | 'Multiple';
+
+const LINE_SPACING_RULES: ReadonlySet<unknown> = new Set([
+  'Single',
+  'OnePointFive',
+  'Double',
+  'AtLeast',
+  'Exactly',
+  'Multiple',
+]);
 
 /**
  * One paragraph: what it says, what it is, and the ways it can be changed.
@@ -88,6 +112,7 @@ export type ParagraphReadingOrder = 'LeftToRight' | 'RightToLeft';
  */
 export class Paragraph extends ModelObject implements PromisedItem {
   #font: Font | undefined;
+  #borders: BorderUniversalCollection | undefined;
   #shapes: ShapeCollection | undefined;
   #list: List | undefined;
   #listItem: ListItem | undefined;
@@ -195,6 +220,26 @@ export class Paragraph extends ModelObject implements PromisedItem {
   }
 
   /**
+   * The paragraph's borders. `items` holds five borders in a fixed order: `0` top, `1` left,
+   * `2` bottom, `3` right, and `4` the border between paragraphs.
+   *
+   * Reads return the borders the paragraph shows, including ones its style supplies. Load
+   * `items` and sync before you write. Border writes apply in the order you make them and join
+   * this paragraph's other formatting writes in the same sync. With change tracking on, they are
+   * recorded as one paragraph property revision.
+   */
+  get borders(): BorderUniversalCollection {
+    this.#borders ??= BorderUniversalCollection.of(
+      this.context,
+      `${this.path.label}.borders`,
+      this.path,
+      () => this.#handle(),
+      (edge, field, value) => this.#authorBorder(edge, field, value)
+    );
+    return this.#borders;
+  }
+
+  /**
    * How the paragraph's lines are aligned, or `Unknown` where it authors no alignment.
    *
    * `Unknown` rather than `Left`: a paragraph that states nothing may still be centred by its
@@ -220,6 +265,8 @@ export class Paragraph extends ModelObject implements PromisedItem {
    * which also overrides a style. The write keeps `alignment` as authored: in a right-to-left
    * paragraph, `Left` and `Right` name the start and end edges. With change tracking on, a write
    * that changes the direction is recorded as a paragraph formatting revision.
+   *
+   * @docxEditorExtension
    */
   get readingOrder(): ParagraphReadingOrder {
     return this.loadedProperty<ParagraphReadingOrder>('readingOrder');
@@ -262,13 +309,51 @@ export class Paragraph extends ModelObject implements PromisedItem {
     this.#authorFormat('rightIndent', requirePoints(value, `${this.path.label}.rightIndent`));
   }
 
-  /** Points between the paragraph's lines. */
+  /**
+   * Line spacing in points, from 0.05 to 1584.
+   *
+   * A read returns the spacing in force, including spacing the style supplies, so it pairs with
+   * {@link Paragraph.lineSpacingRule}. A write keeps the rule in force; set `lineSpacingRule` to
+   * change it. Under the `Exactly` and `AtLeast` rules the value is the line height. Under the
+   * other rules 12 points is one line, so `18` on a single-spaced paragraph gives 1.5 lines.
+   * Writing the spacing the paragraph already shows adds no formatting.
+   */
   get lineSpacing(): number {
     return this.loadedProperty<number>('lineSpacing');
   }
 
   set lineSpacing(value: number) {
-    this.#authorFormat('lineSpacing', requirePoints(value, `${this.path.label}.lineSpacing`));
+    const target = `${this.path.label}.lineSpacing`;
+    const points = requirePoints(value, target);
+    // Stored in twentieths of a point, so a value that rounds to 0 is refused here, not at sync.
+    if (!(Math.round(points * 20) >= 1 && points <= MAX_LINE_SPACING))
+      fail({ code: 'InvalidArgument', target });
+    this.#authorFormat('lineSpacing', points);
+  }
+
+  /**
+   * How the line spacing is measured: `Single`, `OnePointFive`, `Double`, `AtLeast`, `Exactly`,
+   * or `Multiple`.
+   *
+   * A DocxEditor addition: Office.js has no line spacing rule member. The read resolves the
+   * paragraph's own spacing, then its style, as the page shows it. `Single`, `OnePointFive`, and
+   * `Double` also set the spacing to 12, 18, or 24 points. The other rules keep the points in
+   * force, so `Exactly` on a 1.5-line paragraph gives exactly 18 points. `Multiple` at 12, 18, or
+   * 24 points reads back as `Single`, `OnePointFive`, or `Double`. When `lineSpacingRule` and
+   * `lineSpacing` share a sync, the rule applies first. Writing the rule the paragraph already
+   * shows adds no formatting. With change tracking on, a write is recorded as a paragraph
+   * property revision.
+   *
+   * @docxEditorExtension
+   */
+  get lineSpacingRule(): ParagraphLineSpacingRule {
+    return this.loadedProperty<ParagraphLineSpacingRule>('lineSpacingRule');
+  }
+
+  set lineSpacingRule(value: ParagraphLineSpacingRule) {
+    const target = `${this.path.label}.lineSpacingRule`;
+    if (!LINE_SPACING_RULES.has(value)) fail({ code: 'InvalidArgument', target });
+    this.#authorFormat('lineSpacingRule', value);
   }
 
   /** Points above the paragraph. */
@@ -394,6 +479,42 @@ export class Paragraph extends ModelObject implements PromisedItem {
     return result;
   }
 
+  /**
+   * Mark proofing issues in this paragraph. Answers the new annotation ids, in critique order.
+   *
+   * `start` and `length` count in this paragraph's `text`. Annotations are view state: they are
+   * not saved, not shared with collaborators, and gone when the runtime is disposed. The
+   * browser runtime paints them; a server runtime keeps them as data. A critique past the end
+   * of the text refuses with `InvalidArgument`.
+   *
+   * @example
+   * ```ts
+   * const ids = paragraph.insertAnnotations({
+   *   critiques: [{ colorScheme: 'Red', start: 4, length: 3, popupOptions: {
+   *     brandingTextResourceId: '', subtitleResourceId: '', titleResourceId: '',
+   *     suggestions: ['the'],
+   *   } }],
+   * });
+   * await context.sync();
+   * console.log(ids.value);
+   * ```
+   */
+  insertAnnotations(annotations: AnnotationSet): ClientResult<string[]> {
+    return insertAnnotations(
+      this.context,
+      (action) => this.enqueue(action),
+      `${this.path.label}.insertAnnotations`,
+      () => this.#handle(),
+      annotations
+    );
+  }
+
+  /** The annotations on this paragraph, in text order. Load the collection before you read it. */
+  getAnnotations(): AnnotationCollection {
+    this.requireUsablePath();
+    return AnnotationCollection.of(this.context, `${this.path.label}.getAnnotations()`, this.path);
+  }
+
   /** Start a new independent bullet list with this paragraph. Sync before using the returned list. */
   startNewList(): List {
     const target = `${this.path.label}.startNewList`;
@@ -466,6 +587,15 @@ export class Paragraph extends ModelObject implements PromisedItem {
    * With `document.changeTrackingMode = 'TrackMineOnly'`, this records a tracked deletion of the
    * paragraph's text and its paragraph mark. Accepting it removes the paragraph; rejecting it
    * restores the paragraph.
+   *
+   * A body, note, or text box that ends with a table keeps the empty paragraph after it: deleting
+   * that paragraph without tracking refuses with `NotSupported` (`edit.operation-unsupported`).
+   * Clear it instead.
+   *
+   * A body, note, comment, text box, or table cell keeps at least one paragraph. Deleting its last
+   * paragraph without tracking refuses with `NotSupported` (`edit.content-required`). Clear it
+   * instead. The first paragraph of a footnote or endnote holds its reference number, and deleting
+   * that paragraph removes the number too.
    *
    * A tracked deletion refuses with `NotSupported` for the last paragraph of a story, table
    * cell, or content control; a paragraph directly before a table or block content control; a
@@ -659,7 +789,7 @@ export class Paragraph extends ModelObject implements PromisedItem {
    * have been built from the tree the first already changed. The bag is detached when sync captures
    * the queue, so later assignments belong to the next sync.
    */
-  #authorFormat(field: FormatField, value: unknown): void {
+  #authorFormat(field: FormatField | 'borders', value: unknown): void {
     this.requireUsablePath();
     if (this.#format) {
       this.#format[field] = value;
@@ -684,6 +814,19 @@ export class Paragraph extends ModelObject implements PromisedItem {
         if (this.#format === pending) this.#format = undefined;
       }
     );
+  }
+
+  /**
+   * Queue one border assignment on this paragraph's pending write.
+   *
+   * Border assignments keep their order: the host applies them in sequence, where a line style
+   * resets the width, so `lineWidth` before `lineStyle` and after it give different results.
+   */
+  #authorBorder(edge: BorderEdge, field: BorderWritableField, value: unknown): void {
+    const assignment = { edge, property: field, value };
+    const queued = this.#format?.borders;
+    if (Array.isArray(queued)) queued.push(assignment);
+    else this.#authorFormat('borders', [assignment]);
   }
 
   #listAt(label: string): List {
@@ -712,6 +855,7 @@ const FORMAT_FIELDS = [
   'leftIndent',
   'rightIndent',
   'lineSpacing',
+  'lineSpacingRule',
   'spaceBefore',
   'spaceAfter',
   'readingOrder',

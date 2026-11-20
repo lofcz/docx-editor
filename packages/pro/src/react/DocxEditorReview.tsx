@@ -62,7 +62,7 @@ import {
 import { cloneReviewCard, listCardTemplate, partitionReviewChildren } from './review-composition';
 import { COMPACT_CARD_WIDTH, RAIL_OVERSCAN, useRailMetrics } from './use-rail-geometry';
 import { useRailWindow } from './use-rail-window';
-import { useReviewSlotSizing } from './use-review-slot-sizing';
+import { useCardSizer } from './use-review-card-heights.ts';
 import { useReview, type ReviewItemView } from './useReview';
 import { useReviewAuthorInfo } from './review-author-styles';
 import { ResolvedDisclosureProvider } from './review-comment-resolution.tsx';
@@ -70,7 +70,19 @@ import { hasFormattingBalloon } from './review-balloon-anchor.ts';
 import { listenForCommentClicks } from '../review/comment-click-opens-pane.ts';
 import type { ReviewProps } from './review-types.ts';
 import { stackRailCards } from '../review/rail-stack.ts';
-import { ReviewContext, ReviewItemContext, type ReviewRailValue } from './review-context.ts';
+import {
+  ReviewCardRailContext,
+  ReviewContext,
+  ReviewItemContext,
+  ReviewThreadContext,
+  useCardActions,
+  useKept,
+  type ReviewCardRailValue,
+  type ReviewRailValue,
+} from './review-context.ts';
+import { reviewRootsOf, sameEntries } from '../review/review-roots.ts';
+import { railWindowFollowsScroll } from '../review/rail-window.ts';
+import { ReviewRenderedCard } from './review-list-slot.tsx';
 import { ReviewRailMetricsContext } from './useReviewRailMetrics.ts';
 import { isCompactReviewColumn } from '../review/rail-metrics.ts';
 import {
@@ -81,8 +93,6 @@ import {
   NO_PLACEMENT_REVIEW_QUERY,
   PAIRED_REVIEW_QUERY,
   guardMousedown,
-  idsOf,
-  isThreadedReply,
   selectCommentMarkers,
   selectDocumentAbsent,
   selectDocumentReadOnly,
@@ -265,16 +275,21 @@ function ReviewRoot({
     () => editor?.getConfiguredAuthor() ?? null,
     () => null
   );
-  const authorSlots = useMemo(() => {
-    const slots = new Map<string, number>();
-    for (const entry of items) {
-      if (entry.author && !slots.has(entry.author)) slots.set(entry.author, slots.size);
-    }
-    if (configuredAuthor && !slots.has(configuredAuthor)) {
-      slots.set(configuredAuthor, slots.size);
-    }
-    return slots;
-  }, [items, configuredAuthor]);
+  // Kept while its content holds: an edit to one item gives a new list with the same authors,
+  // and a new map here would render every card.
+  const authorSlots = useKept(
+    useMemo(() => {
+      const slots = new Map<string, number>();
+      for (const entry of items) {
+        if (entry.author && !slots.has(entry.author)) slots.set(entry.author, slots.size);
+      }
+      if (configuredAuthor && !slots.has(configuredAuthor)) {
+        slots.set(configuredAuthor, slots.size);
+      }
+      return slots;
+    }, [items, configuredAuthor]),
+    sameEntries
+  );
   const byId = useMemo(() => {
     const map = new Map<string, ReviewItemView>();
     for (const entry of items) map.set(entry.id, entry);
@@ -287,32 +302,31 @@ function ReviewRoot({
 
   // Card heights are the CALLER's to report: only the rendered card knows how tall it is, and
   // a rail that guessed would overlap the moment a comment ran to three lines.
-  const [heights, setHeights] = useState<ReadonlyMap<string, number>>(() => new Map());
-  const measure = useCallback((key: string, height: number) => {
-    // A real card is never 0px tall — zero is a layout-less read (a DOM without a
-    // renderer, or a mid-transition detach), and recording it collapses the stacking run
-    // to gaps. The content-derived estimate keeps standing in until a real height lands.
-    if (height <= 0) return;
-    setHeights((previous) => {
-      if (previous.get(key) === height) return previous;
-      const next = new Map(previous);
-      next.set(key, height);
-      return next;
-    });
-  }, []);
-
+  //
   // OBSERVED, not read once on render. A card changes height on its own — the reply box opens
   // when it becomes active, a web font lands, a summary rewraps — and a height read during
   // commit and never revisited left the stack spacing every card below it by a size that card
   // no longer was. The visible symptom was a band of empty rail under a card that had just
   // collapsed. A key keeps its last height when virtualization unmounts its card, which is
   // deliberate: dropping it would collapse the run and jump every card on screen.
-  const observeSlot = useReviewSlotSizing(measure);
+  // Against every item the rail can show: a host filter, `structural` or `formatting` hides a
+  // card without forgetting its height; a deleted item leaves both lists.
+  const sizedItems = useMemo(
+    () => [...review.items, ...allReview.items],
+    [review.items, allReview.items]
+  );
+  const { heights, cardRef: slotRef } = useCardSizer(sizedItems);
 
   // Where the rail sits and which band of the scroller is on screen — the DOM-measurement
   // half of the rail, in `use-rail-geometry.ts` and `use-rail-window.ts`.
   const metrics = useRailMetrics(editor, railRef, items, !documentAbsent && !hidden, compact);
-  const window_ = useRailWindow(editor, railRef, !documentAbsent && !hidden);
+  // Only what the list RENDERS competes for the column: a threaded reply lives inside its
+  // parent's card, and letting it into the run advanced the cursor once per reply, spacing
+  // every card below a commented conversation by gaps nothing on screen accounted for.
+  const roots = reviewRootsOf(items);
+  // The stepped band, except where the compact card stands on the band's own edge.
+  const exactBand = railWindowFollowsScroll(compact, roots, review.activeKey);
+  const window_ = useRailWindow(editor, railRef, !documentAbsent && !hidden, exactBand);
   // What `useReviewRailMetrics()` reads inside the rail: the geometry plus the presentation.
   const railMetrics = useMemo(() => ({ ...metrics, compact }), [metrics, compact]);
 
@@ -396,13 +410,6 @@ function ReviewRoot({
   // card's anchor, so nothing about its own position could have avoided the collision. The
   // BUTTON does not stack — it sits against the page instead, where nothing else is.
   const composeAnchorY = draftAnchorY ?? review.selectionAnchorY;
-  // Only what the list RENDERS competes for the column: a threaded reply lives inside its
-  // parent's card, and letting it into the run advanced the cursor once per reply, spacing
-  // every card below a commented conversation by gaps nothing on screen accounted for.
-  const roots = useMemo(() => {
-    const present = idsOf(items);
-    return items.filter((entry) => !isThreadedReply(entry, present));
-  }, [items]);
   const stackInput = useMemo(() => {
     if (draftAnchorY === null) return roots;
     // In document order, AFTER anything already at that height: the comments already there
@@ -462,28 +469,25 @@ function ReviewRoot({
   // The facade's resolved roster (reference-stable, live through `setRevisionStyles`),
   // keyed by author for the card parts.
   const roster = useReviewAuthors();
-  const authorInfo = useReviewAuthorInfo(roster, items, authorSlots, editor);
+  const authorInfo = useKept(useReviewAuthorInfo(roster, items, authorSlots, editor), sameEntries);
   const draftAuthorSlot = configuredAuthor ? (authorSlots.get(configuredAuthor) ?? 0) : 0;
   const draftAuthorInfo = configuredAuthor ? authorInfo.get(configuredAuthor) : undefined;
-  const value = useMemo<ReviewRailValue>(
+  // What a card reads. None of it follows the item list, so an edit that changes one item
+  // renders that item's card and no other.
+  const cardReview = useCardActions(review);
+  const cardRail = useMemo<ReviewCardRailValue>(
     () => ({
       t: hostT,
       cardClassName,
       readOnly,
-      review: { ...review, items },
-      allItems: allReview.items,
+      review: cardReview,
       authorSlots,
       authorInfo,
       draftAuthor: configuredAuthor,
       draftAuthorInfo,
       draftAuthorSlot,
-      byId,
-      measure: observeSlot,
       beginDraft,
       endDraft,
-      drafting: draftAnchorY !== null,
-      composeTop,
-      composeLeft: compact ? metrics.compactCardLeft : null,
       commentMarkers,
       revisionsIn,
     }),
@@ -491,25 +495,53 @@ function ReviewRoot({
       hostT,
       cardClassName,
       readOnly,
-      review,
-      allReview.items,
-      items,
+      cardReview,
       authorSlots,
       authorInfo,
       configuredAuthor,
       draftAuthorInfo,
       draftAuthorSlot,
-      byId,
-      observeSlot,
       beginDraft,
       endDraft,
+      commentMarkers,
+      revisionsIn,
+    ]
+  );
+  const value = useMemo<ReviewRailValue>(
+    () => ({
+      ...cardRail,
+      review: { ...review, items },
+      allItems: allReview.items,
+      byId,
+      slotRef,
+      drafting: draftAnchorY !== null,
+      composeTop,
+      composeLeft: compact ? metrics.compactCardLeft : null,
+    }),
+    [
+      cardRail,
+      review,
+      allReview.items,
+      items,
+      byId,
+      slotRef,
       draftAnchorY,
       composeTop,
       compact,
       metrics.compactCardLeft,
-      commentMarkers,
-      revisionsIn,
     ]
+  );
+  // The root children, split once per `children`: a rail that renders for its own state (a
+  // scroll step, a measured height) then hands the list the same card template.
+  const rootChildren = useMemo<{
+    parts: Record<string, ReactNode>;
+    rest: ReactNode | ((item: ReviewItemView) => ReactNode);
+  }>(
+    () =>
+      typeof children === 'function'
+        ? { parts: {}, rest: children }
+        : partitionReviewChildren(children, 'root'),
+    [children]
   );
 
   if (hidden || documentAbsent) return null;
@@ -536,13 +568,6 @@ function ReviewRoot({
   // shorthand for the implicit List's render prop; node children that are not root parts become
   // that List's card template. Without this partition an AddComment sibling was also forwarded
   // into every Card, while a root render prop made it impossible to supply AddComment at all.
-  const rootChildren: {
-    parts: Record<string, ReactNode>;
-    rest: ReactNode | ((item: ReviewItemView) => ReactNode);
-  } =
-    typeof children === 'function'
-      ? { parts: {}, rest: children }
-      : partitionReviewChildren(children, 'root');
   const rootParts = rootChildren.parts;
   // An override REPLACES the packaged element but inherits its wiring: these parts are handed
   // geometry the rail alone can compute — the markers' `scale`/`offset`/`window`, the compose
@@ -622,7 +647,10 @@ function ReviewRoot({
   const listParts =
     typeof cardTemplate === 'function' ? null : partitionReviewChildren(cardTemplate, 'list');
   const compactCardInner = fromList.hidden ? null : typeof cardTemplate === 'function' ? (
-    activeRoot && cardTemplate(activeRoot)
+    activeRoot && (
+      // Keyed, so the hooks the render prop calls start again for another item.
+      <ReviewRenderedCard key={activeRoot.key} entry={activeRoot} render={cardTemplate} />
+    )
   ) : listParts?.parts.Card && isValidElement<{ className?: string }>(listParts.parts.Card) ? (
     cloneReviewCard(listParts.parts.Card, cardClassName)
   ) : preset || fromList.fromList ? (
@@ -633,18 +661,20 @@ function ReviewRoot({
   const compactCard =
     activeRoot && compactTop !== null && metrics.compactCardLeft !== null && compactCardInner ? (
       <ReviewItemContext.Provider value={activeRoot}>
-        <div
-          className="docx-review__slot docx-review__slot--compact"
-          data-testid="review-compact-card"
-          style={{
-            position: 'absolute',
-            top: compactTop,
-            left: metrics.compactCardLeft,
-            width: COMPACT_CARD_WIDTH,
-          }}
-        >
-          {compactCardInner}
-        </div>
+        <ReviewThreadContext.Provider value={byId}>
+          <div
+            className="docx-review__slot docx-review__slot--compact"
+            data-testid="review-compact-card"
+            style={{
+              position: 'absolute',
+              top: compactTop,
+              left: metrics.compactCardLeft,
+              width: COMPACT_CARD_WIDTH,
+            }}
+          >
+            {compactCardInner}
+          </div>
+        </ReviewThreadContext.Provider>
       </ReviewItemContext.Provider>
     ) : null;
   // `preset={false}` supplies no defaults, but an explicit compound part still inherits the
@@ -671,55 +701,57 @@ function ReviewRoot({
   return (
     <ResolvedDisclosureProvider items={items}>
       <ReviewContext.Provider value={value}>
-        <ReviewRailMetricsContext.Provider value={railMetrics}>
-          {asChild && isValidElement(children) ? (
-            // The child becomes the rail ELEMENT and keeps its own children; the rail's content
-            // is appended after them. Two earlier shapes were wrong: rendering `children` alone
-            // mounted an empty element with no cards, and cloning it while ALSO passing it down
-            // as the card preset rendered the consumer's element once per card.
-            <Slot {...shared}>
-              {cloneElement(
-                children as React.ReactElement<{ children?: ReactNode }>,
-                undefined,
-                (children as React.ReactElement<{ children?: ReactNode }>).props.children,
-                // The same presentation switch as the packaged element: a compact rail is
-                // 32px wide (`:not([data-open])`), and mounting the full list inside it
-                // rendered every card squeezed to that width over the page.
-                preset ? (
-                  expanded ? (
-                    <ReviewList
-                      stack={stack}
-                      positions={stacked}
-                      collapsed={collapsedKeys}
-                      scale={metrics.scale}
-                      offset={metrics.top}
-                      window={window_}
-                    />
-                  ) : (
-                    <>
-                      {markerLayer}
-                      {compactCard}
-                    </>
-                  )
-                ) : null,
-                affordances,
-                <ReviewRefusalAnnouncer key="refusal-live" />
-              )}
-            </Slot>
-          ) : (
-            <aside {...shared}>
-              {expanded && furniture !== undefined ? (
-                <div className="docx-review__furniture" data-testid="review-furniture">
-                  {furniture}
-                </div>
-              ) : null}
-              {body}
-              {affordances}
-              <ReviewRefusalAnnouncer />
-            </aside>
-          )}
-          <ReviewCommentRecovery />
-        </ReviewRailMetricsContext.Provider>
+        <ReviewCardRailContext.Provider value={cardRail}>
+          <ReviewRailMetricsContext.Provider value={railMetrics}>
+            {asChild && isValidElement(children) ? (
+              // The child becomes the rail ELEMENT and keeps its own children; the rail's content
+              // is appended after them. Two earlier shapes were wrong: rendering `children` alone
+              // mounted an empty element with no cards, and cloning it while ALSO passing it down
+              // as the card preset rendered the consumer's element once per card.
+              <Slot {...shared}>
+                {cloneElement(
+                  children as React.ReactElement<{ children?: ReactNode }>,
+                  undefined,
+                  (children as React.ReactElement<{ children?: ReactNode }>).props.children,
+                  // The same presentation switch as the packaged element: a compact rail is
+                  // 32px wide (`:not([data-open])`), and mounting the full list inside it
+                  // rendered every card squeezed to that width over the page.
+                  preset ? (
+                    expanded ? (
+                      <ReviewList
+                        stack={stack}
+                        positions={stacked}
+                        collapsed={collapsedKeys}
+                        scale={metrics.scale}
+                        offset={metrics.top}
+                        window={window_}
+                      />
+                    ) : (
+                      <>
+                        {markerLayer}
+                        {compactCard}
+                      </>
+                    )
+                  ) : null,
+                  affordances,
+                  <ReviewRefusalAnnouncer key="refusal-live" />
+                )}
+              </Slot>
+            ) : (
+              <aside {...shared}>
+                {expanded && furniture !== undefined ? (
+                  <div className="docx-review__furniture" data-testid="review-furniture">
+                    {furniture}
+                  </div>
+                ) : null}
+                {body}
+                {affordances}
+                <ReviewRefusalAnnouncer />
+              </aside>
+            )}
+            <ReviewCommentRecovery />
+          </ReviewRailMetricsContext.Provider>
+        </ReviewCardRailContext.Provider>
       </ReviewContext.Provider>
     </ResolvedDisclosureProvider>
   );

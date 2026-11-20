@@ -5,7 +5,8 @@ import { GlobalRegistrator } from '@happy-dom/global-registrator';
 if (!GlobalRegistrator.isRegistered) GlobalRegistrator.register();
 import { expect, test } from 'bun:test';
 import { createDocxEditor } from '../docx-editor.ts';
-import { selectedImageStateOf, selectedDrawingOverlayTargetOf } from '../docx-editor-images.ts';
+import { selectedImageStateOf } from '../docx-editor-images.ts';
+import { selectedDrawingOverlayTargetOf } from '../drawing-overlay-target.ts';
 import { textboxDocx } from './textbox-editing-fixture.ts';
 
 test('textbox typing uses its story and supports undo', () => {
@@ -594,6 +595,48 @@ test('textbox caret paints inside its content layer and returns to body after ed
     expect(container.querySelector('[data-docx-caret]')?.parentElement?.className).toBe(
       'docx-page-content'
     );
+    expect(content.style.caretColor).toBe('');
+  } finally {
+    editor.destroy();
+    container.remove();
+  }
+});
+
+test('a range selected in a text box keeps the caret suppression of its content layer', () => {
+  const container = document.createElement('div');
+  document.body.append(container);
+  const editor = createDocxEditor({ container, document: textboxDocx() });
+  try {
+    const surface = editor.surface!;
+    surface.focus();
+    const match = editor.findMatches('boxed needle')[0]!;
+    expect(surface.setActiveScope(match.scope!)).toBe(true);
+    const select = (from: number, to: number) =>
+      surface.setSelection({
+        anchor: { paragraphId: match.blockId, offset: from },
+        head: { paragraphId: match.blockId, offset: to },
+      });
+    const painted = () => container.querySelector<HTMLElement>('[data-docx-caret]');
+    const pages = container.querySelector<HTMLElement>('.docx-pages')!;
+    select(2, 2);
+    const content = container.querySelector<HTMLElement>(
+      '[data-docx-textbox-active="true"] .docx-drawing-textbox-content'
+    )!;
+    expect(painted()?.parentElement).toBe(content);
+    expect(content.style.caretColor).toBe('transparent');
+
+    // A range draws no caret of either kind, so neither layer changes its suppression.
+    select(1, 4);
+    expect(document.getSelection()!.isCollapsed).toBe(false);
+    expect(painted()).toBeNull();
+    expect(content.style.caretColor).toBe('transparent');
+    expect(pages.style.caretColor).toBe('transparent');
+
+    // The caret returns in the box, and leaving the box still clears the box's suppression.
+    select(3, 3);
+    expect(painted()?.parentElement).toBe(content);
+    surface.setActiveScope({ kind: 'body' });
+    expect(painted()?.parentElement?.className).toBe('docx-page-content');
     expect(content.style.caretColor).toBe('');
   } finally {
     editor.destroy();

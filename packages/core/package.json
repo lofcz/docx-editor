@@ -1,6 +1,6 @@
 {
   "name": "@docx-editor.dev/core",
-  "version": "2.37.0",
+  "version": "2.39.0",
   "description": "Framework-agnostic core for docx-editor.dev: OOXML parse/serialize, the canonical document tree, layout and paint, and the Editor contract the adapters render.",
   "type": "module",
   "sideEffects": [
@@ -108,7 +108,7 @@
     "directory": "packages/core"
   },
   "dependencies": {
-    "@docx-editor.dev/i18n": "^2.37.0",
+    "@docx-editor.dev/i18n": "^2.39.0",
     "bidi-js": "1.1.0",
     "emf-converter": "4.28.0",
     "fast-xml-parser": "^5.12.0",
@@ -116,9 +116,9 @@
     "harfbuzzjs": "1.6.4",
     "prosemirror-commands": "^1.7.1",
     "prosemirror-keymap": "^1.2.3",
-    "prosemirror-model": "^1.25.4",
+    "prosemirror-model": "^1.25.13",
     "prosemirror-state": "^1.4.4",
-    "prosemirror-view": "^1.42.3",
+    "prosemirror-view": "^1.42.9",
     "utif2": "4.1.0"
   },
   "peerDependencies": {

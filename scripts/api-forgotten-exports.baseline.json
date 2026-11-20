@@ -56,6 +56,7 @@
       "OoxmlProperty",
       "OpenTreeSessionOptions",
       "PackageReplacementResult",
+      "PackageUpdateResult",
       "ParagraphAnchorIndex",
       "ReplaceImageOptions",
       "ReviewItem",
@@ -175,6 +176,7 @@
       "OoxmlElement",
       "OoxmlPart",
       "PackageReplacementResult",
+      "PackageUpdateResult",
       "PackageWatermarkWrite",
       "PackageWriteOptions",
       "PaginatedSurfacePerf",
@@ -208,9 +210,9 @@
       "SurfaceEditingMode",
       "SurfaceInsertChartInput",
       "SurfaceOverlayPainter",
-      "TableBorderEdgeTarget_2",
+      "TableBorderEdgeTarget",
       "TableBorderSpec",
-      "TableBorderStyle_2",
+      "TableBorderStyle",
       "TableCommandPlan",
       "TableContext",
       "TextFormFieldOptions",
@@ -450,6 +452,9 @@
       "AnyRecord",
       "DotPath",
       "enJson"
+    ],
+    "it": [
+      "PartialLocaleStrings"
     ],
     "ja": [
       "PartialLocaleStrings"

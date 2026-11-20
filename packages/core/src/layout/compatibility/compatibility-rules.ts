@@ -55,6 +55,14 @@ export const MODE_RULES = {
     'An autofit column minimum leaves out a positive first-line indent: a word too wide for the first line breaks there',
     'ECMA-376 Part 1 §17.3.1.12 ind'
   ),
+  autofitMinimumHyphenatesWords: modern(
+    'With automatic hyphenation on, an autofit column minimum lets a word break between letters; legacy modes keep each word whole',
+    'ECMA-376 Part 1 §17.15.1.10 autoHyphenation'
+  ),
+  autofitRefitsNestedCells: modern(
+    'A nested autofit table whose stated cell widths pass its room gives way above each column content minimum',
+    'ECMA-376 Part 1 §17.4.64 tblLayout'
+  ),
   anchorOnlyParagraphSeeding: modern(
     'Seed the pages of consecutive anchor-only paragraphs before later bands wrap earlier text',
     'ECMA-376 Part 1 §20.4.2.3 anchor'
@@ -72,15 +80,35 @@ export const MODE_RULES = {
     'ECMA-376 Part 1 §17.18.44 ST_Jc'
   ),
   fixedTableContentEdgeOrigin: legacy(
-    'A collapsed table with an absolute width aligns the content edge of its aligned outer cell with the text column; a leading alignment without a stated indent or table style keeps the outer edge',
+    'A table with an absolute width aligns the content edge of its aligned outer cell with the text column, with or without cell spacing; a leading alignment without a stated indent or table style keeps the outer edge',
     'ECMA-376 Part 1 §17.4.52 tblLayout'
   ),
+  rowExceptionAlignment: legacy(
+    "A table row places itself by its own w:tblPrEx alignment; a trailing-aligned row ends past the text edge by its first cell's leading margin",
+    'ECMA-376 Part 1 §17.4.61 tblPrEx'
+  ),
+  firstRowExceptionAlignsTable: modern(
+    "The first row's w:tblPrEx alignment aligns the whole table; later rows' alignments do not apply",
+    'ECMA-376 Part 1 §17.4.61 tblPrEx'
+  ),
   floatingTableContentOrigin: legacy(
-    'A floating table with a numeric text anchor or a right alignment positions its cell content, not its outer edge',
+    'A floating table with a numeric offset or a left, inside, right, or outside alignment positions its cell content, not its outer edge',
+    'ECMA-376 Part 1 §17.4.57 tblpPr'
+  ),
+  floatingTableBandHoldsSpaceAfter: legacy(
+    'The last line of a paragraph and its space after must both clear a floating table band; later modes test the line alone',
+    'ECMA-376 Part 1 §17.4.57 tblpPr'
+  ),
+  raisedFloatKeepsUnbalancedPlace: legacy(
+    'A text-anchored floating table raised above its anchor in balanced section columns keeps its place from the unbalanced layout',
     'ECMA-376 Part 1 §17.4.57 tblpPr'
   ),
   floatingTableOverlapMovesLeft: modern(
     'A floating table that may not overlap moves left of the table it meets when the right side has no room',
+    'ECMA-376 Part 1 §17.4.56 tblOverlap'
+  ),
+  cellFloatMovedDownIndents: modern(
+    'A floating table in a table cell that moves below an earlier one also moves right by its own left text distance',
     'ECMA-376 Part 1 §17.4.56 tblOverlap'
   ),
   headerFooterAnchorsWrapText: modern(
@@ -109,6 +137,10 @@ export const MODE_RULES = {
   ),
   legacySharedGridLineSideRules: legacy(
     'Collapsed side rules center on shared grid lines for every simple table, in either direction; a percent width keeps the legacy reference box',
+    'ECMA-376 Part 1 §17.4.38 tblBorders'
+  ),
+  legacySpacedFrameRuleCenters: legacy(
+    'A spaced table aligns the centers of its outer frame rules; later modes align their outer edges',
     'ECMA-376 Part 1 §17.4.38 tblBorders'
   ),
   modernBidiTableRuleShift: modern(
@@ -203,10 +235,6 @@ export const MODE_RULES = {
     'Paragraphs that split inside table cells apply widow and orphan control',
     'ECMA-376 Part 1 §17.3.1.44 widowControl'
   ),
-  unreachedGridColumnsTakeNoWidth: modern(
-    'Trailing grid columns that no cell reaches take no width, even when a row end skip spans them',
-    'ECMA-376 Part 1 §17.4.49 tblGrid'
-  ),
   vMergeTextMovesPastHeadRow: modern(
     'Merged cell text moves whole into the next row when the head row cannot hold it',
     'ECMA-376 Part 1 §17.4.84 vMerge'
@@ -219,6 +247,10 @@ export const MODE_RULES = {
     'A wrapping object positioned from its paragraph or line moves up to end at the bottom page edge, and never above the top page edge. A row whose cell object would cross the bottom margin moves to the next page',
     'ECMA-376 Part 1 §20.4.2.11 positionV'
   ),
+  columnAlignmentFollowsIndents: legacy(
+    'An object aligned left or right in its column aligns with the left or right indent of its anchor paragraph',
+    'ECMA-376 Part 1 §20.4.2.10 positionH'
+  ),
   lineAnchorsBeforeBandPush: legacy(
     'An object positioned from the first line of a paragraph measures from where that line was before a wrapping band above pushed it down',
     'ECMA-376 Part 1 §20.4.2.11 positionV'
@@ -226,6 +258,10 @@ export const MODE_RULES = {
   wrappedAnchorsStayBelowTopMargin: modern(
     'A wrapping object positioned from its paragraph never starts above the top margin',
     'ECMA-376 Part 1 §20.4.2.11 positionV'
+  ),
+  ownTableKeepsPageTopSpaceBefore: legacy(
+    'A paragraph at the top of a page keeps its space before when a floating table it anchors covers the top of the text area',
+    'ECMA-376 Part 1 §17.4.57 tblpPr'
   ),
 } as const satisfies Record<string, ModeRule>;
 
@@ -243,9 +279,10 @@ export const PROFILE_RULES = {
     applies: (p) => p.legacy.adjustLineHeightInTable === true,
   },
   doNotBreakWrappedTables: {
-    behavior: 'A floating table that fits a full page does not break across pages',
+    behavior:
+      'A floating table never breaks across pages, and moves up onto the sheet when it passes the bottom edge. Only legacy modes read the option',
     source: 'ECMA-376 Part 4 §14.8.3.10 doNotBreakWrappedTables',
-    applies: (p) => p.legacy.doNotBreakWrappedTables === true,
+    applies: (p) => p.legacy.doNotBreakWrappedTables === true && p.modeClass === 'legacy',
   },
   fixedParagraphSpacing: {
     behavior:
@@ -280,9 +317,20 @@ export const PROFILE_RULES = {
     applies: (p) => p.legacy.noExtraLineSpacing === true,
   },
   strictTableStyleHierarchy: {
-    behavior: 'Table style font size and justification apply over the default paragraph style',
+    behavior:
+      'Table style font size and justification apply over the default paragraph style. Without the setting, compatibility mode 15 and later behave so too',
     source: '[MS-DOCX] 2.3.1 overrideTableStyleFontSizeAndJustification',
-    applies: (p) => p.settings.overrideTableStyleFontSizeAndJustification === true,
+    applies: (p) => {
+      const setting = p.settings.overrideTableStyleFontSizeAndJustification;
+      return setting === undefined ? p.modeClass === 'modern' : setting === true;
+    },
+  },
+  textBesideBrokenFloatingTable: {
+    behavior:
+      'Text after a text-anchored floating table that breaks across pages starts beside its first fragment, and every fragment wraps text. Only modern modes read the setting',
+    source: '[MS-DOCX] 2.3.1 allowTextAfterFloatingTableBreak',
+    applies: (p) =>
+      p.settings.allowTextAfterFloatingTableBreak === true && p.modeClass === 'modern',
   },
   unstretchedManualBreakLines: {
     behavior:

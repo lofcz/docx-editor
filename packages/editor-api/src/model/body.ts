@@ -159,6 +159,8 @@ export class Body extends ModelObject {
    * This is story-scoped: `document.body.bookmarks` covers only the main body story. A header,
    * footer or note body answers its own bookmarks through that body's accessor; this collection
    * does not aggregate bookmarks from other stories.
+   *
+   * @docxEditorExtension
    */
   get bookmarks(): BookmarkCollection {
     const handle = this.#handle();
@@ -256,6 +258,8 @@ export class Body extends ModelObject {
    * collection is what makes a header's, footer's, or note's changes reachable at all. Recorded in
    * `compat/manifest.json`. `items` may omit a structural card with no single type; collection-wide decisions still
    * resolve every store-resolvable revision in this story.
+   *
+   * @docxEditorExtension
    */
   get revisions(): RevisionCollection {
     this.#revisions ??= RevisionCollection.of(
@@ -345,6 +349,63 @@ export class Body extends ModelObject {
               at: { body: this.#handle(), at: where === 'Start' ? 'start' : 'end' },
               text: written,
             },
+      (value) => {
+        created.hydrateAddress({ kind: 'span', span: hydratedSpan(value, target) });
+      }
+    );
+    return created;
+  }
+
+  /**
+   * Replace the whole document with the DOCX file in `base64File`. Answers the new body's range.
+   *
+   * Only `Replace` on the main body is supported: the file's body, headers, footers, styles,
+   * comments, and tracked changes replace this document's as one undoable edit, and a
+   * collaboration session shares it as an ordinary edit. `Start` and `End` refuse with
+   * `NotSupported`, and so does a header, footer, or note body. Must be the only write in its
+   * sync. Refused while `changeTrackingMode` tracks changes, because the replacement records
+   * no revisions. Refused with `NotImplemented` when the document holds a locked or data-bound
+   * content control, as every other write that would overwrite one is.
+   *
+   * Invalid base64 or a file that is not a DOCX package refuses with `InvalidArgument`. Every
+   * refusal leaves the document and its undo history unchanged.
+   *
+   * You can load the returned range in the same sync. Objects read before the replacement can
+   * refuse with `InvalidObjectPath` afterward when their content is gone: read them again.
+   *
+   * @example
+   * ```ts
+   * const range = context.document.body.insertFileFromBase64(docxBase64, 'Replace');
+   * range.load('text');
+   * await context.sync();
+   * ```
+   */
+  insertFileFromBase64(
+    base64File: string,
+    insertLocation:
+      | InsertLocation.replace
+      | InsertLocation.start
+      | InsertLocation.end
+      | 'Replace'
+      | 'Start'
+      | 'End'
+  ): Range {
+    const target = `${this.path.label}.insertFileFromBase64`;
+    this.requireUsablePath();
+    const created = Range.promised(this.context, target, false);
+    this.commandCreating(
+      created,
+      target,
+      () => {
+        if (typeof base64File !== 'string' || base64File.length === 0)
+          fail({ code: 'InvalidArgument', target });
+        if (bodyTextLocation(insertLocation, target) !== 'Replace')
+          fail({ code: 'NotSupported', target });
+        // The main body only: a header, footer, or note body is not the whole document.
+        if (this.path.handle().ref !== this.internals.roots().body.ref)
+          fail({ code: 'NotSupported', target });
+        return { op: 'replaceDocumentFromBase64', base64: base64File };
+      },
       (value) => {
         created.hydrateAddress({ kind: 'span', span: hydratedSpan(value, target) });
       }

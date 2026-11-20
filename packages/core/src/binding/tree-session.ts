@@ -1,5 +1,6 @@
 import { shareUndoHistoryPosition } from '../store/store/undo-history-position.ts';
 import { replaceWholePackage } from '../store/store/tree-package-replace.ts';
+import { applyPackageUpdate } from '../store/store/tree-package-update.ts';
 import { applyDrawingFrameOps } from '../store/store/tree-package-diagram-frame.ts';
 import { chartLanesFor } from '../store/store/tree-package-charts.ts';
 import { createSessionPackageWriter } from './session-package-writer.ts';
@@ -12,7 +13,11 @@ import { createSessionPackageWriter } from './session-package-writer.ts';
 // Paragraphs are edited through the canonical tree; unknown content remains preserved there.
 
 import { projectedText, storyCarriesCommentAnchor } from './story-text-reads.ts';
-import { numberingRootOf, stylesPartOf } from '../store/package/ooxml-indexes.ts';
+import {
+  numberingRootOf,
+  sessionStylesRootOf,
+  stylesPartOf,
+} from '../store/package/ooxml-indexes.ts';
 import { refreshBoundContent } from '../store/store/bound-content-refresh.ts';
 import { materializeGlossaryPlaceholders } from '../store/store/placeholder-materialize.ts';
 import { paragraphOrderOfPart, type ReviewItem } from '@docx-editor.dev/core/store';
@@ -315,23 +320,9 @@ export function openTreeSessionFromPackage(
 
   // Resolve styles and numbering through relationships, with conventional-name fallbacks.
   // Their memoized roots are cleared after the narrow package edits this session supports.
-  const STYLES_REL_TYPE =
-    'http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles';
   let stylesRoot: OoxmlElement | null = null;
   const resolveStylesRoot = (): OoxmlElement | null => {
-    const live = currentPackage();
-    const record = (live.relationships.get(live.mainDocumentPart) ?? []).find(
-      (rel) => rel.type === STYLES_REL_TYPE
-    );
-    let part: OoxmlPart | undefined;
-    if (record) {
-      const resolved = resolveRelationship(record);
-      if (resolved.mode === 'Internal' && resolved.target.ok) {
-        part = live.parts.get(resolved.target.partName);
-      }
-    }
-    part ??= live.parts.get('/word/styles.xml');
-    const next = part?.root ?? null;
+    const next = sessionStylesRootOf(currentPackage());
     if (next !== stylesRoot) {
       stylesRoot = next;
       stylesCache = null;
@@ -1252,6 +1243,7 @@ export function openTreeSessionFromPackage(
       charts: () => chartLanesFor(packageStore),
       applyFragmentPaste: (scope, input) => packageStore.applyFragmentPaste(scope, input),
       replacePackage: (pkg) => replaceWholePackage(packageStore, pkg),
+      applyPackageUpdate: (pkg) => applyPackageUpdate(packageStore, pkg),
     },
   };
   shareUndoHistoryPosition(result.session, packageStore);

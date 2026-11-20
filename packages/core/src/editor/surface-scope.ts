@@ -10,7 +10,6 @@ import {
   documentOrder,
   moveCaret,
   paragraphFragmentsOf,
-  paragraphFragmentsOfBlocks,
 } from '@docx-editor.dev/core/layout';
 import type {
   BlockFragmentRecord,
@@ -29,14 +28,19 @@ import type { EditorScope, ViewScope } from '../contracts/editor.ts';
 import type { SurfaceEditingMode } from './paginated-surface-contract.ts';
 import type { OoxmlPart, StoryScope } from '@docx-editor.dev/core/store';
 import type { TreeDocxSessionView } from '@docx-editor.dev/core/binding';
+import { hitStoryDrawingAtPoint, type StoryDrawingLayer } from '../layout/story-drawing-hit.ts';
 import {
   hitAnchoredDrawingAtPoint,
   hitTestFragments,
   hitTestPage,
+  hitTestTurnedInlineDrawing,
   pageAtY,
+  pointInTextLine,
   type SemanticHit,
 } from '../layout/semantic-hit-test.ts';
 import { parseNoteScopeId } from '../store/package/note-nodes.ts';
+import { sameNoteStory } from './surface-note-story.ts';
+import { noteScopeIndexOf } from './layout-paragraph-indexes.ts';
 import { logicalLineSegments } from '../layout/line-segments.ts';
 import { hasNode } from '../store/package/ooxml-edit.ts';
 
@@ -203,7 +207,10 @@ export function viewScopeOf(
   return SCOPE_BODY;
 }
 
-/** Paragraph fragments addressable under the active scope (body / HF / note). */
+/**
+ * Paragraph fragments addressable under the active scope (body / HF / note). An open note
+ * addresses every note of its kind, because the notes part is one story for selection (§17.11).
+ */
 export function scopedParagraphFragments(
   page: SemanticLayout['pages'][number],
   active: HeaderFooterScopeBinding | null,
@@ -214,7 +221,7 @@ export function scopedParagraphFragments(
     for (const area of [page.footnotes, page.endnotes]) {
       if (!area) continue;
       for (const note of area.notes) {
-        if (note.scopeId !== noteScopeId) continue;
+        if (!sameNoteStory(note.scopeId, noteScopeId)) continue;
         notes.push(...paragraphFragmentsFromBlocks(note.fragments));
       }
     }
@@ -290,7 +297,41 @@ export function hitTestStoryAtLocalPoint(
   local: { readonly x: number; readonly y: number },
   options: { readonly measurer?: TextMeasurer } = {}
 ): SemanticHit | null {
-  return hitTestFragments(layout, pageIndex, story.fragments, local, options);
+  // The story's own drawings, as the body's: in front first, then the text, and a drawing
+  // behind the text only outside every line of it.
+  const page = layout.pages[pageIndex];
+  const point = { x: story.box.x + local.x, y: story.box.y + local.y };
+  const drawingAt = (layer: StoryDrawingLayer) =>
+    page
+      ? hitStoryDrawingAtPoint(story.anchoredDrawings, story.box, page.box, point, pageIndex, layer)
+      : null;
+  const front = drawingAt('front');
+  if (front) return front;
+  const text = hitTestFragments(layout, pageIndex, story.fragments, local, options);
+  if (text && (text.onGlyphs || pointInTextLine(story.fragments, local))) return text;
+  return drawingAt('behind') ?? text;
+}
+
+/**
+ * The open header or footer's drawing at a sheet point, past the story band too: a watermark,
+ * a logo, or a turned inline shape that reaches into the body is still the open story's. Any
+ * page that shows the open story answers, as its band does; the hit names that page.
+ */
+export function activeStoryDrawingAtSheetPoint(
+  layout: SemanticLayout,
+  active: HeaderFooterScopeBinding,
+  sheet: { readonly x: number; readonly y: number },
+  pageOffsetX: (pageIndex: number) => number
+): SemanticHit | null {
+  const page = layout.pages[pageAtY(layout, sheet.y)];
+  const story = page ? storyOnPage(page, active) : undefined;
+  if (!page || !story) return null;
+  const point = { x: sheet.x - pageOffsetX(page.index), y: sheet.y };
+  const local = { x: point.x - story.box.x, y: point.y - story.box.y };
+  return (
+    hitStoryDrawingAtPoint(story.anchoredDrawings, story.box, page.box, point, page.index, 'any') ??
+    hitTestTurnedInlineDrawing(layout, page.index, story.fragments, local)
+  );
 }
 
 /**
@@ -310,21 +351,44 @@ export function activeStoryCaretStops(
   return caretStopsForBlocks(layout, active.pageIndex, story.fragments, measurer);
 }
 
-/** Story-scoped caret stops for one open footnote/endnote, including continuations. */
+/** Caret stops per layout and note kind; arrow keys ask on every press. */
+const noteStoryStopsCache = new WeakMap<
+  SemanticLayout,
+  Map<string, { readonly measurer?: TextMeasurer; readonly stops: CaretGeometry[] | null }>
+>();
+
+/**
+ * Story-scoped caret stops for an open footnote/endnote, including continuations. The stops
+ * cover every note of its kind, so arrows and Shift+arrows cross from one note to the next.
+ *
+ * For NAVIGATION only, so each stop is moved from its note's box onto the page: two notes on
+ * one page each measure from their own top, and Page Up/Down compares heights across them.
+ * The caret itself is placed by `caretAt`, which keeps the note-relative geometry.
+ */
 export function activeNoteCaretStops(
   layout: SemanticLayout,
   scopeId: string,
   measurer?: TextMeasurer
 ): CaretGeometry[] | null {
+  const kind = parseNoteScopeId(scopeId)?.noteKind ?? scopeId;
+  let byKind = noteStoryStopsCache.get(layout);
+  const cached = byKind?.get(kind);
+  if (cached && cached.measurer === measurer) return cached.stops;
   const stops: CaretGeometry[] = [];
   for (const page of layout.pages) {
     for (const area of [page.footnotes, page.endnotes]) {
-      const note = area?.notes.find((candidate) => candidate.scopeId === scopeId);
-      if (!note) continue;
-      stops.push(...caretStopsForBlocks(layout, page.index, note.fragments, measurer));
+      for (const note of area?.notes ?? []) {
+        if (!sameNoteStory(note.scopeId, scopeId)) continue;
+        for (const stop of caretStopsForBlocks(layout, page.index, note.fragments, measurer)) {
+          stops.push({ ...stop, x: stop.x + note.box.x, y: stop.y + note.box.y });
+        }
+      }
     }
   }
-  return stops.length > 0 ? stops : null;
+  const result = stops.length > 0 ? stops : null;
+  if (!byKind) noteStoryStopsCache.set(layout, (byKind = new Map()));
+  byKind.set(kind, { ...(measurer ? { measurer } : {}), stops: result });
+  return result;
 }
 
 /** Active `[data-docx-hf-active]` host for the preferred furniture page, if any. */
@@ -699,6 +763,11 @@ export function scopedDocumentOrder(
   noteScopeId?: string | null
 ): string[] {
   if (!active && !noteScopeId) return documentOrder(layout);
+  // A note story is every note of its kind, so its order is cached per layout like the body's.
+  const noteKind =
+    !active && noteScopeId ? (parseNoteScopeId(noteScopeId)?.noteKind ?? null) : null;
+  const cachedNotes = noteKind ? noteStoryOrderCache.get(layout)?.get(noteKind) : undefined;
+  if (cachedNotes) return cachedNotes;
   const seen = new Set<string>();
   const order: string[] = [];
   for (const page of layout.pages) {
@@ -720,8 +789,16 @@ export function scopedDocumentOrder(
       }
     }
   }
+  if (noteKind) {
+    let byKind = noteStoryOrderCache.get(layout);
+    if (!byKind) noteStoryOrderCache.set(layout, (byKind = new Map()));
+    byKind.set(noteKind, order);
+  }
   return order;
 }
+
+/** Note story orders per layout and note kind; see {@link scopedDocumentOrder}. */
+const noteStoryOrderCache = new WeakMap<SemanticLayout, Map<string, string[]>>();
 
 export function clampSelectionToScope(
   layout: SemanticLayout,
@@ -761,15 +838,5 @@ function paragraphFragmentsFromBlocks(
 
 /** The note whose painted fragments hold this paragraph, or null. */
 export function noteScopeIdInLayout(layout: SemanticLayout, paragraphId: string): string | null {
-  for (const page of layout.pages) {
-    for (const area of [page.footnotes, page.endnotes]) {
-      if (!area) continue;
-      for (const note of area.notes) {
-        for (const fragment of paragraphFragmentsOfBlocks(note.fragments)) {
-          if (fragment.paragraphId === paragraphId) return note.scopeId;
-        }
-      }
-    }
-  }
-  return null;
+  return noteScopeIndexOf(layout).get(paragraphId) ?? null;
 }

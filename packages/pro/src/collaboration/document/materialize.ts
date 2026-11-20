@@ -63,6 +63,7 @@ import { AdoptionTracker } from './materialize-adoption.ts';
 import { inlineChildren, reuseEqualNodes } from './paragraph-text-view.ts';
 import { reportOrphans } from './materialize-orphans.ts';
 import {
+  addShownAncestors,
   attributesMatch,
   countPass,
   countRecordRead,
@@ -261,16 +262,7 @@ export class PackageMaterializer {
     // Concurrent split siblings: a new order, and proposals shown on another paragraph mark.
     splitSiblingChanges(this.registry, rawDirty);
     const dirty = expandAncestors(this.registry, rawDirty);
-    // Every ancestor of a changed node has to rebuild. The registry's parent index says
-    // where a node lives NOW; a node a peer moved or detached is still shown
-    // under its old ancestors, and they must rebuild too, or the view keeps the stale subtree.
-    for (const id of rawDirty) {
-      let at = this.shownUnder.get(id);
-      for (let depth = 0; at !== undefined && depth < this.registry.limits.maxTreeDepth; depth++) {
-        dirty.add(at);
-        at = this.shownUnder.get(at);
-      }
-    }
+    addShownAncestors(dirty, rawDirty, this.shownUnder, this.registry.limits.maxTreeDepth);
     // A relationship-only change dirties no nodes. Reuse the node cache, then project `.rels`.
     //
     // Membership does NOT disqualify the cache. Every child array that moved names its own
@@ -516,7 +508,7 @@ export class PackageMaterializer {
     if (siblings) childIds = siblings.map((index) => childIds[index]!);
     const children: OoxmlNode[] = [];
     // Concurrent peers can each write a child OOXML allows once; show one, in one order.
-    const order = partitionWithMerges(record.kind, childIds, (id) =>
+    const order = partitionWithMerges(record, childIds, (id) =>
       this.splitProjection.losers.has(id) || !this.birthProjection.shown(logicalId, id)
         ? null
         : sharedChildShell(this.registry, id)
@@ -638,7 +630,7 @@ export class PackageMaterializer {
       previous.kind === 'textValue' ||
       this.rawDirty.has(logicalId) ||
       !this.cache.isComplete(logicalId) ||
-      hasSingletonRules(previous.kind) ||
+      hasSingletonRules(previous) ||
       this.builtMerges.has(logicalId) ||
       this.mergeSources.has(logicalId) ||
       this.splitProjection.losers.size > 0 ||
@@ -787,6 +779,11 @@ export class PackageMaterializer {
   /** The node the last pass built for `id`, or null. Reads the cache only; builds nothing. */
   builtNode(id: LogicalId): OoxmlNode | null {
     return this.cache.get(id) ?? null;
+  }
+
+  /** The node the last tree showed `id` under, or null when it did not show it. */
+  shownParentOf(id: LogicalId): LogicalId | null {
+    return this.shownUnder.get(id) ?? null;
   }
 
   /** The children a member part's root shows, in order, or null (`shownMemberChildren`). */

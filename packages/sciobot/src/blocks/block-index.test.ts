@@ -45,6 +45,7 @@ test('identical-looking blocks retain distinct stable IDs through save and reope
   ]);
   const fingerprint = canonicalOoxmlFingerprint(pkg.parts.get(pkg.mainDocumentPart)!);
   const index = buildBlockIndex(pkg);
+  expect(buildBlockIndex(pkg)).toBe(index);
   expect([...index.byId.keys()]).toEqual(['first', 'second']);
   expect(index.byId.get('first')!.controlId).not.toBe(index.byId.get('second')!.controlId);
   const opened = readOoxmlPackage(writeOoxmlPackage(pkg));

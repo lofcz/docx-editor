@@ -24,9 +24,13 @@ const MODE_MATRIX = {
   anchorOnlyParagraphSeeding: 'modern',
   anchorOnlyParagraphWrapExclusion: 'modern',
   anchorsLayOutInCell: 'modern',
+  cellFloatMovedDownIndents: 'modern',
   distributedLinesSpreadCharacters: 'legacy',
   fixedTableContentEdgeOrigin: 'legacy',
+  rowExceptionAlignment: 'legacy',
+  firstRowExceptionAlignsTable: 'modern',
   floatingTableContentOrigin: 'legacy',
+  raisedFloatKeepsUnbalancedPlace: 'legacy',
   floatingTableOverlapMovesLeft: 'modern',
   headerFooterAnchorsWrapText: 'modern',
   headerRowsKeepWithBody: 'modern',
@@ -34,6 +38,7 @@ const MODE_MATRIX = {
   keepNextGivesTailLines: 'modern',
   legacyPercentTableContentWidth: 'legacy',
   legacySharedGridLineSideRules: 'legacy',
+  legacySpacedFrameRuleCenters: 'legacy',
   modernBidiTableRuleShift: 'modern',
   modernGridLineSideRules: 'modern',
   noteTableCellKeeps: 'modern',
@@ -53,6 +58,8 @@ const MODE_MATRIX = {
   wrappedAnchorsEndOnSheet: 'legacy',
   wrappedAnchorsStayBelowTopMargin: 'modern',
   lineAnchorsBeforeBandPush: 'legacy',
+  ownTableKeepsPageTopSpaceBefore: 'legacy',
+  columnAlignmentFollowsIndents: 'legacy',
 } as const satisfies Record<ModeRuleName, 'legacy' | 'modern'>;
 
 test('each mode rule applies in exactly its class', () => {
@@ -112,7 +119,10 @@ const PROFILE_MATRIX: Record<
     on: ['absent', '11', '12', '14', 'refused'],
   },
   adjustLineHeightInTable: { options: '<w:adjustLineHeightInTable/>', on: EVERY_MODE },
-  doNotBreakWrappedTables: { options: '<w:doNotBreakWrappedTables/>', on: EVERY_MODE },
+  doNotBreakWrappedTables: {
+    options: '<w:doNotBreakWrappedTables/>',
+    on: ['absent', '11', '12', '14', 'refused'],
+  },
   fixedParagraphSpacing: { options: '<w:doNotUseHTMLParagraphAutoSpacing/>', on: EVERY_MODE },
   ignoreIndentAsNumberingTabStop: {
     options: '<w:doNotUseIndentAsNumberingTabStop/>',
@@ -127,9 +137,16 @@ const PROFILE_MATRIX: Record<
     options: '<w:noExtraLineSpacing/>',
     on: EVERY_MODE,
   },
+  // Without the setting, mode 15 and later apply the table style over the default style.
   strictTableStyleHierarchy: {
     options: setting('overrideTableStyleFontSizeAndJustification', '1'),
     on: EVERY_MODE,
+    withoutOptions: ['15', '16'],
+  },
+  // Modes 12 and 14 ignore the setting.
+  textBesideBrokenFloatingTable: {
+    options: setting('allowTextAfterFloatingTableBreak', '1'),
+    on: ['15', '16'],
   },
   unstretchedManualBreakLines: { options: '<w:doNotExpandShiftReturn/>', on: EVERY_MODE },
 };
@@ -149,6 +166,16 @@ test('each option rule applies with its option, in its modes', () => {
         (row.withoutOptions ?? []).includes(mode),
       ]);
     }
+  }
+});
+
+test('an explicit off table style setting keeps the legacy hierarchy in every mode', () => {
+  for (const declaration of Object.values(MODES)) {
+    const off = setting('overrideTableStyleFontSizeAndJustification', '0');
+    expect(profile(declaration + off).has('strictTableStyleHierarchy')).toBe(false);
+    // The last of several declarations decides.
+    const on = setting('overrideTableStyleFontSizeAndJustification', '1');
+    expect(profile(declaration + on + on + off).has('strictTableStyleHierarchy')).toBe(false);
   }
 });
 

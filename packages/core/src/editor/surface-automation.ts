@@ -25,7 +25,10 @@ interface SurfaceAutomationDeps {
     packageEditsAfterOps?: TreeApplyOptions['packageEditsAfterOps'],
     stage?: TreeApplyOptions['stage']
   ): TreeApplyResult;
-  selectionAfter(preserveDrawing: boolean): SemanticSelection | null;
+  selectionAfter(
+    preserveDrawing: boolean,
+    carry?: (selection: SemanticSelection) => SemanticSelection
+  ): SemanticSelection | null;
   selectedDrawingNodeId(): string | null;
   unexplainedReason: string;
 }
@@ -50,7 +53,7 @@ export function createSurfaceAutomation(
     scope,
     packageEdits,
     requiresReview = false,
-    separateHistory = false,
+    separateHistoryOrCarry = false,
     packageEditPhase = 'before',
     stage,
     preserveDrawingNodeId
@@ -109,8 +112,12 @@ export function createSurfaceAutomation(
           stage
         ));
       },
-      () => selectionAfter(preserveDrawing),
-      { automation: !separateHistory }
+      () =>
+        selectionAfter(
+          preserveDrawing,
+          typeof separateHistoryOrCarry === 'function' ? separateHistoryOrCarry : undefined
+        ),
+      { automation: separateHistoryOrCarry !== true }
     );
     const reason = refusal ?? unexplainedReason; // Null means the refresh guard skipped the thunk.
     return result ?? { committed: false, rejected: true, opCount: 0, reason };

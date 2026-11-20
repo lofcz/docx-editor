@@ -37,12 +37,17 @@ The `docx/no-raw-compatibility-mode` lint rule rejects a comparison of `compatib
 
 | Rule | Applies in | Behavior |
 | --- | --- | --- |
+| `autofitRefitsNestedCells` | `modern` | A nested autofit table whose stated cell widths pass its room gives way above each column's content minimum, as a top-level table does |
 | `anchorOnlyParagraphSeeding` | `modern` | Seeds the pages of consecutive anchor-only paragraphs first |
 | `anchorOnlyParagraphWrapExclusion` | `modern` | An anchor-only paragraph wraps around its own anchors |
 | `anchorsLayOutInCell` | `modern` | Every anchored object in a table cell lays out in its cell |
+| `cellFloatMovedDownIndents` | `modern` | A floating table in a table cell that moves below an earlier one also moves right by its own left text distance |
 | `distributedLinesSpreadCharacters` | `legacy` | A distributed paragraph spreads every line after every character, kerned runs included; a space first takes up to the face average character width less its own advance |
-| `fixedTableContentEdgeOrigin` | `legacy` | A table with an absolute width, or a fixed table with an automatic width, aligns the content edge of its aligned outer cell with the text column. A leading-aligned table without an indent or a table style keeps its outer edge there. In a text box, only a leading-aligned table takes this rule, fixed or AutoFit, in either direction |
-| `floatingTableContentOrigin` | `legacy` | A floating table with a numeric text anchor or a right alignment positions its cell content |
+| `fixedTableContentEdgeOrigin` | `legacy` | A table with an absolute width, or a fixed table with an automatic width, aligns the content edge of its aligned outer cell with the text column. A leading-aligned table without an indent or a table style keeps its outer edge there. A table with cell spacing aligns the same content edge, so its frame reaches past the text column. Rows that skip grid columns follow the grid. In a text box, only a leading-aligned table takes this rule, fixed or AutoFit, in either direction |
+| `firstRowExceptionAlignsTable` | `modern` | The first row's `w:tblPrEx` alignment aligns the whole table. Later rows' alignments do not apply |
+| `floatingTableContentOrigin` | `legacy` | A floating table with a numeric offset or a left, inside, right, or outside alignment positions its cell content |
+| `floatingTableBandHoldsSpaceAfter` | `legacy` | The last line of a paragraph and its space after must both clear a floating table band that leaves no passage |
+| `raisedFloatKeepsUnbalancedPlace` | `legacy` | A text-anchored floating table raised above its anchor in balanced section columns keeps its place from the unbalanced layout |
 | `floatingTableOverlapMovesLeft` | `modern` | A floating table that may not overlap tries the left side before it moves down |
 | `headerFooterAnchorsWrapText` | `modern` | Header and footer text wraps around anchored objects |
 | `headerRowsKeepWithBody` | `modern` | Header rows keep with the opening body rows |
@@ -51,6 +56,7 @@ The `docx/no-raw-compatibility-mode` lint rule rejects a comparison of `compatib
 | `keepNextGivesTailLines` | `modern` | A keep-with-next paragraph gives its last lines to the next page |
 | `legacyPercentTableContentWidth` | `legacy` | A percent-width table resolves against the legacy content width |
 | `legacySharedGridLineSideRules` | `legacy` | Side rules center on shared grid lines, in left-to-right, right-to-left, and nested tables |
+| `legacySpacedFrameRuleCenters` | `legacy` | A spaced table aligns the centers of its outer frame rules; later modes align their outer edges |
 | `modernBidiTableRuleShift` | `modern` | A right-to-left table sits half its mean outer side rule toward its visual left |
 | `modernGridLineSideRules` | `modern` | Side rules center on grid lines for covered shapes, including one-rule percent widths; edge-aligned grids move by half a rule |
 | `noteAreaHoldsLineSpacing` | `modern` | Auto line spacing below a body line must fit above the footnote area |
@@ -65,24 +71,27 @@ The `docx/no-raw-compatibility-mode` lint rule rejects a comparison of `compatib
 | `repeatBoundaryUsesHeaderRule` | `legacy` | A complete body row directly below a repeated header row reserves the wider of its own top border and the header row's bottom border. In `modern` modes it keeps the band of the row it follows in the table |
 | `repeatKeepsWholeRow` | `legacy` | Repeated header rows stay above a row that cannot split and does not fit below them, or a row whose first line, or the first row of a nested table that opens a cell, does not fit below them, also when the row continues from the previous page; the row stays whole and runs past the bottom margin |
 | `repeatedHeaderYieldsToTerminalRule` | `modern` | Repeated header rows yield when the last fixed-height row fits below them only without its bottom rule |
+| `rowExceptionAlignment` | `legacy` | A row places itself by its own `w:tblPrEx` alignment. A centered row centers its outer edges. A trailing-aligned row ends past the text edge by the leading margin of its first cell, so a row whose leading margin differs moves. Leading-aligned rows share the origin of the first of them |
 | `rowPageBreakYieldsToKeep` | `modern` | A row with a page break follows a row that keeps with it |
 | `tallRowStaysWhole` | `legacy` | A row that cannot split and is taller than a page stays whole on its page and runs past the bottom margin |
 | `tableParagraphWidowControl` | `modern` | Paragraphs that split in table cells apply widow control |
-| `unreachedGridColumnsTakeNoWidth` | `modern` | Trailing grid columns that no cell reaches take no width, even when a row end skip spans them. Table style conditions still count the authored grid |
 | `vMergeTextMovesPastHeadRow` | `modern` | Merged cell text moves whole past a head row that cannot hold it |
 | `wrappedAnchorsEndAtBottomMargin` | `modern` | A wrapping object positioned from its paragraph or line moves up to end at the bottom margin. When that would lift it above its line, the line moves to the next page, and an object that still crosses the margin ends the page. In a table cell, the row splits before that line |
 | `wrappedAnchorsEndOnSheet` | `legacy` | A wrapping object positioned from its paragraph or line moves up to end at the bottom page edge, never above the top page edge. Its line never moves. A row whose cell object would cross the bottom margin moves to the next page |
 | `wrappedAnchorsStayBelowTopMargin` | `modern` | A wrapping object positioned from its paragraph never starts above the top margin |
 | `lineAnchorsBeforeBandPush` | `legacy` | An object positioned from the first line of a paragraph measures from where that line was before a wrapping band above pushed it down |
+| `ownTableKeepsPageTopSpaceBefore` | `legacy` | A paragraph at the top of a page keeps its space before when a floating table it anchors covers the top of the text area |
+| `columnAlignmentFollowsIndents` | `legacy` | An object aligned left or right in its column aligns with the left or right indent of its anchor paragraph |
 | `adjustLineHeightInTable` | `w:adjustLineHeightInTable` | Cell paragraphs snap to the line grid |
 | `noColumnBalance` | `w:noColumnBalance` in `legacy` modes | Columns fill in order without balancing |
-| `doNotBreakWrappedTables` | `w:doNotBreakWrappedTables` | A floating table that fits a page does not break |
+| `doNotBreakWrappedTables` | `w:doNotBreakWrappedTables` in `legacy` modes | A floating table never breaks, and moves up to end at the bottom page edge, never above the top page edge |
 | `fixedParagraphSpacing` | `w:doNotUseHTMLParagraphAutoSpacing` | Adjacent paragraph spacing adds up, and automatic spacing keeps the authored measurement |
 | `ignoreIndentAsNumberingTabStop` | `w:doNotUseIndentAsNumberingTabStop` | A numbering tab ignores the hanging indent |
 | `optionalLigatures` | `enableOpenTypeFeatures`, else `modern` | Optional OpenType ligatures apply |
 | `pageBreakMarkOnNextPage` | `w:splitPgBreakAndParaMark` in a legacy mode | The paragraph mark after a closing page break takes a line at the top of the next page |
 | `preserveExactLineBaseline` | `w:noExtraLineSpacing`, in every mode | An exact-height line keeps the face baseline |
 | `strictTableStyleHierarchy` | `overrideTableStyleFontSizeAndJustification` | Table style size and justification win |
+| `textBesideBrokenFloatingTable` | `allowTextAfterFloatingTableBreak` in `modern` modes | Text after a text-anchored floating table that breaks starts beside its first fragment, and every fragment wraps text |
 | `unstretchedManualBreakLines` | `w:doNotExpandShiftReturn` | A justified line before a manual line break keeps its spacing |
 
 Each rule in `compatibility-rules.ts` also names the specification section of the construct it acts on.

@@ -66,7 +66,32 @@ function propertyIsSupported(
   if (!property) return true;
   if (!hasOnlyMathChildren(property, { ...counts, ctrlPr: OPTIONAL })) return false;
   const control = namedChild(property, 'ctrlPr');
-  return (!control || equationControlPropertiesAreSupported(control)) && values(property);
+  return (
+    (!control || equationControlPropertiesAreSupported(control, controlCharacters(property))) &&
+    values(property)
+  );
+}
+
+const CONTROL_CHARACTER_PROPERTIES: ReadonlySet<string> = new Set([
+  'begChr',
+  'sepChr',
+  'endChr',
+  'chr',
+]);
+
+/**
+ * The characters a structure's properties name for its controls: delimiter characters and
+ * the `m:chr` of an operator, accent, or group character. Defaults are never complex-script
+ * characters, so only the named ones matter.
+ */
+function controlCharacters(property: OoxmlGenericElementNode): string {
+  let characters = '';
+  for (const child of property.children) {
+    if (isMathElement(child) && CONTROL_CHARACTER_PROPERTIES.has(child.localName)) {
+      characters += mathVal(child) ?? '';
+    }
+  }
+  return characters;
 }
 
 /** True when the structure's property element carries `m:ctrlPr`. */
@@ -103,6 +128,31 @@ export const BORDER_BOX_FLAGS = Object.freeze([
   'strikeBLTR',
   'strikeTLBR',
 ] as const);
+
+/** The `m:dPr` properties that name one character. */
+export const DELIMITER_CHARACTERS = Object.freeze(['begChr', 'sepChr', 'endChr'] as const);
+/** The characters of an `m:d` whose `m:dPr` names none. */
+export const DEFAULT_DELIMITER_CHARACTERS = Object.freeze({
+  begChr: '(',
+  sepChr: '|',
+  endChr: ')',
+});
+const DELIMITER_SHAPES: ReadonlySet<string> = new Set(['centered', 'match']);
+
+/** One character of an `m:d`: the `m:val` of its `m:dPr` property, or the default. */
+export function delimiterCharacter(
+  node: OoxmlGenericElementNode,
+  name: (typeof DELIMITER_CHARACTERS)[number]
+): string {
+  const property = namedChild(node, 'dPr');
+  const character = property ? namedChild(property, name) : null;
+  return (character && mathVal(character)) ?? DEFAULT_DELIMITER_CHARACTERS[name];
+}
+
+/** A character property (`ST_Char`): one `m:val` of at most one character. */
+function isCharacterProperty(node: OoxmlGenericElementNode): boolean {
+  return hasOnlyMathVal(node) && [...mathVal(node)!].length <= 1;
+}
 
 /** An on/off property: a bare element, or one `m:val` from `ST_OnOff`. */
 function isOnOffProperty(node: OoxmlGenericElementNode): boolean {
@@ -142,6 +192,34 @@ export function isSupportedExpressionNode(node: OoxmlNode): boolean {
           const value = namedChild(property, flag);
           return !value || isOnOffProperty(value);
         })
+      ) &&
+      containersSupported(node, ['e'])
+    );
+  }
+  if (node.localName === 'd') {
+    return (
+      hasOnlyMathChildren(node, { dPr: OPTIONAL, e: { min: 1, max: Number.MAX_SAFE_INTEGER } }) &&
+      propertyIsSupported(
+        namedChild(node, 'dPr'),
+        {
+          begChr: OPTIONAL,
+          sepChr: OPTIONAL,
+          endChr: OPTIONAL,
+          grow: OPTIONAL,
+          shp: OPTIONAL,
+        },
+        (property) => {
+          const grow = namedChild(property, 'grow');
+          const shape = namedChild(property, 'shp');
+          return (
+            DELIMITER_CHARACTERS.every((name) => {
+              const character = namedChild(property, name);
+              return !character || isCharacterProperty(character);
+            }) &&
+            (!grow || isOnOffProperty(grow)) &&
+            (!shape || hasOnlyMathVal(shape, DELIMITER_SHAPES))
+          );
+        }
       ) &&
       containersSupported(node, ['e'])
     );

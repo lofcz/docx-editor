@@ -5,7 +5,12 @@
 
 import type { ColorValue } from '@docx-editor.dev/core/contracts/editor';
 import type { DocumentThemeColorEntry } from '../binding/document-theme.ts';
-import type { TreeDocColorValue } from '../store/store/tree-op-types.ts';
+import {
+  MAX_TABLE_BORDER_SIZE_EIGHTHS,
+  MIN_TABLE_BORDER_SIZE_EIGHTHS,
+} from '../store/store/table-constraints.ts';
+import { TABLE_BORDER_STYLES } from '../store/table-border-style.ts';
+import type { TreeDocColorValue, TableBorderSpecInput } from '../store/store/tree-op-types.ts';
 
 const STRICT_HEX = /^[0-9A-Fa-f]{6}$/;
 
@@ -233,4 +238,29 @@ export function resolveColorValueToCss(
   }
   const resolved = resolveThemeColorHex(color, themeColors);
   return `#${resolved.ok ? resolved.hex : defaultHex}`;
+}
+
+export function lowerBorderSpec(
+  spec: { style: string; size: number; color: ColorValue },
+  themeColors: readonly DocumentThemeColorEntry[]
+): { ok: true; spec: TableBorderSpecInput } | { ok: false; reason: string } {
+  if (!(TABLE_BORDER_STYLES as readonly string[]).includes(spec.style)) {
+    return { ok: false, reason: 'border style is not allowlisted' };
+  }
+  if (!Number.isInteger(spec.size) || spec.size < MIN_TABLE_BORDER_SIZE_EIGHTHS) {
+    return { ok: false, reason: 'border size is out of range' };
+  }
+  if (spec.size > MAX_TABLE_BORDER_SIZE_EIGHTHS) {
+    return { ok: false, reason: 'border size is out of range' };
+  }
+  const color = lowerColorValueForBorder(spec.color, themeColors);
+  if (!color.ok) return { ok: false, reason: color.reason };
+  return {
+    ok: true,
+    spec: {
+      style: spec.style as TableBorderSpecInput['style'],
+      size: spec.size,
+      color: color.color,
+    },
+  };
 }

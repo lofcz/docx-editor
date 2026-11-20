@@ -1,3 +1,4 @@
+import { readonlyMapView } from './readonly-map-view.ts';
 import { styleSeparatorMembersOf } from './style-separator-group.ts';
 import { applicationParagraphDefaults } from './application-paragraph-defaults.ts';
 import { applicationRunDefaults } from './application-run-defaults.ts';
@@ -47,7 +48,6 @@ import {
 } from './paragraph-flow.ts';
 import {
   cascadedParagraphBorders,
-  paragraphBorders,
   paragraphContextualSpacing,
   paragraphLineSpacing,
   paragraphSpacing,
@@ -75,7 +75,11 @@ import {
 } from './style-chain.ts';
 import { resolveParagraphOutlineLevel } from './paragraph-outline-level.ts';
 import { paragraphMarkRunProperties } from './paragraph-mark-run.ts';
-import { legacyTableDefaultProperties } from './table-style-compatibility.ts';
+import {
+  legacyTableDefaultProperties,
+  tableStyleStatesTypography,
+} from './table-style-compatibility.ts';
+import { autoHyphenationFromSettings } from './auto-hyphenation.ts';
 import {
   findParagraphProperties,
   findRunProperties,
@@ -107,6 +111,11 @@ export interface StyleCascadeTable {
   readonly noColumnBalance?: true;
   /** Keep floating tables that fit a full page together under the compatibility flag. */
   readonly doNotBreakWrappedTables?: true;
+  /**
+   * Text after a broken text-anchored float starts beside its first fragment (`table-text-carry.ts`).
+   * @internal
+   */
+  readonly textBesideBrokenFloatingTable?: true;
   /** Legacy or explicitly disabled optional OpenType substitutions. */
   readonly disableOptionalLigatures?: true;
   /**
@@ -137,6 +146,10 @@ export interface StyleCascadeTable {
   readonly pageBreakMarkOnNextPage?: true;
   /** Explicit compatibility opt-in to the unmodified ISO table style hierarchy. */
   readonly strictTableStyleHierarchy?: boolean;
+  /** `w:autoHyphenation`: mode 15 autofit minimums let words break between letters. @internal */
+  readonly autoHyphenation?: true;
+  /** `w:doNotHyphenateCaps`: words in capitals keep whole under `autoHyphenation`. @internal */
+  readonly doNotHyphenateCaps?: true;
   readonly typography?: CjkTypographySettings;
   /**
    * Bounded fingerprint folded into layout cache producers so a different styles part cannot
@@ -360,31 +373,6 @@ function flattenTableStyleChain(
 }
 
 /**
- * A `ReadonlyMap` that is one at RUNTIME, not only to the type checker.
- *
- * Reads delegate to the source map; there is no `set`, `delete` or `clear` to find on the
- * object at all, so a consumer that casts the type away still cannot write through it.
- */
-function readonlyMapView<K, V>(source: Map<K, V>): ReadonlyMap<K, V> {
-  const view = Object.freeze({
-    get: (key: K) => source.get(key),
-    has: (key: K) => source.has(key),
-    forEach: (callback: (value: V, key: K, map: ReadonlyMap<K, V>) => void, thisArg?: unknown) => {
-      for (const [key, value] of source) callback.call(thisArg, value, key, view);
-    },
-    keys: () => source.keys(),
-    values: () => source.values(),
-    entries: () => source.entries(),
-    [Symbol.iterator]: () => source[Symbol.iterator](),
-    [Symbol.toStringTag]: 'Map',
-    get size() {
-      return source.size;
-    },
-  }) as ReadonlyMap<K, V>;
-  return view;
-}
-
-/**
  * Does this style contribute anything a CELL's paragraphs read?
  *
  * `tableCellStyleFormatting` reads only the paragraph, run and conditional material — never
@@ -416,6 +404,8 @@ export interface TableCellStyleFormatting {
   readonly paragraphPropertyNodes: readonly OoxmlElement[];
   /** Inherited run properties for every run in the cell, before the paragraph style. */
   readonly runProperties: readonly OoxmlProperty[];
+  /** The table style states paragraph or run formatting (`tableStyleStatesTypography`). */
+  readonly statesTypography?: true;
 }
 
 export const EMPTY_TABLE_CELL_STYLE_FORMATTING: TableCellStyleFormatting = Object.freeze({
@@ -443,14 +433,19 @@ export function tableCellStyleFormatting(
     const conditionRPr = findRunProperties(format);
     if (conditionRPr) runProperties.push(...withoutChangeRecords(propertiesOf(conditionRPr)));
   }
+  const stated = tableStyleStatesTypography(formatting)
+    ? ({ statesTypography: true } as const)
+    : {};
   if (
     paragraphPropertyNodes.length === 0 &&
     paragraphProperties.length === 0 &&
     runProperties.length === 0
   ) {
-    return EMPTY_TABLE_CELL_STYLE_FORMATTING;
+    return 'statesTypography' in stated
+      ? { ...EMPTY_TABLE_CELL_STYLE_FORMATTING, ...stated }
+      : EMPTY_TABLE_CELL_STYLE_FORMATTING;
   }
-  return { paragraphProperties, paragraphPropertyNodes, runProperties };
+  return { paragraphProperties, paragraphPropertyNodes, runProperties, ...stated };
 }
 
 /**
@@ -476,6 +471,7 @@ export function buildStyleCascadeTable(
   const ligatureCompatibility = ligaturesEnabled ? {} : { disableOptionalLigatures: true as const };
   const strictTableHierarchy = compatibility.has('strictTableStyleHierarchy');
   const settingsCompatibility = cascadeCompatibility(compatibility);
+  const hyphenation = autoHyphenationFromSettings(settingsRoot);
   const spacing = readDistributedSpacing(stylesRoot, compatibility);
   const distribution = spacing ? { distributedSpacing: spacing } : {};
   const styles = new Map<string, StyleDefinition>();
@@ -496,8 +492,10 @@ export function buildStyleCascadeTable(
         strictTableHierarchy,
         ...settingsCompatibility,
         ...distribution,
+        ...hyphenation,
       }),
       ...settingsCompatibility,
+      ...hyphenation,
       ...ligatureCompatibility,
       ...distribution,
       strictTableStyleHierarchy: strictTableHierarchy,
@@ -553,6 +551,7 @@ export function buildStyleCascadeTable(
     ...settingsCompatibility,
     ...ligatureCompatibility,
     ...distribution,
+    ...hyphenation,
     strictTableHierarchy,
     typography,
     dR: propertiesFingerprint(defaults.run),
@@ -583,6 +582,7 @@ export function buildStyleCascadeTable(
   return {
     cacheToken,
     ...settingsCompatibility,
+    ...hyphenation,
     ...ligatureCompatibility,
     ...distribution,
     strictTableStyleHierarchy: strictTableHierarchy,
@@ -632,7 +632,11 @@ export function cascadeParagraphWithNumbering(
     tableCellStyle &&
     !table.strictTableStyleHierarchy &&
     style.styleId === table.defaultParagraphStyleId
-      ? legacyTableDefaultProperties(properties, tableCellStyle.runProperties)
+      ? legacyTableDefaultProperties(
+          properties,
+          tableCellStyle.runProperties,
+          tableCellStyle.statesTypography
+        )
       : properties;
 
   const chainProperties = chain.map((style) => styleProperties(style, style.paragraphProperties));
@@ -695,26 +699,13 @@ export function cascadeParagraphWithNumbering(
 }
 
 /**
- * Bottom border after cascade: a later `w:pBdr` replaces an earlier one; absence inherits.
- * `nil`/`none` clear the edge via `paragraphBorders`.
+ * Bottom border after the cascade, folded edge by edge like `cascadedParagraphBorders`: the
+ * last level that states `w:bottom` decides it, and `nil`/`none` turn it off.
  */
 export function cascadedBottomBorder(
   paragraphPropertyNodes: readonly OoxmlNode[]
 ): ParagraphBorderEdge | undefined {
-  let edge: ParagraphBorderEdge | undefined;
-  for (const node of paragraphPropertyNodes) {
-    if (!node || node.kind === 'textValue') continue;
-    let hasPBdr = false;
-    for (const child of node.children) {
-      if (isElement(child) && child.localName === 'pBdr') {
-        hasPBdr = true;
-        break;
-      }
-    }
-    if (!hasPBdr) continue;
-    edge = paragraphBorders(node).bottom;
-  }
-  return edge;
+  return cascadedParagraphBorders(paragraphPropertyNodes).bottom;
 }
 
 /**
@@ -955,6 +946,7 @@ export function resolveParagraphLayoutInputs(
   const tabStops = withNumberingTabRule(cascadedTabStops(nodes), styleCascade);
   const styleId = cascaded ? cascaded.styleId : (styleIdFromProps(props, 'pStyle') ?? null);
   const outlineLevel = resolveParagraphOutlineLevel(props, styleCascade, styleId);
+  const borders = cascadedParagraphBorders(nodes);
   return {
     props,
     indent,
@@ -982,8 +974,8 @@ export function resolveParagraphLayoutInputs(
     contextualSpacing: paragraphContextualSpacing(props),
     styleId,
     outlineLevel,
-    bottomBorder: cascadedBottomBorder(nodes),
-    borders: cascadedParagraphBorders(nodes),
+    bottomBorder: borders.bottom,
+    borders,
     shading: paragraphShading(props),
     inheritedRunProperties,
     markRunProperties: lastInputs?.markRunProperties ?? markRunProperties,

@@ -154,6 +154,7 @@ export {
   captureOperationSnapshot,
   guardOperationSnapshot,
 } from './resolved-cache.ts';
+export { leadingBreakTextStarts, type LeadingBreakTextStart } from './paragraph-start-page.ts';
 export {
   DEFAULT_PAGE_GEOMETRY,
   contentControlsOfLayout,
@@ -201,6 +202,8 @@ export {
   type TableCellFragmentRecord,
   type TableFragmentRecord,
   type TableRowFragmentRecord,
+  type TableSpacingShading,
+  type TableSpacingFrame,
   type TextMeasurer,
   type TextOutline,
 } from './semantic-records.ts';
@@ -259,6 +262,7 @@ export type {
   DrawingGeometry,
   DrawingInsets,
   DrawingPoint,
+  DrawingRegionCuts,
 } from './drawing-geometry.ts';
 export type {
   DrawingAccessibility,
@@ -437,6 +441,7 @@ export {
   type EquationSpanRecord,
   type EquationTextGeometry,
 } from './equation-layout.ts';
+export type { EquationDelimiterGeometry, EquationStretch } from './equation-delimiter.ts';
 export {
   DEFAULT_CANVAS_FONT_STACK,
   isCanvasMeasurementAvailable,
@@ -650,6 +655,7 @@ export {
   type VerticalAlign,
 } from './run-style.ts';
 export { runBorderStrokesForLine } from './run-border-strokes.ts';
+export { createRunProofingReader, eastAsianTextRanges, type RunProofing } from './run-proofing.ts';
 export {
   MAX_STYLE_BASED_ON_DEPTH,
   MAX_STYLE_DEFINITIONS,
@@ -745,6 +751,11 @@ export {
   type TableRowHeightRule,
 } from './semantic-table.ts';
 export type { AutofitFieldContext, TableAutofitContext } from './table-autofit-widths.ts';
+export {
+  tableSpacingShadingRegions,
+  type TableSpacingShadingRegion,
+} from './table-spacing-shading.ts';
+export { spacedTableFrameBorders } from './table-spacing-frame.ts';
 export { paragraphMarkDeleted, revisionRemovesParagraph } from './revision-visibility.ts';
 export {
   MAX_TABLE_ROW_FRAGMENTS,
@@ -752,6 +763,12 @@ export {
   type TablePaginationErrorCode,
 } from './semantic-table-layout.ts';
 export { compoundBorderStrokesForExtentPt, type CompoundBorderStroke } from './border-metrics.ts';
+export {
+  borderDashPatternPt,
+  borderLineStrokesForExtentPt,
+  DASH_DOT_STROKED_HATCH,
+  type BorderLineStroke,
+} from './border-line-styles.ts';
 export {
   borderExtentPt,
   borderWeight,
@@ -776,6 +793,7 @@ export {
   type TableBorderSideName,
   type TableBorderStrokeRecord,
   type TableCellDiagonalRecord,
+  type TableBorderLine,
   type TableBorderStyle,
 } from './table-borders.ts';
 

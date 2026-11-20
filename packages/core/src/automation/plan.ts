@@ -1,9 +1,5 @@
 import { planTextRead } from './plan-text-read.ts';
-import {
-  paragraphSplitEdits,
-  invalidSplitDelimiters,
-  unchangedLogicalSplitRange,
-} from './paragraph-split-edits.ts';
+import { paragraphSplitEdits, unchangedLogicalSplitRange } from './paragraph-split-edits.ts';
 import {
   logicalParagraphHandles,
   isLogicalParagraph,
@@ -23,11 +19,13 @@ import {
   withEnclosedBookmarkDrops,
 } from './plan-bookmarks.ts';
 import { planCompare } from './plan-compare.ts';
+import { planReplaceDocument } from './plan-replace-document.ts';
 import { planPackageOperation } from './plan-package-operations.ts';
 // The shared frozen refusal and query answer, under the names this planner has always used.
 import { answered as query, refused as refuse } from './plan-results.ts';
 import { referencedNoteIds } from './note-references.ts';
 import { settingsPartOf } from '../store/package/note-properties.ts';
+import { revisionProtectionRefusal } from './revision-protection.ts';
 import { stylesPartOf } from '../store/package/ooxml-indexes.ts';
 import { createContextualRunFormatting } from '../layout/complex-script-formatting.ts';
 
@@ -42,7 +40,13 @@ import { isTextHyperlink } from '../store/store/tree-op-hyperlink-range.ts';
 import type { ContentControlLock } from '../store/package/content-control-nodes.ts';
 import type { PlannedOperation } from './plan-types.ts';
 export type { PlannedOperation } from './plan-types.ts';
-import { delimitedText, anchorForSection, placeable, trimmed } from './plan-read-helpers.ts';
+import {
+  delimitedText,
+  delimiterRefusal,
+  anchorForSection,
+  placeable,
+  trimmed,
+} from './plan-read-helpers.ts';
 import { planContentControlInsertion } from './plan-content-control-insert.ts';
 import { planCheckboxGlyphReplacement } from './plan-checkbox-glyph.ts';
 import { ownsInsertedControl } from './tracked-content-controls.ts';
@@ -61,9 +65,10 @@ import {
 import { planBreakOperation, planLineBreak } from './plan-breaks.ts';
 import { planParagraphBreaks } from './plan-paragraph-breaks.ts';
 import { insertTextOps, lineBreakRefusal, PARAGRAPH_MARK_IN_TEXT } from './line-break-text.ts';
-import { edgeTableOf, paragraphTextRefusal } from './plan-story-edge.ts';
-import { automationListLevelExists } from './list-authoring.ts';
+import { edgeTableOf, paragraphTextRefusal, storyKeeper } from './plan-story-edge.ts';
 import { planListAuthoring } from './plan-list-authoring.ts';
+import { planSetListLevel } from './plan-list-level.ts';
+import { createControlLookup } from './plan-control-lookup.ts';
 import { hyperlinkStyleFor } from '../store/package/hyperlink-style-edit.ts';
 // What each operation MEANS, as reads off a snapshot and `TreeDocOp`s for one transaction.
 // The planner is pure with respect to the document: it reads a snapshot and produces ops. Every
@@ -93,7 +98,6 @@ import {
   fontProperties,
   fontVerticalProperties,
   fontRead,
-  paragraphFormatProperties,
   paragraphFormatRead,
   type AutomationFontWrite,
   type AutomationParagraphFormatWrite,
@@ -105,6 +109,8 @@ import type {
   AutomationTextProjection,
 } from './operations.ts';
 import { createBatchCommandPolicy } from './batch-command-policy.ts';
+import { paragraphFormatOps } from './plan-paragraph-format.ts';
+import { paragraphBordersRead } from './paragraph-borders.ts';
 import type { AutomationHandle, AutomationSpan, AutomationValue } from './protocol.ts';
 import {
   scopedStoryReads,
@@ -152,14 +158,7 @@ import {
   stagedCommentDate,
   validatePlannedCommentFields,
 } from './comment-create-plan.ts';
-import {
-  contentControlNodeOf,
-  contentControlReadOf,
-  contentControlReads,
-  contentControlSpan,
-  contentControlText,
-  type AutomationContentControlRead,
-} from './content-controls.ts';
+import { contentControlReads, contentControlSpan, contentControlText } from './content-controls.ts';
 import { contentControlPropertiesOf } from '../store/package/content-control-nodes.ts';
 import {
   CONTENT_CONTROL_LOCKS,
@@ -174,7 +173,6 @@ import {
   customNodeRequestRefusal,
   customNodeWriteOf,
 } from './custom-node-plan.ts';
-import type { OoxmlNode } from '../store/package/ooxml-tree.ts';
 
 /** A position in the symbolic story order. Bound to a real id after the commit. */
 interface Slot {
@@ -693,11 +691,10 @@ export function createBatchPlanner(host: BatchPlannerHost): BatchPlanner {
       .flatMap((block) => block.paragraphIds);
 
     // One paragraph has to remain to hold the text. When something already has to stay — a section
-    // mark, a content control's contents — that IS the remainder and nothing is kept on its
-    // account; otherwise the story's first paragraph is kept, so a caller's handle for it goes on
-    // naming a paragraph and a script can clear a story and keep writing to it.
-    const keeper =
-      survivors.length === 0 ? removed.find((block) => block.kind === 'paragraph') : undefined;
+    // mark, a content control's contents — that IS the remainder, plus the empty paragraph after
+    // a final table; otherwise the story's first paragraph is kept, so a caller's handle for it
+    // goes on naming a paragraph and a script can clear a story and keep writing to it.
+    const keeper = storyKeeper(reads.part, removed, survivors.length);
     if (!keeper && survivors.length === 0) {
       // Every block is a table (or the story is empty). Emptying this story would need a paragraph
       // CREATED at the top level, which is not an op this slice has — and inventing one here would
@@ -721,7 +718,7 @@ export function createBatchPlanner(host: BatchPlannerHost): BatchPlanner {
 
     const ops: TreeDocOp[] = [];
     // Reading order, so the text lands in the first paragraph the story still has.
-    const kept: string[] = (keeper ? [keeper.id] : [...survivors]).sort(
+    const kept: string[] = [...(keeper ? [keeper.id] : []), ...survivors].sort(
       (a, b) => reads.indexOf(a) - reads.indexOf(b)
     );
     const target = kept[0] as string;
@@ -863,8 +860,8 @@ export function createBatchPlanner(host: BatchPlannerHost): BatchPlanner {
     fragments: readonly string[] = [paragraph.paragraphId]
   ): PlannedOperation => {
     const reads = plan.reads;
-    const invalid = invalidSplitDelimiters(delimiters);
-    if (invalid) return refuse('unsupported-content', invalid.message, invalid.detail);
+    const badDelimiters = delimiterRefusal(delimiters);
+    if (badDelimiters) return badDelimiters;
     const pin = pinWrite(plan);
     if (pin) return pin;
     const original = paragraph.paragraphId;
@@ -1086,32 +1083,19 @@ export function createBatchPlanner(host: BatchPlannerHost): BatchPlanner {
     const part = reads.part;
     const pin = pinWrite(plan);
     if (pin) return pin;
-    const properties = paragraphFormatProperties(
-      part,
-      paragraph.paragraphId,
-      request ?? {},
-      reads.styles()
-    );
-    if (!properties.ok)
+    const planned = paragraphFormatOps(part, paragraph.paragraphId, request ?? {}, reads.styles());
+    if (!planned.ok)
       return refuse(
         'unsupported-content',
         'that is not paragraph formatting this host writes',
-        properties.detail
+        planned.detail
       );
     const conflict = claimFormatting(plan, paragraph.paragraphId, 'paragraph');
     if (conflict) return conflict;
     return {
       ok: true,
       kind: 'command',
-      ops: properties.unchanged
-        ? []
-        : [
-            {
-              op: 'setParagraphProperties',
-              paragraphId: paragraph.paragraphId,
-              properties: properties.value,
-            },
-          ],
+      ops: planned.ops,
       story: reads.story,
       answer: () => APPLIED,
     };
@@ -1190,104 +1174,7 @@ export function createBatchPlanner(host: BatchPlannerHost): BatchPlanner {
     return { ok: true, plan: planFor(reads), list: found };
   };
 
-  /**
-   * The scope a control query looks in: a story root, or one control's own content.
-   *
-   * Both answer the story their controls live in, because a nested control is in the same story
-   * as the control holding it — a handle carries its story so the walk never has to guess.
-   */
-  const controlScope = (
-    scope: unknown
-  ): { reads: AutomationStoryReads; node: OoxmlNode } | PlannedOperation => {
-    if (typeof scope !== 'object' || scope === null) {
-      return refuse('invalid-handle', 'that is not a scope a control lives in', 'scope');
-    }
-    const named = scope as Record<string, AutomationHandle>;
-    if ('body' in scope) {
-      const story = storyOfHandle(named.body as AutomationHandle, 'body', handles, packageReads);
-      if (!story.ok) return refuse(story.code, 'that handle does not name a body', story.detail);
-      return { reads: story.value, node: story.value.root };
-    }
-    if ('contentControl' in scope) {
-      const found = controlOf(named.contentControl);
-      if (!('control' in found)) return found;
-      return { reads: found.reads, node: found.node };
-    }
-    return refuse('invalid-handle', 'that is not a scope a control lives in', 'scope');
-  };
-
-  /**
-   * The control a handle names, re-derived from the current package.
-   *
-   * A handle to a control the document no longer holds is `invalid-handle` rather than a read of
-   * whatever moved into its place: a script that deleted a control and then asked its old
-   * reference for text must not be answered with a neighbour's.
-   */
-  const controlOf = (
-    handle: unknown
-  ):
-    | { reads: AutomationStoryReads; control: AutomationContentControlRead; node: OoxmlNode }
-    | PlannedOperation => {
-    const target = handles.resolve(handle, 'contentControl');
-    if (!target || target.kind !== 'contentControl') {
-      return refuse(
-        'invalid-handle',
-        'that handle does not name a content control',
-        'contentControl'
-      );
-    }
-    const reads = packageReads.story(target.story);
-    if (!reads) return refuse('invalid-handle', 'that story is not in this document');
-    const control = contentControlReadOf(reads, target.nodeId);
-    const node = contentControlNodeOf(reads, target.nodeId);
-    if (!control || !node) {
-      return removed('this document no longer holds that content control');
-    }
-    return { reads, control, node };
-  };
-
-  const planSetListLevel = (
-    plan: StoryPlan,
-    paragraphId: string,
-    level: number
-  ): PlannedOperation => {
-    if (!Number.isInteger(level) || level < 0 || level > MAX_LIST_LEVEL) {
-      return refuse(
-        'invalid-offset',
-        `a list level is 0 to ${String(MAX_LIST_LEVEL)}`,
-        String(level)
-      );
-    }
-    // REFUSED FOR PROSE, not silently numbered: `setListLevel` writes `w:ilvl` inside an existing
-    // `w:numPr`, and a paragraph with none is not a list item. Numbering it here would need a
-    // `w:numId` this operation was never given.
-    const membership = membershipIn(plan.reads, paragraphId);
-    if (!membership)
-      return refuse('unsupported-content', 'that paragraph is not in a list', paragraphId);
-    if (
-      !packageReads.package ||
-      !automationListLevelExists(packageReads.package, membership.numId, level)
-    ) {
-      return refuse(
-        'unsupported-content',
-        'list level is not defined; configure that level first',
-        paragraphId
-      );
-    }
-    const pin = pinWrite(plan);
-    if (pin) return pin;
-    // The paragraph's PROPERTIES container, the same one a paragraph-format write claims: both
-    // rewrite `w:pPr`, so two of them in one batch would carry each other's children away.
-    const conflict = claimFormatting(plan, paragraphId, 'paragraph');
-    if (conflict) return conflict;
-    return {
-      ok: true,
-      kind: 'command',
-      ops: [{ op: 'setListLevel', paragraphId, level }],
-      story: plan.reads.story,
-      answer: () => APPLIED,
-    };
-  };
+  const { controlOf, controlScope } = createControlLookup(handles, packageReads);
 
   /**
    * Add an item at one edge of a list.
@@ -1585,12 +1472,21 @@ export function createBatchPlanner(host: BatchPlannerHost): BatchPlanner {
         host.fieldPageContext,
         trackingAuthor
       );
+    const protectedRevision = revisionProtectionRefusal(operation, packageReads.package);
+    if (protectedRevision) return protectedRevision;
     switch (operation.op) {
       case 'getShapes':
       case 'getShape':
       case 'getShapeBody':
-        return planShapes(operation, handles, packageReads);
+      case 'getShapeFill':
+      case 'setShapeFill':
+        return planShapes(operation, handles, packageReads, (story, paragraphId) => {
+          const plan = planFor(story);
+          return pinWrite(plan) ?? claim(plan, paragraphId);
+        });
       case 'getTextRanges':
+      case 'getParagraphTextIfPresent':
+      case 'getParagraphTextSpan':
       case 'expandSpan':
       case 'getReviewedText':
         return planTextRanges(operation, handles, packageReads);
@@ -1648,17 +1544,18 @@ export function createBatchPlanner(host: BatchPlannerHost): BatchPlanner {
           trackingAuthor
         );
       case 'compareFromBase64':
-        return planCompare(operation, {
-          reads: packageReads,
-          engine: host.compareDocuments,
-          collaborative: host.collaborative ?? false,
-          pin: () => {
-            const plan = planFor(packageReads.body!);
-            const refusal = pinWrite(plan);
-            if (!refusal) plan.wholesale = true;
-            return refusal;
-          },
-        });
+      case 'replaceDocumentFromBase64': {
+        const pin = () => {
+          const plan = planFor(packageReads.body!);
+          const refusal = pinWrite(plan);
+          if (!refusal) plan.wholesale = true;
+          return refusal;
+        };
+        if (operation.op === 'replaceDocumentFromBase64')
+          return planReplaceDocument(operation, { reads: packageReads, handles, pin });
+        const { compareDocuments: engine, collaborative = false } = host;
+        return planCompare(operation, { reads: packageReads, engine, collaborative, pin });
+      }
       case 'removeDocumentInformation':
       case 'getDocumentProperty':
       case 'setDocumentProperties':
@@ -1940,12 +1837,22 @@ export function createBatchPlanner(host: BatchPlannerHost): BatchPlanner {
         return planSetStyle(planFor(story), resolved.value, operation.name);
       }
 
-      case 'getParagraphFormat': {
+      case 'getParagraphFormat':
+      case 'getParagraphBorders': {
         const paragraph = resolveParagraphRef(operation.paragraph, handles, packageReads);
         if (!paragraph.ok)
           return refuse(paragraph.code, 'that is not a paragraph', paragraph.detail);
         const story = packageReads.story(paragraph.value.story);
         if (!story) return refuse('document-unavailable', 'this host holds no document right now');
+        if (operation.op === 'getParagraphBorders') {
+          const borders = paragraphBordersRead(
+            story.part,
+            paragraph.value.paragraphId,
+            story.styles()
+          );
+          if (!borders) return refuse('invalid-handle', 'that handle does not name a paragraph');
+          return query({ kind: 'paragraphBorders', borders });
+        }
         const format = paragraphFormatRead(story.part, paragraph.value.paragraphId, story.styles());
         if (!format) return refuse('invalid-handle', 'that handle does not name a paragraph');
         return query({ kind: 'paragraphFormat', format });
@@ -2173,7 +2080,12 @@ export function createBatchPlanner(host: BatchPlannerHost): BatchPlanner {
           return refuse(paragraph.code, 'that handle does not name a paragraph', paragraph.detail);
         const reads = packageReads.story(paragraph.value.story);
         if (!reads) return refuse('invalid-handle', 'that story is not in this document');
-        return planSetListLevel(planFor(reads), paragraph.value.paragraphId, operation.level);
+        const plan = planFor(reads);
+        const { paragraphId } = paragraph.value;
+        // The paragraph's PROPERTIES container, the one a paragraph-format write claims.
+        return planSetListLevel(packageReads, reads, paragraphId, operation.level, () => {
+          return pinWrite(plan) ?? claimFormatting(plan, paragraphId, 'paragraph');
+        });
       }
 
       case 'insertListParagraph': {

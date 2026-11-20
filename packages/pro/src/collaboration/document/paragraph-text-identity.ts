@@ -430,3 +430,14 @@ export function typedAfterMoved(
   }
   return false;
 }
+
+/** The identities of the copies one text holds: moved, or put back by an undo. */
+export function copiesIn(identities: TextIdentities): Set<Identity> {
+  const copies = new Set<Identity>();
+  identities.ids.forEach((id, position) => {
+    if (id !== null && isCopyAt(identities, position)) {
+      copies.add(id);
+    }
+  });
+  return copies;
+}

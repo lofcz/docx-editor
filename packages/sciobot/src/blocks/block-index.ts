@@ -1,4 +1,4 @@
-import { activeStorage } from '../registry/active';
+import { activeMdxRegistry } from '../registry/active';
 import {
   contentControlPropertiesOf,
   contentControlsIn,
@@ -35,10 +35,19 @@ export interface BlockIndex {
   readonly omittedDiagnostics: number;
 }
 
+const indexed = new WeakMap<
+  OoxmlPackage,
+  { registry: ReturnType<typeof activeMdxRegistry>; maxDiagnostics: number; index: BlockIndex }
+>();
+
 /** Resolve immutable package data. Invalid references never trigger a document rewrite. */
 export function buildBlockIndex(pkg: OoxmlPackage, maxDiagnostics = 64): BlockIndex {
   if (!Number.isSafeInteger(maxDiagnostics) || maxDiagnostics < 0 || maxDiagnostics > 256)
     throw new TypeError('Invalid diagnostic limit');
+  const registry = activeMdxRegistry();
+  const previous = indexed.get(pkg);
+  if (previous?.registry === registry && previous.maxDiagnostics === maxDiagnostics)
+    return previous.index;
   const diagnostics: BlockIndexDiagnostic[] = [];
   let omittedDiagnostics = 0;
   const report = (diagnostic: BlockIndexDiagnostic) => {
@@ -51,20 +60,22 @@ export function buildBlockIndex(pkg: OoxmlPackage, maxDiagnostics = 64): BlockIn
     if (!isStoryPart(part)) continue;
     for (const { node, ancestors } of contentControlsIn(part.root)) {
       const tag = contentControlPropertiesOf(node).tag ?? '';
-      const id = blockIdFromTag(tag);
+      const id = blockIdFromTag(tag, registry.storage);
       if (id === null) {
-        if (tag.startsWith(activeStorage().tagPrefix))
+        if (tag.startsWith(registry.storage.tagPrefix))
           report({ code: 'malformed-reference', controlId: node.id });
         continue;
       }
       counts.set(id, (counts.get(id) ?? 0) + 1);
       const parents = ancestors
-        .map((ancestor) => blockIdFromTag(contentControlPropertiesOf(ancestor).tag ?? ''))
+        .map((ancestor) =>
+          blockIdFromTag(contentControlPropertiesOf(ancestor).tag ?? '', registry.storage)
+        )
         .filter((parent): parent is string => parent !== null);
       candidates.push({ id, controlId: node.id, partName, parents });
     }
   }
-  const store = readPayloadStore(pkg);
+  const store = readPayloadStore(pkg, registry.storage);
   const byId = new Map<string, IndexedBlock>();
   if (store.status === 'invalid') report({ code: 'invalid-store', detail: store.reason });
   const duplicated = new Set<string>();
@@ -99,5 +110,7 @@ export function buildBlockIndex(pkg: OoxmlPackage, maxDiagnostics = 64): BlockIn
     for (const id of store.entries.keys()) {
       if (!counts.has(id)) report({ code: 'orphan-payload', id });
     }
-  return { byId, diagnostics, omittedDiagnostics };
+  const index = { byId, diagnostics, omittedDiagnostics };
+  indexed.set(pkg, { registry, maxDiagnostics, index });
+  return index;
 }

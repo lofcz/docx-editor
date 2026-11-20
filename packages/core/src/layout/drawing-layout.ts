@@ -10,7 +10,11 @@ import { clipBoxToRegion, hitBoundsOf } from './drawing-clip-box.ts';
 export { clipBoxHorizontally, clipBoxToRegion } from './drawing-clip-box.ts';
 
 import type { DrawingImageEffects } from '../store/package/drawing-image-effects.ts';
-import { anchorLaidOutInCell, type CellAnchorScope } from './cell-anchor-layout.ts';
+import {
+  alignsToCellFrameTop,
+  anchorLaidOutInCell,
+  type CellAnchorScope,
+} from './cell-anchor-layout.ts';
 import {
   drawingAccessibility,
   type DrawingAccessibility,
@@ -41,6 +45,7 @@ import {
   clipGeometryToRegion,
   type DrawingGeometry,
 } from './drawing-geometry.ts';
+import { shiftGeometry } from './inline-drawing-clip.ts';
 import type { LayoutBox } from './semantic-records.ts';
 import { textboxPlacementProjection } from './textbox-placement.ts';
 import { withGroupTextboxStories } from './group-textbox-layout.ts';
@@ -166,25 +171,6 @@ export function inlineDrawingVerticalLayout(
 /** @deprecated Prefer {@link inlineDrawingVerticalLayout}. */
 export function inlineDrawingTopY(baseline: number, measure: InlineDrawingMeasure): number {
   return inlineDrawingVerticalLayout(baseline, measure.lineContribution, measure).extentTopY;
-}
-
-function shiftGeometry(geometry: DrawingGeometry, dx: number, dy: number): DrawingGeometry {
-  if (Math.abs(dx) < 0.000_1 && Math.abs(dy) < 0.000_1) return geometry;
-  const shiftBox = (box: LayoutBox): LayoutBox =>
-    Object.freeze({ ...box, x: box.x + dx, y: box.y + dy });
-  const shiftPoint = (point: { readonly x: number; readonly y: number }) =>
-    Object.freeze({ x: point.x + dx, y: point.y + dy });
-  return Object.freeze({
-    ...geometry,
-    contentBounds: shiftBox(geometry.contentBounds),
-    paintBounds: shiftBox(geometry.paintBounds),
-    hitBounds: shiftBox(geometry.hitBounds),
-    transformedCorners: Object.freeze(geometry.transformedCorners.map(shiftPoint)),
-    ...(geometry.imageTransformCorners
-      ? { imageTransformCorners: Object.freeze(geometry.imageTransformCorners.map(shiftPoint)) }
-      : {}),
-    clipPolygon: geometry.clipPolygon ? Object.freeze(geometry.clipPolygon.map(shiftPoint)) : null,
-  });
 }
 
 /**
@@ -415,57 +401,11 @@ export interface InlineDrawingLayoutContext {
   ) => { readonly ownerPartName: string; readonly resource: ImageResourceState } | null;
 }
 
-export function clipInlineDrawingRecordVertically(
-  drawing: InlineDrawingRecord,
-  regionTop: number,
-  regionBottom: number
-): InlineDrawingRecord {
-  return clipInlineDrawingRecordToRegion(
-    drawing,
-    Object.freeze({
-      x: drawing.x,
-      y: regionTop,
-      width: drawing.width,
-      height: Math.max(0, regionBottom - regionTop),
-    })
-  );
-}
-
-/** Clip paint/hit to `region` on both axes; authored `width`/`height` stay unchanged. */
-export function clipInlineDrawingRecordToRegion(
-  drawing: InlineDrawingRecord,
-  region: LayoutBox
-): InlineDrawingRecord {
-  const paintBounds = clipBoxToRegion(drawing.paintBounds, region);
-  const hitBounds = hitBoundsOf(paintBounds);
-  const dx = drawing.x - drawing.geometry.contentBounds.x;
-  const dy = drawing.y - drawing.geometry.contentBounds.y;
-  const shiftedGeometry = shiftGeometry(drawing.geometry, dx, dy);
-  return Object.freeze({
-    ...drawing,
-    paintBounds,
-    hitBounds,
-    geometry: clipGeometryToRegion(shiftedGeometry, region),
-  });
-}
-
-/**
- * Clip an inline drawing to the paper sideways and the body band vertically. Text art whose ink
- * rises over its box (an arch) keeps that ink past the band.
- */
-export function clipInlineDrawingToBodyBand(
-  drawing: InlineDrawingRecord,
-  paper: LayoutBox,
-  bandHeight: number
-): InlineDrawingRecord {
-  const art = drawing.textArt?.inkBounds !== undefined;
-  return clipInlineDrawingRecordToRegion(drawing, {
-    x: paper.x,
-    y: art ? -1e5 : 0,
-    width: paper.width,
-    height: art ? 2e5 : bandHeight,
-  });
-}
+export {
+  clipInlineDrawingRecordToRegion,
+  clipInlineDrawingRecordVertically,
+  clipInlineDrawingToBodyBand,
+} from './inline-drawing-clip.ts';
 
 export type DrawingAnchorStoryKind = 'body' | 'header' | 'footer' | 'footnote' | 'endnote';
 
@@ -543,6 +483,8 @@ export interface DrawingAnchorFrameContext {
    * top (`wrappedAnchorsStayBelowTopMargin`). Set by the body frame base in modern modes.
    */
   readonly wrappedParagraphAnchorsBelowContentTop?: boolean;
+  /** A column `left`/`right` alignment keeps the paragraph indents (legacy modes). */
+  readonly columnAlignmentFollowsIndents?: boolean;
   /**
    * Where a wrapping body object positioned from its paragraph or line must end: the content
    * box bottom in modern modes (`wrappedAnchorsEndAtBottomMargin`), the sheet bottom in legacy
@@ -621,21 +563,20 @@ function horizontalEdges(
     const cellBox = ctx.cellBox;
     if (!cellBox) return null;
     const { x, width } = cellBox;
+    // The cell stands in for the page: `page` is the whole cell, `margin` and `column` its
+    // text area inside the cell margins, and the side margin bands lie between the two.
+    const content = ctx.cellContentBox ?? cellBox;
+    const contentRight = content.x + content.width;
     switch (frame) {
-      case 'column': {
-        const column = ctx.cellContentBox ?? cellBox;
-        return {
-          left: column.x,
-          right: column.x + column.width,
-          center: column.x + column.width / 2,
-        };
-      }
-      case 'page':
+      case 'column':
       case 'margin':
+        return { left: content.x, right: contentRight, center: content.x + content.width / 2 };
+      case 'page':
+        return { left: x, right: x + width, center: x + width / 2 };
       case 'leftMargin':
-        return { left: x, right: x + width, center: x + width / 2 };
+        return { left: x, right: content.x, center: (x + content.x) / 2 };
       case 'rightMargin':
-        return { left: x, right: x + width, center: x + width / 2 };
+        return { left: contentRight, right: x + width, center: (contentRight + x + width) / 2 };
       case 'character':
         return {
           left: ctx.anchorCharacterX,
@@ -704,8 +645,15 @@ function verticalEdges(
       case 'page':
       case 'margin':
       case 'topMargin':
-      case 'bottomMargin':
-        return { top: y, bottom: y + height, center: y + height / 2 };
+      case 'bottomMargin': {
+        // Every page-like frame starts at the top of the cell's text area, below its margin.
+        const content = ctx.cellContentBox ?? cellBox;
+        return {
+          top: content.y,
+          bottom: content.y + content.height,
+          center: content.y + content.height / 2,
+        };
+      }
       case 'paragraph':
         return {
           top: ctx.paragraphBox.y,
@@ -753,12 +701,19 @@ function verticalEdges(
       return { top: pageTop, bottom: pageBottomSheet, center: (pageTop + pageBottomSheet) / 2 };
     case 'margin':
       return { top: marginTop, bottom: marginBottom, center: (marginTop + marginBottom) / 2 };
-    case 'paragraph':
+    case 'paragraph': {
+      // An object a table cell anchors but lays out against the page (§20.4.2.3
+      // `layoutInCell="0"`) measures a paragraph offset from the top of its row, not from
+      // the paragraph: cell margins, borders and earlier paragraphs of the cell do not move it.
+      const row = ctx.inTableCell && !ctx.layoutInCell ? ctx.cellBox : null;
+      if (row && Number.isFinite(row.y))
+        return { top: row.y, bottom: row.y + row.height, center: row.y + row.height / 2 };
       return {
         top: ctx.paragraphBox.y,
         bottom: ctx.paragraphBox.y + ctx.paragraphBox.height,
         center: ctx.paragraphBox.y + ctx.paragraphBox.height / 2,
       };
+    }
     case 'line':
       return {
         top: ctx.anchorLineBox.y,
@@ -837,6 +792,16 @@ function resolveInsideOutsideVerticalAlign(
   return null;
 }
 
+/** The anchor paragraph's indents inside the box it flows in: its cell text area or column. */
+function columnAlignmentIndents(
+  ctx: DrawingAnchorFrameContext
+): { readonly left: number; readonly right: number } | null {
+  if (ctx.columnAlignmentFollowsIndents !== true) return null;
+  const home = ctx.cellBox === null ? ctx.columnBox : (ctx.cellContentBox ?? ctx.cellBox);
+  const text = ctx.paragraphBox;
+  return { left: text.x - home.x, right: home.x + home.width - (text.x + text.width) };
+}
+
 function positionFromHorizontal(
   frame: DrawingHorizontalReferenceFrame,
   align: string | null,
@@ -848,9 +813,10 @@ function positionFromHorizontal(
   if (!edges) return null;
   const offset = axisOffsetPoints(offsetEmu);
   if (offset === null) return null;
-  if (align === 'left') return edges.left + offset;
+  const indents = frame === 'column' ? columnAlignmentIndents(ctx) : null;
+  if (align === 'left') return edges.left + (indents?.left ?? 0) + offset;
   if (align === 'center') return edges.center - objectWidth / 2 + offset;
-  if (align === 'right') return edges.right - objectWidth + offset;
+  if (align === 'right') return edges.right - (indents?.right ?? 0) - objectWidth + offset;
   if (align === 'inside' || align === 'outside') {
     const resolved = resolveInsideOutsideHorizontalAlign(align, objectWidth, ctx);
     if (resolved !== null) return resolved + offset;
@@ -869,7 +835,8 @@ function positionFromVertical(
   if (!edges) return null;
   const offset = axisOffsetPoints(offsetEmu);
   if (offset === null) return null;
-  if (align === 'top') return edges.top + offset;
+  const cellTop = ctx.inTableCell === true && usesCellLayoutBox(frame, ctx);
+  if (align === 'top' || (cellTop && alignsToCellFrameTop(frame, align))) return edges.top + offset;
   if (align === 'center') return edges.center - objectHeight / 2 + offset;
   if (align === 'bottom') return edges.bottom - objectHeight + offset;
   if (align === 'inside' || align === 'outside') {
@@ -1034,7 +1001,7 @@ export function buildAnchoredDrawingRecord(options: {
   // Turned text or a turned text box reaches past its box; the painted area holds the turn.
   const turned = textArt
     ? textArtPaintBounds(geometry.paintBounds, textArt)
-    : turnedTextboxBounds(geometry.paintBounds, options.textboxStory);
+    : turnedTextboxBounds(geometry.paintBounds, options.textboxStory, geometry.contentBounds);
   const paintBounds = options.clipRegion ? clipBoxToRegion(turned, options.clipRegion) : turned;
   const hitBounds = hitBoundsOf(paintBounds);
   return Object.freeze({
@@ -1315,7 +1282,7 @@ export function buildInlineDrawingRecord(options: {
   // clip keeps that reach.
   const reach = textArt
     ? textArtPaintBounds(geometry.paintBounds, textArt)
-    : turnedTextboxBounds(geometry.paintBounds, textboxStory);
+    : turnedTextboxBounds(geometry.paintBounds, textboxStory, geometry.contentBounds);
   const horizontalClip = options.deferHorizontalClip
     ? { x: reach.x, width: reach.width }
     : { x: options.contentLeft, width: Math.max(0, options.contentRight - options.contentLeft) };
@@ -1355,7 +1322,9 @@ export function buildInlineDrawingRecord(options: {
     baselineOffset: options.baseline,
     paintBounds,
     hitBounds,
-    geometry: clipGeometryToRegion(geometry, clipRegion),
+    // The line and column clip is no region a shape stays cut at: a shape that paints past its
+    // extent paints over the margins, and a cell clips it again (semantic-table-layout.ts).
+    geometry: clipGeometryToRegion(geometry, clipRegion, false),
     resource: options.input.resource,
     accessibility: drawingAccessibility(options.input.projection),
     ...drawingPaintFields(options.input.projection),

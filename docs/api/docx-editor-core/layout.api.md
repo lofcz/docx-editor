@@ -138,6 +138,9 @@ export interface BlockReservations {
     insetOf?(nodeId: string): BlockInset | undefined;
 }
 
+// @internal
+export function borderDashPatternPt(val: string, widthPt: number): readonly number[] | null;
+
 // @public
 export function borderExtentPt(edge: ResolvedTableBorderEdge | TableBorderSide | undefined): number;
 
@@ -159,6 +162,18 @@ export interface BorderGridGeometry {
 }
 
 // @public
+export interface BorderLineStroke {
+    readonly color: string | null;
+    // (undocumented)
+    readonly offsetPt: number;
+    // (undocumented)
+    readonly widthPt: number;
+}
+
+// @internal
+export function borderLineStrokesForExtentPt(val: string, extentPt: number, color: string | null): readonly BorderLineStroke[] | null;
+
+// @public
 export function borderWeight(side: TableBorderSide): number;
 
 // @public
@@ -171,7 +186,7 @@ export function boundedFallbackWordSegments(text: string): readonly WordSegment[
 export const boundedStructuralFontValidator: FontByteValidator;
 
 // @public
-export function buildNumberingIndex(root: OoxmlElement | null | undefined): NumberingIndex;
+export function buildNumberingIndex(root: OoxmlElement | null | undefined, pictureBulletPixelHeight?: (relationshipId: string) => number | undefined): NumberingIndex;
 
 // @public
 export function buildPageRefIndex(allRefs: readonly PageRefHit[]): PageRefIndex;
@@ -718,6 +733,9 @@ export function createListCounterState(index: NumberingIndex): ListCounterState;
 // @public
 export function createParagraphLayoutCache<T>(options?: ParagraphLayoutCacheOptions): ParagraphLayoutCache<T>;
 
+// @internal
+export function createRunProofingReader(styles: StyleCascadeTable | undefined): (paragraph: OoxmlNode, run: OoxmlNode, cellStyle?: TableCellStyleFormatting) => RunProofing;
+
 // @public
 export function createShapedMeasurer(options: ShapedMeasurerOptions): TextMeasurer;
 
@@ -734,6 +752,13 @@ export const createShapingEnvironment: (input: ShapingEnvironmentInput) => Shapi
 export function createUnsupportedContentProjector(resolve: UnsupportedContentResolver): {
     part(part: OoxmlPart): OoxmlPart;
     view(view: HeadlessDocumentView): HeadlessDocumentView;
+};
+
+// @internal
+export const DASH_DOT_STROKED_HATCH: {
+    readonly lineWidthPt: 0.24;
+    readonly pitchPt: 0.72;
+    readonly slots: readonly [true, true, true, false, true, false, true, true];
 };
 
 // @public
@@ -777,7 +802,7 @@ export const DEFAULT_TAB_INTERVAL_TWIPS = 720;
 export const DEFAULT_VERTICAL_WEIGHT = 8;
 
 // @public
-export function defaultNoteSeparatorRuleStyle(_noteKind: NoteKind, _kind: 'separator' | 'continuationSeparator'): NoteSeparatorRuleStyle;
+export function defaultNoteSeparatorRuleStyle(_noteKind: NoteKind$1, _kind: 'separator' | 'continuationSeparator'): NoteSeparatorRuleStyle;
 
 // @public
 export function defaultTabIntervalFromSettings(settings: OoxmlNode | null | undefined): number;
@@ -786,10 +811,10 @@ export function defaultTabIntervalFromSettings(settings: OoxmlNode | null | unde
 export function deletedTextBoundaries(layout: SemanticLayout, paragraphId: string): ReadonlySet<number>;
 
 // @public
-export function deriveNoteDisplayMarks(noteKind: NoteKind, references: readonly NoteReferenceSite[], properties: ResolvedNoteProperties): readonly NoteDisplayMark[];
+export function deriveNoteDisplayMarks(noteKind: NoteKind$1, references: readonly NoteReferenceSite[], properties: ResolvedNoteProperties): readonly NoteDisplayMark[];
 
 // @public
-export function deriveNoteDisplayMarksResolved(_noteKind: NoteKind, references: readonly NoteReferenceSite[], resolveProps: (sectionIndex: number) => ResolvedNoteProperties): readonly NoteDisplayMark[];
+export function deriveNoteDisplayMarksResolved(_noteKind: NoteKind$1, references: readonly NoteReferenceSite[], resolveProps: (sectionIndex: number) => ResolvedNoteProperties): readonly NoteDisplayMark[];
 
 // @public
 export function displayText(text: string, style: ResolvedRunStyle): string;
@@ -890,6 +915,7 @@ export interface DrawingGeometry {
     readonly imageTransformCorners?: readonly DrawingPoint[];
     // (undocumented)
     readonly paintBounds: LayoutBox;
+    readonly regionCuts?: DrawingRegionCuts;
     // (undocumented)
     readonly transformedCorners: readonly DrawingPoint[];
 }
@@ -969,6 +995,14 @@ export interface DrawingPoint {
 }
 
 // @public
+export interface DrawingRegionCuts {
+    readonly bottom: number;
+    readonly left: number;
+    readonly right: number;
+    readonly top: number;
+}
+
+// @public
 export type DrawingSupport = 'native' | 'partial' | 'unrendered';
 
 // @public
@@ -1032,6 +1066,12 @@ export interface DrawingTransform {
 // @public (undocumented)
 export type DrawingVerticalReferenceFrame = 'bottomMargin' | 'insideMargin' | 'line' | 'margin' | 'outsideMargin' | 'page' | 'paragraph' | 'topMargin';
 
+// @internal
+export function eastAsianTextRanges(text: string): readonly {
+    readonly from: number;
+    readonly to: number;
+}[];
+
 // @public
 export function effectiveBorderSide(authored: TableBorderSide, tableSide: TableBorderSide, _options?: {
     readonly interior?: boolean;
@@ -1080,6 +1120,17 @@ export interface EquationBorderBoxGeometry extends EquationGeometryBase {
     readonly thickness: number;
 }
 
+// @public (undocumented)
+export interface EquationDelimiterGeometry {
+    readonly baseline: number;
+    // (undocumented)
+    readonly box: LayoutBox;
+    readonly fences: readonly EquationTextGeometry[];
+    readonly items: readonly EquationGeometry[];
+    // (undocumented)
+    readonly kind: 'delimiter';
+}
+
 // @public
 export interface EquationDiagonal {
     // (undocumented)
@@ -1105,7 +1156,7 @@ export interface EquationFractionGeometry extends EquationGeometryBase {
 }
 
 // @public (undocumented)
-export type EquationGeometry = EquationTextGeometry | EquationRowGeometry | EquationFractionGeometry | EquationRadicalGeometry | EquationBarGeometry | EquationBorderBoxGeometry | EquationScriptGeometry | EquationNaryGeometry;
+export type EquationGeometry = EquationTextGeometry | EquationRowGeometry | EquationFractionGeometry | EquationRadicalGeometry | EquationBarGeometry | EquationBorderBoxGeometry | EquationDelimiterGeometry | EquationScriptGeometry | EquationNaryGeometry;
 
 // @public (undocumented)
 export interface EquationNaryGeometry extends EquationGeometryBase {
@@ -1167,6 +1218,12 @@ export interface EquationSpanRecord {
     readonly truncated: boolean;
 }
 
+// @public
+export interface EquationStretch {
+    readonly originY: number;
+    readonly scale: number;
+}
+
 // @public (undocumented)
 export interface EquationTextGeometry extends EquationGeometryBase {
     // (undocumented)
@@ -1174,6 +1231,7 @@ export interface EquationTextGeometry extends EquationGeometryBase {
     // (undocumented)
     readonly kind: 'text' | 'fallback';
     readonly runStyle?: ResolvedRunStyle;
+    readonly stretch?: EquationStretch;
     // (undocumented)
     readonly text: string;
 }
@@ -1228,7 +1286,7 @@ export interface FieldLinkRegistry {
 export function filterRefsOnPage(page: PageRecord, allRefs: readonly PageRefHit[], refIndex?: PageRefIndex): readonly PageRefHit[];
 
 // @public
-export function findDrawingOverlayFrameInLayout(layout: SemanticLayout, drawingNodeId: string): DrawingOverlayFrame | null;
+export function findDrawingOverlayFrameInLayout(layout: SemanticLayout, drawingNodeId: string, preferPage?: number): DrawingOverlayFrame | null;
 
 // @public
 export function findSeparatorNote(part: OoxmlPart | null | undefined, kind: 'separator' | 'continuationSeparator'): OoxmlElement | undefined;
@@ -1953,7 +2011,7 @@ export function layoutHeaderFooterStory(part: OoxmlPart, contentWidth: number, m
 export function layoutNoteById(part: OoxmlPart | null | undefined, noteId: number, contentWidth: number, options: LayoutNoteStoryOptions): NoteStoryLayout | null;
 
 // @public
-export function layoutNoteSeparator(part: OoxmlPart | null | undefined, kind: 'separator' | 'continuationSeparator', contentWidth: number, options: LayoutNoteStoryOptions, noteKind: NoteKind, maxFlowHeightPt?: number): NoteSeparatorLayout;
+export function layoutNoteSeparator(part: OoxmlPart | null | undefined, kind: 'separator' | 'continuationSeparator', contentWidth: number, options: LayoutNoteStoryOptions, noteKind: NoteKind$1, maxFlowHeightPt?: number): NoteSeparatorLayout;
 
 // @public
 export function layoutNoteStory(note: OoxmlNode, contentWidth: number, options: LayoutNoteStoryOptions): NoteStoryLayout | null;
@@ -2069,6 +2127,15 @@ export interface LayoutShapingOptions {
     // (undocumented)
     readonly shaper: TextShaper;
 }
+
+// @internal
+export interface LeadingBreakTextStart {
+    readonly fragmentIndex: number;
+    readonly offset: number;
+}
+
+// @internal
+export function leadingBreakTextStarts(pages: readonly PageRecord[]): ReadonlyMap<string, LeadingBreakTextStart>;
 
 // @public
 export interface LevelOverride {
@@ -2345,7 +2412,7 @@ export type NoteLayoutFallbackReason = 'note-count-limit' | 'note-fragment-limit
 | 'note-separator-height-cap' | 'note-continuation-notice-height-cap' | 'missing-note-body' | 'dangling-note-reference';
 
 // @public
-export function noteLineIdPrefix(noteKind: NoteKind, noteId: number): string;
+export function noteLineIdPrefix(noteKind: NoteKind$1, noteId: number): string;
 
 // @public
 export interface NoteMarkContext {
@@ -2356,7 +2423,7 @@ export interface NoteMarkContext {
 }
 
 // @public
-export function noteMarkKey(noteKind: NoteKind, noteId: number): string;
+export function noteMarkKey(noteKind: NoteKind$1, noteId: number): string;
 
 // @public
 export type NotePaginationFallbackReason = NoteLayoutFallbackReason | 'note-reflow-exhausted' | 'note-area-fragment-limit' | 'note-overflow-page-limit'
@@ -2472,7 +2539,7 @@ export interface NoteStoryLayout {
     // (undocumented)
     readonly noteId: number;
     // (undocumented)
-    readonly noteKind: NoteKind;
+    readonly noteKind: NoteKind$1;
     // (undocumented)
     readonly noteType: ReturnType<typeof noteTypeOf>;
     readonly scopeId: string;
@@ -2553,6 +2620,7 @@ export interface NumberingLevelIndent {
 export interface NumberingPictureBullet {
     readonly height: number;
     readonly picBulletId: string;
+    readonly pixelHeight?: number;
     readonly relationshipId: string;
     readonly width: number;
 }
@@ -3324,9 +3392,10 @@ export interface ResolvedSurfaceMeasurer {
 export interface ResolvedTableBorderEdge {
     // (undocumented)
     readonly color: string | null;
+    readonly line?: TableBorderLine;
+    readonly sizePt?: number;
     // (undocumented)
     readonly style: TableBorderStyle;
-    // (undocumented)
     readonly widthPt: number;
 }
 
@@ -3648,6 +3717,14 @@ export const roundFontUnitToFixedPoint: (fontUnits: number, denominator: number,
 
 // @public
 export function runBorderStrokesForLine(line: LineRecord): readonly ParagraphBorderStrokeRecord[];
+
+// @internal
+export interface RunProofing {
+    readonly eastAsiaLang: string | null;
+    readonly hidden: boolean;
+    readonly lang: string | null;
+    readonly noProof: boolean;
+}
 
 // @public
 export function runStylesEqual(a: ResolvedRunStyle, b: ResolvedRunStyle): boolean;
@@ -4146,6 +4223,8 @@ export interface SemanticTableCell {
 
 // @public
 export interface SemanticTableRow {
+    // (undocumented)
+    readonly alignment?: TableAlignment;
     readonly cantSplit: boolean;
     // (undocumented)
     readonly cells: readonly SemanticTableCell[];
@@ -4160,6 +4239,9 @@ export interface SemanticTableRow {
     readonly revisionDate?: string;
     readonly revisionId?: string;
     readonly revisionKind?: 'insert' | 'delete';
+    readonly spacingFrame?: TableSpacingFrame;
+    readonly spacingShading?: TableSpacingShading;
+    readonly xShiftPt?: number;
 }
 
 // @public
@@ -4182,6 +4264,7 @@ export interface SemanticTableStructure {
     // (undocumented)
     readonly rows: readonly SemanticTableRow[];
     readonly sharedGridLinesHold?: true;
+    readonly statedColumnWidthsPt?: readonly number[];
     readonly tableBorders: TableBorderBox;
     readonly tableWidth: PreferredWidth;
     readonly textBox?: true;
@@ -4500,6 +4583,9 @@ export interface SourceRange {
     readonly start: number;
 }
 
+// @internal
+export function spacedTableFrameBorders(fragment: Pick<TableFragmentRecord, 'rows' | 'box'>): ResolvedCellBorders | undefined;
+
 // @public
 export interface SpanLinkRecord {
     readonly anchor?: string;
@@ -4565,6 +4651,8 @@ export interface StrikeoutStrokePt {
 // @public
 export interface StyleCascadeTable {
     readonly adjustLineHeightInTable?: true;
+    // @internal
+    readonly autoHyphenation?: true;
     readonly cacheToken: string;
     readonly defaultCharacterStyleId: string | null;
     readonly defaultParagraphStyleId: string | null;
@@ -4579,6 +4667,8 @@ export interface StyleCascadeTable {
     // (undocumented)
     readonly docDefaultsRun: readonly OoxmlProperty[];
     readonly doNotBreakWrappedTables?: true;
+    // @internal
+    readonly doNotHyphenateCaps?: true;
     readonly fixedParagraphSpacing?: true;
     readonly ignoreIndentAsNumberingTabStop?: true;
     readonly noColumnBalance?: true;
@@ -4589,6 +4679,8 @@ export interface StyleCascadeTable {
     readonly strictTableStyleHierarchy?: boolean;
     // (undocumented)
     readonly styles: ReadonlyMap<string, StyleDefinition>;
+    // @internal
+    readonly textBesideBrokenFloatingTable?: true;
     readonly themeFonts: ThemeFonts;
     // (undocumented)
     readonly typography?: CjkTypographySettings;
@@ -4731,12 +4823,17 @@ export interface TableBorderBox {
 }
 
 // @public
+export type TableBorderLine = 'dotDash' | 'dotDotDash' | 'dashSmallGap' | 'dashDotStroked' | 'threeDEmboss' | 'threeDEngrave' | 'thinThickSmallGap' | 'thickThinSmallGap' | 'thinThickThinSmallGap' | 'thinThickMediumGap' | 'thickThinMediumGap' | 'thinThickThinMediumGap' | 'thinThickLargeGap' | 'thickThinLargeGap' | 'thinThickThinLargeGap';
+
+// @public
 export type TableBorderSide = {
     readonly state: 'omitted';
 } | {
     readonly state: 'none';
 } | {
     readonly color: string | null;
+    readonly line?: TableBorderLine;
+    readonly sizePt?: number;
     readonly state: 'edge';
     readonly style: TableBorderStyle;
     readonly widthPt: number;
@@ -4750,6 +4847,8 @@ export interface TableBorderStrokeRecord {
     // (undocumented)
     readonly color: string | null;
     readonly cssStyle: 'solid' | 'dashed' | 'dotted';
+    readonly dashPt?: readonly number[];
+    readonly hatch?: true;
     // (undocumented)
     readonly height: number;
     // (undocumented)
@@ -4848,6 +4947,7 @@ export interface TableCellStyleFormatting {
     readonly paragraphProperties: readonly OoxmlProperty[];
     readonly paragraphPropertyNodes: readonly OoxmlElement[];
     readonly runProperties: readonly OoxmlProperty[];
+    readonly statesTypography?: true;
 }
 
 // @public
@@ -4908,6 +5008,8 @@ export interface TableRowFragmentRecord {
     readonly revisionId?: string;
     readonly revisionKind?: 'insert' | 'delete';
     readonly rowIndex: number;
+    readonly spacingFrame?: TableSpacingFrame;
+    readonly spacingShading?: TableSpacingShading;
 }
 
 // @public
@@ -4920,6 +5022,39 @@ export type TableRowHeight = {
 
 // @public
 export type TableRowHeightRule = 'auto' | 'atLeast' | 'exact';
+
+// @public
+export interface TableSpacingFrame {
+    readonly borders: Pick<TableBorderBox, 'top' | 'left' | 'bottom' | 'right'>;
+    readonly bottomPt: number;
+    readonly breakBottomPt: number;
+    readonly breakTopPt: number;
+    readonly first?: true;
+    readonly last?: true;
+    readonly leftPt: number;
+    readonly rightPt: number;
+    readonly rowBorders?: Pick<TableBorderBox, 'left' | 'right'>;
+    readonly spacingPt: number;
+    readonly topPt: number;
+}
+
+// @public
+export interface TableSpacingShading {
+    readonly fill: string;
+    readonly gapPt: number;
+}
+
+// @internal
+export interface TableSpacingShadingRegion {
+    readonly box: LayoutBox;
+    readonly fill: string;
+    readonly holes: readonly LayoutBox[];
+}
+
+// @internal
+export function tableSpacingShadingRegions(fragment: Pick<TableFragmentRecord, 'rows' | 'box'> & {
+    readonly columnEdges?: TableFragmentRecord['columnEdges'];
+}): readonly TableSpacingShadingRegion[];
 
 // @public
 export interface TabStop {
@@ -5117,6 +5252,7 @@ export interface VectorGradient {
     readonly kind: 'linear' | 'radial';
     readonly matrix: AffineMatrix;
     readonly stops: readonly GradientStop[];
+    readonly turnsWithShape?: false;
 }
 
 // @public
@@ -5183,6 +5319,7 @@ export interface VectorShapeProjection {
     readonly fillAlpha?: number;
     readonly fillHex: string | null;
     readonly overflowVisible?: true;
+    readonly rotationDegrees?: number;
     // (undocumented)
     readonly strokeAlpha?: number;
     readonly strokeHex: string | null;

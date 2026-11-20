@@ -38,6 +38,12 @@ export const DISABLED_REASON_KEYS: Readonly<Record<string, TranslationKey>> = Ob
   'there is nothing at the selection to copy': 'disabledReason.nothingToCopyFormatting',
   'the selection has nothing to paint': 'disabledReason.nothingToPaint',
   'no drawing is selected': 'disabledReason.noDrawing',
+  // Keyed on `GROUP_MEMBER_REASON` and `GROUP_MEMBER_PROPERTIES_REASON` in the engine's
+  // `group-member-selection.ts`; the sentences must stay the same.
+  'a shape inside a group does not move, resize, or delete on its own; press Escape to select the group':
+    'disabledReason.groupMemberMove',
+  'a shape inside a group takes its wrap, alt text, and properties from the group; press Escape to select the group':
+    'disabledReason.groupMemberProperties',
   'the drawing is locked': 'disabledReason.drawingLocked',
   'a comment needs a selected range': 'disabledReason.commentSelection',
   // Keyed on `NO_COMMENT_DRAFT_VIEW` in the engine's comment draft chrome.
@@ -118,6 +124,18 @@ export const DISABLED_REASON_KEYS: Readonly<Record<string, TranslationKey>> = Ob
   // (`chart-clipboard.ts`).
   'the copied chart is no longer available; copy the chart again':
     'disabledReason.chartClipboardStale',
+  // Keyed on the `DRAWING_CLIPBOARD_*_REASON`, `DRAWING_PASTE_CELLS_REASON` and
+  // `GROUP_MEMBER_CLIPBOARD_REASON` sentences in the engine's drawing clipboard
+  // (`surface-drawing-clipboard.ts`).
+  'a drawing can be copied, cut, or pasted only in the body text':
+    'disabledReason.drawingClipboardStory',
+  'a shape inside a group is copied or cut with its group; press Escape to select the group':
+    'disabledReason.groupMemberClipboard',
+  'a linked text box cannot be copied': 'disabledReason.linkedTextBoxClipboard',
+  'this drawing links to data that cannot be copied, such as a diagram or an embedded object':
+    'disabledReason.drawingClipboardParts',
+  'this drawing is too large to copy': 'disabledReason.drawingClipboardSize',
+  'place the caret in the text to paste a drawing': 'disabledReason.drawingPasteCells',
   'invalid table chrome value': 'disabledReason.invalidValue',
   'invalid value for toolbar command': 'disabledReason.invalidValue',
   'unsupported table command': 'disabledReason.unavailable',
@@ -155,6 +173,15 @@ export const DISABLED_REASON_KEYS: Readonly<Record<string, TranslationKey>> = Ob
   'content controls lock every remaining change; remove the locks to decide them':
     'disabledReason.reviewLockedChanges',
   'every remaining change is in a data-bound content control': 'disabledReason.reviewBoundChanges',
+  // Keyed on the refusals of the engine's `shape-format-commands.ts`; the sentences must stay
+  // the same.
+  'this drawing has no fill or outline to set': 'shape.errors.noShape',
+  'the shape has no solid fill to change; set a color': 'shape.errors.noSolidFill',
+  'the shapes in this group have different fills; pick a color to set them all':
+    'shape.errors.mixedFill',
+  'a legacy shape has no transparency': 'shape.errors.legacyTransparency',
+  'the fill or outline value is out of range': 'shape.errors.outOfRange',
+  'stale drawing selection': 'shape.errors.staleSelection',
   // Keyed on `CHART_SUGGESTING_REFUSAL` in the engine's `surface-chart-ops.ts`.
   'chart changes are not supported in suggesting mode': 'chart.errors.suggesting',
 });
@@ -174,6 +201,9 @@ export function localizeDisabledReason(reason: string | null, t: TFunction): str
     ? DISABLED_REASON_KEYS[reason]
     : undefined;
   if (key) return t(key);
-  // The chart lane states its refusals as `chart.errors.*` keys, which name themselves.
-  return /^chart\.errors\.[a-zA-Z]+$/.test(reason) ? t(reason as TranslationKey) : reason;
+  // The chart lane and the Format shape pane state their refusals as `chart.errors.*` and
+  // `shape.pane.errors.*` keys, which name themselves.
+  return /^(chart\.errors|shape\.pane\.errors)\.[a-zA-Z]+$/.test(reason)
+    ? t(reason as TranslationKey)
+    : reason;
 }

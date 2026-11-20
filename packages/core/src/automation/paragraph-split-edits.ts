@@ -52,23 +52,6 @@ export function paragraphSplitEdits(
   return { ops, offsets, pieces };
 }
 
-/** Keep the split admission limits shared by physical and logical paragraphs. */
-export function invalidSplitDelimiters(
-  delimiters: unknown
-): { message: string; detail: string } | null {
-  if (!Array.isArray(delimiters) || delimiters.length === 0)
-    return { message: 'split needs at least one delimiter', detail: 'delimiters' };
-  if (delimiters.length > 16)
-    return { message: 'too many delimiters', detail: String(delimiters.length) };
-  for (const delimiter of delimiters) {
-    if (typeof delimiter !== 'string' || delimiter.length === 0)
-      return { message: 'a delimiter must be a non-empty string', detail: 'delimiters' };
-    if (delimiter.length > 64)
-      return { message: 'that delimiter is too long', detail: 'delimiters' };
-  }
-  return null;
-}
-
 export function unchangedLogicalSplitRange(
   reads: AutomationStoryReads,
   id: string,

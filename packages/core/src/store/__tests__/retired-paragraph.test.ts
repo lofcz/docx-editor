@@ -361,16 +361,16 @@ for (const [name, wrap] of [
     const ids = storyParagraphs(body(main(source))).map((node) => node.id);
     const next = main(rejected(source));
     expect(findNode(next, ids[1]!)).not.toBeNull();
-    expect(storyParagraphs(body(next)).map((node) => node.id)).toEqual([ids[0]!]);
+    // A table at the end of the body also has a final caret paragraph outside the cell.
+    const remaining = ids.filter((id) => id !== ids[1]);
+    expect(storyParagraphs(body(next)).map((node) => node.id)).toEqual(remaining);
     const collected: string[] = [];
     walkAllStoryParagraphs(body(next).children, 0, (node) => collected.push(node.id));
-    expect(collected).toEqual([ids[0]!]);
+    expect(collected).toEqual(remaining);
     if (name !== 'cell')
       expect(collectFlowBlocks(body(next).children).map((node) => node.id)).toEqual([ids[0]!]);
     const saved = main(reopened(withPart(source, next)));
-    expect(storyParagraphs(body(saved)).map((node) => paragraphTextOf(saved, node.id))).toEqual([
-      'Keep',
-    ]);
+    expect(serializeOoxmlPart(saved)).toBe(serializeOoxmlPart(main(load(wrap(p('Keep'))))));
     expect(serializeOoxmlPart(saved)).not.toContain(NS);
   });
 

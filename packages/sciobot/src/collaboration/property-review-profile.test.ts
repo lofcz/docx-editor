@@ -6,7 +6,7 @@ import { hasEvaluatedNativeProfile } from './native-profile';
 const evaluated = {
   protocolVersion: 1,
   sharedSchemaVersion: 10,
-  repairVersion: 17,
+  repairVersion: 18,
   canonicalModelVersion: 2,
 };
 

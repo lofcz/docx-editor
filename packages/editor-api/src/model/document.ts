@@ -28,6 +28,7 @@ import { CommentCollection, RevisionCollection } from './review.ts';
 import { SectionCollection } from './sections.ts';
 import { StyleCollection } from './styles.ts';
 import { Range } from './range.ts';
+import { annotationById, type Annotation } from './annotations.ts';
 
 /** Office.js tracking mode names. TrackAll is recognized but currently refused. @public */
 export { ChangeTrackingMode } from './editing-enums.ts';
@@ -327,6 +328,8 @@ export class Document extends ModelObject {
    * The document's footnotes, in the order its notes part writes them.
    *
    * Legacy document-wide accessor. Prefer the Office.js-shaped `body.footnotes` accessor.
+   *
+   * @docxEditorExtension
    */
   get footnotes(): NoteItemCollection {
     const document = this.path.handle();
@@ -339,7 +342,11 @@ export class Document extends ModelObject {
     return this.#footnotes;
   }
 
-  /** The document's endnotes, in the order its notes part writes them. */
+  /**
+   * The document's endnotes, in the order its notes part writes them.
+   *
+   * @docxEditorExtension
+   */
   get endnotes(): NoteItemCollection {
     const document = this.path.handle();
     this.#endnotes ??= NoteItemCollection.of(this.context, 'document.endnotes', this.path, () => ({
@@ -413,6 +420,21 @@ export class Document extends ModelObject {
       }
     );
     return found;
+  }
+
+  /**
+   * The proofing annotation with this id, as `Paragraph.insertAnnotations` answered it. A
+   * decided annotation is found too, with its `state`. `ItemNotFound` at the sync when this
+   * runtime holds no annotation with the id, including one that was deleted or that an edit
+   * to its text removed.
+   */
+  getAnnotationById(id: string): Annotation {
+    return annotationById(
+      this.context,
+      (action) => this.enqueue(action),
+      `${this.path.label}.getAnnotationById`,
+      id
+    );
   }
 
   /** @internal Plan the read this object's `load(...)` asked for. */

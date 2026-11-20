@@ -157,6 +157,10 @@ const trackingMine = mode === ChangeTrackingMode.trackMineOnly;
 
 For orientation, use `PageSetup['orientation']` in the same way after loading and syncing that property. Type compatibility does not imply support for every enum value: `TrackAll` fails with `NotSupported` at `sync()`.
 
+## Check for extensions before you port code
+
+A member with the `@docxEditorExtension` tag in its TSDoc comment is a DocxEditor addition, such as `Paragraph.readingOrder`. Office.js has no such member, so code that uses it does not run in an Office.js host. If your code must also run in an Office.js host, use only untagged members, or keep the tagged calls behind your own host check.
+
 ## Give each sync a purpose
 
 A sync either supplies data for the next decision or commits a complete edit. Batch independent reads and writes. For progressive agent review, one completed suggestion per sync is intentional: peers see each suggestion as it is ready. For independent edits in different paragraphs, multiple edits can share one sync and one transaction. Edits that claim the same paragraph can conflict; reconsider their anchors between commits. A range read before an earlier sync changed text before its end fails with `StaleDocument`, so search again in that paragraph before the next suggestion.
@@ -542,6 +546,64 @@ await runtime.run(async (context) => {
 
 Batch independent comment and reply content edits in one sync. Keep other mutations in a separate sync. Main-body comments support plain-text replacement; empty text and unsupported body structures refuse. A replacement removes body formatting and preserves author, date, anchors, replies, and resolved state. Browser edits require the review module and an editable document. On `StaleDocument`, read the current content and reconsider the replacement. Never replay an old draft without checking it.
 
+## Mark proofing issues
+
+A checker marks issues with `Paragraph.insertAnnotations()` and applies a fix with `CritiqueAnnotation.accept()`. Read paragraph text and ids in one sync. Pass plain data to your checker, then reload paragraphs before inserting annotations. Apply a result only when its paragraph id and text still match. Check changed paragraphs again. Cancel pending checks when you load or replace the document.
+
+```ts
+const snapshot = await runtime.run(async (context) => {
+  const paragraphs = context.document.body.paragraphs;
+  paragraphs.load('items/uniqueLocalId,items/text');
+  await context.sync();
+  return paragraphs.items.map((paragraph) => ({
+    id: paragraph.uniqueLocalId,
+    text: paragraph.text,
+  }));
+});
+
+// Your checker takes plain strings and returns issues per paragraph. Limit its concurrency.
+const issues = await checkAll(snapshot.map((paragraph) => paragraph.text));
+const byId = new Map(
+  snapshot.map((paragraph, index) => [paragraph.id, { ...paragraph, issues: issues[index]! }])
+);
+
+const ids = await runtime.run(async (context) => {
+  const paragraphs = context.document.body.paragraphs;
+  paragraphs.load('items/uniqueLocalId,items/text');
+  await context.sync();
+
+  const inserted = [];
+  for (const paragraph of paragraphs.items) {
+    const result = byId.get(paragraph.uniqueLocalId);
+    // Skip a paragraph whose text changed during the check; check it again instead.
+    if (!result || result.text !== paragraph.text || result.issues.length === 0) continue;
+    inserted.push(
+      paragraph.insertAnnotations({
+        critiques: result.issues.map((issue) => ({
+          colorScheme: 'Red',
+          start: issue.start,
+          length: issue.length,
+          popupOptions: {
+            brandingTextResourceId: '',
+            subtitleResourceId: '',
+            titleResourceId: '',
+            suggestions: issue.suggestions,
+          },
+        })),
+      })
+    );
+  }
+  await context.sync();
+  return inserted.flatMap((result) => result.value);
+});
+```
+
+For more information, see [Proofing annotations](https://www.docx-editor.dev/docs/2.x/editor-api/proofing-annotations).
+
+Offsets count UTF-16 code units of `Paragraph.text` in the runtime's revision view. The three resource ids must be empty strings; any other value fails with `NotSupported`. Annotations are runtime view state: they are not saved, not shared with collaborators, and the browser runtime paints them as editor highlights. Pass ids, not proxies, to later runs and use `document.getAnnotationById(id)` there.
+
+`accept()` replaces the critiqued text with the first suggestion and edits only the characters that differ; with `TrackMineOnly` the fix is a tracked change. An edit that changed the critiqued text removes the annotation, and a held annotation then fails with `InvalidObjectPath` (`edit.stale-target`). Check the paragraph again instead of replaying an old fix. The runtime raises no annotation or paragraph events.
+
 ## Review changes in a range
 
 Use `range.revisions` to reach the tracked changes inside a search result, a comment range, or any other range. The collection lists the changes the range overlaps in its own story, including a nested change or another author's change beside it. A partly covered change is listed whole, and a replacement lists its deletion and insertion separately. Load the members and decide on each one:
@@ -720,3 +782,20 @@ Only `CompareTargetCurrent` is supported. `CompareTargetNew`, `CompareTargetSele
 Without `authorName`, the revisions carry the revised document's last author, then its creator, then `Comparison`. To count the main-body result, load `document.revisions` with `'items'` after the compare's `context.sync()`.
 
 A refused compare writes nothing. Handle `error.code` first. If `debugInfo.innerError` exists, its `code` names the cause: `edit.review-module-required`, `edit.resource-limit`, `edit.invalid-argument`, `edit.protected-content`, or `edit.unsupported-content`. Do not retry the same pair; report the cause instead.
+
+## Replace the whole document
+
+To install a document that a template engine or a server tool produced, call `document.body.insertFileFromBase64(base64File, 'Replace')`. The file replaces the whole document as one edit. A browser editor undoes it in one step, and a collaboration session, including a server agent's, shares it as an ordinary edit. Run the call alone in its sync.
+
+```ts
+await runtime.run(async (context) => {
+  const range = context.document.body.insertFileFromBase64(renderedBase64, 'Replace');
+  range.load('text');
+  await context.sync();
+  return range.text;
+});
+```
+
+Only `Replace` on the main body is supported. `Start`, `End`, and other stories refuse with `NotSupported`; ranges, paragraphs, and content controls have no `insertFileFromBase64`. So does `TrackMineOnly`, because the replacement records no tracked changes; never turn tracking off to make it pass. A document that holds a locked or data-bound content control refuses with `NotImplemented` (`edit.protected-content`). Invalid base64 and unreadable packages refuse with `InvalidArgument`.
+
+Proxies you held before the sync can name content that is gone. Re-read the document after the replacement instead of replaying earlier edits.

@@ -5,6 +5,7 @@ import type {
   EditorEvents,
   EditorHostChange,
   EditorSnapshot,
+  ParagraphsChangeEvent,
   ReviewChangesResolvedEvent,
   ReviewItemRevealEvent,
   Unsubscribe,
@@ -24,6 +25,7 @@ export function createEditorEvents(
     dragOver: new Set(),
     drop: new Set(),
     change: new Set(),
+    paragraphsChange: new Set(),
     selectionChange: new Set(),
     error: new Set(),
     historyDiagnostic: new Set(),
@@ -58,15 +60,25 @@ export function createEditorEvents(
       // Acceptance must finish before the browser returns from the native event.
       for (const handler of [...handlers[kind]]) handler(event);
     },
-    /** Keep host listeners outside a synchronous multi-batch preview commit. */
-    defer<T>(run: () => T): T {
+    /**
+     * Keep host listeners outside a synchronous commit. Preview commits suppress listener
+     * errors; ordinary commits propagate the first error after every queued event runs.
+     * The outermost deferral owns this policy.
+     */
+    defer<T>(run: () => T, propagateListenerErrors = false): T {
+      const propagate = propagateListenerErrors && deferring === 0 && !draining;
+      let runFailed = false;
       deferring += 1;
       try {
         return run();
+      } catch (error) {
+        runFailed = true;
+        throw error;
       } finally {
         deferring -= 1;
         if (deferring === 0 && !draining) {
           draining = true;
+          let firstError: { readonly value: unknown } | undefined;
           try {
             // Listener edits follow every notification already queued by the commit.
             while (pending.length > 0) {
@@ -75,14 +87,15 @@ export function createEditorEvents(
               for (const notify of notifications) {
                 try {
                   notify();
-                } catch {
-                  // The commit already finished. A host listener cannot turn it into a refusal.
+                } catch (error) {
+                  firstError ??= { value: error };
                 }
               }
             }
           } finally {
             draining = false;
           }
+          if (propagate && firstError && !runFailed) throw firstError.value;
         }
       }
     },
@@ -98,6 +111,14 @@ export function createEditorEvents(
     emitDocumentChange(change: DocumentChange) {
       dispatch(() => {
         for (const handler of [...handlers.change]) handler(change);
+      });
+    },
+    emitParagraphsChange(event: ParagraphsChangeEvent, isCurrent?: () => boolean) {
+      dispatch(() => {
+        for (const handler of [...handlers.paragraphsChange]) {
+          if (isCurrent && !isCurrent()) return;
+          handler(event);
+        }
       });
     },
     emitSelectionChange() {
@@ -138,6 +159,7 @@ export function createEditorEvents(
       });
     },
     hasErrorHandlers: () => handlers.error.size > 0,
+    hasParagraphsChangeHandlers: () => handlers.paragraphsChange.size > 0,
     hasDiagnosticHandlers: () => handlers.diagnostic.size > 0,
     hasReviewChangesResolvedHandlers: () => handlers.reviewChangesResolved.size > 0,
     clear() {

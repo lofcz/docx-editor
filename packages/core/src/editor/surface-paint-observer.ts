@@ -39,3 +39,33 @@ export function destroyPaintObservers(observers: Set<SurfacePaintObserver>): voi
     }
   }
 }
+
+/** A passive observer can consume a completed frame without repainting other hosts. */
+export function createPaintObservers(repaint: () => void, parked: () => boolean) {
+  const observers = new Set<SurfacePaintObserver>();
+  let lastFrame: SurfacePaintFrame | null = null;
+  return {
+    subscribe(observer: SurfacePaintObserver) {
+      observers.add(observer);
+      if (observer.beforePaint) repaint();
+      else if (lastFrame && !parked()) observer.afterPaint(lastFrame);
+      return () => {
+        if (observers.delete(observer)) observer.beforePaint?.();
+      };
+    },
+    beforePaint() {
+      lastFrame = null;
+      for (const observer of observers) observer.beforePaint?.();
+    },
+    afterPaint(frame: SurfacePaintFrame) {
+      lastFrame = frame;
+      for (const observer of [...observers]) {
+        if (observers.has(observer)) observer.afterPaint(frame);
+      }
+    },
+    destroy() {
+      lastFrame = null;
+      destroyPaintObservers(observers);
+    },
+  };
+}

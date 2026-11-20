@@ -15,6 +15,7 @@ import { chartDrawingOf, chartFrameEdit } from '../store/store/tree-op-chart-dra
 import { chartDrawingLocks } from '../store/store/tree-op-drawings.ts';
 import { diagramDrawingOf } from '../store/store/tree-op-diagram-drawing.ts';
 import { diagramDrawingPartShared } from '../store/package/diagram-frame.ts';
+import type { InlineDrawingRecord } from '../layout/drawing-layout.ts';
 import type { PaginatedSurface } from './paginated-surface-contract.ts';
 import { partOfNodeId } from './surface-scope.ts';
 
@@ -155,6 +156,47 @@ export function imageContextEqual(
     (a.intrinsic?.pixelWidth ?? null) === (b.intrinsic?.pixelWidth ?? null) &&
     (a.intrinsic?.pixelHeight ?? null) === (b.intrinsic?.pixelHeight ?? null) &&
     (a.intrinsic?.dpiX ?? null) === (b.intrinsic?.dpiX ?? null) &&
-    (a.intrinsic?.dpiY ?? null) === (b.intrinsic?.dpiY ?? null)
+    (a.intrinsic?.dpiY ?? null) === (b.intrinsic?.dpiY ?? null) &&
+    a.memberId === b.memberId &&
+    shapeFormatEqual(a.shapeFormat, b.shapeFormat)
   );
+}
+
+function shapeFormatEqual(
+  a: SelectedImageState['shapeFormat'],
+  b: SelectedImageState['shapeFormat']
+): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return (
+    a.fill.type === b.fill.type &&
+    a.fill.color === b.fill.color &&
+    a.fill.transparency === b.fill.transparency &&
+    a.outline.visible === b.outline.visible &&
+    a.outline.color === b.outline.color &&
+    a.outline.widthPt === b.outline.widthPt &&
+    a.outline.dash === b.outline.dash &&
+    themeEqual(a.fill.theme, b.fill.theme) &&
+    themeEqual(a.outline.theme, b.outline.theme)
+  );
+}
+
+type ThemeColor = NonNullable<SelectedImageState['shapeFormat']>['fill']['theme'];
+
+/** Whether two theme colours agree; a theme reference and an RGB of the same colour differ. */
+const themeEqual = (a: ThemeColor, b: ThemeColor): boolean =>
+  a === b || (!!a && !!b && a.name === b.name && a.shift === b.shift);
+
+/** The pixel size and resolution of a picture that has loaded, or null. */
+export function intrinsicOf(record: {
+  readonly resource: InlineDrawingRecord['resource'];
+}): SelectedImageState['intrinsic'] {
+  const resource = record.resource;
+  if (resource.kind !== 'ready') return null;
+  return Object.freeze({
+    pixelWidth: resource.pixelWidth,
+    pixelHeight: resource.pixelHeight,
+    dpiX: resource.dpiX,
+    dpiY: resource.dpiY,
+  });
 }

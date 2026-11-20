@@ -51,16 +51,12 @@ import { DocumentRegistry, PackageMaterializer, applyPrimitiveJournal } from './
 import { collectJournalBlobs, putJournalBlobs } from './document-session-blobs.ts';
 import { healTargetOf, RefusalStreak, type HealTarget } from './document-session-heal.ts';
 import { HistorySelection } from './document-history-selection.ts';
-import { attachWatchdogDelay, startAttachWatchdog } from './document-session-watchdog.ts';
+import { startAttachWatchdog } from './document-session-watchdog.ts';
 import { RemoteSelectionResolver } from './document-remote-selections.ts';
 import { droppedContentDetail, packageVersionFailure } from './document/schema.ts';
-import { SHARED_BLOBS_KEY, SharedBlobStore } from './shared-blob-store.ts';
-import {
-  observeSeedRecords,
-  initializeSharedState,
-  initialReplicaDocument,
-} from './document-bootstrap.ts';
-import { LogicalIdentityMap } from './document-identity.ts';
+import type { SharedBlobStore } from './shared-blob-store.ts';
+import { observeSeedRecords } from './document-bootstrap.ts';
+import type { LogicalIdentityMap } from './document-identity.ts';
 import { atomicRecordAliases, recordAliasProjection } from './document/record-aliases.ts';
 import type { LogicalId } from './document/identity.ts';
 import { CaretAnchors } from './document-caret-anchors.ts';
@@ -72,10 +68,7 @@ import {
   MAX_AWARENESS_STATES,
   MAX_IDENTITY_LENGTH,
   awarenessPayload,
-  sessionIdentity,
   encodeSelection,
-  validateDocumentId,
-  validateIdentity,
   type AwarenessPayload,
   type EncodedSelection,
 } from './document-awareness.ts';
@@ -86,6 +79,7 @@ import { UndoGroups, type CollaborationUndoGroup } from './document-undo-group.t
 import { restoreLostTombstones } from './document/tombstone-guard.ts';
 import { keepShownOrders, shownOrdersBefore } from './document/split-sibling-pin.ts';
 import type { CreateDocumentCollaborationOptions } from './document-session-options.ts';
+import { createDocumentReplica } from './document-replica.ts';
 
 /**
  * Local journals inside this window share one actor undo item: one typing run, not the whole
@@ -579,9 +573,7 @@ class DocumentSession implements DocumentCollaborationSession {
     }
     // After the member refresh: drift it notes belongs to earlier journals, not this one.
     this.registry.inline.takeDrift();
-    const projected = projectTypingOrJournal(this.registry, translated, (id) =>
-      this.materializer.shownPartChildren(id)
-    );
+    const projected = projectTypingOrJournal(this.registry, translated, this.materializer);
     if (!projected.ok) {
       this.refuseLocalJournal({
         code: projected.code as CollaborationFailureCode,
@@ -641,7 +633,7 @@ class DocumentSession implements DocumentCollaborationSession {
         aliases !== undefined ||
         (journal.effects.some((effect) => effect.kind !== 'spliceText') &&
           viewRenamesPlan(this.registry, projected.plan));
-      if (drift) this.publishSharedToPort(false, aliases);
+      if (drift) this.publishSharedToPort(false, true, aliases);
       return;
     }
     this.refuseLocalJournal(refusal, transient);
@@ -665,7 +657,7 @@ class DocumentSession implements DocumentCollaborationSession {
     this.setStatus('error', refusal.code, refusal.detail, heal);
     // A refused edit says this view and shared state disagree, so the realign does not trust
     // the incremental view either: it rebuilds from shared state alone.
-    this.publishSharedToPort(true);
+    this.publishSharedToPort(true, true);
     // The flush loop took the whole batch before notifying, so the journals after this one are
     // already in flight. A microtask is the earliest point the synchronous batch is over.
     this.realignedInBatch = true;
@@ -717,10 +709,15 @@ class DocumentSession implements DocumentCollaborationSession {
     // Every cleanup observer must update its indexes before the package is read.
     // Local journals already published in their original commit frame. Never replay
     // their absolute positions here against a document that has since changed.
-    this.publishSharedToPort();
+    const ownChange = transactions.some((transaction) => transaction.origin === this.undoManager);
+    this.publishSharedToPort(false, ownChange);
   };
 
-  private publishSharedToPort(full = false, aliases?: ReadonlyMap<LogicalId, string>): void {
+  private publishSharedToPort(
+    full = false,
+    ownChange = false,
+    aliases?: ReadonlyMap<LogicalId, string>
+  ): void {
     const port = this.port;
     if (!port || this.applyingRemote) return;
     this.applyingRemote = true;
@@ -766,7 +763,7 @@ class DocumentSession implements DocumentCollaborationSession {
         this.remoteCounter += 1;
         return port.applyRemotePackage(projection.package(pkg), {
           origin: ORIGIN_IDS.mutationRemote,
-          actorId: 'remote',
+          actorId: ownChange ? this.currentIdentity.actorId : 'remote',
           operationId: `${this.sessionId}:remote:${this.remoteCounter}`,
         });
       };
@@ -925,76 +922,21 @@ export { readCollaborationDocument } from './document-read.ts';
 export async function createDocumentCollaboration(
   options: CreateDocumentCollaborationOptions
 ): Promise<DocumentCollaborationHandle> {
-  const attachWatchdogMs = attachWatchdogDelay(options);
-  const documentId = validateDocumentId(options.documentId);
-  const sessionId = sessionIdentity(options.sessionId);
-  const identity = validateIdentity(options.identity);
-  const registry = new DocumentRegistry(options.ydoc);
-  // A bootstrap that refuses must not leave this registry observing the caller's document:
-  // the caller keeps `ydoc` (a retry, a different room), and a leaked observer taxes every
-  // later transaction. On success the session owns the registry and detaches it on destroy.
-  try {
-    return await bootstrapDocumentReplica(options, {
-      attachWatchdogMs,
-      documentId,
-      sessionId,
-      identity,
-      registry,
-    });
-  } catch (error) {
-    registry.destroy();
-    throw error;
-  }
-}
-
-interface DocumentReplicaContext {
-  readonly attachWatchdogMs: number;
-  readonly documentId: string;
-  readonly sessionId: string;
-  readonly identity: CollaborationIdentity;
-  readonly registry: DocumentRegistry;
-}
-
-async function bootstrapDocumentReplica(
-  options: CreateDocumentCollaborationOptions,
-  context: DocumentReplicaContext
-): Promise<DocumentCollaborationHandle> {
-  const { attachWatchdogMs, documentId, sessionId, identity, registry } = context;
-  // A run, text element or wrapper lives in its paragraph's shared text, not as a record.
-  const identityMap = new LogicalIdentityMap(
-    (logicalId) => registry.hasNode(logicalId) || registry.inline.owner(logicalId) !== null
+  return createDocumentReplica(
+    options,
+    (parts) =>
+      new DocumentSession(
+        parts.ydoc,
+        parts.awareness,
+        parts.documentId,
+        parts.sessionId,
+        parts.identity,
+        parts.registry,
+        parts.materializer,
+        parts.identityMap,
+        parts.blobs,
+        parts.attachWatchdogMs,
+        parts.offlineEditing
+      )
   );
-  const blobs = new SharedBlobStore(options.ydoc.getMap<Uint8Array>(SHARED_BLOBS_KEY));
-
-  await initializeSharedState(options, registry, blobs, documentId);
-
-  const materializer = new PackageMaterializer(registry, blobs);
-  // Any throw between here and the return leaks the materializer's observers on the
-  // caller's document — `current()` can throw on hostile shared state, and the refusals
-  // below throw by design — so the whole tail hands the materializer back on the way out.
-  // On success, ownership passes to the session, which detaches it on destroy.
-  try {
-    const document = initialReplicaDocument(materializer, blobs);
-    const session = new DocumentSession(
-      options.ydoc,
-      options.awareness,
-      documentId,
-      sessionId,
-      identity,
-      registry,
-      materializer,
-      identityMap,
-      blobs,
-      attachWatchdogMs,
-      options.offlineEditing !== false
-    );
-    return Object.freeze({
-      document,
-      session,
-      destroy: () => session.destroy(),
-    });
-  } catch (error) {
-    materializer.destroy();
-    throw error;
-  }
 }

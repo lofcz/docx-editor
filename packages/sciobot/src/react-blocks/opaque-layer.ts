@@ -3,6 +3,7 @@ import type { SurfacePaintFrame } from '@docx-editor.dev/core/editor';
 /** Opaque widgets stay connected while the native painter replaces page descendants. */
 export class OpaqueBlockLayer {
   private element: HTMLDivElement | null = null;
+  private frame: SurfacePaintFrame | null = null;
 
   contains(element: HTMLElement): boolean {
     return element.parentElement === this.element;
@@ -25,12 +26,18 @@ export class OpaqueBlockLayer {
       Object.assign(this.element.style, { position: 'absolute', pointerEvents: 'none' });
     }
     if (this.element.parentElement !== parent) parent.append(this.element);
-    Object.assign(this.element.style, {
-      left: `${frame.pagesLayer.offsetLeft}px`,
-      top: `${frame.pagesLayer.offsetTop}px`,
-      width: frame.pagesLayer.style.width,
-      height: frame.pagesLayer.style.height,
-    });
+    // All widgets share the same origin. A DOM write between two offset reads forces layout.
+    if (this.frame !== frame) {
+      this.frame = frame;
+      const left = frame.pagesLayer.offsetLeft;
+      const top = frame.pagesLayer.offsetTop;
+      Object.assign(this.element.style, {
+        left: `${left}px`,
+        top: `${top}px`,
+        width: frame.pagesLayer.style.width,
+        height: frame.pagesLayer.style.height,
+      });
+    }
     // The painter supplies these pixel offsets, including facing-page placement.
     const pageX = Number.parseFloat(page.style.left) || 0;
     const pageY = Number.parseFloat(page.style.top) || 0;
@@ -52,5 +59,6 @@ export class OpaqueBlockLayer {
   dispose(): void {
     this.element?.remove();
     this.element = null;
+    this.frame = null;
   }
 }

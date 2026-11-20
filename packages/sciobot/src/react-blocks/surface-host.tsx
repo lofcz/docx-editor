@@ -1,4 +1,5 @@
 import { createElement, useLayoutEffect, useRef, type ReactNode } from 'react';
+import { flushSync } from 'react-dom';
 import { createRoot, type Root } from 'react-dom/client';
 import type { DocxEditorInstance, SurfacePaintFrame } from '@docx-editor.dev/core/editor';
 import {
@@ -19,7 +20,12 @@ import { attachNativeSlots, type NativeSlotMount } from './native-slot-plan';
 import { BlockRootProviders, type ReactBlockHostOptions } from './providers';
 import { OpaqueBlockLayer } from './opaque-layer';
 
-import type { ReactBlockHost, ReactBlockRegistration, ReactBlockRegistry } from './host';
+import type {
+  ReactBlockHost,
+  ReactBlockRegistration,
+  ReactBlockRegistry,
+  ReactBlockViewProps,
+} from './host';
 
 export interface SurfaceBlockHost extends ReactBlockHost {
   unregister(type: string): void;
@@ -35,6 +41,7 @@ interface Mount {
   readonly root: Root;
   readonly slot: NativeSlotLease;
   readonly release: () => void;
+  rendered: number;
 }
 /**
  * Independent React roots, keyed by persisted block ID and native fragment ordinal.
@@ -51,7 +58,11 @@ export function mountSurfaceBlockHost(
   if (!surface) throw new Error('Attach the editor before mounting React blocks.');
   const registry = new Map<string, ReactBlockRegistration>();
   const mounts = new Map<string, Mount>();
+  const pending = new Map<Mount, ReactNode>();
+  const paragraphsByControl = new Map<string, ReactBlockViewProps['paragraphs']>();
   const opaqueLayer = new OpaqueBlockLayer();
+  let renderQueued = false;
+  let generation = 0;
   let disposed = false;
   let frame: SurfacePaintFrame | null = null;
   let focused: HTMLElement | null = null;
@@ -76,6 +87,7 @@ export function mountSurfaceBlockHost(
   }
   function discard(key: string, mount: Mount): void {
     mounts.delete(key);
+    pending.delete(mount);
     measurement?.release(key);
     mount.slot.reset();
     mount.element.remove();
@@ -85,15 +97,23 @@ export function mountSurfaceBlockHost(
   }
   function paint(next: SurfacePaintFrame): void {
     if (disposed) return;
-    frame = next;
     const pkg = surface!.session.currentPackage();
     // A pending native paint will publish its own matching frame.
     if (pkg.parts.get(next.part.name) !== next.part) return;
+    const collapses = surface!.collapsedContentControls();
+    if (
+      frame?.layout !== next.layout ||
+      frame.scale !== next.scale ||
+      pkg !== indexedPackage ||
+      (!options.inlineOnly && insetCollapses !== collapses)
+    )
+      generation++;
+    frame = next;
     if (pkg !== indexedPackage) {
       indexedPackage = pkg;
       index = buildBlockIndex(pkg);
+      paragraphsByControl.clear();
     }
-    const collapses = surface!.collapsedContentControls();
     if (!options.inlineOnly && (insetsFor !== pkg || insetCollapses !== collapses)) {
       insetsFor = pkg;
       insetCollapses = collapses;
@@ -122,7 +142,6 @@ export function mountSurfaceBlockHost(
     const rooms = measurement ? widgetRooms(index!, next, registry, measurement) : null;
     const inlineBoxes = options.inlineOnly ? inlineLayoutBoxes(next.layout) : null;
     const native: NativeSlotMount[] = [];
-    const render: (() => void)[] = [];
     for (const block of index!.byId.values()) {
       if (block.partName !== next.part.name) continue;
       const registration = registry.get(block.payload.type),
@@ -131,16 +150,6 @@ export function mountSurfaceBlockHost(
         continue;
       const View = registration.view;
       const nativeContent = registration.nativeContent === true && boundary.level !== 'inline';
-      const paragraphs = Object.freeze(
-        boundary.range
-          ? [
-              {
-                id: boundary.range.paragraphId,
-                text: paragraphTextOf(next.part, boundary.range.paragraphId) ?? '',
-              },
-            ]
-          : collectParagraphs(block.controlId, next)
-      );
       const measured =
         measurement !== null &&
         registration.reserveHeight === true &&
@@ -157,6 +166,8 @@ export function mountSurfaceBlockHost(
           if (mount) {
             mount.element.hidden = true;
             mount.element.style.display = 'none';
+            pending.delete(mount);
+            mount.rendered = -1;
           }
           return; // Keep local state for virtual pages without painting an invisible page.
         }
@@ -168,7 +179,13 @@ export function mountSurfaceBlockHost(
           if (options.inlineOnly) element.style.visibility = 'hidden';
           const root = createRoot(element);
           const release = isolateWidgetInput(element);
-          mount = { element, root, slot: new NativeSlotLease(key, next.pagesLayer), release };
+          mount = {
+            element,
+            root,
+            slot: new NativeSlotLease(key, next.pagesLayer),
+            release,
+            rendered: -1,
+          };
           mounts.set(key, mount);
         }
         mount.element.hidden = false;
@@ -198,7 +215,23 @@ export function mountSurfaceBlockHost(
           });
         else if (options.inlineOnly) page.append(mount.element);
         else opaqueLayer.place(next, page, mount.element, box);
-        const currentMount = mount;
+        // A scroll moves the viewport. Roots which keep their layout retain their React view.
+        if (mount.rendered === generation) return;
+        mount.rendered = generation;
+        let paragraphs = paragraphsByControl.get(block.controlId);
+        if (!paragraphs) {
+          paragraphs = Object.freeze(
+            boundary.range
+              ? [
+                  {
+                    id: boundary.range.paragraphId,
+                    text: paragraphTextOf(next.part, boundary.range.paragraphId) ?? '',
+                  },
+                ]
+              : collectParagraphs(block.controlId, next)
+          );
+          paragraphsByControl.set(block.controlId, paragraphs);
+        }
         const geometry = Object.freeze({
           ordinal,
           pageIndex: fragment.pageIndex,
@@ -211,7 +244,7 @@ export function mountSurfaceBlockHost(
           fragment: geometry,
           paragraphs,
           revision: surface!.session.packageRevision(),
-          children: nativeContent ? currentMount.slot.content() : null,
+          children: nativeContent ? mount.slot.content() : null,
         });
         // One opaque widget keeps its identity when the Word fallback splits across pages.
         // Reserve only excess viewport height after the complete fallback's last paragraph.
@@ -229,31 +262,44 @@ export function mountSurfaceBlockHost(
               maxHeight
             )
           : null;
-        render.push(() =>
-          currentMount.root.render(
-            createElement(BlockRootProviders, {
-              render: providers,
-              scope: { editor, block, fragment: geometry },
-              children: measured
-                ? createElement(MeasuredRoot, {
-                    measurement: measurement!,
-                    mountKey: key,
-                    target,
-                    maxHeight: viewportHeight,
-                    width: box.width * (4 / 3),
-                    minHeight: nativeBox.height * (4 / 3),
-                    zoom: next.scale * 0.75,
-                    children: view,
-                  })
-                : view,
-            })
-          )
+        pending.set(
+          mount,
+          createElement(BlockRootProviders, {
+            render: providers,
+            scope: { editor, block, fragment: geometry },
+            children: measured
+              ? createElement(MeasuredRoot, {
+                  measurement: measurement!,
+                  mountKey: key,
+                  target,
+                  maxHeight: viewportHeight,
+                  width: box.width * (4 / 3),
+                  minHeight: nativeBox.height * (4 / 3),
+                  zoom: next.scale * 0.75,
+                  children: view,
+                })
+              : view,
+          })
         );
       });
     }
     for (const [key, mount] of mounts) if (!valid.has(key)) discard(key, mount);
     attachNativeSlots(next, native);
-    for (const callback of render) callback();
+    // React may otherwise yield between roots. Commit the visible page as a unit before
+    // the browser can show a mixture of new native text and stale or missing widgets.
+    // A microtask also allows a host to attach during an enclosing React layout effect.
+    if (pending.size && !renderQueued) {
+      renderQueued = true;
+      queueMicrotask(() => {
+        renderQueued = false;
+        if (disposed || !pending.size) return;
+        const batch = [...pending];
+        pending.clear();
+        flushSync(() => {
+          for (const [mount, view] of batch) mount.root.render(view);
+        });
+      });
+    }
     measurement?.schedule();
     if (focused?.isConnected && focused.ownerDocument.activeElement !== focused)
       focused.focus({ preventScroll: true });
@@ -272,6 +318,7 @@ export function mountSurfaceBlockHost(
   });
   function refresh(): void {
     if (disposed || !frame) return;
+    generation++;
     preserveNativeSelection(frame.pagesLayer, () => {
       const active = surface!.hostElement().ownerDocument.activeElement;
       focused = [...mounts.values()].some((mount) => active && mount.element.contains(active))
@@ -390,8 +437,8 @@ function MeasuredRoot({
         transformOrigin: '0 0',
         // The widget covers its Word fallback text, so the fallback never shows through it.
         background: 'var(--doc-page-bg-rendered, #fff)',
+        // The document scrolls when the pointer is over a widget, as it does over text.
         overflowY: 'auto',
-        overscrollBehaviorY: 'contain',
         pointerEvents: 'auto',
       },
     },

@@ -32,8 +32,12 @@ const row = (cells: string, properties = '') =>
   `<w:tr><w:trPr>${properties}</w:trPr>${cells}</w:tr>`;
 const table = (rows: string, properties = '') =>
   `<w:tbl><w:tblPr>${properties}<w:tblCellMar>${['top', 'bottom', 'left', 'right'].map((s) => `<w:${s} w:w="0" w:type="dxa"/>`).join('')}</w:tblCellMar></w:tblPr><w:tblGrid><w:gridCol w:w="2000"/></w:tblGrid>${rows}</w:tbl>`;
+// A table that opens the body keeps the end mark of its first cell
+// (`table-document-start-end-mark.test.ts`), so each fixture follows an empty paragraph.
 const documentPart = (body: string) =>
-  part(`<w:document xmlns:w="${W}" xmlns:x="urn:foreign"><w:body>${body}</w:body></w:document>`);
+  part(
+    `<w:document xmlns:w="${W}" xmlns:x="urn:foreign"><w:body><w:p/>${body}</w:body></w:document>`
+  );
 // Format defaults, pinned so the fixture does not take the application defaults for omitted docDefaults.
 const FORMAT_DOC_DEFAULTS =
   '<w:docDefaults><w:rPrDefault><w:rPr><w:kern w:val="2"/></w:rPr></w:rPrDefault><w:pPrDefault/></w:docDefaults>';
@@ -45,6 +49,9 @@ const styles = (body: string) =>
 const style = (id: string, content: string, base = '') =>
   `<w:style w:type="table" w:styleId="${id}">${base ? `<w:basedOn w:val="${base}"/>` : ''}${content}</w:style>`;
 const geometry = { width: 150, height: 100, margin: { top: 0, bottom: 0, left: 0, right: 0 } };
+/** The table's lines: after the leading paragraph, and before the empty one the body reads last. */
+const cellLinesOf = (result: Parameters<typeof linesOf>[0]) => linesOf(result).slice(1, -1);
+
 function run(body: string, styleCascade?: ReturnType<typeof styles>) {
   const source = documentPart(body),
     before = serializeOoxmlPart(source);
@@ -72,18 +79,22 @@ for (const [value, hidden] of [
     const properties = `<w:hideMark${value ? ` w:val="${value}"` : ''}/>`;
     expect(height(table(row(cell(paragraph(text), properties))))).toBe(5);
     expect(height(table(row(cell(marked, properties))))).toBe(hidden ? 5 : 25);
-    expect(height(table(row(cell(paragraph(), properties))))).toBe(20);
+    // 17.4.25: a hidden end mark leaves an empty cell nothing to size the row with.
+    expect(height(table(row(cell(paragraph(), properties))))).toBe(hidden ? 0 : 20);
   });
 }
 
-test('an empty cell keeps its line box when the end marker does not set a row minimum', () => {
+test('an empty cell with a hidden mark takes no row height but keeps an addressable line', () => {
+  // 17.4.25: the end-of-cell mark is ignored for row height, and the empty paragraph holds
+  // nothing else; the next row starts where the empty one does.
   const result = run(table(row(cell(paragraph())) + row(cell(paragraph(text)))));
-  expect(rows(result).map((r) => r.box.height)).toEqual([20, 5]);
-  expect(linesOf(result)).toHaveLength(2);
-  expect(linesOf(result)[0]!.range).toMatchObject({ start: 0, end: 0 });
-  expect(linesOf(result)[0]!.box.height).toBe(20);
-  expect(linesOf(result)[0]!.baseline).toBe(16);
-  expect(rows(result)[1]!.box.y).toBe(rows(result)[0]!.box.y + 20);
+  expect(rows(result).map((r) => r.box.height)).toEqual([0, 5]);
+  expect(cellLinesOf(result)).toHaveLength(2);
+  expect(cellLinesOf(result)[0]!.range).toMatchObject({ start: 0, end: 0 });
+  expect(cellLinesOf(result)[0]!.box.height).toBe(0);
+  expect(rows(result)[1]!.box.y).toBe(rows(result)[0]!.box.y);
+  // A visible mark keeps the line.
+  expect(height(table(row(cell(paragraph(), ''))))).toBe(20);
 });
 
 test('a hidden mark drops the empty final paragraph after other content', () => {
@@ -98,7 +109,7 @@ test('a hidden mark drops the empty final paragraph after other content', () => 
   expect(height(table(row(cell(paragraph(text) + paragraph(), ''))))).toBe(25);
 });
 
-test('empty-cell margins, paragraph borders, and paragraph spacing still reserve their own space', () => {
+test('empty-cell margins and paragraph borders reserve space, paragraph spacing does not', () => {
   expect(
     height(
       table(
@@ -110,7 +121,11 @@ test('empty-cell margins, paragraph borders, and paragraph spacing still reserve
         )
       )
     )
-  ).toBe(25);
+  ).toBe(5);
+  // The collapsed paragraph's own spacing takes no room.
+  expect(height(table(row(cell(paragraph('', '<w:spacing w:before="60" w:after="40"/>')))))).toBe(
+    0
+  );
   const content = paragraph(
     '',
     '<w:spacing w:before="60" w:after="40"/><w:pBdr><w:top w:val="single" w:sz="8"/><w:bottom w:val="single" w:sz="8"/></w:pBdr>'
@@ -124,7 +139,7 @@ for (const rule of ['atLeast', 'exact'])
   test(`hideMark preserves ${rule} row heights`, () => {
     expect(
       height(table(row(cell(paragraph()), `<w:trHeight w:val="40" w:hRule="${rule}"/>`)))
-    ).toBe(rule === 'exact' ? 2 : 20);
+    ).toBe(2);
   });
 
 test('whole-style inheritance, conditional overrides, and direct false values retain their precedence', () => {
@@ -244,26 +259,26 @@ test('hidden markers retain manual line breaks and earlier printable text', () =
       row(cell(paragraph('<w:r><w:rPr><w:sz w:val="10"/></w:rPr><w:t>Small</w:t><w:br/></w:r>')))
     )
   );
-  expect(linesOf(result).map((line) => line.box.height)).toEqual([5, 20]);
+  expect(cellLinesOf(result).map((line) => line.box.height)).toEqual([5, 20]);
   expect(rows(result)[0]!.box.height).toBe(25);
 });
 
 test('vertical cells exclude hidden markers but retain printable content', () => {
   const properties = '<w:textDirection w:val="btLr"/><w:hideMark/>';
   const result = run(table(row(cell(paragraph(text), properties))));
-  expect(linesOf(result)[0]!.box.height).toBe(5);
+  expect(cellLinesOf(result)[0]!.box.height).toBe(5);
   expect(height(table(row(cell(paragraph(), properties))))).toBe(0);
   expect(height(table(row(cell(paragraph('', '<w:jc w:val="center"/>'), properties))))).toBe(0);
 });
 
-test('merged empty cells retain the head paragraph line across their rows', () => {
+test('merged empty cells with hidden marks take no height across their rows', () => {
   const result = run(
     table(
       row(cell(paragraph(), '<w:vMerge w:val="restart"/><w:hideMark/>')) +
         row(cell(paragraph(), '<w:vMerge/><w:hideMark/>'))
     )
   );
-  expect(rows(result).map((r) => r.box.height)).toEqual([0, 20]);
+  expect(rows(result).map((r) => r.box.height)).toEqual([0, 0]);
   expect(rows(result)[0]!.cells[0]!.rowSpan).toBe(2);
   const visible = run(
     table(
@@ -287,13 +302,17 @@ test('a continuation cell keeps its own visible mark under a hidden head', () =>
   expect(rows(result).map((r) => r.box.height)).toEqual([0, 20]);
 });
 
-test('review views retain the empty paragraph line independently of marker visibility', () => {
+test('only the markup view keeps the line of a tracked empty paragraph mark', () => {
   const tracked =
     '<w:p><w:pPr><w:rPr><w:sz w:val="40"/><w:ins w:id="1" w:author="Reviewer"/></w:rPr></w:pPr></w:p>';
   const source = documentPart(table(row(cell(tracked))));
-  for (const displayMode of ['proposed', 'all-markup'] as const) {
+  // The markup view paints the mark's change bar and pilcrow; the proposed view paints nothing.
+  for (const [displayMode, expected] of [
+    ['proposed', 0],
+    ['all-markup', 20],
+  ] as const) {
     const result = layoutSemanticDocument(source, 0, { measurer, geometry, displayMode });
-    expect(rows(result)[0]!.box.height).toBe(20);
+    expect(rows(result)[0]!.box.height).toBe(expected);
   }
 });
 
@@ -327,7 +346,7 @@ test('hideMark keeps a terminal inline picture and its source position', () => {
     },
   });
   const placedCell = rows(result)[0]!.cells[0]!;
-  const line = linesOf(result)[0]!;
+  const line = cellLinesOf(result)[0]!;
   expect(line.range.end - line.range.start).toBe(1);
   expect(line.drawings).toHaveLength(1);
   const picture = line.drawings![0]!;
@@ -342,7 +361,7 @@ test('hideMark keeps a terminal inline picture and its source position', () => {
 test('empty paragraphs before a hidden mark take part in row pagination', () => {
   const result = run(table(row(cell(paragraph().repeat(7)))));
   expect(result.pages).toHaveLength(2);
-  const lines = linesOf(result);
+  const lines = cellLinesOf(result);
   expect(lines).toHaveLength(7);
   for (const [index, line] of lines.entries()) {
     expect(line.box.height).toBe(index === lines.length - 1 ? 0 : 20);

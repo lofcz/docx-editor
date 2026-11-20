@@ -33,6 +33,12 @@ export {
   type DocxEditorInstance,
   type DocxEditorConfig,
 } from './editor/index.ts';
+// Map a range of `ParagraphText.acceptedText` to highlight ranges, for proofing tools.
+export {
+  acceptedOffsetFromText,
+  acceptedTextRanges,
+  textOffsetFromAccepted,
+} from './editor/index.ts';
 
 // What `DocxEditorConfig` accepts and `DocxEditorInstance` answers with, beyond the contract.
 //
@@ -150,6 +156,11 @@ export type {
   RevisionMarkupChromeHandlers,
   RevisionMarkupOptions,
   RevisionStyles,
+  ChartPaneChange,
+  ColorPick,
+  ColorPickerThemeSlot,
+  ObjectSlotReadValueMap,
+  ObjectSlotValueMap,
   TableChromeSlotId,
   ToolbarValueMap,
   ToolbarValueSlot,
@@ -166,6 +177,13 @@ export {
   COMPARE_DOCUMENTS_ACCEPT,
   compareDocumentsErrorKey,
 } from './contracts/compare-documents.ts';
+export type {
+  ReplaceDocumentErrorCode,
+  ReplaceDocumentOutcome,
+  ReplaceDocumentRefusal,
+  ReplaceDocumentRefusalReason,
+  ReplaceDocumentRequest,
+} from './contracts/replace-document.ts';
 
 // ─── Capability modules (what `@docx-editor.dev/pro` implements) ─────────────
 export type {

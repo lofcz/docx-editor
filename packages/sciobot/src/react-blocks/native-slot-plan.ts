@@ -15,6 +15,7 @@ const PAINTED =
 
 /** Match canonical ancestry to native paint ownership, including nested table cells. */
 export function attachNativeSlots(frame: SurfacePaintFrame, mounts: readonly NativeSlotMount[]) {
+  if (!mounts.length) return;
   const byControl = new Map<string, NativeSlotMount[]>();
   for (const mount of mounts) {
     const list = byControl.get(mount.block.controlId) ?? [];
@@ -61,22 +62,26 @@ export function attachNativeSlots(frame: SurfacePaintFrame, mounts: readonly Nat
     list.push(element);
     owned.set(owner, list);
   }
-  const parentOf = (mount: NativeSlotMount): NativeSlotMount | undefined => {
+  const parents = new Map<NativeSlotMount, NativeSlotMount | undefined>();
+  for (const mount of mounts) {
     let node = parentNodeOf(frame.part, mount.block.controlId);
     while (node) {
       const parent = byControl.get(node.id)?.find((value) => value.pageIndex === mount.pageIndex);
-      if (parent) return parent;
+      if (parent) {
+        parents.set(mount, parent);
+        break;
+      }
       node = parentNodeOf(frame.part, node.id);
     }
-    return undefined;
-  };
+  }
   // An empty outer container still wraps its registered descendants.
   const anchors = new Map<NativeSlotMount, HTMLElement>();
   for (const candidate of candidates) {
     let mount = candidate.owner;
     while (mount) {
-      if (!anchors.has(mount)) anchors.set(mount, candidate.element);
-      mount = parentOf(mount);
+      if (anchors.has(mount)) break;
+      anchors.set(mount, candidate.element);
+      mount = parents.get(mount);
     }
   }
   // Place every root before moving any native element. Wrappers preserve native coordinates.
@@ -85,7 +90,7 @@ export function attachNativeSlots(frame: SurfacePaintFrame, mounts: readonly Nat
     if (first?.parentElement) first.before(mount.element);
   }
   for (const mount of mounts) {
-    const parent = parentOf(mount);
+    const parent = parents.get(mount);
     if (!parent || mount.element.parentElement !== parent.element.parentElement) continue;
     const list = owned.get(parent) ?? [];
     list.push(mount.element);

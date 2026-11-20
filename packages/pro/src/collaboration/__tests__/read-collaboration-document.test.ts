@@ -90,7 +90,11 @@ describe('readCollaborationDocument', () => {
     ['protocolVersion', 0, 'protocol-version-mismatch'],
     ['repairVersion', 1, 'schema-version-mismatch'],
     ['repairVersion', 2, 'schema-version-mismatch'],
+    ['repairVersion', 3, 'schema-version-mismatch'],
     ['repairVersion', 4, 'schema-version-mismatch'],
+    ['repairVersion', 5, 'schema-version-mismatch'],
+    ['repairVersion', 6, 'schema-version-mismatch'],
+    ['repairVersion', 17, 'schema-version-mismatch'],
     ['canonicalModelVersion', 1, 'schema-version-mismatch'],
     ['canonicalModelVersion', 3, 'schema-version-mismatch'],
   ] as const) {

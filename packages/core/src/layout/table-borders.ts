@@ -12,6 +12,7 @@ import type { TableBorderStyle } from '@docx-editor.dev/core/store';
 import {
   COMPOUND_BORDER_MIN_GAP_PT,
   COMPOUND_BORDER_MIN_STROKE_PT,
+  borderStrokeWidthPt,
   computeDoubleBorderMetricsPt,
   type CompoundBorderMetrics,
 } from './border-metrics.ts';
@@ -22,6 +23,11 @@ export type { TableCellDiagonalRecord } from './table-cell-diagonals.ts';
 import { effectiveBorderSide } from './table-border-cascade.ts';
 import { tableRowBorderExtents } from './table-row-border-extents.ts';
 import {
+  splitPublishedTableBands,
+  tableBorderLine,
+  type TableBorderLine,
+} from './table-border-lines.ts';
+import {
   buildColumnOwnershipIndexes,
   ownerAt,
   type TableBorderGridResolveWork,
@@ -29,6 +35,7 @@ import {
 } from './table-border-ownership.ts';
 
 export type { TableBorderStyle } from '@docx-editor.dev/core/store';
+export type { TableBorderLine } from './table-border-lines.ts';
 export type { TableBorderGridResolveWork, TableBorderOwnershipBudget };
 export { effectiveBorderSide } from './table-border-cascade.ts';
 export {
@@ -59,8 +66,12 @@ export type TableBorderSide =
       readonly style: TableBorderStyle;
       /** Validated RRGGBB, or null for auto/missing (paint defaults to black). */
       readonly color: string | null;
-      /** Thickness in points (`w:sz` is eighths of a point). */
+      /** Painted band in points: `w:sz` (eighths of a point), or the band of `line`. */
       readonly widthPt: number;
+      /** The authored line style when it paints more than one solid band (§17.18.2). */
+      readonly line?: TableBorderLine;
+      /** The authored `w:sz` in points, when `line` paints a band of another width. */
+      readonly sizePt?: number;
     };
 
 /** A table's six authored border edges: four outer, plus the two interior intervals. */
@@ -87,7 +98,12 @@ export interface CellBorderBox {
 export interface ResolvedTableBorderEdge {
   readonly style: TableBorderStyle;
   readonly color: string | null;
+  /** Painted band in points. */
   readonly widthPt: number;
+  /** The authored line style when it paints more than one solid band (§17.18.2). */
+  readonly line?: TableBorderLine;
+  /** The authored `w:sz` in points, when `line` paints a band of another width. */
+  readonly sizePt?: number;
 }
 
 /**
@@ -121,6 +137,10 @@ export interface TableBorderStrokeRecord {
   readonly y: number;
   readonly width: number;
   readonly height: number;
+  /** Dash and gap lengths along the stroke in points, ink first, for a dashed line style. */
+  readonly dashPt?: readonly number[];
+  /** The stroke is the hatch of `dashDotStroked` (`DASH_DOT_STROKED_HATCH`). */
+  readonly hatch?: true;
 }
 
 /**
@@ -223,12 +243,13 @@ export function readBorderSide(node: OoxmlElement | undefined): TableBorderSide 
   // Hostile non-hex colors become null (paint defaults to black); style/width still count.
   const color =
     colorRaw === undefined || colorRaw === 'auto' ? null : (resolveStrictHexFill(colorRaw) ?? null);
-  return {
-    state: 'edge',
-    style,
-    color,
-    widthPt: clampWidthPt(integer(attributeValue(node, 'sz'))),
-  };
+  const widthPt = clampWidthPt(integer(attributeValue(node, 'sz')));
+  const line = tableBorderLine(val);
+  if (!line) return { state: 'edge', style, color, widthPt };
+  const band = borderStrokeWidthPt(line, widthPt);
+  return band === widthPt
+    ? { state: 'edge', style, color, widthPt, line }
+    : { state: 'edge', style, color, widthPt: band, line, sizePt: widthPt };
 }
 
 function readBox(
@@ -320,7 +341,7 @@ export function readCellBorders(tcPr: OoxmlElement | undefined): CellBorderBox {
 export function borderWeight(side: TableBorderSide): number {
   if (side.state !== 'edge') return 0;
   if (side.style === 'dotted' || side.style === 'dashed') return 1;
-  return Math.max(1, Math.round(side.widthPt * 8)) * BORDER_NUMBER[side.style];
+  return Math.max(1, Math.round((side.sizePt ?? side.widthPt) * 8)) * BORDER_NUMBER[side.style];
 }
 
 function colorBrightness(color: string | null): readonly number[] {
@@ -366,7 +387,8 @@ export function resolveBorderConflict(
 
 function asResolved(side: TableBorderSide): ResolvedTableBorderEdge | undefined {
   if (side.state !== 'edge') return undefined;
-  return { style: side.style, color: side.color, widthPt: side.widthPt };
+  const { state: _state, ...edge } = side;
+  return edge;
 }
 
 function tableFallback(
@@ -390,7 +412,7 @@ export interface BorderGridCell {
   readonly rowTableBorders?: TableBorderBox;
 }
 
-interface RawInterval {
+export interface RawInterval {
   gridStart: number;
   gridEnd: number;
   edge: ResolvedTableBorderEdge | undefined;
@@ -402,7 +424,13 @@ function edgesEqual(
 ): boolean {
   if (a === undefined && b === undefined) return true;
   if (!a || !b) return false;
-  return a.style === b.style && a.color === b.color && a.widthPt === b.widthPt;
+  return (
+    a.style === b.style &&
+    a.color === b.color &&
+    a.widthPt === b.widthPt &&
+    a.line === b.line &&
+    a.sizePt === b.sizePt
+  );
 }
 
 /** Append ordered intervals, merging only the unpublished contiguous winner. */
@@ -476,7 +504,7 @@ function doubleMetricsOf(
   return computeDoubleBorderMetricsPt(edge.widthPt);
 }
 
-function cssStyleForEdge(style: TableBorderStyle): 'solid' | 'dashed' | 'dotted' {
+export function cssStyleForEdge(style: TableBorderStyle): 'solid' | 'dashed' | 'dotted' {
   if (style === 'dashed') return 'dashed';
   if (style === 'dotted') return 'dotted';
   return 'solid';
@@ -676,7 +704,8 @@ function cornerDoubleMetrics(
   return doubleMetricsOf(interval.edge);
 }
 
-function publishFromIntervals(
+/** Stroke geometry for one cell from its resolved side intervals. */
+export function publishFromIntervals(
   top: readonly RawInterval[],
   left: readonly RawInterval[],
   bottom: readonly RawInterval[],
@@ -769,6 +798,7 @@ function publishFromIntervals(
         expandTripleInterval(strokes, side, edge, startPt, endPt, cellW, cellH);
       } else if (
         publishAllSides ||
+        edge.line !== undefined ||
         !fullSide ||
         (centered && (side === 'top' || side === 'bottom')) ||
         side === 'right' ||
@@ -778,7 +808,9 @@ function publishFromIntervals(
         // A full simple RIGHT edge publishes it too: CSS draws a right border INSIDE its
         // element, and the reference draws every vertical rule from the grid line
         // rightward. A left, top or separated bottom edge already starts at its own line,
-        // which is exactly what CSS border-box draws, so those stay on CSS.
+        // which is exactly what CSS border-box draws, so those stay on CSS. A patterned or
+        // multi-stroke line style always publishes, split into its own strokes.
+        const from = strokes.length;
         expandSimpleInterval(
           strokes,
           side,
@@ -791,6 +823,7 @@ function publishFromIntervals(
             ? centeredSides
             : centered && side !== 'top' && !(side === 'bottom' && outerBottom)
         );
+        splitPublishedTableBands(strokes, from, edge, MAX_TABLE_BORDER_STROKES);
       }
     }
   };

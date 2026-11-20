@@ -16,7 +16,7 @@ import {
   commentMenuKey,
   observeCommentMenu,
 } from '../review/comment-actions-menu.ts';
-import { useRail, useReviewLabel } from './review-context.ts';
+import { useCardRail, useReviewLabel } from './review-context.ts';
 import { useReviewStableId } from './stable-id.ts';
 import type { ReviewItemView } from './useReview.ts';
 
@@ -27,7 +27,7 @@ export const ReviewCommentActions = defineComponent({
     hideDelete: Boolean,
   },
   setup(props) {
-    const rail = useRail();
+    const rail = useCardRail();
     const t = useReviewLabel();
     const editor = useDocxEditor();
     const open = ref(false);
@@ -39,7 +39,9 @@ export const ReviewCommentActions = defineComponent({
     let unsubscribe: (() => void) | undefined;
     let dismiss: (() => void) | undefined;
     watch(
-      () => [editor.value, props.entry.key] as const,
+      // Two sources, compared one by one: `props.entry` is a new object on every review
+      // change, and a getter returning a fresh array would re-subscribe on each one.
+      [() => editor.value, () => props.entry.key] as const,
       ([current, key]) => {
         unsubscribe?.();
         if (!current) return;

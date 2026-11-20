@@ -132,6 +132,7 @@ import { rebreakForEarlierOwnBands } from './top-and-bottom-earlier-lines.ts';
 // Ignore subpixel rounding: a tab that ends exactly at the margin must not wrap.
 const OVERFLOW_TOLERANCE_PT = 0.001;
 import type { ParagraphFlowOptions } from './paragraph-flow-options.ts';
+import { ignoreCellColumnBreaks } from './table-cell-column-breaks.ts';
 export type { ParagraphFlowOptions } from './paragraph-flow-options.ts';
 export { propertiesOf };
 import {
@@ -199,7 +200,7 @@ export function breakParagraph(
   // Content a resolved view removed leaves no piece either; its site is collected the same
   // way, for the Simple Markup change bar. Kept content carries its sites on the piece.
   const changeSites: MutableChangeSite[] = [];
-  const rawPieces = piecesOfParagraphForDisplay(
+  const displayPieces = piecesOfParagraphForDisplay(
     paragraph,
     inheritedRunProperties,
     pageContext,
@@ -219,6 +220,10 @@ export function breakParagraph(
     flow?.fieldCodeRanges,
     flow?.tocLinkStyleRanges,
     changeSites
+  );
+  const rawPieces = ignoreCellColumnBreaks(
+    displayPieces,
+    flow?.cellAnchorScope?.inTableCell === true
   );
   const paragraphProperties = () =>
     propertiesOf(

@@ -1,5 +1,18 @@
 # @docx-editor.dev/docx-to-pdf
 
+## 2.39.0
+
+### Patch Changes
+
+- Updated dependencies: @docx-editor.dev/core@2.39.0, @docx-editor.dev/fonts-cjk@2.39.0, @docx-editor.dev/fonts@2.39.0, @docx-editor.dev/pro@2.39.0
+
+## 2.38.0
+
+### Patch Changes
+
+- 92cc58b: Fix PDF export failures for empty shapes with effect extents.
+- Updated dependencies: @docx-editor.dev/core@2.38.0, @docx-editor.dev/fonts-cjk@2.38.0, @docx-editor.dev/fonts@2.38.0, @docx-editor.dev/pro@2.38.0
+
 ## 2.37.0
 
 ### Patch Changes

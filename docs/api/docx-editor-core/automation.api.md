@@ -5,13 +5,13 @@
 ```ts
 
 // @public
-export const AUTOMATION_COMMAND_OPERATIONS: readonly ["removeDocumentInformation", "compareFromBase64", "setDocumentProperties", "insertTableRows", "insertTable", "updateTable", "updateTableCell", "splitTableCell", "setInlinePicture", "deleteInlinePicture", "insertField", "insertOoxml", "setFieldCode", "setFieldResult", "deleteField", "updateFieldResult", "insertInlinePicture", "insertBreak", "setChangeTrackingMode", "proposeInsertion", "proposeDeletion", "proposeReplacement", "insertText", "replaceSpan", "replaceStoryBlocks", "insertParagraph", "splitParagraph", "deleteParagraph", "selectSpan", "selectBookmark", "insertBookmark", "deleteBookmark", "setFont", "setParagraphFormat", "setStyle", "setPageSetup", "deleteNote", "setListLevel", "startNewList", "attachToList", "detachFromList", "setListLevelFormat", "insertListParagraph", "setHyperlink", "insertComment", "setCommentResolved", "setCommentText", "replyToComment", "deleteComment", "acceptRevision", "rejectRevision", "resolveRevisionBatch", "setRevisionAuthorBatch", "acceptAllRevisions", "rejectAllRevisions", "setContentControlValue", "setContentControlProperties", "deleteContentControl", "insertContentControlText", "insertContentControl", "insertCustomNode"];
+export const AUTOMATION_COMMAND_OPERATIONS: readonly ["removeDocumentInformation", "compareFromBase64", "replaceDocumentFromBase64", "setDocumentProperties", "insertTableRows", "insertTable", "updateTable", "updateTableCell", "splitTableCell", "setInlinePicture", "setShapeFill", "deleteInlinePicture", "insertField", "insertOoxml", "setFieldCode", "setFieldResult", "deleteField", "updateFieldResult", "insertInlinePicture", "insertBreak", "setChangeTrackingMode", "proposeInsertion", "proposeDeletion", "proposeReplacement", "insertText", "replaceSpan", "replaceStoryBlocks", "insertParagraph", "splitParagraph", "deleteParagraph", "selectSpan", "selectBookmark", "insertBookmark", "deleteBookmark", "setFont", "setParagraphFormat", "setStyle", "setPageSetup", "deleteNote", "setListLevel", "startNewList", "attachToList", "detachFromList", "setListLevelFormat", "insertListParagraph", "setHyperlink", "insertComment", "setCommentResolved", "setCommentText", "replyToComment", "deleteComment", "acceptRevision", "rejectRevision", "resolveRevisionBatch", "setRevisionAuthorBatch", "acceptAllRevisions", "rejectAllRevisions", "setContentControlValue", "setContentControlProperties", "deleteContentControl", "insertContentControlText", "insertContentControl", "insertCustomNode"];
 
 // @public
-export const AUTOMATION_QUERY_OPERATIONS: readonly ["getTables", "getTable", "getTableRows", "getTableCells", "getTableCell", "getMergedTableCell", "getTableCellProperties", "getTableCellBody", "getFields", "getField", "getFieldResult", "getInlinePictures", "getInlinePicture", "getShapes", "getShape", "getShapeBody", "getChangeTrackingMode", "getDocument", "getDocumentProperty", "getStyles", "getBody", "getParagraphs", "getRange", "getSpanParagraphs", "getText", "getSpanText", "getTextRanges", "expandSpan", "getReviewedText", "getParagraphId", "search", "getFont", "getParagraphFormat", "getStyle", "getSections", "getPageSetup", "getFurniture", "getNotes", "getNoteBody", "getNoteText", "getNoteKind", "getLists", "getListId", "getListById", "getListParagraphs", "getParagraphList", "getListLevel", "getHyperlink", "getBookmarks", "getBookmarkName", "getBookmarkRange", "getBookmarkNames", "getBookmarkRangeByName", "getComments", "getCommentReplies", "getCommentId", "getCommentAuthor", "getCommentDate", "getCommentText", "getCommentRange", "getCommentResolved", "getRevisions", "getRevisionType", "getRevisionAuthor", "getRevisionDate", "getRevisionRange", "getReviewItemRange", "getContentControls", "getContentControlById", "getContentControlsByTag", "getContentControlsByTitle", "getContentControlTag", "getContentControlTitle", "getContentControlFileId", "getContentControlSubtype", "getContentControlLock", "getContentControlIsBound", "getContentControlPlaceholderShown", "getContentControlTemporary", "getContentControlText", "getContentControlParagraphs", "getContentControlRange"];
+export const AUTOMATION_QUERY_OPERATIONS: readonly ["getTables", "getTable", "getTableRows", "getTableCells", "getTableCell", "getMergedTableCell", "getTableCellProperties", "getTableCellBody", "getFields", "getField", "getFieldResult", "getInlinePictures", "getInlinePicture", "getShapes", "getShape", "getShapeBody", "getShapeFill", "getChangeTrackingMode", "getDocument", "getDocumentProperty", "getStyles", "getBody", "getParagraphs", "getRange", "getSpanParagraphs", "getText", "getSpanText", "getTextRanges", "getParagraphTextIfPresent", "getParagraphTextSpan", "expandSpan", "getReviewedText", "getParagraphId", "search", "getFont", "getParagraphFormat", "getParagraphBorders", "getStyle", "getSections", "getPageSetup", "getFurniture", "getNotes", "getNoteBody", "getNoteText", "getNoteKind", "getLists", "getListId", "getListById", "getListParagraphs", "getParagraphList", "getListLevel", "getHyperlink", "getBookmarks", "getBookmarkName", "getBookmarkRange", "getBookmarkNames", "getBookmarkRangeByName", "getComments", "getCommentReplies", "getCommentId", "getCommentAuthor", "getCommentDate", "getCommentText", "getCommentRange", "getCommentResolved", "getRevisions", "getRevisionType", "getRevisionAuthor", "getRevisionDate", "getRevisionRange", "getReviewItemRange", "getContentControls", "getContentControlById", "getContentControlsByTag", "getContentControlsByTitle", "getContentControlTag", "getContentControlTitle", "getContentControlFileId", "getContentControlSubtype", "getContentControlLock", "getContentControlIsBound", "getContentControlPlaceholderShown", "getContentControlTemporary", "getContentControlText", "getContentControlParagraphs", "getContentControlRange"];
 
 // @public
-export const AUTOMATION_SOLITARY_OPERATIONS: readonly ["removeDocumentInformation", "compareFromBase64", "insertTableRows", "resolveRevisionBatch", "setRevisionAuthorBatch", "insertTable", "insertInlinePicture", "insertBreak", "startNewList", "deleteNote", "insertComment", "setCommentResolved", "replyToComment", "insertCustomNode"];
+export const AUTOMATION_SOLITARY_OPERATIONS: readonly ["removeDocumentInformation", "compareFromBase64", "replaceDocumentFromBase64", "insertTableRows", "resolveRevisionBatch", "setRevisionAuthorBatch", "insertTable", "insertInlinePicture", "insertBreak", "startNewList", "deleteNote", "insertComment", "setCommentResolved", "replyToComment", "insertCustomNode"];
 
 // @public
 export type AutomationAlignment = 'Mixed' | 'Unknown' | 'Left' | 'Centered' | 'Right' | 'Justified';
@@ -131,6 +131,15 @@ export type AutomationAuthoringOperation = {
 | {
     readonly op: 'getShapeBody';
     readonly shape: AutomationHandle;
+}
+/** A shape's fill. A shape with no fill to read (a picture, a chart) refuses. */
+| {
+    readonly op: 'getShapeFill';
+    readonly shape: AutomationHandle;
+} | {
+    readonly fill: AutomationShapeFillWrite;
+    readonly op: 'setShapeFill';
+    readonly shape: AutomationHandle;
 } | {
     readonly op: 'getInlinePictures';
     readonly span: AutomationSpanRef;
@@ -191,6 +200,15 @@ export interface AutomationBatchResponse {
 }
 
 // @public
+export type AutomationBorderColorIndex = 'Auto' | 'Black' | 'Blue' | 'Turquoise' | 'BrightGreen' | 'Pink' | 'Red' | 'Yellow' | 'White' | 'DarkBlue' | 'Teal' | 'Green' | 'Violet' | 'DarkRed' | 'DarkYellow' | 'Gray50' | 'Gray25';
+
+// @public
+export type AutomationBorderLineStyle = 'None' | 'Single' | 'Dot' | 'DashSmallGap' | 'DashLargeGap' | 'DashDot' | 'DashDotDot' | 'Double' | 'Triple' | 'ThinThickSmallGap' | 'ThickThinSmallGap' | 'ThinThickThinSmallGap' | 'ThinThickMedGap' | 'ThickThinMedGap' | 'ThinThickThinMedGap' | 'ThinThickLargeGap' | 'ThickThinLargeGap' | 'ThinThickThinLargeGap' | 'SingleWavy' | 'DoubleWavy' | 'DashDotStroked' | 'Emboss3D' | 'Engrave3D' | 'Outset' | 'Inset';
+
+// @public
+export type AutomationBorderLineWidth = 'Pt025' | 'Pt050' | 'Pt075' | 'Pt100' | 'Pt150' | 'Pt225' | 'Pt300' | 'Pt450' | 'Pt600';
+
+// @public
 export interface AutomationCapabilities {
     readonly document: boolean;
     readonly events: boolean;
@@ -208,6 +226,167 @@ export interface AutomationChangeEvent {
 
 // @public
 export type AutomationContentControlLock = 'unlocked' | 'sdtLocked' | 'contentLocked' | 'sdtContentLocked';
+
+// @public
+export type AutomationContentControlOperation =
+/**
+* The content controls a scope holds, outermost first and in document order.
+*
+* A control INSIDE another is reached through the one that holds it, never listed beside it:
+* a flat list of a document's controls makes a form field and the section wrapping it look
+* like siblings, and a caller iterating to fill a form would write into both.
+*/
+    {
+    readonly op: 'getContentControls';
+    readonly scope: AutomationContentControlScope;
+}
+/**
+* The first control in a scope whose `w:id` is the one asked for.
+*
+* FIRST, not "the" — `w:id` is not unique in OOXML and a file may write the same number
+* twice. Both controls remain reachable by listing; only this lookup has to choose, and
+* choosing document order is the choice a caller can predict.
+*/
+| {
+    readonly id: number;
+    readonly op: 'getContentControlById';
+    readonly scope: AutomationContentControlScope;
+}
+/** Every control in a scope carrying a tag, in document order. */
+| {
+    readonly op: 'getContentControlsByTag';
+    readonly scope: AutomationContentControlScope;
+    readonly tag: string;
+}
+/** Every control in a scope carrying a title (`w:alias`), in document order. */
+| {
+    readonly op: 'getContentControlsByTitle';
+    readonly scope: AutomationContentControlScope;
+    readonly title: string;
+}
+/** `w:tag`, or empty where the file wrote none. Never invented. */
+| {
+    readonly contentControl: AutomationHandle;
+    readonly op: 'getContentControlTag';
+}
+/** `w:alias` — what Word's UI calls the title. Empty where absent. */
+| {
+    readonly contentControl: AutomationHandle;
+    readonly op: 'getContentControlTitle';
+}
+/**
+* `w:id` as a STRING, and empty where the file wrote none.
+*
+* Metadata, deliberately: the identity a caller holds is the handle. A file id answered as a
+* number would invite a caller to treat it as one, and an optional non-unique attribute is
+* not an identity however it is spelled.
+*/
+| {
+    readonly contentControl: AutomationHandle;
+    readonly op: 'getContentControlFileId';
+}
+/** The control's type: `richText`, `plainText`, `dropDownList`, `comboBox`, `date`, … */
+| {
+    readonly contentControl: AutomationHandle;
+    readonly op: 'getContentControlSubtype';
+}
+/** The `ST_Lock` in force, INCLUDING what an enclosing control imposes. */
+| {
+    readonly contentControl: AutomationHandle;
+    readonly op: 'getContentControlLock';
+}
+/**
+* Whether the control declares `w:dataBinding`.
+*
+* Presence only: no XPath, namespace mapping, store id, or custom XML content crosses this
+* protocol boundary, and the binding target is never resolved or fetched.
+*/
+| {
+    readonly contentControl: AutomationHandle;
+    readonly op: 'getContentControlIsBound';
+}
+/** Whether the control is showing its placeholder rather than a value (`w:showingPlcHdr`). */
+| {
+    readonly contentControl: AutomationHandle;
+    readonly op: 'getContentControlPlaceholderShown';
+}
+/** Whether the control removes itself on the first edit (`w:temporary`). */
+| {
+    readonly contentControl: AutomationHandle;
+    readonly op: 'getContentControlTemporary';
+}
+/** The text the control encloses, as the document reads it. */
+| {
+    readonly contentControl: AutomationHandle;
+    readonly op: 'getContentControlText';
+    readonly projection?: AutomationTextProjection;
+}
+/** The paragraphs the control holds, in reading order. Empty for an inline control's own. */
+| {
+    readonly contentControl: AutomationHandle;
+    readonly op: 'getContentControlParagraphs';
+}
+/**
+* The span the control's content covers, so a caller can read or format it.
+*
+* `location` narrows it: `start`/`end` collapse onto the content's edges, and `before`/`after`
+* answer those same edges because a control's boundary marks occupy no offset here.
+*/
+| {
+    readonly contentControl: AutomationHandle;
+    readonly location?: AutomationContentControlRangeLocation;
+    readonly op: 'getContentControlRange';
+}
+/**
+* Write the control's value in the vocabulary its own type accepts.
+*
+* The refusals are the store's: `locked`, `bound`, `type-mismatch`, `invalid-value`. This
+* operation adds none of its own, because a script and a keystroke must be refused for the
+* same reasons or a form is only as protected as the path a caller happened to take.
+*/
+| {
+    readonly contentControl: AutomationHandle;
+    readonly op: 'setContentControlValue';
+    readonly value: AutomationContentControlValue;
+}
+/** Author tag, title or lock. An omitted member is left as it is; `null` removes it. */
+| {
+    readonly cannotDelete?: boolean;
+    readonly cannotEdit?: boolean;
+    readonly contentControl: AutomationHandle;
+    readonly lock?: AutomationContentControlLock;
+    readonly op: 'setContentControlProperties';
+    readonly tag?: string | null;
+    readonly title?: string | null;
+}
+/** Remove the control. `keepContent` is Word's own "Remove content control". */
+| {
+    readonly contentControl: AutomationHandle;
+    readonly keepContent: boolean;
+    readonly op: 'deleteContentControl';
+}
+/**
+* Put text into the control, at `replace` (its value) or at one edge of its content.
+*
+* The edge is resolved HERE and not by the caller: a script that read the span first and wrote
+* to it second could only write to where the control was when it asked, and the read and the
+* write would be two refusals instead of one.
+*/
+| {
+    readonly at: 'replace' | 'start' | 'end';
+    readonly contentControl: AutomationHandle;
+    readonly op: 'insertContentControlText';
+    readonly text: string;
+}
+/** Wrap a span in a new control of the named type. */
+| {
+    readonly op: 'insertContentControl';
+    readonly returnHandle?: boolean;
+    readonly span: AutomationSpanRef;
+    readonly subtype: AutomationContentControlSubtype;
+    readonly tag?: string;
+    readonly title?: string;
+};
 
 // @public
 export type AutomationContentControlRangeLocation = 'whole' | 'content' | 'start' | 'end' | 'before' | 'after';
@@ -409,6 +588,9 @@ export interface AutomationInlinePictureWrite {
     readonly width?: number;
 }
 
+// @public
+export type AutomationLineSpacingRule = 'Single' | 'OnePointFive' | 'Double' | 'AtLeast' | 'Exactly' | 'Multiple';
+
 // @public (undocumented)
 export type AutomationListBullet = 'Custom' | 'Solid' | 'Hollow' | 'Square' | 'Diamonds' | 'Arrow' | 'Checkmark';
 
@@ -439,7 +621,7 @@ export type AutomationListNumbering = 'None' | 'Arabic' | 'UpperRoman' | 'LowerR
 export type AutomationObjectKind = 'document' | 'body' | 'paragraph' | 'section' | 'note' | 'comment' | 'revision' | 'bookmark' | 'list' | 'contentControl' | 'table' | 'tableRow' | 'tableCell' | 'field' | 'inlinePicture' | 'shape';
 
 // @public
-export type AutomationOperation = AutomationAuthoringOperation | {
+export type AutomationOperation = AutomationAuthoringOperation | AutomationContentControlOperation | {
     readonly op: 'getChangeTrackingMode';
 } | {
     readonly author?: string;
@@ -463,6 +645,14 @@ export type AutomationOperation = AutomationAuthoringOperation | {
     readonly detectFormatChanges?: boolean;
     readonly op: 'compareFromBase64';
     readonly removeDateAndTime?: boolean;
+}
+/**
+* Replace the whole document with a DOCX given as base64, as one undoable edit that a
+* collaboration session shares like any other. Answers the new body's whole span.
+*/
+| {
+    readonly base64: string;
+    readonly op: 'replaceDocumentFromBase64';
 } | {
     readonly name: DocumentPropertyName;
     readonly op: 'getDocumentProperty';
@@ -542,6 +732,28 @@ export type AutomationOperation = AutomationAuthoringOperation | {
     readonly projection?: AutomationTextProjection;
     readonly scope: AutomationSpanRef;
     readonly trimSpacing?: boolean;
+}
+/**
+* A paragraph's text in a view, as `texts` with one text, or with none when the paragraph
+* left its story. A paragraph that is gone is an answer here, not a refusal, so a client that
+* checks many paragraphs it read earlier keeps the rest of its batch.
+*/
+| {
+    readonly op: 'getParagraphTextIfPresent';
+    readonly paragraph: AutomationHandle;
+    readonly projection?: AutomationTextProjection;
+}
+/**
+* The model span of a non-empty range of a paragraph's text in a view. `start` and `length`
+* count UTF-16 code units of the text `getText` answers with the same projection. A range
+* inside an expanded field result answers the whole field.
+*/
+| {
+    readonly length: number;
+    readonly op: 'getParagraphTextSpan';
+    readonly paragraph: AutomationHandle;
+    readonly projection?: AutomationTextProjection;
+    readonly start: number;
 }
 /** The smallest span covering both spans. Both must be in one story. */
 | {
@@ -707,6 +919,14 @@ export type AutomationOperation = AutomationAuthoringOperation | {
     readonly op: 'getParagraphFormat';
     readonly paragraph: AutomationParagraphRef;
 }
+/**
+* The five borders a paragraph shows, in collection order: top, left, bottom, right, then the
+* border between paragraphs. Resolved through the style cascade, as the page paints them.
+*/
+| {
+    readonly op: 'getParagraphBorders';
+    readonly paragraph: AutomationParagraphRef;
+}
 /** Author paragraph properties. Only the fields present are written. */
 | {
     readonly format: AutomationParagraphFormatWrite;
@@ -769,7 +989,7 @@ export type AutomationOperation = AutomationAuthoringOperation | {
 */
 | {
     readonly document: AutomationHandle;
-    readonly noteKind: NoteKind;
+    readonly noteKind: NoteKind$1;
     readonly op: 'getNotes';
     readonly scope?: AutomationHandle;
 }
@@ -1233,164 +1453,6 @@ export type AutomationOperation = AutomationAuthoringOperation | {
     readonly op: 'selectBookmark';
 }
 /**
-* The content controls a scope holds, outermost first and in document order.
-*
-* A control INSIDE another is reached through the one that holds it, never listed beside it:
-* a flat list of a document's controls makes a form field and the section wrapping it look
-* like siblings, and a caller iterating to fill a form would write into both.
-*/
-| {
-    readonly op: 'getContentControls';
-    readonly scope: AutomationContentControlScope;
-}
-/**
-* The first control in a scope whose `w:id` is the one asked for.
-*
-* FIRST, not "the" — `w:id` is not unique in OOXML and a file may write the same number
-* twice. Both controls remain reachable by listing; only this lookup has to choose, and
-* choosing document order is the choice a caller can predict.
-*/
-| {
-    readonly id: number;
-    readonly op: 'getContentControlById';
-    readonly scope: AutomationContentControlScope;
-}
-/** Every control in a scope carrying a tag, in document order. */
-| {
-    readonly op: 'getContentControlsByTag';
-    readonly scope: AutomationContentControlScope;
-    readonly tag: string;
-}
-/** Every control in a scope carrying a title (`w:alias`), in document order. */
-| {
-    readonly op: 'getContentControlsByTitle';
-    readonly scope: AutomationContentControlScope;
-    readonly title: string;
-}
-/** `w:tag`, or empty where the file wrote none. Never invented. */
-| {
-    readonly contentControl: AutomationHandle;
-    readonly op: 'getContentControlTag';
-}
-/** `w:alias` — what Word's UI calls the title. Empty where absent. */
-| {
-    readonly contentControl: AutomationHandle;
-    readonly op: 'getContentControlTitle';
-}
-/**
-* `w:id` as a STRING, and empty where the file wrote none.
-*
-* Metadata, deliberately: the identity a caller holds is the handle. A file id answered as a
-* number would invite a caller to treat it as one, and an optional non-unique attribute is
-* not an identity however it is spelled.
-*/
-| {
-    readonly contentControl: AutomationHandle;
-    readonly op: 'getContentControlFileId';
-}
-/** The control's type: `richText`, `plainText`, `dropDownList`, `comboBox`, `date`, … */
-| {
-    readonly contentControl: AutomationHandle;
-    readonly op: 'getContentControlSubtype';
-}
-/** The `ST_Lock` in force, INCLUDING what an enclosing control imposes. */
-| {
-    readonly contentControl: AutomationHandle;
-    readonly op: 'getContentControlLock';
-}
-/**
-* Whether the control declares `w:dataBinding`.
-*
-* Presence only: no XPath, namespace mapping, store id, or custom XML content crosses this
-* protocol boundary, and the binding target is never resolved or fetched.
-*/
-| {
-    readonly contentControl: AutomationHandle;
-    readonly op: 'getContentControlIsBound';
-}
-/** Whether the control is showing its placeholder rather than a value (`w:showingPlcHdr`). */
-| {
-    readonly contentControl: AutomationHandle;
-    readonly op: 'getContentControlPlaceholderShown';
-}
-/** Whether the control removes itself on the first edit (`w:temporary`). */
-| {
-    readonly contentControl: AutomationHandle;
-    readonly op: 'getContentControlTemporary';
-}
-/** The text the control encloses, as the document reads it. */
-| {
-    readonly contentControl: AutomationHandle;
-    readonly op: 'getContentControlText';
-    readonly projection?: AutomationTextProjection;
-}
-/** The paragraphs the control holds, in reading order. Empty for an inline control's own. */
-| {
-    readonly contentControl: AutomationHandle;
-    readonly op: 'getContentControlParagraphs';
-}
-/**
-* The span the control's content covers, so a caller can read or format it.
-*
-* `location` narrows it: `start`/`end` collapse onto the content's edges, and `before`/`after`
-* answer those same edges because a control's boundary marks occupy no offset here.
-*/
-| {
-    readonly contentControl: AutomationHandle;
-    readonly location?: AutomationContentControlRangeLocation;
-    readonly op: 'getContentControlRange';
-}
-/**
-* Write the control's value in the vocabulary its own type accepts.
-*
-* The refusals are the store's: `locked`, `bound`, `type-mismatch`, `invalid-value`. This
-* operation adds none of its own, because a script and a keystroke must be refused for the
-* same reasons or a form is only as protected as the path a caller happened to take.
-*/
-| {
-    readonly contentControl: AutomationHandle;
-    readonly op: 'setContentControlValue';
-    readonly value: AutomationContentControlValue;
-}
-/** Author tag, title or lock. An omitted member is left as it is; `null` removes it. */
-| {
-    readonly cannotDelete?: boolean;
-    readonly cannotEdit?: boolean;
-    readonly contentControl: AutomationHandle;
-    readonly lock?: AutomationContentControlLock;
-    readonly op: 'setContentControlProperties';
-    readonly tag?: string | null;
-    readonly title?: string | null;
-}
-/** Remove the control. `keepContent` is Word's own "Remove content control". */
-| {
-    readonly contentControl: AutomationHandle;
-    readonly keepContent: boolean;
-    readonly op: 'deleteContentControl';
-}
-/**
-* Put text into the control, at `replace` (its value) or at one edge of its content.
-*
-* The edge is resolved HERE and not by the caller: a script that read the span first and wrote
-* to it second could only write to where the control was when it asked, and the read and the
-* write would be two refusals instead of one.
-*/
-| {
-    readonly at: 'replace' | 'start' | 'end';
-    readonly contentControl: AutomationHandle;
-    readonly op: 'insertContentControlText';
-    readonly text: string;
-}
-/** Wrap a span in a new control of the named type. */
-| {
-    readonly op: 'insertContentControl';
-    readonly returnHandle?: boolean;
-    readonly span: AutomationSpanRef;
-    readonly subtype: AutomationContentControlSubtype;
-    readonly tag?: string;
-    readonly title?: string;
-}
-/**
 * Insert a custom node: a tagged inline control, optionally bound to a payload.
 *
 * `w:tag` caps at 64 characters, so a node whose identity is a query string fits and a node
@@ -1506,6 +1568,50 @@ export interface AutomationPaginationSnapshot {
 }
 
 // @public
+export type AutomationParagraphBorderAssignment = {
+    readonly edge: AutomationParagraphBorderEdge;
+    readonly property: 'isVisible';
+    readonly value: boolean;
+} | {
+    readonly edge: AutomationParagraphBorderEdge;
+    readonly property: 'lineStyle';
+    readonly value: AutomationBorderLineStyle;
+} | {
+    readonly edge: AutomationParagraphBorderEdge;
+    readonly property: 'lineWidth';
+    readonly value: AutomationBorderLineWidth;
+} | {
+    readonly edge: AutomationParagraphBorderEdge;
+    readonly property: 'color';
+    readonly value: string;
+} | {
+    readonly edge: AutomationParagraphBorderEdge;
+    readonly property: 'colorIndex';
+    readonly value: AutomationBorderColorIndex;
+};
+
+// @public
+export type AutomationParagraphBorderEdge = 'top' | 'left' | 'bottom' | 'right' | 'between';
+
+// @public
+export type AutomationParagraphBorderProperty = 'isVisible' | 'lineStyle' | 'lineWidth' | 'color' | 'colorIndex';
+
+// @public
+export interface AutomationParagraphBorderRead {
+    readonly color: string | null;
+    readonly colorIndex: AutomationBorderColorIndex | null;
+    // (undocumented)
+    readonly edge: AutomationParagraphBorderEdge;
+    readonly inside: boolean;
+    readonly isVisible: boolean;
+    readonly lineStyle: AutomationBorderLineStyle | null;
+    readonly lineWidth: AutomationBorderLineWidth | null;
+}
+
+// @public
+export type AutomationParagraphBordersWrite = readonly AutomationParagraphBorderAssignment[];
+
+// @public
 export interface AutomationParagraphFormatRead {
     // (undocumented)
     readonly alignment: AutomationAlignment;
@@ -1513,8 +1619,8 @@ export interface AutomationParagraphFormatRead {
     readonly firstLineIndent: number | null;
     // (undocumented)
     readonly leftIndent: number | null;
-    // (undocumented)
     readonly lineSpacing: number | null;
+    readonly lineSpacingRule: AutomationLineSpacingRule;
     readonly readingOrder: AutomationReadingOrder;
     // (undocumented)
     readonly rightIndent: number | null;
@@ -1531,12 +1637,13 @@ export interface AutomationParagraphFormatRead {
 export interface AutomationParagraphFormatWrite {
     // (undocumented)
     readonly alignment?: AutomationAlignment;
+    readonly borders?: AutomationParagraphBordersWrite;
     // (undocumented)
     readonly firstLineIndent?: number;
     // (undocumented)
     readonly leftIndent?: number;
-    // (undocumented)
     readonly lineSpacing?: number;
+    readonly lineSpacingRule?: AutomationLineSpacingRule;
     readonly readingOrder?: AutomationReadingOrder;
     // (undocumented)
     readonly rightIndent?: number;
@@ -1595,6 +1702,25 @@ export interface AutomationSearchOptions {
 export type AutomationSelectionMode = 'select' | 'start' | 'end';
 
 // @public
+export interface AutomationShapeFillRead {
+    readonly foregroundColor: string;
+    readonly transparency: number;
+    // (undocumented)
+    readonly type: AutomationShapeFillType;
+}
+
+// @public
+export type AutomationShapeFillType = 'Solid' | 'NoFill' | 'Gradient' | 'Pattern' | 'Picture' | 'Mixed';
+
+// @public
+export type AutomationShapeFillWrite = {
+    readonly clear: true;
+} | {
+    readonly color?: string;
+    readonly transparency?: number;
+};
+
+// @public
 export type AutomationShapeOwnerStory = {
     readonly kind: 'body';
 } | {
@@ -1638,7 +1764,7 @@ export type AutomationSpanRef = {
 export type AutomationStoryId = AutomationShapeOwnerStory | {
     readonly kind: 'note';
     readonly noteId: number;
-    readonly noteKind: NoteKind;
+    readonly noteKind: NoteKind$1;
 }
 /**
 * A text box: the `w:txbxContent` of the floating shape whose `wp:docPr/@id` is `shapeId`,
@@ -1755,6 +1881,9 @@ export type AutomationValue = {
     readonly kind: 'shape';
     readonly shape: AutomationShapeRead;
 } | {
+    readonly fill: AutomationShapeFillRead;
+    readonly kind: 'shapeFill';
+} | {
     readonly handle: AutomationHandle;
     readonly kind: 'handle';
 } | {
@@ -1788,6 +1917,11 @@ export type AutomationValue = {
 } | {
     readonly format: AutomationParagraphFormatRead;
     readonly kind: 'paragraphFormat';
+}
+/** A paragraph's five borders, in collection order. */
+| {
+    readonly borders: readonly AutomationParagraphBorderRead[];
+    readonly kind: 'paragraphBorders';
 }
 /** One section's page geometry, in points. */
 | {
@@ -1996,7 +2130,7 @@ export function documentPartKind(detail: string | undefined): DocumentPartKind |
 export type DocumentSaveDiagnosticCode = 'save.no-document' | 'save.document-changed' | 'save.failed';
 
 // @public
-export type EditDiagnosticCode = 'edit.read-only' | 'edit.protected-content' | 'edit.suggesting-needs-author' | 'edit.review-module-required' | 'edit.tracked-drawing-delete-unsupported' | 'edit.tracked-structure-unsupported' | 'edit.tracked-operation-unsupported' | 'edit.tracking-mode-unsupported' | 'edit.tracking-author-required' | 'edit.comment-author-required' | 'edit.comment-author-mismatch' | 'edit.tracking-unsupported-host' | 'edit.revision-unsupported' | 'edit.tracking-required' | 'edit.tracked-image-replace-unsupported' | 'edit.tracked-deleted-text-only' | 'edit.tracked-foreign-revision-unsupported' | 'edit.tracked-own-pending-change' | 'edit.picture-selected' | 'edit.cross-structure-join' | 'edit.indivisible-content' | 'edit.field-structure' | 'edit.field-unsupported' | 'edit.field-result-unsupported' | 'edit.ooxml-unsupported' | 'edit.style-not-defined' | 'edit.no-styles-defined' | 'edit.section-mark' | 'edit.table-structure-unsupported' | 'edit.table-merge-not-rectangle' | 'edit.table-split-unsupported' | 'edit.table-insert-refused' | 'edit.table-of-contents-refused' | 'edit.unsupported-content' | 'edit.operation-unsupported' | 'edit.unsupported-story' | 'edit.unmapped-change' | 'edit.stale-target' | 'edit.invalid-argument' | 'edit.resource-limit' | 'edit.refresh-in-progress' | 'edit.preview-active' | 'edit.preview-unsupported' | 'edit.preview-composing' | 'edit.preview-diverged' | 'edit.read-after-commit' | 'edit.collaboration-not-ready' | 'edit.collaboration-text-limit' | 'edit.internal-invariant' | 'edit.refused';
+export type EditDiagnosticCode = 'edit.read-only' | 'edit.protected-content' | 'edit.suggesting-needs-author' | 'edit.review-module-required' | 'edit.tracked-drawing-delete-unsupported' | 'edit.tracked-structure-unsupported' | 'edit.tracked-operation-unsupported' | 'edit.tracking-mode-unsupported' | 'edit.tracking-author-required' | 'edit.comment-author-required' | 'edit.comment-author-mismatch' | 'edit.tracking-unsupported-host' | 'edit.revision-unsupported' | 'edit.tracking-required' | 'edit.tracked-image-replace-unsupported' | 'edit.tracked-deleted-text-only' | 'edit.tracked-foreign-revision-unsupported' | 'edit.tracked-own-pending-change' | 'edit.picture-selected' | 'edit.cross-structure-join' | 'edit.indivisible-content' | 'edit.field-structure' | 'edit.field-unsupported' | 'edit.field-result-unsupported' | 'edit.ooxml-unsupported' | 'edit.style-not-defined' | 'edit.no-styles-defined' | 'edit.section-mark' | 'edit.content-required' | 'edit.table-structure-unsupported' | 'edit.table-merge-not-rectangle' | 'edit.table-split-unsupported' | 'edit.table-insert-refused' | 'edit.table-of-contents-refused' | 'edit.unsupported-content' | 'edit.operation-unsupported' | 'edit.unsupported-story' | 'edit.unmapped-change' | 'edit.stale-target' | 'edit.invalid-argument' | 'edit.resource-limit' | 'edit.refresh-in-progress' | 'edit.preview-active' | 'edit.preview-unsupported' | 'edit.preview-composing' | 'edit.preview-diverged' | 'edit.read-after-commit' | 'edit.collaboration-not-ready' | 'edit.collaboration-text-limit' | 'edit.internal-invariant' | 'edit.refused';
 
 // @public
 export function exceptionCause(): string;

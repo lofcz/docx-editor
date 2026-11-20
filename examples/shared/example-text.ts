@@ -78,7 +78,10 @@ const messages = {
   'documentRefresh.description':
     'Receive two sample updates while you read. Your scroll position stays in place.',
   'documentRefresh.limitations':
-    'Each update resets selection and undo history. Edits during processing prevent replacement.',
+    'A reload resets selection and undo history. Edits during processing prevent the update.',
+  'documentRefresh.undoable': 'Apply each update as one undoable edit',
+  'documentRefresh.completeUndoable':
+    'Document updated as one edit. Press Undo to return to your version.',
   'documentRefresh.start': 'Simulate server updates',
   'documentRefresh.cancel': 'Cancel updates',
   'documentRefresh.reset': 'Reset example',
@@ -360,6 +363,7 @@ const messages = {
   'demoPanel.label': 'Side panel',
   'demoPanel.tabs': 'Side panel tabs',
   'demoPanel.chart': 'Chart',
+  'demoPanel.shape': 'Format shape',
   'demoPanel.settings': 'Settings',
   'demoPanel.close': 'Close the side panel',
   'demoPanel.theme': 'Theme',

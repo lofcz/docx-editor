@@ -1,0 +1,16 @@
+{
+  "impact": "migration-required",
+  "fields": ["repairVersion"],
+  "before": "Fork rooms use repair version 17 and can show competing shape properties after concurrent edits.",
+  "after": "Fork rooms use repair version 18 and select one fill, outline, wrap, position, and text box fit.",
+  "reason": "The same shared drawing can produce different DOCX output under these repair rules. The fork retains its application ownership schema.",
+  "tests": [
+    "packages/pro/src/collaboration/__tests__/document-compatibility.test.ts",
+    "packages/pro/src/collaboration/__tests__/shape-format-peers.test.ts",
+    "packages/pro/src/collaboration/__tests__/shape-wrap-peers.test.ts",
+    "packages/pro/src/collaboration/__tests__/format-1551-migration.test.ts",
+    "packages/sciobot/src/collaboration/property-review-profile.test.ts"
+  ],
+  "changeset": "fork-shape-repair",
+  "migration": "upgrade-fork-rooms-to-format-110182"
+}

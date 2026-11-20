@@ -200,7 +200,11 @@ abstract class CommentBase extends ModelObject implements PromisedItem {
     );
   }
 
-  /** Legacy read-only alias. Prefer the standard `content` property for new code. */
+  /**
+   * Legacy read-only alias. Prefer the standard `content` property for new code.
+   *
+   * @docxEditorExtension
+   */
   get text(): string {
     return this.loadedProperty<string>('text');
   }
@@ -585,6 +589,8 @@ export class Revision extends ModelObject implements PromisedItem {
    * earlier decision removed is skipped. Read `debugInfo.innerError.code` on a refusal, such as
    * `review.retained-structure` for a row that must stay to keep a nested table, or
    * `review.locked-content` and `review.bound-content` for a change a content control keeps.
+   * Under enforced tracked-changes protection the sync refuses with `GeneralException` and
+   * `edit.protected-content`.
    *
    * In a React or Vue host with the review module, use `useReview().accept` from
    * `@docx-editor.dev/pro/react` or `@docx-editor.dev/pro/vue` for a review UI.
@@ -734,6 +740,10 @@ export class RevisionCollection extends HandleCollection<Revision> {
    * `InvalidObjectPath` when the key names nothing. Either way, the sync refuses whole when one
    * of the changes is read-only or cannot be resolved, and a change that an earlier decision in
    * the same sync resolved the same way is skipped.
+   *
+   * Under enforced tracked-changes protection (`w:edit="trackedChanges"`), every decision,
+   * `resolve()`, and `setAuthor()` refuses the sync with `GeneralException` and
+   * `edit.protected-content`, and nothing changes.
    */
   acceptAll(): void {
     this.commandOn('acceptAll', () => this.#decision('acceptAllRevisions'));
@@ -785,6 +795,8 @@ export class RevisionCollection extends HandleCollection<Revision> {
    * for (const skipped of result.value.skipped)
    *   console.log(skipped.reason, skipped.detail ?? '');
    * ```
+   *
+   * @docxEditorExtension
    */
   resolve(
     action: 'accept' | 'reject',
@@ -835,6 +847,8 @@ export class RevisionCollection extends HandleCollection<Revision> {
    * await context.sync();
    * console.log(result.value.updated.length, result.value.skipped);
    * ```
+   *
+   * @docxEditorExtension
    */
   setAuthor(
     author: string,

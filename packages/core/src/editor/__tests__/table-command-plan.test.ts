@@ -222,7 +222,7 @@ describe('table command planner and editor parity', () => {
     expect(editor.query({ type: 'tableContext' })).not.toBeNull();
   });
 
-  test('deleteRow refuses the final row with the same reason in can and exec', () => {
+  test('deleteRow on the final row removes the table and keeps the paragraph after it', () => {
     const editor = mount(
       '<w:tbl><w:tblGrid><w:gridCol w:w="2400"/></w:tblGrid><w:tr><w:tc>' +
         p('only') +
@@ -232,9 +232,9 @@ describe('table command planner and editor parity', () => {
     caret(surface, paragraphByText('only', surface));
     const cmd = { type: 'deleteRow' as const };
     const can = editor.can(cmd);
-    expect(can.ok).toBe(false);
-    expect(can.reason).toBe('the table must keep at least one row or column');
-    expect(editor.exec(cmd)).toEqual(can);
+    // The paragraph the body reads after its final table takes the caret, so the table goes.
+    expect([can.ok, editor.exec(cmd).ok, editor.getSelectedTable()]).toEqual([true, true, null]);
+    expect(surface.session.paragraphIds()).toHaveLength(1);
   });
 
   test('caret in plain body text answers null table context, and flips with the caret', () => {
@@ -403,7 +403,7 @@ describe('table command planner and editor parity', () => {
     expect(plan.ops[0]).not.toHaveProperty('gridColumnId');
   });
 
-  test('deleteColumn refuses the final column with the same reason in can and exec', () => {
+  test('deleteColumn on the final column removes the table and keeps the paragraph after it', () => {
     const oneCol =
       '<w:tbl><w:tblGrid><w:gridCol w:w="2400"/></w:tblGrid>' +
       `<w:tr><w:tc>${p('only')}</w:tc></w:tr></w:tbl>`;
@@ -412,9 +412,9 @@ describe('table command planner and editor parity', () => {
     caret(surface, paragraphByText('only', surface));
     const cmd = { type: 'deleteColumn' as const };
     const can = editor.can(cmd);
-    expect(can.ok).toBe(false);
-    expect(can.reason).toBe('the table must keep at least one row or column');
-    expect(editor.exec(cmd)).toEqual(can);
+    // The paragraph the body reads after its final table takes the caret, so the table goes.
+    expect([can.ok, editor.exec(cmd).ok, editor.getSelectedTable()]).toEqual([true, true, null]);
+    expect(surface.session.paragraphIds()).toHaveLength(1);
   });
 
   test('repeated can and plan calls do not mutate store revision', () => {
@@ -460,10 +460,10 @@ describe('table command planner and editor parity', () => {
     const editor = mount(body);
     const surface = editor.surface!;
     caret(surface, paragraphByText('A1', surface));
-    const before = paragraphByText('before', surface);
+    const after = paragraphByText('after', surface);
     expect(editor.can({ type: 'deleteTable' }).ok).toBe(true);
     expect(editor.exec({ type: 'deleteTable' }).ok).toBe(true);
-    expect(surface.state().selection.head.paragraphId).toBe(before);
+    expect(surface.state().selection.head).toEqual({ paragraphId: after, offset: 0 });
     editor.exec({ type: 'undo' });
     expect(paragraphTextOf(surface.session.part(), paragraphByText('A1', surface))).toBe('A1');
   });
@@ -1080,12 +1080,12 @@ describe('transaction and selection preservation', () => {
     const editor = mount(body);
     const surface = editor.surface!;
     const a1 = paragraphByText('A1', surface);
-    const before = paragraphByText('before', surface);
+    const after = paragraphByText('after', surface);
     caret(surface, a1, 3);
     const selBefore = { ...surface.state().selection.head };
     editor.exec({ type: 'deleteTable' });
     const afterDelete = { ...surface.state().selection.head };
-    expect(afterDelete.paragraphId).toBe(before);
+    expect(afterDelete).toEqual({ paragraphId: after, offset: 0 });
     editor.exec({ type: 'undo' });
     expect(surface.state().selection.head).toEqual({ paragraphId: a1, offset: selBefore.offset });
     editor.exec({ type: 'redo' });
@@ -1149,7 +1149,9 @@ describe('transaction and selection preservation', () => {
       collectByKind(surface.session.part().root, 'table').some((t) => t.id === outerTableId)
     ).toBe(false);
     const afterDelete = { ...surface.state().selection.head };
-    expect(afterDelete.paragraphId).toBe(lead);
+    const storyEnd = surface.session.paragraphIds().at(-1)!;
+    expect(storyEnd).not.toBe(lead);
+    expect(afterDelete).toEqual({ paragraphId: storyEnd, offset: 0 });
 
     editor.exec({ type: 'undo' });
     expect(tableCount(surface.session.part())).toBe(tablesBefore);

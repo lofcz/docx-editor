@@ -317,6 +317,24 @@
       "id": 329042364,
       "signed_at": "2026-11-11T11:59:17Z",
       "pull_request_no": 1876
+    },
+    {
+      "name": "adam-vonbismarck",
+      "id": 90396511,
+      "signed_at": "2026-11-11T21:42:33Z",
+      "pull_request_no": 1905
+    },
+    {
+      "name": "fdutrac",
+      "id": 68622691,
+      "signed_at": "2026-11-12T14:11:46Z",
+      "pull_request_no": 1908
+    },
+    {
+      "name": "Hiutaky",
+      "id": 10051436,
+      "signed_at": "2026-11-15T18:36:50Z",
+      "pull_request_no": 1987
     }
   ]
 }

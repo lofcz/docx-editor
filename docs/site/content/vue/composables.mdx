@@ -59,7 +59,7 @@ const page = useEditorState((s) => s.page);
 </template>
 ```
 
-Pass a comparator for an object slice. Common fields include `page`, `selection`, `formatting`, `editable`, `isLoading`, `editingMode`, `canUndo`, `pageSetup`, and `lastRejection`.
+Pass a comparator for an object slice. Common fields include `page`, `selection`, `selectionRange`, `formatting`, `editable`, `isLoading`, `editingMode`, `canUndo`, `pageSetup`, and `lastRejection`. `selectionRange` holds `anchor` and `head` positions with `blockId` and `offset`, and keeps its reference until the selection moves, so the default comparator works for it.
 
 Templates unwrap only top-level refs:
 
@@ -74,11 +74,13 @@ Templates unwrap only top-level refs:
 | `useDocxEditor()` | `ShallowRef<DocxEditorInstance \| null>` | `null` before creation and outside a root. |
 | `useEditorEvent(event, handler)` | `void` | Subscribes for the component lifetime. |
 | `useEditorSnapshot(editor)` | `Ref<number>` | Revision counter for an external store. |
-| `useEditorCaret()` | `ShallowRef<{ paragraphId, offset } \| null>` | Caret for `at` parameters. |
+| `useEditorCaret()` | `ShallowRef<{ blockId, offset } \| null>` | Caret position. Also carries `paragraphId` for `at` parameters. |
 | `useEditorHostDocument()` | `Readonly<ShallowRef<Document \| null>>` | Document that holds the pages, also in a pop-out window. `null` on the server. |
 | `useEditorColorMode()` | `{ colorMode: ComputedRef }` | `'light'` or `'dark'`. `'light'` outside a root. |
 
 `selectionChange` also fires when other state moves without a document change, such as the page count. Compare `snapshot.selection` with the previous value before you react.
+
+`paragraphsChange` lists only the paragraphs that one commit touched, so a proofing tool can check those paragraphs instead of the whole document. For an example, see [Check spelling and grammar](/docs/2.x/recipes/highlight-ranges#check-spelling-and-grammar).
 
 ### `useDocxEditor`
 
@@ -167,11 +169,13 @@ The handler takes no arguments. Read the selection with `editor.getSelectionPlac
 | --- | --- |
 | `useDocumentOutline()` | `{ items, headings, selectedBlockId, goTo, isEmpty }` |
 | `useDocumentSearch(options?)` | `{ query, setQuery, find, matches, activeIndex, activeMatch, next, previous, goTo, clear, isPending, truncated, matchCase, setMatchCase, wholeWord, setWholeWord }` |
-| `useHighlights(name, source, options?)` | `ComputedRef<{ applied, unavailable }>` |
+| `useHighlights(name, source, options?)` | `ComputedRef<UseHighlightsReturn>`: `{ applied, unavailable, refresh }` |
 | `useHighlightAt(name?)` | `Readonly<ShallowRef>` with the highlight under the pointer, or `null` |
 | `useNavigationPane(options?)` | `{ open, setOpen, toggle, tab, setTab, paneWidth, shift, overlay }` |
-| `usePaneRequest(listener)` | Nothing. Calls `listener` with `{ pane, focus }` when Insert > Chart or Edit chart asks for the Chart pane. See [Charts](/docs/2.x/guides/charts#show-the-chart-pane). |
+| `usePaneRequest(listener, options?)` | Nothing. Calls `listener` with `{ pane, focus }` when Insert > Chart, Edit chart, or Format shape asks for a pane that `options.panes` names. `panes` defaults to `['chart']`. Answer it with any UI. See [Place shape and chart controls](/docs/2.x/guides/object-controls). |
+| `useObjectControl(slotId)` | Refs of one `shape.*` or `chart.*` slot: a typed `value`, `options`, `isActive`, `isEnabled`, `disabledReason`, and `label`, with `execute` and, on toggle slots, `toggle`. See [Place shape and chart controls](/docs/2.x/guides/object-controls). |
 | `useSelectedChart()` | `UseSelectedChartReturn`: computed refs of the selected chart, its `data` and `format`, whether each can change, `execute` for the chart commands, and `editData` for one checked data change. See [Build your own chart pane](/docs/2.x/guides/charts#build-your-own-chart-pane). |
+| `useSelectedShape()` | `UseSelectedShapeReturn`: computed refs of the selected shape's `drawingNodeId` and `format`, whether the fill, transparency, and outline can change with reasons, `execute` for `setShapeFill` and `setShapeOutline`, and `edit` for one checked pane change. See [Format a shape](/docs/2.x/guides/images#format-a-shape). |
 | `useNavigationShift()` | `ShallowRef<number>`, the page offset for an open pane |
 
 Each outline item is `{ heading, depth }`, and `depth` counts from the shallowest heading. Search options accept a value, ref, or getter.
@@ -180,7 +184,7 @@ Each outline item is `{ heading, depth }`, and `depth` counts from the shallowes
 
 #### `useHighlights`
 
-A function `source` reruns after document changes and when the refs it reads change. For options, see [Highlight text ranges](/docs/2.x/guides/navigation#highlight-text-ranges).
+A function `source` reruns after document changes and when the refs it reads change. If the source reads state that is not reactive, call `result.value.refresh()` after that state changes. For options, see [Highlight text ranges](/docs/2.x/guides/navigation#highlight-text-ranges).
 
 ### Loading, fonts, and locale
 
@@ -206,7 +210,7 @@ For font origins, see [Fonts](/docs/2.x/guides/fonts). For refused opens, see [O
 | `useReviewAuthors()` | `Readonly<ShallowRef<readonly ReviewAuthorInfo[]>>`, tracked-change authors first |
 | `useReviewGutter()` | `ShallowRef<{ inlineStart, inlineEnd }>` reserved by the review rail |
 
-`@docx-editor.dev/pro/vue` adds `useReview`, `useReviewOf`, `useReviewItem`, `useReviewAuthor`, `useStackedReviewPositions`, and `useReviewRailMetrics`. See [Tracked changes](/docs/2.x/pro/tracked-changes).
+`@docx-editor.dev/pro/vue` adds `useReview`, `useReviewOf`, `useReviewItem`, `useReviewAuthor`, `useReviewCardHeights`, `useStackedReviewPositions`, and `useReviewRailMetrics`. See [Tracked changes](/docs/2.x/pro/tracked-changes).
 
 ### Popovers, scopes, and toolbar helpers
 
@@ -221,6 +225,8 @@ For font origins, see [Fonts](/docs/2.x/guides/fonts). For refused opens, see [O
 | `useNoteScopeState()` | Active footnote or endnote scope |
 | `useNotePropertiesState()` | `ShallowRef` with note numbering properties, or `null` |
 | `useContextMenuTarget()` | `HTMLElement \| null` that received the last context-menu action |
+| `useContextMenuAnchor()` | `ComputedRef` with `{ x, y, trigger }` where the open context menu is anchored, or `null`; `trigger` is `'pointer'` or `'keyboard'` |
+| `useContextMenuHighlights(name?)` | `Readonly<ShallowRef>` with the highlights at the opening right-click, or at the caret for a keyboard open. See [Read highlights in the context menu](/docs/2.x/recipes/highlight-ranges#read-highlights-in-the-context-menu). |
 | `useTableBorderTargetLabel()` | `ComputedRef<string>` label of the table-border target |
 | `useToolbarContext()` | `ComputedRef<{ t, onSave }>` |
 | `useToolbarLabel()` | `(key) => string` for the active scope |

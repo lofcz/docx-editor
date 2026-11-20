@@ -5,6 +5,7 @@ import { createEditorDiagnostics, reportEditorFontError } from './editor-diagnos
 import { surfaceFieldResultsScope } from './field-results-scope.ts';
 import { createReviewDialogs } from './review-dialogs.ts';
 import { withCompareOutcome } from './compare-documents-state.ts';
+import * as replacing from './replace-document-command.ts';
 import { queryEditorDocument, watermarkOf } from './docx-editor-query.ts';
 import { refreshWriteBlocked, writeBlockRefusal } from './refresh-write-guard.ts';
 import type { PaginatedSurfaceRuntimeOptions } from './surface-runtime-options.ts';
@@ -13,8 +14,15 @@ import { registerRefreshHost, type RefreshHost } from './document-refresh-host.t
 import { reviewChangesLocked } from './command-protection.ts';
 import { createPlacementKeeper, createReviewRanker } from './review-ranking.ts';
 import { browserFallbackMeasurer, resolvedFontMeasurement } from './resolved-font-measurement.ts';
-import { updateSurfaceMeasurement } from './surface-measurement.ts';
-import { createLiveFontResolution, liveFontFamilies } from './live-font-resolution.ts';
+import { updateSurfaceMeasurement, usedFontFacesOf } from './surface-measurement.ts';
+import { usedFamiliesCovered } from './font-face-usage.ts';
+import { fontInstallKey } from './font-install-key.ts';
+import {
+  createLiveFontResolution,
+  liveFontFamilies,
+  requestFaces,
+} from './live-font-resolution.ts';
+import type { LiveFontRequest } from './live-font-resolution.ts';
 import { createFontResolutionLifetime } from './font-resolution-lifetime.ts';
 import { composeFontOrigins, defineFontResolver } from './font-resolver.ts';
 import {
@@ -22,17 +30,20 @@ import {
   reviewActivationRefusal,
   reviewModelOption,
 } from './docx-editor-review-commands.ts';
+import { isGroupedReviewWrite } from './review-document-decisions.ts';
 import { canEditorViewCommand, createEditorViews } from './docx-editor-view-commands.ts';
 import { bindPopupChromeRequests } from './text-form-field-chrome.ts';
 import { completePendingSuggesting } from './opening-editing-mode.ts';
-import { subscribeDocumentChanges } from './docx-editor-document-changes.ts';
+import { localEditAt, subscribeDocumentChanges } from './docx-editor-document-changes.ts';
 import { attachTargetRefusal, hostWindowOf, registerEditorHost } from './host-realm.ts';
 import { continueOpeningLayout, withOpeningRefresh } from './docx-editor-opening-layout.ts';
 import { formattingCommandActive } from './docx-editor-active.ts';
 import { createEditorScrolling } from './docx-editor-scroll.ts';
 import { createAnchorNavigation } from './docx-editor-anchor-navigation.ts';
 import { createTextHighlights } from './text-highlights.ts';
+import { layoutReadingOrder, navigateHighlight } from './highlight-navigation.ts';
 import { createReviewItemsAt } from './review-items-at.ts';
+import { createParagraphTextReads } from './paragraph-text-read.ts';
 import { reviewItemPlacement } from './review-placement-cache.ts';
 import {
   findReviewPlacement,
@@ -88,7 +99,6 @@ import type {
   EditorScope,
   EditorSnapshot,
   ExecResult,
-  TextMatch,
   Unsubscribe,
   ViewScope,
 } from '@docx-editor.dev/core/contracts/editor';
@@ -120,14 +130,17 @@ import {
   pageSetupEqual,
   selectionsMatch,
   snapshotsEqual,
+  tableContextEqual,
 } from './docx-editor-support.ts';
 import { createDocumentOpenFailureState } from './document-open-failure.ts';
 import { execEditorCommand } from './docx-editor-exec.ts';
-import { replaceMatchStoryRefusal } from './docx-editor-replace-match.ts';
+import { replaceCommandRefusal } from './replace-command-capability.ts';
+import { reviewItemSpan } from './review-item-span.ts';
+import type { TextTarget } from './text-target.ts';
 import { createMountHistoryGroups } from './editor-history-groups.ts';
 import { createPublishSignal } from './surface-publish-signal.ts';
 import { FORMAT_PAINTER_OFF } from './surface-format-painter-contract.ts';
-import { resolveDocTargetSelection } from './doc-target-resolution.ts';
+import { proposalCapabilityRefusal } from './proposal-capability.ts';
 import { createOpenScheduler } from './docx-editor-open-scheduler.ts';
 import * as preparedOpen from './docx-editor-prepared-open.ts';
 import { configSurfaceOptions } from './docx-editor-surface-config.ts';
@@ -149,7 +162,8 @@ import {
   selectedTableOf,
 } from './docx-editor-derive.ts';
 import { commentTargetRangeOf } from './docx-editor-comment-resolution.ts';
-import { createReviewWrites } from './docx-editor-review-writes.ts';
+import { createReviewWrites, type ReviewWriteDeps } from './docx-editor-review-writes.ts';
+import { createDocumentReviewCommands } from './docx-editor-document-review.ts';
 import { registerEditorAutomation } from './editor-automation-registry.ts';
 import {
   canContentControlCommand,
@@ -190,6 +204,7 @@ import {
 } from './late-font-arrival.ts';
 import { initializeHarfBuzz } from '../layout/harfbuzz-shaper.ts';
 import { availableFontFamilies, configuredDefaultFontFamily } from './font-catalog.ts';
+import { createFontPickHold } from './font-pick-hold.ts';
 import {
   documentFontResolutionRequest,
   admittedDocumentSubstitutions,
@@ -240,6 +255,7 @@ import {
   liveHostConfigSetters,
 } from './docx-editor-host-config.ts';
 import type { DocxEditorConfig, DocxEditorInstance } from './docx-editor-types.ts';
+import { createSelectionRangeRead, selectionCollapsedOf } from './selection-range-read.ts';
 export type {
   BookmarkChromeHandlers,
   DocxEditorConfig,
@@ -448,33 +464,53 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
   let resolvedFontConfiguration: FontConfigurationBase | undefined;
   const fontConfiguration = (): FontConfigurationBase | undefined =>
     typeof configuredFonts === 'function' ? resolvedFontConfiguration : configuredFonts;
+  const liveFontDefaultFamily = () => configuredDefaultFontFamily(fontConfiguration());
+  const textInOwnFonts = () =>
+    usedFamiliesCovered(surface, liveFontDefaultFamily(), (family) => fontFamilyCovered(family));
   const liveFonts = createLiveFontResolution(
     () => {
       const session = preparedFontSession ?? surface?.session;
       if (destroyed || !session) return null;
-      const caret = preparedFontSession ? undefined : snapshotNow().formatting?.fontFamily;
+      // A document still preparing has laid out nothing: the surface is the previous one.
+      const laidOut = preparedFontSession ? undefined : surface;
+      const caret = laidOut && (snapshotNow().formatting ?? undefined);
+      const defaultFamily = liveFontDefaultFamily();
       return {
         generation: fontLifetime.generation,
         dynamic: typeof configuredFonts === 'function',
-        families: () =>
-          liveFontFamilies(session, caret, configuredDefaultFontFamily(fontConfiguration())),
+        families: () => liveFontFamilies(session, caret?.fontFamily, defaultFamily),
+        faces: () =>
+          requestFaces(laidOut ? usedFontFacesOf(laidOut) : undefined, defaultFamily, caret),
+        defaultFamily,
       };
     },
-    async (families, late?: LateFontDelivery) => {
+    async (request, late?: LateFontDelivery) => {
       const target = preparedFontSession ? { session: preparedFontSession } : surface;
       lateFonts.settle(late); // quietly; every install exit announces below, refused or thrown
       try {
-        if (target) await resolveDocumentFonts(loadSeq, target, families, late?.full);
+        if (target) await resolveDocumentFonts(loadSeq, target, request, late?.full);
       } finally {
         if (late && !destroyed) (bump(), emitSelectionChange());
       }
     }
   );
   let fontsResolving = false;
+  let installedFontKey: string | undefined;
+  const fontsDone = (): void => ((fontsResolving = false), bump());
   const lateFonts = createLateFontArrival({
     deliver: (generation, delivery) => liveFonts.deliver(generation, delivery),
     changed: () => (bump(), emitSelectionChange()),
     report: (cause) => reportFontError(toEditorFontError(cause)),
+    editedAt: () => localEditAt(surface),
+  });
+  const fontHold = createFontPickHold({
+    dynamic: () => typeof configuredFonts === 'function',
+    shaping: () => !!shapedMeasurer,
+    covered: (family) => fontFamilyCovered(family),
+    served: () => fontConfiguration()?.supportedFamilies,
+    asked: (family) => liveFonts.asked(family),
+    requested: () =>
+      surface ? liveFontFamilies(surface.session, undefined, liveFontDefaultFamily()) : [],
   });
   /**
    * Local-resolution probe for the compatibility notice, created against the attached
@@ -516,7 +552,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
       fontFamilyCovered,
       probeLocalFont,
       documentSubstitutedFamilies
-    );
+    ).filter((family) => !fontHold.loading(family));
   };
 
   // ── State tick + cached snapshot ─────────────────────────────────────────────────────
@@ -637,6 +673,12 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
     surface: () => surface,
     container: () => container,
     flushOpen: () => openScheduler.flush(),
+    translate: () => hostConfig.translate() ?? null,
+  });
+  const selectionRead = createSelectionRangeRead(() => surface);
+  const paragraphReads = createParagraphTextReads({
+    surface: () => surface,
+    fieldResults: fieldScope.mode,
   });
 
   function mountBytes(...args: Parameters<typeof mountBytesNow>): void {
@@ -691,7 +733,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
       ...(shapedMeasurer
         ? { measurer: shapedMeasurer, ...(shapedProducer ? { producer: shapedProducer } : {}) }
         : {}),
-      ...(embeddedFaces ? { fontAlias: embeddedFaces.alias } : {}),
+      ...(embeddedFaces ? { fontAlias: fontHold.alias(embeddedFaces.alias) } : {}),
       ...configSurfaceOptions(config),
       ...(fieldScope.mode === 'editable' ? { fieldResults: fieldScope.mode } : {}),
     };
@@ -862,6 +904,9 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
       refitIfPageResized: () => zoomLane.refitIfPageResized(),
       bump,
       emit: emitDocumentChange,
+      wantsParagraphs: events.hasParagraphsChangeHandlers,
+      emitParagraphs: events.emitParagraphsChange,
+      defer: (run) => events.defer(run, true),
     });
     refreshHost?.contentMounted(bytes);
     // The page's size is only knowable now — it comes from this document's section properties
@@ -948,7 +993,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
     disposeEmbeddedFaces();
     disposeShapedFonts();
     disposeShapedFonts = () => {};
-    fontsResolving = false;
+    ((fontsResolving = false), fontHold.clear());
   }
 
   /** {@link forgetFonts}, then measure the mounted document with the fallback measurer. */
@@ -983,7 +1028,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
   async function resolveDocumentFonts(
     seq: number,
     mounted: { readonly session: preparedOpen.FontSession },
-    families: readonly string[],
+    asked: LiveFontRequest,
     late?: FontConfigurationFragment
   ): Promise<void> {
     const lifetime = fontLifetime.capture();
@@ -1006,7 +1051,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
       // fixed measurer, exactly like a failed byte source.
       const { plan: documentFonts, request: documentRequest } = documentFontResolutionRequest(
         mounted.session,
-        families,
+        asked,
         fontConfiguration()
       );
       const request = { ...documentRequest, signal: lifetime.signal };
@@ -1047,8 +1092,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
         embedded.length === 0 &&
         (!explicit || (raw?.supportedFamilies?.length && !normalizeFontResolverResult(raw)))
       ) {
-        fontsResolving = false;
-        bump();
+        fontsDone();
         emitSelectionChange();
         return;
       }
@@ -1086,14 +1130,17 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
         documentFonts,
         fallbacks
       );
+      // A face request that brought no new bytes keeps the installed fonts: no relayout.
+      const installKey = `${seq}\u0001${lifetime.generation}\u0001${fontInstallKey(fonts)}`;
+      if (installKey === installedFontKey)
+        return (reportDocumentDrops(), fontsDone(), emitSelectionChange());
       // Nothing to shape: the fixed measurer stays. An app that DID supply a
       // configuration deserves to hear that it contributed no usable source (every
       // fetch failed, or the fragment was substitutions-only against no document
       // faces) rather than a byte-limit error from the validator.
       if (fonts.sources.length === 0) {
         reportDocumentDrops();
-        fontsResolving = false;
-        bump();
+        fontsDone();
         if (explicit) {
           reportForLoad(
             new EditorFontError(
@@ -1121,8 +1168,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
       const bailToFixed = (superseded?: typeof shaping): void => {
         reportDocumentDrops();
         if (superseded) disposeLayoutShaping(superseded);
-        fontsResolving = false;
-        bump();
+        fontsDone();
       };
       // Per-face degradation, reported: an embedded face the validator refused still
       // resolves — to a typed error. Probing here (map lookups, no shaping work) is what
@@ -1196,16 +1242,9 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
       } finally {
         reportDocumentDrops();
       }
-      // Paint-side twin, BEFORE the remount so the first shaped paint already carries the
-      // glyphs. Only faces the validator ADMITTED are handed over, and each resolves
-      // through the shaping snapshot so the bytes registered are the validated, owned
-      // copies — never the raw file view.
-      //
-      // App-supplied sources register alongside the embedded ones. They measure shaped
-      // either way, but unregistered they PAINT in whatever the platform picks for the
-      // name, so a document laid out on Carlito metrics would be drawn in something else
-      // — correct pagination, wrong glyphs. Aliasing (rather than registering the family
-      // name itself) is what keeps that safe; see `embedded-font-faces.ts`.
+      // Paint-side twin, BEFORE the remount: only ADMITTED faces, as the validated copies.
+      // App sources register too, or paint would draw a name in whatever the platform picks
+      // over shaped metrics. Aliases keep that safe; see `embedded-font-faces.ts`.
       const admitted = admittedFontSources(fonts.sources, shaping.fonts);
       const registration = await registerEmbeddedFontFaces(
         admitted,
@@ -1235,11 +1274,13 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
           shaping.fonts,
           explicit?.substitutions
         );
+        fontHold.release(fontFamilyCovered); // a picked family whose face arrived shows in it
+        const paintAlias = fontHold.alias(embeddedFaces?.alias);
         const fallbackResolution = browserFallbackMeasurer(
           container,
           scaleOf(),
           mounted.session,
-          embeddedFaces?.alias
+          paintAlias
         );
         const measurement = resolvedFontMeasurement(
           shaping,
@@ -1247,7 +1288,8 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
           fallbackResolution,
           scaleOf(),
           ++fontMeasurementEpoch,
-          (error) => current() && reportForLoad(error)
+          (error) => current() && reportForLoad(error),
+          fontHold.family
         );
         shapedMeasurer = measurement.measurer;
         shapedProducer = measurement.producer;
@@ -1256,7 +1298,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
           updateSurfaceMeasurement(surface, {
             measurer: shapedMeasurer,
             producer: shapedProducer,
-            fontAlias: embeddedFaces?.alias,
+            fontAlias: paintAlias,
             defaultFontFamily: configuredDefaultFontFamily(fontConfiguration()),
           });
         }
@@ -1281,14 +1323,14 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
         throw error;
       }
       disposeShapedFonts = () => disposeLayoutShaping(shaping);
+      installedFontKey = installKey;
       previous.disposeShapedFonts();
       previous.embeddedFaces?.dispose();
       bump();
       emitSelectionChange();
     } catch (error) {
       if (!current()) return;
-      fontsResolving = false;
-      bump();
+      fontsDone();
       reportForLoad(toEditorFontError(error));
     }
   }
@@ -1302,12 +1344,9 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
     const scope = surface?.activeScope?.() ?? SCOPE_BODY;
     return {
       scope,
-      // "No document to work with, and nothing went wrong" — deliberately NOT "nothing
-      // painted". Bytes count from the moment they are handed over, whether they are
-      // still waiting for `attach` (`pendingBytes`) or already mounted (`surface`), so
-      // this survives a detach/remount and never depends on a mount point existing.
-      //
-      // That distinction is load-bearing: a host may legitimately gate its
+      // "No document to work with, and nothing went wrong" — NOT "nothing painted". Bytes
+      // count once handed over, pending (`pendingBytes`) or mounted (`surface`), so this
+      // survives a detach/remount. That is load-bearing: a host may legitimately gate its
       // `DocxEditor.Content` on this flag, and a definition that only cleared once pages
       // painted would deadlock — nothing paints until Content mounts, and Content never
       // mounts while the flag is set. A parse failure clears it too; a document that
@@ -1335,18 +1374,8 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
       zoom: zoomLane.zoom(),
       zoomMode: zoomLane.mode(),
       selection: selectionRangeOf(surface),
-      // Whether the selection is a CARET rather than a range.
-      //
-      // Cheap on purpose. The only way to ask this used to be
-      // `query({ type: 'selectedText' }) === ''`, which materializes the whole selected
-      // string to answer a boolean — and hosts ask it from selector functions that re-run on
-      // every tick, so a select-all on a long document allocated megabytes per tick to learn
-      // one bit. `selection` cannot carry it: `DocRange` addresses paragraphs by paraId and
-      // has no offsets, so a caret and a within-paragraph range look identical there.
-      selectionCollapsed:
-        state === null ||
-        (state.selection.anchor.paragraphId === state.selection.head.paragraphId &&
-          state.selection.anchor.offset === state.selection.head.offset),
+      selectionCollapsed: selectionCollapsedOf(state),
+      selectionRange: selectionRead.selectionRange(),
       formatting: runFormattingOf(surface),
       table: tableContextOf(surface),
       tocContext: tocContextOf(state?.contextTocId ?? null),
@@ -1382,6 +1411,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
    * value-equal, so references only change when values do.
    */
   let cachedFontConfiguration: FontConfigurationBase | undefined;
+  let snapshotRetries = 0;
   function snapshotNow(): EditorSnapshot {
     if (cachedSnapshot && cachedVersion === stateVersion) return cachedSnapshot;
     const previous = cachedSnapshot;
@@ -1396,7 +1426,18 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
     const revision = surface?.session.packageRevision() ?? -1;
     const documentUnmoved = revision === cachedRevision;
     cachedRevision = revision;
+    const entryVersion = stateVersion;
     const fresh = deriveSnapshot();
+    // A derive that reads layout can land buffered typing, which moves state it already read.
+    // Derive the moved state instead of caching a torn one. Bounded: a flush lands once.
+    if (stateVersion !== entryVersion && snapshotRetries < 2) {
+      snapshotRetries += 1;
+      try {
+        return snapshotNow();
+      } finally {
+        snapshotRetries -= 1;
+      }
+    }
     let next: EditorSnapshot = fresh;
     if (previous) {
       const formatting = formattingEqual(fresh.formatting, previous.formatting)
@@ -1410,6 +1451,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
         ? previous.selection
         : fresh.selection;
       const image = imageContextEqual(fresh.image, previous.image) ? previous.image : fresh.image;
+      const table = tableContextEqual(fresh.table, previous.table) ? previous.table : fresh.table;
       const fontSubstitutions =
         previous.fontSubstitutions !== undefined &&
         fresh.fontSubstitutions !== undefined &&
@@ -1417,7 +1459,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
         fresh.fontSubstitutions.every((family, i) => previous.fontSubstitutions![i] === family)
           ? previous.fontSubstitutions
           : fresh.fontSubstitutions;
-      next = { ...fresh, formatting, page, pageSetup, selection, image, fontSubstitutions };
+      next = { ...fresh, formatting, page, pageSetup, selection, image, table, fontSubstitutions };
       // Reuse the previous REFERENCE only when neither the caret NOR the document moved.
       //
       // The snapshot is a lossy projection: `selection` is paragraph-granular (a
@@ -1427,14 +1469,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
       // snapshots, and a host subscribed through `useSyncExternalStore` never re-renders —
       // freezing every control whose state is a question the snapshot does not carry,
       // because `toolbarCommandState` re-asks `Editor.can`/`isActive` only on a store tick.
-      //
-      // Caret: Decrease Indent stayed live on a list item already at the outermost level,
-      // and the bullet button stayed pressed after the caret moved into a numbered one.
-      //
-      // Revision: an edit that changes only STRUCTURE leaves formatting, page, canUndo and
-      // canRedo all equal at an unmoved caret. Toggling a bullet OFF (a second press) left
-      // the button pressed, and one Increase Indent that reached the deepest level a
-      // definition declares left the button live for a press that could only be refused.
+      // A structure-only edit at an unmoved caret leaves every compared field equal.
       if (
         snapshotsEqual(next, previous) &&
         caretUnmoved &&
@@ -1548,13 +1583,12 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
    */
   function storyScopeOfParagraph(paragraphId: string): StoryScope {
     if (!surface) return { kind: 'body' };
-    // From the id's own PART NAME. Asking each story for its paragraph list instead would
-    // resolve every scope in turn, and resolving a scope OPENS a story store: one call
-    // opened every header and footer in the document, and the store cap (64) is a
-    // permanent ceiling because a store whose part is still in the package is never
-    // evicted. On a 40-section document that left 18 headers unopenable for the rest of
-    // the session — commenting in a footnote broke header editing.
-    // A logical id from a collaboration session names no part; the story indexes find it.
+    // From the id's own PART NAME. Asking each story for its paragraph list instead would resolve
+    // every scope in turn, and resolving a scope OPENS a story store: one call opened every header
+    // and footer in the document, and the store cap (64) is a permanent ceiling because a store
+    // whose part is still in the package is never evicted. On a 40-section document that left 18
+    // headers unopenable for the rest of the session — commenting in a footnote broke header
+    // editing. A logical id from a collaboration session names no part; the story indexes find it.
     const hash = paragraphId.indexOf('#');
     const partName =
       hash === -1 ? partOfNodeId(surface.session, paragraphId)?.name : paragraphId.slice(0, hash);
@@ -1589,28 +1623,6 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
       index.set(id, position);
     }
     return index;
-  }
-
-  /**
-   * The whole span a card covers. Content kinds (insert/delete/replace) span first range
-   * start to last range end — their ranges are contiguous by construction, a replacement's
-   * two halves included. Everything else anchors at its first range only.
-   */
-  function reviewItemSpan(
-    item: ReviewItem
-  ): { readonly start: SemanticPosition; readonly end: SemanticPosition } | null {
-    if (item.kind === 'revision') {
-      const ranges = item.ranges;
-      if (ranges.length === 0) return null;
-      const contiguous =
-        item.revisionKind === 'replace' ||
-        item.revisionKind === 'insert' ||
-        item.revisionKind === 'delete';
-      const last = contiguous ? ranges[ranges.length - 1]! : ranges[0]!;
-      return { start: ranges[0]!.start, end: last.end };
-    }
-    const range = firstReviewRange(item);
-    return range ? { start: range.start, end: range.end } : null;
   }
 
   /** Where a comment on the current selection would sit. */
@@ -1812,7 +1824,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
     events.emitHistoryDiagnostic,
     () => JSON.stringify(surface?.state().selection)
   );
-  const reviewWrites = createReviewWrites({
+  const reviewWriteDeps: ReviewWriteDeps = {
     reviewEnabled,
     historyGroups,
     surface: () => surface,
@@ -1825,7 +1837,13 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
     placements: reviewPlacements,
     resolveReviewItem,
     bump,
-  });
+  };
+  const reviewWrites = createReviewWrites(reviewWriteDeps);
+  const documentReview = createDocumentReviewCommands(
+    reviewWriteDeps,
+    reviewWrites,
+    reviewCommands
+  );
   const editor: DocxEditorInstance = {
     beginHistoryGroup() {
       openScheduler.flush();
@@ -1844,7 +1862,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
 
     fontMeasurement: () => ({
       measurer: shapedMeasurer && !stillOpening() ? ('shaped' as const) : ('fixed' as const),
-      resolving: fontsResolving || lateFonts.pending() || stillOpening(),
+      resolving: fontsResolving || stillOpening() || (lateFonts.pending() && !textInOwnFonts()),
       ...(shapedMeasurer && shapedProducer && !stillOpening() ? { producer: shapedProducer } : {}),
     }),
 
@@ -1957,14 +1975,14 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
     },
 
     getDocumentHandle(): DocumentHandle {
-      // Package revision: the body's own stands still for header/footer/note work.
-      return Object.freeze({ revision: surface?.session.packageRevision() ?? 0 });
+      // Package revision and load identity; see `document-handle.ts`.
+      return replacing.documentHandleOf(surface);
     },
 
     exec(command, options) {
       // Before every command path: a history group a command cannot join is refused, not ignored.
       const refusal = writeBlockRefusal(container, command) ?? historyGroups.gate(command, options);
-      if (refusal) return withCompareOutcome(command, refusal);
+      if (refusal) return replacing.withOutcome(command, withCompareOutcome(command, refusal));
       // A command inside the yield window addresses the just-loaded document: mount now.
       // (`can` does NOT flush — chrome polls it per render; a read must not defeat the yield.)
       openScheduler.flush();
@@ -1972,7 +1990,23 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
       if (reviewDialog) return reviewDialog;
       const dialog = views.dialog(command, true);
       if (dialog) return dialog;
+      if (command.type === 'replaceDocument') return replacing.exec(command, surface, container);
+      if (command.type === 'navigateHighlight') {
+        const marks = surface ? highlights.marksOf(command.name) : null;
+        return navigateHighlight(
+          command,
+          marks,
+          layoutReadingOrder(surface?.publishedLayout() ?? null),
+          selectionRead.members.getSelectionRange(),
+          (range) =>
+            surface
+              ? selectDocumentSearchMatch(surface, range)
+              : { ok: false, code: 'notFound', reason: 'no document is loaded' }
+        );
+      }
       historyGroups.note(command);
+      if (command.type === 'setMarkAttr' && command.mark === 'fontFamily')
+        fontHold.pick(command.value, snapshotNow().formatting?.fontFamily);
       // A view command: it edits nothing, so it runs before the document gate, and it works
       // on a document that failed to open — the pane is still the reader's to close. Not on a
       // DESTROYED editor, though: there is no reader left.
@@ -2012,12 +2046,12 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
       }
       const protectionResult = protection.exec(command);
       if (protectionResult) return protectionResult;
-      // A review write binds its history group like every other grouped command.
+      // A review write binds its history group; the document vocabulary's run their methods.
       const reviewResult =
-        surface &&
-        (command.type === 'resolveAllReviewChanges' || command.type === 'setReviewChangesAuthor')
+        documentReview.exec(command, options) ??
+        (surface && isGroupedReviewWrite(command)
           ? historyGroups.run(surface, command, options, () => reviewCommands.exec(command)!)
-          : reviewCommands.exec(command);
+          : reviewCommands.exec(command));
       if (reviewResult) return reviewResult;
       if (isContentControlEditorCommand(command)) {
         // The LIVE mode, not the constructed one — see `gateModeOf`.
@@ -2068,6 +2102,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
       if (dialog) return dialog;
       const historyRefusal = historyGroups.gate(command, options);
       if (historyRefusal) return historyRefusal;
+      if (command.type === 'replaceDocument') return replacing.can(command, surface, container);
       if (command.type === 'insertImage' || command.type === 'replaceImage') {
         if (destroyed) return { ok: false, code: 'notFound', reason: 'the editor was destroyed' };
         if (options?.scope) {
@@ -2080,7 +2115,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
       if (viewCapability) return viewCapability;
       const protectionCapability = protection.can(command);
       if (protectionCapability) return protectionCapability;
-      const reviewCapability = reviewCommands.can(command);
+      const reviewCapability = documentReview.can(command) ?? reviewCommands.can(command);
       if (reviewCapability) return reviewCapability;
       if (isContentControlEditorCommand(command)) {
         return canContentControlCommand(command, surface, gateModeOf(editingMode), options);
@@ -2094,45 +2129,12 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
       }
       const gated = gateCommand(command, surface, hostConfig.modeForGate(), options);
       if (!gated.ok) return gated.refusal;
-      if (command.type === 'replaceMatch') {
-        const story = replaceMatchStoryRefusal(surface!, command.match);
-        if (story) return story;
-      }
-      if (
-        command.type === 'proposeInsertion' ||
-        command.type === 'proposeDeletion' ||
-        command.type === 'proposeReplacement'
-      ) {
-        const writer = (command.author ?? author ?? '').trim();
-        if (!writer) {
-          return {
-            ok: false,
-            code: 'invalidArgs',
-            reason: `${command.type} requires a non-empty author`,
-          };
-        }
-        const resolved =
-          command.target === undefined
-            ? { ok: true as const, selection: surface!.state().selection }
-            : resolveDocTargetSelection(surface!, command.target);
-        if (!resolved.ok) return resolved;
-        const { anchor, head } = resolved.selection;
-        const collapsed = anchor.paragraphId === head.paragraphId && anchor.offset === head.offset;
-        // A rectangle over one empty cell mirrors a collapsed range but still covers a cell
-        // the surface replaces over, so `can` agrees — replacement only (a deletion over
-        // empty cells commits nothing), and only when no explicit target overrides it.
-        const rectangleReplacement =
-          command.type === 'proposeReplacement' &&
-          command.target === undefined &&
-          surface!.state().cellSelection !== null;
-        if (command.type !== 'proposeInsertion' && collapsed && !rectangleReplacement) {
-          return {
-            ok: false,
-            code: 'invalidArgs',
-            reason: `${command.type} needs a non-collapsed selection`,
-          };
-        }
-      }
+      const replaceRefusal = replaceCommandRefusal(command, surface!, (id) =>
+        editor.getParagraphText(id)
+      );
+      if (replaceRefusal) return replaceRefusal;
+      const proposal = proposalCapabilityRefusal(command, surface!, author);
+      if (proposal) return proposal;
       if (isImageCommand(command) && imageCommandHasIdentityFields(command)) {
         const pre = captureImageMutationPreconditions(editor);
         if (pre) {
@@ -2185,7 +2187,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
       )) as DocxEditorInstance['findMatches'],
 
     // Selection uses the match's model address and then reveals its paragraph.
-    selectMatch(match: TextMatch): ExecResult {
+    selectMatch(match: TextTarget): ExecResult {
       // Same rule as `exec`: a selection aimed into the yield window lands, not refuses.
       openScheduler.flush();
       if (!surface) {
@@ -2415,19 +2417,12 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
         // selection below gets clamped inside the open story and no body card can ever
         // become active again. A change in a text box opens that box (`review-story-entry.ts`).
         openBodyStoryOf(surface, (reviewItemSpan(item!) ?? range).start);
-        // A CARET AT THE START, not a selection over the span.
-        //
-        // Opening a card is a request to look at a change, not a request to select its
-        // text — and selecting it took the reader's own selection away to say something
-        // the page already said: the open item draws its own `--active` band, at full
-        // tint with a rule under it, which is what marks the change while the card is
-        // open. The selection added a second, competing highlight and left the reader
-        // holding a range they never made, one keystroke from replacing the text under review.
-        //
-        // The caret still MOVES, to the start of the span. That is what keeps the keyboard
-        // where the reader is looking, what `activeReviewKey` classifies at, and what the
-        // reveal below scrolls to; a header, footer or note card has always landed a bare
-        // caret this way, so the body branch now agrees with them.
+        // A CARET AT THE START, not a selection over the span. Opening a card asks to look at
+        // a change: the open item draws its own `--active` band, and a selection would add a
+        // second highlight and leave the reader holding a range one keystroke from replacing
+        // the text under review. The caret still MOVES to the start of the span, so the
+        // keyboard, `activeReviewKey` and the reveal below follow it, as for header, footer
+        // and note cards.
         const span = reviewItemSpan(item!) ?? range;
         const caret = { paragraphId: span.start.paragraphId, offset: span.start.offset };
         // Through `activateReview`, not `setSelection`: the card this opens has to be named
@@ -2441,14 +2436,13 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
           { anchor: caret, head: caret },
           { allowExcluded: allowExcludedFormatNavigation, preventScroll: true }
         );
-        // Focus-independent by design: the rail card focused itself on mousedown, which is
-        // exactly what keeps the caret-follow scroll from ever firing here.
-        // `centerIfNeeded` by default, not `nearest`: opening a card the reader can already
-        // see must not yank the page, but a card 20 pages away scrolled the MINIMUM distance
-        // parked the change flush against the bottom edge — the reader arrived looking at the
-        // last line of the window rather than at the edit they had just asked to see. A host
-        // whose own list drives the scroll passes `reveal: false` and gets the caret move
-        // without the engine competing for the viewport.
+        // Focus-independent by design: the rail card focused itself on mousedown, which is exactly
+        // what keeps the caret-follow scroll from ever firing here. `centerIfNeeded` by default,
+        // not `nearest`: opening a card the reader can already see must not yank the page, but a
+        // card 20 pages away scrolled the MINIMUM distance parked the change flush against the
+        // bottom edge — the reader arrived looking at the last line of the window rather than at
+        // the edit they had just asked to see. A host whose own list drives the scroll passes
+        // `reveal: false` and gets the caret move without the engine competing for the viewport.
         const reveal = options?.reveal ?? 'centerIfNeeded';
         if (reveal !== false) surface.revealPosition?.(span.start, { block: reveal });
       }
@@ -2516,8 +2510,9 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
 
     ...zoomFacadeMembers(zoomLane, () => surface),
     ...highlights.members,
+    ...selectionRead.members,
     ...createReviewItemsAt({ frame: highlights.frame, placements: reviewPlacements }),
-
+    ...paragraphReads,
     ...createEditorPointMembers(
       () => surface,
       () => !!container && !destroyed
@@ -2554,6 +2549,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
       disposeShapedFonts();
       disposeShapedFonts = () => {};
       teardownSurface();
+      highlights.dispose();
       container = null;
       pendingBytes = null;
       pendingTextFormInputs = new WeakMap();

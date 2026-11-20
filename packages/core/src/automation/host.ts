@@ -25,7 +25,7 @@ import {
 import type { OoxmlPackage } from '../store/package/ooxml-package.ts';
 import { runWithTransactionActor } from '../store/package/actor-scoped-ids.ts';
 import type { TreeDocOp } from '../store/store/tree-ops.ts';
-import { createHandleTable } from './handles.ts';
+import { createHandleTable, type AutomationHandleTable } from './handles.ts';
 import { createBatchPlanner, type PlannedOperation } from './plan.ts';
 import { documentReads, type AutomationPackageReads } from './reads.ts';
 import { createReadTexts, stampEndpoints, staleEndpointDetail } from './stale-spans.ts';
@@ -76,6 +76,18 @@ function storeTransactionError(reason: string): AutomationError {
     return automationError(
       'unsupported-capability',
       'this edit requires a supported review mode',
+      reason
+    );
+  if (reason === 'story-end-paragraph')
+    return automationError(
+      'unsupported-capability',
+      'a body, note or text box keeps the paragraph after a table that ends it',
+      reason
+    );
+  if (reason === 'block-required')
+    return automationError(
+      'unsupported-capability',
+      'a body, note, comment, text box, or table cell keeps its last paragraph, and a table its last row and column',
       reason
     );
   // The refusal a plan-time cell write gives, for a cell an earlier edit in the batch reshaped.
@@ -262,6 +274,8 @@ export function createAutomationHost(composition: AutomationHostComposition): Au
     let mintedComment: string | undefined;
     /** The one custom-node write a batch may hold, solitary and its own commit for the same reason. */
     let customNodeWrite: { write: InsertCustomNodeWrite; scope: StoryScope } | null = null;
+    /** The one document replacement a batch may hold, solitary like the writes above. */
+    let documentReplace: Uint8Array | null = null;
     let firstCommand = -1;
     let requiresReview = false;
     let stagedTracking = tracking;
@@ -341,6 +355,9 @@ export function createAutomationHost(composition: AutomationHostComposition): Au
       } else if (step.kind === 'customNodeWrite') {
         if (firstCommand < 0) firstCommand = index;
         customNodeWrite = { write: step.write, scope: planner.writeScope ?? { kind: 'body' } };
+      } else if (step.kind === 'documentReplace') {
+        if (firstCommand < 0) firstCommand = index;
+        documentReplace = step.docx;
       }
     }
 
@@ -376,6 +393,24 @@ export function createAutomationHost(composition: AutomationHostComposition): Au
           revision
         );
       }
+      changed = applied.changed;
+    }
+    if (documentReplace) {
+      const at = firstCommand < 0 ? 0 : firstCommand;
+      if (!port.replaceDocument)
+        return refuse(
+          operations,
+          at,
+          automationError(
+            'unsupported-capability',
+            'this host cannot replace the document',
+            'edit.operation-unsupported'
+          ),
+          revision
+        );
+      const applied = port.replaceDocument(documentReplace);
+      // The port's revision: a collaboration room that refused the update has realigned it.
+      if (!applied.ok) return refuse(operations, at, applied.error, port.revision());
       changed = applied.changed;
     }
     if (lifecycle) {
@@ -478,7 +513,7 @@ export function createAutomationHost(composition: AutomationHostComposition): Au
         step.kind === 'query'
           ? stampEndpoints(step.value, revision, texts, handles, start)
           : stampEndpoints(
-              step.kind === 'customNodeWrite'
+              step.kind === 'customNodeWrite' || step.kind === 'documentReplace'
                 ? step.answer(post)
                 : step.answer(post, mintedComment),
               committed,
@@ -505,7 +540,7 @@ export function createAutomationHost(composition: AutomationHostComposition): Au
     }
   };
 
-  return {
+  const created: AutomationHost = {
     capabilities,
     revision: () => port.revision(),
     execute,
@@ -546,4 +581,21 @@ export function createAutomationHost(composition: AutomationHostComposition): Au
       texts.clear();
     },
   };
+  HANDLE_TABLES.set(created, handles);
+  return created;
+}
+
+/** Each host's handle table, for the in-process lanes that translate a host's answers. */
+const HANDLE_TABLES = new WeakMap<AutomationHost, AutomationHandleTable>();
+
+/**
+ * The canonical paragraph id a paragraph handle of `host` names, or `null` for a handle the
+ * host did not mint or that names no paragraph. For in-process adapters only, such as the
+ * browser editor's text highlights: the protocol itself never answers engine identity.
+ *
+ * @internal
+ */
+export function automationParagraphNodeId(host: AutomationHost, handle: unknown): string | null {
+  const target = HANDLE_TABLES.get(host)?.resolve(handle, 'paragraph');
+  return target?.kind === 'paragraph' ? target.paragraphId : null;
 }

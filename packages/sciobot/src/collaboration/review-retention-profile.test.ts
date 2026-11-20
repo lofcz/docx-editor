@@ -12,7 +12,7 @@ for (const schema of [9, 10, 11, '10'] as const)
     for (const [key, value] of Object.entries({
       protocolVersion: 1,
       sharedSchemaVersion: schema,
-      repairVersion: 17,
+      repairVersion: 18,
       canonicalModelVersion: 2,
     }))
       meta.set(key, value);

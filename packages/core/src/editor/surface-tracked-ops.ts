@@ -157,3 +157,14 @@ export function attributeTrackedOps(
 }
 
 export { trackedReplacementLanding } from '../store/store/tracked-replacement-landing.ts';
+
+/** Ops that change the DOCUMENT, as opposed to reading or resolving it. */
+export function isDocumentEdit(op: TreeDocOp): boolean {
+  return (
+    op.op !== 'acceptRevision' &&
+    op.op !== 'rejectRevision' &&
+    op.op !== 'acceptAllRevisions' &&
+    op.op !== 'rejectAllRevisions' &&
+    op.op !== 'setRevisionAttribution'
+  );
+}

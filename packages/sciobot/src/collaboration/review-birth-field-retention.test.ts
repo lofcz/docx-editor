@@ -12,7 +12,7 @@ const META = 'docx-package-meta-v1',
   NODES = 'docx-package-nodes-v1',
   ATTRS = 'docx-package-attributes-v1';
 const key = (id: string, ns: string, name: string) => [id, ns, name].join('\u001f');
-function fixture(repair = 17, protocol: '1' | '2' = '1') {
+function fixture(repair = 18, protocol: '1' | '2' = '1') {
   const doc = new Y.Doc();
   const meta = doc.getMap(META),
     nodes = doc.getMap<Y.Map<unknown>>(NODES),
@@ -83,7 +83,7 @@ test('native birth constructor fields stay outside conditional scalar ownership;
   }
 });
 
-for (const repair of [13, 14, 15, 16, 18])
+for (const repair of [13, 14, 15, 16, 17, 19])
   test(`constructor fields remain conditional outside exact repair ${repair}`, () => {
     const f = fixture(repair);
     try {
@@ -150,7 +150,7 @@ test('wire inspection does not create absent native roots', () => {
 
 for (const protocol of ['1', '2'] as const)
   test(`numbering constructor scalars keep their native lifetime only in experimental protocol ${protocol}`, () => {
-    const f = fixture(17, protocol);
+    const f = fixture(18, protocol);
     const member = key('numbering-member', 'w', 'val'),
       level = key('numbering-level', 'w', 'val');
     try {

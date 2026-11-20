@@ -1,4 +1,3 @@
-import { projectContentTypeBytes } from './content-type-export.ts';
 // Bounded OPC loading into canonical typed OOXML trees (typed-ooxml-paragraph-editor task 4.4).
 //
 // Composes the already-hardened package primitives — `readZip` (entry/size/ratio limits and
@@ -19,8 +18,10 @@ import { projectContentTypeBytes } from './content-type-export.ts';
 // One deliberate tolerance: a content-type record with malformed MIME syntax is ignored
 // (treated as absent) unless it decides the type of a part the document needs.
 
+import { contentTypeExportPackage } from './content-type-export.ts';
 import { textboxFallbackExportPackageSteps } from './textbox-fallback-export.ts';
 import { retiredParagraphExportPackage } from './retired-paragraph.ts';
+import { shapeFormatExportPackage } from './shape-format-export.ts';
 import { readOoxmlPartSteps } from './ooxml-part-steps.ts';
 import {
   readZip,
@@ -683,15 +684,15 @@ export function* writeOoxmlPackageSteps(
 ): Generator<void, Uint8Array> {
   // Concurrent note property writes can leave a repeated element in shared state; the saved
   // file keeps the first copy, which is the one every reader uses.
-  const cleaned = retiredParagraphExportPackage(
-    commentExportPackage(withoutDuplicateNoteProperties(pkg))
+  const cleaned = shapeFormatExportPackage(
+    retiredParagraphExportPackage(commentExportPackage(withoutDuplicateNoteProperties(pkg)))
   );
   // Assign Word revision ids before text box fallbacks copy them.
   const numbered = options.keepRevisionIds
     ? cleaned
     : yield* uniqueRevisionIdsExportPackageSteps(cleaned);
   const referenced = options.exportRevisionReferences?.(cleaned, numbered) ?? numbered;
-  const exported = projectContentTypeBytes(yield* textboxFallbackExportPackageSteps(referenced));
+  const exported = contentTypeExportPackage(yield* textboxFallbackExportPackageSteps(referenced));
   yield;
   const entries = new Map<string, Uint8Array>(exported.partBytes);
   for (const [name, part] of exported.parts) {

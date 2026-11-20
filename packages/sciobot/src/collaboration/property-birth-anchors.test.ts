@@ -10,7 +10,7 @@ test('new property anchors exclude old tombstones, paragraph text, and unrelated
   for (const [key, value] of Object.entries({
     protocolVersion: 1,
     sharedSchemaVersion: 10,
-    repairVersion: 17,
+    repairVersion: 18,
     canonicalModelVersion: 2,
   }))
     meta.set(key, value);

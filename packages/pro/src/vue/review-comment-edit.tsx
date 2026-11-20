@@ -16,14 +16,14 @@ import {
 import { useDocxEditor } from '@docx-editor.dev/vue';
 import { commentEditDrafts, type CommentEditDraft } from '../review/comment-edit-drafts.ts';
 import type { ReviewItemView } from './useReview.ts';
-import { useRail, useReviewLabel } from './review-context.ts';
+import { useCardRail, useReviewLabel } from './review-context.ts';
 import { useReviewStableId } from './stable-id.ts';
 
 export const ReviewCommentText = defineComponent({
   name: 'ReviewCommentText',
   props: { entry: { type: Object as PropType<ReviewItemView>, required: true } },
   setup(props) {
-    const rail = useRail();
+    const rail = useCardRail();
     const t = useReviewLabel();
     const id = useReviewStableId('comment-edit');
     const field = ref<HTMLTextAreaElement | null>(null);
@@ -31,7 +31,9 @@ export const ReviewCommentText = defineComponent({
     const state = shallowRef<CommentEditDraft | null>(null);
     let unsubscribe: (() => void) | undefined;
     watch(
-      () => [editor.value, props.entry.key] as const,
+      // Two sources, compared one by one: `props.entry` is a new object on every review
+      // change, and a getter returning a fresh array would re-subscribe on each one.
+      [() => editor.value, () => props.entry.key] as const,
       ([current, key]) => {
         unsubscribe?.();
         const store = current ? commentEditDrafts(current) : null;

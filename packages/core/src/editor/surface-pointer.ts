@@ -1,4 +1,4 @@
-import { surfacePointAt } from './surface-point.ts';
+import { behindDrawingAt, repeatedPressOnObject, surfacePointAt } from './surface-point.ts';
 // Pointer gestures over the painted pages.
 //
 // The surface owns this rather than each host, so React, Vue and a plain page get identical
@@ -55,6 +55,7 @@ import {
   findNoteAtSheetPoint,
   findStoryAtSheetPoint,
   hitTestStoryAtLocalPoint,
+  activeStoryDrawingAtSheetPoint,
   isBodyContentPoint,
   scopedDocumentOrder,
   storyHitYieldsToBody,
@@ -62,6 +63,7 @@ import {
   type HeaderFooterScopeBinding,
 } from './surface-scope.ts';
 import { autoScrollDelta } from './surface-drag-autoscroll.ts';
+import { hitNoteStoryAtSheetPoint, sameNoteStory } from './surface-note-story.ts';
 import { isApplePlatform } from '@docx-editor.dev/i18n';
 
 /** Active header/footer scope as seen by the pointer layer. */
@@ -191,6 +193,8 @@ export interface SurfacePointHit {
 
 export interface PointerController {
   pointAt(clientX: number, clientY: number): SurfacePointHit | null;
+  /** The body drawing a press there reaches by geometry (`behindDrawingAt`). */
+  behindDrawingAt(clientX: number, clientY: number): ReturnType<typeof behindDrawingAt>;
   /**
    * True while a gesture owns the selection.
    *
@@ -320,13 +324,8 @@ export function createPointerController(
   function resolve(clientX: number, clientY: number): SemanticHit | null {
     const activeNote = host.activeNote?.() ?? null;
     if (activeNote) {
-      const layout = host.layout();
-      const noteHit = findNoteAtSheetPoint(layout, sheetPoint(clientX, clientY), host.pageOffsetX);
-      if (!noteHit || noteHit.scopeId !== activeNote.scopeId) return null;
-      const measurer = host.measurer();
-      return hitTestFragments(layout, noteHit.pageIndex, noteHit.fragments, noteHit.local, {
-        ...(measurer ? { measurer } : {}),
-      });
+      // Every note of the open note's kind is one story: a drag crosses into the next note.
+      return hitNoteStoryAtSheetPoint(host, sheetPoint(clientX, clientY), activeNote.scopeId);
     }
     const active = host.activeHeaderFooter?.() ?? null;
     if (!active) return resolveBody(clientX, clientY);
@@ -344,8 +343,9 @@ export function createPointerController(
         measurer ? { measurer } : {}
       );
     }
-    // Open furniture scope: only the active story is a valid hit target during a gesture.
-    return null;
+    // Open furniture scope: only the active story is a valid hit target during a gesture,
+    // past its band through its own drawings alone (a watermark).
+    return activeStoryDrawingAtSheetPoint(layout, scopeBinding(active), sheet, host.pageOffsetX);
   }
 
   function enterRequestFromStoryHit(
@@ -738,17 +738,13 @@ export function createPointerController(
       const hit = hitTestFragments(layout, noteHit.pageIndex, noteHit.fragments, noteHit.local, {
         ...(measurer ? { measurer } : {}),
       });
-      if (!activeNote || activeNote.scopeId !== noteHit.scopeId) {
-        event.preventDefault();
-        host.focus();
-        host.enterNote?.(
-          noteHit.scopeId,
-          hit ? { paragraphId: hit.position.paragraphId, offset: hit.position.offset } : undefined,
-          noteHit.pageIndex
-        );
-        return;
-      }
-      if (activeNote.pageIndex !== noteHit.pageIndex) {
+      // Notes of one kind are one story: a press on the same page, or a Shift press anywhere,
+      // takes the ordinary gesture lane, and the open note follows the selection head.
+      const sameStory =
+        activeNote !== null &&
+        sameNoteStory(activeNote.scopeId, noteHit.scopeId) &&
+        (event.shiftKey || activeNote.pageIndex === noteHit.pageIndex);
+      if (!sameStory) {
         event.preventDefault();
         host.focus();
         host.enterNote?.(
@@ -782,12 +778,16 @@ export function createPointerController(
         host.focus();
         host.enterHeaderFooter?.(enterRequestFromStoryHit(storyHit, positionInStory(storyHit)));
         return;
-      } else if (isBodyContentPoint(layout, sheet, host.pageOffsetX)) {
-        event.preventDefault();
-        host.exitHeaderFooter?.(true);
-        host.focus();
-        return;
-      } else {
+      } else if (
+        !activeStoryDrawingAtSheetPoint(layout, scopeBinding(active), sheet, host.pageOffsetX)
+      ) {
+        // The story's own drawing past its band (a watermark) takes the press below.
+        if (isBodyContentPoint(layout, sheet, host.pageOffsetX)) {
+          event.preventDefault();
+          host.exitHeaderFooter?.(true);
+          host.focus();
+          return;
+        }
         // While a header is open, double-clicking the blank footer band (or vice versa)
         // creates and opens that story — Word's behaviour — instead of swallowing the press.
         const empty =
@@ -888,11 +888,8 @@ export function createPointerController(
     gestureDocument.addEventListener('pointercancel', onPointerUp);
 
     const count = clicks();
-    // A repeated press on a picture or a chart keeps the object selected: it never selects
-    // the word or the paragraph beside it. A text box takes its double press elsewhere.
-    const onObject =
-      target?.closest('[data-drawing-node-id]') != null &&
-      target.closest('.docx-drawing-textbox') == null;
+    // A repeated press on a picture or a chart keeps it selected, never the word beside it.
+    const onObject = repeatedPressOnObject(layout, hit, target);
     const granularity =
       event.shiftKey || onObject ? 'character' : GRANULARITIES[(count - 1) % GRANULARITIES.length]!;
 
@@ -1085,6 +1082,7 @@ export function createPointerController(
 
   return {
     pointAt: (x, y) => surfacePointAt(host, x, y),
+    behindDrawingAt: (x, y) => behindDrawingAt(host, x, y),
     dragging: () => gesture !== null,
     cancelGesture: endGesture,
     destroy() {

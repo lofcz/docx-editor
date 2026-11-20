@@ -10,7 +10,8 @@ import { hasCompatibilityRule } from './compatibility/compatibility-rules.ts';
  * Where a table's left edge sits, floated or not.
  *
  * Before mode 15 a floating table aligns its cell content, not its outer edges. A numeric
- * text anchor positions the first row's leading cell content edge. A right or outside
+ * offset or a left or inside alignment, against any anchor, positions the first row's leading
+ * cell content edge; a centered table keeps its outer edges. A right or outside
  * alignment, against any anchor, moves the table right by its own right cell margin, so its
  * content ends at the frame edge. A table whose wrap band already covers the text column's
  * leading edge keeps its outer edge, and so its place across the column.
@@ -36,11 +37,11 @@ export function positionedTableOriginX(
     if (origin - (float.distances?.left ?? 0) <= frames.text.left) return origin;
     return origin + structure.defaultMargins.right;
   }
-  if (!first || first.gridColumn !== 0) return origin;
-  if (float.horzAnchor !== 'text' || float.vertAnchor !== 'text' || float.xSpec !== undefined)
-    return origin;
+  if (!first || first.gridColumn !== 0 || float.xSpec === 'center') return origin;
+  // Any anchor (17.4.58, 17.4.66), with a `w:tblpX` offset or a left or inside alignment: the
+  // leading cell content edge takes the position, and the outer edge may leave the sheet.
   const inset = contentInsets(first.margins, first.contentBorders ?? first.borders).left;
-  return Math.max(frames.page.left, origin - inset);
+  return origin - inset;
 }
 
 /** The painted width of a simple side rule, else `0`. */
@@ -128,7 +129,10 @@ function alignedOriginX(structure: SemanticTableStructure, containerWidthPt: num
     return structure.legacyTrailingOuterEdge ? slack : slack + last;
   }
   if (structure.alignment === 'center')
-    return slack / 2 + (structure.bidiVisual ? (structure.outerRuleOffsetPt ?? 0) : 0);
+    return (
+      slack / 2 +
+      (structure.bidiVisual || structure.cellSpacingPt > 0 ? (structure.outerRuleOffsetPt ?? 0) : 0)
+    );
   // Travels with the cell insets that `withSharedGridLineSideRules` gives the same table.
   const ruleOffset = structure.outerRuleOffsetPt ?? 0;
   // A bidiVisual table aligned to its leading (right) edge measures the indent from that edge.
@@ -167,4 +171,35 @@ export function tableFloatOriginX(
   if (!Number.isFinite(x)) return frame.left;
   const pageRight = frames.page.left + frames.page.width;
   return Math.max(frames.page.left, Math.min(x, pageRight));
+}
+
+/**
+ * How far a centered top-level AutoFit table with an absolute width may reach past the text
+ * column, both sides together, before compatibility mode 15: its outer content insets. Its
+ * stated width still decides while its columns fit; columns that need more than the text
+ * column fill it with their content edges on the text edges, and the table stays centered.
+ *
+ * Measured with 5.4pt cell margins in a 468pt column: a 450pt table whose columns need 531pt
+ * spans 479pt, from 5.5pt before the column to 5.5pt past it, in modes 11 to 14. Mode 15 keeps
+ * the 468pt column. Right-to-left, spaced, fixed, floating and text-box tables reach nothing,
+ * for want of evidence.
+ */
+export function centeredLegacyReachPt(
+  structure: SemanticTableStructure,
+  compatibilityMode: number | undefined,
+  depth: number
+): number {
+  if (
+    !hasCompatibilityRule(compatibilityMode, 'fixedTableContentEdgeOrigin') ||
+    depth !== 0 ||
+    structure.alignment !== 'center' ||
+    structure.tableWidth.type !== 'dxa' ||
+    structure.layoutFixed ||
+    structure.float ||
+    structure.textBox ||
+    structure.bidiVisual ||
+    structure.cellSpacingPt !== 0
+  )
+    return 0;
+  return legacyLeadingInsetPt(structure) + legacyTrailingInsetPt(structure);
 }

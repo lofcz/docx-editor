@@ -11,8 +11,11 @@ import {
 // `w:titlePg` but declares no `w:headerReference w:type="first"` has NO header on its first
 // page, so that page's body starts at `w:pgMar/@w:top` — not below the default header's height.
 //
-// The cap keeps pagination terminating. A hostile header of five hundred paragraphs must not
-// shrink the content column to nothing, because pagination into a zero-height column never ends.
+// The authored margin is a floor (§17.6.11 `w:pgMar`); the header or footer pushes the body
+// past it by its own full height, with no share of the sheet as a limit, even below the sheet
+// edge. Where the two edges leave no column, the top wins and the body keeps one point of
+// column below it: each page then holds one line, and pagination never flows into a
+// zero-height or negative column. Margins that alone pass the sheet height do the same.
 
 import type { HeaderFooterStoryLayout } from './hf-layout.ts';
 import type {
@@ -42,8 +45,8 @@ export interface PageFurniture {
   readonly footers: ReadonlyMap<HeaderFooterVariantName, HeaderFooterStoryLayout>;
 }
 
-/** Fraction of the sheet one edge's furniture may consume before the cap binds. */
-const FURNITURE_INSET_FRACTION = 0.4;
+/** Content height, in points, that header or footer growth always leaves the body. */
+const MIN_FURNITURE_COLUMN = 1;
 
 /** The content box one page gets, in points, relative to the sheet's top-left. */
 export interface PageContentInsets {
@@ -120,7 +123,6 @@ export function createPageContentInsets(
   inputs: PageContentInsetInputs
 ): (index: number) => PageContentInsets {
   const { furniture, pageHeight, marginTop, marginBottom } = inputs;
-  const cap = pageHeight * FURNITURE_INSET_FRACTION;
   const memo = new Map<string, PageContentInsets>();
   const edge = (
     distance: number,
@@ -130,13 +132,10 @@ export function createPageContentInsets(
   ) =>
     // A negative margin is exact (§17.6.11): the header or footer overlaps the body instead of
     // pushing it. An absent variant reserves nothing: the page has no furniture on that edge
-    // at all, so the authored margin is the whole inset. The cap bounds both cases.
-    Math.min(
-      cap,
-      marginIgnoresFurniture(margin)
-        ? marginInset(margin)
-        : Math.max(margin, story ? distance + Math.max(story.flowHeight, reserveHeight) : 0)
-    );
+    // at all, so the authored margin is the whole inset.
+    marginIgnoresFurniture(margin)
+      ? marginInset(margin)
+      : Math.max(margin, story ? distance + Math.max(story.flowHeight, reserveHeight) : 0);
   return (index: number): PageContentInsets => {
     // Local page 0 of a continued section is the host's sheet, not this section's first page.
     if (index === 0 && inputs.continuedPageInsets) return inputs.continuedPageInsets;
@@ -157,7 +156,10 @@ export function createPageContentInsets(
         ? characterHeaderReserveHeight(furniture, inputs.pageIndexStart + index)
         : 0
     );
-    const bottom = edge(inputs.footerDistance, furniture?.footers.get(variant), marginBottom);
+    const bottom = Math.min(
+      edge(inputs.footerDistance, furniture?.footers.get(variant), marginBottom),
+      pageHeight - top - MIN_FURNITURE_COLUMN
+    );
     const insets: PageContentInsets = Object.freeze({
       top,
       bottom,

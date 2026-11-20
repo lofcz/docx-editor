@@ -30,8 +30,6 @@ import {
 } from './table-cell-structure-plan.ts';
 import {
   MAX_TABLE_COLUMNS,
-  MAX_TABLE_BORDER_SIZE_EIGHTHS,
-  MIN_TABLE_BORDER_SIZE_EIGHTHS,
   MIN_TABLE_COLUMN_WIDTH_TWIPS,
 } from '../store/store/table-constraints.ts';
 import { tableInteractionIndex } from '../layout/semantic-table-interaction.ts';
@@ -43,15 +41,13 @@ import type {
   TableColumnOccurrenceTarget,
   TableRowOccurrenceTarget,
 } from '../layout/table-interaction-targets.ts';
-import { lowerColorValueForBorder, lowerColorValueForFill } from './color-value-lower.ts';
+import { lowerBorderSpec, lowerColorValueForFill } from './color-value-lower.ts';
 import type {
   TableBorderEdgeTarget,
-  TableBorderSpecInput,
   TreeDocColorValue,
   TreeDocOp,
   TreeOpRejection,
 } from '../store/store/tree-op-types.ts';
-import { TABLE_BORDER_STYLES } from '../store/table-border-style.ts';
 import { planSelectTableRegion } from './table-select-plan.ts';
 import { toggleHeaderRowOp } from './table-header-row.ts';
 
@@ -125,6 +121,8 @@ interface ResolvedAnchor {
   readonly cellId: string;
   readonly cellIds: readonly string[];
   readonly gridColumnIndex: number;
+  /** The anchor cell's authored grid column: layout indexes only the columns cells reach. */
+  readonly gridColumnId?: string;
   readonly isHeaderRepeat: boolean;
 }
 
@@ -493,6 +491,7 @@ function resolveAnchor(input: TableCommandPlannerInput): ResolvedAnchor | null {
     cellId: anchor.cellId,
     cellIds: [...anchor.cellIds],
     gridColumnIndex: anchor.gridColumnIndex,
+    ...(anchor.gridColumnId ? { gridColumnId: anchor.gridColumnId } : {}),
     isHeaderRepeat: anchor.isHeaderRepeat,
   };
 }
@@ -583,31 +582,6 @@ function planValidated(
   const invalid = validateOps(part, ops);
   if (invalid) return invalid;
   return { ok: true, ops, selection };
-}
-
-function lowerBorderSpec(
-  spec: { style: string; size: number; color: ColorValue },
-  themeColors: readonly DocumentThemeColorEntry[]
-): { ok: true; spec: TableBorderSpecInput } | { ok: false; reason: string } {
-  if (!(TABLE_BORDER_STYLES as readonly string[]).includes(spec.style)) {
-    return { ok: false, reason: 'border style is not allowlisted' };
-  }
-  if (!Number.isInteger(spec.size) || spec.size < MIN_TABLE_BORDER_SIZE_EIGHTHS) {
-    return { ok: false, reason: 'border size is out of range' };
-  }
-  if (spec.size > MAX_TABLE_BORDER_SIZE_EIGHTHS) {
-    return { ok: false, reason: 'border size is out of range' };
-  }
-  const color = lowerColorValueForBorder(spec.color, themeColors);
-  if (!color.ok) return { ok: false, reason: color.reason };
-  return {
-    ok: true,
-    spec: {
-      style: spec.style as TableBorderSpecInput['style'],
-      size: spec.size,
-      color: color.color,
-    },
-  };
 }
 
 function revalidateExplicitStoreTarget(
@@ -857,6 +831,7 @@ export function planTableCommand(input: TableCommandPlannerInput): TableCommandP
       const gridColumnId =
         columnTarget?.gridColumnId ??
         outerColumnOfSelection(part, anchor, where) ??
+        anchor.gridColumnId ??
         gridColumnIdAt(part, tableId, anchor.gridColumnIndex);
       const op: TreeDocOp = gridColumnId
         ? {
@@ -877,7 +852,9 @@ export function planTableCommand(input: TableCommandPlannerInput): TableCommandP
       if (!anchor) return refusal('unsupported', 'the selection is not inside a table');
       const tableId = columnTarget?.tableId ?? anchor.tableId;
       const gridColumnId =
-        columnTarget?.gridColumnId ?? gridColumnIdAt(part, tableId, anchor.gridColumnIndex);
+        columnTarget?.gridColumnId ??
+        anchor.gridColumnId ??
+        gridColumnIdAt(part, tableId, anchor.gridColumnIndex);
       if (!gridColumnId) {
         return refusal('invalidArgs', 'the table has no grid column to delete');
       }

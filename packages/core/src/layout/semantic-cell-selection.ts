@@ -633,6 +633,8 @@ export function tableAnchorAt(
   readonly cellId: string;
   readonly cellIds: readonly string[];
   readonly gridColumnIndex: number;
+  /** The authored `w:gridCol` the cell starts at, where the grid states one. */
+  readonly gridColumnId?: string;
   readonly isHeaderRepeat: boolean;
 } | null {
   if (cellSelection) {
@@ -650,6 +652,7 @@ export function tableAnchorAt(
         cellId: firstCellId,
         cellIds: cellSelection.cellIds,
         gridColumnIndex: entry.cell.logicalGridColumn ?? entry.cell.gridColumn,
+        ...(entry.cell.gridColumnId ? { gridColumnId: entry.cell.gridColumnId } : {}),
         isHeaderRepeat: entry.isHeaderRepeat,
       };
     }
@@ -670,6 +673,7 @@ export function tableAnchorAt(
       cellId: entry.cell.id,
       cellIds: [entry.cell.id],
       gridColumnIndex: entry.cell.logicalGridColumn ?? entry.cell.gridColumn,
+      ...(entry.cell.gridColumnId ? { gridColumnId: entry.cell.gridColumnId } : {}),
       isHeaderRepeat: entry.row.isHeaderRepeat,
     };
   }

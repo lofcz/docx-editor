@@ -8,6 +8,14 @@ import {
 } from './clipboard-object-selection.ts';
 import { fragmentFromHtml } from './clipboard-fragment-codec.ts';
 import { chartCopyFlavours, pasteCopiedChart } from './surface-chart-clipboard.ts';
+import {
+  DRAWING_CLIPBOARD_STORY_REASON,
+  DRAWING_PASTE_CELLS_REASON,
+  drawingCopyFlavours,
+  floatingDrawingEndingAt,
+  isDrawingCopyHtml,
+  DRAWING_PASTE_VIEWING_REASON,
+} from './surface-drawing-clipboard.ts';
 import { partOfNodeId } from './surface-scope.ts';
 // Copy, cut and paste for the paginated surface (paginated-surface seam).
 //
@@ -48,6 +56,7 @@ import { fieldResultSpeller, REMOVED_COPY_UNIT, copiedText } from '../layout/fie
 import { paragraphMarkDeleted } from '../layout/revision-visibility.ts';
 import type { OoxmlPart } from '@docx-editor.dev/core/store';
 import { findNode, parentNodeOf } from '../store/package/ooxml-edit.ts';
+import type { FragmentPasteEnd } from '../store/store/tree-package-fragment.ts';
 import { clampTextFormPaste } from './text-form-field-paste.ts';
 import {
   collapsedAt,
@@ -136,8 +145,15 @@ export interface SurfaceClipboardDeps {
     run: () => TreeApplyResult | boolean,
     selectionAfter?: () => SemanticSelection | null
   ): void;
-  /** The selected drawing, when an object selection holds one. */
-  selectedDrawing?(): { readonly drawingNodeId: string; readonly ownerPartName: string } | null;
+  /**
+   * The selected drawing, when an object selection holds one, and whether a shape inside it is
+   * selected rather than the drawing itself.
+   */
+  selectedDrawing?(): {
+    readonly drawingNodeId: string;
+    readonly ownerPartName: string;
+    readonly groupMemberSelected?: boolean;
+  } | null;
   /** Select a pasted drawing and bring it into view. */
   selectPastedDrawing?(drawingNodeId: string, paragraphId: string): void;
 }
@@ -278,6 +294,9 @@ export function createSurfaceClipboardOps(deps: SurfaceClipboardDeps): SurfaceCl
     // One selected chart copies whole, through the in-memory chart clipboard.
     const chartCopy = chartCopyFlavours(deps);
     if (chartCopy) return chartCopy;
+    // Any other selected drawing copies whole as a one-drawing fragment.
+    const drawingCopy = drawingCopyFlavours(deps);
+    if (drawingCopy) return drawingCopy;
     const rectangle = deps.cellSelection();
     const range = deps.orderedRange();
     const order = deps.paragraphOrder();
@@ -387,6 +406,7 @@ export function createSurfaceClipboardOps(deps: SurfaceClipboardDeps): SurfaceCl
     const target = plan.replaceAt ?? plan.collapseTo;
     let landed = false;
     let unsupported = false;
+    let end: FragmentPasteEnd | undefined;
     deps.commit(
       () => {
         // The readiness gate the typing lane asks. A fragment paste reaches the store
@@ -418,6 +438,7 @@ export function createSurfaceClipboardOps(deps: SurfaceClipboardDeps): SurfaceCl
           }
         );
         landed = result.ok;
+        if (result.ok) end = result.end;
         if (landed && suggestion) deps.trackedChangeLanded?.();
         unsupported = !result.ok && result.detail === 'fragment-merge:unsupported-content';
         return {
@@ -444,9 +465,21 @@ export function createSurfaceClipboardOps(deps: SurfaceClipboardDeps): SurfaceCl
             break;
           }
         }
-        return collapsedAt(target);
+        // Word leaves the caret at the END of the pasted content, as the plain lane does.
+        // The landing paragraph is created inside the transaction, so the store reports it.
+        return collapsedAt(end ?? target);
       }
     );
+    // A paste that landed exactly one floating drawing selects it, so the copy is ready to move.
+    if (
+      landed &&
+      end &&
+      end.paragraphId === target.paragraphId &&
+      end.offset === target.offset + 1
+    ) {
+      const drawingNodeId = floatingDrawingEndingAt(session.part(), end.paragraphId, end.offset);
+      if (drawingNodeId) deps.selectPastedDrawing?.(drawingNodeId, end.paragraphId);
+    }
     return unsupported ? 'unsupported-content' : landed;
   }
 
@@ -458,14 +491,29 @@ export function createSurfaceClipboardOps(deps: SurfaceClipboardDeps): SurfaceCl
     forcePlainPasteArmedAt = null;
     const chart = forcePlain ? null : pasteCopiedChart(deps, html);
     if (chart !== null) return chart;
+    const storyOpen = (deps.richPasteAllowed?.() ?? true) && deps.storyScope().kind === 'body';
+    // A copied drawing lands only at a caret in the main story. Elsewhere it refuses, rather than
+    // pasting a text box's text alone or nothing at all. Cmd+Shift+V still pastes the text.
+    const cells = deps.cellSelection() !== null;
+    const viewing = deps.editingMode() === 'view';
+    if (!forcePlain && isDrawingCopyHtml(html) && (!storyOpen || cells || viewing)) {
+      const reason = viewing
+        ? DRAWING_PASTE_VIEWING_REASON
+        : storyOpen
+          ? DRAWING_PASTE_CELLS_REASON
+          : DRAWING_CLIPBOARD_STORY_REASON;
+      deps.commit(
+        () => ({ committed: false, rejected: true, opCount: 0, reason }) as TreeApplyResult
+      );
+      return false;
+    }
     const lane = routePaste(
       {
         richLaneOpen:
-          (deps.richPasteAllowed?.() ?? true) &&
+          storyOpen &&
           (deps.editingMode() === 'edit' ||
             (deps.editingMode() === 'suggest' && deps.suggestion?.() !== undefined)) &&
-          deps.storyScope().kind === 'body' &&
-          deps.cellSelection() === null,
+          !cells,
         pasteFragment: (fragmentBytes, lastMarkCovered) =>
           pasteFragmentBytes(fragmentBytes, lastMarkCovered),
         insertPlainText,

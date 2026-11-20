@@ -11,13 +11,17 @@ import type { TreeDocxSessionView } from '@docx-editor.dev/core/binding';
 import type { NavigationCommand } from '@docx-editor.dev/core/layout';
 import { paragraphTextOf } from '@docx-editor.dev/core/store';
 import type { PaginatedSurface } from './paginated-surface-contract.ts';
+
+type CopyFlavours = ReturnType<PaginatedSurface['copyFlavours']>;
 import { plainTextFromTransfer } from './clipboard-plain-text.ts';
 import { selectionsEqual, spanSearchRoots } from './dom-selection.ts';
 import { partOfNodeId } from './surface-scope.ts';
 import { collapsedAt } from './surface-selection-ops.ts';
-import { paintedTextIn } from './surface-composition-readback.ts';
+import { paintedTextIn, type CompositionSpanChanges } from './surface-composition-readback.ts';
+import type { ImeDeletionPlan } from './surface-ime-deletion.ts';
 import { historyShortcutOf } from './history-shortcut.ts';
 import { prepareCollapsedBrowserInput } from './surface-input-collapse.ts';
+import { surfaceCrossNoteRefusal } from './surface-note-story.ts';
 import {
   moveByTabInTable,
   selectionHeadInTableCell,
@@ -471,23 +475,26 @@ export function createClipboardHandlers(surface: PaginatedSurface): {
   onCut: (event: ClipboardEvent) => void;
   onPaste: (event: ClipboardEvent) => void;
 } {
-  const writeFlavours = (event: ClipboardEvent): boolean => {
+  /** The flavours to write, or null when there is nothing to copy or the copy refused. */
+  const flavoursFor = (event: ClipboardEvent): CopyFlavours | null => {
     const flavours = surface.copyFlavours();
     if (flavours.reason) {
       event.preventDefault();
-      return false;
+      return null;
     }
-    // A chart's name can be empty; its HTML flavour still carries the copy.
-    if ((!flavours.text && !flavours.chartDrawingNodeId) || !event.clipboardData) return false;
+    // A selected drawing copies no text; its HTML flavour carries the copy.
+    if ((!flavours.text && !flavours.drawingNodeId) || !event.clipboardData) return null;
+    return flavours;
+  };
+  const write = (event: ClipboardEvent, flavours: CopyFlavours): void => {
     event.clipboardData?.setData('text/plain', flavours.text);
     if (flavours.html) event.clipboardData?.setData('text/html', flavours.html);
-    chartCut = flavours.chartDrawingNodeId ?? null;
-    return true;
   };
-  let chartCut: string | null = null;
 
   const onCopy = (event: ClipboardEvent): void => {
-    if (!writeFlavours(event)) return;
+    const flavours = flavoursFor(event);
+    if (!flavours) return;
+    write(event, flavours);
     event.preventDefault();
   };
 
@@ -497,11 +504,23 @@ export function createClipboardHandlers(surface: PaginatedSurface): {
       event.preventDefault();
       return;
     }
-    if (!writeFlavours(event)) return;
-    // A cut of one selected chart deletes that chart; there is no text range to delete.
-    if (chartCut) surface.deleteImage(chartCut);
-    else surface.deleteSelection();
+    // Across notes the delete is refused, so the cut copies nothing either.
+    if (surfaceCrossNoteRefusal(surface)) {
+      event.preventDefault();
+      surface.deleteSelection(); // Publishes the refusal reason.
+      return;
+    }
+    const flavours = flavoursFor(event);
+    if (!flavours) return;
     event.preventDefault();
+    // A cut of one selected drawing deletes that drawing; there is no text range to delete.
+    // The clipboard is written only when the delete lands, so a refused cut is not a copy.
+    if (flavours.drawingNodeId) {
+      if (surface.deleteImage(flavours.drawingNodeId).ok) write(event, flavours);
+      return;
+    }
+    write(event, flavours);
+    surface.deleteSelection();
   };
 
   const onPaste = (event: ClipboardEvent): void => {
@@ -537,8 +556,35 @@ export function createBeforeInputHandler(
      * selection and treats the queued echo as the browser's, not the user's.
      */
     readonly onBrowserSelectionFixup?: () => void;
+    /**
+     * How a `deleteContentBackward` / `deleteContentForward` event deletes: the steps its
+     * target range names at the caret, or a range the browser shows selected. Without it,
+     * each event is one step. See surface-ime-deletion.ts.
+     */
+    readonly deletionPlan?: (
+      event: InputEvent,
+      direction: 'backward' | 'forward'
+    ) => ImeDeletionPlan;
+    /** Run that many steps, stopping at one that changes nothing. Without it, all run. */
+    readonly runDeletionSteps?: (count: number, step: () => void) => void;
+    /** A deletion arrived as `beforeinput`: from an input method, never from the keymap. */
+    readonly onInputMethodDeletion?: () => void;
   }
 ): (event: InputEvent) => void {
+  const deleteBy = (event: InputEvent, direction: 'backward' | 'forward'): void => {
+    const step = direction === 'backward' ? surface.deleteBackward : surface.deleteForward;
+    const plan = hooks.deletionPlan?.(event, direction) ?? { kind: 'steps', count: 1 };
+    if (plan.kind === 'selection') {
+      surface.setSelection(plan.selection);
+      step.call(surface);
+    } else {
+      const run = () => step.call(surface);
+      // Without the hook, one step: the planner that counts is the same lane that runs them.
+      if (hooks.runDeletionSteps) hooks.runDeletionSteps(plan.count, run);
+      else run();
+    }
+    hooks.onInputMethodDeletion?.();
+  };
   return (event: InputEvent): void => {
     // PREVENTED FIRST, dispatched second.
     //
@@ -577,19 +623,21 @@ export function createBeforeInputHandler(
       return;
     }
     if (event.inputType === 'deleteContentBackward') {
-      surface.deleteBackward();
+      deleteBy(event, 'backward');
       return;
     }
     if (event.inputType === 'deleteWordBackward') {
       surface.deleteWordBackward();
+      hooks.onInputMethodDeletion?.();
       return;
     }
     if (event.inputType === 'deleteContentForward') {
-      surface.deleteForward();
+      deleteBy(event, 'forward');
       return;
     }
     if (event.inputType === 'deleteWordForward') {
       surface.deleteWordForward();
+      hooks.onInputMethodDeletion?.();
       return;
     }
     if (event.inputType === 'insertLineBreak') {
@@ -724,10 +772,11 @@ export function paintedTextOf(
   pagesLayer: HTMLElement,
   paragraphId: string,
   modelText: string,
-  anchor: Node | null = null
+  anchor: Node | null = null,
+  changes?: CompositionSpanChanges
 ): string | null {
   for (const root of spanSearchRoots(pagesLayer)) {
-    const painted = paintedTextIn(root, paragraphId, modelText, anchor);
+    const painted = paintedTextIn(root, paragraphId, modelText, anchor, changes);
     if (painted !== null) return painted;
   }
   return null;

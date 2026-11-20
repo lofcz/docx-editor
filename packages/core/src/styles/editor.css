@@ -264,6 +264,15 @@
   /* Text highlights (Find results, host marks). Opaque, because the layer multiplies. */
   --doc-text-highlight-color: #fff176;
   --doc-text-highlight-active-color: #ff9632;
+  /* Proofing marks the browser paints through the CSS Custom Highlight API. */
+  --doc-proofing-spelling-color: #e53935;
+  --doc-proofing-grammar-color: #1e88e5;
+  /* Proofing annotation marks, one per critique color scheme. Opaque, as above. */
+  --doc-critique-red-color: #ffcdd2;
+  --doc-critique-green-color: #c8e6c9;
+  --doc-critique-blue-color: #bbdefb;
+  --doc-critique-lavender-color: #e1d5f5;
+  --doc-critique-berry-color: #f8bbd9;
   --doc-motion-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
 
   /* ----------------------------------------------------------------------
@@ -401,6 +410,11 @@
   /* The text highlight layer screens in dark mode, so these lift the dark sheet. */
   --doc-text-highlight-color: rgba(255, 214, 0, 0.32);
   --doc-text-highlight-active-color: rgba(255, 150, 50, 0.62);
+  --doc-critique-red-color: rgba(244, 67, 54, 0.34);
+  --doc-critique-green-color: rgba(76, 175, 80, 0.34);
+  --doc-critique-blue-color: rgba(33, 150, 243, 0.34);
+  --doc-critique-lavender-color: rgba(149, 117, 205, 0.34);
+  --doc-critique-berry-color: rgba(216, 27, 96, 0.34);
   /* NOT the author ramp. It used to be lifted here, back when only the review cards read
      it — but the ramp now colours the painted DOCUMENT too, and the dark page is rendered
      through `invert(1) hue-rotate(180deg)` (see `.docx-page-content` below). A colour
@@ -1489,6 +1503,32 @@ a.docx-hyperlink:focus-visible {
   cursor: text;
 }
 
+/* A press on a text box's edge selects the box, and a press inside places the caret. The inset
+ * band alone can be 3px high, so the edge gets a 7px ring inside the frame, over the edge of the
+ * text area, with the move cursor. The clip cuts the middle out, so a press there still reaches
+ * the text. The ring is in screen pixels, so it keeps its size at every zoom, and it turns with
+ * a rotated box. The drawing clips what lies past its frame, so the ring stays inside. */
+.docx-drawing-textbox-box::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  cursor: move;
+  clip-path: polygon(
+    evenodd,
+    0 0,
+    100% 0,
+    100% 100%,
+    0 100%,
+    0 0,
+    7px 7px,
+    7px calc(100% - 7px),
+    calc(100% - 7px) calc(100% - 7px),
+    calc(100% - 7px) 7px,
+    7px 7px
+  );
+}
+
 .docx-drawing-layer {
   position: absolute;
   inset: 0;
@@ -2470,6 +2510,13 @@ a.docx-hyperlink:focus-visible {
 
 .docx-image-selection-overlay__frame.docx-editor-one-surface__overlay-control {
   pointer-events: auto;
+}
+
+/* An unseen band around a turned frame takes the drag: a turned line's frame is one border thick. */
+.docx-image-selection-overlay__frame[data-turned='true']::before {
+  content: '';
+  position: absolute;
+  inset: -5px;
 }
 
 .docx-image-selection-overlay__handle {
@@ -3554,6 +3601,10 @@ a.docx-hyperlink:focus-visible {
 .docx-paginated-surface--viewing .docx-drawing-textbox {
   cursor: default;
 }
+/* Viewing selects no object, so a text box's edge ring has nothing to do. */
+.docx-paginated-surface--viewing .docx-drawing-textbox-box::after {
+  display: none;
+}
 
 @media print {
   .docx-hf--placeholder,
@@ -3928,6 +3979,7 @@ a.docx-hyperlink:focus-visible {
 .docx-pages[data-format-painter] .docx-page-content,
 .docx-pages[data-format-painter] .docx-page,
 .docx-pages[data-format-painter] .docx-drawing-textbox,
+.docx-pages[data-format-painter] .docx-drawing-textbox-box::after,
 .docx-pages[data-format-painter] .docx-hf,
 .docx-pages[data-format-painter] .docx-hf-hover,
 .docx-pages[data-format-painter] .docx-hyperlink {
@@ -4685,6 +4737,15 @@ a.docx-hyperlink:focus-visible {
   color: var(--doc-primary);
 }
 
+/* Alt text has no glyph, so the bar shows its label: one line, sized to the text. */
+.docx-toolbar__button.docx-toolbar__alt-text-trigger {
+  width: auto;
+  padding: 0 8px;
+  font: inherit;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
 /* Split colour controls (font colour, highlight): the two-half button —
  * a 28px main half stacking the glyph over a 16×4 colour bar, and an 18px
  * chevron half; a 2px gap sells "two buttons" without a divider line. */
@@ -5043,6 +5104,19 @@ a.docx-hyperlink:focus-visible {
   height: 1px;
   margin: 4px 0;
   background: var(--doc-border);
+}
+
+/* The note context menu opens at the pointer; its position is set inline. */
+.docx-notes-menu {
+  position: fixed;
+  min-width: 220px;
+  max-width: calc(100vw - 16px);
+  padding: 6px 0;
+  overflow-y: auto;
+  background: var(--doc-popover-bg);
+  border: 1px solid var(--doc-border);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px var(--doc-shadow);
 }
 
 .docx-hf-chrome__unit {
@@ -7163,6 +7237,20 @@ p.docx-review__refused {
   );
 }
 
+/* Highlight sets with a `kind`: the covered text joins a shared `spelling-error` or
+ * `grammar-error` highlight where the browser has the CSS Custom Highlight API. The browser
+ * exposes that type to assistive technology; this rule draws the usual wavy underline. The
+ * overlay marks above still paint the set's own color and classes in every browser. */
+.docx-editor ::highlight(docx-spelling-error) {
+  text-decoration: underline wavy var(--doc-proofing-spelling-color);
+  text-decoration-skip-ink: none;
+}
+
+.docx-editor ::highlight(docx-grammar-error) {
+  text-decoration: underline wavy var(--doc-proofing-grammar-color);
+  text-decoration-skip-ink: none;
+}
+
 /* The editing-mode control: a pill that shows the current mode and a menu that changes it.
  * The one toolbar control whose state is a VALUE, so it renders what it shows rather than a
  * pressed flag. */
@@ -7229,7 +7317,7 @@ p.docx-review__refused {
   color: var(--doc-accent, #1a73e8);
 }
 
-/* Word for Mac's reviewer submenu: All, then one checked row per document author. */
+/* Reviewer submenu: All, then one checked row per document author. */
 .docx-toolbar__reviewers {
   position: relative;
   display: inline-flex;
@@ -7823,7 +7911,8 @@ p.docx-review__refused {
    * wrapper's mouseleave, and close the submenu the user was moving toward. Visual
    * separation comes from the card's own border and shadow. */
   margin-inline-start: 0;
-  min-width: 240px;
+  min-width: min(240px, calc(100vw - 16px));
+  max-width: calc(100vw - 16px);
 }
 
 /* The third-level reviewer list can be long. Keep the hierarchy anchored to its source,
@@ -7939,17 +8028,27 @@ p.docx-review__refused {
  * card holding `.docx-menubar__item` rows — the same object the menu bar drops under a
  * trigger — so a row means the same thing in both places and the disabled treatment has
  * one definition. What this block adds is only what differs: the panel is placed in client
- * space by the component rather than relative to a trigger, and it sits above the dialogs
- * and dropdowns (z-index 40) because it is opened ON them as often as on the page. */
+ * space by the component rather than relative to a trigger, and it opens in the top layer
+ * (`popover="manual"`), so a host header or a docked pane with its own stacking context
+ * cannot paint over it. The `z-index` is the fallback where the popover API is missing. */
 .docx-editor .docx-contextmenu,
 .docx-contextmenu {
   z-index: var(--doc-z-context);
-  min-width: 240px;
-  /* A menu longer than the window scrolls rather than overflowing it. The flip in
-   * `DocxEditorContextMenu` clamps the panel to the top inset when it cannot fit; without
-   * a max height and a scroller, the rows below the fold would be unreachable. */
+  /* Never wider than the window less both insets: a narrow window keeps the right edge in
+   * view. The component sets the exact cap from the window it measured. */
+  min-width: min(240px, calc(100vw - 16px));
+  max-width: calc(100vw - 16px);
+  /* A menu longer than the window scrolls rather than overflowing it. The component sets
+   * the exact cap from the window it measured; this is the value before it does. */
   max-height: calc(100vh - 16px);
   overflow-y: auto;
+}
+
+/* The popover defaults center the panel in the viewport (`inset: 0; margin: auto`). The
+ * component places it at the pointer through `left` and `top` instead. */
+.docx-contextmenu[popover] {
+  inset: auto;
+  margin: 0;
 }
 
 /* The panel is `position: fixed`, so it renders OUTSIDE the `.docx-editor` cascade's usual
@@ -7967,6 +8066,15 @@ p.docx-review__refused {
 .docx-contextmenu .docx-menubar__item {
   gap: 12px;
   width: 100%;
+}
+
+/* `ContextMenu.Start` ends with a separator, and host rows can bring their own, so a
+ * separator with nothing above it, nothing below it, or another separator before it is
+ * hidden rather than drawn as a stray or doubled rule. */
+.docx-contextmenu > .docx-toolbar__menu-separator:first-child,
+.docx-contextmenu > .docx-toolbar__menu-separator:last-child,
+.docx-contextmenu > .docx-toolbar__menu-separator + .docx-toolbar__menu-separator {
+  display: none;
 }
 
 .docx-contextmenu__table-align {
@@ -9582,7 +9690,7 @@ p.docx-review__refused {
 }
 
 /* The pane: sections with small capital titles, labels over full-width fields. */
-.docx-editor .docx-chart-pane {
+:is(.docx-editor .docx-chart-pane, .docx-editor.docx-chart-pane) {
   display: flex;
   flex-direction: column;
   gap: 24px;
@@ -9766,7 +9874,7 @@ p.docx-review__refused {
 }
 
 /* A color: the list of choices, then a swatch that opens the color grid. */
-.docx-editor .docx-chart-pane__color {
+:is(.docx-editor .docx-chart-pane__color, .docx-editor.docx-chart-pane__color) {
   position: relative;
   display: flex;
   align-items: flex-end;
@@ -9795,7 +9903,7 @@ p.docx-review__refused {
   flex-direction: column;
   gap: 8px;
   padding: 12px;
-  background: var(--doc-popover-bg, var(--doc-surface));
+  background: var(--doc-popover-bg);
   border: 1px solid var(--doc-border);
   border-radius: 10px;
   box-shadow: var(--doc-card-shadow-strong, 0 8px 24px var(--doc-shadow));
@@ -9808,6 +9916,14 @@ p.docx-review__refused {
 .docx-editor[dir='rtl'] .docx-chart-pane__grid,
 [dir='rtl'] .docx-editor .docx-chart-pane__grid {
   transform-origin: top left;
+}
+.docx-editor .docx-chart-pane__grid[data-align='start'] {
+  inset-inline-start: 0;
+  inset-inline-end: auto;
+  transform-origin: top left;
+}
+[dir='rtl'] .docx-editor .docx-chart-pane__grid[data-align='start'] {
+  transform-origin: top right;
 }
 @starting-style {
   .docx-editor .docx-chart-pane__grid {
@@ -9877,6 +9993,76 @@ p.docx-review__refused {
   .docx-editor .docx-chart-pane__icon-button,
   .docx-editor .docx-chart-pane__color-button,
   .docx-editor .docx-chart-pane :where(.docx-dialog__button) {
+    transform: none !important;
+  }
+}
+
+/* The Format shape pane: it reuses the Chart pane's sections, fields, and color grid. A color
+   field is a label over one button that shows the current color and its name. */
+:is(.docx-editor .docx-shape-pane__color, .docx-editor.docx-shape-pane__color) {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+.docx-editor .docx-shape-pane__color-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 36px;
+  padding: 0 10px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--doc-text);
+  text-align: start;
+  background: var(--doc-surface);
+  border: 1px solid var(--doc-border-input);
+  border-radius: 8px;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.docx-editor .docx-shape-pane__color-button:where(:disabled) {
+  color: var(--doc-text-subtle);
+  cursor: default;
+}
+@media (hover: hover) and (pointer: fine) {
+  .docx-editor .docx-shape-pane__color-button:where(:hover:not(:disabled)) {
+    background: var(--doc-bg-hover);
+  }
+}
+.docx-editor .docx-shape-pane__color-button:where(:active:not(:disabled)) {
+  transform: scale(0.98);
+}
+.docx-editor .docx-shape-pane__color-button:where(:focus-visible) {
+  outline: 2px solid var(--doc-focus-ring);
+  outline-offset: 1px;
+}
+.docx-editor .docx-shape-pane__chip {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--doc-border);
+  border-radius: 4px;
+}
+/* No color: an empty chip crossed by one line. */
+.docx-editor .docx-shape-pane__chip:where([data-none='true']) {
+  background: linear-gradient(
+    to top right,
+    transparent calc(50% - 1px),
+    var(--doc-text-muted) calc(50% - 1px),
+    var(--doc-text-muted) calc(50% + 1px),
+    transparent calc(50% + 1px)
+  );
+}
+.docx-editor .docx-shape-pane__summary {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (prefers-reduced-motion: reduce) {
+  .docx-editor .docx-shape-pane__color-button {
     transform: none !important;
   }
 }
@@ -10012,4 +10198,181 @@ p.docx-review__refused {
   overflow: visible;
   -webkit-line-clamp: unset;
   line-clamp: unset;
+}
+
+/* The shared colour picker and the shape and chart parts. A part is placement-free: a field
+   (label over control) in a pane, popover, or drawer, or a compact control in a toolbar. */
+:is(.docx-editor .docx-color-picker, .docx-editor.docx-color-picker) {
+  position: relative;
+  font-family: var(--doc-font-ui, system-ui, sans-serif);
+  color: var(--doc-text);
+}
+/* A grid in a host container carries the scope class itself. */
+.docx-editor.docx-color-picker__content {
+  font-family: var(--doc-font-ui, system-ui, sans-serif);
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--doc-text);
+}
+/* It stacks No color, the titles, and the swatch rows, as the popover grid does. */
+.docx-editor.docx-color-picker__content--inline {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.docx-editor .docx-color-picker__hex {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.docx-editor .docx-color-picker__hex .docx-dialog__input {
+  width: 100%;
+}
+/* A part placed outside the editor carries the scope class itself, so each rule on the part's own
+   element also matches that element. */
+:is(.docx-editor .docx-object-control, .docx-editor.docx-object-control) {
+  font-family: var(--doc-font-ui, system-ui, sans-serif);
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--doc-text);
+}
+:is(.docx-editor .docx-object-control--field, .docx-editor.docx-object-control--field) {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+:is(.docx-editor .docx-object-control--compact, .docx-editor.docx-object-control--compact) {
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.docx-editor .docx-object-control--compact .docx-chart-pane__field {
+  position: relative;
+  gap: 0;
+}
+.docx-editor .docx-object-control--compact .docx-dialog__input {
+  height: 28px;
+  min-width: 0;
+  max-width: 160px;
+  font-size: 13px;
+}
+/* In a toolbar a list reads as the toolbar's own pickers (the style picker): no box, a muted
+   chevron, the hover slab. The native list still opens, so the keyboard and screen readers keep
+   the platform behavior. */
+.docx-editor .docx-object-control--compact .docx-dialog__select {
+  appearance: none;
+  flex: none;
+  width: auto;
+  min-width: 0;
+  max-width: 160px;
+  height: 28px;
+  padding: 0 20px 0 8px;
+  font-size: 13px;
+  line-height: 28px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  transition: background-color 0.12s ease;
+}
+.docx-editor
+  .docx-object-control--compact
+  .docx-chart-pane__field:has(.docx-dialog__select)::after {
+  content: '▾';
+  position: absolute;
+  top: 50%;
+  right: 7px;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--doc-text-muted);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.docx-editor .docx-object-control--compact .docx-dialog__select {
+  text-overflow: ellipsis;
+}
+.docx-editor .docx-object-control--compact[data-slot='shape.outlineWidth'] .docx-dialog__select {
+  width: 72px;
+}
+.docx-editor .docx-object-control--compact[data-slot='shape.outlineDash'] .docx-dialog__select {
+  width: 120px;
+}
+.docx-editor .docx-object-control--compact .docx-dialog__select:where(:hover:not(:disabled)) {
+  background: var(--doc-border);
+}
+.docx-editor .docx-object-control--compact .docx-dialog__select:where(:focus-visible) {
+  outline: 2px solid var(--doc-focus-ring);
+  outline-offset: -2px;
+}
+.docx-editor .docx-object-control--compact .docx-dialog__select:where(:disabled) {
+  opacity: 0.5;
+  cursor: default;
+}
+/* In a toolbar a colour reads as font colour does: the glyph over a 16×4 bar of the colour, and
+   a muted chevron, on a borderless button. The bar covers the glyph's own bar. */
+.docx-editor .docx-object-control--compact .docx-color-picker__trigger {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  width: auto;
+  min-height: 0;
+  height: 28px;
+  padding: 0 4px 0 5px;
+  color: var(--doc-text-muted);
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  transition:
+    background-color 0.12s ease,
+    color 0.12s ease;
+}
+.docx-editor .docx-object-control--compact .docx-color-picker__trigger::after {
+  content: '▾';
+  font-size: 10px;
+  line-height: 1;
+  color: var(--doc-text-muted);
+}
+@media (hover: hover) and (pointer: fine) {
+  .docx-editor
+    .docx-object-control--compact
+    .docx-color-picker__trigger:where(:hover:not(:disabled)) {
+    color: var(--doc-text);
+    background: var(--doc-border);
+  }
+}
+.docx-editor .docx-object-control--compact .docx-color-picker__trigger:where(:disabled) {
+  opacity: 0.5;
+}
+.docx-editor .docx-object-control--compact .docx-object-control__icon {
+  display: inline-flex;
+}
+.docx-editor .docx-object-control--compact .docx-color-picker__chip {
+  position: absolute;
+  top: 20px;
+  left: 6px;
+  width: 16px;
+  height: 4px;
+  border: none;
+  border-radius: 1px;
+  pointer-events: none;
+}
+/* White, and no colour, would vanish on the toolbar: both keep a hairline edge. */
+.docx-editor
+  .docx-object-control--compact
+  .docx-color-picker__trigger:where([data-color='#FFFFFF' i])
+  .docx-color-picker__chip,
+.docx-editor .docx-object-control--compact .docx-color-picker__chip:where([data-none='true']) {
+  box-shadow: inset 0 0 0 1px var(--doc-border-dark);
+}
+.docx-editor .docx-object-control--compact .docx-color-picker__chip:where([data-none='true']) {
+  background: var(--doc-surface);
+}
+.docx-editor .docx-object-control--compact .docx-color-picker__summary {
+  display: none;
+}
+.docx-editor .docx-object-control__icon svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
 }

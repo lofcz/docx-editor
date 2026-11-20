@@ -154,6 +154,41 @@ test('dynamic registration and unregistration mount only matching payload types'
   }
 });
 
+test('native repaints retain a widget view and explicit host refresh renders it again', async () => {
+  const previous = environment.IS_REACT_ACT_ENVIRONMENT;
+  environment.IS_REACT_ACT_ENVIRONMENT = true;
+  const editor = createDocxEditor({
+    container: document.createElement('div'),
+    document: reactBlockDocument(),
+  });
+  let renders = 0;
+  let host: ReturnType<typeof mountReactBlockHost> | undefined;
+  function View() {
+    renders++;
+    return <button>Widget</button>;
+  }
+  try {
+    await act(async () => {
+      host = mountReactBlockHost(editor, new Map([['test_counter', View]]));
+    });
+    const initial = renders;
+    expect(initial).toBeGreaterThan(0);
+    // The second borrowing observer forces a native paint without a package or layout change.
+    await act(async () => {
+      editor.surface!.observePaint({ beforePaint() {}, afterPaint() {} })();
+    });
+    expect(renders).toBe(initial);
+    await act(async () => host!.refresh());
+    expect(renders).toBeGreaterThan(initial);
+  } finally {
+    await act(async () => {
+      host?.dispose();
+      editor.destroy();
+    });
+    environment.IS_REACT_ACT_ENVIRONMENT = previous;
+  }
+});
+
 for (const receiver of [0, 1] as const)
   test(`two real sessions retain widget roots through reconnect, peer-preserving history, deletion, and save; receiver ${receiver}`, async () => {
     const previous = environment.IS_REACT_ACT_ENVIRONMENT;

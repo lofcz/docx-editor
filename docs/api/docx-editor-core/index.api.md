@@ -5,6 +5,21 @@
 ```ts
 
 // @public
+export function acceptedOffsetFromText(paragraph: ParagraphText, offset: number): number;
+
+// @public
+export interface AcceptedTextRange {
+    readonly blockId: string;
+    readonly expectedText?: string;
+    readonly length: number;
+    readonly scope?: ViewScope;
+    readonly start: number;
+}
+
+// @public
+export function acceptedTextRanges(paragraph: ParagraphText, from: number, to: number): HighlightRange[];
+
+// @public
 export interface AnchorHighlightAnimation {
     readonly durationMs?: number;
     readonly easing?: string;
@@ -210,6 +225,34 @@ export type ChartFormatRead = {
 
 // @public
 export type ChartLegendPosition = 'none' | 'top' | 'bottom' | 'left' | 'right';
+
+// @public
+export type ChartPaneChange = {
+    readonly category: number;
+    readonly series: number;
+    readonly text: string;
+    readonly type: 'value';
+} | {
+    readonly series: number;
+    readonly text: string;
+    readonly type: 'seriesName';
+} | {
+    readonly category: number;
+    readonly text: string;
+    readonly type: 'label';
+} | {
+    readonly name: string;
+    readonly type: 'addSeries';
+} | {
+    readonly series: number;
+    readonly type: 'removeSeries';
+} | {
+    readonly label: string;
+    readonly type: 'addCategory';
+} | {
+    readonly category: number;
+    readonly type: 'removeCategory';
+};
 
 // @public
 export type ChartThemeColor = 'bg1' | 'tx1' | 'bg2' | 'tx2' | 'accent1' | 'accent2' | 'accent3' | 'accent4' | 'accent5' | 'accent6';
@@ -686,6 +729,13 @@ export const CHROME_GROUPS: readonly [{
             readonly kind: 'command';
         };
     }, {
+        readonly id: 'formatShape';
+        readonly labelKey: 'shape.formatShape';
+        readonly paths: readonly string[];
+        readonly state: {
+            readonly kind: 'command';
+        };
+    }, {
         readonly id: 'wrap';
         readonly labelKey: 'formattingBar.imageWrap';
         readonly paths: readonly string[];
@@ -706,6 +756,143 @@ export const CHROME_GROUPS: readonly [{
     }];
     readonly id: 'image';
     readonly labelKey: 'formattingBar.groups.image';
+}, {
+    readonly contextual: true;
+    readonly controls: readonly [{
+        readonly id: 'fill';
+        readonly labelKey: 'shape.pane.fillColor';
+        readonly paths: readonly string[];
+        readonly shape: 'colorSplit';
+        readonly state: {
+            readonly kind: 'value';
+        };
+        readonly swatch: '#4472c4';
+    }, {
+        readonly defaultToolbar: false;
+        readonly id: 'fillTransparency';
+        readonly labelKey: 'shape.pane.transparency';
+        readonly paths: readonly string[];
+        readonly shape: 'stepper';
+        readonly state: {
+            readonly kind: 'value';
+        };
+    }, {
+        readonly id: 'outlineColor';
+        readonly labelKey: 'shape.pane.outlineColor';
+        readonly paths: readonly string[];
+        readonly shape: 'colorSplit';
+        readonly state: {
+            readonly kind: 'value';
+        };
+        readonly swatch: '#000000';
+    }, {
+        readonly id: 'outlineWidth';
+        readonly labelKey: 'shape.pane.width';
+        readonly paths: readonly string[];
+        readonly shape: 'dropdown';
+        readonly state: {
+            readonly kind: 'value';
+        };
+    }, {
+        readonly id: 'outlineDash';
+        readonly labelKey: 'shape.pane.dash';
+        readonly paths: readonly string[];
+        readonly shape: 'dropdown';
+        readonly state: {
+            readonly kind: 'value';
+        };
+    }];
+    readonly id: 'shape';
+    readonly labelKey: 'formattingBar.groups.shape';
+}, {
+    readonly contextual: true;
+    readonly controls: readonly [{
+        readonly id: 'type';
+        readonly labelKey: 'chart.format.type';
+        readonly paths: readonly string[];
+        readonly shape: 'dropdown';
+        readonly state: {
+            readonly kind: 'value';
+        };
+    }, {
+        readonly id: 'title';
+        readonly labelKey: 'chart.format.titleText';
+        readonly paths: readonly string[];
+        readonly shape: 'dropdown';
+        readonly state: {
+            readonly kind: 'value';
+        };
+    }, {
+        readonly id: 'legend';
+        readonly labelKey: 'chart.format.legend';
+        readonly paths: readonly string[];
+        readonly shape: 'dropdown';
+        readonly state: {
+            readonly kind: 'value';
+        };
+    }, {
+        readonly id: 'dataLabels';
+        readonly labelKey: 'chart.format.dataLabels';
+        readonly paths: readonly string[];
+        readonly state: {
+            readonly kind: 'command';
+        };
+    }, {
+        readonly defaultToolbar: false;
+        readonly id: 'axes';
+        readonly labelKey: 'chart.format.axes';
+        readonly paths: readonly string[];
+        readonly state: {
+            readonly kind: 'command';
+        };
+    }, {
+        readonly defaultToolbar: false;
+        readonly id: 'gridlines';
+        readonly labelKey: 'chart.format.gridlines';
+        readonly paths: readonly string[];
+        readonly state: {
+            readonly kind: 'command';
+        };
+    }, {
+        readonly defaultToolbar: false;
+        readonly id: 'categoryAxisTitle';
+        readonly labelKey: 'chart.format.categoryAxisTitle';
+        readonly paths: readonly string[];
+        readonly shape: 'dropdown';
+        readonly state: {
+            readonly kind: 'value';
+        };
+    }, {
+        readonly defaultToolbar: false;
+        readonly id: 'valueAxisTitle';
+        readonly labelKey: 'chart.format.valueAxisTitle';
+        readonly paths: readonly string[];
+        readonly shape: 'dropdown';
+        readonly state: {
+            readonly kind: 'value';
+        };
+    }, {
+        readonly defaultToolbar: false;
+        readonly id: 'seriesColor';
+        readonly labelKey: 'chart.format.colors';
+        readonly paths: readonly string[];
+        readonly shape: 'colorSplit';
+        readonly state: {
+            readonly kind: 'value';
+        };
+        readonly swatch: '#4472c4';
+    }, {
+        readonly defaultToolbar: false;
+        readonly id: 'data';
+        readonly labelKey: 'chart.data.series';
+        readonly paths: readonly string[];
+        readonly shape: 'dropdown';
+        readonly state: {
+            readonly kind: 'value';
+        };
+    }];
+    readonly id: 'chart';
+    readonly labelKey: 'formattingBar.groups.chart';
 }, {
     readonly contextual: true;
     readonly controls: readonly [{
@@ -1074,7 +1261,7 @@ export interface ChromePrintSettings {
 }
 
 // @public
-export type ChromeSlotId = 'history.undo' | 'history.redo' | 'zoom.level' | 'styles.style' | 'font.family' | 'font.size' | 'text.bold' | 'text.italic' | 'text.underline' | 'text.strike' | 'text.color' | 'text.highlight' | 'text.link' | 'script.super' | 'script.sub' | 'alignment.left' | 'alignment.center' | 'alignment.right' | 'alignment.justify' | 'direction.ltr' | 'direction.rtl' | 'list.bullet' | 'list.numbered' | 'list.outdent' | 'list.indent' | 'list.lineSpacing' | 'format.painter' | 'format.clear' | 'review.revisionMarkup' | 'review.comments' | 'review.addComment' | 'review.paragraphMarks' | 'review.bookmarks' | 'review.protectDocument' | 'review.compareDocuments' | 'review.simpleMarkup' | 'review.allMarkup' | 'review.noMarkup' | 'review.original' | 'review.previousChange' | 'review.nextChange' | 'review.acceptAllChanges' | 'review.rejectAllChanges' | 'review.authors' | 'review.editingMode' | 'contentControl.showAll' | 'contentControl.formFill' | 'contentControl.inspector' | 'contentControl.remove' | 'image.insert' | 'image.properties' | 'image.editChart' | 'image.wrap' | 'image.altText' | 'table.insert' | 'table.borderTarget' | 'table.borderColor' | 'table.borderStyle' | 'table.borderWidth' | 'table.cellFill' | 'table.mergeCells' | 'table.splitCell' | 'file.open' | 'file.save' | 'file.exportMarkdown' | 'file.exportPdf' | 'file.print' | 'paragraph.dialog' | 'file.pageSetup' | 'insert.textBox' | 'insert.chart' | 'insert.footnote' | 'insert.endnote' | 'insert.pageNumber' | 'insert.totalPages' | 'insert.sectionPages' | 'insert.pageXofY' | 'insert.pageBreak' | 'insert.sectionBreakNextPage' | 'insert.sectionBreakContinuous' | 'insert.toc' | 'insert.bookmark' | 'insert.goToBookmark' | 'insert.watermark';
+export type ChromeSlotId = 'history.undo' | 'history.redo' | 'zoom.level' | 'styles.style' | 'font.family' | 'font.size' | 'text.bold' | 'text.italic' | 'text.underline' | 'text.strike' | 'text.color' | 'text.highlight' | 'text.link' | 'script.super' | 'script.sub' | 'alignment.left' | 'alignment.center' | 'alignment.right' | 'alignment.justify' | 'direction.ltr' | 'direction.rtl' | 'list.bullet' | 'list.numbered' | 'list.outdent' | 'list.indent' | 'list.lineSpacing' | 'format.painter' | 'format.clear' | 'review.revisionMarkup' | 'review.comments' | 'review.addComment' | 'review.paragraphMarks' | 'review.bookmarks' | 'review.protectDocument' | 'review.compareDocuments' | 'review.simpleMarkup' | 'review.allMarkup' | 'review.noMarkup' | 'review.original' | 'review.previousChange' | 'review.nextChange' | 'review.acceptAllChanges' | 'review.rejectAllChanges' | 'review.authors' | 'review.editingMode' | 'contentControl.showAll' | 'contentControl.formFill' | 'contentControl.inspector' | 'contentControl.remove' | 'image.insert' | 'image.properties' | 'image.editChart' | 'image.formatShape' | 'image.wrap' | 'image.altText' | 'shape.fill' | 'shape.fillTransparency' | 'shape.outlineColor' | 'shape.outlineWidth' | 'shape.outlineDash' | 'chart.type' | 'chart.title' | 'chart.legend' | 'chart.dataLabels' | 'chart.axes' | 'chart.gridlines' | 'chart.categoryAxisTitle' | 'chart.valueAxisTitle' | 'chart.seriesColor' | 'chart.data' | 'table.insert' | 'table.borderTarget' | 'table.borderColor' | 'table.borderStyle' | 'table.borderWidth' | 'table.cellFill' | 'table.mergeCells' | 'table.splitCell' | 'file.open' | 'file.save' | 'file.exportMarkdown' | 'file.exportPdf' | 'file.print' | 'paragraph.dialog' | 'file.pageSetup' | 'insert.textBox' | 'insert.chart' | 'insert.footnote' | 'insert.endnote' | 'insert.pageNumber' | 'insert.totalPages' | 'insert.sectionPages' | 'insert.pageXofY' | 'insert.pageBreak' | 'insert.sectionBreakNextPage' | 'insert.sectionBreakContinuous' | 'insert.toc' | 'insert.bookmark' | 'insert.goToBookmark' | 'insert.watermark';
 
 // @public
 export interface ClearAnchorHighlightOptions {
@@ -1138,6 +1325,12 @@ export interface CollaborationStatusDiagnostic extends DiagnosticBase {
 
 // @public
 export type CollectReviewItems = (input: ReviewModelInput) => readonly ReviewItem[];
+
+// @public
+export type ColorPick = 'auto' | ColorPickerThemeSlot | `${ColorPickerThemeSlot}:${number}` | `#${string}`;
+
+// @public
+export type ColorPickerThemeSlot = ShapeThemeColorName;
 
 // @public
 export type ColorValue = {
@@ -1627,15 +1820,12 @@ export type DocEdit = {
 
 // @public
 export interface DocEdits {
-    // (undocumented)
     acceptAllRevisions: Record<never, never>;
-    // (undocumented)
     acceptRevision: {
         id: number;
         noteId?: number;
         part?: 'body' | 'footnote' | 'endnote';
     };
-    // (undocumented)
     addComment: {
         author: string;
         target: DocTarget;
@@ -1650,12 +1840,10 @@ export interface DocEdits {
         direction: 'increase' | 'decrease';
         target: DocTarget;
     };
-    // (undocumented)
     applyFormatting: {
         marks: RunFormatting;
         target: DocTarget;
     };
-    // (undocumented)
     applyVariables: {
         values: Record<string, string>;
     };
@@ -1696,7 +1884,6 @@ export interface DocEdits {
         target: DocTarget;
         text: string;
     };
-    // (undocumented)
     mergeParagraphs: {
         target: DocTarget;
     };
@@ -1716,9 +1903,7 @@ export interface DocEdits {
         replaceWith: string;
         target: DocTarget;
     };
-    // (undocumented)
     rejectAllRevisions: Record<never, never>;
-    // (undocumented)
     rejectRevision: {
         id: number;
         noteId?: number;
@@ -1737,18 +1922,15 @@ export interface DocEdits {
         index: number;
         target: DocTarget;
     };
-    // (undocumented)
     replaceText: {
         target: DocTarget;
         text: string;
     };
-    // (undocumented)
     replyComment: {
         author: string;
         commentId: string;
         text: string;
     };
-    // (undocumented)
     resolveComment: {
         commentId: string;
     };
@@ -1762,12 +1944,10 @@ export interface DocEdits {
         styleId: string;
         target: DocTarget;
     };
-    // (undocumented)
     setVariable: {
         name: string;
         value: string;
     };
-    // (undocumented)
     splitParagraph: {
         target: DocTarget;
     };
@@ -1874,6 +2054,7 @@ export type DocumentEditingMode = 'editing' | 'suggesting' | 'viewing';
 
 // @public
 export interface DocumentHandle {
+    readonly loadId: string;
     readonly revision: number;
 }
 
@@ -2073,10 +2254,10 @@ export interface DrawingPositionInput {
 export type DrawingVerticalReferenceFrame = 'bottomMargin' | 'insideMargin' | 'line' | 'margin' | 'outsideMargin' | 'page' | 'paragraph' | 'topMargin';
 
 // @public
-export type EditDiagnosticCode = 'edit.read-only' | 'edit.protected-content' | 'edit.suggesting-needs-author' | 'edit.review-module-required' | 'edit.tracked-drawing-delete-unsupported' | 'edit.tracked-structure-unsupported' | 'edit.tracked-operation-unsupported' | 'edit.tracking-mode-unsupported' | 'edit.tracking-author-required' | 'edit.comment-author-required' | 'edit.comment-author-mismatch' | 'edit.tracking-unsupported-host' | 'edit.revision-unsupported' | 'edit.tracking-required' | 'edit.tracked-image-replace-unsupported' | 'edit.tracked-deleted-text-only' | 'edit.tracked-foreign-revision-unsupported' | 'edit.tracked-own-pending-change' | 'edit.picture-selected' | 'edit.cross-structure-join' | 'edit.indivisible-content' | 'edit.field-structure' | 'edit.field-unsupported' | 'edit.field-result-unsupported' | 'edit.ooxml-unsupported' | 'edit.style-not-defined' | 'edit.no-styles-defined' | 'edit.section-mark' | 'edit.table-structure-unsupported' | 'edit.table-merge-not-rectangle' | 'edit.table-split-unsupported' | 'edit.table-insert-refused' | 'edit.table-of-contents-refused' | 'edit.unsupported-content' | 'edit.operation-unsupported' | 'edit.unsupported-story' | 'edit.unmapped-change' | 'edit.stale-target' | 'edit.invalid-argument' | 'edit.resource-limit' | 'edit.refresh-in-progress' | 'edit.preview-active' | 'edit.preview-unsupported' | 'edit.preview-composing' | 'edit.preview-diverged' | 'edit.read-after-commit' | 'edit.collaboration-not-ready' | 'edit.collaboration-text-limit' | 'edit.internal-invariant' | 'edit.refused';
+export type EditDiagnosticCode = 'edit.read-only' | 'edit.protected-content' | 'edit.suggesting-needs-author' | 'edit.review-module-required' | 'edit.tracked-drawing-delete-unsupported' | 'edit.tracked-structure-unsupported' | 'edit.tracked-operation-unsupported' | 'edit.tracking-mode-unsupported' | 'edit.tracking-author-required' | 'edit.comment-author-required' | 'edit.comment-author-mismatch' | 'edit.tracking-unsupported-host' | 'edit.revision-unsupported' | 'edit.tracking-required' | 'edit.tracked-image-replace-unsupported' | 'edit.tracked-deleted-text-only' | 'edit.tracked-foreign-revision-unsupported' | 'edit.tracked-own-pending-change' | 'edit.picture-selected' | 'edit.cross-structure-join' | 'edit.indivisible-content' | 'edit.field-structure' | 'edit.field-unsupported' | 'edit.field-result-unsupported' | 'edit.ooxml-unsupported' | 'edit.style-not-defined' | 'edit.no-styles-defined' | 'edit.section-mark' | 'edit.content-required' | 'edit.table-structure-unsupported' | 'edit.table-merge-not-rectangle' | 'edit.table-split-unsupported' | 'edit.table-insert-refused' | 'edit.table-of-contents-refused' | 'edit.unsupported-content' | 'edit.operation-unsupported' | 'edit.unsupported-story' | 'edit.unmapped-change' | 'edit.stale-target' | 'edit.invalid-argument' | 'edit.resource-limit' | 'edit.refresh-in-progress' | 'edit.preview-active' | 'edit.preview-unsupported' | 'edit.preview-composing' | 'edit.preview-diverged' | 'edit.read-after-commit' | 'edit.collaboration-not-ready' | 'edit.collaboration-text-limit' | 'edit.internal-invariant' | 'edit.refused';
 
 // @public
-export interface Editor extends EditorAnchorNavigation, EditorHighlights, EditorReviewHits {
+export interface Editor extends EditorAnchorNavigation, EditorHighlights, EditorParagraphText, EditorReviewHits, EditorSelectionReads {
     acceptReviewItem(key: string, options?: HistoryGroupOptions): ExecResult;
     addComment(text: string, options?: HistoryGroupOptions): ExecResult;
     addComment(text: string, author?: string, options?: HistoryGroupOptions): ExecResult;
@@ -2173,10 +2354,6 @@ export interface Editor extends EditorAnchorNavigation, EditorHighlights, Editor
         readonly styleId?: string;
         readonly underline?: boolean;
     } | null;
-    getSelectionPlacement(): {
-        readonly anchorY: number;
-        readonly pageIndex: number;
-    } | null;
     getTableCellSelection(): {
         readonly cellIds: readonly string[];
         readonly columns: {
@@ -2227,7 +2404,7 @@ export interface Editor extends EditorAnchorNavigation, EditorHighlights, Editor
     save(): Promise<ArrayBuffer>;
     scrollToBlock(blockId: string, options?: ScrollToAnchorOptions): boolean;
     scrollToPage(pageNumber: number): boolean;
-    selectMatch(match: TextMatch): ExecResult;
+    selectMatch(match: TextMatch | HighlightRange): ExecResult;
     setActiveReviewItem(key: string | null, options?: ReviewActivationOptions): ExecResult;
     setActiveScope(scope: ViewScope): void;
     setCommentResolved(key: string, resolved: boolean, options?: HistoryGroupOptions): ExecResult;
@@ -2384,6 +2561,7 @@ export interface EditorCommands extends EditorCommandShape<DocEdits>, EditorHead
     insertToc: Record<never, never>;
     // (undocumented)
     mergeCells: Record<never, never>;
+    navigateHighlight: NavigateHighlightCommand;
     navigateReviewChange: {
         direction: 'next' | 'previous';
     };
@@ -2409,12 +2587,14 @@ export interface EditorCommands extends EditorCommandShape<DocEdits>, EditorHead
     removeToc: {
         tocId?: string;
     };
+    replaceAcceptedText: ReplaceAcceptedTextCommand;
     replaceAllMatches: {
         matchCase?: boolean;
         query: string;
         text: string;
         wholeWord?: boolean;
     };
+    replaceDocument: ReplaceDocumentRequest;
     replaceImage: {
         data: Uint8Array;
         drawingNodeId?: string;
@@ -2422,7 +2602,7 @@ export interface EditorCommands extends EditorCommandShape<DocEdits>, EditorHead
         mime?: SupportedImageMime;
     };
     replaceMatch: {
-        match: TextMatch;
+        match: TextMatch | HighlightRange;
         text: string;
     };
     resolveAllReviewChanges: ResolveReviewChangesOptions;
@@ -2519,6 +2699,8 @@ export interface EditorCommands extends EditorCommandShape<DocEdits>, EditorHead
     } | {
         range: EditorSelection;
     };
+    setShapeFill: SetShapeFillCommand;
+    setShapeOutline: SetShapeOutlineCommand;
     setTableBorders: {
         scope: 'none';
         target: TableBorderEdgeTarget;
@@ -2608,6 +2790,7 @@ export interface EditorEvents {
     // (undocumented)
     historyDiagnostic: (diagnostic: HistoryDiagnostic) => void;
     hostChange: (event: EditorHostChange) => void;
+    paragraphsChange: (event: ParagraphsChangeEvent) => void;
     reviewChangesResolved: (event: ReviewChangesResolvedEvent) => void;
     reviewItemReveal: (event: ReviewItemRevealEvent) => void;
     revisionMarkupChange: (settings: ResolvedRevisionMarkup) => void;
@@ -2743,6 +2926,12 @@ export interface EditorNoteCommands {
 }
 
 // @public
+export interface EditorParagraphText {
+    getParagraphs(options?: ParagraphTextReadOptions): readonly ParagraphText[];
+    getParagraphText(blockId: string, options?: ParagraphTextReadOptions): ParagraphText | null;
+}
+
+// @public
 export interface EditorPointPosition {
     // (undocumented)
     readonly offset: number;
@@ -2864,10 +3053,30 @@ export type EditorScope = {
 };
 
 // @public
-export type EditorSelection = SemanticSelection | {
+export type EditorSelection = {
+    anchor: TextPosition;
+    head: TextPosition;
+} | SemanticSelection | {
     from: DocAnchor;
     to: DocAnchor;
 };
+
+// @public
+export interface EditorSelectionRange {
+    readonly anchor: TextPosition;
+    readonly head: TextPosition;
+    readonly scope: ViewScope;
+}
+
+// @public
+export interface EditorSelectionReads {
+    getCaretRect(): HighlightRect | null;
+    getSelectionPlacement(): {
+        readonly anchorY: number;
+        readonly pageIndex: number;
+    } | null;
+    getSelectionRange(): EditorSelectionRange | null;
+}
 
 // @public
 export interface EditorSnapshot {
@@ -2908,6 +3117,7 @@ export interface EditorSnapshot {
     // (undocumented)
     readonly selection: DocRange | null;
     readonly selectionCollapsed: boolean;
+    readonly selectionRange: EditorSelectionRange | null;
     readonly showBookmarks?: boolean;
     readonly showParagraphMarks?: boolean;
     // (undocumented)
@@ -2962,6 +3172,8 @@ export type ExecResult = {
     compareDocuments?: CompareDocumentsOutcome;
     history?: HistoryGroupOutcome;
     ok: true;
+    replaceDocument?: ReplaceDocumentOutcome;
+    replacements?: ReplaceAllMatchesOutcome;
     revisionAuthors?: RevisionAuthorResult;
     revisions?: RevisionBatchResult;
 } | {
@@ -2969,6 +3181,8 @@ export type ExecResult = {
     compareDocuments?: CompareDocumentsOutcome;
     ok: false;
     reason: string;
+    replaceDocument?: ReplaceDocumentOutcome;
+    replacements?: ReplaceAllMatchesOutcome;
     revisionAuthors?: RevisionAuthorResult;
     revisions?: RevisionBatchResult;
     target?: DocTarget;
@@ -3109,6 +3323,7 @@ export interface FontOriginFailure {
 // @public
 export interface FontResolutionRequest {
     readonly defaultFamily: string;
+    readonly faces?: readonly FontFaceRequest[];
     readonly families: readonly string[];
     readonly resolvedFaces?: readonly FontFaceRequest[];
     readonly signal?: AbortSignal;
@@ -3247,17 +3462,22 @@ export interface HighlightHit<R extends HighlightRange = HighlightRange> {
 }
 
 // @public
+export type HighlightKind = 'spelling' | 'grammar';
+
+// @public
 export interface HighlightOptions {
     readonly activeColor?: string;
     readonly activeIndex?: number;
     readonly className?: string;
     readonly color?: string;
+    readonly kind?: HighlightKind;
     readonly priority?: number;
 }
 
 // @public
 export interface HighlightRange {
     readonly blockId: string;
+    readonly description?: string;
     readonly expectedText?: string;
     readonly length: number;
     readonly scope?: ViewScope;
@@ -3537,6 +3757,12 @@ export type LockedControlNavigation = 'characters' | 'atomic';
 export type MarkedFontResolver<T extends FontResolver = FontResolver> = T & FontResolverMark;
 
 // @public
+export interface NavigateHighlightCommand {
+    readonly direction: 'next' | 'previous';
+    readonly name: string;
+}
+
+// @public
 export interface NewChartData {
     // (undocumented)
     readonly categories: readonly string[];
@@ -3573,6 +3799,41 @@ export interface NumberingRef {
     readonly level: number;
     // (undocumented)
     readonly numId: string;
+}
+
+// @public
+export interface ObjectSlotReadValueMap extends Omit<ObjectSlotValueMap, 'shape.fill' | 'shape.outlineColor'> {
+    'shape.fill': ColorPick | 'none';
+    'shape.outlineColor': ColorPick | 'none';
+}
+
+// @public
+export interface ObjectSlotValueMap {
+    // (undocumented)
+    'chart.axes': boolean;
+    'chart.categoryAxisTitle': string | null;
+    'chart.data': ChartPaneChange | Omit<ChartData, 'workbook'>;
+    // (undocumented)
+    'chart.dataLabels': boolean;
+    // (undocumented)
+    'chart.gridlines': boolean;
+    // (undocumented)
+    'chart.legend': ChartLegendPosition;
+    'chart.seriesColor': {
+        readonly color: ColorPick;
+        readonly index: number;
+    };
+    'chart.title': string | null;
+    // (undocumented)
+    'chart.type': ChartType;
+    // (undocumented)
+    'chart.valueAxisTitle': string | null;
+    'shape.fill': ColorPick | 'none' | (string & {});
+    'shape.fillTransparency': number;
+    'shape.outlineColor': ColorPick | 'none' | (string & {});
+    // (undocumented)
+    'shape.outlineDash': ShapeOutlineDash;
+    'shape.outlineWidth': number;
 }
 
 // @public
@@ -3749,6 +4010,15 @@ export interface ParagraphFormatCommand {
 }
 
 // @public
+export interface ParagraphsChangeEvent {
+    readonly added: readonly string[];
+    readonly changed: readonly string[];
+    readonly deleted: readonly string[];
+    readonly revision: number;
+    readonly source: 'local' | 'remote';
+}
+
+// @public
 export interface ParagraphSummary {
     // (undocumented)
     readonly paraId?: string;
@@ -3766,6 +4036,35 @@ export interface ParagraphTabStop {
     readonly leader?: 'none' | 'dot' | 'hyphen' | 'underscore' | 'heavy' | 'middleDot';
     // (undocumented)
     readonly positionTwips: number;
+}
+
+// @public
+export interface ParagraphText {
+    readonly acceptedSpans: readonly ParagraphTextSpan[];
+    readonly acceptedText: string;
+    readonly blockId: string;
+    readonly proofing: readonly ParagraphTextProofing[];
+    readonly text: string;
+}
+
+// @public
+export interface ParagraphTextProofing {
+    readonly acceptedStart: number;
+    readonly lang: string | null;
+    readonly length: number;
+    readonly noProof: boolean;
+}
+
+// @public
+export interface ParagraphTextReadOptions {
+    readonly fields?: 'object' | 'result';
+}
+
+// @public
+export interface ParagraphTextSpan {
+    readonly acceptedStart: number;
+    readonly length: number;
+    readonly start: number;
 }
 
 // @public
@@ -3829,6 +4128,60 @@ export interface RelationshipRecord {
 
 // @public
 export type RenderableImageMime = SupportedImageMime | VectorImageMime;
+
+// @public
+export interface ReplaceAcceptedTextCommand {
+    readonly match: AcceptedTextRange;
+    readonly text: string;
+}
+
+// @public
+export interface ReplaceAllMatchesOutcome {
+    readonly replaced: number;
+    readonly skipped: number;
+}
+
+// @public
+export type ReplaceDocumentErrorCode = 'invalidRequest' | 'invalidDocument' | 'staleDocument' | 'unavailable' | 'busy' | 'editNotPermitted' | 'editUnsupported';
+
+// @public
+export type ReplaceDocumentOutcome = {
+    readonly changed: boolean;
+    readonly ok: true;
+} | ReplaceDocumentRefusal;
+
+// @public
+export type ReplaceDocumentRefusal = {
+    readonly message: string;
+    readonly ok: false;
+} & ({
+    readonly code: 'editNotPermitted';
+    readonly reason: 'viewing' | 'suggesting' | 'protected';
+} | {
+    readonly code: 'editUnsupported';
+    readonly reason: 'differentMainPart' | 'unsupportedDifference' | 'collaborationRefused';
+} | {
+    readonly code: 'unavailable';
+    readonly reason?: 'collaborationUnavailable';
+} | {
+    readonly code: 'staleDocument';
+    readonly reason: 'otherDocument' | 'edited';
+} | {
+    readonly code: 'invalidRequest';
+    readonly reason?: undefined;
+} | {
+    readonly code: 'invalidDocument' | 'busy';
+    readonly reason?: undefined;
+});
+
+// @public
+export type ReplaceDocumentRefusalReason = 'viewing' | 'suggesting' | 'protected' | 'collaborationUnavailable' | 'differentMainPart' | 'unsupportedDifference' | 'collaborationRefused' | 'otherDocument' | 'edited';
+
+// @public
+export interface ReplaceDocumentRequest {
+    readonly docx: Uint8Array | ArrayBuffer;
+    readonly expected?: DocumentHandle;
+}
 
 // @public
 export type ResolvedChromePrintSettings = Required<ChromePrintSettings>;
@@ -4515,7 +4868,6 @@ export interface SelectedImageState {
     readonly crop: ImageCropPercent;
     // (undocumented)
     readonly description: string;
-    // (undocumented)
     readonly heightEmu: number;
     // (undocumented)
     readonly hidden: boolean;
@@ -4534,14 +4886,15 @@ export interface SelectedImageState {
     readonly kind: DrawingKind;
     // (undocumented)
     readonly locks: DrawingLocks;
+    readonly memberId?: string;
     // (undocumented)
     readonly name: string;
     // (undocumented)
     readonly position: DrawingPositionInput | null;
     // (undocumented)
     readonly resourceStatus: ImageResourceState['kind'];
-    // (undocumented)
     readonly rotationDegrees: number;
+    readonly shapeFormat: ShapeFormatState | null;
     // (undocumented)
     readonly title: string;
     // (undocumented)
@@ -4618,6 +4971,76 @@ export type SetReviewChangesAuthorOptions = ReviewChangesAttribution & ({
     keys?: never;
     scope?: 'visible' | 'document';
 });
+
+// @public
+export interface SetShapeFillCommand {
+    // (undocumented)
+    color?: ShapeColorValue;
+    drawingNodeId?: string;
+    // (undocumented)
+    transparency?: number;
+    // (undocumented)
+    visible?: boolean;
+}
+
+// @public
+export interface SetShapeOutlineCommand {
+    // (undocumented)
+    color?: ShapeColorValue;
+    // (undocumented)
+    dash?: ShapeOutlineDash;
+    drawingNodeId?: string;
+    // (undocumented)
+    visible?: boolean;
+    // (undocumented)
+    widthPt?: number;
+}
+
+// @public
+export type ShapeColorValue = string | {
+    readonly shift?: number;
+    readonly theme: ShapeThemeColorName;
+};
+
+// @public
+export interface ShapeFillState {
+    readonly color: string | null;
+    readonly theme?: ShapeThemeColor;
+    readonly transparency: number;
+    readonly type: 'solid' | 'none' | 'gradient' | 'pattern' | 'picture' | 'mixed';
+}
+
+// @public
+export interface ShapeFormatState {
+    // (undocumented)
+    readonly fill: ShapeFillState;
+    // (undocumented)
+    readonly outline: ShapeOutlineState;
+}
+
+// @public
+export type ShapeOutlineDash = 'solid' | 'sysDot' | 'sysDash' | 'sysDashDot' | 'sysDashDotDot' | 'dot' | 'dash' | 'lgDash' | 'dashDot' | 'lgDashDot' | 'lgDashDotDot';
+
+// @public
+export interface ShapeOutlineState {
+    readonly color: string | null;
+    readonly dash?: ShapeOutlineDash | 'custom' | null;
+    readonly theme?: ShapeThemeColor;
+    // (undocumented)
+    readonly visible: boolean | null;
+    // (undocumented)
+    readonly widthPt: number | null;
+}
+
+// @public
+export interface ShapeThemeColor {
+    // (undocumented)
+    readonly name: 'bg1' | 'tx1' | 'bg2' | 'tx2' | 'accent1' | 'accent2' | 'accent3' | 'accent4' | 'accent5' | 'accent6';
+    readonly shift: number;
+}
+
+// @public
+export type ShapeThemeColorName = 'bg1' | 'tx1' | 'bg2' | 'tx2' | 'accent1' | 'accent2' | 'accent3' | 'accent4' | 'accent5' | 'accent6';
 
 // @public
 export interface StyleDefinition {
@@ -4812,6 +5235,15 @@ export interface TextMatch {
 }
 
 // @public
+export function textOffsetFromAccepted(paragraph: ParagraphText, offset: number): number;
+
+// @public
+export interface TextPosition {
+    readonly blockId: string;
+    readonly offset: number;
+}
+
+// @public
 export interface Theme {
     // (undocumented)
     readonly colorScheme: ThemeColorScheme;
@@ -4846,7 +5278,7 @@ export interface ToolbarCommandState {
 export function toolbarCommandState(editor: Editor | null, id: ChromeSlotId): ToolbarCommandState;
 
 // @public
-export interface ToolbarValueMap {
+export interface ToolbarValueMap extends ObjectSlotValueMap {
     // (undocumented)
     'font.family': string;
     // (undocumented)

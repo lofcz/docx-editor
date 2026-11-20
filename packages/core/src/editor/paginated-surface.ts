@@ -54,7 +54,6 @@ import { listParagraphStyleId } from './surface-list-style.ts';
 import { ensureSeparatorStyle } from './list-separator-style.ts';
 import { armContentControlMenuDismiss } from './content-control-widget-dismiss.ts';
 import { contentControlMenuAnchor } from './content-control-widget-anchor.ts';
-import { contentControlWidgetValue } from './content-control-widget-session.ts';
 import { createFormFieldShading } from './surface-form-field-shading.ts';
 import {
   FIELD_CODE_INPUT_REFUSAL,
@@ -80,7 +79,12 @@ import {
   registerFormFieldIdentity,
   writeRejectionReason,
 } from './command-protection.ts';
-import { registerSurfaceMeasurement } from './surface-measurement.ts';
+import {
+  browserDefaultMeasurer,
+  createFontFaceUsage,
+  registerSurfaceMeasurement,
+  registerUsedFontFaces,
+} from './surface-measurement.ts';
 import {
   PROGRESSIVE_OPEN_FIRST_BLOCKS,
   completeProgressiveOpen,
@@ -92,7 +96,7 @@ import { createDeferredLayout } from './surface-deferred-layout.ts';
 import { createCanonicalLayout } from './surface-canonical-layout.ts';
 import { drainLayoutSteps, type LayoutSteps } from '../layout/layout-steps.ts';
 import { createReviewOrderIndex } from './surface-review-order.ts';
-import { litReviewKeys, reviewItemsByKey } from './review-replacement-pairs.ts';
+import { litReviewKeys } from './review-replacement-pairs.ts';
 import { bodyBlockCountOf, bodyBlockLimitAfter, bodyBlocksOf } from '../layout/body-block-limit.ts';
 import { snapshotLayoutSession } from '../layout/layout-session-snapshot.ts';
 import { graphemeEndAfter, graphemeStartBefore } from './grapheme-step.ts';
@@ -103,6 +107,7 @@ import {
   contentControlValueOps,
   contentControlWidgetItems,
   contentControlWidgetDate,
+  contentControlWidgetValue,
 } from './content-control-widget-session.ts';
 import { createContentControlPictureWidget } from './content-control-picture-widget.ts';
 import {
@@ -137,7 +142,7 @@ import { formsProtectionEnabled, sectionProtectsForms } from '@docx-editor.dev/c
 
 /* eslint-disable max-lines -- composition root; seams live in surface-*.ts */
 
-import { attributeTrackedOps, isTrackedEdit } from './surface-tracked-ops.ts';
+import { attributeTrackedOps, isDocumentEdit, isTrackedEdit } from './surface-tracked-ops.ts';
 import { isMissingAuthorRefusal } from './docx-editor-author.ts';
 import { openTreeSession, type TreeDocxSession } from '@docx-editor.dev/core/binding';
 import type { TreeApplyOptions } from '@docx-editor.dev/core/binding';
@@ -148,6 +153,7 @@ import {
   isContentControl,
   parentNodeOf,
   ORIGIN_IDS,
+  paragraphTextOf,
   parseTocInstruction,
   planTocEntries,
   resolveTocRowHeadings,
@@ -158,7 +164,7 @@ import {
   type TreeDocOp,
 } from '@docx-editor.dev/core/store';
 import { resolveSelectedDrawingRecord } from './docx-editor-images.ts';
-import { selectPastedDrawing } from './surface-chart-clipboard.ts';
+import { clipboardSelectedDrawing, selectPastedDrawing } from './surface-drawing-clipboard.ts';
 import { createHiddenMarkEditing, type RevisionView } from './hidden-mark-joins.ts';
 import { drawingSelectionPosition } from './surface-drawing-selection.ts';
 import { syncActiveFieldShading } from './surface-field-shading.ts';
@@ -166,7 +172,6 @@ import {
   createLayoutScheduler,
   createLayoutSession,
   createParagraphLayoutCache,
-  resolveDefaultSurfaceMeasurer,
   cellSelectionRects,
   formatPageNumber,
   emptyTocPlaceholderParagraphIds,
@@ -184,7 +189,6 @@ import {
   withNumberingStyleLinks,
   type CellSelection,
   type ContentControlBoundaryRecord,
-  type KeyedRange,
   type LayoutScope,
   type NavigationCommand,
   type ReviewItem,
@@ -192,9 +196,11 @@ import {
   type SemanticLayout,
   type SemanticPosition,
   type SemanticSelection,
+  paragraphTextFromLayout,
 } from '@docx-editor.dev/core/layout';
 import { attachListResolveChangeEvidence } from '../layout/list-resolve.ts';
 import { rangesOnPages } from '../layout/selection-rects.ts';
+import { paragraphStartPages, pastLeadingBreaks } from '../layout/paragraph-start-page.ts';
 import { keyedRangeRectsWithTextboxes } from './textbox-presence-layout.ts';
 import { refreshSurfaceRefFieldResults } from './surface-ref-field-refresh.ts';
 import { type RevisionAuthorFilter } from '../layout/revision-projection.ts';
@@ -207,11 +213,11 @@ import { withSavedFieldResults } from './surface-saved-field-results.ts';
 import { bindSurfaceViewport, type SurfaceViewportBinding } from './surface-viewport-binding.ts';
 import { createSurfaceHostListeners } from './surface-host-listeners.ts';
 import { hostTimers, hostWindowOf } from './host-realm.ts';
+import { afterNextPaint, landingGuard } from './surface-composition-commit.ts';
 import { createSurfaceHosting } from './surface-host-move.ts';
 import { createLocalCollaborationPresence } from './surface-local-presence.ts';
 import { reviewItemsAtSelection } from '../store/store/review-items.ts';
 import { mergedPredecessorsOf } from '../layout/line-segments.ts';
-import { surfaceSelectionMarkRects } from './surface-selection-ops.ts';
 import type { CaretGeometry } from '../layout/semantic-interaction.ts';
 import { paintSelectionOverlay, type OverlayRect } from '@docx-editor.dev/core/output';
 // By module path, like the roster walk below: dropping a retained paint is an engine
@@ -220,13 +226,14 @@ import {
   discardRetainedPaint,
   paintSemanticLayoutWithAuthorSlots,
 } from '../output/semantic-paint.ts';
+import { createInputMethodLane } from './surface-ime-deletion.ts';
 // By module path: the roster walk is an engine internal, not part of the output barrel's
 // public surface. See the note there.
 import {
   createStableReviewAuthorSlots,
   type ReviewAuthorInfo,
 } from '../output/revision-presentation.ts';
-import { createSurfaceReviewAuthors, reviewItemAuthor } from './surface-review-authors.ts';
+import { createSurfaceReviewAuthors } from './surface-review-authors.ts';
 import { createPresenceColors } from './surface-presence-color.ts';
 import {
   DEFAULT_DRAWING_PAINT_STRINGS,
@@ -238,7 +245,6 @@ import {
   breakMarkStringsCacheToken,
   breakMarkStringsFromTranslate,
 } from '../output/semantic-break-marks.ts';
-import { tryCreateBrowserCanvasContext } from './browser-canvas-context.ts';
 import {
   collaborationParagraphAt,
   localCollaborationSelection,
@@ -269,6 +275,7 @@ import {
   createPositionComparator,
   orderedRangeOf,
   rangePlainText,
+  surfaceSelectionMarkRects,
   type RangeDeletionPlan,
 } from './surface-selection-ops.ts';
 import {
@@ -326,6 +333,11 @@ import { authoredRunPropertiesAt, type SurfaceProperty } from './surface-formatt
 import { mergedRunWrite } from '../store/store/direct-properties.ts';
 import { bindDirectionChord, createDirectionChordHandler } from './surface-direction-chord.ts';
 import { createPointerController, type PointerController } from './surface-pointer.ts';
+import {
+  crossNoteWriteRefusal,
+  followOpenNoteToHead,
+  withinOpenNote,
+} from './surface-note-story.ts';
 import { absorbAtomicControls, leaveAtomicControl } from './surface-atomic-controls.ts';
 import { createReviewViewState } from './surface-review-view.ts';
 import { selectionsEqual } from './dom-selection.ts';
@@ -354,6 +366,8 @@ import {
   storyScopeOfNodeId,
   noteScopeIdInLayout,
 } from './surface-scope.ts';
+import { drawingSelectionIntentKey, memberIntent } from './group-member-selection.ts';
+import { bandRanges, createBandItemLookup, reviewBands } from './surface-review-band-class.ts';
 import { createCaretViewFollower, type CaretFollowMode } from './surface-caret-follow.ts';
 import { createInPlaceReplacement } from './surface-replace-in-place.ts';
 import {
@@ -384,7 +398,7 @@ import type { OoxmlPart } from '../store/package/ooxml-tree.ts';
 import { contentLockedOrBound, removalLocked, treeLockRefusal } from './content-control-locks.ts';
 import { overlaySheet, sizeOverlaySheets } from './surface-overlay-sheet.ts';
 import type { SurfaceOverlayFrame, SurfaceOverlayPainter } from './surface-overlay-sheet.ts';
-import { destroyPaintObservers, type SurfacePaintObserver } from './surface-paint-observer.ts';
+import { createPaintObservers } from './surface-paint-observer.ts';
 
 export type {
   ContentControlOps,
@@ -453,21 +467,16 @@ export function mountPaginatedSurface(
   const TOC_READ_ONLY_REFUSAL = 'the table of contents is generated and read-only';
   /** Set while formatting writes its ops outside a selected table of contents. */
   let formattingOutsideToc = false;
-  /** Separates a decision's key from its per-range index. A NUL cannot occur in either. */
-  const RANGE_SUFFIX = '\u0000range\u0000';
   // The glyphs a serif Korean face lacks fall back to serif faces, in paint and measurement.
   const serifHangulFace = fontTableSerifHangulFace(session.currentPackage());
-  // Editor seam creates the canvas; layout only consumes the injected context.
-  let defaults = options.measurer
-    ? null
-    : resolveDefaultSurfaceMeasurer(scale, {
-        context: tryCreateBrowserCanvasContext(container.ownerDocument),
-        // Measure with the same face paint draws with.
-        ...(options.fontAlias ? { fontAlias: options.fontAlias } : {}),
-        serifHangulFace,
-      });
+  const defaultMeasurer = () =>
+    browserDefaultMeasurer(container, scale, options.fontAlias, serifHangulFace);
+  let defaults = options.measurer ? null : defaultMeasurer();
+  const faceUsage = createFontFaceUsage();
   const inlineWidgets = new SurfaceInlineWidgetMetrics();
-  let measurer = inlineWidgets.measurer(options.measurer ?? defaults!.measurer);
+  const surfaceMeasurer = () =>
+    inlineWidgets.measurer(faceUsage.wrap(options.measurer ?? defaults!.measurer));
+  let measurer = surfaceMeasurer();
   // Incremental layout machinery — without these every keystroke re-lays out the document.
   const layoutCache = createParagraphLayoutCache<never>();
   let layoutSession = createLayoutSession();
@@ -519,7 +528,10 @@ export function mountPaginatedSurface(
   // Host text highlights (search results, glossary terms): painted by a facade-owned painter.
   const highlightLayer = overlaySheet(mountDocument, 'docx-text-highlight-overlay');
   let highlightPainter: SurfaceOverlayPainter | null = null;
-  const paintObservers = new Set<SurfacePaintObserver>();
+  const paintObservers = createPaintObservers(
+    () => render(false),
+    () => hosting.parked()
+  );
   const remoteSelectionLayer = overlaySheet(mountDocument, 'docx-remote-selection-overlay');
   const bookmarkLayer = overlaySheet(mountDocument, 'docx-bookmark-overlay');
   const tableFurnitureLayer = overlaySheet(mountDocument, 'docx-table-furniture', false);
@@ -618,13 +630,7 @@ export function mountPaginatedSurface(
   };
   /** Move the intent and report once when it changes — the flip is observable state. */
   function setDrawingIntent(next: DrawingSelectionIntent, report: boolean): void {
-    if (
-      next.kind === drawingIntent.kind &&
-      (next.kind !== 'pointer' ||
-        (drawingIntent.kind === 'pointer' && next.drawingNodeId === drawingIntent.drawingNodeId))
-    ) {
-      return;
-    }
+    if (drawingSelectionIntentKey(next) === drawingSelectionIntentKey(drawingIntent)) return;
     drawingIntent = next;
     // Some transitions land on the exact offsets the selection already holds — a press on
     // the drawing at the untouched mount caret adopts an equal selection and publishes
@@ -717,6 +723,7 @@ export function mountPaginatedSurface(
     // The remote caret takes the commit a collaboration step makes for history, not a peer's.
     if (collaborationSession) remoteCaret.expectHistory(true);
     let result: ReturnType<DocumentSelectionHistory['step']>;
+    const member = drawingIntent.kind === 'pointer' ? drawingIntent : null;
     try {
       result = documentSelectionHistory.step(direction, () => {
         if (collaborationSession) return collaborationSession[direction]();
@@ -736,8 +743,12 @@ export function mountPaginatedSurface(
     // A chart or picture edit steps back with the object still selected, so the next undo,
     // the Chart pane, and the handles stay on it. `selectDrawing` refuses a drawing that the
     // step removed, and the caret then stays where the selection put it.
-    if ((!carried || direction === 'redo') && result.selection && result.drawing)
+    if ((!carried || direction === 'redo') && result.selection && result.drawing) {
       selectDrawing(result.drawing, result.selection.head.paragraphId, preserveDomSelection);
+      // A shape selected inside the group stays selected across its own undo and redo.
+      if (member?.drawingNodeId === result.drawing && member.memberNodeId)
+        surface.selectDrawingMember(member.memberNodeId);
+    }
   }
   function restoreCaretFormat(value: CaretFormatSnapshot, preserveDomSelection = false): void {
     selectionSync.noteModelMoved();
@@ -1200,7 +1211,9 @@ export function mountPaginatedSurface(
     orderedRange: () => orderedRange(),
     writeRefusal: () => writeRefusal(true),
     commit: (run, selectionAfter) => commit(run, selectionAfter),
-    goToPosition: (position, options) => navigation.goToPosition(position, options),
+    // Show the text after a leading page break; `goTo` still selects the whole bookmark.
+    goToPosition: (position, options) =>
+      navigation.goToPosition(pastLeadingBreaks(editingLayout().pages, position), options),
     setSelection: (next) => setSelection(next),
     beforeChange: flushPendingInputAndLayout,
     repaint: () => render(false),
@@ -1557,6 +1570,10 @@ export function mountPaginatedSurface(
   /** Nonzero while `commitNow` applies its ops; see `renderPublishedLayout`. */
   let commitRunDepth = 0;
   let commitPaintOwed = false;
+  /** The layout the page shows: `currentLayout` until a paint is owed. */
+  let paintedLayout: SemanticLayout | null = null;
+  /** While an input method writes on the page, the layout it is held at; see `render`. */
+  let heldLayout: SemanticLayout | null = null;
 
   // Armed once, after the first published render: the derivations a structural edit reads
   // populate their per-node memos in idle tasks instead of inside the first Enter. An edit
@@ -1637,15 +1654,19 @@ export function mountPaginatedSurface(
   // teardown), so the selection at flush time is the selection the first
   // buffered key saw.
   let typeBuffer = '';
+  /** Lands composed text queued before the buffer, one land at a time (`landingGuard`). */
+  let landComposedText = (): void => {};
   let typeFlushTimer: number | null = null;
   let flushingTypeBuffer = false;
+  const landing = landingGuard();
 
   function flushTypeBuffer(): void {
     // Reentrancy first, timer second: a reentrant call (host code inside the
     // flush's own onChange enqueuing more text) must not clear the fresh timer
     // that new text just armed, or it would sit unflushed until an unrelated
     // flush point.
-    if (flushingTypeBuffer) return;
+    if (flushingTypeBuffer || landing.active()) return;
+    landing.wrap(landComposedText)();
     if (typeFlushTimer !== null) {
       timers.clearTimeout(typeFlushTimer);
       typeFlushTimer = null;
@@ -1999,13 +2020,13 @@ export function mountPaginatedSurface(
    * (a prior deferred commit, an external commit, a drawing-resource invalidation can all
    * have filled it), and the `render()` below is the one report of the refusal the host
    * gets — deferring it delayed `lastRejection`, or lost it to a later commit entirely.
+   * `held` defers too: a queued composed insertion the next one in the queue publishes.
    */
-  function publishAfterCommit(rejected: boolean): void {
+  function publishAfterCommit(rejected: boolean, held = false): void {
     if (
       !rejected &&
       scheduler.pending() !== null &&
-      lastLayoutMs > INPUT_PRESSURE_LAYOUT_DEFER_MS &&
-      hasPendingBrowserInput(false)
+      (held || (lastLayoutMs > INPUT_PRESSURE_LAYOUT_DEFER_MS && hasPendingBrowserInput(false)))
     ) {
       return;
     }
@@ -2294,12 +2315,9 @@ export function mountPaginatedSurface(
   function editableControlsInOrder(): ContentControlBoundaryRecord[] {
     const scope = storyScope();
     const storyPart = scope.kind === 'body' ? null : session.partFor(scope);
-    // A notes PART holds every note in the document, so its controls are not one story's.
-    // Rostered whole, Tab walked out of the open footnote and into the next one — the same
-    // escape this roster was scoped to stop, one level down — and the keystrokes after it
-    // landed in a note the reader was not in. `paragraphOrder()` is already bounded to the
-    // open note, so it is what bounds this.
-    const withinNote = scope.kind === 'notesPart' ? new Set(paragraphOrder()) : undefined;
+    // A notes PART holds every note; Tab, and the keystrokes after it, stay in the open one.
+    const order = withinOpenNote(editingLayout(), noteScopeId(), paragraphOrder());
+    const withinNote = scope.kind === 'notesPart' ? new Set(order) : undefined;
     const controls = storyPart
       ? [...contentControlRecordsInPart(storyPart, withinNote)]
       : [...contentControlsInLayout(currentLayout)];
@@ -2784,6 +2802,14 @@ export function mountPaginatedSurface(
       notifyChange = true;
     }
     hosting.heal();
+    // THE PAGE IS THE INPUT METHOD'S UNTIL `compositionend`. A newer layout (a collaborator's
+    // edit) would replace the nodes it is composing into; it is painted when the composition
+    // ends, and the readback carries the composed text onto it (surface-composition-rebase).
+    if (heldLayout !== null && currentLayout !== heldLayout) {
+      commitPaintOwed = true;
+      if (notifyChange) options.onChange?.(currentState());
+      return;
+    }
     // Parked: no viewport, so a paint would build every page into a holder nobody sees. State
     // still reports, and `moveTo` repaints in full.
     if (hosting.parked()) {
@@ -2797,7 +2823,7 @@ export function mountPaginatedSurface(
     // than erase it — see `adoptBeforePaint`.
     commitPaintOwed = false;
     const adopted = selectionSync.adoptBeforePaint();
-    for (const observer of paintObservers) observer.beforePaint?.();
+    paintObservers.beforePaint();
     const paintBegan = now();
     materializedSet = visiblePages();
     // Shared furniture: keep the visual occurrence on a built page before paint marks
@@ -2806,6 +2832,7 @@ export function mountPaginatedSurface(
     const activeHf = hfScope?.getActive() ?? null;
     const contentControlChrome = contentControlChromeOptions();
     const emptyTocIds = emptyTocPlaceholderParagraphIds(session.part());
+    paintedLayout = currentLayout;
     paintSemanticLayoutWithAuthorSlots(
       pagesLayer,
       currentLayout,
@@ -2864,9 +2891,7 @@ export function mountPaginatedSurface(
     // book the paint's own cost to the selection phase.
     lastPaintMs = now() - paintBegan;
     options.onTiming?.('paint', lastPaintMs);
-    for (const observer of paintObservers) {
-      observer.afterPaint({ pagesLayer, layout: currentLayout, part: session.part(), scale });
-    }
+    paintObservers.afterPaint({ pagesLayer, layout: currentLayout, part: session.part(), scale });
     renderOverlay();
     renderRemoteSelections();
     renderCommentHighlights(true);
@@ -3036,6 +3061,10 @@ export function mountPaginatedSurface(
     ) {
       return TOC_READ_ONLY_REFUSAL;
     }
+    const crossNote = checkSelection
+      ? crossNoteWriteRefusal(editingLayout(), noteScopeId(), selection, ops)
+      : null;
+    if (crossNote) return crossNote; // Typing or deletion across notes would merge them.
     // Without an author, refuse every suggested edit instead of writing untracked changes.
     if (editingMode === 'suggest' && !author?.trim() && edits) return AUTHOR_WRITE_REFUSAL;
     if (editingMode === 'suggest') return suggestingRefusalIn(session, author, ops);
@@ -3046,17 +3075,6 @@ export function mountPaginatedSurface(
     () => writeRefusal(true, [], false),
     () => session.editable
   );
-
-  /** Ops that change the DOCUMENT, as opposed to reading or resolving it. */
-  function isDocumentEdit(op: TreeDocOp): boolean {
-    return (
-      op.op !== 'acceptRevision' &&
-      op.op !== 'rejectRevision' &&
-      op.op !== 'acceptAllRevisions' &&
-      op.op !== 'rejectAllRevisions' &&
-      op.op !== 'setRevisionAttribution'
-    );
-  }
 
   /** Ops that create or extend a reviewable proposal. */
   /**
@@ -3197,13 +3215,15 @@ export function mountPaginatedSurface(
            * and applies to whatever is typed next there.
            */
           readonly rearmPending?: ArmedFormat;
+          /** Queued composed text: it precedes the type buffer, and may leave its publish. */
+          readonly composed?: { readonly publish: boolean };
         }
       | undefined = {}
   ): string | null {
     // Any batched typing lands first as its own transaction, so this edit sees
     // the document and selection the user saw. Reentrancy-guarded: the flush
     // itself commits through here with an empty buffer.
-    flushTypeBuffer();
+    if (!options?.composed) flushTypeBuffer();
     if (!flushingTypeBuffer) typingHistory.end();
     if (!options?.automation) blockView.revealSelection(selection);
     const finishSelectionHistory = documentSelectionHistory.begin();
@@ -3297,7 +3317,7 @@ export function mountPaginatedSurface(
     // nothing, so the surface still has to refresh the state it just changed. Under input
     // pressure the publish may hand layout+paint to the scheduler's own task — see
     // `publishAfterCommit`.
-    publishAfterCommit(rejected !== null);
+    publishAfterCommit(rejected !== null, options?.composed?.publish === false);
     return rejected;
   }
 
@@ -3358,7 +3378,7 @@ export function mountPaginatedSurface(
     // same-position set (the selection mirror re-adopting the caret it painted,
     // which a browser echoes after every keystroke) is not a move and must not
     // break the batch. A move also ends the typing run, even one that comes back later.
-    if (moved && typeBuffer.length > 0) flushTypeBuffer();
+    if (moved) flushTypeBuffer();
     const fieldSelection = textFormInteraction?.beforeSelect(next);
     if (fieldSelection === null) return;
     if (moved) clearPromptBoundary();
@@ -3376,6 +3396,7 @@ export function mountPaginatedSurface(
     retireActivationPin();
     selection = next;
     blockView.reveal([next.anchor.paragraphId, next.head.paragraphId]);
+    followOpenNoteToHead(noteOps, editingLayout(), next, pointerCaret?.pageIndex); // Note follows.
     // Any plain selection cancels a rectangle. A caret placed by a click, a keystroke or an
     // edit is a text selection by definition, and leaving the rectangle behind would keep
     // painting cells that are no longer chosen.
@@ -3459,6 +3480,7 @@ export function mountPaginatedSurface(
       releaseRetainedIfEscaped(next);
       retireActivationPin();
       selection = next;
+      followOpenNoteToHead(noteOps, editingLayout(), next);
       desiredX = null;
       caretFollowPending = true;
       // A gesture the queued `selectionchange` had not delivered still MOVED this caret, so
@@ -3467,6 +3489,12 @@ export function mountPaginatedSurface(
       publishLocalCollaborationSelection();
     },
     commit: (run) => commit(run),
+    commitComposed: (run, next, publish) =>
+      commit(run, () => (textFormInteraction ? textFormInteraction.beforeSelect(next) : next), {
+        composed: { publish },
+      }),
+    later: (task) => afterNextPaint(timers, fieldScope.wrap(landing.wrap(task))),
+    modelTextOf: (id) => paragraphTextOf(partOfNodeId(session, id) ?? session.part(), id),
     insertOwner: () => insertOwnerOf(contentControlAtCaret()),
     compositionUsesTyping: () => typingSelectionPlan().outsidePromptId !== undefined,
     promptLanding: typedLanding,
@@ -3481,10 +3509,11 @@ export function mountPaginatedSurface(
     render: () => render(),
     flushLayout: () => flushLayout(),
     flushToPaint: () => flushToPaint(),
-    updateCaret: () => {
-      caret.update();
-      syncActiveFieldShading(pagesLayer, collapsedCaretPosition());
-    },
+    repaintCaretAround: (writeSelection) =>
+      caret.updateAround(() => {
+        syncActiveFieldShading(pagesLayer, collapsedCaretPosition());
+        writeSelection();
+      }),
     textOf: (paragraphId) => textOf(paragraphId),
     pendingFormatOps: (paragraphId, offset, length, replacing) =>
       consumePendingFormatOps(paragraphId, offset, length, replacing),
@@ -3499,7 +3528,21 @@ export function mountPaginatedSurface(
     // `surface` is assigned below; a composition can only end once a caller holds it.
     replaceSelectionWith: (text) => surface.type(text),
     discardPaint: () => discardRetainedPaint(pagesLayer),
+    // A revision of -1 says "not the model's": the readback then lands the model and rebases.
+    paintedText: (paragraphId) => {
+      const shown = paintedLayout ?? currentLayout;
+      const current = shown === currentLayout && !commitPaintOwed && scheduler.pending() === null;
+      // Through the open text box's projection, as `textOf` reads: its story is only there.
+      return {
+        text: paragraphTextFromLayout(textboxEditing?.layout(shown) ?? shown, paragraphId),
+        revision: current ? session.packageRevision() : -1,
+      };
+    },
+    holdPaint: (hold) => {
+      heldLayout = hold ? (paintedLayout ?? currentLayout) : null;
+    },
   });
+  landComposedText = selectionSync.landComposed;
 
   hfScope = createHeaderFooterScopeController({
     session,
@@ -3664,34 +3707,7 @@ export function mountPaginatedSurface(
     // pages 1–5 the moment page 1 scrolled away. `keyedRangeRects` clips to the visible pages
     // anyway; this is only a pre-filter, and a false keep costs one range's measurement.
     const onScreen = pages ? rangesOnPages(currentLayout, pages) : () => true;
-    const ranges: KeyedRange[] = [];
-    for (const item of visibleReviewItems()) {
-      if (item.kind === 'comment') {
-        if (item.range === null) continue;
-        if (!onScreen(item.range.start.paragraphId, item.range.end.paragraphId)) continue;
-        ranges.push({
-          key: reviewItemKey(item),
-          from: { paragraphId: item.range.start.paragraphId, offset: item.range.start.offset },
-          to: { paragraphId: item.range.end.paragraphId, offset: item.range.end.offset },
-        });
-        continue;
-      }
-      // Revisions are measured in the SAME pass and drawn only when active: tracked text
-      // already carries an underline, a strike and a margin bar, so banding all of it would
-      // repeat what the decoration says and leave a page of edits as one solid wash.
-      // Custom-node cards take the same treatment — the chip tint already marks the node
-      // persistently, so its band appears only while its card is open.
-      const key = reviewItemKey(item);
-      const itemRanges = item.kind === 'revision' ? item.ranges : item.range ? [item.range] : [];
-      for (const [index, range] of itemRanges.entries()) {
-        if (!onScreen(range.start.paragraphId, range.end.paragraphId)) continue;
-        ranges.push({
-          key: itemRanges.length === 1 ? key : `${key}${RANGE_SUFFIX}${index}`,
-          from: { paragraphId: range.start.paragraphId, offset: range.start.offset },
-          to: { paragraphId: range.end.paragraphId, offset: range.end.offset },
-        });
-      }
-    }
+    const ranges = bandRanges(visibleReviewItems(), onScreen);
     const byKey = keyedRangeRectsWithTextboxes(currentLayout, ranges, pages, measurer);
     const rects: (OverlayRect & { key: string })[] = [];
     for (const [key, found] of byKey) for (const rect of found) rects.push({ ...rect, key });
@@ -3858,57 +3874,10 @@ export function mountPaginatedSurface(
   const remotePresenceColor = presenceColors.forAuthor;
   const declaredPresenceColor = presenceColors.declaredFor;
 
-  /** The class a band draws in, or null when this range should not be drawn at all. */
-  function bandClassFor(
-    key: string,
-    activeKeys: ReadonlySet<string>,
-    byKey: ReadonlyMap<string, ReviewItem>
-  ): string | null {
-    // A revision's key is suffixed per range when one decision covers several sites, so the
-    // active test compares the DECISION, not the site. Split on NUL, which an author name
-    // cannot contain — `#` can, and an author called `A#b` never saw their band light up.
-    const parts = key.split(RANGE_SUFFIX);
-    const decision = parts[0]!;
-    const isActive = activeKeys.has(decision);
-    if (key.startsWith('comment-')) {
-      const item = byKey.get(decision);
-      const resolved = item?.kind === 'comment' && item.resolved;
-      if (resolved && !isActive) return null;
-      return isActive
-        ? `docx-comment-band docx-comment-band--active${resolved ? ' docx-comment-band--resolved-active' : ''}`
-        : 'docx-comment-band';
-    }
-    // A custom node's band only while its card is open: the chip tint already marks the
-    // node persistently, and the comment band is the right weight for "this is the one".
-    if (key.startsWith('custom-')) {
-      return isActive ? 'docx-comment-band docx-comment-band--active' : null;
-    }
-    const item = byKey.get(decision);
-    if (!item || item.kind !== 'revision') return null;
-    // In the revision's OWN colour — green for text arriving, red for text leaving — so the
-    // band never contradicts the decoration beneath it. A REPLACEMENT is one decision in two
-    // colours: its leading ranges are the struck half, the rest is what took their place, and
-    // painting the pair one neutral grey said "something changed here" about an edit whose
-    // two halves the page is already colouring.
-    const index = parts.length > 1 ? Number(parts[1]) : 0;
-    const kindOf = (revisionKind: ReviewRevisionKind): 'delete' | 'insert' | 'other' => {
-      if (revisionKind === 'delete' || revisionKind === 'moveFrom') return 'delete';
-      if (revisionKind === 'insert' || revisionKind === 'moveTo') return 'insert';
-      if (revisionKind === 'replace' && item.replacedRangeCount !== undefined) {
-        return index < item.replacedRangeCount ? 'delete' : 'insert';
-      }
-      return 'other';
-    };
-    const kind = kindOf(item.revisionKind);
-    // Every pending change carries a band, faint until it is the open one. A tracked page
-    // with no tint at all made "which of these is selected" a question about a 1px margin
-    // bar; a page where only the active one tints made the others look resolved.
-    return `docx-revision-band docx-revision-band--${kind}${isActive ? ' docx-revision-band--active' : ''}`;
-  }
-
   let commentHighlightLayout: SemanticLayout | null = null;
   let commentHighlightActiveKey: string | undefined;
   let commentHighlightAuthors: ReadonlyMap<string, ReviewAuthorInfo> | null = null;
+  const bandItems = createBandItemLookup();
 
   function renderCommentHighlights(force = false): void {
     const active = activeReviewAtCaret();
@@ -3929,33 +3898,10 @@ export function mountPaginatedSurface(
     ) {
       return;
     }
-    // Once per paint, not once per rect: a decision spanning many lines asked the same
-    // question for every one of them.
-    const byKey = reviewItemsByKey(visibleReviewItems());
-    const bands: OverlayRect[] = [];
-    for (const rect of commentRects()) {
-      const className = bandClassFor(rect.key, activeKeys, byKey);
-      if (!className) continue;
-      // WHOSE band, for CSS to key on. The rect's key is suffixed per range for a revision
-      // covering several sites, so the author comes from the decision, as the class does.
-      const decision = rect.key.split(RANGE_SUFFIX)[0]!;
-      const item = byKey.get(decision);
-      const name = item ? reviewItemAuthor(item) : null;
-      const reviewAuthor = name === null || name === '' ? undefined : roster.resolved.get(name);
-      // The author's own active background, on the OPEN revision's band only. The active
-      // test repeats the class's — the decision, not the site — so a multi-range decision
-      // tints every range it covers, and a comment band never takes a revision field.
-      const activeBackground =
-        item?.kind === 'revision' && activeKeys.has(decision)
-          ? reviewAuthor?.style?.activeBackground
-          : undefined;
-      bands.push({
-        ...rect,
-        className,
-        ...(reviewAuthor ? { reviewAuthor } : {}),
-        ...(activeBackground !== undefined ? { activeBackground } : {}),
-      });
-    }
+    // The items behind the measured bands only: see `createBandItemLookup`.
+    const rects = commentRects();
+    const byKey = bandItems(visibleReviewItems(), rects);
+    const bands = reviewBands(rects, activeKeys, byKey, roster.resolved);
     paintSelectionOverlay(commentLayer, currentLayout, bands, {
       scale,
       ...(materializedExtent ? { pageOffsetX: materializedExtent.pageOffsetX } : {}),
@@ -4024,6 +3970,8 @@ export function mountPaginatedSurface(
       remoteSelectionLayer.replaceChildren();
       return;
     }
+    // Drawn from `currentLayout`, which the held page does not show: the end paints it.
+    if (heldLayout !== null && currentLayout !== heldLayout) return;
     paintRemoteSelections(remoteSelectionLayer, currentLayout, collaboration.remoteSelections(), {
       scale,
       pageOffsetX: materializedExtent?.pageOffsetX,
@@ -4094,17 +4042,11 @@ export function mountPaginatedSurface(
     layout: SemanticLayout,
     paragraphIds: readonly string[]
   ): ReadonlyMap<string, string> {
-    const wanted = new Set(paragraphIds);
+    // A heading that opens with a page break starts on the page its text is painted on.
     const result = new Map<string, string>();
-    for (const page of layout.pages) {
-      for (const fragment of paragraphFragmentsOf(page)) {
-        if (!wanted.has(fragment.paragraphId) || result.has(fragment.paragraphId)) continue;
-        const source = page.pageFieldSource;
-        result.set(
-          fragment.paragraphId,
-          formatPageNumber(source?.pageNumber ?? page.index + 1, source?.format)
-        );
-      }
+    for (const [id, page] of paragraphStartPages(layout.pages, new Set(paragraphIds))) {
+      const source = page.pageFieldSource;
+      result.set(id, formatPageNumber(source?.pageNumber ?? page.index + 1, source?.format));
     }
     return result;
   }
@@ -4446,7 +4388,7 @@ export function mountPaginatedSurface(
       trackedChangeLanded: () => runtimeOptions.onTrackedChange?.(),
       revisionDisplayMode,
       commit,
-      selectedDrawing: () => resolveSelectedDrawingRecord(surface),
+      selectedDrawing: () => clipboardSelectedDrawing(surface),
       selectPastedDrawing: (id, paragraphId) => selectPastedDrawing(surface, id, paragraphId),
     });
 
@@ -4486,6 +4428,9 @@ export function mountPaginatedSurface(
         const page = viewportPage(container, currentLayout, scale);
         if (page !== null) return page;
       }
+      // An open header or footer repeats on every page it heads: the caret is on the open one.
+      const furniture = hfScope?.getActive();
+      if (furniture) return furniture.pageIndex + 1;
       const caret = caretAt(editingLayout(), selection.head);
       return caret ? caret.pageIndex + 1 : 1;
     },
@@ -4512,12 +4457,8 @@ export function mountPaginatedSurface(
           : null;
         scale = nextScale;
         if (!options.measurer) {
-          defaults = resolveDefaultSurfaceMeasurer(scale, {
-            context: tryCreateBrowserCanvasContext(container.ownerDocument),
-            ...(options.fontAlias ? { fontAlias: options.fontAlias } : {}),
-            serifHangulFace,
-          });
-          measurer = inlineWidgets.measurer(defaults.measurer);
+          defaults = defaultMeasurer();
+          measurer = surfaceMeasurer();
         }
         producer = producerIdentity();
         furnitureSource = createCurrentFurnitureSource(revisionFilter());
@@ -4669,7 +4610,7 @@ export function mountPaginatedSurface(
         // Number first, then indent: Backspace reaches the paragraph break only after both.
         if (surface.removeListNumber(position.paragraphId)) return;
         if (surface.removeParagraphIndent(position.paragraphId)) return;
-        const order = paragraphOrder();
+        const order = withinOpenNote(editingLayout(), noteScopeId(), paragraphOrder()); // Not past it.
         const index = order.indexOf(position.paragraphId);
         const previous = order[index - 1];
         if (!previous) return;
@@ -5005,7 +4946,7 @@ export function mountPaginatedSurface(
       // At the end of a paragraph, Delete pulls the NEXT one up — the mirror of Backspace at
       // offset zero, and the reason a document can be flattened without reaching for a mouse.
       if (paragraphOrder().at(-1) === position.paragraphId) completeProgressiveOpen(surface); // Its successor needs the rest of a large open laid out.
-      const order = paragraphOrder();
+      const order = withinOpenNote(editingLayout(), noteScopeId(), paragraphOrder()); // Not past it.
       const next = order[order.indexOf(position.paragraphId) + 1];
       if (!next) return;
       // Unless the break is one a resolved view already merged away. The reader sees one
@@ -5061,6 +5002,9 @@ export function mountPaginatedSurface(
       return selectDrawing(drawingNodeId, hostParagraphId);
     },
 
+    selectDrawingMember: (memberNodeId) =>
+      memberIntent(session, drawingIntent, memberNodeId, (next) => setDrawingIntent(next, true)),
+
     revealPage(pageIndex, options) {
       // Flushed like its siblings below: a page the deferred pass creates is not findable
       // in the superseded layout, and "false" must mean "no such page", not "not yet".
@@ -5074,9 +5018,9 @@ export function mountPaginatedSurface(
     revealParagraph(paragraphId, options) {
       beginReveal();
       blockView.reveal([paragraphId]);
-      // The paragraph's own line, not the top of its page: a heading two thirds down a
-      // page is the thing the caller asked to see.
-      const start = { paragraphId, offset: 0 };
+      // The paragraph's own line, not the top of its page, and its text, not a leading page
+      // break at the bottom of the page before: the heading is what the caller asked to see.
+      const start = pastLeadingBreaks(editingLayout().pages, { paragraphId, offset: 0 });
       const caret = caretAt(editingLayout(), start);
       if (!caret && laterOnOpening(start, () => surface.revealParagraph(paragraphId, options)))
         return true;
@@ -5272,7 +5216,7 @@ export function mountPaginatedSurface(
       unexplainedReason: UNEXPLAINED_WRITE_REFUSAL,
       selectedDrawingNodeId: () =>
         drawingIntent.kind === 'pointer' ? drawingIntent.drawingNodeId : null,
-      selectionAfter: (preserveDrawing) => {
+      selectionAfter: (preserveDrawing, carry) => {
         flushLayout();
         if (
           preserveDrawing &&
@@ -5282,7 +5226,9 @@ export function mountPaginatedSurface(
           return null;
         selectionSync.noteModelMoved();
         const order = paragraphOrder();
-        return order.length ? clampedToDocument(editingLayout(), order, selection) : null;
+        return order.length
+          ? clampedToDocument(editingLayout(), order, carry?.(selection) ?? selection)
+          : null;
       },
     }),
 
@@ -5391,14 +5337,7 @@ export function mountPaginatedSurface(
     },
     collaborationSession: () => collaborationSession ?? null,
     ...blockView.commands,
-    observePaint(observer) {
-      paintObservers.add(observer);
-      render(false);
-      return () => {
-        if (!paintObservers.delete(observer)) return;
-        observer.beforePaint?.();
-      };
-    },
+    observePaint: paintObservers.subscribe,
     remotePresenceColor,
     setShowParagraphMarks: paragraphMarks.set,
     setRevisionMarkup: markupSettings.set,
@@ -5457,6 +5396,11 @@ export function mountPaginatedSurface(
       options.onChange?.(currentState());
     },
 
+    caretClientRect: () => {
+      flushLayout();
+      return caret.clientRect();
+    },
+    remoteSelectionPending: () => remoteCaret.pending(),
     activeReviewKey: () => {
       const active = activeReviewAtCaret();
       return active ? reviewItemKey(active) : null;
@@ -5802,7 +5746,7 @@ export function mountPaginatedSurface(
       try {
         flushToPaint();
       } finally {
-        destroyPaintObservers(paintObservers);
+        paintObservers.destroy();
         pagesLayer.removeEventListener('pointerdown', onDrawingPointerGesture, { capture: true });
         pagesLayer.removeEventListener('keydown', onDrawingKeyGesture, { capture: true });
         pagesLayer.removeEventListener('keydown', onInputTiming, { capture: true });
@@ -5815,6 +5759,7 @@ export function mountPaginatedSurface(
         pagesLayer.removeEventListener('cut', onCut as EventListener);
         pagesLayer.removeEventListener('paste', onPaste as EventListener);
         pagesLayer.removeEventListener('compositionstart', onCompositionStart);
+        inputMethod.repair.destroy();
         pagesLayer.removeEventListener('compositionend', onCompositionEnd);
         viewportBinding?.destroy();
         localPresence.destroy();
@@ -5937,22 +5882,21 @@ export function mountPaginatedSurface(
   // surface-input.ts, the selection mirror and the IME lane in surface-selection-sync.ts.
   // The document-level selection listener runs in this editor's field-result mode too.
   const { onSelectionChange, onCompositionEnd } = fieldScope.methods({ ...selectionSync });
-  // The IME owns the DOM from compositionstart on; buffered plain typing must
-  // be in the document before that handover, not woven into the readback. The
-  // handover is of the PAINTED DOM, so a layout pass or paint a commit deferred
-  // under input pressure must land too: the readback at compositionend diffs the
-  // painted text against the model, and a composition that began over a stale
-  // paint would read the missing edit back as the IME's own.
+  // The IME owns the DOM from compositionstart on; buffered plain typing must be in the
+  // document before that handover, not woven into the readback. The handover is of the
+  // PAINTED DOM, so a layout pass or paint a commit deferred under input pressure must land
+  // too: the readback diffs the painted text against the model, and a composition begun over
+  // a stale paint reads the missing edit back as the IME's own (but not its own last commit).
   //
-  // The pending USER selection is taken up FIRST, exactly as `onKeyDown` does.
-  // The flush's render mirrors the model selection into the DOM — over the
-  // user's still-unadopted range — and its `applyingSelection` echo guard is
-  // still up (it clears on a microtask) when `onCompositionStart` performs its
-  // own mandatory adoption, which would skip it: the #383 lane choice would
-  // again be made from a selection the user no longer has.
+  // The pending USER selection is taken up FIRST, exactly as `onKeyDown` does. The flush's
+  // render mirrors the model selection into the DOM — over the user's still-unadopted range
+  // — and its `applyingSelection` echo guard is still up (it clears on a microtask) when
+  // `onCompositionStart` performs its own mandatory adoption, which would skip it: the #383
+  // lane choice would again be made from a selection the user no longer has.
   const onCompositionStart: typeof selectionSync.onCompositionStart = (...args) => {
+    inputMethod.repair.stop();
     selectionSync.adoptBeforeInput();
-    flushToPaint();
+    if (!selectionSync.continuesComposition()) flushToPaint();
     selectionSync.onCompositionStart(...args);
   };
 
@@ -6054,6 +5998,7 @@ export function mountPaginatedSurface(
     () => (partOfNodeId(session, selection.head.paragraphId) ?? session.part()).root
   );
   const onKeyDown = (event: KeyboardEvent): void => {
+    selectionSync.noteKeyDown(event);
     directionChord.keydown(event);
     if (legacyDropdownInteraction?.keydown(event)) return;
     // The browser may have moved its caret without delivering the queued `selectionchange`
@@ -6063,6 +6008,18 @@ export function mountPaginatedSurface(
     dispatchKeyDown(event);
   };
   const { onCopy, onCut, onPaste } = createClipboardHandlers(surface);
+  const inputMethod = createInputMethodLane({
+    pagesLayer,
+    selection: () => selection,
+    textOf,
+    paragraphOrder,
+    revision: () => session.packageRevision(),
+    paintCurrent: () => !deferredPublishRender && !commitPaintOwed && typeBuffer.length === 0,
+    flushToPaint,
+    render,
+    timers,
+    sync: selectionSync,
+  });
   const dispatchBeforeInput = createBeforeInputHandler(surface, {
     isComposing: () => selectionSync.isComposing(),
     insertPlainText,
@@ -6073,17 +6030,40 @@ export function mountPaginatedSurface(
       selectionSync.mirrorToDom();
       selectionSync.noteBrowserSelectionFixup();
     },
+    ...inputMethod.hooks,
   });
   const onBeforeInput = (event: InputEvent): void => {
     selectionSync.adoptBeforeInput();
     dispatchBeforeInput(event);
+    if (!selectionSync.isComposing()) inputMethod.repair.watch(event);
   };
 
+  // One header and footer entry for the pointer and the drawing presses: no scroll, unlike the
+  // programmatic entry, because the press is already on screen.
+  const storyTransitions = pointerStoryTransitions({
+    viewing: () => editingMode === 'view',
+    flush: flushPendingInputAndLayout,
+    headerFooter: () => hfScope,
+    notes: () => noteOps,
+    sectionAtPage,
+    blankHeaderFooter: () => ({
+      session,
+      layout: currentLayout,
+      sectionAtPage,
+      create: (op) => surface.applyHeaderFooterLifecycle?.(op),
+      flushLayout,
+    }),
+  });
   const { onDrawingPointerGesture, onDrawingKeyGesture } = createDrawingGestures({
     surface,
     textbox: () => textboxEditing,
     intent: () => drawingIntent,
     setIntent: (intent) => setDrawingIntent(intent, true),
+    behindDrawingAt: (x, y) => pointer?.behindDrawingAt(x, y) ?? null,
+    enterStoryPage: (pageIndex) => {
+      const active = pointerHeaderFooterState(hfScope?.getActive() ?? null);
+      if (active) storyTransitions.enterHeaderFooter?.({ ...active, pageIndex });
+    },
   });
   pagesLayer.addEventListener('pointerdown', onDrawingPointerGesture, { capture: true });
   pagesLayer.addEventListener('keydown', onDrawingKeyGesture, { capture: true });
@@ -6170,20 +6150,7 @@ export function mountPaginatedSurface(
       // gesture exactly: arm, then drag over the text that should take the formatting.
       onSelectionSettled: () => formatPainter.applyIfArmed(),
       activeHeaderFooter: () => pointerHeaderFooterState(hfOutsideBox()),
-      ...pointerStoryTransitions({
-        viewing: () => editingMode === 'view',
-        flush: flushPendingInputAndLayout,
-        headerFooter: () => hfScope,
-        notes: () => noteOps,
-        sectionAtPage,
-        blankHeaderFooter: () => ({
-          session,
-          layout: currentLayout,
-          sectionAtPage,
-          create: (op) => surface.applyHeaderFooterLifecycle?.(op),
-          flushLayout,
-        }),
-      }),
+      ...storyTransitions,
       onContentControlWidget: (controlId, kind) => openContentControlWidget(controlId, kind),
       ...(options.reviewModel ? { onChangeBarToggle: reviewView.toggleByChangeBar } : {}),
       isReadOnlyPosition: (position) => tocAtPosition(session.part(), position) !== undefined,
@@ -6281,6 +6248,7 @@ export function mountPaginatedSurface(
     tableInteraction.refreshLabels();
     tableSelectHandle?.update();
   };
+  registerUsedFontFaces(surface, faceUsage.faces);
   surface.refreshTableInteractionLabels = () => {
     tableInteraction.refreshLabels();
     tableSelectHandle?.update();
@@ -6304,14 +6272,14 @@ export function mountPaginatedSurface(
     }),
     (next) => {
       options = { ...options, ...next };
-      measurer = inlineWidgets.measurer(options.measurer ?? defaults!.measurer);
+      measurer = surfaceMeasurer();
       producer = producerIdentity();
     },
     refreshMeasurements
   );
   registerSurfaceInlineWidgetMetrics(surface, (next) => {
     if (destroyed || !inlineWidgets.set(next)) return;
-    measurer = inlineWidgets.measurer(options.measurer ?? defaults!.measurer);
+    measurer = surfaceMeasurer();
     refreshMeasurements('inline-widgets');
   });
   registerRefreshComposition(surface, () => selectionSync.isComposing());

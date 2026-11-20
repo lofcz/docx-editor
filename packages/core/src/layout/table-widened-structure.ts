@@ -1,6 +1,8 @@
 // The structure of a table whose autofit columns widened past the widths it was read with.
 
 import { retargetSharedGridLineSideRules } from './legacy-table-side-rules.ts';
+import { withLegacyRowPlacement } from './legacy-row-placement.ts';
+import { mirroredAlignment } from './table-alignment.ts';
 import type { SemanticTableStructure } from './semantic-table.ts';
 
 /**
@@ -47,15 +49,22 @@ export function widenedTableStructure(
     },
     widths
   );
-  // A legacy content-edge offset does not depend on the widths; other offsets move with them.
+  // A legacy content-edge offset does not depend on the widths, nor does a spaced table's
+  // frame offset; shared grid line offsets move with them.
   const { outerRuleOffsetPt: _previousOffset, ...unchanged } = base;
-  const offset = base.legacyContentOffsetPt ?? sideRules.outerRuleOffsetPt;
-  const structure: SemanticTableStructure = {
-    ...unchanged,
-    columnWidthsPt: widths,
-    rows: sideRules.rows,
-    ...(offset === undefined ? {} : { outerRuleOffsetPt: offset }),
-  };
+  const offset =
+    base.legacyContentOffsetPt ??
+    (base.cellSpacingPt > 0 ? base.outerRuleOffsetPt : sideRules.outerRuleOffsetPt);
+  // Centred and trailing-aligned rows of a legacy table move with the width.
+  const structure = withLegacyRowPlacement(
+    {
+      ...unchanged,
+      columnWidthsPt: widths,
+      rows: sideRules.rows,
+      ...(offset === undefined ? {} : { outerRuleOffsetPt: offset }),
+    },
+    context
+  );
   if (!widened) widenedStructureMemos.set(base, (widened = new Map()));
   if (widened.size >= MAX_WIDENED_PER_BASE) widened.delete(widened.keys().next().value!);
   widened.set(widthsKey, structure);
@@ -88,8 +97,4 @@ export function nestedAutofitStructure(
     base.columnWidthsPt.map((width) => width * scale),
     context
   );
-}
-
-function mirroredAlignment(alignment: SemanticTableStructure['alignment']) {
-  return alignment === 'left' ? 'right' : alignment === 'right' ? 'left' : alignment;
 }

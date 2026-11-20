@@ -84,6 +84,23 @@ test.each([
   );
 });
 
+test.each([
+  ['a drawing can be copied, cut, or pasted only in the body text', 'drawingClipboardStory'],
+  [
+    'a shape inside a group is copied or cut with its group; press Escape to select the group',
+    'groupMemberClipboard',
+  ],
+  ['a linked text box cannot be copied', 'linkedTextBoxClipboard'],
+  [
+    'this drawing links to data that cannot be copied, such as a diagram or an embedded object',
+    'drawingClipboardParts',
+  ],
+  ['this drawing is too large to copy', 'drawingClipboardSize'],
+  ['place the caret in the text to paste a drawing', 'drawingPasteCells'],
+] as const)('the drawing clipboard refusal %s is translatable', (reason, key) => {
+  expect(localizeDisabledReason(reason, createT(en))).toBe(en.disabledReason[key]);
+});
+
 test('the picture-selected insert refusal is translatable', () => {
   const reason = 'a picture is selected; place the caret in text to insert a picture';
   expect(localizeDisabledReason(reason, createT(en))).not.toBe(reason);
@@ -133,4 +150,22 @@ test('the compare documents collaboration refusal is translatable', () => {
   expect(localizeDisabledReason(reason, createT(en))).toBe(
     'Compare documents is not available in a shared editing session.'
   );
+});
+
+describe('the Format shape refusals are translatable', () => {
+  const t = createT(en);
+  test.each([
+    ['this drawing has no fill or outline to set', en.shape.errors.noShape],
+    ['the shape has no solid fill to change; set a color', en.shape.errors.noSolidFill],
+    [
+      'the shapes in this group have different fills; pick a color to set them all',
+      en.shape.errors.mixedFill,
+    ],
+    ['a legacy shape has no transparency', en.shape.errors.legacyTransparency],
+    ['the fill or outline value is out of range', en.shape.errors.outOfRange],
+    ['stale drawing selection', en.shape.errors.staleSelection],
+    ['shape.pane.errors.width', en.shape.pane.errors.width],
+  ])('%s', (reason, expected) => {
+    expect(localizeDisabledReason(reason, t)).toBe(expected);
+  });
 });

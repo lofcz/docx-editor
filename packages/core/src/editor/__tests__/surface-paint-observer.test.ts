@@ -140,3 +140,20 @@ test('one failing observer still releases all other surface resources', () => {
     console.error = report;
   }
 });
+
+test('passive observers can subscribe to the current frame without repainting other hosts', () => {
+  const editor = createDocxEditor({
+    container: document.createElement('div'),
+    document: docx(p('Text')),
+  });
+  try {
+    const calls: string[] = [];
+    const surface = editor.surface!;
+    surface.observePaint({ beforePaint() {}, afterPaint: () => calls.push('host') });
+    surface.observePaint({ afterPaint: () => calls.push('disclosure') });
+    surface.observePaint({ afterPaint: () => calls.push('image') });
+    expect(calls).toEqual(['host', 'disclosure', 'image']);
+  } finally {
+    editor.destroy();
+  }
+});

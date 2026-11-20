@@ -8,11 +8,28 @@ import {
 } from './image-command-fields.ts';
 import { drawingAtomProjection } from '../store/package/drawing-atom-projection.ts';
 import { commandProtectionRefusal } from './command-protection.ts';
+import * as member from './group-member-selection.ts';
 import { inlineToFloatingPosition } from './inline-wrap-placement.ts';
 import { reanchorMovedDrawing } from './drawing-reanchor.ts';
 import { preserveWrapExtentOps, type WrapExtentOverrides } from './image-wrap-extent.ts';
 import { reportCommandResult } from './command-reporting.ts';
-import { chartDrawingRefusal, drawingGate, type ChartGate } from './image-state-rules.ts';
+import {
+  chartDrawingRefusal,
+  drawingGate,
+  intrinsicOf,
+  type ChartGate,
+} from './image-state-rules.ts';
+import {
+  isShapeDrawing,
+  overlayFrameTurnOf,
+  shapePictureCommandRefusal,
+  selectedShapeFormat,
+  fittedTextboxHeightEmu,
+  textFitRelease,
+  shapeFrameWraps,
+  shapeKeepsGeometrySize,
+  type OverlayFrameTurn,
+} from './shape-drawings.ts';
 export { imageContextEqual } from './image-state-rules.ts';
 // Selected-image derivation and image command dispatch for `createDocxEditor` (task 13).
 //
@@ -174,16 +191,6 @@ function anchoredDrawingAtSelection(
   return null;
 }
 
-/**
- * Comparable key for a drawing-selection intent, so a state guard can watch its transitions
- * — including a press on the drawing at offsets the selection already holds.
- */
-export function drawingSelectionIntentKey(
-  intent: import('./paginated-surface-contract.ts').DrawingSelectionIntent
-): string {
-  return intent.kind === 'pointer' ? `pointer:${intent.drawingNodeId}` : intent.kind;
-}
-
 export function resolveSelectedDrawingRecord(
   surface: PaginatedSurface | null
 ): SelectedDrawingRecord | null {
@@ -215,16 +222,14 @@ function projectDrawingForRecord(
   const scope = surface.storyScope();
   const part = surface.session.partFor(scope) ?? surface.session.part();
   const drawing = findNode(part, record.drawingNodeId);
+  const pkg = surface.session.currentPackage();
   if (!drawing) return null;
-  if (drawing.kind !== 'drawing') return drawingAtomProjection(part, record.drawingNodeId);
+  if (drawing.kind !== 'drawing') return drawingAtomProjection(part, record.drawingNodeId, pkg);
   return projectDrawing(drawing as import('../store/package/ooxml-tree.ts').OoxmlDrawingNode, {
     ownerPartName: record.ownerPartName,
     supportedMcRequires: DEFAULT_SUPPORTED_MC_REQUIRES,
     limits: DEFAULT_DRAWING_PROJECTION_LIMITS,
-    resolveRelationship: createDrawingRelationshipResolver(
-      surface.session.currentPackage(),
-      record.ownerPartName
-    ),
+    resolveRelationship: createDrawingRelationshipResolver(pkg, record.ownerPartName),
   });
 }
 
@@ -247,30 +252,21 @@ function positionInputOf(projection: DrawingProjection): DrawingPositionInput | 
   });
 }
 
-function intrinsicOf(record: SelectedDrawingRecord): SelectedImageState['intrinsic'] {
-  const resource = record.resource;
-  if (resource.kind !== 'ready') return null;
-  return Object.freeze({
-    pixelWidth: resource.pixelWidth,
-    pixelHeight: resource.pixelHeight,
-    dpiX: resource.dpiX,
-    dpiY: resource.dpiY,
-  });
-}
-
 function capabilityFlags(
   projection: DrawingProjection,
   chart: ChartGate,
-  gateLocks: DrawingLocks
+  gateLocks: DrawingLocks,
+  shapeWraps = false
 ): Pick<SelectedImageState, 'canResize' | 'canMove' | 'canChangeWrap' | 'canCrop'> {
   const locks = chart === 'locked' ? { resize: true, move: true, changeAspect: true } : gateLocks;
   // An inline text box flows with its line: it resizes in place but is never dragged.
   const fixed = projection.kind === 'inline' && projection.textboxStory !== null;
+  const shape = shapeKeepsGeometrySize(projection, chart === 'none');
   return Object.freeze({
-    canResize: !locks.resize && !projection.hidden,
+    canResize: !shape && !locks.resize && !projection.hidden,
     canMove: !fixed && !locks.move && !projection.hidden,
     canChangeWrap:
-      (chart === 'frame' || (chart === 'none' && projection.picture !== null)) &&
+      (chart === 'frame' || (chart === 'none' && (projection.picture !== null || shapeWraps))) &&
       !locks.move &&
       !projection.hidden,
     canCrop:
@@ -288,13 +284,14 @@ function wrapOf(record: SelectedDrawingRecord): ImageWrapTarget {
 }
 
 /**
- * Image commands reach pictures, text boxes, charts (drawn, by their fallback, or as a
- * placeholder) and diagrams (`chart` is not `none`); the overlay offers handles on the same
- * gate. A chart or a diagram selects as an object.
+ * Image commands reach pictures, text boxes, shapes, lines and groups (`vectorShape`), charts
+ * (drawn, by their fallback, or as a placeholder) and diagrams (`chart` is not `none`); the
+ * overlay offers handles on the same gate. A chart or a diagram selects as an object.
  */
 const imageCommandsReach = (record: SelectedDrawingRecord, chart: ChartGate): boolean =>
   record.placeholderGraphicKind === null ||
   !!record.textboxStory ||
+  !!record.vectorShape ||
   record.placeholderGraphicKind === 'chart' ||
   !!record.chart ||
   chart !== 'none';
@@ -317,9 +314,9 @@ export function selectedImageStateOf(surface: PaginatedSurface | null): Selected
     id: record.drawingNodeId,
     kind: projection.kind,
     widthEmu: projection.extentEmu.cx,
-    heightEmu: projection.extentEmu.cy,
+    heightEmu: fittedTextboxHeightEmu(record) ?? projection.extentEmu.cy,
     crop: cropPercentFromSourceCrop(record.crop),
-    rotationDegrees: transform.rotationDegrees,
+    rotationDegrees: transform.rotationDegrees || (record.vectorShape?.rotationDegrees ?? 0),
     wrap: wrapOf(record),
     position: positionInputOf(projection),
     name: projection.name,
@@ -330,7 +327,9 @@ export function selectedImageStateOf(surface: PaginatedSurface | null): Selected
     hidden: projection.hidden,
     resourceStatus: record.resource.kind,
     intrinsic: intrinsicOf(record),
-    ...capabilityFlags(projection, chart, locks),
+    ...capabilityFlags(projection, chart, locks, shapeFrameWraps(surface!, projection, chart)),
+    ...member.memberImageFields(surface!, record.drawingNodeId),
+    shapeFormat: chart === 'none' ? selectedShapeFormat(surface!, record.drawingNodeId) : null,
   });
 }
 
@@ -596,7 +595,8 @@ export function gateImageCommand(
   if (!surface) {
     return { ok: false, code: 'notFound', reason: 'no document is loaded' };
   }
-  const protectedWrite = commandProtectionRefusal(command, surface);
+  const protectedWrite =
+    commandProtectionRefusal(command, surface) ?? member.groupMemberRefusal(command, surface);
   if (protectedWrite) return protectedWrite;
   if (command.type === 'insertImage') {
     if (command.at) {
@@ -617,20 +617,12 @@ export function gateImageCommand(
     }
     return null;
   }
-  const record = resolveSelectedDrawingRecord(surface);
-  const textbox = record && 'textboxStory' in record && record.textboxStory;
-  if (
-    textbox &&
-    (command.type === 'replaceImage' ||
-      command.type === 'transformImage' ||
-      (command.type === 'setImageProperties' && command.hyperlink !== undefined))
-  ) {
-    return {
-      ok: false,
-      code: 'unsupported',
-      reason: 'this operation is not supported for textboxes',
-    };
-  }
+  const shapeRefusal = shapePictureCommandRefusal(
+    command,
+    surface,
+    resolveSelectedDrawingRecord(surface)
+  );
+  if (shapeRefusal) return shapeRefusal;
   if (command.type === 'replaceImage') {
     if (!(command.data instanceof Uint8Array) || command.data.byteLength === 0) {
       return { ok: false, code: 'invalidArgs', reason: 'replaceImage requires image bytes' };
@@ -906,6 +898,7 @@ export function execImageCommand(
             cx: command.widthEmu ?? image.widthEmu,
             cy: command.heightEmu ?? image.heightEmu,
           },
+          ...textFitRelease(command.heightEmu, resolveSelectedDrawingRecord(surface)),
         });
       }
       if (command.crop !== undefined) {
@@ -1155,6 +1148,8 @@ export interface ImageOverlayScrollPort {
 export interface SelectedDrawingOverlayTarget {
   /** Keep the text area available for pointer editing through the frame. */
   readonly textbox?: boolean;
+  /** A shape, line or group: its frame is labelled as a shape, not as an image. */
+  readonly shape?: boolean;
   /**
    * False for a text box whose text takes no caret: rotated or vertical text, or a story
    * holding a table. Absent for a drawing that is not a text box.
@@ -1172,6 +1167,8 @@ export interface SelectedDrawingOverlayTarget {
   readonly position: DrawingPositionInput | null;
   readonly anchorFrameOrigin: { readonly x: number; readonly y: number } | null;
   readonly transform: DrawingTransform;
+  /** A turned shape's frame, which `overlayFrameCssBox` rings turned; absent when upright. */
+  readonly turn?: OverlayFrameTurn;
   readonly canResize: boolean;
   readonly canMove: boolean;
   /** Hard lock from `noChangeAspect` — never overridden by Shift. */
@@ -1196,13 +1193,14 @@ function overlayCapabilityFlags(
 }
 
 /**
- * The painted geometry of the selected drawing, for the resize/move overlay — or null.
+ * The painted geometry of the selected drawing, built anew on each call. Read it through
+ * `selectedDrawingOverlayTargetOf`, which keeps the previous object when nothing changed.
  *
  * Stricter than {@link selectedImageStateOf}: it also requires a COLLAPSED selection, because a
  * range that merely contains a drawing is a text selection, and drawing handles over it would
  * claim an object the user did not single out.
  */
-export function selectedDrawingOverlayTargetOf(
+export function freshSelectedDrawingOverlayTarget(
   surface: PaginatedSurface | null
 ): SelectedDrawingOverlayTarget | null {
   if (!surface) return null;
@@ -1222,14 +1220,13 @@ export function selectedDrawingOverlayTargetOf(
   // place handles, stamp a drag session — so a pass still parked on the scheduler's timer must
   // land first. Nothing pending makes this a plain read.
   const layout = surface.layout();
-  const edited =
-    scope.kind === 'frame'
-      ? editedTextboxOverlayFrame(layout, scope, surface.currentPage('caret') - 1)
-      : null;
+  const page = surface.currentPage('caret') - 1;
+  const edited = scope.kind === 'frame' ? editedTextboxOverlayFrame(layout, scope, page) : null;
   const record = scope.kind === 'frame' ? edited?.record : selected;
   if (!record) return null;
   if (record.accessibility.hidden) return null;
-  const frame = edited ?? findDrawingOverlayFrameInLayout(layout, record.drawingNodeId);
+  // The page the caret is on: an open header's drawing repeats on every page it heads.
+  const frame = edited ?? findDrawingOverlayFrameInLayout(layout, record.drawingNodeId, page);
   if (!frame) return null;
   const projection = projectDrawingForRecord(surface, record);
   const gate = projection ? drawingGate(surface, record.drawingNodeId, projection) : null;
@@ -1259,6 +1256,7 @@ export function selectedDrawingOverlayTargetOf(
   return Object.freeze({
     id: record.drawingNodeId,
     textbox: 'textboxStory' in record && !!record.textboxStory,
+    shape: isShapeDrawing(surface, record),
     ...textboxTextEditable(
       record,
       partOfNodeId(surface.session, record.drawingNodeId) ?? surface.session.part()
@@ -1270,11 +1268,13 @@ export function selectedDrawingOverlayTargetOf(
     height: frame.height,
     kind: record.kind === 'inlineDrawing' ? 'inline' : 'anchored',
     widthEmu: projection?.extentEmu.cx ?? pointsToEmu(frame.width),
-    heightEmu: projection?.extentEmu.cy ?? pointsToEmu(frame.height),
+    heightEmu:
+      fittedTextboxHeightEmu(record) ?? projection?.extentEmu.cy ?? pointsToEmu(frame.height),
     position: projection ? positionInputOf(projection) : null,
     anchorFrameOrigin,
     transform: record.transform,
-    ...gated,
+    ...overlayFrameTurnOf(record),
+    ...member.memberOverlayFields(surface, record.drawingNodeId, frame, gated),
   });
 }
 

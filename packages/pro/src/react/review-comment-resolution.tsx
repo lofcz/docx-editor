@@ -29,7 +29,10 @@ import { ReviewActionSlot } from './review-action-slot.tsx';
 import { hostDocumentOf, isDomNode } from '@docx-editor.dev/core/editor';
 
 interface ResolutionPartDeps {
-  readonly useReview: () => UseReviewReturn;
+  readonly useReview: () => Pick<
+    UseReviewReturn,
+    'resolve' | 'reopen' | 'setActive' | 'commentResolutionDisabledReason'
+  >;
   readonly useItem: () => ReviewItemView | null;
   readonly useLabel: () => (key: TranslationKey) => string;
   readonly guardMousedown: (event: ReactMouseEvent) => void;
@@ -129,7 +132,9 @@ export function ResolvedCommentCard({
         if (event.currentTarget.open) {
           disclosure.open(entryKey);
           onActivate();
-        } else {
+        } else if (disclosure.key === entryKey) {
+          // Only this card's own close. Opening another resolved card closes this one, and
+          // the browser reports that close too: it must not undo the other card's open.
           disclosure.close();
           onDeactivate();
         }

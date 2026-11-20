@@ -28,6 +28,15 @@ function savedRoom(): Y.Doc {
   return doc;
 }
 
+function historicalRoom(sharedSchemaVersion: number, repairVersion: number): Y.Doc {
+  const doc = savedRoom();
+  const meta = doc.getMap(PACKAGE_META_KEY);
+  meta.set('sharedSchemaVersion', sharedSchemaVersion);
+  meta.set('repairVersion', repairVersion);
+  meta.set('canonicalModelVersion', 1);
+  return doc;
+}
+
 test.each([
   'collaboration-format-mismatch',
   'protocol-version-mismatch',
@@ -204,10 +213,8 @@ test('a wrong metadata container refuses with a stable code without changing the
 });
 
 test('release 2.32 repair semantics refuse admission without changing saved room state', () => {
-  const doc = savedRoom();
+  const doc = historicalRoom(5, 2);
   try {
-    doc.getMap(PACKAGE_META_KEY).set('sharedSchemaVersion', 5);
-    doc.getMap(PACKAGE_META_KEY).set('repairVersion', 2);
     const before = Y.encodeStateAsUpdate(doc);
     expect(readCollaborationFormatVersion(doc)).toBe('docx-collaboration:1.5.2.1');
     expect(() => assertCollaborationFormatCompatibility('docx-collaboration:1.5.2.1')).toThrow(
@@ -221,10 +228,8 @@ test('release 2.32 repair semantics refuse admission without changing saved room
 });
 
 test('terminal revision placement refuses rooms using the previous repair rules without writes', () => {
-  const doc = savedRoom();
+  const doc = historicalRoom(6, 3);
   try {
-    doc.getMap(PACKAGE_META_KEY).set('sharedSchemaVersion', 6);
-    doc.getMap(PACKAGE_META_KEY).set('repairVersion', 3);
     const before = Y.encodeStateAsUpdate(doc);
     const version = readCollaborationFormatVersion(doc);
     expect(version).toBe('docx-collaboration:1.6.3.1');
@@ -239,10 +244,8 @@ test('terminal revision placement refuses rooms using the previous repair rules 
 });
 
 test('independent paragraph birth repair refuses the previous room format without writes', () => {
-  const doc = savedRoom();
+  const doc = historicalRoom(6, 4);
   try {
-    doc.getMap(PACKAGE_META_KEY).set('sharedSchemaVersion', 6);
-    doc.getMap(PACKAGE_META_KEY).set('repairVersion', 4);
     const bytes = Y.encodeStateAsUpdate(doc);
     const version = readCollaborationFormatVersion(doc);
     expect(version).toBe('docx-collaboration:1.6.4.1');
@@ -256,10 +259,8 @@ test('independent paragraph birth repair refuses the previous room format withou
 });
 
 test('paired review copy repair refuses the previous room format without writes', () => {
-  const doc = savedRoom();
+  const doc = historicalRoom(6, 5);
   try {
-    doc.getMap(PACKAGE_META_KEY).set('sharedSchemaVersion', 6);
-    doc.getMap(PACKAGE_META_KEY).set('repairVersion', 5);
     const bytes = Y.encodeStateAsUpdate(doc);
     const version = readCollaborationFormatVersion(doc);
     expect(version).toBe('docx-collaboration:1.6.5.1');
@@ -273,10 +274,8 @@ test('paired review copy repair refuses the previous room format without writes'
 });
 
 test('retained resource recovery refuses the previous room format without writes', () => {
-  const doc = savedRoom();
+  const doc = historicalRoom(6, 6);
   try {
-    doc.getMap(PACKAGE_META_KEY).set('sharedSchemaVersion', 6);
-    doc.getMap(PACKAGE_META_KEY).set('repairVersion', 6);
     const bytes = Y.encodeStateAsUpdate(doc);
     const version = readCollaborationFormatVersion(doc);
     expect(version).toBe('docx-collaboration:1.6.6.1');
@@ -291,10 +290,8 @@ test('retained resource recovery refuses the previous room format without writes
 });
 
 test('replacement cell coverage refuses the previous repair format without writes', () => {
-  const doc = savedRoom();
+  const doc = historicalRoom(7, 7);
   try {
-    doc.getMap(PACKAGE_META_KEY).set('sharedSchemaVersion', 7);
-    doc.getMap(PACKAGE_META_KEY).set('repairVersion', 7);
     const bytes = Y.encodeStateAsUpdate(doc);
     const version = readCollaborationFormatVersion(doc);
     expect(version).toBe('docx-collaboration:1.7.7.1');
@@ -309,10 +306,8 @@ test('replacement cell coverage refuses the previous repair format without write
 });
 
 test('restored cell properties refuse the previous repair format without writes', () => {
-  const doc = savedRoom();
+  const doc = historicalRoom(7, 8);
   try {
-    doc.getMap(PACKAGE_META_KEY).set('sharedSchemaVersion', 7);
-    doc.getMap(PACKAGE_META_KEY).set('repairVersion', 8);
     const bytes = Y.encodeStateAsUpdate(doc);
     const version = readCollaborationFormatVersion(doc);
     expect(version).toBe('docx-collaboration:1.7.8.1');
@@ -327,10 +322,8 @@ test('restored cell properties refuse the previous repair format without writes'
 });
 
 test('native birth scalar retention refuses the previous repair format without writes', () => {
-  const doc = savedRoom();
+  const doc = historicalRoom(7, 9);
   try {
-    doc.getMap(PACKAGE_META_KEY).set('sharedSchemaVersion', 7);
-    doc.getMap(PACKAGE_META_KEY).set('repairVersion', 9);
     const bytes = Y.encodeStateAsUpdate(doc);
     const version = readCollaborationFormatVersion(doc);
     expect(version).toBe('docx-collaboration:1.7.9.1');
@@ -345,10 +338,8 @@ test('native birth scalar retention refuses the previous repair format without w
 });
 
 test('visible native property winners refuse the previous repair format without writes', () => {
-  const doc = savedRoom();
+  const doc = historicalRoom(7, 10);
   try {
-    doc.getMap(PACKAGE_META_KEY).set('sharedSchemaVersion', 7);
-    doc.getMap(PACKAGE_META_KEY).set('repairVersion', 10);
     const bytes = Y.encodeStateAsUpdate(doc);
     const version = readCollaborationFormatVersion(doc);
     expect(version).toBe('docx-collaboration:1.7.10.1');
@@ -363,10 +354,8 @@ test('visible native property winners refuse the previous repair format without 
 });
 
 test('stable inline gap boundaries refuse the previous repair format without writes', () => {
-  const doc = savedRoom();
+  const doc = historicalRoom(7, 11);
   try {
-    doc.getMap(PACKAGE_META_KEY).set('sharedSchemaVersion', 7);
-    doc.getMap(PACKAGE_META_KEY).set('repairVersion', 11);
     const bytes = Y.encodeStateAsUpdate(doc);
     const version = readCollaborationFormatVersion(doc);
     expect(version).toBe('docx-collaboration:1.7.11.1');
@@ -381,10 +370,8 @@ test('stable inline gap boundaries refuse the previous repair format without wri
 });
 
 test('restored append formatting boundaries refuse the previous repair format without writes', () => {
-  const doc = savedRoom();
+  const doc = historicalRoom(7, 12);
   try {
-    doc.getMap(PACKAGE_META_KEY).set('sharedSchemaVersion', 7);
-    doc.getMap(PACKAGE_META_KEY).set('repairVersion', 12);
     const bytes = Y.encodeStateAsUpdate(doc);
     const version = readCollaborationFormatVersion(doc);
     expect(version).toBe('docx-collaboration:1.7.12.1');
@@ -399,10 +386,8 @@ test('restored append formatting boundaries refuse the previous repair format wi
 });
 
 test('restored split typing refuses repair format 13 without changing the room', () => {
-  const doc = savedRoom();
+  const doc = historicalRoom(7, 13);
   try {
-    doc.getMap(PACKAGE_META_KEY).set('sharedSchemaVersion', 7);
-    doc.getMap(PACKAGE_META_KEY).set('repairVersion', 13);
     const bytes = Y.encodeStateAsUpdate(doc);
     const version = readCollaborationFormatVersion(doc);
     expect(version).toBe('docx-collaboration:1.7.13.1');
@@ -417,10 +402,8 @@ test('restored split typing refuses repair format 13 without changing the room',
 });
 
 test('restored review typing refuses repair format 14 without changing the room', () => {
-  const doc = savedRoom();
+  const doc = historicalRoom(9, 14);
   try {
-    doc.getMap(PACKAGE_META_KEY).set('sharedSchemaVersion', 9);
-    doc.getMap(PACKAGE_META_KEY).set('repairVersion', 14);
     const bytes = Y.encodeStateAsUpdate(doc);
     const version = readCollaborationFormatVersion(doc);
     expect(version).toBe('docx-collaboration:1.9.14.1');
@@ -435,10 +418,8 @@ test('restored review typing refuses repair format 14 without changing the room'
 });
 
 test('restored peer append boundaries refuse repair format 15 without changing the room', () => {
-  const doc = savedRoom();
+  const doc = historicalRoom(9, 15);
   try {
-    doc.getMap(PACKAGE_META_KEY).set('sharedSchemaVersion', 9);
-    doc.getMap(PACKAGE_META_KEY).set('repairVersion', 15);
     const bytes = Y.encodeStateAsUpdate(doc);
     const version = readCollaborationFormatVersion(doc);
     expect(version).toBe('docx-collaboration:1.9.15.1');
@@ -453,9 +434,8 @@ test('restored peer append boundaries refuse repair format 15 without changing t
 });
 
 test('authored text shape refuses schema 7 without changing the room', () => {
-  const doc = savedRoom();
+  const doc = historicalRoom(7, 17);
   try {
-    doc.getMap(PACKAGE_META_KEY).set('sharedSchemaVersion', 7);
     const bytes = Y.encodeStateAsUpdate(doc);
     expect(readCollaborationFormatVersion(doc)).toBe('docx-collaboration:1.7.17.1');
     expect(() => readCollaborationDocument(doc)).toThrow('schema-version-mismatch');
@@ -466,9 +446,8 @@ test('authored text shape refuses schema 7 without changing the room', () => {
 });
 
 test('paragraph boundaries refuse schema 8 without changing the room', () => {
-  const doc = savedRoom();
+  const doc = historicalRoom(8, 17);
   try {
-    doc.getMap(PACKAGE_META_KEY).set('sharedSchemaVersion', 8);
     const bytes = Y.encodeStateAsUpdate(doc);
     expect(readCollaborationFormatVersion(doc)).toBe('docx-collaboration:1.8.17.1');
     expect(() => readCollaborationDocument(doc)).toThrow('schema-version-mismatch');

@@ -12,9 +12,14 @@ import {
 } from 'vue';
 import {
   beginInlineImageDrag,
+  leaveGroupMember,
+  drawingFramePressTarget,
+  type DrawingFramePress,
+  passDrawingFramePress,
   canMoveInlineImage,
   captureImageMutationPreconditions,
   computeMovedImagePosition,
+  forwardClipboardEvents,
   historyShortcutOf,
   IMAGE_OVERLAY_NUDGE_PT,
   IMAGE_OVERLAY_NUDGE_SHIFT_PT,
@@ -35,6 +40,7 @@ import {
   createImageOverlayScrollPort,
   cssPixelsToLayoutPoints,
   finalizeImageOverlayInteraction,
+  overlayFrameCssBox,
   overlayFrameToSheetCssPixels,
   overlayHostOrigin,
   resizePreservesAspect,
@@ -145,6 +151,10 @@ export const ImageSelectionOverlay = defineComponent({
     const pointerStartRef = shallowRef<{ readonly x: number; readonly y: number } | null>(null);
     const captureTargetRef = shallowRef<HTMLElement | null>(null);
     const overlayRef = shallowRef<HTMLDivElement | null>(null);
+    // Focus sits on the overlay, so copy, cut and paste reach the editor from here.
+    watch([overlayRef, editorRef], ([element, editor], _previous, onCleanup) => {
+      if (element && editor) onCleanup(forwardClipboardEvents(element, editor));
+    });
     const focusRequestedForDrawingRef = shallowRef<string | null>(null);
     const scrollPortRef = shallowRef<ImageOverlayScrollPort | null>(null);
 
@@ -158,11 +168,22 @@ export const ImageSelectionOverlay = defineComponent({
             focusRequestedForDrawingRef.value = null;
             return;
           }
-          const drawingId = element
-            ?.closest<HTMLElement>('[data-drawing-node-id]')
-            ?.getAttribute('data-drawing-node-id');
-          focusRequestedForDrawingRef.value = drawingId ?? null;
-          if (drawingId && drawingId === target.value?.id) {
+          const instance = editorRef.value;
+          // A drawing behind the text paints under it, so the hit names what the press reaches.
+          const drawingId =
+            element
+              ?.closest<HTMLElement>('[data-drawing-node-id]')
+              ?.getAttribute('data-drawing-node-id') ??
+            instance?.surface?.pointAt(event.clientX, event.clientY)?.hit.drawing?.drawingNodeId;
+          // A press on the frame goes where the frame hands it: text keeps the keyboard with
+          // the editor, another drawing takes it once selected.
+          const onFrame = !!instance && !!drawingId && drawingId === target.value?.id;
+          const press: DrawingFramePress = onFrame
+            ? drawingFramePressTarget(instance, event)
+            : 'frame';
+          focusRequestedForDrawingRef.value =
+            press === 'text' ? null : press === 'frame' ? (drawingId ?? null) : press.drawingNodeId;
+          if (onFrame && press === 'frame') {
             queueMicrotask(() => overlayRef.value?.focus({ preventScroll: true }));
           }
         };
@@ -187,8 +208,18 @@ export const ImageSelectionOverlay = defineComponent({
         const syncAfterCommit = (): void => {
           queueMicrotask(sync);
         };
+        // A selection of a drawing measures the origin again, as a new target used to: the
+        // target keeps its object while its values hold, and content above the pages can
+        // move the origin without resizing what the observer watches.
+        const onSelectionChange = (): void => {
+          sync();
+          if (target.value) refreshOrigin();
+        };
         sync();
-        const off = [editor.on('change', syncAfterCommit), editor.on('selectionChange', sync)];
+        const off = [
+          editor.on('change', syncAfterCommit),
+          editor.on('selectionChange', onSelectionChange),
+        ];
         onCleanup(() => {
           for (const unsubscribe of off) unsubscribe();
         });
@@ -364,6 +395,12 @@ export const ImageSelectionOverlay = defineComponent({
         return;
       }
       if (previewRef.value) return;
+      // Escape on a shape inside a group selects the group again.
+      if (event.key === 'Escape' && leaveGroupMember(editor)) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
       // Focus sits on the overlay, not the text surface, so history keys stop here unless
       // the overlay forwards them. Undo usually reverts the resize or move just made.
       const history = historyShortcutOf(event);
@@ -377,7 +414,8 @@ export const ImageSelectionOverlay = defineComponent({
       if (event.key === 'Delete' || event.key === 'Backspace') {
         event.preventDefault();
         event.stopPropagation();
-        editor.exec({ type: 'deleteImage' });
+        // The frame goes with the drawing: the caret it leaves keeps the keyboard, for undo.
+        if (editor.exec({ type: 'deleteImage' }).ok) editor.focus();
         return;
       }
       if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) return;
@@ -434,10 +472,12 @@ export const ImageSelectionOverlay = defineComponent({
       editor.exec({ type: 'setImagePosition', ...moved });
     };
 
+    // Keyed on the drag being active, not on each preview: every pointer move sets a new
+    // preview, and the handlers read the current one through `previewRef`.
     watch(
-      [preview, editorRef, () => props.containerRef.value],
-      ([currentPreview, editor, container], _, onCleanup) => {
-        if (!currentPreview || !editor?.surface) return;
+      [() => preview.value !== null, editorRef, () => props.containerRef.value],
+      ([dragging, editor, container], _, onCleanup) => {
+        if (!dragging || !editor?.surface) return;
         const coordinates = editor.surface.overlayCoordinates();
         const onPointerMove = (event: PointerEvent) => {
           const current = previewRef.value;
@@ -592,6 +632,8 @@ export const ImageSelectionOverlay = defineComponent({
         width: sheetRect.width,
         height: sheetRect.height,
       };
+      // A turned shape's frame rings its unturned extent, turned; a drag preview keeps the turn.
+      const frame = overlayFrameCssBox(rect, target.value?.turn, coordinates.paintScale);
       const showHandles = current.canResize;
       const showMove = current.kind === 'anchored' && current.canMove;
       const showInlineMove = current.kind === 'inline' && canMoveInlineImage(editor, current.id);
@@ -618,16 +660,20 @@ export const ImageSelectionOverlay = defineComponent({
                 showMove || showInlineMove ? ' docx-editor-one-surface__overlay-control' : ''
               }`}
               data-textbox={current.textbox ? 'true' : undefined}
+              data-turned={frame.transform ? 'true' : undefined}
               // To pointer and screen reader users alike.
               title={frameLabel}
               aria-description={frameLabel}
               role="group"
-              aria-label={t('imageOverlay.selection')}
+              aria-label={t(
+                current.shape ? 'imageOverlay.selectionShape' : 'imageOverlay.selection'
+              )}
               style={{
-                left: `${rect.left}px`,
-                top: `${rect.top}px`,
-                width: `${rect.width}px`,
-                height: `${rect.height}px`,
+                left: `${frame.left}px`,
+                top: `${frame.top}px`,
+                width: `${frame.width}px`,
+                height: `${frame.height}px`,
+                transform: frame.transform,
                 cursor: showMove || showInlineMove ? 'move' : 'default',
               }}
               // A double press on a chart opens the Chart pane, as Edit chart does.
@@ -636,6 +682,14 @@ export const ImageSelectionOverlay = defineComponent({
                 if (instance && openChartPaneFor(instance, current.id)) event.preventDefault();
               }}
               onPointerdown={(event: PointerEvent) => {
+                // Over text in front of a drawing behind it, the text takes the press.
+                const passed = passDrawingFramePress(editor, event);
+                if (passed !== 'frame') {
+                  // The forwarded press ran the capture listener again; the frame's answer wins.
+                  focusRequestedForDrawingRef.value =
+                    passed === 'text' ? null : passed.drawingNodeId;
+                  return;
+                }
                 if (showInlineMove && beginInlineImageDrag(editor, event, current.id)) return;
                 guardToolbarMousedown(event as unknown as MouseEvent);
                 if (!showMove || !current.position) return;

@@ -12,7 +12,7 @@
       "DocumentProperties"
     ],
     "collectionsAndSearch": ["ParagraphCollection", "RangeCollection", "SearchOptions"],
-    "fontAndParagraphFormatting": ["Font"],
+    "fontAndParagraphFormatting": ["Font", "BorderUniversalCollection", "BorderUniversal"],
     "contentControls": ["ContentControl", "ContentControlCollection"],
     "listsAndNumbering": ["List", "ListCollection", "ListItem"],
     "bookmarks": ["Bookmark", "BookmarkCollection"],
@@ -31,7 +31,15 @@
       "Revision",
       "RevisionCollection"
     ],
-    "styles": ["Style", "StyleCollection"]
+    "styles": ["Style", "StyleCollection"],
+    "proofingAnnotations": [
+      "Annotation",
+      "AnnotationCollection",
+      "AnnotationSet",
+      "Critique",
+      "CritiquePopupOptions",
+      "CritiqueAnnotation"
+    ]
   },
   "symbols": {
     "run": {
@@ -61,7 +69,8 @@
         "deleteBookmark",
         "getBookmarkRange",
         "getBookmarkRangeOrNullObject",
-        "getStyles"
+        "getStyles",
+        "getAnnotationById"
       ]
     },
     "Body": {
@@ -76,6 +85,7 @@
         "getComments",
         "insertParagraph",
         "insertText",
+        "insertFileFromBase64",
         "search",
         "footnotes",
         "endnotes"
@@ -108,6 +118,7 @@
     },
     "Paragraph": {
       "members": [
+        "borders",
         "font",
         "contentControls",
         "alignment",
@@ -128,7 +139,9 @@
         "search",
         "split",
         "getTextRanges",
-        "getReviewedText"
+        "getReviewedText",
+        "insertAnnotations",
+        "getAnnotations"
       ]
     },
     "ParagraphCollection": {
@@ -245,6 +258,30 @@
     },
     "StyleCollection": {
       "members": ["items", "getByNameOrNullObject", "getCount"]
+    },
+    "BorderUniversalCollection": {
+      "members": ["items"]
+    },
+    "BorderUniversal": {
+      "members": ["color", "colorIndex", "inside", "isVisible", "lineStyle", "lineWidth"]
+    },
+    "Annotation": {
+      "members": ["critiqueAnnotation", "id", "state", "delete"]
+    },
+    "AnnotationCollection": {
+      "members": ["items", "getFirst", "getFirstOrNullObject"]
+    },
+    "AnnotationSet": {
+      "members": ["critiques"]
+    },
+    "Critique": {
+      "members": ["colorScheme", "length", "popupOptions", "start"]
+    },
+    "CritiquePopupOptions": {
+      "members": ["brandingTextResourceId", "subtitleResourceId", "suggestions", "titleResourceId"]
+    },
+    "CritiqueAnnotation": {
+      "members": ["critique", "range", "accept", "reject"]
     }
   },
   "omissions": [
@@ -282,7 +319,11 @@
     },
     {
       "uid": "Word.Shape",
-      "reason": "Published as a partial, unmeasured surface: Body#shapes, Paragraph#shapes, Shape#id, #name, #type and #body, and ShapeCollection#items, #getFirst, #getFirstOrNullObject and #getByTypes, for floating and inline drawings and text-box stories. Not selected for conformance because these members belong to WordApiDesktop 1.2, outside the target requirement sets. Geometry, text frames, insertTextBox, and shape writes are not implemented."
+      "reason": "Published as a partial, unmeasured surface: Body#shapes, Paragraph#shapes, Shape#id, #name, #type, #body and #fill, ShapeFill#type, #foregroundColor, #transparency, #setSolidColor and #clear, and ShapeCollection#items, #getFirst, #getFirstOrNullObject and #getByTypes, for floating and inline drawings and text-box stories. Not selected for conformance because these members belong to WordApiDesktop 1.2, outside the target requirement sets. Geometry, text frames, insertTextBox, ShapeFill#backgroundColor and #set, and other shape writes are not implemented."
+    },
+    {
+      "uid": "Word.LineFormat",
+      "reason": "Word.Shape has no outline member in the pinned reference, so none is added. The outline of a shape, text box, line or group is set through the editor command setShapeOutline (visible, color, widthPt), which has no Office.js equivalent."
     },
     {
       "uid": "Word.Body#getHtml",
@@ -449,6 +490,10 @@
       "reason": "Implemented by DocxEditor's object model as an addition: Office.js has no paragraph direction member on Paragraph or ParagraphFormat, in the pinned declarations or in the preview declarations. The name follows the desktop object model's ParagraphFormat.ReadingOrder, and the values follow Word.SectionDirection ('LeftToRight', 'RightToLeft'). Reads answer the effective direction: the paragraph's own w:bidi, else its style chain, its numbering level, an enclosing cell's table style, and the document defaults, as layout resolves them. A write of the direction the paragraph already has changes nothing. Otherwise it removes the paragraph's own w:bidi when that alone set the other direction, or states w:bidi, with the explicit off value only over a right-to-left style. Writes keep w:jc as authored. With change tracking on, a write that changes the direction records a paragraph property revision."
     },
     {
+      "uid": "Word.Paragraph#lineSpacingRule",
+      "reason": "Implemented by DocxEditor's object model as an addition: Office.js has no line spacing rule member on Paragraph or ParagraphFormat, so Word.Paragraph#lineSpacing alone cannot switch between exact, at-least, and multiple spacing. The name and values follow the desktop object model's ParagraphFormat.LineSpacingRule ('Single', 'OnePointFive', 'Double', 'AtLeast', 'Exactly', 'Multiple'). Reads answer the rule in force: the paragraph's own w:spacing line attributes, else its style chain and the document defaults. Single, OnePointFive, and Double set w:line to 240, 360, or 480 under the auto rule; Multiple, AtLeast, and Exactly keep the points in force. With lineSpacing in the same sync, the rule applies first. With change tracking on, a write records a paragraph property revision."
+    },
+    {
       "uid": "Word.Style#font",
       "reason": "Style definitions are read, not written. Font is a formatting object over the definition, and this subset does not resolve or write style formatting. Apply a listed style with Paragraph#style, Range#style, or Body#style instead."
     },
@@ -535,6 +580,54 @@
     {
       "uid": "Word.Style#set",
       "reason": "Not published. Setting several style properties at once is a styles-part write."
+    },
+    {
+      "uid": "Word.BorderUniversal#artStyle",
+      "reason": "Art borders belong to pages. On a paragraph border, reads, writes, and loads throw NotSupported, so the member is not declared for conformance. runtime-notes.json records it as unsupported."
+    },
+    {
+      "uid": "Word.BorderUniversal#artWidth",
+      "reason": "Art borders belong to pages. On a paragraph border, reads, writes, and loads throw NotSupported, so the member is not declared for conformance. runtime-notes.json records it as unsupported."
+    },
+    {
+      "uid": "Word.BorderUniversal#set",
+      "reason": "Implemented with both upstream overloads. Not selected for exact conformance, because the update-data parameter carries artStyle and artWidth, which this subset refuses with NotSupported. runtime-notes.json records the supported subset."
+    },
+    {
+      "uid": "Word.BorderUniversalCollection#applyPageBordersToAllSections",
+      "reason": "Paragraph borders are not page borders. The member exists and throws NotSupported; it is not declared for conformance."
+    },
+    {
+      "uid": "Word.Document#onAnnotationClicked",
+      "reason": "The automation runtime has no event model: requests are batches a caller sends, and nothing in the object model raises events to it. Declaring an EventHandlers member that never fires would be a silent approximation, so the member is not implemented. Read getAnnotations() or getAnnotationById() after a sync instead. The runtime shows no annotation popup either: a browser host can hit-test the painted marks with editor.getHighlightsAt()."
+    },
+    {
+      "uid": "Word.Document#onAnnotationHovered",
+      "reason": "The automation runtime has no event model: requests are batches a caller sends, and nothing in the object model raises events to it. Declaring an EventHandlers member that never fires would be a silent approximation, so the member is not implemented. Read getAnnotations() or getAnnotationById() after a sync instead. The runtime shows no annotation popup either: a browser host can hit-test the painted marks with editor.getHighlightsAt()."
+    },
+    {
+      "uid": "Word.Document#onAnnotationInserted",
+      "reason": "The automation runtime has no event model: requests are batches a caller sends, and nothing in the object model raises events to it. Declaring an EventHandlers member that never fires would be a silent approximation, so the member is not implemented. Read getAnnotations() or getAnnotationById() after a sync instead."
+    },
+    {
+      "uid": "Word.Document#onAnnotationRemoved",
+      "reason": "The automation runtime has no event model: requests are batches a caller sends, and nothing in the object model raises events to it. Declaring an EventHandlers member that never fires would be a silent approximation, so the member is not implemented. Read getAnnotations() or getAnnotationById() after a sync instead."
+    },
+    {
+      "uid": "Word.Document#onAnnotationPopupAction",
+      "reason": "The automation runtime has no event model: requests are batches a caller sends, and nothing in the object model raises events to it. Declaring an EventHandlers member that never fires would be a silent approximation, so the member is not implemented. Read getAnnotations() or getAnnotationById() after a sync instead. The runtime shows no annotation popup either: a browser host can hit-test the painted marks with editor.getHighlightsAt()."
+    },
+    {
+      "uid": "Word.Document#onParagraphAdded",
+      "reason": "The automation runtime has no event model: requests are batches a caller sends, and nothing in the object model raises events to it. Declaring an EventHandlers member that never fires would be a silent approximation, so the member is not implemented. A browser host can listen to the editor's own change events and read paragraphs again in a run."
+    },
+    {
+      "uid": "Word.Document#onParagraphChanged",
+      "reason": "The automation runtime has no event model: requests are batches a caller sends, and nothing in the object model raises events to it. Declaring an EventHandlers member that never fires would be a silent approximation, so the member is not implemented. A browser host can listen to the editor's own change events and read paragraphs again in a run."
+    },
+    {
+      "uid": "Word.Document#onParagraphDeleted",
+      "reason": "The automation runtime has no event model: requests are batches a caller sends, and nothing in the object model raises events to it. Declaring an EventHandlers member that never fires would be a silent approximation, so the member is not implemented. A browser host can listen to the editor's own change events and read paragraphs again in a run."
     }
   ],
   "divergences": [
@@ -556,7 +649,7 @@
     },
     {
       "uid": "Word.Paragraph#delete",
-      "note": "With TrackMineOnly, records the paragraph's text as deleted runs and its paragraph mark as a deleted paragraph mark. Accept removes the paragraph; reject restores it. Position markers between paragraphs stay in place until accept, which moves them to the join point. After a reopen, or when another participant rejects, an empty w:pPr or w:rPr that the proposal added can remain. NotSupported: the last paragraph of a story, table cell, or content control; a paragraph directly before a table or block content control; a mark that ends a section; an inline content control in the paragraph; a paragraph containing a complex field boundary whose matching boundary is in another paragraph; inline content nested more than 64 levels deep. NotImplemented: the author's own pending change in the paragraph; another author's pending paragraph mark, formatting, move, or structural change in it; a pending change at the start of the next paragraph, including the author's own; or a previous paragraph whose mark the author already proposed deleting; any tracked deletion or replacement that starts a paragraph after such a mark refuses the same way. Delete adjacent paragraphs in one sync; a later sync beside the author's own pending deletion refuses, because it would review as one decision. One refusal refuses the whole sync."
+      "note": "A body, note, or text box that ends with a table keeps an empty paragraph after it; deleting that paragraph without change tracking refuses with NotSupported (edit.operation-unsupported). Without change tracking, the last paragraph of a body, note, comment, text box, or table cell refuses with NotSupported (edit.content-required); any other paragraph of a note or comment deletes. With TrackMineOnly, records the paragraph's text as deleted runs and its paragraph mark as a deleted paragraph mark. Accept removes the paragraph; reject restores it. Position markers between paragraphs stay in place until accept, which moves them to the join point. After a reopen, or when another participant rejects, an empty w:pPr or w:rPr that the proposal added can remain. NotSupported: the last paragraph of a story, table cell, or content control; a paragraph directly before a table or block content control; a mark that ends a section; an inline content control in the paragraph; a paragraph containing a complex field boundary whose matching boundary is in another paragraph; inline content nested more than 64 levels deep. NotImplemented: the author's own pending change in the paragraph; another author's pending paragraph mark, formatting, move, or structural change in it; a pending change at the start of the next paragraph, including the author's own; or a previous paragraph whose mark the author already proposed deleting; any tracked deletion or replacement that starts a paragraph after such a mark refuses the same way. Delete adjacent paragraphs in one sync; a later sync beside the author's own pending deletion refuses, because it would review as one decision. One refusal refuses the whole sync."
     },
     {
       "uid": "Word.Range#insertBreak",
@@ -849,6 +942,14 @@
     {
       "uid": "Word.Range#delete / Word.Range#insertText",
       "note": "Concurrent tracked edits retain exact source character identities. Equal spaces are not redistributed between inserted and deleted spans. Revision fragment counts and accepted spacing can differ from upstream."
+    },
+    {
+      "uid": "Word.CritiquePopupOptions#brandingTextResourceId / #subtitleResourceId / #titleResourceId",
+      "note": "Declared with the upstream type, but these name strings in an add-in manifest, which this runtime cannot resolve. An empty string is accepted; any other value refuses insertAnnotations with NotSupported (edit.operation-unsupported) instead of being ignored. A critique reads back with empty strings."
+    },
+    {
+      "uid": "Word.Critique#start / Word.CritiqueAnnotation#critique",
+      "note": "start and length count UTF-16 code units of Paragraph.text in the runtime revision view. A critique read answers the current start: an edit before the critique moves it, and an edit that touches the critiqued text removes the annotation."
     }
   ],
   "$divergencesComment": "Members that ARE selected but differ from upstream in a documented source shape or observable behaviour. Kept apart from \"omissions\" on purpose: an omission is a member this subset does not publish, and one of these is a member it publishes and answers differently. The authored compatibility declarations remain the exact upstream reference shape; runtime conformance assertions explicitly account for any listed source-shape divergence."

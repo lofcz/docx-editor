@@ -1,3 +1,5 @@
+// The bounded failure a table that cannot be paginated as authored raises.
+
 /**
  * Why a table could not be paginated as authored.
  *

@@ -2,12 +2,14 @@ import { insertTextbox } from './textbox-commands.ts';
 import { execChartCommand } from './chart-commands.ts';
 import { execSetWatermark } from './docx-editor-watermark.ts';
 import { execBookmarkCommand } from './docx-editor-bookmarks.ts';
+import { DRAWING_CLIPBOARD_REASONS } from './surface-drawing-clipboard.ts';
 import { CHART_CLIPBOARD_REASON, fragmentRefusalOf } from './clipboard-object-selection.ts';
 import { fragmentFromHtml } from './clipboard-fragment-codec.ts';
 import { FIELD_CODE_INPUT_REFUSAL } from './surface-field-code-input.ts';
-import { isMissingAuthorRefusal } from './docx-editor-author.ts';
-import { isCollaborationFailureCode } from '../collaboration/index.ts';
 import { execReplaceMatch } from './docx-editor-replace-match.ts';
+import { execReplaceAcceptedText } from './docx-editor-replace-accepted-text.ts';
+import { execReplaceAllMatches } from './docx-editor-replace-all.ts';
+import { execSelectionEdit, runFormatRefusal } from './docx-editor-selection-edits.ts';
 // Command dispatch for `createDocxEditor` (editor seam).
 //
 // One switch, one vocabulary: every `EditorCommand` the gate admitted lands here and is
@@ -20,11 +22,14 @@ import type { EditorCommand, ExecResult } from '../contracts/editor.ts';
 import type { PaginatedSurface } from './paginated-surface-contract.ts';
 import { writeClipboardRich } from './clipboard-write.ts';
 import { hostElementOfEditor, hostWindowOf } from './host-realm.ts';
-import { MARKS, isSurfaceSelection, resolveMarkAttr } from './docx-editor-support.ts';
+import { MARKS, resolveMarkAttr, textSelectionOf } from './docx-editor-support.ts';
 import { NOTHING_TO_COPY_FORMATTING, NOTHING_TO_PAINT } from './surface-format-painter-contract.ts';
 import { isDocAnchor, isDocAnchorRange, resolveAnchorSelection } from './anchor-resolution.ts';
 import { resolveDocTargetSelection } from './doc-target-resolution.ts';
 import { storyScopeOfNodeId } from './surface-scope.ts';
+import { sameNoteStory } from './surface-note-story.ts';
+import { noteScopeIndexOf } from './layout-paragraph-indexes.ts';
+import { openTextboxForSelection, textboxSelectionRefusal } from './review-story-entry.ts';
 import type { StoryScope } from '@docx-editor.dev/core/store';
 import { paragraphFragmentsOfBlocks } from '@docx-editor.dev/core/layout';
 import {
@@ -50,6 +55,7 @@ import {
   resolveSelectedDrawingRecord,
 } from './docx-editor-images.ts';
 import { lineSpacingAttributes, spacingSideAttributes } from './paragraph-format-write.ts';
+import { execShapeFormatCommand, isShapeFormatCommand } from './shape-format-commands.ts';
 
 /**
  * Run one admitted command against the surface.
@@ -58,20 +64,6 @@ import { lineSpacingAttributes, spacingSideAttributes } from './paragraph-format
  * verb that changed nothing), and `null` when it completed normally — the caller then
  * derives `changed` from the model revision rather than trusting the verb.
  */
-/**
- * A refused run format as a command result. A missing author or the generated table of
- * contents is the caller's to fix, as `insertText` reports it; a collaboration session that
- * is not ready is a retry, as the contract documents; anything else is a lock.
- */
-function runFormatRefusal(reason: string): ExecResult {
-  if (isCollaborationFailureCode(reason)) return { ok: false, code: 'unsupported', reason };
-  const callerFixable =
-    isMissingAuthorRefusal(reason) ||
-    reason === 'the table of contents is generated and read-only' ||
-    reason === FIELD_CODE_INPUT_REFUSAL;
-  return { ok: false, code: callerFixable ? 'invalidArgs' : 'locked', reason };
-}
-
 export function execEditorCommand(
   mounted: PaginatedSurface,
   command: EditorCommand,
@@ -80,7 +72,7 @@ export function execEditorCommand(
     readonly translate?: (key: string, params?: Record<string, string | number>) => string;
     readonly editor?: Pick<
       import('./docx-editor-types.ts').DocxEditorInstance,
-      'surface' | 'mountGeneration'
+      'surface' | 'mountGeneration' | 'getParagraphText'
     >;
   }
 ): ExecResult | null {
@@ -389,6 +381,12 @@ export function execEditorCommand(
     case 'setChartFormat':
     case 'setChartColor':
       return execChartCommand(mounted, command, options?.translate);
+    case 'replaceText':
+    case 'applyFormatting':
+    case 'splitParagraph':
+    case 'mergeParagraphs':
+    case 'removeTabMark':
+      return execSelectionEdit(mounted, command);
     case 'insertText':
       mounted.type(command.text);
       if (
@@ -437,6 +435,14 @@ export function execEditorCommand(
     }
     case 'replaceMatch':
       return execReplaceMatch(mounted, command);
+    case 'replaceAcceptedText':
+      return execReplaceAcceptedText(
+        mounted,
+        (blockId) => options?.editor?.getParagraphText(blockId) ?? null,
+        command
+      );
+    case 'replaceAllMatches':
+      return execReplaceAllMatches(mounted, command);
     case 'undo':
       mounted.undo();
       break;
@@ -555,28 +561,34 @@ export function execEditorCommand(
       // Selection is not document state: nothing to save changed.
       return { ok: true, changed: false };
     case 'copy': {
-      // The gate already refused a collapsed selection that holds no chart.
+      // The gate already refused a collapsed selection that holds no drawing.
+      const before = mounted.state();
       const flavours = mounted.copyFlavours();
-      if (flavours.reason) return clipboardRefusal(flavours.reason);
+      if (flavours.reason) return clipboardRefusal(flavours.reason, mounted, before);
       writeClipboardRich(flavours.text, flavours.html, clipboardWindow(options?.editor));
       return { ok: true, changed: false };
     }
     case 'cut': {
       // Read BEFORE the delete: `copyFlavours` answers from the selection, and the delete
       // is what removes it.
+      const before = mounted.state();
       const flavours = mounted.copyFlavours();
-      if (flavours.reason) return clipboardRefusal(flavours.reason);
-      writeClipboardRich(flavours.text, flavours.html, clipboardWindow(options?.editor));
-      // One selected chart: the cut deletes that chart, as Delete does.
-      if (flavours.chartDrawingNodeId) {
-        const removed = mounted.deleteImage(flavours.chartDrawingNodeId);
+      if (flavours.reason) return clipboardRefusal(flavours.reason, mounted, before);
+      // One selected drawing: the cut deletes that drawing, as Delete does. The clipboard is
+      // written only when the delete lands, so a refused cut is not a copy.
+      if (flavours.drawingNodeId) {
+        const removed = mounted.deleteImage(flavours.drawingNodeId);
         if (!removed.ok)
           return {
             ok: false,
             code: 'unsupported',
-            reason: removed.detail ?? removed.reason ?? 'the chart was not deleted',
+            reason: removed.detail ?? removed.reason ?? 'the drawing was not deleted',
           };
-      } else mounted.deleteSelection();
+        writeClipboardRich(flavours.text, flavours.html, clipboardWindow(options?.editor));
+      } else {
+        writeClipboardRich(flavours.text, flavours.html, clipboardWindow(options?.editor));
+        mounted.deleteSelection();
+      }
       break;
     }
     case 'paste': {
@@ -587,8 +599,12 @@ export function execEditorCommand(
       if (refusal) {
         return clipboardRefusal(refusal === 'chart' ? 'chart-content' : 'unsupported-content');
       }
+      const before = mounted.state();
       const result = mounted.pasteRich(command.text, command.html ?? null);
       if (!result) {
+        // A copied drawing refuses where it cannot land; this paste published that refusal.
+        const refused = drawingRefusalSince(mounted, before);
+        if (refused) return { ok: false, code: 'unsupported', reason: refused };
         return { ok: true, changed: false };
       }
       break;
@@ -604,13 +620,19 @@ export function execEditorCommand(
       // host driving the editor from its own chrome. `'centerIfNeeded'` keeps an
       // already-visible target still and centres one it has to travel to, rather than
       // stopping the moment it clears the bottom edge.
-      if ('range' in command && isSurfaceSelection(command.range)) {
+      const text = 'range' in command ? textSelectionOf(command.range) : null;
+      if (text?.kind === 'invalid') return { ok: false, code: 'invalidArgs', reason: text.reason };
+      if (text?.kind === 'ok') {
+        const range = text.selection;
         // Open the story the range is in first, as the anchor form below does: a header,
         // footer or note range selected from the body would otherwise strand the caret.
-        const entered = enterStoryForSelection(mounted, command.range);
+        const boxRefusal = textboxSelectionRefusal(mounted, range);
+        if (boxRefusal) return { ok: false, code: 'unsupported', reason: boxRefusal };
+        const entered = enterStoryForSelection(mounted, range);
         if (!entered.ok) return entered;
-        mounted.setSelection(command.range);
-        mounted.revealPosition(command.range.head, { block: 'centerIfNeeded' });
+        openTextboxForSelection(mounted, range);
+        mounted.setSelection(range);
+        mounted.revealPosition(range.head, { block: 'centerIfNeeded' });
         // Selection is not document state: nothing to save changed.
         return { ok: true, changed: false };
       }
@@ -649,6 +671,7 @@ export function execEditorCommand(
       if (isImageCommand(command)) {
         return execImageCommand(mounted, command, options?.editor);
       }
+      if (isShapeFormatCommand(command)) return execShapeFormatCommand(mounted, command);
       // Unreachable: `classifyCommand` refused everything else. Typed for the compiler.
       return { ok: false, code: 'unsupported', reason: 'unsupported command' };
   }
@@ -657,13 +680,31 @@ export function execEditorCommand(
 
 /** The scope id of the note whose painted fragments hold `paragraphId`, or null. */
 /** The window whose clipboard a copy writes to: the editor's, a pop-out's when it is there. */
-/** A refused copy, cut or paste. A chart refuses with its own reason, which adapters translate. */
-function clipboardRefusal(reason: 'unsupported-content' | 'chart-content'): ExecResult {
+/**
+ * A refused copy, cut or paste. A chart, or a drawing that published its sentence since
+ * `before`, refuses with its own reason, which adapters translate.
+ */
+function clipboardRefusal(
+  reason: 'unsupported-content' | 'chart-content',
+  mounted?: PaginatedSurface,
+  before?: ReturnType<PaginatedSurface['state']>
+): ExecResult {
+  const drawing = mounted && before ? drawingRefusalSince(mounted, before) : null;
   return {
     ok: false,
     code: 'unsupported',
-    reason: reason === 'chart-content' ? CHART_CLIPBOARD_REASON : reason,
+    reason: drawing ?? (reason === 'chart-content' ? CHART_CLIPBOARD_REASON : reason),
   };
+}
+
+/** The drawing clipboard's refusal, when one was published after `before`. */
+function drawingRefusalSince(
+  mounted: PaginatedSurface,
+  before: ReturnType<PaginatedSurface['state']>
+): string | null {
+  const after = mounted.state();
+  const refused = after !== before ? after.lastRejection : null;
+  return refused && DRAWING_CLIPBOARD_REASONS.has(refused) ? refused : null;
 }
 
 function clipboardWindow(editor: object | undefined): Window | undefined {
@@ -671,17 +712,7 @@ function clipboardWindow(editor: object | undefined): Window | undefined {
 }
 
 function noteScopeHolding(mounted: PaginatedSurface, paragraphId: string): string | null {
-  for (const page of mounted.layout().pages) {
-    for (const area of [page.footnotes, page.endnotes]) {
-      if (!area) continue;
-      for (const note of area.notes) {
-        for (const fragment of paragraphFragmentsOfBlocks(note.fragments)) {
-          if (fragment.paragraphId === paragraphId) return note.scopeId;
-        }
-      }
-    }
-  }
-  return null;
+  return noteScopeIndexOf(mounted.layout()).get(paragraphId) ?? null;
 }
 
 /**
@@ -776,11 +807,9 @@ function enterStoryForSelection(
   // painted layout is what knows which one that is.
   //
   // BOTH endpoints, because `StoryScope` cannot tell two footnotes apart: every footnote in a
-  // document answers `{ kind: 'notesPart', noteKind: 'footnote' }`. So the story comparison
-  // above passed a selection running from footnote 1 to footnote 2, and this entered the
-  // head's note with the anchor left in a note that store has never heard of — the exact
-  // half-applied state the comparison exists to refuse. Typing over such a selection deleted
-  // neither endpoint's text and inserted at offset 0 of the wrong note.
+  // document answers `{ kind: 'notesPart', noteKind: 'footnote' }`. The anchor must be in a
+  // note of the head's kind. A range across notes is then the selection a drag makes; the
+  // surface refuses typing and deletion over it (`crossNoteWriteRefusal`), never half-applies.
   const scopeId = noteScopeHolding(mounted, selection.head.paragraphId);
   if (!scopeId) {
     return { ok: false, code: 'notFound', reason: 'that note is not laid out' };
@@ -789,10 +818,15 @@ function enterStoryForSelection(
     selection.anchor.paragraphId === selection.head.paragraphId
       ? scopeId
       : noteScopeHolding(mounted, selection.anchor.paragraphId);
-  if (anchorScopeId !== scopeId) {
+  // Notes of one kind are one story (ECMA-376 Part 1 §17.11): a range from footnote 1 into footnote 3 opens
+  // the head's note, the way a drag across them leaves it. Edits over it are refused later.
+  if (!anchorScopeId || !sameNoteStory(anchorScopeId, scopeId)) {
     return { ok: false, code: 'unsupported', reason: 'a selection cannot span two stories' };
   }
-  if (active.kind === 'note' && active.id === scopeId) return { ok: true, changed: false };
+  // Already in that story: the open note follows the head when the selection lands.
+  if (active.kind === 'note' && sameNoteStory(active.id, scopeId)) {
+    return { ok: true, changed: false };
+  }
   mounted.exitHeaderFooter?.();
   const opened = mounted.enterNote?.(scopeId);
   return opened

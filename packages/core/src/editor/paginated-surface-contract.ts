@@ -246,6 +246,11 @@ export interface PaginatedSurface
    */
   selectDrawing(drawingNodeId: string, hostParagraphId: string): boolean;
   /**
+   * Select one shape inside the selected group, as a second press on the group does, or the
+   * group again with null. False when no group is selected or it holds no such shape.
+   */
+  selectDrawingMember(memberNodeId: string | null): boolean;
+  /**
    * Select a rectangle of table cells, or clear one with null.
    *
    * The equivalent text range is installed alongside it, so `state().selection` stays valid
@@ -273,6 +278,14 @@ export interface PaginatedSurface
    * terms as `toggleRunProperty`, and returns a refusal the same way.
    */
   setRunProperty(localName: string, attributes?: Record<string, string>): string | null;
+  /**
+   * Several run properties over the selection in ONE transaction: the store accepts or
+   * refuses them together, and they undo as one step. `setRunProperty` is this with a
+   * single entry.
+   */
+  setRunProperties(
+    entries: readonly { localName: string; attributes?: Record<string, string> }[]
+  ): string | null;
   /**
    * Set a property on every paragraph the selection touches — alignment, style, spacing.
    *
@@ -590,8 +603,8 @@ export interface PaginatedSurface
       pkg: import('../store/package/ooxml-package.ts').OoxmlPackage
     ) => import('../store/package/ooxml-package.ts').OoxmlPackage)[],
     requiresReview?: boolean,
-    /** Start a fresh undo unit for this call. Streaming callers retain default capture behavior. */
-    separateHistory?: boolean,
+    /** Start a fresh undo unit, or carry the reader's selection through this edit. */
+    separateHistoryOrCarry?: boolean | ((selection: SemanticSelection) => SemanticSelection),
     /** Run package hooks after native operations when they need newly allocated identities. */
     packageEditPhase?: 'before' | 'after',
     /** Stage dependent native operations after initial ops, inside the same guarded transaction. */
@@ -688,6 +701,18 @@ export interface PaginatedSurface
    */
   overlayCoordinates(): import('./surface-overlay-coordinates.ts').SurfaceOverlayCoordinates;
   /**
+   * The insertion point at the selection head in client pixels, as the painted caret places
+   * it, whether or not it paints right now. Null when the head is not on a painted page.
+   * Runs a pending layout pass first, so the geometry and a carried caret are current. Typed
+   * characters still buffered under input pressure stay buffered, as they stay unpainted.
+   */
+  caretClientRect(): import('../contracts/editor-highlights.ts').HighlightRect | null;
+  /**
+   * Whether a remote commit is waiting for the next layout pass to carry the selection. Until
+   * it runs, `state().selection` addresses the text from before that commit.
+   */
+  remoteSelectionPending(): boolean;
+  /**
    * The comment, tracked change or carded custom node the caret is in, as the painted bands
    * report it. A custom node without `reviewCard` is never the answer: it has no card.
    *
@@ -762,15 +787,17 @@ export interface PaginatedSurface
    * Every clipboard flavour for the current selection: plain text, and the interop HTML
    * carrying the embedded fragment when the selection is a body-story range. A cell rectangle
    * answers grid text plus a flattened table; `html` is null where only plain text should be
-   * written. One selected chart copies whole and names its drawing in `chartDrawingNodeId`,
-   * which a cut deletes. A chart inside a wider selection refuses as `'chart-content'`, another
-   * object as `'unsupported-content'`.
+   * written. One selected drawing copies whole and names itself in `drawingNodeId`, which a
+   * cut deletes. A chart inside a wider selection refuses as `'chart-content'`, another object
+   * as `'unsupported-content'`.
    */
   copyFlavours(): {
     readonly text: string;
     readonly html: string | null;
     readonly reason?: 'unsupported-content' | 'chart-content';
+    /** @deprecated A selected chart also names itself in `drawingNodeId`; read that instead. */
     readonly chartDrawingNodeId?: string;
+    readonly drawingNodeId?: string;
   };
   /**
    * Route one paste payload by fidelity: embedded fragment, then external HTML, then

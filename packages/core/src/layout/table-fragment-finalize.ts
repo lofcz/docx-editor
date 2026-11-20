@@ -11,6 +11,8 @@ import { shiftInlineDrawingRecord } from './drawing-layout.ts';
 import { exactOpeningExtensionPt, exactTerminalBorderPt } from './table-exact-terminal-border.ts';
 import { rememberMovableCopy } from './table-row-geometry-reuse.ts';
 import { relayOutMergedBottomToTop } from './table-cell-text-direction.ts';
+import { separatedCellBorders } from './table-spacing-frame.ts';
+import { cellDiagonalRecords } from './table-cell-diagonals.ts';
 import { republishAnchoredParagraphsInBlocks } from './table-anchor-republish.ts';
 import type { CellContentInsets } from './table-cell-geometry.ts';
 import { outerBottomInsetFloor, sharedCellContentInsets } from './cell-content-insets-memo.ts';
@@ -226,7 +228,12 @@ export function finalizeTableRows(
             // A merged `btLr` head lays its text along the rows its merge covers in this fragment.
             let blocks =
               (span > 1 && relayOutMergedBottomToTop(cell.blocks, height)) || cell.blocks;
-            if (authored && authored.vAlign !== 'top' && blocks.length > 0) {
+            // A cell holding floats keeps the alignment its row gave it: its floats stay where
+            // they were placed, so the band of its blocks no longer says where the text began.
+            const holdsFloats = blocks.some(
+              (block) => block.kind === 'table' && block.floatingWrap
+            );
+            if (authored && authored.vAlign !== 'top' && blocks.length > 0 && !holdsFloats) {
               const insets =
                 occurrenceInsets?.get(row)?.get(cell.id) ??
                 sharedCellContentInsets(authored, structure.cellSpacingPt === 0);
@@ -276,9 +283,10 @@ export function finalizeTableRows(
                 occurrenceInsets?.get(row)?.get(cell.id) ??
                 sharedCellContentInsets(authored, structure.cellSpacingPt === 0);
               const cellContentBox = {
-                ...finalizedCellBox,
                 x: finalizedCellBox.x + insets.left,
+                y: finalizedCellBox.y + insets.top,
                 width: Math.max(1, finalizedCellBox.width - insets.left - insets.right),
+                height: Math.max(0, finalizedCellBox.height - insets.top - insets.bottom),
               };
               republishAnchoredParagraphsInBlocks(
                 blocks,
@@ -298,6 +306,9 @@ export function finalizeTableRows(
           }),
         }
   );
+
+  // A spaced table's cells draw their own whole boxes (`table-spacing-frame.ts`).
+  if (structure.cellSpacingPt > 0) return withSeparatedCellBorders(expanded, authoredById);
 
   // Border grid from authored structure (same row/cell order as laid-out fragment rows).
   // Header repeats use the same authored header row; match by cell id.
@@ -366,14 +377,41 @@ export function finalizeTableRows(
   return expanded.map((row, rowIndex) => ({
     ...row,
     cells: row.cells.map((cell, cellIndex) => {
-      const borders = resolved[rowIndex]![cellIndex]!;
-      if (cell.paintInert || cell.vMergeContinue) {
-        return { ...cell, borders: {}, paintInert: true };
-      }
-      return { ...cell, borders };
+      if (paintsNothing(cell)) return inertCell(cell);
+      return { ...cell, borders: resolved[rowIndex]![cellIndex]! };
     }),
   }));
 }
+
+function withSeparatedCellBorders(
+  rows: readonly TableRowFragmentRecord[],
+  authoredById: ReadonlyMap<string, SemanticTableCell>
+): TableRowFragmentRecord[] {
+  return rows.map((row) => ({
+    ...row,
+    cells: row.cells.map((cell) => {
+      if (paintsNothing(cell)) return inertCell(cell);
+      const authored = authoredById.get(cell.id);
+      const sides = authored?.contentBorders ?? authored?.borders;
+      const { width, height } = cell.box;
+      const borders = sides ? separatedCellBorders(sides, width, height) : {};
+      const diagonals = authored ? cellDiagonalRecords(authored.borders, width, height) : [];
+      return { ...cell, borders: diagonals.length > 0 ? { ...borders, diagonals } : borders };
+    }),
+  }));
+}
+
+type FragmentCell = TableRowFragmentRecord['cells'][number];
+
+/** A merged-over or continued cell: it keeps its box but paints no borders of its own. */
+const paintsNothing = (cell: FragmentCell): boolean =>
+  cell.paintInert === true || cell.vMergeContinue === true;
+
+const inertCell = (cell: FragmentCell): FragmentCell => ({
+  ...cell,
+  borders: {},
+  paintInert: true,
+});
 
 /** A row fragment whose rest continues on the next page: the head of a split row. */
 export function splitHead(record: TableRowFragmentRecord): TableRowFragmentRecord {
