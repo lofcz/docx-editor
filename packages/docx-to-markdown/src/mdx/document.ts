@@ -1,5 +1,6 @@
 import {
   contentControlContentNodeOf,
+  contentControlTextOf,
   contentControlPropertiesOf,
   contentControlsIn,
   findCustomXmlDataPart,
@@ -14,6 +15,7 @@ import {
 } from '@docx-editor.dev/core/store';
 import {
   attributesOf,
+  attributeSyntax,
   COMPONENT_TAG,
   isComponentSyntax,
   isNativeMark,
@@ -116,6 +118,14 @@ function indexedComponents(pkg: OoxmlPackage): ReadonlyMap<string, WordComponent
       !isComponentSyntax(row.node) ||
       row.node.children !== undefined ||
       typeof row.disclosure !== 'boolean' ||
+      (row.fallbackAttribute !== undefined &&
+        (!['alt', 'title', 'label', 'summary', 'name'].includes(row.fallbackAttribute) ||
+          row.fallback?.length !== 1 ||
+          !attributesOf(row.node).some(
+            (entry) => entry.name === row.fallbackAttribute && typeof entry.value === 'string'
+          ))) ||
+      (row.singleLine !== undefined &&
+        (row.singleLine !== true || !row.disclosure || row.node.type !== 'mdxJsxTextElement')) ||
       (row.node.name != null && typeof row.node.name !== 'string') ||
       (row.node.value !== undefined && typeof row.node.value !== 'string') ||
       (row.node.attributes !== undefined && !Array.isArray(row.node.attributes)) ||
@@ -173,15 +183,19 @@ export function readMdxComponents(
     const attributes = Object.fromEntries(
       attributesOf(record.node).map(({ name, value }) => [name, value ?? true])
     );
-    if (record.caption === 'attribute' && record.captionAttribute && first?.kind === 'paragraph') {
-      attributes[record.captionAttribute] = paragraphTextOf(part, first.id) ?? '';
-    }
+    const display = record.fallbackAttribute ?? record.captionAttribute;
+    const value = record.fallbackAttribute
+      ? contentControlTextOf(node, '\n')
+      : record.caption === 'attribute' && first?.kind === 'paragraph'
+        ? (paragraphTextOf(part, first.id) ?? '')
+        : undefined;
+    if (display && value !== undefined) attributes[display] = value;
     components.push({
       id: record.id,
       controlId: node.id,
       name: record.node.name ?? record.node.type,
       ...(record.node.value === undefined ? {} : { value: record.node.value }),
-      jsxAttributes: Array.isArray(record.node.attributes) ? record.node.attributes : [],
+      jsxAttributes: attributeSyntax(record.node, display, value),
       attributes: Object.freeze(attributes),
       disclosure: record.disclosure,
       summaryParagraphId: record.disclosure && first?.kind === 'paragraph' ? first.id : null,

@@ -124,6 +124,39 @@ const outer = [
   '</details>',
 ].join('\n');
 
+test('editing an atomic label updates its literal attribute and preserves preceding JSX attributes', () => {
+  const source = '<Gauge title="original" {...properties} title="reading" />';
+  const pkg = open(importMdxDocument(source));
+  const store = new TreeDocumentStore(pkg.parts.get(pkg.mainDocumentPart)!);
+  const paragraph = storyParagraphs(bodyStoryRoot(store.part)!)[0];
+  expect(
+    store.transact((ctx) =>
+      ctx.apply({ op: 'insertText', paragraphId: paragraph.id, offset: 0, text: 'new ' })
+    ).ok
+  ).toBe(true);
+  const saved = writeOoxmlPackage(withPart(pkg, store.part));
+  const [control] = readMdxComponents(saved);
+  expect(control.attributes.title).toBe('new reading');
+  expect(control.jsxAttributes[0]).toMatchObject({ name: 'title', value: 'original' });
+  expect(control.jsxAttributes[2]).toMatchObject({ name: 'title', value: 'new reading' });
+  expect(parseDocumentSyntax(exportMdxDocument(saved))).toEqual(
+    parseDocumentSyntax(source.replace('"reading"', '"new reading"'))
+  );
+});
+
+test('standalone one-line disclosures fold in Word and preserve their original JSX structure', () => {
+  for (const source of [
+    '<details><summary>Read</summary>Some **bold** text.</details>',
+    '<Fold title="Question">Answer</Fold>',
+  ]) {
+    const bytes = importMdxDocument(source, { disclosureTags: ['Fold'] });
+    const [entry] = readMdxComponents(bytes);
+    expect(entry.disclosure).toBe(true);
+    expect(entry.summaryParagraphId).toBeTruthy();
+    expect(parseDocumentSyntax(exportMdxDocument(bytes))).toEqual(parseDocumentSyntax(source));
+  }
+});
+
 test('nested HTML and project disclosures export current Word captions and native child text', () => {
   const pkg = open(importMdxDocument(outer, { disclosureTags: ['ProjectNote'] }));
   const components = readMdxComponents(pkg);

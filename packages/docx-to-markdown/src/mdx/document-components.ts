@@ -26,7 +26,9 @@ export interface WordComponent {
   captionAttribute?: string;
   summary?: DocumentNode;
   fallback?: string[];
+  fallbackAttribute?: string;
   outerMarks?: string[];
+  singleLine?: boolean;
 }
 
 const WORD_MARKS = new Map([
@@ -87,6 +89,30 @@ function withoutChildren(node: DocumentNode): DocumentNode {
   return rest;
 }
 
+function displayAttribute(attrs: MdxAttribute[], order: string[]): MdxAttribute | undefined {
+  const named = new Map(attrs.map((entry) => [entry.name, entry]));
+  return order.map((name) => named.get(name)).find((entry) => typeof entry?.value === 'string');
+}
+
+/** Preserve spreads, duplicate attributes, and their order when a Word label changes. */
+export function attributeSyntax(
+  node: DocumentNode,
+  name?: string,
+  value?: string
+): readonly JsonValue[] {
+  const entries: JsonObject[] = Array.isArray(node.attributes) ? node.attributes : [];
+  if (!name || value === undefined) return entries;
+  for (let index = entries.length - 1; index >= 0; index--) {
+    const entry = entries[index];
+    if (entry.type !== 'mdxJsxAttribute' || entry.name !== name) continue;
+    if (entry.value === value) return entries;
+    const updated = [...entries];
+    updated[index] = Object.freeze({ ...entry, value });
+    return Object.freeze(updated);
+  }
+  return entries;
+}
+
 function summaryOf(first: DocumentNode | undefined): DocumentNode | undefined {
   if (first && jsxNode(first) && first.name === 'summary') return first;
   if (first?.type === 'paragraph' && first.children?.length === 1)
@@ -95,8 +121,12 @@ function summaryOf(first: DocumentNode | undefined): DocumentNode | undefined {
 }
 
 /** Materialize a readable Word fallback for an atomic component with no authored children. */
-function fallbackOf(node: DocumentNode, id: string, registry?: MdxComponentRegistry): string[] {
-  if (!jsxNode(node)) return [node.value ?? ''];
+function fallbackOf(
+  node: DocumentNode,
+  id: string,
+  registry?: MdxComponentRegistry
+): { lines: string[]; attribute?: string } {
+  if (!jsxNode(node)) return { lines: [node.value ?? ''] };
   const name = node.name ?? '';
   const attrs = attributesOf(node);
   const entry = registry?.parsers.get(name);
@@ -107,14 +137,13 @@ function fallbackOf(node: DocumentNode, id: string, registry?: MdxComponentRegis
     const payload: BlockPayload = { version: 1, id, type: definition.type, attributes };
     if (definition.valid && !definition.valid(payload))
       throw new TypeError('Invalid component payload for ' + name + '.');
-    if (definition.wordFallback) return [...definition.wordFallback(payload).lines];
-    if (definition.inline) return [definition.inline.fallback(payload).text];
+    if (definition.wordFallback) return { lines: [...definition.wordFallback(payload).lines] };
+    if (definition.inline) return { lines: [definition.inline.fallback(payload).text] };
   }
-  for (const key of ['alt', 'title', 'label', 'summary', 'name']) {
-    const value = attrs.find((attr) => attr.name === key)?.value;
-    if (typeof value === 'string' && value) return [value];
-  }
-  return name ? [name] : [];
+  const display = displayAttribute(attrs, ['alt', 'title', 'label', 'summary', 'name']);
+  if (display && typeof display.value === 'string')
+    return { lines: [display.value], attribute: display.name };
+  return { lines: name ? [name] : [] };
 }
 
 export function prepareComponentSyntax(
@@ -125,6 +154,16 @@ export function prepareComponentSyntax(
   const items: WordComponent[] = [];
   const owned = new WeakMap<DocumentNode, WordComponent>();
   function visit(source: DocumentNode, outer: string[] = []): DocumentNode {
+    const only =
+      source.type === 'paragraph' && source.children?.length === 1 ? source.children[0] : undefined;
+    if (only?.type === 'mdxJsxTextElement' && disclosures.has(only.name ?? '')) {
+      // MDX parses a standalone, single-line disclosure as phrasing. Word folds blocks.
+      const placed = visit({ ...only, type: 'mdxJsxFlowElement' }, outer);
+      const item = owned.get(placed)!;
+      item.singleLine = true;
+      item.node = withoutChildren(only);
+      return placed;
+    }
     if (!isComponentSyntax(source)) {
       const marks =
         isNativeMark(source.type) && !outer.includes(source.type) ? [...outer, source.type] : outer;
@@ -147,10 +186,7 @@ export function prepareComponentSyntax(
         record.summary = withoutChildren(summary);
         children[0] = { type: 'paragraph', children: summary.children ?? [] };
       } else {
-        const attribute = attributesOf(source).find(
-          (attr) =>
-            ['title', 'summary', 'label'].includes(attr.name) && typeof attr.value === 'string'
-        );
+        const attribute = displayAttribute(attributesOf(source), ['title', 'summary', 'label']);
         record.caption = attribute ? 'attribute' : 'name';
         record.captionAttribute = attribute?.name;
         children.unshift(
@@ -158,7 +194,9 @@ export function prepareComponentSyntax(
         );
       }
     } else if ((!jsxNode(source) || children.length === 0) && source.name !== null) {
-      record.fallback = fallbackOf(source, id, registry);
+      const fallback = fallbackOf(source, id, registry);
+      record.fallback = fallback.lines;
+      record.fallbackAttribute = fallback.attribute;
       if (record.fallback.some((line) => typeof line !== 'string' || !isValidXmlText(line)))
         throw new TypeError('The component fallback must contain Word-readable text.');
     }
@@ -256,11 +294,13 @@ export function restoreComponent(
       !unformatted ||
       !unchangedDisplayShape(control) ||
       printed.length !== expected.length ||
-      printed.some((value, index) => value !== expected[index])
+      (!item.fallbackAttribute && printed.some((value, index) => value !== expected[index]))
     )
       throw new Error(
         'Cannot map edited display text back to component ' + (node.name ?? node.type) + '.'
       );
+    if (item.fallbackAttribute)
+      node.attributes = attributeSyntax(node, item.fallbackAttribute, printed[0]);
     if (jsxNode(node)) node.children = [];
     return marked();
   }
@@ -273,15 +313,23 @@ export function restoreComponent(
       children.unshift({ ...item.summary!, children: caption.children ?? [] });
     } else {
       const value = plainText(caption);
-      if (item.caption === 'attribute' && Array.isArray(node.attributes))
-        node.attributes = node.attributes.map((entry: JsonObject) =>
-          entry.name === item.captionAttribute ? { ...entry, value } : entry
-        );
+      if (item.caption === 'attribute')
+        node.attributes = attributeSyntax(node, item.captionAttribute, value);
       else if (value !== node.name)
         throw new Error(
           'A generated component name cannot be changed through its Word display text.'
         );
     }
+  }
+  if (item.singleLine) {
+    const hasSummary = item.caption === 'summary';
+    const body = hasSummary ? children.slice(1) : children;
+    if (body.length === 0 || (body.length === 1 && body[0].type === 'paragraph')) {
+      node.children = [...(hasSummary ? children.slice(0, 1) : []), ...(body[0]?.children ?? [])];
+      return { type: 'paragraph', children: [node] };
+    }
+    // A native edit introduced a second paragraph or a table. Keep it in a block component.
+    node.type = 'mdxJsxFlowElement';
   }
   node.children = children;
   return marked();

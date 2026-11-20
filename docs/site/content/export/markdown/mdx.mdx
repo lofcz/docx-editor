@@ -64,6 +64,6 @@ Call `releaseViews()` when you remove the host. You can also mount a framework c
 
 Pass a component registry to `importMdxDocument` to provide a readable Word representation for components without children. Keep each project's registry in its host. A container with children keeps its native paragraphs, nested components, and tables.
 
-Without a registered representation, an empty component displays its alternate text, title, label, summary, or name. Editing generated display text requires an explicit mapping back to MDX. The exporter reports an error when it cannot represent an edit.
+Without a registered representation, an empty component displays its alternate text, title, label, summary, or name. Editing a literal display attribute in Word updates its MDX value. The exporter reports an error when it cannot represent changes to generated text or formatting.
 
 The importer preserves JavaScript expressions and imports as source. It never executes document code or fetches a remote image. Use a trusted project view when a component needs application behavior.

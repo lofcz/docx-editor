@@ -5,6 +5,7 @@ import type {
 } from '@docx-editor.dev/core/editor';
 import { paragraphTextOf, type OoxmlPackage } from '@docx-editor.dev/core/store';
 import { readMdxComponents, type MdxDocumentComponent } from './document';
+import { revealDisclosureBody } from './document-motion';
 
 /** The local reading preferences of a mounted editor. @public */
 export interface MdxDisclosureOptions {
@@ -28,6 +29,8 @@ export function mountMdxDisclosures(
   if (!surface) throw new Error('Attach the document editor before mounting disclosures.');
   const buttons = new Map<string, HTMLButtonElement>();
   let focusedSummary: string | undefined;
+  let reveal: { id: string; summary: string } | undefined;
+  let arrow: { summary: string; opening: boolean } | undefined;
   let ownerDocument: Document | undefined;
   const known = new Set<string>();
   let summaries = new Map<string, MdxDocumentComponent>();
@@ -108,12 +111,18 @@ export function mountMdxDisclosures(
       const item = summaries.get(summary);
       if (!item || disposed) return;
       const next = folds();
-      if (!next.delete(item.controlId)) next.set(item.controlId, summary);
+      const opening = next.delete(item.controlId);
+      if (!opening) next.set(item.controlId, summary);
+      reveal = opening ? { id: item.controlId, summary } : undefined;
+      arrow = { summary, opening };
       const keyboardFocus = doc.activeElement === button;
       if (keyboardFocus) focusedSummary = summary;
       const result = surface!.setCollapsedContentControls(next);
-      if (!result.ok) options.onRefusal?.(item, result.reason);
-      else button.setAttribute('aria-expanded', String(!next.has(item.controlId)));
+      if (!result.ok) {
+        reveal = undefined;
+        arrow = undefined;
+        options.onRefusal?.(item, result.reason);
+      } else button.setAttribute('aria-expanded', String(!next.has(item.controlId)));
       if (keyboardFocus) buttons.get(summary)?.focus({ preventScroll: true });
     });
     return button;
@@ -138,6 +147,24 @@ export function mountMdxDisclosures(
       if (button.getAttribute('aria-expanded') !== expanded)
         button.setAttribute('aria-expanded', expanded);
       if (button.parentElement !== element) element.append(button);
+      if (arrow?.summary === summary && arrow.opening === !closed.has(item.controlId)) {
+        const glyph = button.firstElementChild;
+        if (
+          glyph &&
+          ownerDocument.defaultView?.matchMedia?.('(prefers-reduced-motion: no-preference)').matches
+        ) {
+          for (const previous of glyph.getAnimations?.() ?? []) previous.cancel();
+          const angles = arrow.opening ? [0, 90] : [90, 0];
+          glyph.animate?.(
+            angles.map((angle) => ({ transform: 'rotate(' + angle + 'deg)' })),
+            {
+              duration: 140,
+              easing: 'ease-out',
+            }
+          );
+        }
+        arrow = undefined;
+      }
       buttons.set(summary, button);
       seen.add(summary);
     }
@@ -153,6 +180,10 @@ export function mountMdxDisclosures(
       if (button && (active === doc.body || active === frame.pagesLayer || !active))
         button.focus({ preventScroll: true });
       focusedSummary = undefined;
+    }
+    if (reveal && !closed.has(reveal.id)) {
+      revealDisclosureBody(frame, reveal.id, reveal.summary);
+      reveal = undefined;
     }
   }
   function clear() {
