@@ -8,6 +8,7 @@ import {
   WML_NAMESPACE_URI,
   type OoxmlNode,
   type OoxmlElement,
+  type OoxmlPart,
   type OoxmlPackage,
 } from '@docx-editor.dev/core/store';
 import { withHorizontalRuleStyle } from './horizontal-rule';
@@ -47,9 +48,7 @@ export function withBlockTypeStyles(
     if (!options.preserveConflicts) return null;
     working = pkg;
   }
-  const defaults = readOoxmlPackage(blankDocumentBytes());
-  if (!defaults.ok) return null;
-  const baseline = stylesPartOf(defaults.package)!;
+  let baseline: OoxmlPart | undefined;
   for (const id of Object.values(BLOCK_PARAGRAPH_STYLES)) {
     const part = stylesPartOf(working);
     if (!part) return options.preserveConflicts ? working : null;
@@ -59,6 +58,12 @@ export function withBlockTypeStyles(
       return null;
     }
     if (matches.length) continue;
+    if (!baseline) {
+      const defaults = readOoxmlPackage(blankDocumentBytes());
+      if (!defaults.ok) return null;
+      baseline = stylesPartOf(defaults.package);
+      if (!baseline) return null;
+    }
     const definition = baseline.root.children.find((node) => attribute(node, 'styleId') === id);
     if (!definition || definition.kind !== 'generic' || definition.localName !== 'style')
       return null;
