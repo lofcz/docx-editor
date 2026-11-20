@@ -134,7 +134,7 @@ export function createTableAppendControls(host: SurfaceTableInteractionHost) {
     return {
       ok: true,
       ops,
-      selection: { kind: 'adoptCommittedCaret' },
+      selection: { kind: 'preserveSelection' },
     };
   }
 
@@ -229,10 +229,10 @@ export function createTableAppendControls(host: SurfaceTableInteractionHost) {
       control.setAttribute('aria-label', label(kind));
       control.title = label(kind);
       Object.assign(control.style, {
-        left: `${kind === 'row' ? left : left + width}px`,
-        top: `${kind === 'column' ? top : top + height}px`,
-        width: `${kind === 'row' ? width : 24}px`,
-        height: `${kind === 'column' ? height : 24}px`,
+        left: `${kind === 'row' ? left - 24 : left + width}px`,
+        top: `${kind === 'column' ? top + Math.max(0, (height - 24) / 2) : top + height - (kind === 'row' ? 12 : 0)}px`,
+        width: '24px',
+        height: '24px',
       });
     }
     // Chrome probes run after the document transaction, once per completed layout update.

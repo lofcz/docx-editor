@@ -1,3 +1,4 @@
+import { tablePropertyOp } from './table-grid-sizing.ts';
 // Pure table-command planner — sole source for Editor.can and Editor.exec.
 //
 // Resolves caret or rectangular cell selection to canonical ids, builds complete
@@ -722,16 +723,6 @@ export function planTableCommand(input: TableCommandPlannerInput): TableCommandP
     return refusal('locked', 'the document is open for viewing');
   }
 
-  switch (command.type) {
-    case 'setTableProperties':
-      return refusal(
-        'unsupported',
-        `command '${command.type}' is not supported by the tree editor`
-      );
-    default:
-      break;
-  }
-
   const shapeError = validateTableCommandShape(command);
   if (shapeError) return shapeError;
 
@@ -776,6 +767,12 @@ export function planTableCommand(input: TableCommandPlannerInput): TableCommandP
   }
 
   switch (command.type) {
+    case 'setTableProperties': {
+      const op = tablePropertyOp(input, anchor!.tableId, command);
+      return op
+        ? planValidated(part, [op], { kind: 'preserveSelection' })
+        : refusal('invalidArgs', 'invalid or missing table properties');
+    }
     case 'toggleHeaderRow':
       return planValidated(part, [toggleHeaderRowOp(part, anchor!.tableId)], {
         kind: 'preserveSelection',
@@ -963,13 +960,5 @@ export function tableCommandCanSupport(command: EditorCommand): {
   if (!isTableEditorCommand(command)) {
     return { supported: false, reason: `command '${command.type}' is not a table command` };
   }
-  switch (command.type) {
-    case 'setTableProperties':
-      return {
-        supported: false,
-        reason: `command '${command.type}' is not supported by the tree editor`,
-      };
-    default:
-      return { supported: true };
-  }
+  return { supported: true };
 }

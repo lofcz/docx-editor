@@ -80,6 +80,18 @@ export const FEATURE_CATEGORY_LABELS: Record<FeatureCategory, string> = {
 
 export const wordFeatures: WordFeature[] = [
   {
+    id: 'export.mdx',
+    name: 'Editable MDX documents',
+    category: 'export',
+    editing: 'partial',
+    rendering: 'partial',
+    roundTrip: 'partial',
+    tier: 'community',
+    notes:
+      'Import Markdown and component children as native Word content. Add interactive views and disclosures in your project. JavaScript expressions remain source text.',
+    docsLink: '/docs/2.x/export/markdown/mdx',
+  },
+  {
     id: 'export.markdown',
     name: 'Markdown export',
     category: 'export',
@@ -556,7 +568,7 @@ export const wordFeatures: WordFeature[] = [
     roundTrip: 'full',
     tier: 'community',
     notes:
-      'Table styles control borders, cell shading, and text formatting, including header rows and banding. Conditional cell margins and whole-table conditional shading do not apply. The editor has no table-style picker.',
+      'Apply document table styles and set header, total, first-column, last-column, and banding options. Conditional cell margins and whole-table conditional shading do not apply.',
   },
   {
     id: 'tables.floating',

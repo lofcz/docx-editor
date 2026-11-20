@@ -1,3 +1,5 @@
+import { displayedColumnWidths } from './table-grid-sizing.ts';
+import { clampedWidthDelta, planWidthDrag, type WidthDrag } from './table-width-drag.ts';
 import { createTableAppendControls } from './surface-table-append-controls.ts';
 // Table interaction furniture for the paginated surface.
 //
@@ -92,26 +94,14 @@ export interface SurfaceTableInteraction {
   destroy(): void;
 }
 
-interface DragState {
+interface DragState extends WidthDrag {
   readonly pointerId: number;
   readonly startClientX: number;
   readonly startClientY: number;
   readonly startEdgePt: number;
-  readonly leftTwips: number;
-  readonly rightTwips: number;
-  readonly tableWidthTwips: number;
-  /** Grid twips per laid-out twip: a stated table width can stretch or shrink the grid. */
-  readonly gridScale: number;
   readonly rowHeightTwips: number;
-  readonly target: Extract<
-    TableInteractionHit,
-    { kind: 'columnDivider' | 'rightEdge' | 'rowDivider' }
-  >;
   readonly ref: TableOccurrenceRef;
-  readonly resizeTarget:
-    TableColumnDividerResizeTarget | TableRightEdgeResizeTarget | TableRowOccurrenceTarget;
   readonly captureElement: HTMLElement;
-  readonly rightEdge: boolean;
   readonly vertical: boolean;
   cancelled: boolean;
 }
@@ -158,17 +148,6 @@ function occurrenceRef(
     return findTableOccurrence(layout, hit.tableId, hit.rowId, hit.isHeaderRepeat);
   }
   return null;
-}
-
-/** Grid twips per laid-out twip of a table whose painted columns match its grid. */
-function gridScaleOf(
-  columnEdges: readonly number[] | undefined,
-  gridColumns: number,
-  gridTwips: number
-): number {
-  if (!columnEdges || columnEdges.length !== gridColumns + 1 || !(gridTwips > 0)) return 1;
-  const laidOutTwips = (columnEdges.at(-1)! - columnEdges[0]!) * PT_TO_TWIPS;
-  return laidOutTwips > 0 ? gridTwips / laidOutTwips : 1;
 }
 
 /**
@@ -557,10 +536,12 @@ export function createSurfaceTableInteraction(
     let leftTwips = 0;
     let rightTwips = 0;
     let rowHeightTwips = 0;
-    const tableWidthTwips = topo.topology.gridColumns.reduce(
-      (sum, col) => sum + gridWidthTwips(col),
-      0
-    );
+    const displayed = displayedColumnWidths(ref.table);
+    const grid = topo.topology.gridColumns;
+    if (target.kind !== 'rowDivider' && displayed.length !== grid.length) return;
+    const tableWidthTwips = displayed.reduce((sum, width) => sum + width, 0);
+    let leftIndex = -1;
+    let rightIndex = -1;
 
     let resizeTarget:
       TableColumnDividerResizeTarget | TableRightEdgeResizeTarget | TableRowOccurrenceTarget;
@@ -568,8 +549,10 @@ export function createSurfaceTableInteraction(
       const leftCol = topo.topology.gridColumns.find((col) => col.id === target.leftGridColumnId);
       const rightCol = topo.topology.gridColumns.find((col) => col.id === target.rightGridColumnId);
       if (!leftCol || !rightCol) return;
-      leftTwips = gridWidthTwips(leftCol);
-      rightTwips = gridWidthTwips(rightCol);
+      leftIndex = grid.indexOf(leftCol);
+      rightIndex = grid.indexOf(rightCol);
+      leftTwips = displayed[leftIndex]!;
+      rightTwips = displayed[rightIndex]!;
       resizeTarget = tableColumnDividerResizeTargetFrom(
         target.sourceRevision,
         ref,
@@ -579,7 +562,8 @@ export function createSurfaceTableInteraction(
     } else if (target.kind === 'rightEdge') {
       const lastCol = topo.topology.gridColumns.find((col) => col.id === target.gridColumnId);
       if (!lastCol) return;
-      leftTwips = gridWidthTwips(lastCol);
+      leftIndex = grid.indexOf(lastCol);
+      leftTwips = displayed[leftIndex]!;
       rightTwips = 0;
       resizeTarget = tableRightEdgeResizeTargetFrom(
         target.sourceRevision,
@@ -591,6 +575,21 @@ export function createSurfaceTableInteraction(
       resizeTarget = tableRowOccurrenceTargetFrom(target.sourceRevision, ref);
     }
 
+    // An imported AutoFit column can already display narrower than the manual grid minimum.
+    // Apply the same lower bound in its displayed scale when freezing its width.
+    const resizeMinimum = (index: number) => {
+      const col = grid[index];
+      const width = displayed[index];
+      if (!col || width === undefined) return 0;
+      return Math.max(
+        1,
+        Math.min(
+          width,
+          MIN_TABLE_COLUMN_WIDTH_TWIPS,
+          Math.round((MIN_TABLE_COLUMN_WIDTH_TWIPS * width) / Math.max(1, gridWidthTwips(col)))
+        )
+      );
+    };
     const captureElement = event.currentTarget as HTMLElement;
     captureElement.setPointerCapture(event.pointerId);
     lastMoveClientX = event.clientX;
@@ -604,10 +603,13 @@ export function createSurfaceTableInteraction(
       leftTwips,
       rightTwips,
       tableWidthTwips,
-      gridScale: gridScaleOf(
-        ref?.table.columnEdges,
-        topo.topology.gridColumns.length,
-        tableWidthTwips
+      displayed,
+      leftIndex,
+      rightIndex,
+      leftMinimum: resizeMinimum(leftIndex),
+      rightMinimum: resizeMinimum(rightIndex),
+      normalizeGrid: displayed.some(
+        (width, index) => grid[index] && width !== gridWidthTwips(grid[index]!)
       ),
       rowHeightTwips,
       target,
@@ -687,60 +689,17 @@ export function createSurfaceTableInteraction(
         activeDrag.resizeTarget as TableRowOccurrenceTarget,
         Math.max(rowHeightFloor(activeDrag.rowHeightTwips), activeDrag.rowHeightTwips + moveTwips)
       );
-    } else if (activeDrag.rightEdge && activeDrag.target.kind === 'rightEdge') {
-      const columnWidthTwips = Math.max(
-        MIN_TABLE_COLUMN_WIDTH_TWIPS,
-        activeDrag.leftTwips + moveTwips
-      );
-      const tableWidthTwips = Math.max(columnWidthTwips, activeDrag.tableWidthTwips + moveTwips);
-      plan = planTableCommand({
-        command: {
-          type: 'commitTableRightEdgeResize',
-          target: activeDrag.resizeTarget as TableRightEdgeResizeTarget,
-          columnWidthTwips,
-          tableWidthTwips,
-        },
-        part: partOfTableIn(host.session(), activeDrag.target.tableId),
-        layout: input.layout,
-        storeRevision: input.storeRevision,
-        selection: input.selection,
-        cellSelection: input.cellSelection,
-        themeColors: input.themeColors,
-        ...mode,
-      });
-    } else if (activeDrag.target.kind === 'columnDivider') {
-      const gridMove = Math.round(moveTwips * activeDrag.gridScale);
-      let leftTwips = activeDrag.leftTwips + gridMove;
-      let rightTwips = activeDrag.rightTwips - gridMove;
-      leftTwips = Math.max(MIN_TABLE_COLUMN_WIDTH_TWIPS, leftTwips);
-      rightTwips = Math.max(MIN_TABLE_COLUMN_WIDTH_TWIPS, rightTwips);
-      const sum = activeDrag.leftTwips + activeDrag.rightTwips;
-      if (leftTwips + rightTwips !== sum) {
-        if (leftTwips > sum - MIN_TABLE_COLUMN_WIDTH_TWIPS) {
-          leftTwips = sum - MIN_TABLE_COLUMN_WIDTH_TWIPS;
-          rightTwips = MIN_TABLE_COLUMN_WIDTH_TWIPS;
-        } else {
-          rightTwips = sum - leftTwips;
-        }
-      }
-      plan = planTableCommand({
-        command: {
-          type: 'commitTableColumnDividerResize',
-          target: activeDrag.resizeTarget as TableColumnDividerResizeTarget,
-          leftWidthTwips: leftTwips,
-          rightWidthTwips: rightTwips,
-        },
-        part: partOfTableIn(host.session(), activeDrag.target.tableId),
-        layout: input.layout,
-        storeRevision: input.storeRevision,
-        selection: input.selection,
-        cellSelection: input.cellSelection,
-        themeColors: input.themeColors,
-        ...mode,
-      });
     } else {
-      clearFurniture();
-      return;
+      plan = planWidthDrag(activeDrag, moveTwips, {
+        part: partOfTableIn(host.session(), activeDrag.target.tableId),
+        layout: input.layout,
+        storeRevision: input.storeRevision,
+        selection: input.selection,
+        cellSelection: input.cellSelection,
+        themeColors: input.themeColors,
+        editable: host.session().editable && mode.editable,
+        viewing: mode.viewing,
+      });
     }
 
     host.applyTableCommandPlan(plan);
@@ -834,6 +793,7 @@ export function createSurfaceTableInteraction(
           deltaPt,
           (rowHeightFloor(drag.rowHeightTwips) - drag.rowHeightTwips) / 20
         );
+      else deltaPt = clampedWidthDelta(drag, Math.round(deltaPt * 20)) / 20;
       for (const child of [...layer.children]) {
         if (child !== drag.captureElement) child.remove();
       }
@@ -914,6 +874,8 @@ export function createSurfaceTableInteraction(
       cancelDrag();
       return;
     }
+    lastMoveClientX = event.clientX;
+    lastMoveClientY = event.clientY;
     commitDrag();
   }
 

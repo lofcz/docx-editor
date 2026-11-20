@@ -1,0 +1,10 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Table resize commands used stored grid widths. Table commands could not change style regions or AutoFit.",
+  "after": "Table commands write the displayed grid, native table properties, and document style definitions.",
+  "reason": "Existing tree mutations and document setup edits publish these OOXML changes through the existing shared document format.",
+  "tests": ["packages/core/src/editor/__tests__/table-chrome-persisted.test.ts", "packages/pro/src/collaboration/__tests__/document-table-property-containers.test.ts"],
+  "changeset": "table-grid-and-style-options",
+  "migration": null
+}

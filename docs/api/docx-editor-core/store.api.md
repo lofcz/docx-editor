@@ -4344,6 +4344,9 @@ export function readOoxmlPackage(bytes: Uint8Array, limits?: OoxmlPackageLimits)
 export function readOoxmlPart(xml: string, metadata: OoxmlPartMetadata, limits?: XmlLimits): OoxmlReadResult;
 
 // @public
+export function readTableLook(tblPr: OoxmlElement | undefined): TableLook;
+
+// @public
 export function readTrackingSettings(settingsRoot: OoxmlNode | null | undefined): DocumentTrackingSettings;
 
 // @internal
@@ -5307,6 +5310,22 @@ export type TableCellPropertyOp = {
 };
 
 // @public
+export interface TableLook {
+    // (undocumented)
+    readonly columnBanding: boolean;
+    // (undocumented)
+    readonly firstColumn: boolean;
+    // (undocumented)
+    readonly firstRow: boolean;
+    // (undocumented)
+    readonly lastColumn: boolean;
+    // (undocumented)
+    readonly lastRow: boolean;
+    // (undocumented)
+    readonly rowBanding: boolean;
+}
+
+// @public
 export type TabStopWrite = ParagraphTabStop;
 
 // @public
@@ -5835,12 +5854,19 @@ export type TreeDocOp = SetFieldCodeOp | SetParagraphBordersOp | {
     readonly op: 'authorTable';
     readonly revision?: RevisionAttributionInput;
 } | {
+    readonly autoFit?: 'contents' | 'window' | 'fixed';
     readonly columnWidthsTwips?: readonly number[];
     readonly headerRowCount?: number;
     readonly indentTwips?: number;
+    readonly justification?: 'left' | 'center' | 'right' | null;
     readonly op: 'setTableProperties';
+    readonly preferredWidth?: {
+        readonly type: 'dxa' | 'pct' | 'auto';
+        readonly value: number;
+    } | null;
     readonly revision?: RevisionAttributionInput;
     readonly styleId?: string;
+    readonly styleOptions?: Partial<TableLook>;
     readonly tableId: string;
 } | {
     readonly heightTwips: number;

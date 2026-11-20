@@ -69,3 +69,5 @@ export {
   type DrawingPreviewPackageResult,
   type DrawingPreviewTarget,
 } from './package/drawing-preview-package.ts';
+
+export { readTableLook, type TableLook } from './table-look.ts';

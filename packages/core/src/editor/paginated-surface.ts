@@ -29,7 +29,7 @@ import { CaretFormatHistory } from './caret-format-history.ts';
 import { createTypedDirectionOps } from './surface-typed-direction.ts';
 import {
   captureTableCaret,
-  tableCommandSelection,
+  withTableCommandCaret,
   tableInsertionSelection,
 } from './table-insertion-selection.ts';
 import {
@@ -51,6 +51,7 @@ import { browserInputPending } from './surface-input-pending.ts';
 export { setPaginatedSurfaceScale } from './surface-scale.ts';
 import { REPLICABLE_REVIEW_WRITES } from './surface-review-writes.ts';
 import { listParagraphStyleId } from './surface-list-style.ts';
+import { tableStyleEdits } from './table-style-presets.ts';
 import { ensureSeparatorStyle } from './list-separator-style.ts';
 import { armContentControlMenuDismiss } from './content-control-widget-dismiss.ts';
 import { contentControlMenuAnchor } from './content-control-widget-anchor.ts';
@@ -5601,25 +5602,19 @@ export function mountPaginatedSurface(
         setCellSelection(plan.selection.cells);
         return { ok: true, changed: false };
       }
-      const caretCapture = captureTableCaret(session);
-      try {
-        const selectionBefore = selectionMark();
-        const adoptCaret = plan.selection.kind === 'adoptCommittedCaret';
-        commit(
-          () => applyOps(plan.ops, selectionBefore),
-          adoptCaret
-            ? () =>
-                tableCommandSelection(
-                  caretCapture.read(),
-                  session.partFor(storyScope()) ?? session.part(),
-                  plan.ops
-                )
-            : undefined,
-          plan.selection.kind === 'preserveSelection' ? { keepCellSelection: true } : undefined
+      const before = selectionMark();
+      const scope = storyScope();
+      const setup = tableStyleEdits(plan.ops, session);
+      const write = () => applyOps(plan.ops, before, undefined, scope, true, setup);
+      if (plan.selection.kind === 'adoptCommittedCaret') {
+        withTableCommandCaret(
+          session,
+          () => session.partFor(scope) ?? session.part(),
+          plan.ops,
+          selection.head.paragraphId,
+          (after) => commit(write, after)
         );
-      } finally {
-        caretCapture.dispose();
-      }
+      } else commit(write, undefined, { keepCellSelection: true });
       if (lastRejection) {
         return { ok: false, code: 'invalidArgs', reason: lastRejection };
       }

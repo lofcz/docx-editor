@@ -286,3 +286,9 @@ A module registry accepts one appearance contribution. Repeated registrations re
 - [Editor mount modes](/docs/2.x/core/mount-modes)
 - [Architecture](/docs/2.x/core/architecture)
 - [Editing API](/docs/2.x/editor-api)
+
+## Table formatting
+
+Use `editor.can(command)` to check the selected table before you call `editor.exec(command)`. The `setTableProperties` command accepts `autoFit` values of `contents`, `window`, and `fixed`. Dragging a column divider sets fixed widths using the displayed grid. Cells that span columns keep their combined width.
+
+Use `styleId` to select a table style from `editor.getDocumentStyles()`. The blue and green banded styles (`BandedGridBlue` and `BandedGridGreen`) also work in documents without table styles. Use an empty style ID to restore the document default. Use `styleOptions` to change individual regions. For example, `{ type: 'setTableProperties', styleOptions: { firstRow: true, rowBanding: true } }` enables both regions. A style controls the appearance of each enabled region. Direct cell formatting takes precedence.

@@ -4,9 +4,8 @@ import { GlobalRegistrator } from '@happy-dom/global-registrator';
 if (!GlobalRegistrator.isRegistered) GlobalRegistrator.register();
 
 import { describe, expect, test } from 'bun:test';
-import { zipSync, strToU8 } from 'fflate';
+import { docx } from './paginated-surface-fixtures.ts';
 import {
-  WML_NAMESPACE_URI,
   type OoxmlElement,
   type OoxmlNode,
   type OoxmlPart,
@@ -21,7 +20,6 @@ import {
 } from '../table-chrome.ts';
 import { runTableChromeCommand, tableChromeToolbarState } from '../toolbar-commands.ts';
 
-const W = WML_NAMESPACE_URI;
 const p = (text: string) => `<w:p><w:r><w:t>${text}</w:t></w:r></w:p>`;
 const TABLE_2X2 =
   '<w:tbl><w:tblGrid><w:gridCol w:w="2400"/><w:gridCol w:w="3600"/></w:tblGrid>' +
@@ -111,17 +109,7 @@ function shdAttr(part: OoxmlPart, cellId: string, localName: string): string | u
 }
 
 function mount(body: string): DocxEditorInstance {
-  const doc = zipSync({
-    '[Content_Types].xml': strToU8(
-      `<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>`
-    ),
-    '_rels/.rels': strToU8(
-      `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`
-    ),
-    'word/document.xml': strToU8(
-      `<w:document xmlns:w="${W}"><w:body>${body}</w:body></w:document>`
-    ),
-  });
+  const doc = docx(body);
   const container = document.createElement('div');
   document.body.append(container);
   const editor = createDocxEditor({ container, document: doc });
@@ -300,4 +288,52 @@ describe('table chrome persisted OOXML (Task 9 fix round 2)', () => {
     expect(shdAttr(part, cellId, 'val')).toBe('pct10');
     expect(shdAttr(part, cellId, 'color')).toBe('222222');
   });
+});
+
+test('table design stores both Word look encodings, a real style definition, and independent AutoFit history', async () => {
+  const editor = mount(TABLE_2X2);
+  try {
+    caret(editor, paragraphByText(editor, 'B2'));
+    const properties = (
+      command: Omit<
+        Extract<import('../../contracts/editor.ts').EditorCommand, { type: 'setTableProperties' }>,
+        'type'
+      >
+    ) => {
+      expect(editor.exec({ type: 'setTableProperties', ...command })).toMatchObject({ ok: true });
+    };
+    properties({
+      styleId: 'BandedGridBlue',
+      styleOptions: { firstRow: false, lastColumn: true, rowBanding: false, columnBanding: true },
+    });
+    expect(
+      editor.getDocumentStyles().some((s) => s.type === 'table' && s.styleId === 'BandedGridBlue')
+    ).toBe(true);
+    properties({ autoFit: 'window' });
+    const props = () =>
+      wmlChildNamed(collectByKind(editor.surface!.session.part().root, 'table')[0]!, 'tblPr')!;
+    const attrs = (leaf: string) =>
+      Object.fromEntries(
+        wmlChildNamed(props(), leaf)!.attributes.map((a) => [a.localName, a.value])
+      );
+    expect(attrs('tblLook')).toMatchObject({
+      val: '0380',
+      noHBand: '1',
+      noVBand: '0',
+      firstRow: '0',
+      lastColumn: '1',
+    });
+    expect(attrs('tblW')).toMatchObject({ type: 'pct', w: '5000' });
+    properties({ autoFit: 'fixed' });
+    expect(attrs('tblLayout')).toMatchObject({ type: 'fixed' });
+    expect(editor.exec({ type: 'undo' }).ok).toBe(true);
+    expect(attrs('tblLayout')).toMatchObject({ type: 'autofit' });
+    expect(editor.exec({ type: 'redo' }).ok).toBe(true);
+    await editor.load(await editor.save());
+    expect(attrs('tblLayout')).toMatchObject({ type: 'fixed' });
+    expect(attrs('tblStyle')).toMatchObject({ val: 'BandedGridBlue' });
+    expect(attrs('tblLook')).toMatchObject({ val: '0380' });
+  } finally {
+    editor.destroy();
+  }
 });

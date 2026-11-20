@@ -14,6 +14,8 @@ import {
   patchTcPrChild,
   removeTrPrChild,
 } from './tree-op-table-properties.ts';
+import { readTableLook, tableLookAttributes } from '../table-look.ts';
+import { removeTblPrChild } from './tree-op-table-properties.ts';
 import { isWmlElement, wmlChildNamed } from './tree-op-table-shared.ts';
 import { readEditableTableTopology } from './tree-op-table-topology.ts';
 import { MIN_TABLE_COLUMN_WIDTH_TWIPS } from './table-constraints.ts';
@@ -25,10 +27,49 @@ type Op = Extract<TreeDocOp, { op: 'setTableProperties' }>;
 export function validateTableProperties(part: OoxmlPart, op: Op): TreeOpRejection | null {
   if (
     !Object.keys(op).every((key) =>
-      ['op', 'tableId', 'styleId', 'headerRowCount', 'columnWidthsTwips', 'indentTwips'].includes(
-        key
-      )
+      [
+        'op',
+        'tableId',
+        'styleId',
+        'headerRowCount',
+        'columnWidthsTwips',
+        'indentTwips',
+        'autoFit',
+        'styleOptions',
+        'preferredWidth',
+        'justification',
+      ].includes(key)
     )
+  )
+    return 'invalidArgs';
+  const preferred = op.preferredWidth;
+  if (
+    preferred !== undefined &&
+    preferred !== null &&
+    (!['pct', 'dxa', 'auto'].includes(preferred.type) ||
+      !Number.isInteger(preferred.value) ||
+      preferred.value < 0 ||
+      preferred.value > (preferred.type === 'auto' ? 0 : preferred.type === 'pct' ? 5000 : 31680))
+  )
+    return 'invalidArgs';
+  if (
+    op.autoFit !== undefined &&
+    (!['contents', 'window', 'fixed'].includes(op.autoFit) ||
+      preferred !== undefined ||
+      (op.autoFit === 'fixed') !== (op.columnWidthsTwips !== undefined))
+  )
+    return 'invalidArgs';
+  if (op.justification != null && !['left', 'center', 'right'].includes(op.justification))
+    return 'invalidArgs';
+  if (
+    op.styleOptions !== undefined &&
+    (!op.styleOptions ||
+      typeof op.styleOptions !== 'object' ||
+      !Object.keys(op.styleOptions).length ||
+      Object.entries(op.styleOptions).some(
+        ([key, value]) =>
+          !Object.hasOwn(readTableLook(undefined), key) || typeof value !== 'boolean'
+      ))
   )
     return 'invalidArgs';
   if (typeof op.tableId !== 'string') return 'invalidArgs';
@@ -62,7 +103,10 @@ export function validateTableProperties(part: OoxmlPart, op: Op): TreeOpRejectio
       return 'invalidArgs';
     if (
       op.columnWidthsTwips.some(
-        (width) => !Number.isInteger(width) || width < MIN_TABLE_COLUMN_WIDTH_TWIPS || width > 31680
+        (width) =>
+          !Number.isInteger(width) ||
+          width < (op.autoFit === 'fixed' ? 1 : MIN_TABLE_COLUMN_WIDTH_TWIPS) ||
+          width > 31680
       )
     )
       return 'invalidArgs';
@@ -141,12 +185,40 @@ export function applyTableProperties(part: OoxmlPart, op: Op, options?: EditOpti
     } as OoxmlElement;
   };
   let updated: OoxmlElement = table;
-  if (op.styleId !== undefined)
-    updated = patch(
-      updated,
-      'tblPr',
-      leaf(wmlChildNamed(updated, 'tblPr') ?? fresh('tblPr'), 'tblStyle', { val: op.styleId })
+  const updateTableLeaf = (name: string, attrs: Record<string, string> | null) => {
+    const props = wmlChildNamed(updated, 'tblPr');
+    if (attrs) updated = patch(updated, 'tblPr', leaf(props ?? fresh('tblPr'), name, attrs));
+    else if (props) {
+      const removed = removeTblPrChild(props, name);
+      if (removed.ok)
+        updated = {
+          ...updated,
+          children: updated.children.map((n) => (n.id === props.id ? removed.container : n)),
+        } as OoxmlElement;
+    }
+  };
+  if (op.preferredWidth !== undefined)
+    updateTableLeaf(
+      'tblW',
+      op.preferredWidth && { type: op.preferredWidth.type, w: String(op.preferredWidth.value) }
     );
+  if (op.justification !== undefined)
+    updateTableLeaf('jc', op.justification && { val: op.justification });
+  if (op.styleOptions)
+    updateTableLeaf(
+      'tblLook',
+      tableLookAttributes({ ...readTableLook(wmlChildNamed(table, 'tblPr')), ...op.styleOptions })
+    );
+  const fitContent = op.autoFit === 'contents' || op.autoFit === 'window';
+  if (fitContent) {
+    updateTableLeaf('tblLayout', { type: 'autofit' });
+    updateTableLeaf(
+      'tblW',
+      op.autoFit === 'contents' ? { type: 'auto', w: '0' } : { type: 'pct', w: '5000' }
+    );
+  }
+  if (op.styleId !== undefined)
+    updateTableLeaf('tblStyle', op.styleId ? { val: op.styleId } : null);
   if (op.indentTwips !== undefined)
     updated = patch(
       updated,
@@ -185,7 +257,7 @@ export function applyTableProperties(part: OoxmlPart, op: Op, options?: EditOpti
         }
       }
     }
-    if (op.columnWidthsTwips) {
+    if (op.columnWidthsTwips || op.autoFit) {
       const cellMap = new Map(
         cells.map((cell) => [
           cell.id,
@@ -193,8 +265,8 @@ export function applyTableProperties(part: OoxmlPart, op: Op, options?: EditOpti
             cell,
             'tcPr',
             leaf(wmlChildNamed(cell, 'tcPr') ?? fresh('tcPr'), 'tcW', {
-              w: String(cellWidths.get(cell.id)),
-              type: 'dxa',
+              w: fitContent ? '0' : String(cellWidths.get(cell.id)),
+              type: fitContent ? 'auto' : 'dxa',
             })
           ),
         ])

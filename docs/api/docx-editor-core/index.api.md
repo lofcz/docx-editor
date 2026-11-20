@@ -2712,7 +2712,10 @@ export interface EditorCommands extends EditorCommandShape<DocEdits>, EditorHead
         alignment: TableCellVerticalAlignment;
     };
     setTableProperties: {
+        autoFit?: 'contents' | 'window' | 'fixed';
         justification?: 'left' | 'center' | 'right' | null;
+        styleId?: string;
+        styleOptions?: Partial<TableLook>;
         width?: number | null;
         widthType?: string | null;
     };
@@ -5182,6 +5185,22 @@ export interface TableContext {
 
 // @public
 export type TableInteractionLabelKey = 'table.insertRowBelow' | 'table.insertColumnRight' | 'table.selectTable';
+
+// @public
+export interface TableLook {
+    // (undocumented)
+    readonly columnBanding: boolean;
+    // (undocumented)
+    readonly firstColumn: boolean;
+    // (undocumented)
+    readonly firstRow: boolean;
+    // (undocumented)
+    readonly lastColumn: boolean;
+    // (undocumented)
+    readonly lastRow: boolean;
+    // (undocumented)
+    readonly rowBanding: boolean;
+}
 
 // @public
 export interface TableRightEdgeResizeTarget {

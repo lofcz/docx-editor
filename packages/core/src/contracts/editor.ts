@@ -941,6 +941,7 @@ import type {
  * Re-exported rather than declared here so `editor.ts` stays under its line cap; see
  * `table-targets.ts`.
  */
+export type { TableLook } from '../store/table-look.ts';
 export type {
   TableBorderEdgeTarget,
   TableBorderSpec,
@@ -1163,6 +1164,12 @@ export interface EditorCommands
    * property; omitting it leaves the current value alone.
    */
   setTableProperties: {
+    /** AutoFit to contents, AutoFit to window, or freeze the displayed grid. */
+    autoFit?: 'contents' | 'window' | 'fixed';
+    /** Apply a table style defined in this document. */
+    styleId?: string;
+    /** Change the conditional regions of the applied table style. */
+    styleOptions?: Partial<import('../store/table-look.ts').TableLook>;
     width?: number | null;
     widthType?: string | null;
     justification?: 'left' | 'center' | 'right' | null;

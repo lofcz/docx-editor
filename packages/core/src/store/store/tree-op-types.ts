@@ -792,6 +792,13 @@ export type TreeDocOp =
       /** Signed table indentation in twips; zero resets the direct indent. */
       readonly indentTwips?: number;
       readonly styleId?: string;
+      readonly styleOptions?: Partial<import('../table-look.ts').TableLook>;
+      readonly autoFit?: 'contents' | 'window' | 'fixed';
+      readonly preferredWidth?: {
+        readonly type: 'dxa' | 'pct' | 'auto';
+        readonly value: number;
+      } | null;
+      readonly justification?: 'left' | 'center' | 'right' | null;
       readonly headerRowCount?: number;
       readonly columnWidthsTwips?: readonly number[];
       /** Record old values as Word property-change markup (`w:*PrChange`). */

@@ -54,8 +54,43 @@ export function tableInsertionSelection(
 export function tableCommandSelection(
   hint: { readonly paragraphId: string; readonly start: number } | null,
   part: OoxmlPart,
-  ops: readonly TreeDocOp[]
+  ops: readonly TreeDocOp[],
+  sourceParagraphId?: string
 ): SemanticSelection | null {
+  const insertion = ops.find((op) => op.op === 'insertTableRow' || op.op === 'insertTableColumn');
+  if (insertion && sourceParagraphId) {
+    const read = readMergeableTable(part, insertion.tableId);
+    if (read.ok) {
+      let parent = parentNodeOf(part, sourceParagraphId);
+      while (parent && parent.kind !== 'tableCell') parent = parentNodeOf(part, parent.id);
+      const source = parent && read.table.index.byId.get(parent.id);
+      if (source) {
+        let target;
+        if (insertion.op === 'insertTableRow') {
+          const sourceRow = read.table.topology.rows.findIndex(
+            (entry) => entry.row.id === insertion.rowId
+          );
+          const row = sourceRow + (insertion.where === 'above' ? -1 : 1);
+          target = read.table.index.byRow
+            .get(row)
+            ?.find((cell) => cell.startCol <= source.startCol && cell.endCol >= source.startCol);
+        } else if ('gridColumnId' in insertion) {
+          const index = read.table.topology.gridColumns.findIndex(
+            (col) => col.id === insertion.gridColumnId
+          );
+          const column = index + (insertion.where === 'left' ? -1 : 1);
+          target = read.table.index.byRow
+            .get(source.rowIndex)
+            ?.find((cell) => cell.startCol <= column && cell.endCol >= column);
+        }
+        const paragraph = target?.visualOwner.cell.children.find((n) => n.kind === 'paragraph');
+        if (paragraph) {
+          const point = { paragraphId: paragraph.id, offset: 0 };
+          return { anchor: point, head: point };
+        }
+      }
+    }
+  }
   if (hint && findNode(part, hint.paragraphId)?.kind === 'paragraph') {
     const point = { paragraphId: hint.paragraphId, offset: hint.start };
     return { anchor: point, head: point };
@@ -109,4 +144,20 @@ function columnInsertionSelection(
     }
   }
   return null;
+}
+
+/** Keep the selection subscription scoped to the transaction, including a rejected write. */
+export function withTableCommandCaret<T>(
+  session: TreeDocxSessionView,
+  part: () => OoxmlPart,
+  ops: readonly TreeDocOp[],
+  sourceParagraphId: string,
+  run: (after: () => SemanticSelection | null) => T
+): T {
+  const capture = captureTableCaret(session);
+  try {
+    return run(() => tableCommandSelection(capture.read(), part(), ops, sourceParagraphId));
+  } finally {
+    capture.dispose();
+  }
 }
