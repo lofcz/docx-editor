@@ -793,14 +793,21 @@ function placeBlock(
     paragraphs: [],
   };
   const xml = blockXml(seed.ast, seed.path, context);
+  // A complete Word story has a trailing paragraph after a final table, even inside a control.
+  // Supply that paragraph explicitly and import only the authored block.
   const parsed = readOoxmlPart(
-    `<w:document xmlns:w="${WML_NAMESPACE_URI}" xmlns:r="${R}"><w:body>${xml}</w:body></w:document>`,
+    `<w:document xmlns:w="${WML_NAMESPACE_URI}" xmlns:r="${R}"><w:body>${xml}<w:p/></w:body></w:document>`,
     { name: '/sciobot-new-block.xml', contentType: part.contentType }
   );
   if (!parsed.ok)
     refuseWrite(`A new application block was refused: ${parsed.reason}.`, 'apply-failed');
   const body = bodyStoryRoot(parsed.part);
-  if (!body || body.kind === 'textValue' || body.children.length !== 1)
+  if (
+    !body ||
+    body.kind === 'textValue' ||
+    body.children.length !== 2 ||
+    body.children[1]?.kind !== 'paragraph'
+  )
     refuseWrite('A new application block did not produce one native control.', 'apply-failed');
   pkg = context.pkg;
   part = pkg.parts.get(partName)!;
