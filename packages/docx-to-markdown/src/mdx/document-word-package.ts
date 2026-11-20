@@ -1,4 +1,3 @@
-import { blankDocumentBytes } from '@docx-editor.dev/core/editor';
 import { MAX_NUMBERING_DEFINITIONS } from '@docx-editor.dev/core/layout';
 import {
   DEFAULT_OOXML_PACKAGE_LIMITS,
@@ -6,12 +5,12 @@ import {
   authorableHyperlinkTarget,
   escapeXmlAttribute,
   isValidXmlText,
-  readZip,
   sanitizeHref,
 } from '@docx-editor.dev/core/store';
 
 import { type DocumentNode } from './document-types';
 import { decodeFragment, HeadingFragments } from './document-word-headings';
+import { WordImages } from './document-word-images';
 
 export const R = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
 export const W14 = 'http://schemas.microsoft.com/office/word/2010/wordml';
@@ -70,6 +69,7 @@ export interface ListNumbering {
 }
 
 export class WordParts {
+  readonly images = new WordImages();
   private readonly links = new Map<string, string>();
   private readonly lists: string[] = [];
 
@@ -94,20 +94,23 @@ export class WordParts {
     return `<w:bookmarkStart w:id="${id}" w:name="MarkdownHeading${id}" md:heading="1"/>${runs}<w:bookmarkEnd w:id="${id}"/>`;
   }
 
-  hyperlink(raw: unknown): string {
+  hyperlink(raw: unknown): { attrs: string; id?: string } {
     if (typeof raw !== 'string') throw new Error('Missing Markdown link destination');
     const target = sanitizeHref(raw);
     if (!target.ok) throw new Error('Unsupported Markdown link destination');
     if (target.href.startsWith('#')) {
       const fragment = target.href.slice(1);
       const id = this.bookmarks.get(decodeFragment(fragment));
-      return id
-        ? ` w:anchor="MarkdownHeading${id}"` + formatAttribute('fragment', fragment)
-        : ` w:anchor="${attribute(fragment)}"`;
+      return {
+        attrs: id
+          ? ` w:anchor="MarkdownHeading${id}"` + formatAttribute('fragment', fragment)
+          : ` w:anchor="${attribute(fragment)}"`,
+      };
     }
     // A relative Markdown destination has no base URI in a fresh DOCX. Keep its exact
     // destination for export without resolving it against the host that opens the document.
-    if (!/^[a-z][a-z0-9+.-]*:/i.test(target.href)) return formatAttribute('relative', target.href);
+    if (!/^[a-z][a-z0-9+.-]*:/i.test(target.href))
+      return { attrs: formatAttribute('relative', target.href) };
     if (!authorableHyperlinkTarget(target.href))
       throw new Error('Unsupported Markdown link destination');
     let id = this.links.get(target.href);
@@ -118,7 +121,7 @@ export class WordParts {
       id = `rIdMarkdownLink${this.links.size + 1}`;
       this.links.set(target.href, id);
     }
-    return ` r:id="${id}"`;
+    return { attrs: ` r:id="${id}"`, id };
   }
 
   numbering(ordered: boolean, start: unknown, level: number): ListNumbering {
@@ -141,9 +144,7 @@ export class WordParts {
   }
 
   finish(body: string): Map<string, Uint8Array> {
-    const blank = readZip(blankDocumentBytes());
-    if (!blank.ok) throw new Error(blank.reason);
-    const entries = new Map(blank.entries);
+    const entries = this.images.templateEntries();
     const decoder = new TextDecoder();
     const encoder = new TextEncoder();
     function insert(part: string, before: string, xml: string) {
@@ -152,7 +153,7 @@ export class WordParts {
       entries.set(part, encoder.encode(original.replace(before, () => xml + before)));
     }
     const preserved =
-      'heading fragment soft marks outerMarks relative src title sourceLabel identifier label referenceType lang meta url emptyRoot listMarker listSpread itemSpread numId'
+      'heading fragment soft marks outerMarks relative src imageId orientation title sourceLabel identifier label referenceType lang meta url emptyRoot listMarker listSpread itemSpread numId'
         .split(' ')
         .map((key) => 'md:' + key)
         .join(' ');

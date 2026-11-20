@@ -20,6 +20,7 @@ import {
 } from '@docx-editor.dev/core/store';
 import { type DocumentNode } from './document-types';
 import { decodeFragment, HeadingFragments } from './document-word-headings';
+import { WordImageReader } from './document-word-images';
 import { MARKDOWN, MAX_XML_LENGTH, R } from './document-word-package';
 
 type Unwrap = (
@@ -166,6 +167,7 @@ function nameOf(node: OoxmlNode): string {
 }
 
 class WordReader {
+  private readonly images;
   private remainingNodes = 1_000_000;
   private remainingText = MAX_XML_LENGTH;
   private readonly counters;
@@ -184,6 +186,7 @@ class WordReader {
     pkg: OoxmlPackage,
     private readonly unwrap: Unwrap
   ) {
+    this.images = new WordImageReader(pkg, MAX_XML_LENGTH);
     const styles = stylesPartOf(pkg)?.root;
     this.cascade = buildStyleCascadeTable(styles ?? null);
     this.counters = createListCounterState(
@@ -234,6 +237,13 @@ class WordReader {
       if (!name || name === 'rPr' || INVISIBLE.has(name)) continue;
       if (elem.kind === 'textValue') continue;
       switch (name) {
+        case 'drawing': {
+          const image = this.images.drawing(elem, md(elem, 'src'), md(elem, 'orientation'));
+          if (md(elem, 'identifier') === undefined) this.charge(image.url);
+          this.reference(elem, image);
+          this.append(items, image);
+          break;
+        }
         case 't':
           for (const leaf of elem.children) {
             if (leaf.kind !== 'textValue') throw new Error('Invalid Word text element');
@@ -369,7 +379,10 @@ class WordReader {
     for (const { owner, node } of this.references) {
       const identifier = md(owner, 'identifier')!;
       const def = this.definitions.get(identifier);
-      if (!def || def.url !== node.url || def.title !== node.title) continue;
+      if (!def || def.url !== node.url || def.title !== node.title) {
+        if (node.type === 'image' && owner.kind === 'drawing') this.charge(node.url as string);
+        continue;
+      }
       delete node.url;
       delete node.title;
       node.type += 'Reference';
@@ -460,7 +473,12 @@ class WordReader {
             result.push({ nodes: read(), continuation: md(n, 'numId') });
           else if (tag === 'markdown:definition') {
             const identifier = md(n, 'identifier');
-            const url = md(n, 'url');
+            const imageId = md(n, 'imageId');
+            const url =
+              imageId === undefined
+                ? md(n, 'url')
+                : this.images.source(imageId, md(n, 'src'), md(n, 'orientation'));
+            if (imageId !== undefined && url !== undefined) this.charge(url);
             if (!identifier || url === undefined || read().length)
               throw new Error('Invalid Markdown reference definition');
             const definition = {

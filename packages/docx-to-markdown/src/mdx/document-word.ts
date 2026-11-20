@@ -46,6 +46,8 @@ interface ParagraphContext {
 interface Marks {
   order?: string[];
   link?: boolean;
+  imageLinkId?: string;
+  imageWidthPoints?: number;
   code?: boolean;
 }
 
@@ -144,6 +146,8 @@ function inspect(root: DocumentNode, parts: WordParts): Map<string, DocumentNode
       definitions.set(node.identifier, node);
     }
     if (node.type === 'heading') headings.push(node);
+    if (node.type === 'imageReference' && typeof node.identifier === 'string')
+      parts.images.referenceIds.add(node.identifier);
     if (
       (node.type === 'link' || node.type === 'definition') &&
       typeof node.url === 'string' &&
@@ -218,12 +222,21 @@ class WordWriter {
             : '';
           if (node.type.startsWith('link')) {
             const dest = this.parts.hyperlink(source.url);
+            childMarks.imageLinkId = dest.id;
             const title = source.title == null ? '' : ` w:tooltip="${attribute(source.title)}"`;
             const outer = formatAttribute('outerMarks', marks.order?.join(' '));
-            return `<w:hyperlink${dest}${title}${reference}${outer}>${render()}</w:hyperlink>`;
+            return `<w:hyperlink${dest.attrs}${title}${reference}${outer}>${render()}</w:hyperlink>`;
           }
           if (typeof source.url !== 'string') throw new Error('Missing Markdown image source');
           const alt = node.alt ?? '';
+          const drawing = this.parts.images.drawing(
+            source.url,
+            alt,
+            source.title,
+            reference,
+            marks
+          );
+          if (drawing) return run(drawing, marks);
           const attrs =
             formatAttribute('src', source.url) +
             formatAttribute('title', source.title) +
@@ -316,7 +329,7 @@ class WordWriter {
             '',
             formatAttribute('identifier', node.identifier) +
               formatAttribute('label', node.label) +
-              formatAttribute('url', node.url) +
+              (this.parts.images.definition(node) ?? formatAttribute('url', node.url)) +
               formatAttribute('title', node.title)
           );
         }
@@ -388,7 +401,8 @@ class WordWriter {
             throw new Error('Invalid Markdown column alignment');
           const children = () =>
             paragraph(
-              this.inlines(contents(cell), {}),
+              // TableNormal sets 108 twips of padding on each side of a cell.
+              this.inlines(contents(cell), { imageWidthPoints: Math.max(1, (width - 216) / 20) }),
               pProperties({ ...ctx, alignment: alignment ?? undefined })
             );
           return this.wrapped(
