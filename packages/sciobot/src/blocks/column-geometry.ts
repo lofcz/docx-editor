@@ -246,17 +246,16 @@ export function readPresentationColumns(
   const preferred = children(properties).find((node) => word(node, 'tblW'));
   const fixed = children(properties).find((node) => word(node, 'tblLayout'));
   const stated = Number(attr(preferred, 'w'));
-  // In this complete fixed grid, Word treats grid widths as relative weights when their
-  // sum exceeds a positive absolute table width. Concurrent insertions can produce that
-  // valid shape. Keep the column controls in the same coordinate system as native layout;
-  // a subsequent width edit then writes an exact grid without changing the group width.
+  // Word scales a complete fixed grid to its absolute table width in both directions.
+  // Concurrent changes to the column count can leave the surviving grid wider or narrower.
   if (
     attr(fixed, 'type') === 'fixed' &&
     attr(preferred, 'type') === 'dxa' &&
     Number.isInteger(stated) &&
     stated > 0 &&
-    stated < total
+    stated !== total
   ) {
+    if (stated > MAX_WIDTH) return null;
     let cumulative = 0,
       previous = 0;
     for (let i = 0; i < columns.length; i++) {

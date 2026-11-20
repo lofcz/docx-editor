@@ -67,7 +67,8 @@ function coherent(editor: DocxEditorInstance) {
   ).toEqual(widths);
   const painted = editor
     .surface!.layout()
-    .pages[0]!.fragments.find((block) => block.kind === 'table' && block.tableId === grid.tableId)!;
+    .pages[0]!.fragments.find((block) => block.kind === 'table' && block.tableId === grid.tableId);
+  if (painted?.kind !== 'table') throw Error('The column table did not paint.');
   expect(painted.box.width).toBeCloseTo(widths.reduce((a, b) => a + b, 0) / 20);
 }
 
@@ -173,6 +174,15 @@ for (const first of [0, 1] as const)
         await pair.settle();
         for (const editor of pair.editors) coherent(editor);
         const alice = pair.editors[0]!;
+        const reopened = createDocxEditor({
+          container: document.createElement('div'),
+          document: new Uint8Array(await alice.save()),
+        });
+        try {
+          coherent(reopened);
+        } finally {
+          reopened.destroy();
+        }
         const current = geometry(alice);
         if (current.columns.length > 1) {
           const widths = current.columns.map((column) => column.width);
