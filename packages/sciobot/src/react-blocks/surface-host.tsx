@@ -83,9 +83,9 @@ export function mountSurfaceBlockHost(
     );
   }
   function park(): void {
+    // Return every native element to the painter. The keyed painter removes extra
+    // roots from rebuilt pages. A retained page can leave its React roots connected.
     for (const mount of mounts.values()) mount.slot.reset();
-    for (const mount of mounts.values())
-      if (!opaqueLayer.contains(mount.element)) mount.element.remove();
   }
   function discard(key: string, mount: Mount): void {
     mounts.delete(key);

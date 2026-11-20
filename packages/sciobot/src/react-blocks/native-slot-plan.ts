@@ -89,7 +89,15 @@ export function attachNativeSlots(frame: SurfacePaintFrame, mounts: readonly Nat
     // Place every root before moving any native element. Wrappers preserve native coordinates.
     for (const mount of mounts) {
       const first = anchors.get(mount);
-      if (first?.parentElement) first.before(mount.element);
+      if (!first?.parentElement) continue;
+      let neighbor = mount.element.nextSibling;
+      while (
+        neighbor?.nodeType === 1 &&
+        (neighbor as HTMLElement).hasAttribute('data-sciobot-block-host')
+      )
+        neighbor = neighbor.nextSibling;
+      if (mount.element.parentElement !== first.parentElement || neighbor !== first)
+        first.before(mount.element);
     }
     for (const mount of mounts) {
       const parent = parents.get(mount);

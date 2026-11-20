@@ -5,10 +5,6 @@ export class OpaqueBlockLayer {
   private element: HTMLDivElement | null = null;
   private frame: SurfacePaintFrame | null = null;
 
-  contains(element: HTMLElement): boolean {
-    return element.parentElement === this.element;
-  }
-
   place(
     frame: SurfacePaintFrame,
     content: HTMLElement,

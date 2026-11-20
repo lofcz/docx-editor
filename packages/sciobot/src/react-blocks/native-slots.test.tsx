@@ -85,9 +85,18 @@ test('native slots wrap original paragraphs, tables, nested blocks, row controls
     const selected = container.ownerDocument.defaultView!.getSelection()!;
     const anchor = selected.anchorNode,
       offset = selected.anchorOffset;
+    const outer = container.querySelector<HTMLElement>('[data-sciobot-block-host="outer:0"]')!;
+    const removed: Node[] = [];
+    const observer = new MutationObserver((records) => {
+      for (const record of records) removed.push(...record.removedNodes);
+    });
+    observer.observe(outer.parentElement!, { childList: true });
     await act(async () => {
+      editor.surface!.observePaint({ beforePaint() {}, afterPaint() {} })();
       blocks!.refresh();
     });
+    observer.disconnect();
+    expect(removed).not.toContain(outer);
     structure(container);
     expect(selected.anchorNode === anchor).toBe(true);
     expect(selected.anchorOffset).toBe(offset);
