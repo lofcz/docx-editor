@@ -15,7 +15,7 @@ import {
 } from '../../test/support/react-block-document';
 import { docxFixture } from '../../test/support/document';
 import { withPayloadRecord } from '../blocks/payload-opc-codec';
-import { containerInsets } from './block-insets';
+import { containerInsets, syncReactBlockInsets } from './block-insets';
 import { mountReactBlockHost, type ReactBlockRegistry, type ReactBlockViewProps } from './host';
 import { buildBlockIndex } from '../blocks/block-index';
 import { paragraphFragmentsOf } from '@docx-editor.dev/core/layout';
@@ -125,11 +125,17 @@ test('a collapsed local header removes only its own vertical inset and retains t
       paragraphId: idOf(editor, 'Outer start'),
       offset: 0,
     })!.y;
+    let firstHeaderY: number | undefined;
     await act(async () => {
       expect(surface.setCollapsedContentControls(new Map([[block.controlId, null]]))).toEqual({
         ok: true,
       });
+      syncReactBlockInsets(surface);
       surface.flushPendingInput();
+      firstHeaderY = surface
+        .layout()
+        .pages.flatMap((page) => paragraphFragmentsOf(page))
+        .find((fragment) => fragment.localPlaceholder)?.box.y;
       await settle();
     });
     surface.flushPendingInput();
@@ -138,6 +144,7 @@ test('a collapsed local header removes only its own vertical inset and retains t
       .pages.flatMap((page) => paragraphFragmentsOf(page))
       .find((fragment) => fragment.localPlaceholder)!;
     expect(header.box.height).toBeCloseTo(24, 8);
+    expect(firstHeaderY).toBe(header.box.y);
     expect(header.box.y).toBeLessThan(originalY);
     expect(
       container.querySelector('[data-test-disclosure] [data-docx-collapse-placeholder]')

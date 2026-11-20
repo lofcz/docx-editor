@@ -14,7 +14,7 @@ import { isolateWidgetInput } from './input-boundary';
 import { inlineLayoutBoxes } from './inline-layout-boxes';
 import { BlockMeasurement, lastBodyParagraphIn, type MeasuredFragment } from './measurement';
 import { blockViewportHeight } from './overflow';
-import { containerInsets } from './block-insets';
+import { containerInsets, observeBlockInsets } from './block-insets';
 import { NativeSlotLease, preserveNativeSelection } from './native-slots';
 import { attachNativeSlots, type NativeSlotMount } from './native-slot-plan';
 import { BlockRootProviders, type ReactBlockHostOptions } from './providers';
@@ -73,6 +73,7 @@ export function mountSurfaceBlockHost(
   // Insets are computed again when the package or the registry changes.
   let insetsFor: OoxmlPackage | null = null;
   let insetCollapses = surface!.collapsedContentControls();
+  let paintedCollapses = insetCollapses;
   const measurement = options.inlineOnly ? null : new BlockMeasurement(surface, options.measure);
   for (const [type, view] of initial) {
     validateBlockViewType(type);
@@ -96,6 +97,37 @@ export function mountSurfaceBlockHost(
     // Hosts can be disposed from an enclosing React effect cleanup.
     queueMicrotask(() => mount.root.unmount());
   }
+  function syncInsets(part: SurfacePaintFrame['part'], immediate: boolean): void {
+    if (disposed || options.inlineOnly) return;
+    const pkg = surface!.session.currentPackage();
+    const collapses = surface!.collapsedContentControls();
+    if (insetsFor === pkg && insetCollapses === collapses) return;
+    insetsFor = pkg;
+    insetCollapses = collapses;
+    const insets = containerInsets(
+      part,
+      buildBlockIndex(pkg),
+      (type) => registry.get(type)?.inset,
+      collapses
+    );
+    if (immediate) surface!.setBlockInsets(insets);
+    else
+      queueMicrotask(() => {
+        if (
+          !disposed &&
+          insetsFor === pkg &&
+          surface!.session.currentPackage() === pkg &&
+          surface!.collapsedContentControls() === collapses
+        )
+          surface!.setBlockInsets(insets);
+      });
+  }
+  const stopInsets = options.inlineOnly
+    ? undefined
+    : observeBlockInsets(surface, () => {
+        const pkg = surface!.session.currentPackage();
+        syncInsets(pkg.parts.get(frame?.part.name ?? pkg.mainDocumentPart)!, true);
+      });
   function paint(next: SurfacePaintFrame): void {
     if (disposed) return;
     const pkg = surface!.session.currentPackage();
@@ -108,30 +140,18 @@ export function mountSurfaceBlockHost(
       frame.scale !== next.scale ||
       pkg !== indexedPackage ||
       mode !== editingMode ||
-      (!options.inlineOnly && insetCollapses !== collapses)
+      (!options.inlineOnly && paintedCollapses !== collapses)
     )
       generation++;
     editingMode = mode;
+    paintedCollapses = collapses;
     frame = next;
     if (pkg !== indexedPackage) {
       indexedPackage = pkg;
       index = buildBlockIndex(pkg);
       paragraphsByControl.clear();
     }
-    if (!options.inlineOnly && (insetsFor !== pkg || insetCollapses !== collapses)) {
-      insetsFor = pkg;
-      insetCollapses = collapses;
-      const insets = containerInsets(
-        next.part,
-        index!,
-        (type) => registry.get(type)?.inset,
-        collapses
-      );
-      // Outside the paint: a changed inset lays the document out again.
-      queueMicrotask(() => {
-        if (!disposed) surface!.setBlockInsets(insets);
-      });
-    }
+    syncInsets(next.part, false);
     const controls = new Map(
       (next.layout.contentControls ?? []).map((boundary) => [boundary.id, boundary])
     );
@@ -343,6 +363,7 @@ export function mountSurfaceBlockHost(
     else stop();
     for (const [key, mount] of mounts) discard(key, mount);
     opaqueLayer.dispose();
+    stopInsets?.();
     measurement?.dispose();
     if (!options.inlineOnly) surface!.setBlockInsets(new Map());
     registry.clear();

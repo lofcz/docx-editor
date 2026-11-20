@@ -1,4 +1,8 @@
-import type { BlockInset, CollapsedContentControl } from '@docx-editor.dev/core/editor';
+import type {
+  BlockInset,
+  CollapsedContentControl,
+  PaginatedSurface,
+} from '@docx-editor.dev/core/editor';
 import {
   blockStoryContainerChildren,
   findNode,
@@ -19,6 +23,21 @@ export interface ReactBlockInset {
 }
 
 const POINTS_PER_PIXEL = 0.75;
+const insetHosts = new WeakMap<PaginatedSurface, Set<() => void>>();
+
+export function observeBlockInsets(surface: PaginatedSurface, update: () => void): () => void {
+  let hosts = insetHosts.get(surface);
+  if (!hosts) insetHosts.set(surface, (hosts = new Set()));
+  hosts.add(update);
+  return () => {
+    hosts.delete(update);
+  };
+}
+
+/** Apply current host padding before the surface lays out a newly disclosed control. */
+export function syncReactBlockInsets(surface: PaginatedSurface): void {
+  for (const update of insetHosts.get(surface) ?? []) update();
+}
 
 /**
  * Layout-only insets for the body paragraphs and tables of every container with a registered
