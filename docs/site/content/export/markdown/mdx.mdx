@@ -1,0 +1,69 @@
+---
+title: Edit and print MDX
+description: Import MDX as editable Word content. Attach interactive project components and export the edited document as MDX.
+category: Export formats
+---
+
+The MDX entry point converts Markdown and JSX into a Word document. Headings, lists, links, and tables use Word elements. JSX containers keep their editable children. A saved DOCX includes the component names, attributes, and Word content.
+
+## Open a document with a disclosure
+
+```ts
+import { createDocxEditor } from '@docx-editor.dev/core/editor';
+import {
+  exportMdxDocument,
+  importMdxDocument,
+  mountMdxDisclosures,
+} from '@docx-editor.dev/docx-to-markdown/mdx';
+
+const bytes = importMdxDocument(
+  '# Inspection\n\n<Procedure title="Test the valve">\n\n1. Open the valve.\n2. Record the pressure.\n\n</Procedure>',
+  { disclosureTags: ['Procedure'] }
+);
+const editor = createDocxEditor({ container, document: bytes });
+const release = mountMdxDisclosures(editor);
+
+// After editing, export the current Word paragraphs and component attributes.
+const edited = exportMdxDocument(new Uint8Array(await editor.save()));
+release();
+editor.destroy();
+```
+
+HTML `details` and `summary` work without registration. Each reader can open or close a section independently. Word includes the complete content when you save or print the document. A registered disclosure can use a literal `title`, `summary`, or `label` for its editable summary.
+
+## Add a project view
+
+Use `mountMdxComponents` to attach a trusted view to a visible component. The editor supplies a host element at the component's page position. A component that continues on another page receives a separate host there.
+
+```ts
+import { mountMdxComponents } from '@docx-editor.dev/docx-to-markdown/mdx';
+
+const releaseViews = mountMdxComponents(
+  editor,
+  new Map([
+    [
+      'Reading',
+      ({ element, component }) => {
+        const button = element.ownerDocument.createElement('button');
+        button.type = 'button';
+        button.textContent = 'Show measurement';
+        button.style.pointerEvents = 'auto';
+        const show = () => showMeasurement(component.attributes);
+        button.addEventListener('click', show);
+        element.append(button);
+        return () => button.removeEventListener('click', show);
+      },
+    ],
+  ])
+);
+```
+
+Call `releaseViews()` when you remove the host. You can also mount a framework component and return its unmount function. Use the reader's reduced-motion preference for animations. Screen controls stay outside the saved Word content.
+
+## Choose a printable representation
+
+Pass a component registry to `importMdxDocument` to provide a readable Word representation for components without children. Keep each project's registry in its host. A container with children keeps its native paragraphs, nested components, and tables.
+
+Without a registered representation, an empty component displays its alternate text, title, label, summary, or name. Editing generated display text requires an explicit mapping back to MDX. The exporter reports an error when it cannot represent an edit.
+
+The importer preserves JavaScript expressions and imports as source. It never executes document code or fetches a remote image. Use a trusted project view when a component needs application behavior.

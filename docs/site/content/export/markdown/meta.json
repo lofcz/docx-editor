@@ -4,7 +4,8 @@
     "fonts",
     "images",
     "api",
-    "integrations"
+    "integrations",
+    "mdx"
   ],
   "defaultOpen": false,
   "pagesIndex": "index"

@@ -81,6 +81,7 @@
     "export/markdown/images",
     "export/markdown/api",
     "export/markdown/integrations",
+    "export/markdown/mdx",
     "export/pdf",
     "export/pdf/fonts",
     "export/pdf/api",
