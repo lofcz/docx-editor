@@ -108,7 +108,16 @@ main().catch(error => { console.error(error); process.exitCode = 1; });
     await rm(path.join(consumer, `output-${extension}`), { recursive: true });
     run('bun', [`compiled-${extension}/consumer.${extension === 'mts' ? 'mjs' : 'cjs'}`]);
   }
-  console.log('Packed Node/Bun ESM/CommonJS: types, conversion, JSON, large ZIP, filesystem OK');
+  const requireMdx = `
+    const assert = require('node:assert/strict');
+    const mdx = require('@docx-editor.dev/docx-to-markdown/mdx');
+    assert.ok(mdx.isMdxDocument(mdx.importMdxDocument('# Service record')));
+  `;
+  if (process.features.require_module) run('node', ['-e', requireMdx]);
+  run('bun', ['-e', requireMdx]);
+  console.log(
+    'Packed Node/Bun ESM/CommonJS: types, MDX, conversion, JSON, large ZIP, filesystem OK'
+  );
 
   await writeFile(
     path.join(consumer, 'index.html'),
