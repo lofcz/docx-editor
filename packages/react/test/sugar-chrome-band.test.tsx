@@ -30,6 +30,7 @@ describe('the packaged frame chrome band', () => {
     const { container } = render(<DocxEditor />);
     const surface = band(container);
     expect(surface).not.toBeNull();
+    expect(container.querySelectorAll('[data-ribbon] [role="tablist"]')).toHaveLength(1);
     expect(surface!.style.backgroundColor).toBe('var(--doc-surface)');
     // The menu bar lives in the title bar, so finding it under the same box is
     // what proves the two rows are one band and not siblings.

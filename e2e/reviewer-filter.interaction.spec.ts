@@ -78,6 +78,7 @@ for (const adapter of ADAPTERS) {
     await closeDemoPanel(page);
     const rail = page.getByTestId('review-rail');
     if (!(await rail.evaluate((node) => node.hasAttribute('data-open')))) {
+      await page.getByRole('tab', { name: 'Review', exact: true }).click();
       await page.locator('.docx-toolbar [data-slot="review.comments"]').first().click();
     }
     await expect(rail).toHaveAttribute('data-open', '');

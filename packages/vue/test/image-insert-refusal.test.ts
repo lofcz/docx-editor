@@ -19,8 +19,14 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
+async function imageInput(container: HTMLElement): Promise<HTMLInputElement> {
+  container.querySelector<HTMLButtonElement>('[data-ribbon-tab="insert"]')!.click();
+  await nextTick();
+  return container.querySelector<HTMLInputElement>('.docx-image-insert__input')!;
+}
+
 async function chooseNonImage(container: HTMLElement): Promise<void> {
-  const input = container.querySelector('.docx-image-insert__input') as HTMLInputElement;
+  const input = await imageInput(container);
   const file = new File([new TextEncoder().encode('PK not a picture')], 'report.docx');
   Object.defineProperty(input, 'files', { value: [file], configurable: true });
   input.dispatchEvent(new Event('change'));
@@ -63,7 +69,7 @@ describe('picture refusal (Vue)', () => {
     file.arrayBuffer = async () => {
       throw new Error('read failed');
     };
-    const input = view.container.querySelector('.docx-image-insert__input')!;
+    const input = await imageInput(view.container);
     Object.defineProperty(input, 'files', { value: [file], configurable: true });
     input.dispatchEvent(new Event('change'));
     await flush();

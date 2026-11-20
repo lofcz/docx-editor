@@ -15,11 +15,20 @@ const review: EditorModule = {
   },
 };
 const mounted: MountedEditor[] = [];
-afterEach(() => { for (const view of mounted.splice(0)) view.unmount(); });
+afterEach(() => {
+  for (const view of mounted.splice(0)) view.unmount();
+});
 
 async function mount() {
-  const view = mountEditorTree(() => h(DocxEditorToolbar), SOURCE, () => [], [review]);
+  const view = mountEditorTree(
+    () => h(DocxEditorToolbar),
+    SOURCE,
+    () => [],
+    [review]
+  );
   mounted.push(view);
+  await flush();
+  view.container.querySelector<HTMLButtonElement>('[data-ribbon-tab="review"]')!.click();
   await flush();
   return view;
 }
@@ -53,7 +62,9 @@ describe('Vue suggesting author gate', () => {
     button(view, 'trigger').click();
     await flush();
     expect(document.activeElement).toBe(button(view, 'editing'));
-    button(view, 'editing').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    button(view, 'editing').dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true })
+    );
     expect(document.activeElement).toBe(button(view, 'viewing'));
   });
 });

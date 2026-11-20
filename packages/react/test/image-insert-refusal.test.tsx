@@ -38,6 +38,7 @@ async function mount(popups?: DocxEditorPopups) {
     });
   }
   if (!instance) throw new Error('editor did not mount');
+  act(() => view.getByRole('tab', { name: 'Insert', exact: true }).click());
   return { view, editor: instance as DocxEditorInstance };
 }
 

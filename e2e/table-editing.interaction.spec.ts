@@ -312,6 +312,7 @@ async function clickInsertColumnFurniture(
 }
 
 async function undoViaToolbar(page: Page) {
+  await page.getByRole('tab', { name: 'Home', exact: true }).click();
   const undo = page.locator('[data-slot="history.undo"]').first();
   await expect(undo).toBeEnabled();
   await undo.click();

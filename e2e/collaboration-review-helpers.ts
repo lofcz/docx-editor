@@ -205,6 +205,7 @@ export async function ensureReviewPaneOpen(page: Page): Promise<void> {
   const rail = page.locator('[data-testid="review-rail"]');
   await expect(rail).toBeAttached({ timeout: 20_000 });
   if (await rail.evaluate((node) => node.hasAttribute('data-open'))) return;
+  await page.getByRole('tab', { name: 'Review', exact: true }).click();
   const toggle = page.locator('.docx-toolbar [data-slot="review.comments"]').first();
   await expect(toggle).toBeVisible();
   await expect(toggle).not.toHaveAttribute('data-disabled', '');

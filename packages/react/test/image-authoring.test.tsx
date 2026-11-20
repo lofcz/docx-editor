@@ -333,6 +333,7 @@ describe('inserts validated image files', () => {
       const { view, editor, ready } = mount(<DocxEditorToolbar />);
       await ready();
       placeTextCaret(editor());
+      act(() => view.getByRole('tab', { name: 'Insert', exact: true }).click());
       const beforeRevision = editor().surface!.session.packageRevision();
       const input = view.container.querySelector('.docx-image-insert__input') as HTMLInputElement;
       expect(input).not.toBeNull();
@@ -379,6 +380,7 @@ describe('inserts validated image files', () => {
     );
     await ready();
     await selectDrawing();
+    act(() => view.getByRole('tab', { name: 'Insert', exact: true }).click());
     const button = view.container.querySelector('[data-slot="image.insert"]') as HTMLButtonElement;
     expect(button).not.toBeNull();
     const event = new MouseEvent('mousedown', { bubbles: true, cancelable: true });

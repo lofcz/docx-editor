@@ -63,6 +63,7 @@ function mountShortcutHarness(includeInput = false): {
       </DocxEditorViewport>
     </DocxEditorRoot>
   );
+  act(() => view.container.querySelector<HTMLButtonElement>('[data-ribbon-tab="view"]')!.click());
   return {
     view,
     editor: () => instance!,

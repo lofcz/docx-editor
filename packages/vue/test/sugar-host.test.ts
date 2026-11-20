@@ -29,10 +29,8 @@ describe('DocxEditor sugar host', () => {
     expect(
       (view.container.querySelector('[data-testid="docx-toolbar"]') as HTMLFieldSetElement).disabled
     ).toBe(true);
-    expect(
-      (view.container.querySelector('[data-testid="editing-mode-trigger"]') as HTMLButtonElement)
-        .disabled
-    ).toBe(true);
+    const review = view.container.querySelector('[data-ribbon-tab="review"]')!;
+    expect(review.closest('fieldset')?.disabled).toBe(true);
     view.unmount();
   });
 
@@ -79,6 +77,7 @@ describe('DocxEditor sugar host', () => {
     const view = await mountSugarAsync({});
     await view.flush();
     expect(view.container.querySelector('[data-testid="docx-toolbar"]')).not.toBeNull();
+    expect(view.container.querySelectorAll('[data-ribbon] [role="tablist"]')).toHaveLength(1);
     expect(view.container.querySelector('[data-testid="docx-menubar"]')).not.toBeNull();
     expect(view.container.querySelector('.docx-nav')).not.toBeNull();
     view.unmount();

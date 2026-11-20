@@ -409,10 +409,12 @@ for (const adapter of ['react', 'vue'] as const) {
       });
       await expect(page.locator(`[data-drawing-paragraph-id="${firstId}"]`)).toHaveCount(1);
       await expect(image).toHaveAttribute('data-drawing-node-id', imageId!);
+      await page.getByRole('tab', { name: 'Home', exact: true }).click();
       await expect(page.getByRole('button', { name: /^Undo/ }).first()).toBeDisabled();
       const selectedFrame = page.locator('.docx-image-selection-overlay__frame');
       if (await selectedFrame.count()) await selectedFrame.click();
       else await image.click();
+      await page.getByRole('tab', { name: 'Home', exact: true }).click();
       await expect(page.getByRole('button', { name: /^Undo/ }).first()).toBeDisabled();
     });
 

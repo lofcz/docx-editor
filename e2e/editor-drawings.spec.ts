@@ -79,6 +79,7 @@ async function bridgeSelectedImage(page: Page): Promise<SelectedImageSnapshot> {
 }
 
 async function toolbarControl(page: Page, slot: string): Promise<Locator> {
+  await page.getByRole('tab', { name: 'Picture Format', exact: true }).click();
   const control = page.locator(`[data-slot="${slot}"]`);
   if (!(await control.isVisible())) {
     await page.getByRole('button', { name: 'More', exact: true }).click();
@@ -141,6 +142,7 @@ test('image layout modes demo — wrap, move, alt text, resize, undo/redo, save/
   const afterResize = await bridgeSelectedImage(page);
   expect(afterResize.widthEmu - beforeImage.widthEmu).toBe(EMU_PER_POINT);
 
+  await page.getByRole('tab', { name: 'Home', exact: true }).click();
   const undo = page.locator('[data-slot="history.undo"]');
   await expect(undo).toBeEnabled({ timeout: 10_000 });
 
@@ -166,6 +168,7 @@ test('image layout modes demo — wrap, move, alt text, resize, undo/redo, save/
   await expect(wrapTrigger).toHaveAttribute('title', /Square/i);
   await page.keyboard.press('Escape');
 
+  await page.getByRole('tab', { name: 'Home', exact: true }).click();
   const redo = page.locator('[data-slot="history.redo"]');
   await expect(redo).toBeEnabled();
   await redo.click();

@@ -702,10 +702,8 @@ describe('packaged DocxEditor loading screen', () => {
     expect(
       (view.container.querySelector('[data-testid="docx-toolbar"]') as HTMLFieldSetElement).disabled
     ).toBe(true);
-    expect(
-      (view.container.querySelector('[data-testid="editing-mode-trigger"]') as HTMLButtonElement)
-        .disabled
-    ).toBe(true);
+    const review = view.getByRole('tab', { name: 'Review', exact: true });
+    expect(review.closest('fieldset')?.disabled).toBe(true);
   });
 
   test(

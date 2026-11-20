@@ -71,6 +71,7 @@ function mountToolbar(author?: string): {
       </DocxEditorViewport>
     </DocxEditorRoot>
   );
+  act(() => view.getByRole('tab', { name: 'Review', exact: true }).click());
   return {
     view,
     editor: () => {
