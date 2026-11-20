@@ -106,17 +106,17 @@ test('edge appends preserve locked cell content and obey enclosing control locks
 test('append buttons follow the bottom and right edges and refresh visible labels', async () => {
   const { surface, control } = await mount();
   const row = control('row');
-  expect(parseFloat(row.style.width)).toBeGreaterThan(0);
-  expect(row.style.height).toBe('24px');
   const column = control('column');
-  expect(column.style.width).toBe('24px');
-  expect(parseFloat(column.style.height)).toBeGreaterThan(0);
-  expect(parseFloat(column.style.left)).toBeCloseTo(
-    parseFloat(row.style.left) + parseFloat(row.style.width)
-  );
-  expect(parseFloat(row.style.top)).toBeCloseTo(
-    parseFloat(column.style.top) + parseFloat(column.style.height)
-  );
+  const corner = control('both');
+  // The controls stay in the margins, so the paragraph below the table can take clicks.
+  for (const button of [row, column, corner]) {
+    expect(button.style.width).toBe('24px');
+    expect(button.style.height).toBe('24px');
+  }
+  expect(parseFloat(row.style.left) + 24).toBeLessThan(parseFloat(corner.style.left));
+  expect(parseFloat(row.style.top) + 12).toBeCloseTo(parseFloat(corner.style.top));
+  expect(column.style.left).toBe(corner.style.left);
+  expect(parseFloat(column.style.top)).toBeLessThan(parseFloat(corner.style.top));
   surface.setTableInteractionLabel((key) => `localized:${key}`);
   expect(row.title).toBe('localized:table.insertRowBelow');
   expect(row.getAttribute('aria-label')).toBe(row.title);
