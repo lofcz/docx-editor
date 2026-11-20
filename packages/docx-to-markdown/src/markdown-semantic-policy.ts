@@ -221,6 +221,7 @@ const MARKDOWN_SEMANTIC_POLICY_RATCHETS = Object.freeze({
     gridColumn: 'represented',
     logicalGridColumn: 'represented',
     gridColumnId: 'layout-only',
+    lastGridColumnId: 'layout-only',
     gridSpan: 'represented',
     resolvedGridColumn: 'represented',
     resolvedGridSpan: 'represented',
