@@ -123,8 +123,8 @@ test('the table toolbar keeps its menus after the selection leaves a table and r
     );
     mounted.push(view);
     await flush();
-    const ids = [...view.container.querySelectorAll('[data-paragraph-id]')].map(
-      (node) => node.getAttribute('data-paragraph-id')!
+    const ids = [...view.container.querySelectorAll('[data-paragraph-id]')].map((node) =>
+      node.getAttribute('data-paragraph-id')!
     );
     const at = (paragraphId: string) => ({ paragraphId, offset: 0 });
     const select = async (paragraphId: string) => {
@@ -189,6 +189,8 @@ test('menus, the More panel, and asChild parts pass function slots', async () =>
       }
       // The toolbar collapsed into More, with the panel opened.
       const toolbar = view.container.querySelector<HTMLElement>('[data-testid="docx-toolbar"]')!;
+      toolbar.querySelector<HTMLButtonElement>('[data-ribbon-tab="home"]')!.click();
+      await flush();
       Object.defineProperty(toolbar, 'clientWidth', { configurable: true, get: () => 280 });
       for (const group of toolbar.querySelectorAll<HTMLElement>('[data-toolbar-group]')) {
         Object.defineProperty(group, 'offsetWidth', { configurable: true, get: () => 90 });
