@@ -11,6 +11,7 @@ import {
 import { blockIdFromTag, readPayloadStore } from '../blocks/payload-opc-codec';
 import { activeStorage } from '../registry/active';
 import { wmlElement } from '../diff/fragment-seeds';
+import type { PlannedTableOperation } from '../diff/plan';
 
 const blockId = (node: OoxmlNode): string | null =>
   node.kind === 'contentControl'
@@ -18,10 +19,17 @@ const blockId = (node: OoxmlNode): string | null =>
     : null;
 
 /** Collect candidate payload records before a native subtree disappears. */
-export function subtreePayloadIds(node: OoxmlNode): string[] {
+function subtreePayloadIds(node: OoxmlNode): string[] {
   return [node, ...contentControlsIn(node).map((entry) => entry.node)]
     .map(blockId)
     .filter((id): id is string => id !== null);
+}
+
+/** Find payloads that a planned row or column deletion could remove. */
+export function tablePayloadIds(part: OoxmlPart, operation: PlannedTableOperation): string[] {
+  if (operation.op !== 'deleteTableColumn' && operation.op !== 'deleteTableRow') return [];
+  const table = findNode(part, operation.tableId);
+  return table ? subtreePayloadIds(table) : [];
 }
 
 /** Remove the payload records of removed blocks. A record another control still uses stays. */
