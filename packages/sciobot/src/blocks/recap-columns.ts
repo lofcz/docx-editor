@@ -33,7 +33,8 @@ export function withRecapColumns(pkg: OoxmlPackage): OoxmlPackage {
     );
     if (at < 0) continue;
     const pair = content.children.slice(at, at + 2);
-    const skeleton = columnTableXml([4320, 4320], () => '<w:p/>', true);
+    const materialsColumn = byControl.get(pair[0]!.id)?.payload.type === 'recap_materials' ? 0 : 1;
+    const skeleton = columnTableXml([4320, 4320], () => '<w:p/>', materialsColumn);
     const parsed = readOoxmlPart(
       `<w:document xmlns:w="${WML_NAMESPACE_URI}"><w:body>${skeleton}</w:body></w:document>`,
       {

@@ -84,8 +84,9 @@ export function columnWidthsTwips(
 export function columnTableXml(
   widths: readonly number[],
   render: (index: number, width: number) => string,
-  recap = false
+  materialsColumn?: number
 ): string {
+  const recap = materialsColumn !== undefined;
   if (
     !widths.length ||
     widths.length > MAX_COLUMNS ||
@@ -98,10 +99,15 @@ export function columnTableXml(
     .join('');
   const grid = widths.map((width) => `<w:gridCol w:w="${width}"/>`).join('');
   const cells = widths
-    .map(
-      (width, index) =>
-        `<w:tc><w:tcPr><w:tcW w:w="${width}" w:type="dxa"/></w:tcPr>${render(index, width)}</w:tc>`
-    )
+    .map((width, index) => {
+      // Cell content has its own Word coordinate system. Keep the material row's
+      // 44 px marker and 36 px action lanes inside it, plus the 100 twip column gap.
+      const room =
+        index === materialsColumn
+          ? '<w:tcMar><w:left w:w="760" w:type="dxa"/><w:right w:w="640" w:type="dxa"/></w:tcMar>'
+          : '';
+      return `<w:tc><w:tcPr><w:tcW w:w="${width}" w:type="dxa"/>${room}</w:tcPr>${render(index, width)}</w:tc>`;
+    })
     .join('');
   // Width authoring uses an absolute grid. Keep creation in that same coordinate system;
   // Word's percentage table width also includes outside cell margins and would jump on resize.

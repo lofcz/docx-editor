@@ -706,7 +706,7 @@ function blockXml(node: TargetAstNode, path: readonly number[], context: RenderC
           context.pkg = childContext.pkg;
           return child;
         },
-        true
+        type(i) === 'recap_materials' ? 0 : 1
       );
       i++;
       paired = true;
