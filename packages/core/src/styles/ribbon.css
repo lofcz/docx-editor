@@ -1,0 +1,166 @@
+/* The preset ribbon shares the editor palette. A host-composed toolbar keeps its own layout. */
+.docx-toolbar[data-ribbon] {
+  display: block;
+  min-width: 0;
+  --doc-ribbon-gap: 4px;
+  gap: var(--doc-ribbon-gap);
+  padding: 0 8px;
+  background: var(--doc-surface);
+  border: 1px solid var(--doc-border);
+  border-radius: 8px;
+  color: var(--doc-text);
+}
+.docx-ribbon__header {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  margin-inline: -2px;
+}
+.docx-ribbon__tabs {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+}
+.docx-ribbon__tabs button,
+.docx-ribbon__toggle,
+.docx-ribbon__command {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+.docx-ribbon__tabs button {
+  position: relative;
+  flex: none;
+  min-height: 32px;
+  padding: 0 11px;
+  white-space: nowrap;
+}
+.docx-ribbon__tabs button[aria-selected='true'] {
+  color: var(--doc-primary);
+  font-weight: 600;
+}
+.docx-ribbon__tabs button[aria-selected='true']::after {
+  position: absolute;
+  inset: auto 9px 0;
+  height: 3px;
+  border-radius: 2px;
+  background: currentColor;
+  content: '';
+}
+.docx-ribbon__tabs
+  button:is(
+    [data-ribbon-tab='tableLayout'],
+    [data-ribbon-tab='tableDesign'],
+    [data-ribbon-tab='picture']
+  ) {
+  color: var(--doc-link);
+}
+.docx-ribbon__toggle {
+  flex: none;
+  width: 32px;
+}
+.docx-ribbon__toggle span {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border: solid currentColor;
+  border-width: 1.5px 1.5px 0 0;
+  transform: rotate(-45deg);
+}
+.docx-ribbon__toggle[aria-expanded='false'] span {
+  transform: rotate(135deg);
+}
+.docx-ribbon__tabs button:hover,
+.docx-ribbon__toggle:hover,
+.docx-ribbon__command:hover:enabled {
+  background: var(--doc-bg-hover);
+}
+.docx-toolbar[data-ribbon]
+  :is([role='tab'], .docx-ribbon__toggle, .docx-ribbon__command):focus-visible {
+  outline: 2px solid var(--doc-primary);
+  outline-offset: -3px;
+}
+.docx-ribbon__panel {
+  display: flex;
+  align-items: center;
+  gap: var(--doc-ribbon-gap);
+  min-width: 0;
+  min-height: 60px;
+  box-sizing: border-box;
+  flex-wrap: wrap;
+  padding: 4px 0;
+  border-top: 1px solid var(--doc-border);
+}
+.docx-toolbar[data-overflow] .docx-ribbon__panel {
+  flex-wrap: nowrap;
+}
+.docx-ribbon__panel[hidden] {
+  display: none;
+}
+.docx-ribbon__panel > [data-ribbon-caption] {
+  position: relative;
+  align-self: stretch;
+  padding: 0 3px 15px;
+}
+.docx-ribbon__panel > [data-ribbon-caption]::after {
+  content: attr(data-ribbon-caption);
+  position: absolute;
+  bottom: 1px;
+  inset-inline: 0;
+  color: var(--doc-text-muted);
+  font-size: 10px;
+  line-height: 13px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.docx-ribbon__panel > .docx-toolbar__separator {
+  height: 38px;
+}
+.docx-ribbon__command {
+  border-radius: 4px;
+  min-height: 29px;
+  padding: 3px 7px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.docx-ribbon__command:disabled {
+  color: var(--doc-text-subtle);
+  cursor: default;
+}
+.docx-ribbon__command:is(
+    [data-ribbon-command='ribbon.blueGrid'],
+    [data-ribbon-command='ribbon.greenGrid']
+  )::before {
+  --doc-ribbon-grid-ink: var(--doc-primary);
+  content: '';
+  display: block;
+  width: 48px;
+  height: 19px;
+  margin: 0 auto 3px;
+  border: 1px solid var(--doc-border-dark);
+  background:
+    repeating-linear-gradient(to right, transparent 0 11px, var(--doc-surface) 11px 12px),
+    linear-gradient(var(--doc-ribbon-grid-ink) 0 5px, transparent 5px),
+    repeating-linear-gradient(
+      to bottom,
+      var(--doc-surface) 0 3px,
+      color-mix(in srgb, var(--doc-ribbon-grid-ink) 22%, var(--doc-surface)) 3px 7px
+    );
+}
+.docx-ribbon__command[data-ribbon-command='ribbon.greenGrid']::before {
+  --doc-ribbon-grid-ink: var(--doc-success);
+}
+.docx-ribbon__band {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--doc-ribbon-gap);
+}

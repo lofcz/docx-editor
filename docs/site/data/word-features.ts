@@ -491,7 +491,7 @@ export const wordFeatures: WordFeature[] = [
     roundTrip: 'full',
     tier: 'community',
     notes:
-      'Table settings control column widths, alignment, spacing, and signed indents. Document compatibility settings affect sizing. A final table keeps a paragraph below it for the caret.',
+      'Use Table Design and Table Layout to format tables, edit rows and columns, and set widths. Table settings control alignment, spacing, and signed indents. Compatibility settings affect sizing, and a final table keeps a paragraph below it for the caret.',
   },
   {
     id: 'tables.rtl',

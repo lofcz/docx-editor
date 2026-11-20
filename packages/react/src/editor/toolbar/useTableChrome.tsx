@@ -69,15 +69,6 @@ export function resetTableChromeStateDerivationCount(): void {
   tableChromeStateDerivations = 0;
 }
 
-/** Read contextual visibility from the shared provider (no fallback subscription). @internal */
-export function useTableChromeProviderVisible(): boolean {
-  const ctx = useContext(TableChromeContext);
-  if (!ctx) {
-    throw new Error('table chrome group must render inside TableChromeProvider');
-  }
-  return ctx.visible;
-}
-
 /** Props for the provider that wraps all toolbar children. @internal */
 export interface TableChromeProviderProps {
   readonly children: ReactNode;

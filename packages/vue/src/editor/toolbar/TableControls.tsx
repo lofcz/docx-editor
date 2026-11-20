@@ -1,17 +1,14 @@
 import {
   defineComponent,
-  Fragment,
   h,
   inject,
   provide,
   ref,
   type ComputedRef,
   type InjectionKey,
-  type PropType,
   type Ref,
   type VNode,
 } from 'vue';
-import { ToolbarTableMergeCells, ToolbarTableSplitCell } from './TableCellStructure';
 import type { TableBorderStyle } from '@docx-editor.dev/core/contracts/editor';
 import type { TableChromeDraft } from '@docx-editor.dev/core/editor';
 import {
@@ -25,10 +22,9 @@ import {
 import { useToolbarLabel } from './toolbar-context';
 import { chromeControlForSlot, chromeIcon, guardToolbarMousedown } from './ToolbarButton';
 import type { ToolbarSlotPartComponent } from './parts';
-import { ToolbarSeparator } from './parts';
 import { Slot } from './Slot';
 import { ColorPickerPanel } from '../color/ColorPicker';
-import { useTableChromeProviderVisible, useTableChromeSlot } from './useTableChrome';
+import { useTableChromeSlot } from './useTableChrome';
 import { useDropdownClose } from './useDropdownClose';
 import {
   useTableChromeTriggerA11y,
@@ -820,43 +816,3 @@ export const ToolbarTableCellFill = Object.assign(
 
 /** @public */
 export { useTableBorderTargetLabel };
-
-/** @internal */
-export const TableChromeGroup = defineComponent({
-  name: 'TableChromeGroup',
-  props: {
-    overrides: {
-      type: Object as PropType<Map<string, VNode>>,
-      default: () => new Map(),
-    },
-    separator: { type: Boolean, default: true },
-  },
-  setup(props) {
-    const visible = useTableChromeProviderVisible();
-    return () => {
-      if (!visible.value) return null;
-      const entries = [
-        ToolbarTableBorderTarget,
-        ToolbarTableBorderColor,
-        ToolbarTableBorderStyle,
-        ToolbarTableBorderWidth,
-        ToolbarTableCellFill,
-      ];
-      return (
-        <>
-          {props.separator ? <ToolbarSeparator /> : null}
-          {entries.map((Part) => {
-            const override = props.overrides.get(Part.docxSlot);
-            if (override) return <Fragment key={Part.docxSlot}>{override}</Fragment>;
-            return h(Part, { key: Part.docxSlot });
-          })}
-          {[ToolbarTableMergeCells, ToolbarTableSplitCell].map((Part) => {
-            const override = props.overrides.get(Part.docxSlot);
-            if (override) return <Fragment key={Part.docxSlot}>{override}</Fragment>;
-            return h(Part, { key: Part.docxSlot });
-          })}
-        </>
-      );
-    };
-  },
-});

@@ -5,9 +5,15 @@ category: 'Guides'
 seoTitle: 'Toolbar customization'
 ---
 
+## Use the ribbon
+
+Use Home for text and paragraph formatting. Insert, Layout, Review, and View group the other editing tools. Place the caret in a table to open Table Design. Choose Table Layout to change rows, columns, or widths.
+
+Use the arrow keys to switch tabs. Home and End select the first and last tabs. Use **Collapse ribbon** to hide the controls. Choose a tab to expand it. When the editor runs out of space, **More** shows the remaining controls on the active tab.
+
 ## Customize the toolbar
 
-Pass children to the preset toolbar to add, replace, or hide controls.
+Pass children to the preset toolbar to add, replace, or hide controls. A host group follows its `after` anchor onto the same tab. Groups without an anchor appear on Home.
 
 <FrameworkTabs>
 <Framework value="react">
@@ -243,7 +249,7 @@ To restyle a control without replacing it, pass `className`, `icon`, or `asChild
 
 ## Handle narrow layouts
 
-The preset toolbar stays on one row. To size it to its content, use `width: max-content; max-width: 100%` in a block container or a single-line flex row. Collapsed groups return when the container grows.
+The active ribbon tab keeps its controls on one row. To size it to its content, use `width: max-content; max-width: 100%` in a block container or a single-line flex row. Collapsed groups return when the container grows.
 
 ### Menu bar overflow
 

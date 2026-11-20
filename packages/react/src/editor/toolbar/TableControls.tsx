@@ -6,15 +6,7 @@ import type { ReactNode } from 'react';
 // picks; every value routes through `runTableChromeCommand` and core command state.
 // Each part is a compound (Trigger / Content / Item) over the shared draft provider.
 
-import {
-  createContext,
-  useContext,
-  useMemo,
-  useRef,
-  useState,
-  Fragment,
-  type KeyboardEvent,
-} from 'react';
+import { createContext, useContext, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import type { TableBorderStyle } from '@docx-editor.dev/core/contracts/editor';
 import {
   TABLE_BORDER_STYLE_OPTIONS,
@@ -28,11 +20,9 @@ import {
 import { useToolbarLabel } from './toolbar-context';
 import { chromeControlForSlot, chromeIcon, guardToolbarMousedown } from './ToolbarButton';
 import type { ToolbarSlotPartComponent } from './parts';
-import { ToolbarSeparator } from './parts';
-import { ToolbarTableMergeCells, ToolbarTableSplitCell } from './TableCellStructure';
 import { Slot } from './Slot';
 import { ColorPickerPanel } from '../color/ColorPicker';
-import { useTableChromeProviderVisible, useTableChromeSlot } from './useTableChrome';
+import { useTableChromeSlot } from './useTableChrome';
 import { useDropdownClose } from './useDropdownClose';
 import {
   useTableChromeTriggerA11y,
@@ -863,47 +853,6 @@ export const ToolbarTableCellFill: TableCellFillNamespace = Object.assign(TableC
   Item: TableCellFillItem,
   Main: fillCompound.Main,
 });
-
-/** The five contextual table chrome controls in registry order. @internal */
-export function TableChromeGroup({
-  overrides = new Map(),
-  separator = true,
-}: {
-  overrides?: ReadonlyMap<string, React.ReactElement>;
-  separator?: boolean;
-}): ReactNode {
-  const visible = useTableChromeProviderVisible();
-  if (!visible) return null;
-
-  const entries: readonly TableChromePartComponent[] = [
-    ToolbarTableBorderTarget,
-    ToolbarTableBorderColor,
-    ToolbarTableBorderStyle,
-    ToolbarTableBorderWidth,
-    ToolbarTableCellFill,
-  ];
-
-  return (
-    <>
-      {separator ? <ToolbarSeparator /> : null}
-      {entries.map((Part) => {
-        const override = overrides.get(Part.docxSlot);
-        if (override) {
-          return <Fragment key={Part.docxSlot}>{override}</Fragment>;
-        }
-        return <Part key={Part.docxSlot} />;
-      })}
-      {[ToolbarTableMergeCells, ToolbarTableSplitCell].map((Part) => {
-        const override = overrides.get(Part.docxSlot);
-        return override ? (
-          <Fragment key={Part.docxSlot}>{override}</Fragment>
-        ) : (
-          <Part key={Part.docxSlot} />
-        );
-      })}
-    </>
-  );
-}
 
 /**
  * Resolved label for the active border target in the shared draft.

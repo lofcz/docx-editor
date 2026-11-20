@@ -151,6 +151,33 @@
     "refreshPageNumbers": "Refresh page numbers",
     "remove": "Remove table of contents"
   },
+  "ribbon": {
+    "label": "Ribbon",
+    "home": "Home",
+    "layout": "Layout",
+    "view": "View",
+    "tableDesign": "Table Design",
+    "tableLayout": "Table Layout",
+    "pictureFormat": "Picture Format",
+    "collapse": "Collapse ribbon",
+    "expand": "Expand ribbon",
+    "tables": "Tables",
+    "illustrations": "Illustrations",
+    "references": "References",
+    "breaks": "Breaks",
+    "changes": "Changes",
+    "show": "Show",
+    "tableStyles": "Table styles",
+    "blueGrid": "Banded Grid Blue",
+    "greenGrid": "Banded Grid Green",
+    "bordersAndShading": "Borders and shading",
+    "rows": "Rows",
+    "columns": "Columns",
+    "merge": "Merge",
+    "cellSize": "Cell size",
+    "fitWindow": "AutoFit to window",
+    "fixedWidth": "Fixed column width"
+  },
   "formattingBar": {
     "label": "Formatting controls",
     "groups": {

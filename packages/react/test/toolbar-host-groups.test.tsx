@@ -115,7 +115,7 @@ async function measure(toolbar: HTMLElement, barWidth: number, groupWidth = 90):
 
 /** Group ids and separators of the bar, in order. */
 function barShape(toolbar: HTMLElement): string[] {
-  return [...toolbar.children].map((child) =>
+  return [...(toolbar.querySelector('[role="tabpanel"]') ?? toolbar).children].map((child) =>
     child.getAttribute('role') === 'separator'
       ? '|'
       : (child.getAttribute('data-toolbar-group') ??
@@ -144,7 +144,7 @@ describe('Toolbar.Group', () => {
     const shape = barShape(toolbar);
     expect(shape.indexOf('review-nav')).toBe(shape.lastIndexOf('|') + 1);
     // No fixed block of loose children: only the pinned review group is fixed.
-    expect(shape.filter((entry) => entry === 'fixed').length).toBe(1);
+    expect(shape.filter((entry) => entry === 'fixed').length).toBe(0);
 
     await measure(toolbar, 420);
     // No priority: it collapses before every built-in group.
@@ -174,7 +174,7 @@ describe('Toolbar.Group', () => {
       </T>
     );
     const toolbar = view.getByTestId('docx-toolbar');
-    await measure(toolbar, 300);
+    await measure(toolbar, 150);
     expect(toolbar.querySelector('[data-toolbar-group="nav"]')).not.toBeNull();
     expect(toolbar.querySelector('[data-toolbar-group="history"]')).toBeNull();
   });
@@ -223,10 +223,11 @@ describe('Toolbar.Group', () => {
       </T>
     );
     const toolbar = view.getByTestId('docx-toolbar');
+    act(() => toolbar.querySelector<HTMLButtonElement>('[data-ribbon-tab="view"]')!.click());
     const zoom = toolbar.querySelector('[data-toolbar-group="zoom"]')!;
     expect(zoom.querySelector('[aria-label="Fit page"]')).not.toBeNull();
     expect(zoom.querySelector('[data-slot="zoom.level"]')).not.toBeNull();
-    await measure(toolbar, 760);
+    await measure(toolbar, 40);
     expect(toolbar.querySelector('[data-toolbar-group="zoom"]')).toBeNull();
     await act(async () => {
       view.getByLabelText('More').click();
@@ -267,7 +268,9 @@ describe('Toolbar.Group', () => {
     expect(shape[shape.length - 1]).not.toBe('|');
     expect(shape.join(' ')).not.toContain('| |');
     const separators = shape.filter((entry) => entry === '|').length;
-    expect(separators).toBe(groups.length - 1);
+    expect(separators).toBe(
+      toolbar.querySelectorAll('[role="tabpanel"] > [role="group"]').length - 1
+    );
 
     await measure(toolbar, 420);
     await act(async () => {
@@ -293,13 +296,14 @@ describe('Toolbar.Slot', () => {
       </T>
     );
     const toolbar = view.getByTestId('docx-toolbar');
+    act(() => toolbar.querySelector<HTMLButtonElement>('[data-ribbon-tab="view"]')!.click());
     const zoom = toolbar.querySelector('[data-toolbar-group="zoom"]')!;
     expect(zoom.querySelector('[data-testid="my-zoom"]')).not.toBeNull();
     expect(toolbar.querySelector('[data-slot="zoom.level"]')).toBeNull();
     // Not appended: only the pinned review group is fixed.
-    expect(barShape(toolbar).filter((entry) => entry === 'fixed').length).toBe(1);
+    expect(barShape(toolbar).filter((entry) => entry === 'fixed').length).toBe(0);
 
-    await measure(toolbar, 760);
+    await measure(toolbar, 40);
     await act(async () => {
       view.getByLabelText('More').click();
     });
@@ -468,7 +472,8 @@ describe('review fixes', () => {
       </T>
     );
     const toolbar = view.getByTestId('docx-toolbar');
-    await measure(toolbar, 760);
+    act(() => toolbar.querySelector<HTMLButtonElement>('[data-ribbon-tab="view"]')!.click());
+    await measure(toolbar, 40);
     await act(async () => {
       view.getByLabelText('More').click();
     });

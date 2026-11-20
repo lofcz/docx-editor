@@ -965,3 +965,17 @@ export {
   passDrawingFramePress,
 } from './drawing-overlay-press.ts';
 export { leaveGroupMember } from './group-member-selection.ts';
+
+export {
+  isRibbonTableCommand,
+  ribbonSelection,
+  revealRibbonTab,
+  ribbonGroups,
+  ribbonBands,
+  ribbonKeyTab,
+  ribbonTableCommands,
+  ribbonTabs,
+  type RibbonSlot,
+  type RibbonTab,
+  type RibbonTabControls,
+} from './ribbon.ts';

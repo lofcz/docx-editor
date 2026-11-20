@@ -73,15 +73,6 @@ export function resetTableChromeStateDerivationCount(): void {
   tableChromeStateDerivations = 0;
 }
 
-/** @internal */
-export function useTableChromeProviderVisible(): ComputedRef<boolean> {
-  const ctx = inject(TableChromeContextKey, null);
-  if (!ctx) {
-    throw new Error('table chrome group must render inside TableChromeProvider');
-  }
-  return ctx.visible;
-}
-
 interface TableAdmissionSlice {
   readonly tableKey: string;
   readonly selectionKey: string;

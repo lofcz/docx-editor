@@ -10,8 +10,6 @@ import type { DocxEditorToolbarGroupProps } from './ToolbarGroup';
 export interface ToolbarChildren<Key extends string> {
   /** Slot overrides of the default arrangement. The last override for a slot wins. */
   readonly overrides: Map<Key, ReactElement>;
-  /** Slot overrides of the contextual table chrome. */
-  readonly tableOverrides: Map<Key, ReactElement>;
   /** `Toolbar.Group` descriptions in order of appearance. The last one for an id wins. */
   readonly groups: readonly DocxEditorToolbarGroupProps[];
   /** Everything else, rendered in one fixed block after the groups. */
@@ -34,7 +32,6 @@ export function readToolbarChildren<Key extends string>(
   isTableSlot: (slot: Key) => boolean
 ): ToolbarChildren<Key> {
   const overrides = new Map<Key, ReactElement>();
-  const tableOverrides = new Map<Key, ReactElement>();
   const groups = new Map<string, DocxEditorToolbarGroupProps>();
   const appended: ReactNode[] = [];
   for (const child of Children.toArray(children)) {
@@ -47,11 +44,11 @@ export function readToolbarChildren<Key extends string>(
     const slot = slotOfChild(child);
     // Last override for a slot wins, matching how later props win in a spread.
     if (slot && isDefaultSlot(slot)) overrides.set(slot, child as ReactElement);
-    else if (slot && isTableSlot(slot)) tableOverrides.set(slot, child as ReactElement);
+    else if (slot && isTableSlot(slot)) continue;
     // Hiding a slot the bar does not draw leaves nothing, not an empty appended block.
     else if (slot && isValidElement(child) && (child.props as { hidden?: unknown }).hidden === true)
       continue;
     else appended.push(child);
   }
-  return { overrides, tableOverrides, groups: [...groups.values()], appended };
+  return { overrides, groups: [...groups.values()], appended };
 }

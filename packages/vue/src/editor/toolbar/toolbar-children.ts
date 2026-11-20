@@ -16,8 +16,6 @@ export interface ToolbarGroupSpec extends Omit<DocxEditorToolbarGroupProps, 'chi
 export interface ToolbarChildren<Key extends string> {
   /** Slot overrides of the default arrangement. The last override for a slot wins. */
   readonly overrides: Map<Key, VNode>;
-  /** Slot overrides of the contextual table chrome. */
-  readonly tableOverrides: Map<Key, VNode>;
   /** `Toolbar.Group` descriptions in order of appearance. The last one for an id wins. */
   readonly groups: readonly ToolbarGroupSpec[];
   /** Everything else, rendered in one fixed block after the groups. */
@@ -76,7 +74,6 @@ export function readToolbarChildren<Key extends string>(
   isTableSlot: (slot: Key) => boolean
 ): ToolbarChildren<Key> {
   const overrides = new Map<Key, VNode>();
-  const tableOverrides = new Map<Key, VNode>();
   const groups = new Map<string, ToolbarGroupSpec>();
   const appended: VNode[] = [];
   for (const child of children) {
@@ -90,10 +87,10 @@ export function readToolbarChildren<Key extends string>(
     const slot = slotOfChild(child);
     // Last override for a slot wins, matching how later props win in a spread.
     if (slot && isDefaultSlot(slot)) overrides.set(slot, child);
-    else if (slot && isTableSlot(slot)) tableOverrides.set(slot, child);
+    else if (slot && isTableSlot(slot)) continue;
     // Hiding a slot the bar does not draw leaves nothing, not an empty appended block.
     else if (slot && vnodeFlag((child as VNode).props?.hidden)) continue;
     else appended.push(child);
   }
-  return { overrides, tableOverrides, groups: [...groups.values()], appended };
+  return { overrides, groups: [...groups.values()], appended };
 }

@@ -1,49 +1,22 @@
+import { RibbonTabs, ribbonCommandParts } from './Ribbon';
 import type { DocxEditorChildren } from '../../docx-editor-children';
 import type { ReactNode } from 'react';
-// The compound toolbar root: the FULL chrome registry as the default, with in-place
-// overrides.
-//
-// DEFAULT-SET + IN-PLACE OVERRIDE SEMANTICS. With no children the toolbar renders the
-// COMPLETE chrome — every group and control of `CHROME_GROUPS`, in registry
-// order, with a separator between groups. The arrangement is DERIVED from the registry
-// rather than hand-listed, so a registry change flows through: a new control renders
-// as a live `ToolbarButton` (disabled with the engine's reason until it is wired)
-// without touching this file. Controls whose SHAPE the registry declares specially
-// render through their dedicated parts: the FontFamily compound, the font-size and
-// zoom steppers (wired), the colour split buttons (wired), the pickers this toolbar
-// does not drive yet (disabled lookalikes), and save (live only with an `onSave`
-// handler).
-//
-// WITH children, each child that is a toolbar PART — detected by the static slot
-// marker (`Component.docxSlot`, or `ToolbarButton`'s marker plus its `slot` prop;
-// never displayName, which minifies away) — REPLACES its slot in the default
-// arrangement in place, so `<Toolbar><Bold className="fat"/></Toolbar>` is still the
-// whole toolbar with one customized button. A part child with `hidden` removes its
-// slot (the part renders null where it stands), and a group whose slots are all hidden is
-// dropped with its separator. `Toolbar.Group` children describe groups: a built-in id adds
-// controls to that group or hides it, any other id is a host group that is measured and
-// collapses like the built-in ones. Other children append after the default set and never
-// collapse. `preset={false}` opts out entirely: children render verbatim.
-//
-// ONE ROW, MEASURED. The bar used to wrap to a second and third row when it ran out of
-// width, which on a laptop beside an open navigation pane cost more vertical space than the
-// first page of the document. Now it measures itself and moves controls into a "⋯" menu,
-// one at a time from the end of the group the collapse order names, so the bar stays full
-// (`useToolbarOverflow` for the measurement, core's `toolbar-item-fit.ts` for the policy).
-// That is why the default arrangement below is a list of groups rather than a flat list of
-// slots: the group decides what collapses next, and its registry label becomes the panel's
-// section heading. `overflow={false}` restores wrapping.
+// The preset ribbon and its host-owned group, slot, and overflow composition.
 
 import { ToolbarEditingMode } from './EditingMode';
 import { ToolbarReviewers } from './Reviewers';
-import { Children, Fragment, isValidElement, useMemo } from 'react';
+import { Children, Fragment, isValidElement, useId, useMemo, useState } from 'react';
 import type { ReactElement } from 'react';
 import { unwrapFragment } from '../merge-arrangement';
 import {
   chartPaneAvailable,
   shapePaneAvailable,
-  chromeSlotId,
-  formattingBarChromeGroups,
+  ribbonGroups,
+  ribbonBands,
+  ribbonSelection,
+  isRibbonTableCommand,
+  type RibbonSlot,
+  type RibbonTab,
   type ChromeSlotId,
 } from '@docx-editor.dev/core/editor';
 import type { EditorSnapshot } from '@docx-editor.dev/core/contracts/editor';
@@ -142,7 +115,6 @@ import {
   ToolbarContentControlShowAll,
 } from './ContentControlParts';
 import {
-  TableChromeGroup,
   ToolbarTableBorderColor,
   ToolbarTableBorderStyle,
   ToolbarTableBorderTarget,
@@ -162,7 +134,7 @@ import { ScopedByAncestorContext } from '../scope-context';
 import { ObjectControlVariantContext } from '../objects/object-controls';
 import { useDocxEditor } from '../context';
 
-/** Contextual table chrome slots appended when the caret is inside a table. */
+/** Table parts that share border drafts, including in a manually composed toolbar. */
 const TABLE_CHROME_SLOTS: readonly ChromeSlotId[] = [
   'table.borderTarget',
   'table.borderColor',
@@ -179,7 +151,7 @@ const TABLE_CONTEXTUAL_GROUP_ID = 'contextual-table';
  * A default-arrangement key: a chrome slot, or `'alignment'` for the MERGED
  * alignment dropdown that stands in for the four `alignment.*` slots.
  */
-type ArrangementKey = ChromeSlotId | 'alignment';
+type ArrangementKey = RibbonSlot;
 
 /** One default-arrangement entry: the slot and the part that draws it. */
 interface DefaultEntry {
@@ -189,6 +161,7 @@ interface DefaultEntry {
 
 /** A registry group as the toolbar renders it: the collapse unit and a panel section. */
 interface DefaultGroup {
+  readonly tab: RibbonTab;
   readonly id: string;
   readonly labelKey: string;
   readonly entries: readonly DefaultEntry[];
@@ -221,6 +194,8 @@ const SHAPED_PARTS: Partial<Record<ChromeSlotId, PartLike>> = {
   // `CHROME_GROUPS` registers the `contentControl` group; until then the default bar
   // does not list them (no hand-listed slots), and hosts compose the named parts.
   ...CONTENT_CONTROL_SHAPED_PARTS,
+  'table.insert': ToolbarTableInsert,
+  'table.mergeCells': ToolbarTableMergeCells,
   'table.borderTarget': ToolbarTableBorderTarget,
   'table.borderColor': ToolbarTableBorderColor,
   'table.borderStyle': ToolbarTableBorderStyle,
@@ -245,17 +220,6 @@ const PANEL_ROW_SLOTS: ReadonlySet<ArrangementKey> = new Set<ChromeSlotId>([
   'image.altText',
 ]);
 
-const TABLE_CONTEXTUAL_GROUP: DefaultGroup = {
-  id: TABLE_CONTEXTUAL_GROUP_ID,
-  labelKey: 'formattingBar.groups.table',
-  entries: TABLE_CHROME_SLOTS.map((slot) => ({
-    slot,
-    // Merge is a plain command button; every other table slot has a shaped part.
-    Part: slot === 'table.mergeCells' ? ToolbarTableMergeCells : SHAPED_PARTS[slot]!,
-  })),
-};
-
-/** Icon-button fallback parts, one per slot, created once. */
 const iconPartCache = new Map<ChromeSlotId, PartLike>();
 function iconPart(slot: ChromeSlotId): PartLike {
   let part = iconPartCache.get(slot);
@@ -266,43 +230,33 @@ function iconPart(slot: ChromeSlotId): PartLike {
   return part;
 }
 
-/**
- * The DEFAULT chrome, in registry order, separators between groups: every
- * non-contextual registry group — the registry's default bar, which ends at the
- * editing-mode picker (contextual slots stay available for composition) — with the
- * alignment group merged into ONE dropdown under the `'alignment'` key.
- */
+/** Bind the shared ribbon layout to the React parts. */
 function buildDefaultGroups(
   image: EditorSnapshot['image'],
   direction: boolean,
   panes: { readonly chart: boolean; readonly shape: boolean },
-  chart: boolean
+  chart: boolean,
+  table: boolean
 ): readonly DefaultGroup[] {
   // Each button shows only when a mounted pane or listener takes its own pane.
   const shape = panes.shape && !!image?.shapeFormat;
   const objects = { shapeControls: !!image?.shapeFormat, chartControls: chart };
-  return formattingBarChromeGroups(image, {
-    direction,
-    chart: panes.chart && chart,
-    shape,
-    ...objects,
-  }).map((group) => {
-    if (group.id === 'alignment') {
-      return {
-        id: group.id,
-        labelKey: group.labelKey,
-        entries: [{ slot: 'alignment' as ArrangementKey, Part: ToolbarAlignment }],
-      };
-    }
-    return {
-      id: group.id,
-      labelKey: group.labelKey,
-      entries: group.controls.map((control) => {
-        const slot = chromeSlotId(group, control);
-        return { slot: slot as ArrangementKey, Part: SHAPED_PARTS[slot] ?? iconPart(slot) };
-      }),
-    };
-  });
+  return ribbonGroups(
+    image,
+    { direction, chart: panes.chart && chart, shape, ...objects },
+    table
+  ).map((group) => ({
+    ...group,
+    entries: group.slots.map((slot) => ({
+      slot,
+      Part:
+        slot === 'alignment'
+          ? ToolbarAlignment
+          : isRibbonTableCommand(slot)
+            ? ribbonCommandParts[slot]
+            : (SHAPED_PARTS[slot] ?? iconPart(slot)),
+    })),
+  }));
 }
 
 const selectToolbarImage = (snapshot: EditorSnapshot) => snapshot.image;
@@ -313,7 +267,7 @@ const selectTableChromeVisible = (snapshot: EditorSnapshot) => snapshot.table !=
 
 /** Slots whose panel row is the CONTROL itself, because it shows a value. */
 function isValueSlot(slot: ArrangementKey): boolean {
-  return slot === 'alignment' || slot in SHAPED_PARTS;
+  return slot === 'alignment' || isRibbonTableCommand(slot) || slot in SHAPED_PARTS;
 }
 
 /** The slot one child element drives, or null for a non-part child. */
@@ -404,8 +358,14 @@ function DocxEditorToolbarRoot(props: DocxEditorToolbarProps) {
   const directionButtons = chromeDir === 'rtl';
   const defaultGroups = useMemo(
     () =>
-      buildDefaultGroups(image, directionButtons, { chart: chartPane, shape: shapePane }, chart),
-    [image, directionButtons, chartPane, shapePane, chart]
+      buildDefaultGroups(
+        image,
+        directionButtons,
+        { chart: chartPane, shape: shapePane },
+        chart,
+        tableChromeVisible
+      ),
+    [image, directionButtons, chartPane, shapePane, chart, tableChromeVisible]
   );
   const defaultSlots = useMemo(
     () => new Set(defaultGroups.flatMap((group) => group.entries.map((entry) => entry.slot))),
@@ -424,21 +384,25 @@ function DocxEditorToolbarRoot(props: DocxEditorToolbarProps) {
         : null,
     [preset, children, defaultSlots]
   );
-  const arranged = useMemo(
+  const allGroups = useMemo(
     () => (parsed ? arrangeGroups(defaultGroups, parsed) : []),
     [defaultGroups, parsed]
   );
+  const contextTab = image ? 'picture' : tableChromeVisible ? 'tableDesign' : 'home';
+  const [choices, setChoices] = useState<Partial<Record<RibbonTab, RibbonTab>>>({});
+  const { tabs, active } = ribbonSelection(allGroups, choices[contextTab], contextTab);
+  const [collapsed, setCollapsed] = useState(false);
+  const panelId = useId();
+  const arranged = useMemo(
+    () => allGroups.filter((group) => group.tab === active),
+    [allGroups, active]
+  );
   const collapsible = useMemo<readonly ToolbarFitGroup[]>(
-    () => [
-      ...arranged
+    () =>
+      arranged
         .filter((group) => !group.pinned)
         .map((group) => ({ id: group.id, items: groupItems(group, parsed?.overrides) })),
-      // Table chrome is one unit: its border controls act together on one target.
-      ...(tableChromeVisible
-        ? [{ id: TABLE_CONTEXTUAL_GROUP_ID, items: [TABLE_CONTEXTUAL_GROUP_ID] }]
-        : []),
-    ],
-    [arranged, parsed, tableChromeVisible]
+    [arranged, parsed]
   );
   const collapseOrderIds = useMemo(() => {
     const priorities = new Map<string, number>();
@@ -455,14 +419,14 @@ function DocxEditorToolbarRoot(props: DocxEditorToolbarProps) {
   // Only the preset arrangement has groups to collapse; `preset={false}` is the host's own
   // markup, and moving pieces of it into a menu would be the library rearranging a bar it
   // does not own.
-  const measuring = preset && overflowEnabled;
+  const measuring = preset && overflowEnabled && !collapsed;
   const { attach, overflow } = useToolbarOverflow(measuring, collapsible, collapseOrderIds);
 
   let content: ReactNode;
   if (!parsed) {
     content = children;
   } else {
-    const { overrides, tableOverrides, appended } = parsed;
+    const { overrides, appended } = parsed;
 
     const render = (entry: DefaultEntry): ReactNode => {
       // A `hidden` override renders null where it stands, removing the slot.
@@ -472,16 +436,8 @@ function DocxEditorToolbarRoot(props: DocxEditorToolbarProps) {
       return <Part />;
     };
 
-    const renderTable = (entry: DefaultEntry): ReactNode => {
-      const override = tableOverrides.get(entry.slot);
-      if (override) return override;
-      const Part = entry.Part;
-      return <Part />;
-    };
-
-    const bar: ReactNode[] = [];
+    const shownGroups: { id: string; node: ReactNode }[] = [];
     const sections: ToolbarOverflowSection[] = [];
-    let drawn = 0;
     for (const group of arranged) {
       // The group's controls in bar order. When the bar runs out of width they leave from the
       // END, one at a time, so the bar keeps a prefix and "⋯" holds the rest, in bar order.
@@ -517,70 +473,56 @@ function DocxEditorToolbarRoot(props: DocxEditorToolbarProps) {
       if (shown === 0) continue;
       // The separator belongs BETWEEN what is on screen. Keyed on the group so a collapse
       // does not renumber the ones that stayed.
-      if (drawn > 0) bar.push(<ToolbarSeparator key={`separator-${group.id}`} />);
-      drawn += 1;
-      bar.push(
-        <div
-          key={group.id}
-          className={`docx-toolbar__group${group.className ? ` ${group.className}` : ''}`}
-          {...(group.heading
-            ? { role: 'group', 'aria-label': hostGroupText(group.heading, label) }
-            : {})}
-          // Pinned groups are costed as fixed width rather than offered to the fit.
-          {...(group.pinned ? { [FIXED_ATTRIBUTE]: '' } : { [GROUP_ATTRIBUTE]: group.id })}
-        >
-          {items.slice(0, shown).map((item) => {
-            const entry = entryBySlot.get(item);
-            return (
-              <div key={item} className="docx-toolbar__item" {...{ [ITEM_ATTRIBUTE]: item }}>
-                {entry ? render(entry) : group.extras}
-              </div>
-            );
-          })}
-        </div>
-      );
+      shownGroups.push({
+        id: group.id,
+        node: (
+          <div
+            key={group.id}
+            className={`docx-toolbar__group${group.className ? ` ${group.className}` : ''}`}
+            data-ribbon-caption={
+              group.heading ? hostGroupText(group.heading, label) : label(group.labelKey)
+            }
+            {...(group.heading
+              ? { role: 'group', 'aria-label': hostGroupText(group.heading, label) }
+              : { role: 'group', 'aria-label': label(group.labelKey) })}
+            // Pinned groups are costed as fixed width rather than offered to the fit.
+            {...(group.pinned ? { [FIXED_ATTRIBUTE]: '' } : { [GROUP_ATTRIBUTE]: group.id })}
+          >
+            {items.slice(0, shown).map((item) => {
+              const entry = entryBySlot.get(item);
+              return (
+                <div key={item} className="docx-toolbar__item" {...{ [ITEM_ATTRIBUTE]: item }}>
+                  {entry ? render(entry) : group.extras}
+                </div>
+              );
+            })}
+          </div>
+        ),
+      });
     }
 
     // The selected object's own groups lead the menu, under the table controls.
+    const bar = ribbonBands(shownGroups).map(({ id, caption, nodes }, i) => (
+      <Fragment key={id}>
+        {i > 0 && <ToolbarSeparator />}
+        {caption ? (
+          <div
+            className="docx-ribbon__band"
+            role="group"
+            aria-label={label(caption)}
+            data-ribbon-caption={label(caption)}
+          >
+            {nodes}
+          </div>
+        ) : (
+          nodes
+        )}
+      </Fragment>
+    ));
     const ordered = orderToolbarOverflowSections(sections);
-    const tableOverflowed = overflow.has(TABLE_CONTEXTUAL_GROUP_ID);
-    if (tableChromeVisible && tableOverflowed) {
-      const rows = TABLE_CONTEXTUAL_GROUP.entries.flatMap((entry) => {
-        const row = overflowRow(
-          entry,
-          tableOverrides,
-          label,
-          TABLE_CONTEXTUAL_GROUP.labelKey,
-          renderTable
-        );
-        return row === null ? [] : [<Fragment key={entry.slot}>{row}</Fragment>];
-      });
-      if (rows.length > 0) {
-        // Keep contextual controls at the top of More. Table pickers render inside the
-        // panel, so their trigger must remain visible when opening one temporarily lifts
-        // the panel's scroll clipping.
-        ordered.unshift({
-          id: TABLE_CONTEXTUAL_GROUP.id,
-          labelKey: TABLE_CONTEXTUAL_GROUP.labelKey,
-          children: rows,
-        });
-      }
-    }
-
     content = (
       <>
         {bar}
-        {tableChromeVisible && !tableOverflowed ? (
-          <ToolbarSeparator key="separator-contextual-table" />
-        ) : null}
-        {!tableOverflowed ? (
-          <div
-            className="docx-toolbar__contextual"
-            {...{ [GROUP_ATTRIBUTE]: TABLE_CONTEXTUAL_GROUP_ID }}
-          >
-            <TableChromeGroup overrides={tableOverrides} separator={false} />
-          </div>
-        ) : null}
         {appended.length > 0 ? (
           // Loose host children never collapse: they have no group, and so no label for a
           // panel section. They are costed as fixed width like a pinned group. A host that
@@ -605,6 +547,7 @@ function DocxEditorToolbarRoot(props: DocxEditorToolbarProps) {
           disabled={toolbarDisabled}
           aria-label={label('formattingBar.label')}
           data-testid="docx-toolbar"
+          data-ribbon={preset ? '' : undefined}
           // `docx-editor` self-emitted: chrome CSS and --doc-* tokens are scoped under it, and
           // `Root` renders no DOM — same pattern as `DocxEditorLoading`/`DocxEditorViewport`,
           // so a composed toolbar is styled wherever the host puts it. Nesting under the
@@ -619,11 +562,36 @@ function DocxEditorToolbarRoot(props: DocxEditorToolbarProps) {
           // Form fields are exempt inside the guard itself.
           onMouseDown={guardToolbarMousedown}
         >
+          {preset && (
+            <RibbonTabs
+              {...{ tabs, active, collapsed, panelId, label }}
+              rtl={chromeDir === 'rtl'}
+              select={(tab) => {
+                setChoices((previous) => ({ ...previous, [contextTab]: tab }));
+                setCollapsed(false);
+              }}
+              toggle={() => setCollapsed((value) => !value)}
+            />
+          )}
           {/* The bar carries the scope class, and its shape and chart parts render compact. */}
           <ScopedByAncestorContext.Provider value={true}>
             <ObjectControlVariantContext.Provider value="compact">
               {includesTableChromeParts(children, preset) ? (
-                <TableChromeProvider>{content}</TableChromeProvider>
+                <TableChromeProvider>
+                  {preset ? (
+                    <div
+                      id={panelId}
+                      role="tabpanel"
+                      aria-labelledby={panelId + '-' + active}
+                      className="docx-ribbon__panel"
+                      hidden={collapsed}
+                    >
+                      {content}
+                    </div>
+                  ) : (
+                    content
+                  )}
+                </TableChromeProvider>
               ) : (
                 content
               )}
@@ -665,6 +633,7 @@ type HostGroupHeading = Pick<DocxEditorToolbarGroupProps, 'id' | 'label' | 'labe
 
 /** A group as the preset bar renders it: built-in or host-owned, in bar order. */
 interface ArrangedGroup {
+  readonly tab: RibbonTab;
   readonly id: string;
   /** Panel heading key of a built-in group. */
   readonly labelKey: string;
@@ -705,6 +674,7 @@ function arrangeGroups(
     if (!visible && extras.length === 0) continue;
     byId.set(group.id, {
       id: group.id,
+      tab: group.tab,
       labelKey: group.labelKey,
       heading: undefined,
       entries: group.entries,
@@ -727,6 +697,7 @@ function arrangeGroups(
     if (spec.hidden || extras.length === 0) continue;
     byId.set(spec.id, {
       id: spec.id,
+      tab: 'home',
       labelKey: spec.labelKey ?? spec.id,
       heading: { id: spec.id, label: spec.label, labelKey: spec.labelKey },
       entries: [],
@@ -755,9 +726,13 @@ function arrangeGroups(
     defaultGroups.map((group) => group.id),
     hosts.map((spec) => ({ id: spec.id, after: spec.after }))
   );
+  const tabsByGroup = new Map(defaultGroups.map((group) => [group.id, group.tab]));
   return order.flatMap((id) => {
     const group = byId.get(id);
-    return group ? [group] : [];
+    if (!group) return [];
+    const tab = group.host ? (tabsByGroup.get(specs.get(id)?.after ?? '') ?? 'home') : group.tab;
+    tabsByGroup.set(id, tab);
+    return [{ ...group, tab }];
   });
 }
 
@@ -823,6 +798,7 @@ function labelOf(
   entry: DefaultEntry,
   groupLabelKey: string
 ): string {
+  if (isRibbonTableCommand(entry.slot)) return label(entry.slot);
   const control = entry.slot === 'alignment' ? null : chromeControlForSlot(entry.slot);
   return label(control?.labelKey ?? groupLabelKey);
 }

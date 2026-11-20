@@ -203,17 +203,12 @@ describe('toolbar overflow integration', () => {
     const { view } = mountToolbar(
       <DocxEditorToolbar t={(key) => (key === 'formattingBar.more' ? 'More' : key)} />
     );
-    const toolbar = await collapseToolbar(view, { barWidth: 360 });
-
+    act(() => view.getByRole('tab', { name: 'toolbar.review' }).click());
+    const toolbar = await collapseToolbar(view, { barWidth: 80 });
     expect(
-      MockResizeObserver.instances.some((observer) =>
-        observer.observed.some((element) => element.hasAttribute('data-toolbar-fixed'))
-      )
-    ).toBe(true);
-    expect(toolbar.querySelector('[data-slot="zoom.level"]')).toBeNull();
-    expect(toolbar.querySelector('[data-slot="review.comments"]')).not.toBeNull();
+      toolbar.querySelector('[data-toolbar-fixed] [data-slot="review.comments"]')
+    ).not.toBeNull();
     expect(toolbar.querySelector('[data-slot="review.editingMode"]')).not.toBeNull();
-
     const trigger = view.getByLabelText('More');
     expect(trigger.getAttribute('aria-haspopup')).toBe('dialog');
     expect(trigger.getAttribute('aria-expanded')).toBe('false');
@@ -225,15 +220,12 @@ describe('toolbar overflow integration', () => {
     expect(panel.getAttribute('role')).toBe('dialog');
     expect(panel.hasAttribute('aria-modal')).toBe(false);
     expect(trigger.getAttribute('aria-expanded')).toBe('true');
-    expect(panel.querySelector('[data-slot="zoom.level"]')).not.toBeNull();
-    expect(
-      panel.querySelector('[role="group"][aria-label="formattingBar.groups.zoom"]')
-    ).not.toBeNull();
+    expect(panel.querySelector('[data-slot="review.nextChange"]')).not.toBeNull();
     expect(panel.querySelector('[role="menuitem"]')).toBeNull();
     expect(panel.querySelector('.docx-toolbar__more-command')).not.toBeNull();
   });
 
-  test('collapses contextual table chrome before ordinary formatting groups', async () => {
+  test('Table Design moves its border pickers into More and follows the caret', async () => {
     installResizeObserverMock();
     const { view, editor } = mountToolbar(
       <DocxEditorToolbar t={(key) => (key === 'formattingBar.more' ? 'More' : key)}>
@@ -248,38 +240,7 @@ describe('toolbar overflow integration', () => {
     });
 
     const toolbar = view.getByTestId('docx-toolbar');
-    const contextual = toolbar.querySelector<HTMLElement>('.docx-toolbar__contextual');
-    expect(contextual).not.toBeNull();
-    expect(contextual!.getAttribute('data-toolbar-group')).toBe('contextual-table');
-    expect(contextual!.hasAttribute('data-toolbar-fixed')).toBe(false);
-    expect(contextual!.children.length).toBe(0);
-    expect(
-      MockResizeObserver.instances.some((observer) => observer.observed.includes(contextual!))
-    ).toBe(true);
-
-    toolbar.style.width = '600px';
-    toolbar.style.boxSizing = 'border-box';
-    Object.defineProperty(toolbar, 'clientWidth', { configurable: true, get: () => 600 });
-    for (const group of toolbar.querySelectorAll<HTMLElement>('[data-toolbar-group]')) {
-      Object.defineProperty(group, 'offsetWidth', {
-        configurable: true,
-        get: () => (group === contextual && group.children.length > 0 ? 220 : 40),
-      });
-    }
-    for (const fixed of toolbar.querySelectorAll<HTMLElement>('[data-toolbar-fixed]')) {
-      Object.defineProperty(fixed, 'offsetWidth', { configurable: true, get: () => 40 });
-    }
-    const separator = toolbar.querySelector<HTMLElement>('.docx-toolbar__separator');
-    if (separator) {
-      Object.defineProperty(separator, 'offsetWidth', { configurable: true, get: () => 1 });
-    }
-
-    await act(async () => {
-      for (const observer of MockResizeObserver.instances) observer.flush();
-      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-    });
-    expect(view.queryByLabelText('More')).toBeNull();
-
+    expect(toolbar.querySelector('[data-ribbon-tab="tableDesign"]')).toBeNull();
     const tableParagraphId = editor().surface!.session.paragraphIds()[1]!;
     await act(async () => {
       editor().surface!.setSelection({
@@ -287,34 +248,13 @@ describe('toolbar overflow integration', () => {
         head: { paragraphId: tableParagraphId, offset: 1 },
       });
     });
-    expect(contextual!.querySelector('[data-slot="table.borderTarget"]')).not.toBeNull();
-
-    await act(async () => {
-      // Force ordinary groups into More as well. Table must still be the first section so
-      // opening its nested picker cannot strand it below a reset scroll position.
-      Object.defineProperty(toolbar, 'clientWidth', { configurable: true, get: () => 320 });
-      for (const observer of MockResizeObserver.instances) observer.flush();
-      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-    });
-    const trigger = view.getByLabelText('More');
-    expect(toolbar.querySelector('[data-slot="text.color"]')).not.toBeNull();
-    expect(toolbar.querySelector('.docx-toolbar__contextual')).toBeNull();
-
-    await act(async () => {
-      trigger.click();
-    });
+    expect(toolbar.querySelector('[data-slot="table.borderTarget"]')).not.toBeNull();
+    await collapseToolbar(view, { barWidth: 32, groupWidth: 160 });
+    await act(async () => view.getByLabelText('More').click());
     const panel = view.getByTestId('toolbar-overflow-panel');
-    const overflowSections = panel.querySelectorAll<HTMLElement>('.docx-toolbar__more-section');
-    expect(overflowSections.length).toBeGreaterThan(1);
-    expect(overflowSections[0]!.getAttribute('aria-label')).toBe('formattingBar.groups.table');
-    const tableSection = overflowSections[0]!;
     expect(panel.querySelector('[data-slot="table.borderTarget"]')).not.toBeNull();
     expect(panel.querySelector('[data-slot="table.borderStyle"]')).toBeNull();
-    // The four pickers and Split cells draw as controls; Merge cells is an ordinary row.
-    expect(tableSection.querySelectorAll('.docx-toolbar__more-control').length).toBe(5);
-    expect(tableSection.querySelector('[data-slot="table.mergeCells"]')).not.toBeNull();
     expect(panel.querySelector('[data-slot="text.color"]')).toBeNull();
-
     await act(async () => {
       panel.querySelector<HTMLButtonElement>('[data-slot="table.borderTarget"] button')!.click();
     });
@@ -332,9 +272,7 @@ describe('toolbar overflow integration', () => {
     await waitFor(() => {
       expect(view.queryByLabelText('More')).toBeNull();
     });
-    const restored = toolbar.querySelector<HTMLElement>('.docx-toolbar__contextual');
-    expect(restored).not.toBeNull();
-    expect(restored!.children.length).toBe(0);
+    expect(toolbar.querySelector('[data-ribbon-tab="tableDesign"]')).toBeNull();
   });
 
   test('value rows in the panel label from the catalogue, and a provider localizes them', async () => {
@@ -352,13 +290,13 @@ describe('toolbar overflow integration', () => {
       (node) => node.textContent
     );
     expect(labels.length).toBeGreaterThan(0);
-    expect(labels).toContain('Zoom');
+    expect(labels).toContain('Line spacing');
     // No label IS a catalogue key. Asserted against the real catalogue rather than
     // "contains no dot", which would false-fail on the first label ending in a period.
     for (const text of labels) expect(catalogueKeys.has(text ?? '')).toBe(false);
     cleanup();
 
-    const de = { _lang: 'de', formattingBar: { groups: { zoom: 'Zoomen' } } } as Translations;
+    const de = { _lang: 'de', lineSpacing: { label: 'Zeilenabstand' } } as Translations;
     const localized = mountToolbar(
       <LocaleProvider i18n={de}>
         <DocxEditorToolbar />
@@ -373,9 +311,9 @@ describe('toolbar overflow integration', () => {
         .getByTestId('toolbar-overflow-panel')
         .querySelectorAll('.docx-toolbar__more-control-label')
     ).map((node) => node.textContent);
-    expect(localizedLabels).toContain('Zoomen');
+    expect(localizedLabels).toContain('Zeilenabstand');
     // A key the locale leaves out falls through to English, not to the raw key.
-    expect(localizedLabels).toContain('Line spacing');
+    expect(localizedLabels).toContain('Alignment');
   });
 
   test('More dialog closes on Escape, outside click, and command selection', async () => {
@@ -589,7 +527,7 @@ describe('toolbar overflow integration', () => {
       editor().surface!.selectAll();
     });
 
-    const toolbar = await collapseToolbar(view, { barWidth: 240 });
+    const toolbar = await collapseToolbar(view, { barWidth: 80 });
 
     const trigger = view.getByLabelText('More');
     expect(toolbar.querySelector('[data-slot="text.bold"]')).toBeNull();
@@ -642,11 +580,11 @@ describe('toolbar overflow integration', () => {
     }
     const separator = toolbar.querySelector<HTMLElement>('.docx-toolbar__separator')!;
     Object.defineProperty(separator, 'offsetWidth', { configurable: true, get: () => 1 });
-    let total = 100;
+    let total = 0;
     for (const items of full.values()) total += items.length * 30 + 1;
     // Zoom leaves first (31 px) and the 34 px trigger arrives: 10 px less than that needs
     // one more control from the next group, not the whole group.
-    const barWidth = total - 31 + 34 - 10;
+    const barWidth = total - 35;
     Object.defineProperty(toolbar, 'clientWidth', { configurable: true, get: () => barWidth });
     await act(async () => {
       for (const observer of MockResizeObserver.instances) observer.flush();
@@ -658,8 +596,8 @@ describe('toolbar overflow integration', () => {
     for (const [id, items] of full) {
       const group = toolbar.querySelector<HTMLElement>(`[data-toolbar-group="${id}"]`);
       const shown = group
-        ? [...group.querySelectorAll<HTMLElement>(':scope > [data-toolbar-item]')].map(
-            (item) => item.getAttribute('data-toolbar-item')!
+        ? [...group.querySelectorAll<HTMLElement>(':scope > [data-toolbar-item]')].map((item) =>
+            item.getAttribute('data-toolbar-item')!
           )
         : [];
       // What stays is a prefix of the group, in bar order.
@@ -667,13 +605,16 @@ describe('toolbar overflow integration', () => {
       hidden.push(...items.slice(shown.length));
       if (shown.length > 0 && shown.length < items.length) partial.push(id);
     }
-    expect(hidden[0]).toBe('zoom.level');
-    expect(hidden.length).toBe(2);
-    expect(partial.length).toBe(1);
+    expect(hidden).toEqual(['script.super', 'script.sub', 'format.clear']);
+    expect(hidden.length).toBe(3);
+    expect(partial).toEqual(['format']);
     // A separator stands only between drawn groups.
     for (const rule of toolbar.querySelectorAll('.docx-toolbar__separator')) {
-      expect(rule.previousElementSibling?.hasAttribute('data-toolbar-group') ||
-        rule.previousElementSibling?.hasAttribute('data-toolbar-fixed')).toBe(true);
+      expect(
+        rule.previousElementSibling?.classList.contains('docx-ribbon__band') ||
+          rule.previousElementSibling?.hasAttribute('data-toolbar-group') ||
+          rule.previousElementSibling?.hasAttribute('data-toolbar-fixed')
+      ).toBe(true);
     }
 
     await act(async () => {
@@ -687,7 +628,7 @@ describe('toolbar overflow integration', () => {
     const sections = [...panel.querySelectorAll('.docx-toolbar__more-section')].map((section) =>
       section.getAttribute('aria-label')
     );
-    expect(sections).toEqual(['formattingBar.groups.zoom', `formattingBar.groups.${partial[0]}`]);
+    expect(sections).toEqual(['formattingBar.groups.script', 'formattingBar.groups.format']);
   });
 
   test('hidden override is absent when its group collapses into More', async () => {
@@ -874,6 +815,7 @@ describe('toolbar parts outside the More panel', () => {
 
   test('Escape from a host input closes the editing-mode menu and keeps its default', () => {
     const { view } = mountToolbar(<DocxEditorToolbar />);
+    act(() => view.getByRole('tab', { name: 'Review' }).click());
     const host = document.createElement('input');
     document.body.append(host);
     try {

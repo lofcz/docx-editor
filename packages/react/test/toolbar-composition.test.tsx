@@ -84,12 +84,14 @@ const FONTED_SOURCE = docx(
  * alignment group MERGED into the one dropdown keyed `'alignment'`.
  * Identities are the parts' `data-slot` markers.
  */
-const EXPECTED_ARRANGEMENT: readonly string[] = defaultChromeGroups().flatMap((group, index) => [
-  ...(index > 0 ? ['separator'] : []),
-  ...(group.id === 'alignment'
-    ? ['alignment']
-    : group.controls.map((control) => chromeSlotId(group, control) as string)),
-]);
+const EXPECTED_ARRANGEMENT: readonly string[] = defaultChromeGroups()
+  .filter((group) => group.id !== 'zoom' && group.id !== 'review')
+  .flatMap((group, index) => [
+    ...(index > 0 && !['text', 'script', 'list'].includes(group.id) ? ['separator'] : []),
+    ...(group.id === 'alignment'
+      ? ['alignment']
+      : group.controls.map((control) => chromeSlotId(group, control) as string)),
+  ]);
 
 function mountToolbar(
   toolbar: ReactNode,
@@ -131,8 +133,14 @@ function groupEntries(group: Element): Element[] {
 }
 
 /** Flatten intentional top-level group wrappers; keep separators and direct children. */
+function ribbonChildren(toolbar: Element) {
+  return [...(toolbar.querySelector('[role="tabpanel"]') ?? toolbar).children].flatMap((child) =>
+    child.classList.contains('docx-ribbon__band') ? [...child.children] : [child]
+  );
+}
+
 function toolbarArrangement(toolbar: HTMLElement): string[] {
-  return [...toolbar.children].flatMap((child) => {
+  return ribbonChildren(toolbar).flatMap((child) => {
     if (child.getAttribute('role') === 'separator') return 'separator';
     if (
       child.classList.contains('docx-toolbar__group') ||
@@ -146,7 +154,7 @@ function toolbarArrangement(toolbar: HTMLElement): string[] {
 
 function entryRootAtFlatIndex(toolbar: HTMLElement, index: number): Element | null {
   let flat = 0;
-  for (const child of toolbar.children) {
+  for (const child of ribbonChildren(toolbar)) {
     if (child.getAttribute('role') === 'separator') {
       if (flat === index) return child;
       flat += 1;
@@ -178,14 +186,21 @@ afterEach(() => {
 });
 
 describe('the default arrangement', () => {
-  test('renders the WHOLE chrome registry in registry order, separators between groups', () => {
+  test('Home follows registry order and exposes the standard ribbon tabs', () => {
     const { view } = mountToolbar(<DocxEditorToolbar />);
     const toolbar = toolbarElement(view);
     // The arrangement is derived from the registry on both sides of this assertion —
     // the 10 non-contextual groups, alignment merged — so a registry change updates
     // both in lockstep.
     expect(toolbarArrangement(toolbar)).toEqual([...EXPECTED_ARRANGEMENT]);
-    // Every slot is present exactly once.
+    expect(view.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
+      'Home',
+      'Insert',
+      'Layout',
+      'Review',
+      'View',
+    ]);
+    // Every Home slot is present exactly once.
     for (const slot of EXPECTED_ARRANGEMENT) {
       if (slot === 'separator') continue;
       expect(view.container.querySelectorAll(`[data-slot="${slot}"]`).length).toBe(1);
@@ -246,7 +261,7 @@ describe('the default arrangement', () => {
     expect(entryRootAtFlatIndex(toolbar, boldIndex)!.contains(bold)).toBe(true);
     // The non-part child appended in a fixed group after the default set.
     const appended = toolbar.querySelector(
-      ':scope > .docx-toolbar__group[data-toolbar-fixed]:last-of-type'
+      '[role="tabpanel"] > .docx-toolbar__group[data-toolbar-fixed]:last-of-type'
     )!;
     expect(appended.contains(view.getByTestId('extra'))).toBe(true);
   });
@@ -326,7 +341,7 @@ describe('live button state', () => {
     // Appended after the whole default arrangement — it drives no slot.
     const toolbar = toolbarElement(view);
     const appended = toolbar.querySelector(
-      ':scope > .docx-toolbar__group[data-toolbar-fixed]:last-of-type'
+      '[role="tabpanel"] > .docx-toolbar__group[data-toolbar-fixed]:last-of-type'
     )!;
     expect(appended.contains(action)).toBe(true);
     expect(action.className).toContain('docx-toolbar__button');
@@ -571,6 +586,7 @@ describe('the shaped parts', () => {
 
   test('the zoom stepper resizes the mounted page live, keeps edits and undo, and shows all zoom levels', async () => {
     const { view, editor } = mountToolbar(<DocxEditorToolbar />);
+    act(() => view.getByRole('tab', { name: 'View' }).click());
     const instance = editor();
     const mountedSurface = instance.surface;
     instance.surface!.setSelection({
@@ -621,6 +637,7 @@ describe('the shaped parts', () => {
   // viewport and about to move off it.
   test('the zoom menu ticks the mode, not the percentage', async () => {
     const { view, editor } = mountToolbar(<DocxEditorToolbar />);
+    act(() => view.getByRole('tab', { name: 'View' }).click());
     const stepper = view.container.querySelector('[data-slot="zoom.level"]')!;
     const rows = () => [...stepper.querySelectorAll('[role="option"]')] as HTMLButtonElement[];
     // The trigger TOGGLES, so opening an already-open menu closes it. Idempotent on purpose:
@@ -713,6 +730,8 @@ describe('the shaped parts', () => {
     // built it is gone. What matters now is the opposite: neither renders inert.
     const { view } = mountToolbar(<DocxEditorToolbar />);
     for (const slot of ['list.lineSpacing', 'review.editingMode']) {
+      if (slot === 'review.editingMode')
+        act(() => view.getByRole('tab', { name: 'Review' }).click());
       const part = view.container.querySelector(`[data-slot="${slot}"]`)!;
       expect(part).not.toBeNull();
       expect(part.getAttribute('aria-disabled')).not.toBe('true');
@@ -722,6 +741,7 @@ describe('the shaped parts', () => {
 
   test('the editing-mode control shows the current mode and switches it', () => {
     const { view, editor } = mountToolbar(<DocxEditorToolbar />);
+    act(() => view.getByRole('tab', { name: 'Review' }).click());
     const trigger = view.container.querySelector('[data-testid="editing-mode-trigger"]')!;
     expect(trigger.getAttribute('data-mode')).toBe('editing');
 

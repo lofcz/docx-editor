@@ -58,12 +58,14 @@ afterEach(() => {
 
 const label = createT(en);
 
-const EXPECTED_TOOLBAR: readonly string[] = defaultChromeGroups().flatMap((group, index) => [
-  ...(index > 0 ? ['separator'] : []),
-  ...(group.id === 'alignment'
-    ? ['alignment']
-    : group.controls.map((control) => chromeSlotId(group, control) as string)),
-]);
+const EXPECTED_TOOLBAR: readonly string[] = defaultChromeGroups()
+  .filter((group) => group.id !== 'zoom' && group.id !== 'review')
+  .flatMap((group, index) => [
+    ...(index > 0 && !['text', 'script', 'list'].includes(group.id) ? ['separator'] : []),
+    ...(group.id === 'alignment'
+      ? ['alignment']
+      : group.controls.map((control) => chromeSlotId(group, control) as string)),
+  ]);
 
 const SOURCE_WITH_TABLE = docx(
   '<w:p><w:r><w:t>outside table</w:t></w:r></w:p>' +
@@ -71,8 +73,14 @@ const SOURCE_WITH_TABLE = docx(
     '<w:tr><w:tc><w:p><w:r><w:t>inside table</w:t></w:r></w:p></w:tc></w:tr></w:tbl>'
 );
 
+function ribbonChildren(toolbar: Element) {
+  return [...(toolbar.querySelector('[role="tabpanel"]') ?? toolbar).children].flatMap((child) =>
+    child.classList.contains('docx-ribbon__band') ? [...child.children] : [child]
+  );
+}
+
 function toolbarArrangement(toolbar: Element): string[] {
-  return [...toolbar.children].flatMap((child) => {
+  return ribbonChildren(toolbar).flatMap((child) => {
     if (child.getAttribute('role') === 'separator') return 'separator';
     if (
       child.classList.contains('docx-toolbar__group') ||
@@ -243,6 +251,8 @@ describe('DocxEditorToolbar composition', () => {
   test('Escape from a host input closes the editing-mode menu and keeps its default', async () => {
     const view = mountEditorTree(() => h(DocxEditorToolbar), POPUP_ESCAPE_SOURCE);
     await flush();
+    view.container.querySelector<HTMLButtonElement>('[data-ribbon-tab="review"]')!.click();
+    await flush();
     const host = document.createElement('input');
     document.body.append(host);
     try {
@@ -359,62 +369,30 @@ describe('DocxEditorToolbar composition', () => {
     view.unmount();
   });
 
-  test('collapses contextual table chrome before ordinary formatting groups', async () => {
+  test('Table Design moves its border pickers into More and follows the caret', async () => {
     globalThis.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver;
     const view = mountEditorTree(() => h(DocxEditorToolbar), SOURCE_WITH_TABLE);
     await flush();
     const toolbar = view.container.querySelector<HTMLElement>('[data-testid="docx-toolbar"]')!;
-    const contextual = view.container.querySelector<HTMLElement>('.docx-toolbar__contextual');
-    expect(contextual).not.toBeNull();
-    expect(contextual!.getAttribute('data-toolbar-group')).toBe('contextual-table');
-    expect(contextual!.hasAttribute('data-toolbar-fixed')).toBe(false);
-    expect(contextual!.children.length).toBe(0);
-    expect(
-      MockResizeObserver.instances.some((observer) => observer.observed.includes(contextual!))
-    ).toBe(true);
-
-    Object.defineProperty(toolbar, 'clientWidth', { configurable: true, get: () => 600 });
-    for (const group of toolbar.querySelectorAll<HTMLElement>('[data-toolbar-group]')) {
-      Object.defineProperty(group, 'offsetWidth', {
-        configurable: true,
-        get: () => (group === contextual && group.children.length > 0 ? 220 : 40),
-      });
-    }
-    for (const fixed of toolbar.querySelectorAll<HTMLElement>('[data-toolbar-fixed]')) {
-      Object.defineProperty(fixed, 'offsetWidth', { configurable: true, get: () => 40 });
-    }
-    const separator = toolbar.querySelector<HTMLElement>('.docx-toolbar__separator');
-    if (separator) {
-      Object.defineProperty(separator, 'offsetWidth', { configurable: true, get: () => 1 });
-    }
-    for (const observer of [...MockResizeObserver.instances]) observer.flush();
-    await flush();
-    expect(toolbar.querySelector('[data-slot="toolbar.more"]')).toBeNull();
-
+    expect(toolbar.querySelector('[data-ribbon-tab="tableDesign"]')).toBeNull();
     const tableParagraphId = view.editor().surface!.session.paragraphIds()[1]!;
     view.editor().surface!.setSelection({
       anchor: { paragraphId: tableParagraphId, offset: 1 },
       head: { paragraphId: tableParagraphId, offset: 1 },
     });
     await flush();
-    expect(contextual!.querySelector('[data-slot="table.borderTarget"]')).not.toBeNull();
-    Object.defineProperty(toolbar, 'clientWidth', { configurable: true, get: () => 320 });
+    expect(toolbar.querySelector('[data-slot="table.borderTarget"]')).not.toBeNull();
+    Object.defineProperty(toolbar, 'clientWidth', { configurable: true, get: () => 32 });
+    for (const group of toolbar.querySelectorAll('[data-toolbar-group]')) {
+      Object.defineProperty(group, 'offsetWidth', { configurable: true, get: () => 160 });
+    }
     for (const observer of [...MockResizeObserver.instances]) observer.flush();
     await flush();
-
-    const trigger = toolbar.querySelector<HTMLButtonElement>('[data-slot="toolbar.more"]');
-    expect(trigger).not.toBeNull();
-    expect(toolbar.querySelector('[data-slot="text.color"]')).not.toBeNull();
-    expect(toolbar.querySelector('.docx-toolbar__contextual')).toBeNull();
-    trigger!.click();
+    toolbar.querySelector<HTMLButtonElement>('[data-slot="toolbar.more"]')!.click();
     await flush();
     const panel = view.container.querySelector('[data-testid="toolbar-overflow-panel"]')!;
-    const overflowSections = panel.querySelectorAll<HTMLElement>('.docx-toolbar__more-section');
-    expect(overflowSections.length).toBeGreaterThan(1);
-    expect(overflowSections[0]!.getAttribute('aria-label')).toBe(
-      label('formattingBar.groups.table')
-    );
     expect(panel.querySelector('[data-slot="table.borderTarget"]')).not.toBeNull();
+    expect(panel.querySelector('[data-slot="table.borderStyle"]')).toBeNull();
     expect(panel.querySelector('[data-slot="text.color"]')).toBeNull();
     panel.querySelector<HTMLButtonElement>('[data-slot="table.borderTarget"] button')!.click();
     await flush();
@@ -463,7 +441,7 @@ describe('DocxEditorToolbar composition', () => {
     });
     await flush();
     expect(toolbar.querySelector('[data-slot="toolbar.more"]')).toBeNull();
-    expect(toolbar.querySelector('.docx-toolbar__contextual')?.children.length).toBe(0);
+    expect(toolbar.querySelector('[data-ribbon-tab="tableDesign"]')).toBeNull();
     view.unmount();
   });
 

@@ -52,7 +52,7 @@ async function measure(bar: HTMLElement, barWidth: number, groupWidth = 90): Pro
 }
 
 function barShape(toolbar: Element): string[] {
-  return [...toolbar.children].map((child) =>
+  return [...(toolbar.querySelector('[role="tabpanel"]') ?? toolbar).children].map((child) =>
     child.getAttribute('role') === 'separator'
       ? '|'
       : (child.getAttribute('data-toolbar-group') ??
@@ -75,8 +75,8 @@ describe('Vue toolbar per-control collapse', () => {
     for (const group of toolbar.querySelectorAll<HTMLElement>('[data-toolbar-group]')) {
       full.set(
         group.getAttribute('data-toolbar-group')!,
-        [...group.querySelectorAll<HTMLElement>(':scope > [data-toolbar-item]')].map(
-          (item) => item.getAttribute('data-toolbar-item')!
+        [...group.querySelectorAll<HTMLElement>(':scope > [data-toolbar-item]')].map((item) =>
+          item.getAttribute('data-toolbar-item')!
         )
       );
     }
@@ -96,9 +96,9 @@ describe('Vue toolbar per-control collapse', () => {
     }
     const separator = toolbar.querySelector<HTMLElement>('.docx-toolbar__separator')!;
     Object.defineProperty(separator, 'offsetWidth', { configurable: true, get: () => 1 });
-    let total = 100;
+    let total = 0;
     for (const items of full.values()) total += items.length * 30 + 1;
-    const barWidth = total - 31 + 34 - 10;
+    const barWidth = total - 35;
     Object.defineProperty(toolbar, 'clientWidth', { configurable: true, get: () => barWidth });
     for (const observer of [...MockResizeObserver.instances]) observer.flush();
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
@@ -109,17 +109,17 @@ describe('Vue toolbar per-control collapse', () => {
     for (const [id, items] of full) {
       const group = toolbar.querySelector<HTMLElement>(`[data-toolbar-group="${id}"]`);
       const shown = group
-        ? [...group.querySelectorAll<HTMLElement>(':scope > [data-toolbar-item]')].map(
-            (item) => item.getAttribute('data-toolbar-item')!
+        ? [...group.querySelectorAll<HTMLElement>(':scope > [data-toolbar-item]')].map((item) =>
+            item.getAttribute('data-toolbar-item')!
           )
         : [];
       expect(shown).toEqual(items.slice(0, shown.length));
       hidden.push(...items.slice(shown.length));
       if (shown.length > 0 && shown.length < items.length) partial.push(id);
     }
-    expect(hidden[0]).toBe('zoom.level');
-    expect(hidden.length).toBe(2);
-    expect(partial.length).toBe(1);
+    expect(hidden).toEqual(['script.super', 'script.sub', 'format.clear']);
+    expect(hidden.length).toBe(3);
+    expect(partial).toEqual(['format']);
 
     toolbar.querySelector<HTMLButtonElement>('[aria-label="More"]')!.click();
     await flush();
@@ -133,7 +133,7 @@ describe('Vue toolbar per-control collapse', () => {
       [...panel.querySelectorAll('.docx-toolbar__more-section')].map((section) =>
         section.getAttribute('aria-label')
       )
-    ).toEqual(['formattingBar.groups.zoom', `formattingBar.groups.${partial[0]}`]);
+    ).toEqual(['formattingBar.groups.script', 'formattingBar.groups.format']);
     view.unmount();
   });
 });
@@ -156,7 +156,7 @@ describe('Vue Toolbar.Group', () => {
     expect(group?.getAttribute('aria-label')).toBe('Review navigation');
     const shape = barShape(toolbar);
     expect(shape.indexOf('review-nav')).toBe(shape.lastIndexOf('|') + 1);
-    expect(shape.filter((entry) => entry === 'fixed').length).toBe(1);
+    expect(shape.filter((entry) => entry === 'fixed').length).toBe(0);
 
     await measure(toolbar, 420);
     expect(toolbar.querySelector('[data-toolbar-group="review-nav"]')).toBeNull();
@@ -279,11 +279,13 @@ describe('Vue Toolbar.Slot', () => {
     );
     await flush();
     const toolbar = toolbarOf(view.container);
+    toolbar.querySelector<HTMLButtonElement>('[data-ribbon-tab="view"]')!.click();
+    await flush();
     expect(
       toolbar.querySelector('[data-toolbar-group="zoom"] [data-testid="my-zoom"]')
     ).not.toBeNull();
     expect(toolbar.querySelector('[data-slot="zoom.level"]')).toBeNull();
-    await measure(toolbar, 760);
+    await measure(toolbar, 40);
     toolbar.querySelector<HTMLButtonElement>('[aria-label="More"]')!.click();
     await flush();
     const panel = view.container.querySelector('[data-testid="toolbar-overflow-panel"]')!;
@@ -628,7 +630,9 @@ describe('Vue review fixes', () => {
     );
     await flush();
     const toolbar = toolbarOf(view.container);
-    await measure(toolbar, 760);
+    toolbar.querySelector<HTMLButtonElement>('[data-ribbon-tab="view"]')!.click();
+    await flush();
+    await measure(toolbar, 40);
     toolbar.querySelector<HTMLButtonElement>('[aria-label="More"]')!.click();
     await flush();
     const panel = view.container.querySelector('[data-testid="toolbar-overflow-panel"]')!;

@@ -1444,5 +1444,32 @@
         "sysDot": "נקודה עגולה"
       }
     }
+  },
+  "ribbon": {
+    "blueGrid": null,
+    "bordersAndShading": null,
+    "breaks": null,
+    "cellSize": null,
+    "changes": null,
+    "collapse": null,
+    "columns": null,
+    "expand": null,
+    "fitWindow": null,
+    "fixedWidth": null,
+    "greenGrid": null,
+    "home": null,
+    "illustrations": null,
+    "label": null,
+    "layout": null,
+    "merge": null,
+    "pictureFormat": null,
+    "references": null,
+    "rows": null,
+    "show": null,
+    "tableDesign": null,
+    "tableLayout": null,
+    "tableStyles": null,
+    "tables": null,
+    "view": null
   }
 }

@@ -32,7 +32,10 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..', 'packages', 'co
 const from = join(root, 'src', 'styles', 'editor.css');
 const to = join(root, 'dist', 'editor.css');
 
-const source = readFileSync(from, 'utf8');
+// Inline the shared ribbon for the single-file package stylesheet.
+const source = readFileSync(from, 'utf8').replace(/@import ["']\.\/ribbon\.css["'];/, () =>
+  readFileSync(join(dirname(from), 'ribbon.css'), 'utf8')
+);
 const input = `@tailwind base;\n${source}`;
 
 // `optimizeUniversalDefaults` grafts the `--tw-*` defaults onto the utility
