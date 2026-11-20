@@ -1179,7 +1179,7 @@ export const wordFeatures: WordFeature[] = [
     roundTrip: 'full',
     tier: 'community',
     notes:
-      'Hosts can collapse a body content control after its first direct paragraph through the native surface, including controls inside table cells. Hidden content leaves page flow while canonical numbering and bookmark references remain intact. The local view does not enter document history, collaboration state, or exports. Explicit navigation into hidden text opens enclosing controls. Host moves preserve the view; document replacement resets it. Section boundaries and unsupported wrappers refuse collapse.',
+      'Hosts can collapse body content controls, including controls in table cells. A single visible header keeps its position during pagination. Section boundaries and unsupported wrappers prevent collapse.',
     docsLink: '/docs/2.x/guides/content-controls',
   },
   {

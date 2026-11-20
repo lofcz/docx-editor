@@ -205,7 +205,7 @@ Use `{ placeholderHeightPt: 0 }` to remove all local flow without a header. This
 
 This subset supports body controls with paragraphs, tables, and nested block controls, including controls inside table cells. Section boundaries and unsupported wrappers refuse collapse. Validation limits each request to 4,096 controls and 500,000 visited nodes. Nesting cannot exceed 64 levels.
 
-`collapsedContentControls()` returns a frozen snapshot with stable identity until its entries change. Use `surface.observePaint()` to update disclosure chrome after view changes. Explicit navigation into hidden text opens its enclosing controls. Local text edits reveal hidden content within the selection before changing it.
+`collapsedContentControls()` returns a frozen snapshot with stable identity until its entries change. Use `surface.observePaint()` to update disclosure chrome after view changes. Changing one visible control keeps its header in place as pages reflow. Scrolling cancels this adjustment. Explicit navigation into hidden text opens its enclosing controls. Local text edits reveal hidden content within the selection before changing it.
 
 Peer edits do not open another reader's controls. Deleting a control or its exact summary removes that entry. Host moves preserve the view. Loading another document resets it.
 

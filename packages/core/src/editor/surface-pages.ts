@@ -125,7 +125,7 @@ export function scrollToDocumentStart(container: HTMLElement): void {
   scroller.scrollLeft = 0;
 }
 
-function viewportInLayout(
+export function viewportInLayout(
   container: HTMLElement,
   scroller: HTMLElement,
   scale: number,
@@ -162,12 +162,16 @@ export function visiblePageSet(
   container: HTMLElement,
   layout: SemanticLayout,
   selection: SemanticSelection,
-  scale: number
+  scale: number,
+  anchoredTop?: number
 ): ReadonlySet<number> | undefined {
   const scroller = surfaceScroller(container);
   const height = scroller?.clientHeight ?? 0;
   if (!scroller || height === 0) return undefined;
-  const viewport = viewportInLayout(container, scroller, scale, height);
+  const viewport =
+    anchoredTop === undefined
+      ? viewportInLayout(container, scroller, scale, height)
+      : { top: anchoredTop, height: height / scale };
   const pinned: number[] = [];
   for (const position of [selection.anchor, selection.head]) {
     const caret = caretAt(layout, position);

@@ -102,6 +102,7 @@ import { bodyBlockCountOf, bodyBlockLimitAfter, bodyBlocksOf } from '../layout/b
 import { snapshotLayoutSession } from '../layout/layout-session-snapshot.ts';
 import { graphemeEndAfter, graphemeStartBefore } from './grapheme-step.ts';
 import { furnitureLaterSteps } from './surface-furniture-later.ts';
+import { createDisclosureViewport } from './disclosure-viewport.ts';
 import { createSurfaceBlockView } from './surface-block-view.ts';
 import {
   createContentControlWidgetSessions,
@@ -999,7 +1000,9 @@ export function mountPaginatedSurface(
   });
   // Layout, furniture, and formatting writes share the view's current projection (#497).
   let showFieldCodes = false;
+  const disclosureViewport = createDisclosureViewport(() => container);
   const blockView = createSurfaceBlockView(session, {
+    anchor: (id) => disclosureViewport.capture(id, currentLayout, scale, session.packageRevision()),
     scope: storyScope,
     destroyed: () => destroyed,
     resolveNodeId: (id) => collaborationSession?.resolveNodeId?.(id),
@@ -1958,8 +1961,8 @@ export function mountPaginatedSurface(
       })
     : () => {};
 
-  function visiblePages(): ReadonlySet<number> | undefined {
-    const set = visiblePageSet(container, currentLayout, selection, scale);
+  function visiblePages(anchoredTop?: number): ReadonlySet<number> | undefined {
+    const set = visiblePageSet(container, currentLayout, selection, scale, anchoredTop);
     const extra = hfScope?.getActive()?.pageIndex ?? selectionSync.selectionPageIndex();
     if (extra === undefined || set === undefined || set.has(extra)) return set;
     return new Set([...set, extra]);
@@ -2806,7 +2809,12 @@ export function mountPaginatedSurface(
     const adopted = selectionSync.adoptBeforePaint();
     const paintBegan = now();
     // Read the viewport before custom controls change the DOM for this paint.
-    materializedSet = visiblePages();
+    const disclosureScroll = disclosureViewport.plan(
+      currentLayout,
+      scale,
+      session.packageRevision()
+    );
+    materializedSet = visiblePages(disclosureScroll?.top);
     if (!viewportOnly) paintObservers.beforePaint();
     // Shared furniture: keep the visual occurrence on a built page before paint marks
     // `data-docx-hf-active`, so scroll cannot leave the caret host on a dematerialized sheet.
@@ -2868,6 +2876,7 @@ export function mountPaginatedSurface(
     container.style.height = `${materializedExtent.height * scale}px`;
     const { width, height } = materializedExtent;
     sizeOverlaySheets(sheets, `${width * scale}px`, `${height * scale}px`);
+    disclosureScroll?.restore();
     tableInteraction.update();
     // Sizing included: the style writes above invalidate layout, and the selection sync
     // right after is what forces the browser to resolve it. Splitting the timer here would

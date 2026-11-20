@@ -6,7 +6,10 @@ import { createContentControlCollapseState } from '../layout/content-control-col
 import type { SurfaceBlockReservations } from './surface-block-reservations.ts';
 import type { SurfaceContentControlCollapse } from './surface-content-control-collapse.ts';
 
+import { changedDisclosure } from './disclosure-viewport.ts';
+
 interface SurfaceBlockViewDeps {
+  anchor(id: string | undefined): void;
   scope(): StoryScope;
   destroyed(): boolean;
   resolveNodeId(id: string): string | undefined;
@@ -27,6 +30,7 @@ export function createSurfaceBlockView(
   };
   const reveal = (paragraphIds: readonly string[]) => {
     if (!state.reveal(part(), paragraphIds)) return;
+    deps.anchor(undefined);
     deps.invalidate('content-control-collapse');
     deps.flush();
   };
@@ -34,9 +38,13 @@ export function createSurfaceBlockView(
     collapsedContentControls: state.current,
     setCollapsedContentControls(next) {
       if (deps.destroyed()) return { ok: false, reason: 'document-not-ready' };
+      const before = state.current();
       const result = state.set(part(), next);
       if (!result.ok) return result;
-      if (result.changed) deps.invalidate('content-control-collapse');
+      if (result.changed) {
+        deps.anchor(changedDisclosure(before, state.current()));
+        deps.invalidate('content-control-collapse');
+      }
       return { ok: true };
     },
     setBlockReservations(next) {

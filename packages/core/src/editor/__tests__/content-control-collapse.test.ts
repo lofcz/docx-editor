@@ -583,3 +583,76 @@ test('a reference after folded content still resolves its hidden canonical bookm
     doc.close();
   }
 });
+
+test('a visible disclosure keeps its viewport position through page changes and yields to a user scroll', () => {
+  const scroller = document.createElement('div');
+  scroller.className = 'docx-editor__scroll-container';
+  Object.defineProperty(scroller, 'clientHeight', { value: 380 });
+  const container = document.createElement('div');
+  scroller.append(container);
+  document.body.append(scroller);
+  const before = Array.from({ length: 43 }, (_, i) => p('First ' + i)).join('');
+  const after = Array.from({ length: 60 }, (_, i) => p('Last ' + i)).join('');
+  const editor = createDocxEditor({
+    container,
+    document: docx(before + sdt(p('Summary'), p('Body')) + after),
+  });
+  const surface = editor.surface!;
+  try {
+    const part = surface.session.part();
+    const id = (text: string) =>
+      surface.session.paragraphIds().find((id) => paragraphTextOf(part, id) === text)!;
+    const summary = id('Summary');
+    const preceding = id('First 42');
+    const boundary = surface
+      .layout()
+      .contentControls!.find((control) => control.level === 'block')!;
+    let scale = 1;
+    const stop = surface.observePaint({
+      afterPaint: (frame) => {
+        scale = frame.scale;
+      },
+    });
+    const header = () => {
+      const layout = surface.layout();
+      const fragment = layout.contentControls!.find((control) => control.id === boundary.id)!
+        .fragments[0]!;
+      return (layout.pages[fragment.pageIndex]!.contentBox.y + fragment.box.y) * scale;
+    };
+    scroller.scrollTop = header() - 150;
+    const original = scroller.scrollTop;
+    const selection = surface.state().selection;
+    const revision = surface.session.packageRevision();
+    expect(surface.setCollapsedContentControls(new Map([[boundary.id, summary]]))).toEqual({
+      ok: true,
+    });
+    surface.setBlockReservations(new Map([[preceding, 450]]));
+    surface.flushPendingInput();
+    expect(scroller.scrollTop).toBeGreaterThan(original + 200);
+    expect(header() - scroller.scrollTop).toBeCloseTo(150, 1);
+    const page = surface.layout().contentControls!.find((control) => control.id === boundary.id)!
+      .fragments[0]!.pageIndex;
+    expect(
+      container.querySelector<HTMLElement>(`.docx-page[data-page-index="${page}"]`)!.dataset
+        .materialized
+    ).toBe('true');
+    expect(surface.session.packageRevision()).toBe(revision);
+    expect(surface.state().selection).toEqual(selection);
+
+    // A subsequent widget resize can cross another page boundary.
+    surface.setBlockReservations(new Map([[preceding, 58]]));
+    surface.flushPendingInput();
+    expect(header() - scroller.scrollTop).toBeCloseTo(150, 1);
+    // A user can leave the disclosure before the next measured layout reaches the screen.
+    expect(surface.setCollapsedContentControls(new Map())).toEqual({ ok: true });
+    scroller.scrollTop -= 90;
+    const requested = scroller.scrollTop;
+    surface.setBlockReservations(new Map());
+    surface.flushPendingInput();
+    expect(scroller.scrollTop).toBe(requested);
+    stop();
+  } finally {
+    editor.destroy();
+    scroller.remove();
+  }
+});

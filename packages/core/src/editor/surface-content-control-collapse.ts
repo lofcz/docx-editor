@@ -19,7 +19,9 @@ export interface SurfaceContentControlCollapse {
   collapsedContentControls(): readonly CollapsedContentControl[];
   /**
    * Replace the local collapse view with canonical control-to-summary IDs. An empty map opens
-   * every control. Validation refuses the whole request before changing the existing view.
+   * every control. A single visible header keeps its viewport position during pagination.
+   * Scrolling the viewport cancels this adjustment. Validation refuses the whole request
+   * before changing the existing view.
    *
    * A summary must be the first direct paragraph of a block content control in the main story.
    * A null summary hides the whole body behind a blank 24-point local header. Its first flow
