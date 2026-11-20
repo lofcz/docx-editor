@@ -5636,6 +5636,12 @@ export function mountPaginatedSurface(
       if (lastRejection) {
         return { ok: false, code: 'invalidArgs', reason: lastRejection };
       }
+      // Replacing a table can park Chromium's range at the first paragraph after the
+      // commit. Keep the editor's cell caret when the queued selectionchange reports it.
+      if (pagesLayer.ownerDocument.activeElement === pagesLayer) {
+        selectionSync.mirrorToDom();
+        selectionSync.noteBrowserSelectionFixup();
+      }
       return { ok: true, changed: true };
     },
     enterHeaderFooter: (args) => {

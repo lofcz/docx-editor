@@ -18,6 +18,7 @@ import {
   applyTableChromePick,
   type TableChromeDraft,
 } from '../table-chrome.ts';
+import { tableCommandSelection } from '../table-insertion-selection.ts';
 import { runTableChromeCommand, tableChromeToolbarState } from '../toolbar-commands.ts';
 
 const p = (text: string) => `<w:p><w:r><w:t>${text}</w:t></w:r></w:p>`;
@@ -333,6 +334,62 @@ test('table design stores both Word look encodings, a real style definition, and
     expect(attrs('tblLayout')).toMatchObject({ type: 'fixed' });
     expect(attrs('tblStyle')).toMatchObject({ val: 'BandedGridBlue' });
     expect(attrs('tblLook')).toMatchObject({ val: '0380' });
+  } finally {
+    editor.destroy();
+  }
+});
+
+test('a shared cell reshape restores its owning paragraph without a transaction hint', () => {
+  const editor = mount(TABLE_2X2);
+  try {
+    const surface = editor.surface!;
+    const paragraphId = paragraphByText(editor, 'A1');
+    caret(editor, paragraphId);
+    expect(editor.exec({ type: 'selectTableRegion', region: 'row' }).ok).toBe(true);
+    const { tableId, cellIds } = surface.state().cellSelection!;
+    expect(editor.exec({ type: 'mergeCells' }).ok).toBe(true);
+    const restored = (op: Parameters<typeof tableCommandSelection>[2][number]) =>
+      tableCommandSelection(null, surface.session.part(), [op], paragraphId)?.head;
+    expect(restored({ op: 'mergeTableCells', tableId, cellIds })).toEqual({
+      paragraphId,
+      offset: 0,
+    });
+    expect(editor.exec({ type: 'splitCell', rows: 1, cols: 2 }).ok).toBe(true);
+    expect(
+      restored({ op: 'splitTableCell', tableId, cellId: cellIds[0]!, rows: 1, columns: 2 })
+    ).toEqual({ paragraphId, offset: 0 });
+  } finally {
+    editor.destroy();
+  }
+});
+
+test('a browser range parked outside the merged cell cannot move its caret', async () => {
+  const editor = mount(p('Before') + TABLE_2X2);
+  try {
+    const surface = editor.surface!;
+    const inside = paragraphByText(editor, 'A1');
+    const outside = paragraphByText(editor, 'Before');
+    caret(editor, inside);
+    editor.focus();
+    expect(editor.exec({ type: 'selectTableRegion', region: 'row' }).ok).toBe(true);
+    expect(editor.exec({ type: 'mergeCells' }).ok).toBe(true);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const span = surface
+      .hostElement()
+      .querySelector<HTMLElement>(`span[data-paragraph-id="${outside}"]`)!;
+    const range = span.ownerDocument.createRange();
+    range.setStart(span.firstChild!, 0);
+    range.collapse(true);
+    const native = span.ownerDocument.getSelection()!;
+    native.removeAllRanges();
+    native.addRange(range);
+    span.ownerDocument.dispatchEvent(new Event('selectionchange'));
+    expect(surface.state().selection.head.paragraphId).toBe(inside);
+    expect(
+      native.anchorNode?.parentElement
+        ?.closest('[data-paragraph-id]')
+        ?.getAttribute('data-paragraph-id')
+    ).toBe(inside);
   } finally {
     editor.destroy();
   }

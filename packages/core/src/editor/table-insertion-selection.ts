@@ -95,6 +95,23 @@ export function tableCommandSelection(
     const point = { paragraphId: hint.paragraphId, offset: hint.start };
     return { anchor: point, head: point };
   }
+  const reshape = ops.find((op) => op.op === 'mergeTableCells' || op.op === 'splitTableCell');
+  if (reshape?.op === 'mergeTableCells' || reshape?.op === 'splitTableCell') {
+    // Shared package replacements may have no operation caret. The top-left cell survives
+    // the merge or split, including when selected continuation cells were removed.
+    const read = readMergeableTable(part, reshape.tableId);
+    if (read.ok) {
+      const ids = reshape.op === 'mergeTableCells' ? reshape.cellIds : [reshape.cellId];
+      for (const id of ids) {
+        const owner = read.table.index.byId.get(id)?.visualOwner.cell;
+        const paragraph = owner?.children.find((child) => child.kind === 'paragraph');
+        if (paragraph) {
+          const point = { paragraphId: paragraph.id, offset: 0 };
+          return { anchor: point, head: point };
+        }
+      }
+    }
+  }
   const inserted = ops.find((op) => op.op === 'insertTableRow');
   if (!inserted || inserted.op !== 'insertTableRow') return columnInsertionSelection(part, ops);
   const table = findNode(part, inserted.tableId);
