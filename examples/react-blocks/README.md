@@ -61,4 +61,4 @@ That test evaluates the upstream collaboration runtime under the EigenPal Pro Li
 
 This example does not establish full Plate parity. Production work includes block insertion and clipboard semantics, metadata storage, property suggestions, AI multi-wave diff reconciliation, large-document profiling, IME and touch interaction, error isolation, and desktop Word interoperability testing.
 
-The editor API snapshot and a changeset cover the generic core paint-observer extension. No production integration in Sciobot is changed.
+The editor API snapshot and a changeset cover the generic core paint-observer extension.

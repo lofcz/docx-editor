@@ -9,7 +9,7 @@ import { docx } from './fixture.ts';
 
 const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 const R = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
-const CODE = 'SciobotCode';
+const CODE = 'ApplicationCode';
 
 function fixture(body: string): Uint8Array {
   const entries = unzipSync(docx(body));
@@ -27,7 +27,7 @@ function fixture(body: string): Uint8Array {
   );
   entries['word/styles.xml'] = strToU8(
     `<w:styles xmlns:w="${W}">` +
-      `<w:style w:type="character" w:customStyle="1" w:styleId="${CODE}"><w:name w:val="Sciobot Code"/>` +
+      `<w:style w:type="character" w:customStyle="1" w:styleId="${CODE}"><w:name w:val="Application Code"/>` +
       '<w:rPr><w:rFonts w:ascii="Consolas" w:hAnsi="Consolas"/></w:rPr></w:style>' +
       '<w:style w:type="character" w:styleId="HTMLCode"><w:name w:val="HTML Code"/>' +
       '<w:rPr><w:rFonts w:ascii="Courier New" w:hAnsi="Courier New"/></w:rPr></w:style>' +
@@ -131,7 +131,7 @@ test('empty code runs, manual breaks, deletions, and links keep their intended t
     paragraph(text('a'), code(''), text('b')) +
     paragraph(
       code('one'),
-      '<w:r><w:rPr><w:rStyle w:val="SciobotCode"/></w:rPr><w:br/><w:t>two</w:t></w:r>'
+      '<w:r><w:rPr><w:rStyle w:val="ApplicationCode"/></w:rPr><w:br/><w:t>two</w:t></w:r>'
     ) +
     paragraph(
       text('keep '),
@@ -163,18 +163,18 @@ test('ordinary monospaced text and unlisted character styles stay ordinary text'
     text(' '),
     text('html', '<w:rStyle w:val="HTMLCode"/>'),
     text(' '),
-    code('scio')
+    code('source')
   );
-  expect((await project(body)).markdown).toBe('mono html `scio`');
-  expect((await project(body, null)).markdown).toBe('mono html scio');
-  expect((await project(body, ['HTMLCode', CODE])).markdown).toBe('mono `html` `scio`');
+  expect((await project(body)).markdown).toBe('mono html `source`');
+  expect((await project(body, null)).markdown).toBe('mono html source');
+  expect((await project(body, ['HTMLCode', CODE])).markdown).toBe('mono `html` `source`');
   expect((await exportMarkdown(fixture(body), { codeCharacterStyles: [CODE] })).markdown).toBe(
-    'mono html `scio`'
+    'mono html `source`'
   );
 });
 
 test('malformed code style options refuse', async () => {
-  for (const codeCharacterStyles of [[''], 'SciobotCode', [7]] as unknown[]) {
+  for (const codeCharacterStyles of [[''], 'ApplicationCode', [7]] as unknown[]) {
     await expect(
       exportMarkdown(fixture(paragraph(text('x'))), {
         codeCharacterStyles: codeCharacterStyles as readonly string[],

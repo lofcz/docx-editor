@@ -16,7 +16,7 @@ import {
 } from '../index.ts';
 import { INSERTED_PARAGRAPH_PROPERTY_NS } from '../store/inserted-paragraph-property-presence.ts';
 
-const revision = { author: 'ScioBot', date: '2026-10-19T12:00:00Z' };
+const revision = { author: 'Reviewer', date: '2026-10-19T12:00:00Z' };
 const attributes = 'w:id="9" w:author="Imported" w:date="2026-01-01T00:00:00Z"';
 const paragraph = (text: string) => `<w:p><w:r><w:t>${text}</w:t></w:r></w:p>`;
 function load(body: string): OoxmlPackage {

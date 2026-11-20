@@ -52,11 +52,11 @@ describe('setRunProperties.characterStyle', () => {
       start: 6,
       end: 10,
       properties: [{ localName: 'b' }],
-      characterStyle: 'SciobotCode',
+      characterStyle: 'ApplicationCode',
     });
     expect(body(next)).toBe(
       '<w:p><w:r><w:rPr><w:b/><w:lang w:val="cs-CZ"/><x:keep/></w:rPr><w:t xml:space="preserve">alpha </w:t></w:r>' +
-        '<w:r><w:rPr><w:rStyle w:val="SciobotCode"/><w:b/><w:lang w:val="cs-CZ"/><x:keep/></w:rPr><w:t>beta</w:t></w:r></w:p>'
+        '<w:r><w:rPr><w:rStyle w:val="ApplicationCode"/><w:b/><w:lang w:val="cs-CZ"/><x:keep/></w:rPr><w:t>beta</w:t></w:r></w:p>'
     );
   });
 
@@ -69,10 +69,10 @@ describe('setRunProperties.characterStyle', () => {
       start: 0,
       end: 10,
       properties: [{ localName: 'b' }],
-      characterStyle: 'SciobotCode',
+      characterStyle: 'ApplicationCode',
     });
     expect(body(replaced)).toContain(
-      '<w:rPr><w:rStyle w:val="SciobotCode"/><w:b/><w:lang w:val="cs-CZ"/><x:keep/></w:rPr>'
+      '<w:rPr><w:rStyle w:val="ApplicationCode"/><w:b/><w:lang w:val="cs-CZ"/><x:keep/></w:rPr>'
     );
     const removed = apply(replaced, {
       op: 'setRunProperties',
@@ -119,33 +119,33 @@ describe('setRunProperties.characterStyle', () => {
   test('a tracked change records the prior reference so rejection restores it', () => {
     const part = load(SOURCE);
     const id = paragraphId(part);
-    const revision = { author: 'ScioBot', date: '2026-10-21T08:00:00Z' };
+    const revision = { author: 'Reviewer', date: '2026-10-21T08:00:00Z' };
     const tracked = apply(part, {
       op: 'setRunProperties',
       paragraphId: id,
       start: 0,
       end: 5,
       properties: [{ localName: 'b' }],
-      characterStyle: 'SciobotCode',
+      characterStyle: 'ApplicationCode',
       revision,
     });
     const xml = body(tracked);
-    expect(xml).toContain('<w:rStyle w:val="SciobotCode"/>');
+    expect(xml).toContain('<w:rStyle w:val="ApplicationCode"/>');
     expect(xml).toMatch(
-      /<w:rPrChange w:author="ScioBot" w:date="2026-10-21T08:00:00Z" w:id="(\d+)"><w:rPr><w:rStyle w:val="Emphasis"\/><w:b\/><w:lang w:val="cs-CZ"\/><x:keep\/><\/w:rPr><\/w:rPrChange>/
+      /<w:rPrChange w:author="Reviewer" w:date="2026-10-21T08:00:00Z" w:id="(\d+)"><w:rPr><w:rStyle w:val="Emphasis"\/><w:b\/><w:lang w:val="cs-CZ"\/><x:keep\/><\/w:rPr><\/w:rPrChange>/
     );
     const revisionId = /<w:rPrChange [^>]*w:id="(\d+)"/.exec(xml)![1]!;
     const rejected = apply(tracked, {
       op: 'rejectRevision',
-      revision: { id: revisionId, author: 'ScioBot', date: '2026-10-21T08:00:00Z' },
+      revision: { id: revisionId, author: 'Reviewer', date: '2026-10-21T08:00:00Z' },
     } as TreeDocOp);
-    expect(body(rejected)).not.toContain('SciobotCode');
+    expect(body(rejected)).not.toContain('ApplicationCode');
     expect(body(rejected)).not.toContain('rPrChange');
     const accepted = apply(tracked, {
       op: 'acceptRevision',
-      revision: { id: revisionId, author: 'ScioBot', date: '2026-10-21T08:00:00Z' },
+      revision: { id: revisionId, author: 'Reviewer', date: '2026-10-21T08:00:00Z' },
     } as TreeDocOp);
-    expect(body(accepted)).toContain('<w:rStyle w:val="SciobotCode"/>');
+    expect(body(accepted)).toContain('<w:rStyle w:val="ApplicationCode"/>');
     expect(body(accepted)).not.toContain('rPrChange');
   });
 

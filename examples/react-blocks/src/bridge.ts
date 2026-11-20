@@ -17,7 +17,7 @@ import type {
 import { attribute, elementChild, type BlockData, type DocumentBlock } from './document';
 
 export const REVIEW: EditorModule = {
-  id: 'scio-review',
+  id: 'example-review',
   review: {
     displayModes: ['all-markup', 'proposed', 'original'],
     collectReviewItems,
@@ -110,7 +110,7 @@ export function createBlockBridge(editor: DocxEditorInstance) {
       execute([
         {
           op: 'proposeReplacement',
-          author: 'ScioBot',
+          author: 'Reviewer',
           span: spans.spans[0]!,
           text: 'Plan a controlled experiment.',
         },

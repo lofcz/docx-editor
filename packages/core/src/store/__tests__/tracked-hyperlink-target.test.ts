@@ -14,7 +14,7 @@ import { applyTreeOp, validateTreeOp, type TreeDocOp } from '../store/tree-ops.t
 
 const W = WML_NAMESPACE_URI;
 const R = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
-const revision = { author: 'ScioBot', date: '2026-10-20T08:00:00Z' };
+const revision = { author: 'Reviewer', date: '2026-10-20T08:00:00Z' };
 const LINK =
   '<w:hyperlink r:id="rId1" w:tooltip="Old" w:history="1"><w:proofErr w:type="spellStart"/><w:r><w:rPr><w:rStyle w:val="Hyperlink"/><w:b/></w:rPr><w:t xml:space="preserve">the </w:t></w:r><w:r><w:rPr><w:rStyle w:val="Hyperlink"/><w:i/></w:rPr><w:t>site</w:t><w:tab/></w:r><w:proofErr w:type="spellEnd"/></w:hyperlink>';
 const BODY = `<w:p><w:r><w:t xml:space="preserve">See </w:t></w:r>${LINK}<w:r><w:t xml:space="preserve"> and </w:t></w:r><w:hyperlink r:id="rId1"><w:r><w:t>twin</w:t></w:r></w:hyperlink></w:p><w:p><w:r><w:t>Tail</w:t></w:r></w:p>`;

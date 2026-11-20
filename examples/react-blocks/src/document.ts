@@ -38,7 +38,7 @@ export function readBlocks(part: OoxmlPart): DocumentBlock[] {
     if (node.localName === 'sdt') {
       const properties = elementChild(node, 'sdtPr');
       const tag = properties && attribute(elementChild(properties, 'tag'), 'val');
-      if (tag?.startsWith('scio:')) {
+      if (tag?.startsWith('example:')) {
         const alias = properties && attribute(elementChild(properties, 'alias'), 'val');
         let data: BlockData = { name: tag };
         try {
@@ -86,7 +86,7 @@ let paraId = 0;
 const p = (text: string, height?: number) =>
   `<w:p w14:paraId="${(++paraId).toString(16).padStart(8, '0')}"><w:pPr><w:spacing w:before="0" w:after="100"${height ? ` w:line="${height * 20}" w:lineRule="exact"` : ''}/></w:pPr><w:r><w:t xml:space="preserve">${escape(text)}</w:t></w:r></w:p>`;
 const sdt = (type: string, data: BlockData, body: string) =>
-  `<w:sdt><w:sdtPr><w:id w:val="${paraId + 100}"/><w:tag w:val="scio:${type}:one"/><w:alias w:val="${escape(JSON.stringify(data))}"/></w:sdtPr><w:sdtContent>${body}</w:sdtContent></w:sdt>`;
+  `<w:sdt><w:sdtPr><w:id w:val="${paraId + 100}"/><w:tag w:val="example:${type}:one"/><w:alias w:val="${escape(JSON.stringify(data))}"/></w:sdtPr><w:sdtContent>${body}</w:sdtContent></w:sdt>`;
 
 export function fixture(): Uint8Array {
   paraId = 0;

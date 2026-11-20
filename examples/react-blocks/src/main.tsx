@@ -108,7 +108,7 @@ function App() {
         React controls, nested containers, editable Word paragraphs, native tables, tracked text
         changes, and DOCX persistence.
       </p>
-      <DocxEditor.Root document={document} modules={MODULES} fonts={FONTS} author="ScioBot">
+      <DocxEditor.Root document={document} modules={MODULES} fonts={FONTS} author="Reviewer">
         <Proof reload={setDocument} />
       </DocxEditor.Root>
     </main>

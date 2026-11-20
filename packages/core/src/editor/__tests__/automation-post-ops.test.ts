@@ -69,7 +69,7 @@ test('post hooks read actual tracked identities and publish metadata with text i
           paragraphId: id,
           offset: 0,
           text: 'New',
-          revision: { author: 'ScioBot', date: '2026-10-19T09:00:00.000Z' },
+          revision: { author: 'Reviewer', date: '2026-10-19T09:00:00.000Z' },
         },
       ],
       { kind: 'body' },

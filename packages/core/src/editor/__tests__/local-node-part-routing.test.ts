@@ -12,7 +12,7 @@ import { partOfNodeId } from '../surface-scope.ts';
 const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 function part(name: string, localName: string): OoxmlPart {
   const content =
-    '<w:p><w:ins w:id="1" w:author="ScioBot"><w:r><w:t>Pending</w:t></w:r></w:ins></w:p>';
+    '<w:p><w:ins w:id="1" w:author="Reviewer"><w:r><w:t>Pending</w:t></w:r></w:ins></w:p>';
   const loaded = readOoxmlPart(
     `<w:${localName} xmlns:w="${W}">${localName === 'document' ? `<w:body>${content}</w:body>` : content}</w:${localName}>`,
     { name, contentType: 'application/xml' }

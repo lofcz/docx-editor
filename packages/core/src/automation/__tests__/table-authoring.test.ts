@@ -79,7 +79,7 @@ describe('canonical table authoring', () => {
     const direct = applyTreeOp(part, op),
       tracked = applyTreeOp(part, {
         ...op,
-        revision: { author: 'ScioBot', date: '2026-10-19T12:00:00Z' },
+        revision: { author: 'Reviewer', date: '2026-10-19T12:00:00Z' },
       });
     if (!direct.ok || !tracked.ok) throw new Error('Native row creation failed');
     const accepted = applyTreeOp(tracked.part, { op: 'acceptAllRevisions' }),
@@ -120,7 +120,7 @@ describe('canonical table authoring', () => {
       const tracked = applyTreeOp(part, {
         op: 'authorTable',
         action,
-        revision: { author: 'ScioBot', date: '2026-10-19T12:00:00Z' },
+        revision: { author: 'Reviewer', date: '2026-10-19T12:00:00Z' },
       });
       if (!direct.ok || !tracked.ok) throw new Error('Native row insertion failed');
       const accepted = applyTreeOp(tracked.part, { op: 'acceptAllRevisions' }),

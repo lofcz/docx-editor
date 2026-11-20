@@ -14,19 +14,19 @@ import {
 // DOM measurement has, so the fixtures also pin quantization.
 const SOURCE_CHIP: InlineWidgetRequest = {
   controlId: 'ctl-source',
-  tag: 'scio:1:source-1',
+  tag: 'example:1:source-1',
   fallbackText: '[Komenský 1657]',
   availableWidth: 624,
 };
 const DATE_CHIP: InlineWidgetRequest = {
   controlId: 'ctl-date',
-  tag: 'scio:1:date-1',
+  tag: 'example:1:date-1',
   fallbackText: '20. 10. 2026',
   availableWidth: 624,
 };
 const MEASURED: Readonly<Record<string, InlineWidgetMetrics>> = {
-  'scio:1:source-1': { width: 118.4996, ascent: 15.0004, descent: 4.25 },
-  'scio:1:date-1': { width: 84.0625, ascent: 13.4, descent: 3.4 },
+  'example:1:source-1': { width: 118.4996, ascent: 15.0004, descent: 4.25 },
+  'example:1:date-1': { width: 84.0625, ascent: 13.4, descent: 3.4 },
 };
 const host: InlineWidgetMetricsProvider = (request) =>
   (request.tag && MEASURED[request.tag]) || null;

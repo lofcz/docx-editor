@@ -108,7 +108,7 @@ test('an unregistered React block tag retains its native Word fallback', async (
   await expect(page.getByRole('button', { name: 'Local React state: 0' })).toBeVisible();
   const parts = unzipSync(fixture());
   parts['word/document.xml'] = strToU8(
-    strFromU8(parts['word/document.xml']!).replace('scio:activity:one', 'scio:unregistered:one')
+    strFromU8(parts['word/document.xml']!).replace('example:activity:one', 'example:unregistered:one')
   );
   const bytes = Array.from(zipSync(parts));
   await page.evaluate((bytes) => {
