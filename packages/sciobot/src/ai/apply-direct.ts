@@ -68,7 +68,6 @@ import {
   rowCellIds,
   siblingFragmentSeeds,
   tableRowIds,
-  wmlElement,
 } from '../diff/fragment-seeds';
 
 /** Mount identity for the editor that owns the plan's revision token. */
@@ -116,7 +115,6 @@ const failure = (error: unknown): NativeEditFailure =>
         code: 'apply-failed',
         error: error instanceof Error ? error.message : String(error),
       };
-const wml = wmlElement;
 const attributesOf = (value: PlannedValue): Record<string, string> => {
   if (
     !value.present ||
