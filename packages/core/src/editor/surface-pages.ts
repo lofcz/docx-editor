@@ -180,6 +180,36 @@ export function visiblePageSet(
   return pagesToMaterialize({ layout, viewport, overscanPages: 1, pinnedPages: pinned });
 }
 
+/**
+ * Keep up to two nearby, already built pages for a change in scroll direction.
+ * A distant jump still drops unrelated sheets. Required pages always take priority.
+ */
+export function retainAdjacentPages(
+  layout: SemanticLayout,
+  required: ReadonlySet<number> | undefined,
+  previouslyBuilt: ReadonlySet<number> | undefined
+): ReadonlySet<number> | undefined {
+  if (!required || !previouslyBuilt) return required;
+  let available = 0;
+  for (const index of required) {
+    const page = layout.pages[index]!;
+    available = Math.max(available, page.box.x + page.box.width);
+  }
+  const result = new Set(required);
+  for (const distance of [1, 2]) {
+    for (const index of required) {
+      for (const neighbor of [index - distance, index + distance]) {
+        if (!previouslyBuilt.has(neighbor) || result.has(neighbor)) continue;
+        const page = layout.pages[neighbor];
+        // A retained landscape sheet must not widen a portrait viewport.
+        if (page && page.box.x + page.box.width <= available) result.add(neighbor);
+        if (result.size === required.size + 2) return result;
+      }
+    }
+  }
+  return result.size === required.size ? required : result;
+}
+
 export function equalPageSets(
   left: ReadonlySet<number> | undefined,
   right: ReadonlySet<number> | undefined

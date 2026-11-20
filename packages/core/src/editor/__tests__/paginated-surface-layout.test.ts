@@ -168,6 +168,32 @@ describe('only the pages on screen are built (task 9.4)', () => {
     scroller.remove();
   });
 
+  test('reversing a nearby scroll keeps built pages and their edit targets', async () => {
+    const { surface, scroller, host } = mountInScroller(long);
+    try {
+      const pages = surface.layout().pages;
+      expect(pages.length).toBeGreaterThan(4);
+      const go = async (pageIndex: number) => {
+        scroller.scrollTop = pages[pageIndex]!.box.y + 20;
+        scroller.dispatchEvent(new Event('scroll'));
+        await new Promise((resolve) => setTimeout(resolve, 60));
+      };
+      await go(1);
+      const target = host.querySelector('.docx-page[data-page-index="1"] .docx-paragraph-fragment');
+      expect(target).not.toBeNull();
+      await go(3);
+      const built = host.querySelectorAll('.docx-page[data-materialized="true"]');
+      expect(built.length).toBeLessThanOrEqual(7); // viewport, overscan, pinned caret, two retained sheets
+      await go(1);
+      expect(host.querySelector('.docx-page[data-page-index="1"] .docx-paragraph-fragment')).toBe(
+        target
+      );
+    } finally {
+      surface.destroy();
+      scroller.remove();
+    }
+  });
+
   test('a viewport that GROWS builds the pages it uncovers, with no scroll to prompt it', async () => {
     // Which pages are worth building depends on the viewport's height as much as on its
     // scroll offset — and a resize fires no `scroll`. Nothing asked for a repaint, so the
@@ -724,3 +750,50 @@ describe('default browser measurer for cover-title centering', () => {
     surface.destroy();
   });
 });
+
+test('a long document keeps a bounded viewport and edits text after a distant page returns', async () => {
+  const count = 96;
+  const body = Array.from(
+    { length: count },
+    (_, index) =>
+      `<w:p><w:pPr>${index ? '<w:pageBreakBefore/>' : ''}</w:pPr><w:r><w:t>Sheet ${index}</w:t></w:r></w:p>`
+  ).join('');
+  const { surface, scroller, host } = mountInScroller(body);
+  const go = async (index: number) => {
+    scroller.scrollTop = surface.layout().pages[index]!.box.y + 20;
+    scroller.dispatchEvent(new Event('scroll'));
+    await new Promise((resolve) => setTimeout(resolve, 70));
+  };
+  try {
+    expect(surface.layout().pages.length).toBe(count);
+    for (const index of [1, 2, 3, 15, 32, 63, 95, 72, 4]) {
+      await go(index);
+      expect(
+        host.querySelector(`.docx-page[data-page-index="${index}"] .docx-line`)
+      ).not.toBeNull();
+      const built = host.querySelectorAll('.docx-page[data-materialized="true"]');
+      expect(built.length).toBeLessThanOrEqual(6); // visible sheet, overscan, caret, two retained
+    }
+    await go(72);
+    const paragraphId = surface.session.paragraphIds()[72]!;
+    const head = { paragraphId, offset: 5 };
+    surface.setSelection({ anchor: head, head });
+    surface.type('!');
+    surface.flushPendingInput();
+    expect(surface.state().selection.head).toEqual({ paragraphId, offset: 6 });
+    expect(
+      host.querySelector(`.docx-paragraph-fragment[data-paragraph-id="${paragraphId}"]`)
+        ?.textContent
+    ).toContain('Sheet! 72');
+    await go(95);
+    await go(72);
+    expect(surface.state().selection.head).toEqual({ paragraphId, offset: 6 });
+    expect(
+      host.querySelector(`.docx-paragraph-fragment[data-paragraph-id="${paragraphId}"]`)
+        ?.textContent
+    ).toContain('Sheet! 72');
+  } finally {
+    surface.destroy();
+    scroller.remove();
+  }
+}, 60_000);

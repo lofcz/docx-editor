@@ -306,6 +306,7 @@ import {
   surfaceExtent,
   surfaceScroller,
   visiblePageSet,
+  retainAdjacentPages,
   viewportPage,
   type SurfaceExtent,
 } from './surface-pages.ts';
@@ -2733,6 +2734,7 @@ export function mountPaginatedSurface(
 
   /** The set the current paint was built with, so a scroll can tell whether it must repaint. */
   let materializedSet: ReadonlySet<number> | undefined;
+  let viewportSet: ReadonlySet<number> | undefined;
   /** Sizing the last paint used, so scroll can re-centre when the visible width band moves. */
   let materializedExtent: SurfaceExtent | undefined;
   /** An edit may move the caret within the same page without going through `setSelection`. */
@@ -2814,7 +2816,11 @@ export function mountPaginatedSurface(
       scale,
       session.packageRevision()
     );
-    materializedSet = visiblePages(disclosureScroll?.top);
+    viewportSet = visiblePages(disclosureScroll?.top);
+    materializedSet =
+      viewportOnly && currentLayout === paintedLayout
+        ? retainAdjacentPages(currentLayout, viewportSet, materializedSet)
+        : viewportSet;
     if (!viewportOnly) paintObservers.beforePaint();
     // Shared furniture: keep the visual occurrence on a built page before paint marks
     // `data-docx-hf-active`, so scroll cannot leave the caret host on a dematerialized sheet.
@@ -2868,7 +2874,7 @@ export function mountPaginatedSurface(
     // The pages are absolutely positioned, so the layer has no intrinsic size and the
     // surface would collapse to zero — pages then escape whatever centres or scrolls it.
     // Size it from the records, which is the only place the extent is known.
-    materializedExtent = surfaceExtent(currentLayout, materializedSet);
+    materializedExtent = surfaceExtent(currentLayout, viewportSet);
     applyPageOffsets(pagesLayer, currentLayout, materializedExtent, scale);
     pagesLayer.style.width = `${materializedExtent.width * scale}px`;
     pagesLayer.style.height = `${materializedExtent.height * scale}px`;
@@ -2920,13 +2926,16 @@ export function mountPaginatedSurface(
     // render.
     flushPendingInputAndLayout();
     const nextSet = visiblePages();
-    const nextExtent = surfaceExtent(currentLayout, nextSet);
-    if (
-      materializedExtent &&
-      equalPageSets(nextSet, materializedSet) &&
-      equalSurfaceExtents(nextExtent, materializedExtent)
-    ) {
-      return;
+    if (currentLayout === paintedLayout && materializedExtent) {
+      if (equalPageSets(nextSet, viewportSet)) return;
+      const built = retainAdjacentPages(currentLayout, nextSet, materializedSet);
+      if (
+        equalPageSets(built, materializedSet) &&
+        equalSurfaceExtents(surfaceExtent(currentLayout, nextSet), materializedExtent)
+      ) {
+        viewportSet = nextSet;
+        return;
+      }
     }
     render(false, true);
   }
