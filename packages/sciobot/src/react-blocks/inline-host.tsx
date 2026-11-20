@@ -35,6 +35,7 @@ function mountSurfaceInlineHost(
         measurement,
         controlId: props.block.controlId,
         zoom: props.fragment.scale * 0.75,
+        revision: props.revision,
         children: createElement(View, props),
       });
     };
@@ -73,10 +74,12 @@ function mountSurfaceInlineHost(
     },
     setProviders(providers) {
       host.setProviders(providers);
+      measurement.remeasure();
       measurement.place();
     },
     refresh() {
       host.refresh();
+      measurement.remeasure();
       measurement.place();
     },
     dispose,
@@ -139,11 +142,13 @@ function MeasuredInlineRoot({
   measurement,
   controlId,
   zoom,
+  revision,
   children,
 }: {
   readonly measurement: InlineMeasurement;
   readonly controlId: string;
   readonly zoom: number;
+  readonly revision: number;
   readonly children: ReactNode;
 }) {
   const ref = useRef<HTMLSpanElement>(null),
@@ -151,7 +156,7 @@ function MeasuredInlineRoot({
   useLayoutEffect(() => {
     if (ref.current && baseline.current)
       measurement.track(controlId, ref.current, baseline.current, zoom);
-  });
+  }, [measurement, controlId, zoom, revision]);
   useLayoutEffect(() => {
     const element = ref.current;
     return () => {

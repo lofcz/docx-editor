@@ -89,6 +89,11 @@ test('inline roots reuse providers, native boxes, and identity through zoom and 
       '[data-sciobot-inline-measure] button'
     )!;
     const root = button.closest<HTMLElement>('[data-sciobot-block-host]')!;
+    let disconnections = 0;
+    const detectMove = new MutationObserver((changes) => {
+      for (const change of changes) if ([...change.removedNodes].includes(root)) disconnections++;
+    });
+    detectMove.observe(root.parentElement!, { childList: true });
     const widget = () =>
       linesOf(surface.layout())
         .flatMap((line) => line.spans)
@@ -125,6 +130,8 @@ test('inline roots reuse providers, native boxes, and identity through zoom and 
     expect(widget().inlineWidget!.width).toBe(75);
     expect(fragmentBox).toMatchObject({ width: 75, height: 18 });
     expect(root.style.width).toBe('150px');
+    detectMove.disconnect();
+    expect(disconnections).toBe(0);
     expect(events).toEqual({ mount: 1, unmount: 0 });
     expect(() => mountReactInlineHost(editor)).toThrow('already has');
     await act(async () => {

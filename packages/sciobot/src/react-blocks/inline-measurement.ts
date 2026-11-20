@@ -32,6 +32,7 @@ interface Entry {
 /** Local intrinsic measurements. Native layout remains the authority for placement. */
 export class InlineMeasurement {
   private readonly entries = new Map<string, Entry>();
+  private readonly dirty = new Set<string>();
   private metrics = new Map<string, InlineWidgetMetrics>();
   private readonly hidden = new Map<HTMLElement, string>();
   private frame: SurfacePaintFrame | null = null;
@@ -51,11 +52,11 @@ export class InlineMeasurement {
     if (previous?.element !== element) {
       observer?.disconnect();
       const Observer = element.ownerDocument.defaultView?.ResizeObserver;
-      observer = Observer ? new Observer(() => this.schedule()) : null;
+      observer = Observer ? new Observer(() => this.schedule(controlId)) : null;
       observer?.observe(element);
     }
     this.entries.set(controlId, { element, baseline, zoom, observer });
-    this.schedule();
+    this.schedule(controlId);
   }
 
   release(controlId: string, element: HTMLElement): void {
@@ -63,11 +64,17 @@ export class InlineMeasurement {
     if (entry?.element !== element) return;
     entry.observer?.disconnect();
     this.entries.delete(controlId);
-    this.schedule();
+    this.schedule(controlId);
   }
 
-  schedule(): void {
-    if (this.queued || this.disposed) return;
+  remeasure(): void {
+    for (const id of this.entries.keys()) this.schedule(id);
+  }
+
+  private schedule(id: string): void {
+    if (this.disposed) return;
+    this.dirty.add(id);
+    if (this.queued) return;
     this.queued = true;
     queueMicrotask(() => {
       this.queued = false;
@@ -77,17 +84,26 @@ export class InlineMeasurement {
 
   private flush(): void {
     if (this.disposed) return;
-    const next = new Map<string, InlineWidgetMetrics>();
-    for (const [id, entry] of this.entries) {
+    const next = new Map(this.metrics);
+    // Moving a paragraph does not change a formula's intrinsic dimensions.
+    for (const id of this.dirty) {
+      const entry = this.entries.get(id);
+      if (!entry) {
+        next.delete(id);
+        continue;
+      }
       // Virtual pages park roots. Their last valid measurement must remain available.
-      if (!entry.element.isConnected) {
-        const old = this.metrics.get(id);
-        if (old) next.set(id, old);
+      if (
+        !entry.element.isConnected ||
+        entry.element.closest<HTMLElement>('[data-sciobot-block-host]')?.hidden
+      ) {
         continue;
       }
       const result = this.measure(entry.element, entry.baseline, entry.zoom);
       if (result) next.set(id, Object.freeze({ ...result }));
+      else next.delete(id);
     }
+    this.dirty.clear();
     const equal =
       next.size === this.metrics.size &&
       [...next].every(([id, value]) => {
@@ -131,18 +147,12 @@ export class InlineMeasurement {
     for (const [id, { element }] of this.entries) {
       const root = element.closest<HTMLElement>('[data-sciobot-block-host]');
       if (!root) continue;
-      const key = `${root.closest<HTMLElement>('.docx-page')?.dataset.pageIndex}:${id}`;
+      const key = `${root.dataset.sciobotInlinePage}:${id}`;
       const box = boxes.get(key),
         fallback = native.get(key);
       root.style.visibility = box && fallback ? 'visible' : 'hidden';
       root.style.overflow = 'hidden';
       if (!box || !fallback) continue;
-      Object.assign(root.style, {
-        left: `${box.x * frame.scale}px`,
-        top: `${box.y * frame.scale}px`,
-        width: `${box.width * frame.scale}px`,
-        height: `${box.height * frame.scale}px`,
-      });
       this.hidden.set(fallback, fallback.style.visibility);
       fallback.style.visibility = 'hidden';
     }

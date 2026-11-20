@@ -217,8 +217,12 @@ export function mountSurfaceBlockHost(
             element: mount.element,
             slot: mount.slot,
           });
-        else if (options.inlineOnly) page.append(mount.element);
-        else opaqueLayer.place(next, page, mount.element, box);
+        else {
+          if (options.inlineOnly)
+            mount.element.dataset.sciobotInlinePage = String(fragment.pageIndex);
+          // Keep custom elements connected. Reconnecting a formula can typeset it again.
+          opaqueLayer.place(next, page, mount.element, box);
+        }
         // A scroll moves the viewport. Roots which keep their layout retain their React view.
         if (mount.rendered === generation) return;
         mount.rendered = generation;
