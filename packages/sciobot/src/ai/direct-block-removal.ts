@@ -17,12 +17,8 @@ const blockId = (node: OoxmlNode): string | null =>
     ? blockIdFromTag(contentControlPropertiesOf(node).tag ?? '')
     : null;
 
-/**
- * The payload IDs a removed application block takes with it, nested blocks included, or null
- * when the node is not an application block.
- */
-function removedBlockPayloads(node: OoxmlNode): string[] | null {
-  if (blockId(node) === null) return null;
+/** Collect candidate payload records before a native subtree disappears. */
+export function subtreePayloadIds(node: OoxmlNode): string[] {
   return [node, ...contentControlsIn(node).map((entry) => entry.node)]
     .map(blockId)
     .filter((id): id is string => id !== null);
@@ -66,17 +62,15 @@ export function siblingRemoval(
   const payloads: string[] = [];
   for (const id of removedIds) {
     const node = findNode(part, id);
-    const owned = node ? removedBlockPayloads(node) : null;
+    const owned = node && blockId(node) !== null;
     if (
       !node ||
       (node.kind !== 'paragraph' && !wmlElement(node, 'tbl') && !owned) ||
       hasSection(node)
     )
       return 'Direct sibling removal supports complete paragraphs, tables, and application blocks without section marks.';
-    if (owned) {
-      blocks.add(id);
-      payloads.push(...owned);
-    }
+    if (owned) blocks.add(id);
+    payloads.push(...subtreePayloadIds(node));
   }
   return { blocks, payloads };
 }

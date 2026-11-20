@@ -26,7 +26,7 @@ import {
   type TreeDocOp,
 } from '@docx-editor.dev/core/store';
 import { readPayloadStore, withPayloadRecord } from '../blocks/payload-opc-codec';
-import { siblingRemoval, withoutPayloadRecords } from './direct-block-removal';
+import { siblingRemoval, subtreePayloadIds, withoutPayloadRecords } from './direct-block-removal';
 import type { BlockPayload } from '../blocks/payload-schema';
 import { sameRevision, type NativeEditFailure, type RevisionToken } from '../contracts/document';
 import { jsonDataKey } from '../diff/target-key';
@@ -531,7 +531,12 @@ function lowerDirectPlan(
           );
         });
         break;
-      case 'table':
+      case 'table': {
+        const deletion =
+          edit.operation.op === 'deleteTableColumn' || edit.operation.op === 'deleteTableRow'
+            ? findNode(preview, edit.operation.tableId)
+            : null;
+        const payloads = deletion ? subtreePayloadIds(deletion) : [];
         if (deferredTopology)
           deferred.push((working) => {
             const result = applyTreeOp(working.parts.get(partName)!, edit.operation as TreeDocOp);
@@ -540,7 +545,9 @@ function lowerDirectPlan(
             return withPart(working, result.part);
           });
         else apply(edit.operation as TreeDocOp);
+        if (payloads.length) deferred.push((working) => withoutPayloadRecords(working, payloads));
         break;
+      }
       case 'insert-row': {
         deferredTopology = true;
         const intent = edit.intent;

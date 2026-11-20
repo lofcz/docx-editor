@@ -233,10 +233,12 @@ export function readPresentationColumns(
       return null;
     columns.push({ block: column, cellId: cell.id, width });
   }
+  const first = columns[0]?.block.payload.type;
   if (
     recap &&
-    (columns.length !== 2 ||
-      !recapColumnPair(columns[0]?.block.payload.type, columns[1]?.block.payload.type))
+    !(columns.length === 1
+      ? first === 'recap_curriculum' || first === 'recap_materials'
+      : columns.length === 2 && recapColumnPair(first, columns[1]?.block.payload.type))
   )
     return null;
   const total = columns.reduce((sum, column) => sum + column.width, 0);

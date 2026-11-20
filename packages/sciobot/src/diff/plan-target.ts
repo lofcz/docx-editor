@@ -23,6 +23,8 @@ import { normalizeLogicalBlocks, type LogicalBlock } from './logical-blocks';
 import { compileInlineTarget } from './inline-target';
 import { planTargetParagraph, targetParagraphHtmlKey } from './target-inline';
 import { planTargetTable } from './target-table';
+import { planTableColumn } from './table-columns';
+import { nativeGridColumns } from './inserted-column-native';
 import { prepareTargetCellParagraphs } from './target-cell-paragraphs';
 import { planDomainProperties } from './domain-properties';
 import { domainNodeFromAst } from './domain-ast';
@@ -622,37 +624,70 @@ export function planTargetDocument(
               bindings.get([...oldPath, i].join('/'))?.structuralOwnerId ===
               recap.columns[0]!.block.controlId
           );
-          const newStart = next.children.findIndex((_, i) =>
-            recap.columns.every(
-              (column, n) =>
-                next.children[i + n] &&
-                domainNodeFromAst(astOf(next.children[i + n]!), registry)?.type ===
-                  column.block.payload.type
-            )
-          );
-          if (oldStart < 0 || newStart < 0)
-            return fail(
-              'Moving or removing an overview column requires changing its native table.'
-            );
           const owner = findNode(part, block.controlId);
           const parent = owner && contentControlContentNodeOf(owner);
-          if (!parent) return fail('The overview content is missing.');
+          if (oldStart < 0 || !parent) return fail('The overview content is missing.');
+          const types = next.children.map(
+            (child) => domainNodeFromAst(astOf(child), registry)?.type
+          );
+          const positions = recap.columns.map((column) => types.indexOf(column.block.payload.type));
+          const retained = positions.filter((position) => position >= 0);
+          if (retained.some((position, i) => position !== retained[0]! + i))
+            return fail('Moving an overview column needs a native table structure plan.');
+          let newStart = retained[0];
+          if (newStart === undefined) {
+            const physical = parent.children.findIndex((child) => child.id === recap.tableId);
+            if (physical < 0) return fail('The overview table is missing.');
+            if (entry.block.children.length * next.children.length > 4_000_000)
+              return fail('The overview target exceeds its alignment limit.');
+            const alignment = keyAlignment(
+              entry.block.children.map((child) => child.key),
+              next.children.map((child) => child.key)
+            );
+            const preceding = alignment.filter(([before]) => before < oldStart).at(-1);
+            newStart =
+              alignment.find(([before]) => before >= oldStart + recap.columns.length)?.[1] ??
+              (preceding ? preceding[1] + 1 : 0);
+            operations.push({
+              kind: 'siblings',
+              partName: part.name,
+              parentId: parent.id,
+              beforeId: parent.children[physical - 1]?.id ?? null,
+              afterId: parent.children[physical + 1]?.id ?? null,
+              removedIds: [recap.tableId],
+              inserted: [],
+            });
+          } else if (retained.length < recap.columns.length) {
+            const removed = positions.indexOf(-1);
+            const gridColumnId = nativeGridColumns(part, recap.tableId)[removed]?.id;
+            if (!gridColumnId) return fail('The overview grid column is missing.');
+            const deletion = planTableColumn(
+              { revision, part, tableId: recap.tableId },
+              { kind: 'delete', gridColumnId }
+            );
+            if (!deletion.success) return deletion;
+            operations.push(...deletion.plan.operations);
+          }
           const regions = [
             [0, oldStart, 0, newStart, parent.id],
-            ...recap.columns.map(
-              (column, i) =>
-                [
-                  oldStart + i,
-                  oldStart + i + 1,
-                  newStart + i,
-                  newStart + i + 1,
-                  column.cellId,
-                ] as const
-            ),
+            ...recap.columns.flatMap((column, i) => {
+              const position = positions[i]!;
+              return position < 0
+                ? []
+                : [
+                    [
+                      oldStart + i,
+                      oldStart + i + 1,
+                      position,
+                      position + 1,
+                      column.cellId,
+                    ] as const,
+                  ];
+            }),
             [
-              oldStart + 2,
+              oldStart + recap.columns.length,
               entry.block.children.length,
-              newStart + 2,
+              newStart + retained.length,
               next.children.length,
               parent.id,
             ],

@@ -5,7 +5,7 @@ import { projectSourcePackage, sourceControl } from '../../test/support/target-s
 import { planTargetDocument } from '../diff/plan-target';
 import { previewDirectPlan } from '../ai/apply-direct';
 import { buildBlockIndex } from './block-index';
-import { withPayloadRecord } from './payload-opc-codec';
+import { readPayloadStore, withPayloadRecord } from './payload-opc-codec';
 import { withRecapColumns } from './recap-columns';
 import { readPresentationColumns } from './column-geometry';
 
@@ -88,5 +88,29 @@ test('new overviews retain goals and adaptations around the editable native colu
     const changed = previewDirectPlan(applied.pkg, edit.plan);
     if (!changed.success) throw new Error(changed.error);
     expect((await projectSourcePackage(changed.pkg)).text).toBe(next);
+  }
+
+  for (const removed of [
+    ['recap_materials'],
+    ['recap_curriculum'],
+    ['recap_curriculum', 'recap_materials'],
+  ]) {
+    let next = projection.text;
+    for (const tag of removed)
+      next = next.replace(new RegExp(`<${tag}\\b[\\s\\S]*?</${tag}>\\n\\n`), '');
+    const edit = planTargetDocument({ ...input, pkg: applied.pkg, projection }, next);
+    if (!edit.success) throw new Error(edit.error);
+    const changed = previewDirectPlan(applied.pkg, edit.plan);
+    if (!changed.success) throw new Error(changed.error);
+    const reopened = readOoxmlPackage(writeOoxmlPackage(changed.pkg));
+    if (!reopened.ok) throw new Error(reopened.reason);
+    expect((await projectSourcePackage(reopened.package)).text).toBe(next);
+    const surviving = buildBlockIndex(reopened.package);
+    const records = readPayloadStore(reopened.package);
+    if (records.status !== 'ready') throw new Error(records.status);
+    for (const block of index.byId.values()) {
+      expect(surviving.byId.has(block.id)).toBe(!removed.includes(block.payload.type));
+      expect(records.entries.has(block.id)).toBe(!removed.includes(block.payload.type));
+    }
   }
 });
