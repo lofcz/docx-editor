@@ -1,4 +1,4 @@
-import { tablePropertyOp } from './table-grid-sizing.ts';
+import { columnInsertionOps, tablePropertyOp } from './table-grid-sizing.ts';
 // Pure table-command planner — sole source for Editor.can and Editor.exec.
 //
 // Resolves caret or rectangular cell selection to canonical ids, builds complete
@@ -12,7 +12,7 @@ import type {
   TableRightEdgeResizeTarget,
 } from '@docx-editor.dev/core/contracts/editor';
 import type { DocumentThemeColorEntry } from '../binding/document-theme.ts';
-import type { OoxmlPart } from '../store/package/ooxml-tree.ts';
+import type { OoxmlElement, OoxmlPart } from '../store/package/ooxml-tree.ts';
 import type { OoxmlTableCellNode } from '../store/package/ooxml-tree.ts';
 import { validateTreeOp } from '../store/store/tree-ops.ts';
 import {
@@ -79,6 +79,7 @@ export function tableCommandPlannerCallCount(): number {
 export interface TableCommandPlannerInput {
   readonly command: EditorCommand;
   readonly part: OoxmlPart;
+  readonly stylesRoot?: OoxmlElement | null;
   readonly layout: SemanticLayout;
   /**
    * The PACKAGE revision, never a story's own.
@@ -843,7 +844,7 @@ export function planTableCommand(input: TableCommandPlannerInput): TableCommandP
             where,
             referenceCellId: firstRowReferenceCellId(part, anchor),
           };
-      return planValidated(part, [op], { kind: 'adoptCommittedCaret' });
+      return planValidated(part, columnInsertionOps(input, op), { kind: 'adoptCommittedCaret' });
     }
     case 'deleteColumn': {
       if (!anchor) return refusal('unsupported', 'the selection is not inside a table');

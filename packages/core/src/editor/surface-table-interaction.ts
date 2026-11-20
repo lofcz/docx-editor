@@ -497,6 +497,7 @@ export function createSurfaceTableInteraction(
     const plan = planTableCommand({
       command: { type: 'insertColumn', where: 'right', target },
       part: partOfTableIn(host.session(), hit.tableId),
+      stylesRoot: host.session().stylesRoot(),
       layout: input.layout,
       storeRevision: input.storeRevision,
       selection: input.selection,
