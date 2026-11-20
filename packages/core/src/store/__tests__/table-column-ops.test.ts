@@ -705,36 +705,24 @@ describe('deleteTableColumn', () => {
     );
   });
 
-  test('returns left neighbor caret when deleting the final column', () => {
-    const part = load(TABLE(ROW(CELL('a1'), CELL('a2'))));
-    const table = firstTable(part);
-    const [, col2] = gridColIds(part, table.id);
-    const leftCell = rowCellIds(part, collectByKind(part.root, 'tableRow')[0]!.id)[0]!;
-
-    const result = applyTreeOp(part, {
-      op: 'deleteTableColumn',
-      tableId: table.id,
-      gridColumnId: col2!,
-    });
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-
-    expect(result.effect.caret?.paragraphId).toBe(firstParagraphInCell(result.part, leftCell)?.id);
-  });
-
-  test('lands in the surviving cell when its paragraphs belong to a content control', () => {
-    const wrapped = '<w:tc><w:sdt><w:sdtPr/><w:sdtContent><w:p/></w:sdtContent></w:sdt></w:tc>';
-    const part = load(TABLE(ROW(wrapped, CELL('Remove'))));
+  test.each([
+    ['ordinary cell', CELL('a1')],
+    [
+      'content control',
+      '<w:tc><w:sdt><w:sdtPr/><w:sdtContent><w:p/></w:sdtContent></w:sdt></w:tc>',
+    ],
+  ])('returns the left neighbor caret in a surviving %s', (_name, cell) => {
+    const part = load(TABLE(ROW(cell, CELL('Remove'))));
     const table = firstTable(part);
     const [, removed] = gridColIds(part, table.id);
-    const surviving = collectByKind(part.root, 'paragraph')[0]!;
+    const left = collectByKind(part.root, 'tableCell')[0]!;
     const result = applyTreeOp(part, {
       op: 'deleteTableColumn',
       tableId: table.id,
       gridColumnId: removed!,
     });
     if (!result.ok) throw new Error(result.reason);
-    expect(result.effect.caret?.paragraphId).toBe(surviving.id);
+    expect(result.effect.caret?.paragraphId).toBe(paragraphIdsWithin(left)[0]!);
   });
 
   test('refuses deleting the final column', () => {
