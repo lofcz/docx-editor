@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test';
+import { expect, spyOn, test } from 'bun:test';
 import { act, createContext, useContext, useEffect, useState } from 'react';
 import { createDocxEditor } from '@docx-editor.dev/core/editor';
 import { linesOf } from '@docx-editor.dev/core/layout';
@@ -9,10 +9,66 @@ import { BlockUi } from './block-ui';
 import { mountReactBlockHost } from './host';
 import type { ReactBlockViewProps } from './host';
 import { mountReactInlineHost } from './inline-host';
-import type { MeasureInlineElement } from './inline-measurement';
+import { InlineMeasurement, type MeasureInlineElement } from './inline-measurement';
 
 const environment = globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean };
 const Context = createContext('initial');
+
+test('one browser resize delivery publishes all changed inline widths together', async () => {
+  const container = document.createElement('div');
+  document.body.append(container);
+  const editor = createDocxEditor({ container, document: inlineWidgetDocument() });
+  const surface = editor.surface!;
+  const first = document.createElement('span'),
+    second = document.createElement('span');
+  container.append(first, second);
+  const nativeObserver = window.ResizeObserver;
+  const observers: TestObserver[] = [];
+  class TestObserver implements ResizeObserver {
+    readonly elements = new Set<Element>();
+    constructor(readonly callback: ResizeObserverCallback) {
+      observers.push(this);
+    }
+    observe(element: Element) {
+      this.elements.add(element);
+    }
+    unobserve(element: Element) {
+      this.elements.delete(element);
+    }
+    disconnect() {
+      this.elements.clear();
+    }
+  }
+  window.ResizeObserver = TestObserver;
+  let width = 24;
+  const measurement = new InlineMeasurement(surface, () => ({ width, ascent: 8, descent: 2 }));
+  const flush = spyOn(surface, 'flushPendingInput');
+  try {
+    measurement.track('first', first, first, 1);
+    measurement.track('second', second, second, 1);
+    await Promise.resolve();
+    flush.mockClear();
+    width = 40;
+    for (const observer of observers) {
+      observer.callback(
+        [...observer.elements].map((target) => ({ target }) as ResizeObserverEntry),
+        observer
+      );
+      // The browser runs queued microtasks between callbacks from distinct observers.
+      await Promise.resolve();
+    }
+    expect(flush).toHaveBeenCalledTimes(1);
+    expect(observers).toHaveLength(1);
+    measurement.release('first', first);
+    expect([...observers[0]!.elements]).toEqual([second]);
+  } finally {
+    flush.mockRestore();
+    measurement.dispose();
+    window.ResizeObserver = nativeObserver;
+    editor.destroy();
+    container.remove();
+  }
+});
 
 test('inline roots reuse providers, native boxes, and identity through zoom and native repaint without clearing block flow', async () => {
   const previous = environment.IS_REACT_ACT_ENVIRONMENT;

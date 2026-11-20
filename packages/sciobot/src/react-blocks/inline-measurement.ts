@@ -32,6 +32,8 @@ interface Entry {
 /** Local intrinsic measurements. Native layout remains the authority for placement. */
 export class InlineMeasurement {
   private readonly entries = new Map<string, Entry>();
+  private readonly observers = new Map<Document, ResizeObserver>();
+  private readonly ids = new WeakMap<Element, string>();
   private readonly dirty = new Set<string>();
   private metrics = new Map<string, InlineWidgetMetrics>();
   private readonly hidden = new Map<HTMLElement, string>();
@@ -48,11 +50,26 @@ export class InlineMeasurement {
   track(controlId: string, element: HTMLElement, baseline: HTMLElement, zoom: number): void {
     if (this.disposed) return;
     const previous = this.entries.get(controlId);
-    let observer = previous?.observer ?? null;
-    if (previous?.element !== element) {
-      observer?.disconnect();
-      const Observer = element.ownerDocument.defaultView?.ResizeObserver;
-      observer = Observer ? new Observer(() => this.schedule(controlId)) : null;
+    const doc = element.ownerDocument;
+    const Observer = doc.defaultView?.ResizeObserver;
+    let observer = this.observers.get(doc) ?? null;
+    if (!observer && Observer) {
+      // Chromium runs microtasks between observers. One delivery must publish one
+      // layout snapshot when several equations acquire their intrinsic sizes together.
+      observer = new Observer((changes) => {
+        for (const { target } of changes) {
+          const id = this.ids.get(target);
+          if (id !== undefined) this.schedule(id);
+        }
+      });
+      this.observers.set(doc, observer);
+    }
+    if (previous?.element !== element || previous.observer !== observer) {
+      if (previous) {
+        previous.observer?.unobserve(previous.element);
+        this.ids.delete(previous.element);
+      }
+      this.ids.set(element, controlId);
       observer?.observe(element);
     }
     this.entries.set(controlId, { element, baseline, zoom, observer });
@@ -62,7 +79,8 @@ export class InlineMeasurement {
   release(controlId: string, element: HTMLElement): void {
     const entry = this.entries.get(controlId);
     if (entry?.element !== element) return;
-    entry.observer?.disconnect();
+    entry.observer?.unobserve(element);
+    this.ids.delete(element);
     this.entries.delete(controlId);
     this.schedule(controlId);
   }
@@ -170,7 +188,8 @@ export class InlineMeasurement {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
-    for (const entry of this.entries.values()) entry.observer?.disconnect();
+    for (const observer of this.observers.values()) observer.disconnect();
+    this.observers.clear();
     this.entries.clear();
     this.metrics.clear();
     this.restoreFallback();
