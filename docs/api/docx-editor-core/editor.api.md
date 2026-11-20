@@ -5708,7 +5708,7 @@ export interface SurfacePaintObserver {
     // (undocumented)
     afterPaint(frame: SurfacePaintFrame): void;
     // (undocumented)
-    beforePaint?(): void;
+    beforePaint?(retainedPages?: ReadonlySet<number>): void;
     destroyed?(): void;
 }
 

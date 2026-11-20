@@ -2272,7 +2272,8 @@ export function paintSemanticLayoutWithAuthorSlots(
   container: HTMLElement,
   layout: SemanticLayout,
   options: PaintOptions,
-  authorSlots?: ReadonlyMap<string, number>
+  authorSlots?: ReadonlyMap<string, number>,
+  beforeViewportPaint?: (retainedPages: ReadonlySet<number>) => void
 ): void {
   captureUnsupportedElementFocus(container);
   container.classList.toggle('docx-show-paragraph-marks', options.showParagraphMarks ?? false);
@@ -2389,6 +2390,15 @@ export function paintSemanticLayoutWithAuthorSlots(
   const previousByIndex = previous
     ? new Map(previous.pages.map((entry) => [entry.record.index, entry]))
     : null;
+
+  if (beforeViewportPaint) {
+    const retained = new Set<number>();
+    for (const page of layout.pages) {
+      if (reusable?.get(page)?.materialized && (options.materialize?.has(page.index) ?? true))
+        retained.add(page.index);
+    }
+    beforeViewportPaint(retained);
+  }
 
   const pages: RetainedPage[] = layout.pages.map((page) => {
     const materialized = options.materialize?.has(page.index) ?? true;

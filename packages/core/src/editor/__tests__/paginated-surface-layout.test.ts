@@ -141,6 +141,14 @@ describe('only the pages on screen are built (task 9.4)', () => {
     const farPage = (): HTMLElement =>
       host.querySelector<HTMLElement>(`.docx-page[data-page-index="${lastIndex}"]`)!;
     expect(farPage().dataset.materialized).toBe('false');
+    let retained: ReadonlySet<number> | undefined;
+    const stop = surface.observePaint({
+      beforePaint: (pages) => {
+        retained = pages;
+      },
+      afterPaint() {},
+    });
+    const pinned = host.querySelector('.docx-page[data-page-index="0"] .docx-paragraph-fragment');
 
     // Jump the viewport to the last page and let the frame-coalesced repaint run.
     const last = surface.layout().pages[lastIndex]!;
@@ -149,6 +157,12 @@ describe('only the pages on screen are built (task 9.4)', () => {
     await new Promise((resolve) => setTimeout(resolve, 50));
 
     expect(farPage().dataset.materialized).toBe('true');
+    expect(retained?.has(0)).toBe(true);
+    expect(retained?.has(lastIndex)).toBe(false);
+    expect(host.querySelector('.docx-page[data-page-index="0"] .docx-paragraph-fragment')).toBe(
+      pinned
+    );
+    stop();
     expect(host.querySelectorAll('.docx-page').length).toBe(lastIndex + 1);
     surface.destroy();
     scroller.remove();

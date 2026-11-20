@@ -16,7 +16,8 @@ export interface SurfacePaintFrame {
  * @public
  */
 export interface SurfacePaintObserver {
-  beforePaint?(): void;
+  /** A viewport paint keeps the native nodes on these materialized pages in place. */
+  beforePaint?(retainedPages?: ReadonlySet<number>): void;
   afterPaint(frame: SurfacePaintFrame): void;
   /** Release host resources when this surface is destroyed or its document is replaced. */
   destroyed?(): void;
@@ -53,9 +54,9 @@ export function createPaintObservers(repaint: () => void, parked: () => boolean)
         if (observers.delete(observer)) observer.beforePaint?.();
       };
     },
-    beforePaint() {
+    beforePaint(retainedPages?: ReadonlySet<number>) {
       lastFrame = null;
-      for (const observer of observers) observer.beforePaint?.();
+      for (const observer of observers) observer.beforePaint?.(retainedPages);
     },
     afterPaint(frame: SurfacePaintFrame) {
       lastFrame = frame;

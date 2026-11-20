@@ -2770,7 +2770,7 @@ export function mountPaginatedSurface(
     },
   });
 
-  function render(notifyChange = true): void {
+  function render(notifyChange = true, viewportOnly = false): void {
     drop?.refresh();
     // Any render catches the screen up to `currentLayout`, so a paint deferred under input
     // pressure is performed BY this one rather than repeated a task later — a scroll repaint
@@ -2806,7 +2806,7 @@ export function mountPaginatedSurface(
     const paintBegan = now();
     // Read the viewport before custom controls change the DOM for this paint.
     materializedSet = visiblePages();
-    paintObservers.beforePaint();
+    if (!viewportOnly) paintObservers.beforePaint();
     // Shared furniture: keep the visual occurrence on a built page before paint marks
     // `data-docx-hf-active`, so scroll cannot leave the caret host on a dematerialized sheet.
     hfScope?.reconcileOccurrence();
@@ -2846,7 +2846,8 @@ export function mountPaginatedSurface(
           : {}),
         ...(contentControlChrome ? { contentControlChrome } : {}),
       },
-      reviewAuthors.get().value
+      reviewAuthors.get().value,
+      viewportOnly ? paintObservers.beforePaint : undefined
     );
     // Paint just rebuilt every span, so the caret's field lost its mark with the old DOM.
     textboxEditing?.syncDom();
@@ -2917,7 +2918,7 @@ export function mountPaginatedSurface(
     ) {
       return;
     }
-    render(false);
+    render(false, true);
   }
 
   const caretView = createCaretViewFollower({
