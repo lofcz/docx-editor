@@ -49,7 +49,7 @@ export function withRecapColumns(pkg: OoxmlPackage): OoxmlPackage {
     const fill = (node: OoxmlNode): OoxmlNode => {
       if (node.kind === 'paragraph') return pair[column++]!;
       if (node.kind === 'textValue') return { ...node, id: next() };
-      return { ...node, id: next(), children: node.children.map(fill) };
+      return { ...node, id: next(), children: node.children.map(fill) } as OoxmlNode;
     };
     const updated = replaceChildren(part, content.id, [
       ...content.children.slice(0, at),
