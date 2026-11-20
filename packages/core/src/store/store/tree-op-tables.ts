@@ -6,6 +6,7 @@ import { withInsertedTablePropertyPresence } from './inserted-paragraph-property
 // merge repeats `w:vMerge` for the covered cells, so the merge grows by one row.
 
 import { actorScopedSeed } from '../package/actor-scoped-ids.ts';
+import { flattenContentControls } from '../package/content-control-nodes.ts';
 import {
   createMarkContainerIdAllocator,
   createNodeIdAllocator,
@@ -1089,7 +1090,7 @@ function directCellInsertIndex(row: OoxmlTableRowNode, cellIndex: number): numbe
 }
 
 function firstParagraphId(cell: OoxmlTableCellNode): string | null {
-  const paragraph = cell.children.find((child) => child.kind === 'paragraph');
+  const paragraph = flattenContentControls(cell.children).find((child) => child.kind === 'paragraph');
   return paragraph?.id ?? null;
 }
 

@@ -722,6 +722,21 @@ describe('deleteTableColumn', () => {
     expect(result.effect.caret?.paragraphId).toBe(firstParagraphInCell(result.part, leftCell)?.id);
   });
 
+  test('lands in the surviving cell when its paragraphs belong to a content control', () => {
+    const wrapped = '<w:tc><w:sdt><w:sdtPr/><w:sdtContent><w:p/></w:sdtContent></w:sdt></w:tc>';
+    const part = load(TABLE(ROW(wrapped, CELL('Remove'))));
+    const table = firstTable(part);
+    const [, removed] = gridColIds(part, table.id);
+    const surviving = collectByKind(part.root, 'paragraph')[0]!;
+    const result = applyTreeOp(part, {
+      op: 'deleteTableColumn',
+      tableId: table.id,
+      gridColumnId: removed!,
+    });
+    if (!result.ok) throw new Error(result.reason);
+    expect(result.effect.caret?.paragraphId).toBe(surviving.id);
+  });
+
   test('refuses deleting the final column', () => {
     const part = load(
       `<w:tbl><w:tblGrid><w:gridCol w:w="2400"/></w:tblGrid>${ROW(CELL('only'))}</w:tbl>`

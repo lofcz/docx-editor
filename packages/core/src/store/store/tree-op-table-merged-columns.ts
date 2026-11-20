@@ -19,6 +19,7 @@ import type {
   OoxmlTableRowNode,
 } from '../package/ooxml-tree.ts';
 import { usedParaIds } from '../package/para-id.ts';
+import { flattenContentControls } from '../package/content-control-nodes.ts';
 import { wmlFreshNamespaceContextAt } from '../package/wml-namespace.ts';
 import { readEditableTableTopology } from './tree-op-table-topology.ts';
 import { paragraphIdsWithin } from './tree-op-blocks.ts';
@@ -129,7 +130,7 @@ export function validateMergedColumnOp(part: OoxmlPart, op: ColumnOp): TreeOpRej
 }
 
 function firstParagraphIdOf(cell: OoxmlTableCellNode): string | undefined {
-  return cell.children.find((child) => child.kind === 'paragraph')?.id;
+  return flattenContentControls(cell.children).find((child) => child.kind === 'paragraph')?.id;
 }
 
 function covering(cells: readonly PlacedCell[], column: number): PlacedCell | undefined {
