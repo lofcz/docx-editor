@@ -19,6 +19,7 @@ import { removeTblPrChild } from './tree-op-table-properties.ts';
 import { isWmlElement, wmlChildNamed } from './tree-op-table-shared.ts';
 import { readEditableTableTopology } from './tree-op-table-topology.ts';
 import { MIN_TABLE_COLUMN_WIDTH_TWIPS } from './table-constraints.ts';
+import { retainTablePropertyAttributes } from './table-property-attributes.ts';
 import { resizedGridCells, validateTableResizeGrid } from './table-resize-grid.ts';
 import type { TreeDocOp, TreeOpRejection, TreeOpResult } from './tree-op-types.ts';
 
@@ -197,11 +198,17 @@ export function applyTableProperties(part: OoxmlPart, op: Op, options?: EditOpti
         } as OoxmlElement;
     }
   };
-  if (op.preferredWidth !== undefined)
-    updateTableLeaf(
-      'tblW',
-      op.preferredWidth && { type: op.preferredWidth.type, w: String(op.preferredWidth.value) }
-    );
+  if (op.preferredWidth) {
+    const props = wmlChildNamed(updated, 'tblPr');
+    const old = props && wmlChildNamed(props, 'tblW');
+    const next = fresh('tblW', {
+      type: op.preferredWidth.type,
+      w: String(op.preferredWidth.value),
+    });
+    const width = retainTablePropertyAttributes(props, next);
+    // Give each changed preference its own node so undo can restore a concurrent preference.
+    if (width !== old) updated = patch(updated, 'tblPr', { ...width, id: next.id });
+  } else if (op.preferredWidth === null) updateTableLeaf('tblW', null);
   if (op.justification !== undefined)
     updateTableLeaf('jc', op.justification && { val: op.justification });
   if (op.styleOptions)

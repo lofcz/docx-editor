@@ -9,6 +9,7 @@ Production use requires a commercial agreement: licensing@eigenpal.com
 // order, whichever peer's insert lands first. A late joiner and a reopen agree.
 import { afterEach, describe, expect, test } from 'bun:test';
 import {
+  canonicalOoxmlFingerprint,
   readOoxmlPart,
   serializeOoxmlPart,
   type OoxmlNode,
@@ -35,16 +36,16 @@ const table = (row: string) =>
   '<w:tbl><w:tblPr><w:tblW w:w="0" w:type="auto"/></w:tblPr>' +
   `<w:tblGrid><w:gridCol w:w="3000"/></w:tblGrid>${row}</w:tbl><w:p/><w:sectPr/>`;
 
-/** The ids of the table, its row, and its cell. */
-function idsOf(peer: Peer): { table: string; row: string; cell: string } {
+/** The first table, grid column, row, and cell. */
+function idsOf(peer: Peer): { table: string; column: string; row: string; cell: string } {
   const found: Record<string, string> = {};
   const visit = (node: OoxmlNode): void => {
     if (node.kind === 'textValue') return;
-    if (['tbl', 'tr', 'tc'].includes(node.localName)) found[node.localName] ??= node.id;
+    if (['tbl', 'gridCol', 'tr', 'tc'].includes(node.localName)) found[node.localName] ??= node.id;
     node.children.forEach(visit);
   };
   visit(peer.store.bodyStore().part.root);
-  return { table: found.tbl!, row: found.tr!, cell: found.tc! };
+  return { table: found.tbl!, column: found.gridCol!, row: found.tr!, cell: found.tc! };
 }
 
 /** The saved table row. */
@@ -85,6 +86,47 @@ async function concurrent(
 
 for (const order of ORDERS)
   describe(`Alice's client id ${order.alice}, Bob's ${order.bob}`, () => {
+    test('each peer can undo its column and leave the surviving width preference intact', async () => {
+      const harness = createPeerHarness('column-width-room', undefined, order);
+      harnesses.push(harness);
+      const source = table(ROW_HELD).replace(
+        '<w:tblW w:w="0" w:type="auto"/>',
+        '<w:tblW xmlns:x="urn:extension" x:w="keep" w:w="0" w:type="auto"><x:child/></w:tblW>'
+      );
+      const { alice, bob, pause, resume } = await harness.pair(zipDocument(source));
+      const { table: tableId, column: gridColumnId } = idsOf(alice);
+      const before = canonicalOoxmlFingerprint(alice.store.bodyStore().part);
+      const insert = (peer: Peer, where: 'left' | 'right') =>
+        harness.apply(peer, [
+          { op: 'insertTableColumn', tableId, gridColumnId, where },
+          { op: 'setTableProperties', tableId, preferredWidth: { type: 'dxa', value: 3000 } },
+        ]);
+      const check = (columns: number, preferred: string) => {
+        harness.expectConverged(alice, bob);
+        const xml = serializeOoxmlPart(bob.store.bodyStore().part);
+        expect(xml.match(/<w:gridCol\b/g)).toHaveLength(columns);
+        expect(xml.match(/<w:tblW\b/g)).toHaveLength(1);
+        const width = xml.slice(xml.indexOf('<w:tblW'), xml.indexOf('</w:tblW>'));
+        expect(width).toContain(preferred);
+        expect(width).toContain('x:w="keep"');
+        expect(width).toContain('<x:child');
+      };
+      pause();
+      insert(alice, 'left');
+      insert(bob, 'right');
+      resume();
+      check(3, 'w:w="3000"');
+      expect(alice.room.session.undo()).toBe(true);
+      check(2, 'w:w="3000"');
+      expect(bob.room.session.undo()).toBe(true);
+      check(1, 'w:type="auto"');
+      expect(canonicalOoxmlFingerprint(alice.store.bodyStore().part)).toBe(before);
+      expect(alice.room.session.redo()).toBe(true);
+      check(2, 'w:w="3000"');
+      expect(bob.room.session.redo()).toBe(true);
+      check(3, 'w:w="3000"');
+    });
+
     test('a row height and a header row on a row with no w:trPr save as one w:trPr', async () => {
       const { saved } = await concurrent(
         ROW_BARE,
