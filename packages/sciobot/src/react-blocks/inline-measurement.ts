@@ -51,16 +51,20 @@ export class InlineMeasurement {
     if (this.disposed) return;
     const previous = this.entries.get(controlId);
     const doc = element.ownerDocument;
-    const Observer = doc.defaultView?.ResizeObserver;
+    const view = doc.defaultView;
+    const Observer = view?.ResizeObserver;
     let observer = this.observers.get(doc) ?? null;
     if (!observer && Observer) {
       // Chromium runs microtasks between observers. One delivery must publish one
       // layout snapshot when several equations acquire their intrinsic sizes together.
       observer = new Observer((changes) => {
-        for (const { target } of changes) {
-          const id = this.ids.get(target);
-          if (id !== undefined) this.schedule(id);
-        }
+        // Publish new dimensions after the browser completes this resize delivery.
+        view.requestAnimationFrame(() => {
+          for (const { target } of changes) {
+            const id = this.ids.get(target);
+            if (id !== undefined) this.schedule(id);
+          }
+        });
       });
       this.observers.set(doc, observer);
     }

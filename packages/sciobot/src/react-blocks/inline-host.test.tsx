@@ -57,6 +57,8 @@ test('one browser resize delivery publishes all changed inline widths together',
       // The browser runs queued microtasks between callbacks from distinct observers.
       await Promise.resolve();
     }
+    expect(flush).toHaveBeenCalledTimes(0);
+    await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
     expect(flush).toHaveBeenCalledTimes(1);
     expect(observers).toHaveLength(1);
     measurement.release('first', first);
