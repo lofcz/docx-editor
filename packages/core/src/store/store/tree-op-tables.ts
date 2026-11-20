@@ -1090,7 +1090,9 @@ function directCellInsertIndex(row: OoxmlTableRowNode, cellIndex: number): numbe
 }
 
 function firstParagraphId(cell: OoxmlTableCellNode): string | null {
-  const paragraph = flattenContentControls(cell.children).find((child) => child.kind === 'paragraph');
+  const paragraph = flattenContentControls(cell.children).find(
+    (child) => child.kind === 'paragraph'
+  );
   return paragraph?.id ?? null;
 }
 
