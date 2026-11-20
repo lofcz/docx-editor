@@ -60,10 +60,14 @@ function columns(left: string): Uint8Array {
   return writeOoxmlPackage(pkg);
 }
 
-const texts = (editor: DocxEditorInstance) =>
-  editor
-    .surface!.session.paragraphIds()
-    .map((id) => paragraphTextOf(editor.surface!.session.part(), id));
+function expectColumnTexts(editor: DocxEditorInstance, expected: string[]) {
+  const session = editor.surface!.session;
+  const part = session.part();
+  const ids = session.paragraphIds();
+  // Word puts the final caret paragraph after the table, outside both columns.
+  expect(parentNodeOf(part, ids.at(-1)!)?.kind).toBe('body');
+  expect(ids.map((id) => paragraphTextOf(part, id))).toEqual([...expected, '']);
+}
 const idOf = (editor: DocxEditorInstance, text: string) =>
   editor
     .surface!.session.paragraphIds()
@@ -146,7 +150,7 @@ for (const [kind, start, end] of boundaries)
         document: new Uint8Array(await editor.save()),
       });
       try {
-        expect(texts(reopened)).toEqual(['Tail', 'Destination', value]);
+        expectColumnTexts(reopened, ['Tail', 'Destination', value]);
         expectOwner(reopened, idOf(reopened, value), 'right');
         expect(serializeOoxmlPart(reopened.surface!.session.part())).toContain('<w:t>Whole</w:t>');
       } finally {
@@ -183,13 +187,13 @@ for (const clientIds of [
       pair.reconnect(clientIds[0] === 41 ? 0 : 1);
       await pair.settle();
       for (const editor of pair.editors) {
-        expect(texts(editor)).toEqual(['Tail', 'Destination', 'Whole peer']);
+        expectColumnTexts(editor, ['Tail', 'Destination', 'Whole peer']);
         expectOwner(editor, nodeId, 'right');
       }
       expect(alice.exec({ type: 'undo' }).ok).toBe(true);
       await pair.settle();
       for (const editor of pair.editors) {
-        expect(texts(editor)).toEqual(['Whole peer', 'Tail', 'Destination']);
+        expectColumnTexts(editor, ['Whole peer', 'Tail', 'Destination']);
         expectOwner(editor, nodeId, 'left');
       }
       expect(alice.exec({ type: 'redo' }).ok).toBe(true);
@@ -201,7 +205,7 @@ for (const clientIds of [
         document: new Uint8Array(await alice.save()),
       });
       try {
-        expect(texts(reopened)).toEqual(['Tail', 'Destination', 'Whole peer']);
+        expectColumnTexts(reopened, ['Tail', 'Destination', 'Whole peer']);
         expectOwner(reopened, idOf(reopened, 'Whole peer'), 'right');
       } finally {
         reopened.destroy();
@@ -220,7 +224,7 @@ for (const clientIds of [
       expect(bob.exec({ type: 'undo' }).ok).toBe(true);
       await pair.settle();
       for (const editor of pair.editors) {
-        expect(texts(editor)).toEqual(['Tail', 'Destination', 'Whole peer']);
+        expectColumnTexts(editor, ['Tail', 'Destination', 'Whole peer']);
         expectOwner(editor, nodeId, 'right');
       }
       const after = await pair.savedDigests();
