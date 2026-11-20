@@ -631,9 +631,17 @@ export function planTargetDocument(
             (child) => domainNodeFromAst(astOf(child), registry)?.type
           );
           const positions = recap.columns.map((column) => types.indexOf(column.block.payload.type));
-          const retained = positions.filter((position) => position >= 0);
+          const retained = positions.filter((position) => position >= 0).sort((a, b) => a - b);
           if (retained.some((position, i) => position !== retained[0]! + i))
             return fail('Moving an overview column needs a native table structure plan.');
+          if (recap.columns.length === 2 && positions[1]! >= 0 && positions[0]! > positions[1]!)
+            operations.push({
+              kind: 'swap-overview-columns',
+              partName: part.name,
+              overviewId: block.id,
+              firstId: recap.columns[0]!.block.id,
+              secondId: recap.columns[1]!.block.id,
+            });
           let newStart = retained[0];
           if (newStart === undefined) {
             const physical = parent.children.findIndex((child) => child.id === recap.tableId);

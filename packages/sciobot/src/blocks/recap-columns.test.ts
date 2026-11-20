@@ -46,6 +46,30 @@ for (const reverse of [false, true])
     const unchanged = planTargetDocument(input, projection.text);
     if (!unchanged.success) throw new Error(unchanged.error);
     expect(unchanged.plan.operations).toEqual([]);
+    const first = projection.text.match(/<recap_(curriculum|materials)\b[\s\S]*?<\/recap_\1>/g)!;
+    const swapped = projection.text.replace(first.join('\n\n'), [...first].reverse().join('\n\n'));
+    expect(swapped).not.toBe(projection.text);
+    const reordering = planTargetDocument(input, swapped);
+    if (!reordering.success) throw new Error(reordering.error);
+    expect(reordering.plan.operations.map((edit) => edit.kind)).toEqual(['swap-overview-columns']);
+    const reordered = previewDirectPlan(input.pkg, reordering.plan);
+    if (!reordered.success) throw new Error(reordered.error);
+    const swappedIndex = buildBlockIndex(reordered.pkg);
+    const oldIndex = buildBlockIndex(input.pkg);
+    const originalCells = readPresentationColumns(
+      input.pkg,
+      oldIndex.byId.get('overview')!,
+      oldIndex
+    )!.columns;
+    const swappedCells = readPresentationColumns(
+      reordered.pkg,
+      swappedIndex.byId.get('overview')!,
+      swappedIndex
+    )!.columns;
+    expect(swappedCells.map((cell) => [cell.cellId, cell.block.id])).toEqual(
+      [...originalCells].reverse().map((cell) => [cell.cellId, cell.block.id])
+    );
+    expect((await projectSourcePackage(reordered.pkg)).text).toBe(swapped);
     const edit = planTargetDocument(input, projection.text.replace('Cards', 'Cards and dice'));
     if (!edit.success) throw new Error(edit.error);
     const applied = previewDirectPlan(input.pkg, edit.plan);

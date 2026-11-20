@@ -7,6 +7,7 @@ import { planTargetDocument } from '../diff/plan-target';
 import { readEditorRevision } from '../projection/revision-cache';
 import { readWorkingView } from '../review/working-view';
 import { buildBlockIndex } from './block-index';
+import { readPresentationColumns } from './column-geometry';
 import { readPayloadStore } from './payload-opc-codec';
 
 test('deleting overview materials preserves the peer curriculum edit, history, and saved controls', async () => {
@@ -29,8 +30,43 @@ test('deleting overview materials preserves the peer curriculum edit, history, a
   try {
     const [first, second] = pair.editors;
     const surface = first!.surface!;
-    const revision = readEditorRevision(first!, context.documentId, context.epoch)!;
-    const read = await readWorkingView(surface.session, revision);
+    const columns = () =>
+      pair.editors.map((editor) => {
+        const pkg = editor.surface!.session.currentPackage(),
+          index = buildBlockIndex(pkg);
+        const owner = [...index.byId.values()].find(
+          (block) => block.payload.type === 'preparation_recap'
+        )!;
+        return readPresentationColumns(pkg, owner, index)!.columns.map((cell) => [
+          cell.cellId,
+          cell.block.id,
+        ]);
+      });
+    const originalColumns = columns();
+    let revision = readEditorRevision(first!, context.documentId, context.epoch)!;
+    let read = await readWorkingView(surface.session, revision);
+    if (!read.success) throw new Error(read.error);
+    const parts = read.view.projection.text.match(
+      /<recap_(curriculum|materials)\b[\s\S]*?<\/recap_\1>/g
+    )!;
+    const swapped = read.view.projection.text.replace(
+      parts.join('\n\n'),
+      [...parts].reverse().join('\n\n')
+    );
+    const reorder = planTargetDocument(
+      { pkg: surface.session.currentPackage(), revision, projection: read.view.projection },
+      swapped
+    );
+    if (!reorder.success) throw new Error(reorder.error);
+    const moved = applyDirectPlan(first!, reorder.plan, context);
+    if (!moved.success) throw new Error(moved.error);
+    await pair.settle();
+    expect(columns()).toEqual(originalColumns.map((order) => [...order].reverse()));
+    expect(first!.exec({ type: 'undo' }).ok).toBe(true);
+    await pair.settle();
+    expect(columns()).toEqual(originalColumns);
+    revision = readEditorRevision(first!, context.documentId, context.epoch)!;
+    read = await readWorkingView(surface.session, revision);
     if (!read.success) throw new Error(read.error);
     const projection = read.view.projection;
     const next = projection.text.replace(/<recap_materials>[\s\S]*?<\/recap_materials>\n\n/, '');

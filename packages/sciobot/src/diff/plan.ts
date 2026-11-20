@@ -149,6 +149,12 @@ export type CanonicalEdit = LocatedEdit &
         readonly hyperlinkId: string;
       }
     | { readonly kind: 'table'; readonly operation: PlannedTableOperation }
+    | {
+        readonly kind: 'swap-overview-columns';
+        readonly overviewId: string;
+        readonly firstId: string;
+        readonly secondId: string;
+      }
     | { readonly kind: 'insert-row'; readonly intent: InsertedTableRowIntent }
     | { readonly kind: 'insert-column'; readonly intent: InsertedTableColumnIntent }
     | { readonly kind: 'split-cell'; readonly intent: SplitTableCellIntent }
@@ -481,6 +487,14 @@ function editProblem(edit: unknown): string | null {
       return isInsertedColumnIntent(edit.intent) && keysOnly(edit, [...base, 'intent'])
         ? null
         : 'invalid-inserted-column';
+    case 'swap-overview-columns':
+      return id(edit.overviewId) &&
+        id(edit.firstId) &&
+        id(edit.secondId) &&
+        edit.firstId !== edit.secondId &&
+        keysOnly(edit, [...base, 'overviewId', 'firstId', 'secondId'])
+        ? null
+        : 'invalid-overview-columns';
     case 'table-geometry':
       return isTableGeometryIntent(edit.intent) && keysOnly(edit, [...base, 'intent'])
         ? null
@@ -517,6 +531,7 @@ function withoutNoop(edit: CanonicalEdit): CanonicalEdit | null {
     }
     case 'inline-remove':
     case 'inline-atoms':
+    case 'swap-overview-columns':
     case 'table':
     case 'insert-row':
     case 'insert-column':

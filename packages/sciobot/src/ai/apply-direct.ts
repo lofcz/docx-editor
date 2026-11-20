@@ -1,4 +1,5 @@
 import { directImageHistory } from './direct-image-history';
+import { swapOverviewColumns } from '../blocks/swap-overview-columns';
 import { completeImageReplacement } from './direct-image-replacement';
 import { cellAtomBindings, insertedAtomsOfEdit } from '../diff/inserted-cell-atoms';
 import { completeInlineAtomPayloads } from '../native/inline-atom-payloads';
@@ -530,6 +531,9 @@ function lowerDirectPlan(
             images
           );
         });
+        break;
+      case 'swap-overview-columns':
+        deferred.push((working) => swapOverviewColumns(working, edit));
         break;
       case 'table': {
         const payloads = tablePayloadIds(preview, edit.operation);
