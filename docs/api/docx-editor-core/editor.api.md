@@ -3305,6 +3305,9 @@ export function isoDateOf(date: Date): string;
 // @public
 export function isPointerEvent(event: Event): event is PointerEvent;
 
+// @internal (undocumented)
+export function isRibbonTableCommand(slot: RibbonSlot): slot is keyof typeof ribbonTableCommands;
+
 // @public
 export const isShapeChromeSlot: (id: string) => id is ShapeChromeSlotId;
 
@@ -4746,6 +4749,9 @@ export function resolveZoomMode(mode: ZoomMode | 'auto'): ZoomMode | null;
 export function revealMenuItem(panel: HTMLElement, item: Element | null): void;
 
 // @internal
+export function revealRibbonTab(button: HTMLElement): void;
+
+// @internal
 export const REVIEW_MARKERS_GUTTER_PX = 44;
 
 // @public
@@ -4933,6 +4939,126 @@ export interface RevisionMarkupTextStyle<Mark extends string = RevisionMarkupMar
 
 // @public
 export type RevisionStyles = 'kind' | 'author' | RevisionAuthorAssignments;
+
+// @internal
+export function ribbonBands<T>(groups: readonly {
+    id: string;
+    node: T;
+}[]): {
+    caption?: string;
+    id: string;
+    nodes: T[];
+}[];
+
+// @internal (undocumented)
+export interface RibbonGroup {
+    // (undocumented)
+    id: string;
+    // (undocumented)
+    labelKey: string;
+    // (undocumented)
+    slots: readonly RibbonSlot[];
+    // (undocumented)
+    tab: RibbonTab;
+}
+
+// @internal (undocumented)
+export function ribbonGroups(image: EditorSnapshot['image'], options: FormattingBarOptions, table: boolean): readonly RibbonGroup[];
+
+// @internal (undocumented)
+export function ribbonKeyTab(key: string, tabs: readonly RibbonTab[], active: RibbonTab, rtl: boolean): RibbonTab | undefined;
+
+// @internal (undocumented)
+export function ribbonSelection(groups: readonly {
+    tab: RibbonTab;
+}[], preferred: RibbonTab | undefined, context: RibbonTab): {
+    active: "home" | "insert" | "layout" | "picture" | "review" | "tableDesign" | "tableLayout" | "view";
+    tabs: ("home" | "insert" | "layout" | "picture" | "review" | "tableDesign" | "tableLayout" | "view")[];
+};
+
+// @internal (undocumented)
+export type RibbonSlot = ChromeSlotId | 'alignment' | keyof typeof ribbonTableCommands;
+
+// @internal (undocumented)
+export type RibbonTab = keyof typeof ribbonTabs;
+
+// @internal (undocumented)
+export interface RibbonTabControls {
+    // (undocumented)
+    active: RibbonTab;
+    // (undocumented)
+    collapsed: boolean;
+    // (undocumented)
+    label: (key: string) => string;
+    // (undocumented)
+    panelId: string;
+    // (undocumented)
+    rtl: boolean;
+    // (undocumented)
+    select: (tab: RibbonTab) => void;
+    // (undocumented)
+    tabs: readonly RibbonTab[];
+    // (undocumented)
+    toggle: () => void;
+}
+
+// @internal (undocumented)
+export const ribbonTableCommands: {
+    readonly 'ribbon.blueGrid': {
+        readonly styleId: 'BandedGridBlue';
+        readonly type: 'setTableProperties';
+    };
+    readonly 'ribbon.fitWindow': {
+        readonly autoFit: 'window';
+        readonly type: 'setTableProperties';
+    };
+    readonly 'ribbon.fixedWidth': {
+        readonly autoFit: 'fixed';
+        readonly type: 'setTableProperties';
+    };
+    readonly 'ribbon.greenGrid': {
+        readonly styleId: 'BandedGridGreen';
+        readonly type: 'setTableProperties';
+    };
+    readonly 'table.deleteColumn': {
+        readonly type: 'deleteColumn';
+    };
+    readonly 'table.deleteRow': {
+        readonly type: 'deleteRow';
+    };
+    readonly 'table.insertColumnLeft': {
+        readonly type: 'insertColumn';
+        readonly where: 'left';
+    };
+    readonly 'table.insertColumnRight': {
+        readonly type: 'insertColumn';
+        readonly where: 'right';
+    };
+    readonly 'table.insertRowAbove': {
+        readonly type: 'insertRow';
+        readonly where: 'above';
+    };
+    readonly 'table.insertRowBelow': {
+        readonly type: 'insertRow';
+        readonly where: 'below';
+    };
+    readonly 'tableAdvanced.autoFit': {
+        readonly autoFit: 'contents';
+        readonly type: 'setTableProperties';
+    };
+};
+
+// @internal (undocumented)
+export const ribbonTabs: {
+    readonly home: 'ribbon.home';
+    readonly insert: 'toolbar.insert';
+    readonly layout: 'ribbon.layout';
+    readonly picture: 'ribbon.pictureFormat';
+    readonly review: 'toolbar.review';
+    readonly tableDesign: 'ribbon.tableDesign';
+    readonly tableLayout: 'ribbon.tableLayout';
+    readonly view: 'ribbon.view';
+};
 
 // @public
 export interface RulerDragOptions {
@@ -5707,7 +5833,6 @@ export interface SurfacePaintFrame {
 export interface SurfacePaintObserver {
     // (undocumented)
     afterPaint(frame: SurfacePaintFrame): void;
-    // (undocumented)
     beforePaint?(retainedPages?: ReadonlySet<number>): void;
     destroyed?(): void;
 }
