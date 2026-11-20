@@ -67,3 +67,7 @@ Pass a component registry to `importMdxDocument` to provide a readable Word repr
 Without a registered representation, an empty component displays its alternate text, title, label, summary, or name. Editing a literal display attribute in Word updates its MDX value. The exporter reports an error when it cannot represent changes to generated text or formatting.
 
 The importer preserves JavaScript expressions and imports as source. It never executes document code or fetches a remote image. Use a trusted project view when a component needs application behavior.
+
+## Include images in Word and print
+
+Use a PNG or JPEG data URL in a Markdown image to embed it in the Word file. Supply alternate text in the square brackets. Embedded images display offline and print inside the page or table cell. The importer accepts up to 128 distinct images and 1 MiB of decoded data per image.
