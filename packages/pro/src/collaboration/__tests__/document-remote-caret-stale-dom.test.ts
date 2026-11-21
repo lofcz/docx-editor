@@ -37,6 +37,8 @@ function withPendingInput(): () => void {
 // keeps showing the old caret until the deferred paint. A `selectionchange` in between must
 // not take that old caret back, or the next keystroke lands inside the user's own text.
 test('a remote insertion before the caret survives a selection change before the paint', async () => {
+  const native = document.getSelection()!;
+  native.removeAllRanges();
   const peers = await harness.pair(
     zipDocument('<w:p><w:r><w:t>Shared</w:t></w:r></w:p><w:sectPr/>')
   );
@@ -52,6 +54,13 @@ test('a remote insertion before the caret survives a selection change before the
     modules: [collaborationModule({ session: peers.bob.room.session })],
   });
   editors.push(bob);
+  // Mount and peer paint publish presence without claiming the reader's browser selection.
+  const shared = harness.paragraphIdAt(peers.alice, 0);
+  harness.apply(peers.alice, [{ op: 'insertText', paragraphId: shared, offset: 6, text: '.' }]);
+  peers.bob.room.session.flushPendingJournals();
+  bob.surface!.layout();
+  expect(bob.findMatches('Shared.')).toHaveLength(1);
+  expect(native.rangeCount).toBe(0);
   const id = bob.findMatches('Shared')[0]!.blockId;
   const end = { paragraphId: id, offset: 6 };
   bob.surface!.layout();
@@ -60,7 +69,6 @@ test('a remote insertion before the caret survives a selection change before the
 
   const restore = withPendingInput();
   try {
-    const shared = harness.paragraphIdAt(peers.alice, 0);
     harness.apply(peers.alice, [
       { op: 'insertText', paragraphId: shared, offset: 0, text: 'Peer ' },
     ]);

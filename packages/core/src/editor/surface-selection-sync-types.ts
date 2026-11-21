@@ -186,6 +186,8 @@ export interface SurfaceSelectionSync {
    * must use an unclaimed write.
    */
   mirrorToDom(claim?: boolean): void;
+  /** Refresh a browser selection that this surface has already acquired. */
+  mirrorAfterPaint(): void;
   /**
    * Take up the browser's newest selection immediately before a keyboard/input command.
    *

@@ -24,6 +24,26 @@ function mount() {
   return { surface, pages, text };
 }
 
+test('passive paints leave browser selection empty until focus or an explicit range request', () => {
+  const native = document.getSelection()!;
+  native.removeAllRanges();
+  container = document.createElement('div');
+  document.body.append(container);
+  const opened = mountPaginatedSurface(container, docx(paragraph('hello world')), { scale: 1 });
+  if (!opened.ok) throw new Error(opened.reason);
+  surface = opened.surface;
+  const pages = container.querySelector<HTMLElement>('.docx-pages')!;
+  surface.setScale(1.25);
+  expect(native.rangeCount).toBe(0);
+  expect(document.activeElement).not.toBe(pages);
+  expect(surface.state().selection.head.offset).toBe(0);
+
+  surface.focus();
+  expect(semanticSelectionFromDom(pages, native)).toEqual(surface.state().selection);
+  putCaret(surface, 4);
+  expect(semanticSelectionFromDom(pages, native)?.head.offset).toBe(4);
+});
+
 test('focusing an already focused editor preserves a pending native selection', () => {
   const { surface, pages, text } = mount();
   const native = document.getSelection()!;

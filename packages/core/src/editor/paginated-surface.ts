@@ -2908,7 +2908,7 @@ export function mountPaginatedSurface(
     // The surface may only now have been wrapped in its viewport, so the size watcher
     // re-resolves its target here rather than trusting what existed at mount.
     viewportBinding?.watchScrollerSize();
-    selectionSync.mirrorToDom();
+    selectionSync.mirrorAfterPaint();
     followCaretIntoView(caretFollowPending);
     // SPENT either way. Kept alive through a suppressed pass it would only wait for the next
     // repaint — the reader's own wheel scroll — and yank the view to a caret they had just

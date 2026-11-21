@@ -63,6 +63,9 @@ export function createSurfaceSelectionSync(deps: SurfaceSelectionSyncDeps): Surf
   const hostDocument = (): Document => pagesLayer.ownerDocument;
 
   let applyingSelection = false;
+  // A newly mounted surface has a model caret but no browser selection to maintain.
+  // Writing that caret during passive paint can force layout and focus the editor.
+  let selectionActivated = false;
   let lastMirroredSelection: SemanticSelection | null = null;
   /**
    * The sheet the last mapped gesture sat on.
@@ -89,6 +92,7 @@ export function createSurfaceSelectionSync(deps: SurfaceSelectionSyncDeps): Surf
   }
 
   function rememberSelectionPage(domSelection: Selection | null): void {
+    selectionActivated = true;
     const page =
       pageIndexOfNode(domSelection?.anchorNode, pagesLayer) ??
       pageIndexOfNode(domSelection?.focusNode, pagesLayer);
@@ -418,6 +422,7 @@ export function createSurfaceSelectionSync(deps: SurfaceSelectionSyncDeps): Surf
   const inputMethodEchoing = (): boolean => deps.now() < inputMethodEchoUntil;
 
   function mirrorToDom(claim = false): void {
+    if (claim) selectionActivated = true;
     // Ahead of the ownership guard: the caret is this engine's own, painted whether or not
     // the browser's selection lives here. It is repainted BEFORE the write and settles its
     // native counterpart after it.
@@ -464,6 +469,10 @@ export function createSurfaceSelectionSync(deps: SurfaceSelectionSyncDeps): Surf
 
   // Native pointer mode binds no engine handlers; touch bypasses them even in engine mode.
   // Capture here so a caret that lands on the last mirrored offset is still a gesture.
+  const onFocusIn = (event: FocusEvent): void => {
+    if (!isInHostUi(event.target as Node | null)) selectionActivated = true;
+  };
+  pagesLayer.addEventListener('focusin', onFocusIn);
   pagesLayer.addEventListener('pointerdown', noteUserSelectionGesture, true);
   pagesLayer.addEventListener('selectstart', noteUserSelectionGesture, true);
   // The composing text stays visible in a run painted to a clipped advance.
@@ -548,6 +557,9 @@ export function createSurfaceSelectionSync(deps: SurfaceSelectionSyncDeps): Surf
     },
 
     mirrorToDom,
+    mirrorAfterPaint() {
+      if (selectionActivated) mirrorToDom();
+    },
 
     adoptBeforeInput: adoptPendingUserSelection,
 
@@ -748,6 +760,7 @@ export function createSurfaceSelectionSync(deps: SurfaceSelectionSyncDeps): Surf
       if (caret) lastSelectionPageIndex = caret.pageIndex;
     },
     destroy() {
+      pagesLayer.removeEventListener('focusin', onFocusIn);
       pagesLayer.removeEventListener('pointerdown', noteUserSelectionGesture, true);
       pagesLayer.removeEventListener('selectstart', noteUserSelectionGesture, true);
       pagesLayer.removeEventListener('input', trackComposition);

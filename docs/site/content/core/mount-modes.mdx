@@ -48,6 +48,8 @@ A detached editor still saves, runs commands, and receives collaboration edits. 
 
 ## Control focus and lifecycle
 
+Opening a document keeps its initial caret in the model. Call `editor.focus()` to start keyboard editing immediately.
+
 | Option or event | Behavior |
 | --- | --- |
 | `attach(element, { focus: false })` | Leaves focus where it is. |

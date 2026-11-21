@@ -1,0 +1,13 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "The first paint could take browser focus while publishing an untouched model caret.",
+  "after": "Passive paints preserve browser focus until a participant selects or focuses the pages.",
+  "reason": "The change affects local browser selection. Model positions, remote cursors, edits, and the collaboration protocol keep their existing behavior.",
+  "tests": [
+    "packages/core/src/editor/__tests__/surface-focus.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-remote-caret-stale-dom.test.ts"
+  ],
+  "changeset": "initial-document-selection",
+  "migration": null
+}

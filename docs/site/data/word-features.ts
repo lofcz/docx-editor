@@ -1343,7 +1343,7 @@ export const wordFeatures: WordFeature[] = [
     tier: 'community',
     docsLink: '/docs/2.x/core/mount-modes',
     notes:
-      'Move an editor between same-origin windows without losing its document, selection, undo history, or collaboration session. Detached editors still save, run commands, and receive remote edits. Cross-origin windows are unsupported.',
+      'Open a document without taking keyboard focus. Move an editor between same-origin windows without losing its document, selection, undo history, or collaboration session. Detached editors still save, run commands, and receive remote edits.',
   },
   {
     id: 'collab.i18n',
