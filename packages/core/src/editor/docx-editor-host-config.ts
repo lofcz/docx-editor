@@ -2,14 +2,7 @@
 
 import { resolveLocale } from '../store/store/text-form-date-locale.ts';
 
-import {
-  createT,
-  deepMerge,
-  en,
-  locales,
-  type LocaleCode,
-  type LocaleStrings,
-} from '@docx-editor.dev/i18n';
+import { nativeTocTitles, type LocaleCode } from '@docx-editor.dev/i18n/runtime';
 import {
   DEFAULT_DRAWING_PAINT_STRINGS,
   drawingPaintStringsCacheToken,
@@ -33,7 +26,7 @@ function localeState(value: string | undefined): { locale: string; labels: TocLa
   // Keep the full regional tag for input, while catalogues fall back by language.
   // Strip Unicode extensions before looking up translated labels.
   let candidate = new Intl.Locale(locale).baseName;
-  while (candidate && !Object.hasOwn(locales, candidate)) {
+  while (candidate && !Object.hasOwn(nativeTocTitles, candidate)) {
     const separator = candidate.lastIndexOf('-');
     candidate = separator < 0 ? '' : candidate.slice(0, separator);
   }
@@ -42,16 +35,12 @@ function localeState(value: string | undefined): { locale: string; labels: TocLa
   const requested = new Intl.Locale(locale).maximize();
   const languageMatch = candidate
     ? undefined
-    : Object.keys(locales).find((name) => {
+    : Object.keys(nativeTocTitles).find((name) => {
         const available = new Intl.Locale(name).maximize();
         return available.language === requested.language && available.script === requested.script;
       });
   const code = (candidate || languageMatch || 'en') as LocaleCode;
-  const t = createT(
-    deepMerge(en, code === 'en' ? undefined : locales[code]) as LocaleStrings,
-    code
-  );
-  return { locale, labels: { title: t('toolbar.tableOfContents') } };
+  return { locale, labels: { title: nativeTocTitles[code] } };
 }
 
 /** State that construction config and later instance setters share. */

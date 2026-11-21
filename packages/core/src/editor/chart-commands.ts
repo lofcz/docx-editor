@@ -3,7 +3,7 @@
 // selected chart as the snapshot reports it (`EditorSnapshot.chart`) for the chart controls
 // and the Chart pane. The edits themselves are DOM-free (`store/package/chart-edit/`).
 
-import { createT, en } from '@docx-editor.dev/i18n';
+import { createT, en } from '@docx-editor.dev/i18n/runtime';
 import type { EditorCommand, ExecResult } from '../contracts/editor.ts';
 import type {
   ChartDataRead,

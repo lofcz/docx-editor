@@ -21,7 +21,7 @@
 
 import type { AutomationCapabilities, AutomationHost } from '../automation/protocol.ts';
 import { createAutomationHost } from '../automation/host.ts';
-import { en } from '@docx-editor.dev/i18n';
+import { en } from '@docx-editor.dev/i18n/runtime';
 import { openTreeSessionFromPackage } from '../binding/tree-session.ts';
 import { TreePackageStore } from '../store/store/tree-package-store.ts';
 import type { DocxEditorInstance } from './docx-editor-types.ts';

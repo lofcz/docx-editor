@@ -64,7 +64,7 @@ import {
 } from './surface-scope.ts';
 import { autoScrollDelta } from './surface-drag-autoscroll.ts';
 import { hitNoteStoryAtSheetPoint, sameNoteStory } from './surface-note-story.ts';
-import { isApplePlatform } from '@docx-editor.dev/i18n';
+import { isApplePlatform } from '@docx-editor.dev/i18n/runtime';
 
 /** Active header/footer scope as seen by the pointer layer. */
 export interface ActiveHeaderFooterPointerState {

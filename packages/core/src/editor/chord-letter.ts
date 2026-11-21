@@ -1,7 +1,7 @@
 // The letter a keyboard chord names, read the same way by the engine keymap and the
 // adapters' own shortcuts.
 
-import { isApplePlatform } from '@docx-editor.dev/i18n';
+import { isApplePlatform } from '@docx-editor.dev/i18n/runtime';
 
 /** A single Latin letter, which is what every chord in this keymap is named by. */
 const CHORD_LETTER = /^[a-z]$/;

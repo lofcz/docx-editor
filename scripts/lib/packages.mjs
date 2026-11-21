@@ -39,6 +39,12 @@ export const PACKAGES = [
     name: '@docx-editor.dev/i18n',
     root: 'packages/i18n',
     pkgSlug: 'docx-editor-i18n',
+    // The runtime re-exports the root's existing types. These implementation names
+    // describe its English JSON shape, dotted keys, and plain-object merge.
+    forgottenExports: {
+      logLevel: 'warning',
+      allowlist: { runtime: ['enJson', 'DotPath', 'AnyRecord'] },
+    },
   },
   {
     name: '@docx-editor.dev/react',

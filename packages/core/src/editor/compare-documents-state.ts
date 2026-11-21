@@ -23,7 +23,7 @@ import { readDocumentProtection } from '../store/package/document-protection.ts'
 import { settingsPartOf } from '../store/package/note-properties.ts';
 import { commandProtectionRefusal } from './command-protection.ts';
 import { createEditorAnnouncer } from './editor-announcer.ts';
-import { createT, en } from '@docx-editor.dev/i18n';
+import { createT, en } from '@docx-editor.dev/i18n/runtime';
 import { hostTimers } from './host-realm.ts';
 import { PRO_REVIEW_REASON } from './opening-editing-mode.ts';
 import type { PaginatedSurface } from './paginated-surface-contract.ts';

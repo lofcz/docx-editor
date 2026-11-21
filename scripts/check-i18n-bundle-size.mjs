@@ -35,7 +35,7 @@ if (codes.length === 0) {
 const errors = [];
 const rows = [];
 
-for (const code of codes) {
+for (const code of ['runtime', ...codes]) {
   for (const ext of ['mjs', 'js']) {
     const file = `${code}.${ext}`;
     const path = join(i18nDist, file);
@@ -72,5 +72,5 @@ if (errors.length > 0) {
 }
 
 console.log(
-  `\nAll ${rows.length} per-locale bundles under ${MAX_BYTES / 1024} KB.`
+  `\nAll ${rows.length} runtime and per-locale bundles under ${MAX_BYTES / 1024} KB.`
 );

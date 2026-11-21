@@ -161,3 +161,14 @@ To contribute, see [CONTRIBUTING.md](https://github.com/eigenpal/docx-editor/blo
 ## Commercial support
 
 For commercial support or custom features, [email the support team](mailto:docx-editor@eigenpal.com).
+
+### Use one catalog with the runtime helpers
+
+Import the runtime helpers and the catalog that your host needs. The runtime includes English fallback strings.
+
+```ts
+import { createT, deepMerge, en, type LocaleStrings } from '@docx-editor.dev/i18n/runtime';
+import pl from '@docx-editor.dev/i18n/pl';
+
+const t = createT(deepMerge(en, pl) as LocaleStrings, 'pl');
+```

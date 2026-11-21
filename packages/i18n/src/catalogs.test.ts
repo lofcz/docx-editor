@@ -43,3 +43,12 @@ for (const [code, catalog] of Object.entries(locales)) {
     }
   });
 }
+
+test('native table of contents titles match the complete catalogs', async () => {
+  const { nativeTocTitles } = await import('./runtime');
+  expect(Object.keys(nativeTocTitles)).toEqual(Object.keys(locales));
+  for (const code of Object.keys(nativeTocTitles) as (keyof typeof locales)[]) {
+    const t = createT(deepMerge(en, locales[code]) as LocaleStrings, code);
+    expect(nativeTocTitles[code]).toBe(t('toolbar.tableOfContents'));
+  }
+});

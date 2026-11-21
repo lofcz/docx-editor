@@ -13,7 +13,7 @@
 // the page, changes nothing. Any other paint queries the spans of the marked paragraphs only,
 // applies the attributes again, and removes them from spans no mark covers now.
 
-import { createT, en } from '@docx-editor.dev/i18n';
+import { createT, en } from '@docx-editor.dev/i18n/runtime';
 import type { HighlightKind } from '../contracts/editor-highlights.ts';
 import { createEditorAnnouncer } from './editor-announcer.ts';
 import { hostTimers } from './host-realm.ts';

@@ -1,4 +1,4 @@
-import { en } from '@docx-editor.dev/i18n';
+import { en } from '@docx-editor.dev/i18n/runtime';
 import { hostWindowOf } from './host-realm.ts';
 
 export type DropRejectionReason = 'readOnly' | 'noTarget' | 'unsupported';
