@@ -3,6 +3,8 @@
 // review author state. Hosts never set these.
 
 import type { OpenTreeSessionResult } from '@docx-editor.dev/core/binding';
+import type { ReviewDisplayMode } from '../layout/revision-projection.ts';
+import type { OoxmlPart } from '../store/package/ooxml-tree.ts';
 import type { SemanticSelection } from '@docx-editor.dev/core/layout';
 import type { StableReviewAuthorSlots } from '../output/revision-presentation.ts';
 import type {
@@ -14,6 +16,7 @@ import type { PendingTextFormInput } from './surface-text-form-fields.ts';
 
 /** The public mount options plus the engine-internal ones. @internal */
 export type PaginatedSurfaceRuntimeOptions = PaginatedSurfaceOptions & {
+  readonly initialScale?: (part: OoxmlPart, displayMode?: ReviewDisplayMode) => number;
   readonly onTrackedChange?: () => void;
   readonly reviewAuthorSlots?: StableReviewAuthorSlots;
   readonly revisionAuthorVisibility?: RevisionAuthorVisibility;

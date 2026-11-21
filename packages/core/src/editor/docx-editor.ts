@@ -762,7 +762,9 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
     diagnostics.openMounting();
     teardownSurface();
     let publishedReviewFilterState = reviewAuthorVisibility.stateKey;
+    const mountZoom = zoomLane.beginMount();
     const result = mountPaginatedSurface(container, bytes, {
+      initialScale: mountZoom.initialScale,
       ...displaySurfaceOptions(),
       ...views.surfaceOptions(),
       initialSelection,
@@ -847,6 +849,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
       return;
     }
     openFailure.clear();
+    mountZoom.accept();
     surface = result.surface;
     embeddedFaces?.showIn(container.ownerDocument);
     mountedSeq = loadSeq;

@@ -461,7 +461,10 @@ export function mountPaginatedSurface(
   const reviewOrderIndex = reviewOrder.index;
   const collaborationSession = options.collaborationModel?.session;
   let author = options.author;
-  let scale = options.scale ?? 96 / 72;
+  let scale =
+    runtimeOptions.initialScale?.(session.part(), options.revisionDisplayMode) ??
+    options.scale ??
+    96 / 72;
   const tableLabelState = {
     resolve:
       options.tableInteractionLabel ?? ((key: TableInteractionLabelKey) => defaultTableLabel(key)),

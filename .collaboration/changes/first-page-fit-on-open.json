@@ -1,0 +1,14 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "An editor with fit zoom could paint at its previous zoom and immediately repaint the document.",
+  "after": "A measurable viewport fits the first section before the initial paint and checks the resulting viewport after mount.",
+  "reason": "Zoom belongs to each viewer. This change preserves document layout in points, history, operations, and collaboration positions.",
+  "tests": [
+    "packages/core/src/editor/__tests__/zoom-controller.test.ts",
+    "packages/core/src/editor/__tests__/zoom-lane.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-composition-preview.test.ts"
+  ],
+  "changeset": "first-page-fit-on-open",
+  "migration": null
+}

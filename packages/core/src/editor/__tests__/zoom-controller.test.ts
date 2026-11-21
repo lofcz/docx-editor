@@ -33,7 +33,7 @@ const CT = 'http://schemas.openxmlformats.org/package/2006/content-types';
 const REL = 'http://schemas.openxmlformats.org/package/2006/relationships';
 const OD = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument';
 
-function docx(_body?: string): Uint8Array {
+function docx(body = ''): Uint8Array {
   return zipSync({
     '[Content_Types].xml': strToU8(
       `<Types xmlns="${CT}"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>` +
@@ -43,7 +43,7 @@ function docx(_body?: string): Uint8Array {
       `<Relationships xmlns="${REL}"><Relationship Id="rId1" Type="${OD}" Target="word/document.xml"/></Relationships>`
     ),
     'word/document.xml': strToU8(
-      `<w:document xmlns:w="${W}"><w:body><w:p><w:r><w:t>hello</w:t></w:r></w:p></w:body></w:document>`
+      `<w:document xmlns:w="${W}"><w:body>${body || '<w:p><w:r><w:t>hello</w:t></w:r></w:p>'}</w:body></w:document>`
     ),
   });
 }
@@ -176,6 +176,22 @@ describe('the default mode', () => {
 
   // Synchronously, inside the mount — a fit resolved a frame later paints 100% first and
   // corrects itself, which reads as a flinch on every open.
+  test('the first paint fits the first section and needs one layout pass', () => {
+    const sect = (width: number) => `<w:sectPr><w:pgSz w:w="${width}" w:h="15840"/></w:sectPr>`;
+    const bytes = docx(
+      `<w:p><w:pPr>${sect(14400)}</w:pPr><w:r><w:t>Wide</w:t></w:r></w:p><w:p><w:r><w:t>Narrow</w:t></w:r></w:p>${sect(10000)}`
+    );
+    const { editor } = mount({ document: bytes, zoomMode: { type: 'fit', fit: 'pageWidth' } });
+    const zoom = editor.getZoom();
+    expect(zoom).toBeGreaterThan(1);
+    const fixed = mount({ document: bytes, zoom });
+    expect(editor.surface!.layout().pages[0]!.box.width).toBe(720);
+    expect(editor.surface!.layout().pages).toEqual(fixed.editor.surface!.layout().pages);
+    expect(editor.surface!.state().perf.fullPasses).toBe(
+      fixed.editor.surface!.state().perf.fullPasses
+    );
+  });
+
   test('fits a narrow window before the first paint, not after it', () => {
     const harness = mount();
     harness.resize(700);

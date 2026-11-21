@@ -51,6 +51,8 @@ export interface ZoomControllerHost {
 }
 
 export interface ZoomController {
+  /** Compute a fit without applying it or changing the last observed page. */
+  measureFit(pageWidth: () => number | null, opening?: boolean): number | null;
   /** Start observing. Safe to call again; the previous observation is dropped first. */
   attach(): void;
   /** Recompute now — after a load, a page-setup change, or a mode change. */
@@ -150,27 +152,36 @@ export function createZoomController(host: ZoomControllerHost): ZoomController {
     frame = null;
   }
 
-  function refit(): void {
+  function measureFit(pageWidth: () => number | null, opening = false): number | null {
     const mode = host.mode();
-    if (!isFitMode(mode)) return;
+    if (!isFitMode(mode)) return null;
     const container = host.container();
-    if (!container) return;
+    if (!container) return null;
+    if (opening) {
+      // Refitting a scrolled reader needs the mounted surface to preserve its centre.
+      const scroller = surfaceScroller(container);
+      if (scroller?.scrollLeft || scroller?.scrollTop) return null;
+    }
     // A capped fit keeps its size beside the review pane under `overflow: 'scroll'`. An
     // uncapped fit still fills the padded box.
     const reviewPaneScrolls =
       host.reviewPaneScrolls?.() === true && reviewPaneEntitledZoom(mode, host.zoom()) !== null;
     const width = availableWidth(container, reviewPaneScrolls);
-    if (width === null) return;
-    const pageWidthPx = host.pageWidthPx();
-    if (pageWidthPx === null) return;
-    fittedPageWidthTwips = host.pageWidthTwips();
+    if (width === null) return null;
+    const pageWidthPx = pageWidth();
+    if (pageWidthPx === null) return null;
 
-    const next = fitZoom({
+    return fitZoom({
       availableWidthPx: width,
       pageWidthPx,
       ...(mode.minZoom !== undefined ? { minZoom: mode.minZoom } : {}),
       ...(mode.maxZoom !== undefined ? { maxZoom: mode.maxZoom } : {}),
     });
+  }
+
+  function refit(): void {
+    const next = measureFit(host.pageWidthPx);
+    if (next !== null) fittedPageWidthTwips = host.pageWidthTwips();
     if (next === null || next === host.zoom()) return;
     host.applyZoom(next);
   }
@@ -191,6 +202,7 @@ export function createZoomController(host: ZoomControllerHost): ZoomController {
   }
 
   return {
+    measureFit,
     refitIfPageResized(): void {
       const twips = host.pageWidthTwips();
       if (twips === null || twips === fittedPageWidthTwips) return;

@@ -11,6 +11,9 @@
 // earlier shape that only wrote the variable on a refit left every such host showing the old
 // percentage.
 
+import { enumerateDocumentSections, geometryOfSection } from '../layout/section-properties.ts';
+import type { OoxmlPart } from '../store/package/ooxml-tree.ts';
+import { layoutProjectionOf, type ReviewDisplayMode } from '../layout/revision-projection.ts';
 import type { ExecResult, ZoomMode } from '../contracts/editor.ts';
 import type { PaginatedSurface } from './paginated-surface.ts';
 import { setPaginatedSurfaceScale } from './surface-scale.ts';
@@ -40,6 +43,11 @@ export interface ZoomLaneHost {
 
 /** The zoom half of `createDocxEditor`. */
 export interface ZoomLane {
+  /** Fit before the surface paints. Adopt the scale only when mounting succeeds. */
+  beginMount(): {
+    initialScale(part: OoxmlPart, mode?: ReviewDisplayMode): number;
+    accept(): void;
+  };
   zoom(): number;
   mode(): ZoomMode;
   /** Points to CSS pixels: zoom 1 paints at the browser's 96dpi reading of a 72dpi point. */
@@ -141,6 +149,25 @@ export function createZoomLane(config: ZoomLaneConfig, host: ZoomLaneHost): Zoom
   });
 
   return {
+    beginMount() {
+      let initialZoom = zoom;
+      return {
+        initialScale(part, displayMode) {
+          initialZoom =
+            controller.measureFit(() => {
+              const first = enumerateDocumentSections(
+                part,
+                layoutProjectionOf(displayMode ?? 'all-markup')
+              )[0];
+              return first ? geometryOfSection(first.properties).width * (96 / 72) : null;
+            }, true) ?? zoom;
+          return initialZoom * (96 / 72);
+        },
+        accept() {
+          zoom = initialZoom;
+        },
+      };
+    },
     zoom: () => zoom,
     mode: () => mode,
     scale: () => zoom * (96 / 72),
