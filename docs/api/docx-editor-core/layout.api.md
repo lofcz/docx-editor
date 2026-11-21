@@ -553,6 +553,7 @@ export interface ContentControlBoundaryRecord {
     // (undocumented)
     readonly controlType: ContentControlMappedType;
     readonly effectiveLock: ContentControlLock;
+    readonly firstFragmentIndex?: number;
     // (undocumented)
     readonly fragments: readonly ContentControlGeometryFragment[];
     readonly id: string;

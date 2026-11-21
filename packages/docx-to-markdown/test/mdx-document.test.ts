@@ -24,6 +24,7 @@ import {
   type MdxComponentParser,
   type MdxComponentView,
 } from '../src/mdx.ts';
+import { paintedComponentFragments } from '../src/mdx/document-painted-pages.ts';
 import { parseDocumentSyntax } from '../src/mdx/document-syntax.ts';
 
 function project(slug: string, units: string) {
@@ -700,7 +701,8 @@ test('scrolling mounts visible fragments, retains the pinned page, and releases 
     new Map([
       [
         'Chapter',
-        ({ element, pageIndex }) => {
+        ({ element, pageIndex, fragmentIndex }) => {
+          expect(fragmentIndex).toBe(pageIndex);
           mounted.set(pageIndex, element);
           return () => {
             mounted.delete(pageIndex);
@@ -725,6 +727,37 @@ test('scrolling mounts visible fragments, retains the pinned page, and releases 
   await scroll((last.box.y * 96) / 72, () => mounted.has(lastIndex));
   const far = mounted.get(lastIndex)!;
   expect(far.isConnected).toBe(true);
+  const layout = surface.layout();
+  const visiblePages = new Map([
+    [lastIndex, far],
+    [0, pinned],
+  ]);
+  const visibleFragments = Array.from(
+    paintedComponentFragments(
+      {
+        ...layout,
+        get contentControls(): typeof layout.contentControls {
+          throw new Error('A viewport paint scanned all document controls.');
+        },
+      },
+      visiblePages
+    )
+  );
+  expect(visibleFragments.map(({ fragmentIndex }) => fragmentIndex)).toEqual([lastIndex, 0]);
+  // Earlier published cores have the same page slices without the document-wide ordinal.
+  const legacy = {
+    ...layout,
+    pages: pages.map((page) => ({
+      ...page,
+      contentControls: page.contentControls?.map(({ firstFragmentIndex: _, ...record }) => record),
+    })),
+  };
+  expect(
+    Array.from(
+      paintedComponentFragments(legacy, visiblePages),
+      ({ fragmentIndex }) => fragmentIndex
+    )
+  ).toEqual([0, lastIndex]);
   expect(mounted.get(0)).toBe(pinned);
   await scroll(0, () => !mounted.has(lastIndex));
   expect(far.isConnected).toBe(false);

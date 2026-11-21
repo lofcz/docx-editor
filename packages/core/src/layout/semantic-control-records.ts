@@ -70,6 +70,8 @@ export interface ContentControlBoundaryRecord {
   /** 0 for a top-level control; increments through nested wrappers under the shared nesting bound. */
   readonly nestingDepth: number;
   readonly level: ContentControlLevel;
+  /** Index of the first fragment in this page-local slice. The complete list starts at zero. */
+  readonly firstFragmentIndex?: number;
   readonly fragments: readonly ContentControlGeometryFragment[];
   /** An inline control's model offsets in its paragraph; positions map through this, not geometry. */
   readonly range?: ContentControlModelRange;

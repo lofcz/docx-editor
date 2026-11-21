@@ -1,5 +1,5 @@
 import type { SurfacePaintFrame } from '@docx-editor.dev/core/editor';
-import { paragraphFragmentsOf } from '@docx-editor.dev/core/layout';
+import { paragraphFragmentsOf, type SemanticLayout } from '@docx-editor.dev/core/layout';
 
 const painted = new WeakMap<SurfacePaintFrame, ReadonlyMap<number, HTMLElement>>();
 
@@ -52,4 +52,31 @@ export function disclosureAnchors(
     }
   }
   return anchors;
+}
+
+/** Preserve document-wide fragment indices while visiting only the displayed Word pages. */
+export function* paintedComponentFragments(
+  layout: SemanticLayout,
+  pages: ReadonlyMap<number, HTMLElement>
+) {
+  for (const pageIndex of pages.keys()) {
+    const first = layout.pages[pageIndex]?.contentControls?.[0];
+    if (first && first.firstFragmentIndex === undefined) {
+      // Earlier core packages publish complete fragment indices only on the document list.
+      for (const control of layout.contentControls ?? []) {
+        for (const [fragmentIndex, fragment] of control.fragments.entries()) {
+          const page = pages.get(fragment.pageIndex);
+          if (page) yield { control, fragmentIndex, fragment, page };
+        }
+      }
+      return;
+    }
+  }
+  for (const [pageIndex, page] of pages) {
+    for (const control of layout.pages[pageIndex]?.contentControls ?? []) {
+      for (const [offset, fragment] of control.fragments.entries()) {
+        yield { control, fragmentIndex: control.firstFragmentIndex! + offset, fragment, page };
+      }
+    }
+  }
 }

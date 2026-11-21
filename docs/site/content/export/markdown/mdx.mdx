@@ -42,7 +42,7 @@ When you open or close a disclosure, the body boundary and the following page co
 
 ## Add a project view
 
-Use `mountMdxComponents` to attach a trusted view to a visible component. The editor supplies a host element at the component's page position. A component that continues on another page receives a separate host there.
+Use `mountMdxComponents` to attach a trusted view to a visible component. The editor supplies a host element at the component's page position. Each visible fragment receives a separate host. Its `fragmentIndex` keeps its position within the component when earlier pages scroll out of view.
 
 ```ts
 import { mountMdxComponents } from '@docx-editor.dev/docx-to-markdown/mdx';

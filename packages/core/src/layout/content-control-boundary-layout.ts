@@ -743,6 +743,7 @@ function sameBoundaryRecord(
     left.bound === right.bound &&
     left.nestingDepth === right.nestingDepth &&
     left.level === right.level &&
+    left.firstFragmentIndex === right.firstFragmentIndex &&
     sameModelRange(left.range, right.range) &&
     sameGeometryFragments(left.fragments, right.fragments)
   );
@@ -844,10 +845,10 @@ export function attachContentControlBoundaries(
   const contentControls = index.controls.map((entry) => boundaryRecordOf(entry, geometry, work));
   const byPage = new Map<number, ContentControlBoundaryRecord[]>();
   for (const record of contentControls) {
-    for (const fragment of record.fragments) {
+    for (const [fragmentIndex, fragment] of record.fragments.entries()) {
       work && (work.pageFragments += 1);
       const list = byPage.get(fragment.pageIndex);
-      const pageRecord = { ...record, fragments: [fragment] };
+      const pageRecord = { ...record, firstFragmentIndex: fragmentIndex, fragments: [fragment] };
       if (list) list.push(pageRecord);
       else byPage.set(fragment.pageIndex, [pageRecord]);
     }
