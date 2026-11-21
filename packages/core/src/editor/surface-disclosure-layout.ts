@@ -15,12 +15,23 @@ interface FoldLayout {
 export function createDisclosureLayoutHistory(readFolds: () => Folds) {
   const histories = new WeakMap<LayoutSession, FoldLayout>();
   return (session: LayoutSession, scope: LayoutScope, settled: boolean) => {
+    // The first view of an inline widget can supply its size after disclosure.
+    // The next fold can save this newly measured layout, but the preceding
+    // checkpoint still belongs to the old measurements.
+    const unchangedDocument =
+      settled && !scope.paragraphIds.size && !scope.created.size && !scope.deleted.size;
     if (
-      !settled ||
+      unchangedDocument &&
+      scope.dependencyKeys.size === 1 &&
+      scope.dependencyKeys.has('inline-widgets') &&
+      histories.has(session)
+    ) {
+      histories.set(session, { revision: scope.revision, folds: readFolds() });
+      return;
+    }
+    if (
+      !unchangedDocument ||
       !scope.dependencyKeys.has('content-control-collapse') ||
-      scope.paragraphIds.size ||
-      scope.created.size ||
-      scope.deleted.size ||
       [...scope.dependencyKeys].some(
         (key) => key !== 'content-control-collapse' && key !== 'block-reservations'
       )

@@ -1,0 +1,14 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "The first inline measurement cleared the disclosure's local layout history.",
+  "after": "The next fold can save the measured layout for reuse when the same controls reopen.",
+  "reason": "The surface owns the checkpoints. Document revisions and current layout inputs still control reuse.",
+  "tests": [
+    "packages/core/src/editor/__tests__/content-control-collapse.test.ts",
+    "packages/core/src/editor/__tests__/surface-inline-widget-metrics.test.ts",
+    "packages/pro/src/collaboration/__tests__/mdx-document-views.test.ts"
+  ],
+  "changeset": "disclosure-measured-return",
+  "migration": null
+}

@@ -5,7 +5,7 @@ Production use requires a commercial agreement: licensing@eigenpal.com
 */
 import { afterEach, expect, test } from 'bun:test';
 import { applyAwarenessUpdate, encodeAwarenessUpdate } from 'y-protocols/awareness';
-import { createDocxEditor } from '@docx-editor.dev/core/editor';
+import { createDocxEditor, setSurfaceInlineWidgetMetrics } from '@docx-editor.dev/core/editor';
 import { contentControlTextOf } from '@docx-editor.dev/core/store';
 import { caretAt, hitTestSemantic } from '@docx-editor.dev/core/layout';
 import {
@@ -175,7 +175,9 @@ async function reopen(host: Mounted) {
 }
 
 test('each editor uses its own folds and visible selection geometry during concurrent typing and history', async () => {
-  const { pair, alice, bob, flush, converge } = await room();
+  const { pair, alice, bob, flush, converge } = await room(
+    source.replace('</details>', 'Unit <Term>symbol</Term>\n\n</details>')
+  );
   const original = exportMdxDocument(alice.pkg());
   const fingerprint = packageFingerprint(alice.pkg());
   // Both layouts have been visited when the next shared edit arrives.
@@ -183,6 +185,16 @@ test('each editor uses its own folds and visible selection geometry during concu
   flush();
   alice.fold().click();
   flush();
+  setSurfaceInlineWidgetMetrics(alice.surface, {
+    measure: ({ fallbackText }) =>
+      fallbackText === 'symbol' ? { width: 64, ascent: 48, descent: 4 } : null,
+    revision: 'measured',
+  });
+  alice.fold().click();
+  flush();
+  alice.fold().click();
+  flush();
+  expect(alice.surface.state().perf.placed).toBe(0);
   alice.fold().click();
   converge();
   expect(packageFingerprint(alice.pkg())).toBe(fingerprint);

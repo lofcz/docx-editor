@@ -13,6 +13,7 @@ import {
 import { caretAt } from '../../layout/semantic-interaction.ts';
 import { paragraphFragmentsOf } from '../../layout/semantic-records.ts';
 import { createKeyDownHandler } from '../surface-input.ts';
+import { setSurfaceInlineWidgetMetrics } from '../surface-inline-widget-metrics.ts';
 import {
   canonicalOoxmlFingerprint,
   paragraphTextOf,
@@ -118,6 +119,46 @@ test('a returning disclosure reuses its layout and checks changed host reservati
     expect(doc.caret('After')!.y).toBeCloseTo(expandedY + 40);
   } finally {
     doc.close();
+  }
+});
+
+test('the first return to measured disclosure bodies reuses the settled geometry', () => {
+  const field =
+    '<w:p><w:sdt><w:sdtPr/><w:sdtContent><w:r><w:t>x</w:t></w:r></w:sdtContent></w:sdt></w:p>';
+  const source = sdt(p('First'), field) + sdt(p('Second'), p('Details')) + p('After');
+  const live = open(source);
+  const fresh = open(source);
+  const fold = (closed: boolean) => {
+    const requests = new Map<string, string>();
+    if (closed) {
+      for (const label of ['First', 'Second']) requests.set(live.ownerOf(label), live.idOf(label));
+    }
+    expect(live.surface.setCollapsedContentControls(requests).ok).toBe(true);
+    live.surface.flushPendingInput();
+  };
+  const measure = (ascent: number) => ({
+    measure: () => ({ width: 72, ascent, descent: 6 }),
+    revision: String(ascent),
+  });
+  try {
+    fold(true);
+    fold(false);
+    setSurfaceInlineWidgetMetrics(live.surface, measure(48));
+    setSurfaceInlineWidgetMetrics(fresh.surface, measure(48));
+    const expected = fresh.caret('After')!.y;
+    fold(true);
+    fold(false);
+    expect(live.surface.state().perf.placed).toBe(0);
+    expect(live.caret('After')!.y).toBe(expected);
+    fold(true);
+    setSurfaceInlineWidgetMetrics(live.surface, measure(96));
+    setSurfaceInlineWidgetMetrics(fresh.surface, measure(96));
+    fold(false);
+    expect(live.caret('After')!.y).toBeGreaterThan(expected);
+    expect(live.caret('After')!.y).toBe(fresh.caret('After')!.y);
+  } finally {
+    live.close();
+    fresh.close();
   }
 });
 
