@@ -784,6 +784,7 @@ test('rapid input reverses the live disclosure snapshot before replacing its Wor
     button.focus();
     button.click();
     expect(captures).toHaveLength(1);
+    expect(doc.documentElement.classList.contains('docx-mdx-opening')).toBe(true);
     captures[0]!.update();
     captures[0]!.ready();
     await Promise.resolve();
@@ -798,7 +799,7 @@ test('rapid input reverses the live disclosure snapshot before replacing its Wor
     await Promise.resolve();
     expect(surface.collapsedContentControls()).toHaveLength(1);
     expect(doc.activeElement).toBe(button);
-    expect(doc.documentElement.dataset.docxMdxMotion).toBeUndefined();
+    expect(doc.documentElement.classList.contains('docx-mdx-opening')).toBe(false);
     expect(exportMdxDocument(new Uint8Array(await editor.save()))).toBe(saved);
   } finally {
     for (const undo of restore.reverse()) undo();

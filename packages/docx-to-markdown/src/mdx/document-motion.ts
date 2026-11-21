@@ -94,7 +94,8 @@ export function changeDisclosure(
   const glyphName = glyph?.style.viewTransitionName ?? '';
   pane.style.viewTransitionName = 'docx-mdx-paper';
   if (glyph) glyph.style.viewTransitionName = 'docx-mdx-arrow';
-  root.dataset.docxMdxMotion = opening ? 'open' : 'close';
+  const motionClass = opening ? 'docx-mdx-opening' : 'docx-mdx-closing';
+  root.classList.add(motionClass);
   let pending = true;
   let accepted = false;
   let ready = false;
@@ -125,7 +126,7 @@ export function changeDisclosure(
     pane.removeEventListener('touchmove', cancel);
     if (active.get(doc) !== state) return;
     active.delete(doc);
-    delete root.dataset.docxMdxMotion;
+    root.classList.remove(motionClass);
     root.style.removeProperty('--docx-mdx-closed-edge');
     root.style.removeProperty('--docx-mdx-travel');
     pane.style.viewTransitionName = paneName;
