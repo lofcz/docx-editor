@@ -632,6 +632,8 @@ export interface ListMarkerRecord {
    * a demote is possible depends on which levels THIS definition declares.
    */
   readonly numId: string;
+  /** Numbering definition shared by Word instances that restart a level of the same list. */
+  readonly abstractNumId?: string;
   /** `w:numFmt` of the resolved level — `bullet` or a numbering format. */
   readonly numFmt: string;
   /** Resolved counter at this marker's own level; absent for bullets. */

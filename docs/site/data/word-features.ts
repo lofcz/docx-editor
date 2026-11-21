@@ -467,7 +467,7 @@ export const wordFeatures: WordFeature[] = [
     roundTrip: 'full',
     tier: 'community',
     notes:
-      'Lists that share a numbering definition count together. A start override restarts the shared count at its specified level. Headers and footers share a separate count from the body.',
+      'Lists with a shared definition count together, and Markdown preserves nested restarts. A start override restarts its specified level. Headers and footers share a separate count from the body.',
   },
   {
     id: 'lists.picture-bullets',

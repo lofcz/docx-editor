@@ -1,3 +1,5 @@
+import { storyListMarkerToken } from './hf-list-marker-token.ts';
+export { storyListMarkerToken } from './hf-list-marker-token.ts';
 import { inlineWidgetProducer } from './inline-widget-layout.ts';
 import {
   readPositionedHeaderFrames,
@@ -52,11 +54,7 @@ import { sortStoryDrawingsForPaint } from './drawing-overlap.ts';
 import { storyDrawingWrapZones } from './hf-cell-anchor-wrap.ts';
 import { flowBlocksInBox } from './semantic-table-layout.ts';
 import { noteUnsettledExclusionReflow } from './unsettled-exclusion-layout.ts';
-import {
-  forEachStoryDrawing,
-  forEachStoryParagraphFragment,
-  ownedTextboxStories,
-} from './semantic-record-queries.ts';
+import { forEachStoryDrawing, ownedTextboxStories } from './semantic-record-queries.ts';
 import { withResolvedListItems, type ResolvedListItem } from './list-resolve.ts';
 import type { ListCounterSnapshot } from './list-counters.ts';
 import type { NumberingIndex } from './numbering-index.ts';
@@ -848,50 +846,6 @@ export function remapPage(page: PageRecord, globalIndex: number, sheetY: number)
     ...(footnotes ? { footnotes } : {}),
     ...(endnotes ? { endnotes } : {}),
   };
-}
-
-/** Memoized per story object, exactly like {@link storyDrawingResourceTokens}. */
-const storyListMarkerTokens = new WeakMap<HeaderFooterStoryLayout, string>();
-
-/**
- * Marker identity of every list item a header/footer story paints.
- *
- * The exact sibling of {@link storyDrawingResourceToken}, and for the same reason. What
- * otherwise identifies a story — `contentKey` and `flowHeight` — describes the AUTHORED part,
- * and neither moves when `numbering.xml` changes: the definition lives in a different part, and
- * a marker sits in the hanging-indent slot, so the story is exactly as tall with `1.` as with
- * `vii.`. Without this the unchanged-pass early exit finds every key equal and returns the
- * previous pages BY IDENTITY, furniture included.
- *
- * Measured before this existed: a body edit that also changed the numbering left six reused
- * pages showing the old header marker and the one rebuilt page showing the new one — two
- * different numbers for the same header in one section.
- *
- * Walks with {@link forEachStoryParagraphFragment}, which descends into each anchored
- * drawing's text-box story exactly like {@link storyDrawingResourceToken}'s walk does: a
- * `w:numPr` paragraph inside a `wps:txbx` carries a marker record too, and a `numbering.xml`
- * edit moves neither `contentKey` nor `flowHeight`, so without the descent a reused page
- * kept showing the old number inside the box.
- */
-export function storyListMarkerToken(story: HeaderFooterStoryLayout): string {
-  const cached = storyListMarkerTokens.get(story);
-  if (cached !== undefined) return cached;
-  const tokens: string[] = [];
-  forEachStoryParagraphFragment(story, (fragment) => {
-    const marker = fragment.marker;
-    if (marker) {
-      // Length-framed at both levels: `marker.text` is expanded `w:lvlText` and `numFmt`
-      // is read verbatim from the file, so any separator the content can contain lets two
-      // different marker states concatenate to one token and reuse a header page showing
-      // the old numbers.
-      tokens.push(
-        framedTokenJoin([fragment.paragraphId, marker.text, marker.numFmt, String(marker.level)])
-      );
-    }
-  });
-  const token = tokens.length === 0 ? '' : `|list:${framedTokenJoin(tokens)}`;
-  storyListMarkerTokens.set(story, token);
-  return token;
 }
 
 /**

@@ -574,11 +574,11 @@ function indexLists(
   markers: Map<string, NonNullable<ParagraphFragmentRecord['marker']>>
 ): void {
   const ancestorWidths = new Map<number, number>();
-  let activeNumId: string | null = null;
+  let previous: ParagraphFragmentRecord['marker'];
   for (const block of blocks) {
     if (block.kind === 'table') {
       ancestorWidths.clear();
-      activeNumId = null;
+      previous = undefined;
       for (const row of mergeRows(block.fragments, false)) {
         for (const cell of row.cells) {
           indexLists(logicalBlocks(cell.blocks), indentation, markers);
@@ -591,11 +591,17 @@ function indexLists(
     const marker = block.fragments.find((fragment) => fragment.marker)?.marker;
     if (!marker) {
       ancestorWidths.clear();
-      activeNumId = null;
+      previous = undefined;
       continue;
     }
-    if (activeNumId !== marker.numId) ancestorWidths.clear();
-    activeNumId = marker.numId;
+    // A level restart can allocate a new instance of the parent's numbering definition.
+    // Older layout records identify only the instance, so keep their original boundary.
+    if (
+      previous?.numId !== marker.numId &&
+      (marker.abstractNumId === undefined || previous?.abstractNumId !== marker.abstractNumId)
+    )
+      ancestorWidths.clear();
+    previous = marker;
     let columns = 0;
     for (let level = 0; level < marker.level; level += 1) {
       columns += ancestorWidths.get(level) ?? 0;

@@ -237,6 +237,7 @@ export function publishListMarker(
     box: markerBox,
     level: item.ilvl,
     numId: item.numId,
+    abstractNumId: item.abstractNumId,
     numFmt: item.numFmt,
     ...(item.ordinal === undefined ? {} : { ordinal: item.ordinal }),
     ...picture,

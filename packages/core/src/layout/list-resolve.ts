@@ -405,6 +405,7 @@ function resolveListSequence(
       // The picture marker's identity and DRAWN extent. It replaces the marker glyph, so
       // it decides both the first line's start and the first line's height.
       picBullet ? `${picBullet.relationshipId}:${picBullet.width}:${picBullet.height}` : '',
+      advanced.abstractNumId,
     ].map(String);
     const cacheToken = framedTokenJoin(tokenParts);
 
