@@ -2235,6 +2235,7 @@ export interface ListMarkerPictureRecord {
 
 // @public
 export interface ListMarkerRecord {
+    readonly abstractNumId?: string;
     // (undocumented)
     readonly box: LayoutBox;
     readonly level: number;
