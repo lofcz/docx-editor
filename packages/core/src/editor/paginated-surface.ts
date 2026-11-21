@@ -306,6 +306,7 @@ import {
   surfaceExtent,
   surfaceScroller,
   visiblePageSet,
+  canScrollWithoutMeasuringPages,
   retainAdjacentPages,
   viewportPage,
   type SurfaceExtent,
@@ -2926,6 +2927,12 @@ export function mountPaginatedSurface(
     // deferred its pass. Safe: this runs from a scheduled frame, never inside a
     // render.
     flushPendingInputAndLayout();
+    if (
+      currentLayout === paintedLayout &&
+      materializedExtent &&
+      canScrollWithoutMeasuringPages(currentLayout, materializedSet)
+    )
+      return;
     const nextSet = visiblePages();
     if (currentLayout === paintedLayout && materializedExtent) {
       if (equalPageSets(nextSet, viewportSet)) return;

@@ -16,9 +16,15 @@ test('automatic fit preserves each participant’s own viewport and document sel
     peer.detach();
     const scroller = document.createElement('div');
     scroller.className = 'docx-editor__scroll-container';
+    let heightReads = 0;
     Object.defineProperties(scroller, {
       clientWidth: { value: 1000 },
-      clientHeight: { value: 600 },
+      clientHeight: {
+        get() {
+          heightReads++;
+          return 600;
+        },
+      },
       scrollHeight: { value: 4000 },
     });
     const container = document.createElement('div');
@@ -30,7 +36,7 @@ test('automatic fit preserves each participant’s own viewport and document sel
       modules: [collaborationModule({ session: peer.room.session })],
       zoom: 1,
     });
-    return { editor, scroller };
+    return { editor, scroller, heightReads: () => heightReads };
   }
   const alice = mount(pair.alice),
     bob = mount(pair.bob);
@@ -39,7 +45,13 @@ test('automatic fit preserves each participant’s own viewport and document sel
     const position = { paragraphId: id, offset: 2 };
     const range = { anchor: position, head: position };
     expect(alice.editor.exec({ type: 'setSelection', range }).ok).toBe(true);
+    const nextFrame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    await nextFrame();
+    const readsBeforeScroll = bob.heightReads();
     bob.scroller.scrollTop = 320;
+    bob.scroller.dispatchEvent(new Event('scroll'));
+    await nextFrame();
+    expect(bob.heightReads()).toBe(readsBeforeScroll);
     const revision = alice.editor.surface!.session.packageRevision();
     expect(alice.editor.setZoomMode({ type: 'fit', fit: 'pageWidth' }).ok).toBe(true);
     expect(alice.editor.getZoom()).toBeGreaterThan(1);

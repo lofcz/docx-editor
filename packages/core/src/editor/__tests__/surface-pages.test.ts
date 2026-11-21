@@ -1,5 +1,10 @@
 import { describe, expect, test } from 'bun:test';
-import { surfaceExtent } from '../surface-pages.ts';
+import {
+  canScrollWithoutMeasuringPages,
+  retainAdjacentPages,
+  surfaceExtent,
+} from '../surface-pages.ts';
+import { pagesToMaterialize } from '@docx-editor.dev/core/layout';
 import type { SemanticLayout } from '@docx-editor.dev/core/layout';
 
 function syntheticLayout(
@@ -28,6 +33,31 @@ function syntheticLayout(
     })),
   } as unknown as SemanticLayout;
 }
+
+test('skips viewport reads only when scrolling can retain every sheet and its horizontal extent', () => {
+  for (const length of [1, 2, 3, 4, 5, 20]) {
+    const layout = syntheticLayout(Array.from({ length }, (_, index) => ({ index, width: 600 })));
+    const built = new Set(layout.pages.map((page) => page.index));
+    const alwaysRetained = layout.pages.every((page) => {
+      const viewport = { top: page.box.y + 5, height: 1 };
+      const visible = pagesToMaterialize({ layout, viewport });
+      return retainAdjacentPages(layout, visible, built)?.size === length;
+    });
+    expect(canScrollWithoutMeasuringPages(layout, built)).toBe(alwaysRetained);
+    built.delete(0);
+    expect(canScrollWithoutMeasuringPages(layout, built)).toBe(false);
+  }
+  const first = { index: 0, width: 600 };
+  for (const second of [
+    { index: 1, width: 604 },
+    { index: 1, width: 600, x: 10 },
+    { index: 1, width: 600, table: { x: -10, width: 650 } },
+  ]) {
+    expect(canScrollWithoutMeasuringPages(syntheticLayout([first, second]), new Set([0, 1]))).toBe(
+      false
+    );
+  }
+});
 
 describe('surfaceExtent width aggregation', () => {
   test('empty layout yields zero width and height', () => {

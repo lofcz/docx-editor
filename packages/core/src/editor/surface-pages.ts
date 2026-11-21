@@ -187,6 +187,9 @@ export function viewportPage(
   return layout.pages.length;
 }
 
+const overscanPages = 1;
+const retainedNeighbors = 2;
+
 export function visiblePageSet(
   container: HTMLElement,
   layout: SemanticLayout,
@@ -206,7 +209,7 @@ export function visiblePageSet(
     const caret = caretAt(layout, position);
     if (caret) pinned.push(caret.pageIndex);
   }
-  return pagesToMaterialize({ layout, viewport, overscanPages: 1, pinnedPages: pinned });
+  return pagesToMaterialize({ layout, viewport, overscanPages, pinnedPages: pinned });
 }
 
 /**
@@ -225,14 +228,14 @@ export function retainAdjacentPages(
     available = Math.max(available, page.box.x + page.box.width);
   }
   const result = new Set(required);
-  for (const distance of [1, 2]) {
+  for (let distance = 1; distance <= retainedNeighbors; distance++) {
     for (const index of required) {
       for (const neighbor of [index - distance, index + distance]) {
         if (!previouslyBuilt.has(neighbor) || result.has(neighbor)) continue;
         const page = layout.pages[neighbor];
         // A retained landscape sheet must not widen a portrait viewport.
         if (page && page.box.x + page.box.width <= available) result.add(neighbor);
-        if (result.size === required.size + 2) return result;
+        if (result.size === required.size + retainedNeighbors) return result;
       }
     }
   }
@@ -273,6 +276,32 @@ function tableSpill(page: SurfacePage) {
   spill = { left, right };
   tableSpills.set(page, spill);
   return spill;
+}
+
+/** Whether any scroll position keeps all painted pages and exactly the same horizontal extent. */
+export function canScrollWithoutMeasuringPages(
+  layout: SemanticLayout,
+  built: ReadonlySet<number> | undefined
+): boolean {
+  const { pages } = layout;
+  const first = pages[0];
+  // At either document edge, even a one-pixel viewport keeps the visible sheet,
+  // its overscan, and up to retainedNeighbors sheets that are already painted.
+  if (
+    !first ||
+    pages.length > 1 + overscanPages + retainedNeighbors ||
+    built?.size !== pages.length
+  )
+    return false;
+  return pages.every((page) => {
+    const spill = tableSpill(page);
+    return (
+      page.box.x === first.box.x &&
+      page.box.width === first.box.width &&
+      !spill.left &&
+      !spill.right
+    );
+  });
 }
 
 export function surfaceExtent(

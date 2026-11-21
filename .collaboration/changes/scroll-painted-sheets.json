@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Every scroll frame measured the viewport to decide which sheets to paint.",
+  "after": "A participant can scroll without measuring when all sheets remain painted at every scroll position.",
+  "reason": "This local optimization preserves page geometry, caret placement, remote edits, and document operations.",
+  "tests": [
+    "packages/core/src/editor/__tests__/surface-pages.test.ts",
+    "packages/pro/src/collaboration/__tests__/fit-scroll-editors.test.ts"
+  ],
+  "changeset": "scroll-painted-sheets",
+  "migration": null
+}
