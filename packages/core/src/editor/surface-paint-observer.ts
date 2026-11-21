@@ -18,6 +18,8 @@ export interface SurfacePaintFrame {
  * @public
  */
 export interface SurfacePaintObserver {
+  /** Use the last painted frame on registration when this host has no native nodes to restore yet. */
+  readonly replayCurrentFrame?: boolean;
   /** Paint keeps native nodes on these materialized pages. Restore all borrowed nodes when the set is absent. */
   beforePaint?(
     retainedPages?: ReadonlySet<number>,
@@ -48,7 +50,7 @@ export function destroyPaintObservers(observers: Set<SurfacePaintObserver>): voi
   }
 }
 
-/** A passive observer can consume a completed frame without repainting other hosts. */
+/** Reuse the completed frame for observers that can join an existing paint. */
 export function createPaintObservers(repaint: () => void, parked: () => boolean) {
   const observers = new Set<SurfacePaintObserver>();
   let lastFrame: SurfacePaintFrame | null = null;
@@ -58,8 +60,9 @@ export function createPaintObservers(repaint: () => void, parked: () => boolean)
   return {
     subscribe(observer: SurfacePaintObserver) {
       observers.add(observer);
-      if (observer.beforePaint) repaint();
-      else if (lastFrame && !parked()) observer.afterPaint(lastFrame);
+      if (lastFrame && (!observer.beforePaint || observer.replayCurrentFrame) && !parked())
+        observer.afterPaint(lastFrame);
+      else if (observer.beforePaint) repaint();
       return () => {
         if (observers.delete(observer)) observer.beforePaint?.();
       };

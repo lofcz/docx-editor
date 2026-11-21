@@ -4,6 +4,53 @@ import { docx, p } from '../../automation/__tests__/support/protocol.ts';
 import { paragraphTextOf } from '../../store/store/tree-op-apply.ts';
 import { destroyPaintObservers } from '../surface-paint-observer.ts';
 
+test('a new host can borrow from the last frame and restore its nodes on the next paint', () => {
+  const container = document.createElement('div');
+  document.body.append(container);
+  const editor = createDocxEditor({ container, document: docx(p('Alpha')) });
+  const surface = editor.surface!;
+  const calls: string[] = [];
+  let paints = 0;
+  const stopCounting = surface.observePaint({ afterPaint: () => paints++ });
+  let original: HTMLElement | null = null;
+  let wrapper: HTMLElement | null = null;
+  const initialPaints = paints;
+  const stop = surface.observePaint({
+    replayCurrentFrame: true,
+    beforePaint() {
+      calls.push('restore');
+      if (original && wrapper) {
+        wrapper.replaceWith(original);
+        wrapper = null;
+      }
+    },
+    afterPaint(frame) {
+      calls.push('borrow');
+      original = frame.pagesLayer.querySelector<HTMLElement>('[data-paragraph-id]')!;
+      wrapper = container.ownerDocument.createElement('section');
+      original.replaceWith(wrapper);
+      wrapper.append(original);
+    },
+  });
+  try {
+    expect(calls).toEqual(['borrow']);
+    expect(paints).toBe(initialPaints);
+    const borrowed = container.querySelector<HTMLElement>('section [data-paragraph-id]')!;
+    const position = { paragraphId: borrowed.dataset.paragraphId!, offset: 5 };
+    surface.setSelection({ anchor: position, head: position });
+    surface.insertPlainText('!');
+    surface.flushPendingInput();
+    expect(calls.slice(-2)).toEqual(['restore', 'borrow']);
+    expect(container.querySelector('section [data-paragraph-id]')?.textContent).toBe('Alpha!');
+    stop();
+    expect(container.querySelector('section')).toBeNull();
+  } finally {
+    stopCounting();
+    editor.destroy();
+    container.remove();
+  }
+});
+
 test('a host can wrap editable native content between paints and unsubscribe cleanly', () => {
   const container = document.createElement('div');
   document.body.append(container);

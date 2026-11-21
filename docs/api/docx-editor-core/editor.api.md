@@ -5839,6 +5839,7 @@ export interface SurfacePaintObserver {
     beforePaint?(retainedPages?: ReadonlySet<number>,
     preserveParagraphRoots?: PreserveParagraphRoots): void;
     destroyed?(): void;
+    readonly replayCurrentFrame?: boolean;
 }
 
 // @public

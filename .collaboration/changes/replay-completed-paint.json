@@ -1,0 +1,10 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "A host that borrowed page nodes required a new paint when it first attached.",
+  "after": "A host can attach to the completed local frame and restore its nodes on later paints.",
+  "reason": "Observer registration only affects the local painted page. Document operations and shared positions keep their existing format.",
+  "tests": ["packages/core/src/editor/__tests__/surface-paint-observer.test.ts"],
+  "changeset": "replay-completed-paint",
+  "migration": null
+}
