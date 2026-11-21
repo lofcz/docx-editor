@@ -11,7 +11,7 @@ import { textboxPaintsPastFrame, textboxPressReaches } from '../layout/vector-sh
 const THIN_LINE_PT = 1;
 import { isElementNode, isInputEvent, isKeyboardEvent, isPointerEvent } from './host-realm.ts';
 import { isInHostUi } from './dom-selection.ts';
-import { MULTI_CLICK_MS, MULTI_CLICK_SLOP_PX } from './surface-multi-click.ts';
+import { createPressCounter } from './surface-multi-click.ts';
 import { pressSelectsGroupMember, selectedGroupMember } from './group-member-selection.ts';
 
 /** Ctrl or Command with C or X, and Ctrl or Shift with Insert or Delete: copy and cut. */
@@ -73,21 +73,11 @@ export function createDrawingGestures(deps: {
   } | null;
 }) {
   /** The last press, for telling a double press: a pointer press carries no click count. */
-  let lastPress: { time: number; x: number; y: number } | null = null;
+  const countPress = createPressCounter();
   const pressOf = (event: Event) => {
     if (!isPointerEvent(event)) return undefined;
     const { clientX: x, clientY: y } = event;
-    // Wall-clock time, as the pointer counts clicks: event time stamps are not one clock.
-    const time = Date.now();
-    const since = lastPress === null ? -1 : time - lastPress.time;
-    const double =
-      lastPress !== null &&
-      since >= 0 &&
-      since <= MULTI_CLICK_MS &&
-      Math.abs(x - lastPress.x) <= MULTI_CLICK_SLOP_PX &&
-      Math.abs(y - lastPress.y) <= MULTI_CLICK_SLOP_PX;
-    lastPress = double ? null : { time, x, y };
-    return { clientX: x, clientY: y, double };
+    return { clientX: x, clientY: y, double: countPress(event) % 2 === 0 };
   };
   /** Select a drawing as an object, as a press on its border does. */
   const selectObject = (drawingNodeId: string, paragraphId: string): boolean => {

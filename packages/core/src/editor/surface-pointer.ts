@@ -18,7 +18,7 @@ import { behindDrawingAt, repeatedPressOnObject, surfacePointAt } from './surfac
 
 import { cellSelectionBetween, type CellSelection } from '../layout/semantic-cell-selection.ts';
 import { pressTakenByTextbox } from './surface-drawing-gestures.ts';
-import { MULTI_CLICK_MS, MULTI_CLICK_SLOP_PX } from './surface-multi-click.ts';
+import { createPressCounter } from './surface-multi-click.ts';
 import {
   contentControlAtPoint,
   hitTestFragments,
@@ -269,10 +269,7 @@ export function createPointerController(
   let gesture: Gesture | null = null;
   /** Cached for the life of one gesture, and dropped whenever the page can have moved. */
   let layerRect: { left: number; top: number } | null = null;
-  let clickCount = 0;
-  let lastClickAt = 0;
-  let lastClickX = 0;
-  let lastClickY = 0;
+  const countClick = createPressCounter();
   let autoScrollHandle: number | null = null;
 
   // ---------------------------------------------------------------------------------
@@ -554,25 +551,6 @@ export function createPointerController(
     active.cellDragging = true;
     host.setCellSelection(next);
     return true;
-  }
-
-  function countClick(event: PointerEvent): number {
-    // ONE clock. `event.timeStamp` is relative to the document's time origin and `Date.now()`
-    // is absolute, so falling back between them produces a delta of about minus 1.7e12 — and
-    // a negative number is `<= 500`, which made every press after it count as a double click
-    // for the rest of the session. No sub-millisecond precision is needed for a 500ms window.
-    const now = Date.now();
-    const since = now - lastClickAt;
-    const near =
-      Math.abs(event.clientX - lastClickX) <= MULTI_CLICK_SLOP_PX &&
-      Math.abs(event.clientY - lastClickY) <= MULTI_CLICK_SLOP_PX;
-    // Counted here rather than read off `detail`, which browsers disagree about on
-    // `pointerdown` — some report the click count, some report zero.
-    clickCount = near && since >= 0 && since <= MULTI_CLICK_MS ? clickCount + 1 : 1;
-    lastClickAt = now;
-    lastClickX = event.clientX;
-    lastClickY = event.clientY;
-    return clickCount;
   }
 
   const GRANULARITIES: readonly Granularity[] = ['character', 'word', 'paragraph'];

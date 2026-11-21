@@ -8,9 +8,10 @@
 import { GlobalRegistrator } from '@happy-dom/global-registrator';
 if (!GlobalRegistrator.isRegistered) GlobalRegistrator.register();
 
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, spyOn, test } from 'bun:test';
 import { setPaginatedSurfaceScale, type PaginatedSurface } from '../paginated-surface.ts';
 import { absorbAtomicControls } from '../surface-atomic-controls.ts';
+import { createPressCounter } from '../surface-multi-click.ts';
 import {
   clientOf,
   MARGIN,
@@ -271,6 +272,52 @@ describe('dragging', () => {
 });
 
 describe('click count', () => {
+  test('native click counts take precedence and inferred counts stay within one host window', () => {
+    const frame = document.createElement('iframe');
+    document.body.append(frame);
+    try {
+      const count = createPressCounter();
+      const input = (time: number, view: Window, detail = 0) => {
+        const event = pointer('pointerdown', 18, 5, { view, detail });
+        Object.defineProperty(event, 'timeStamp', { value: time });
+        return count(event);
+      };
+      expect(input(10, window)).toBe(1);
+      expect(input(900, window, 2)).toBe(2);
+      expect(input(930, window)).toBe(3);
+      expect(input(940, frame.contentWindow!)).toBe(1);
+      expect(input(40, frame.contentWindow!)).toBe(1);
+    } finally {
+      frame.remove();
+    }
+  });
+
+  test('queued physical presses select the word before typing, even after a delayed paint', () => {
+    const mounted = mount(paragraph('Fotosyntéza procesu'));
+    const clock = spyOn(Date, 'now');
+    try {
+      const downAt = (inputTime: number, deliveryTime: number) => {
+        const event = pointer('pointerdown', 18, 5);
+        Object.defineProperty(event, 'timeStamp', { value: inputTime });
+        clock.mockReturnValue(deliveryTime);
+        mounted.pages.dispatchEvent(event);
+        release(18, 5);
+      };
+      downAt(10, 1000);
+      downAt(35, 2200);
+      expect(offsets(mounted.surface)).toEqual([0, 11]);
+      expect(document.getSelection()?.toString()).toBe('Fotosyntéza');
+      mounted.surface.type('Dýchání');
+      mounted.surface.flushPendingInput();
+      expect(mounted.container.querySelector('.docx-paragraph-fragment')?.textContent).toContain(
+        'Dýchání procesu'
+      );
+    } finally {
+      clock.mockRestore();
+      mounted.surface.destroy();
+    }
+  });
+
   test('a second click selects the word under it', () => {
     const mounted = mount(paragraph('hello world'));
     press(mounted, 12, 5);
