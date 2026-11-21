@@ -4,7 +4,7 @@ This experimental example embeds application React components in the canonical W
 
 The fixture contains a phase, a nested activity, native editable paragraphs and a table, and an interactive quiz. The quiz includes SVG, a select control, and expandable content with an independent textarea.
 
-## Run
+## Run the example
 
 From the repository root:
 
