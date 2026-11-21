@@ -117,10 +117,22 @@ describe('only the pages on screen are built (task 9.4)', () => {
     surface.type('a');
     expect(surface.layout().pages.length).toBeGreaterThan(2);
     const firstBefore = container.querySelector<HTMLElement>('.docx-page[data-page-index="0"]')!;
+    const retainedOnEdit: ReadonlySet<number>[] = [];
+    const stop = surface.observePaint({
+      beforePaint(pages) {
+        if (pages) retainedOnEdit.push(pages);
+      },
+      afterPaint() {},
+    });
+    retainedOnEdit.length = 0;
     surface.type('b');
     const firstAfter = container.querySelector<HTMLElement>('.docx-page[data-page-index="0"]')!;
     // Same element object, not an equal-looking rebuild.
     expect(firstAfter).toBe(firstBefore);
+    const changedIndex = surface.layout().pages.at(-1)!.index;
+    expect(retainedOnEdit.some((pages) => pages.has(0) && !pages.has(changedIndex))).toBe(true);
+    stop();
+    surface.destroy();
   });
 
   test('scrolling reveals BUILT pages, not shells', async () => {

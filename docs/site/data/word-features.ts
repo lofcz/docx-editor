@@ -1179,7 +1179,7 @@ export const wordFeatures: WordFeature[] = [
     roundTrip: 'full',
     tier: 'community',
     notes:
-      'Hosts can collapse body content controls, including controls in table cells. A single visible header keeps its position during pagination. Section boundaries and unsupported wrappers prevent collapse.',
+      'Hosts can collapse body content controls, including controls in table cells. A visible header keeps its position during pagination, and hosts can keep controls connected on unchanged pages. Section boundaries and unsupported wrappers prevent collapse.',
     docsLink: '/docs/2.x/guides/content-controls',
   },
   {

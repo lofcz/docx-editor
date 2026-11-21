@@ -207,6 +207,8 @@ This subset supports body controls with paragraphs, tables, and nested block con
 
 `collapsedContentControls()` returns a frozen snapshot with stable identity until its entries change. Use `surface.observePaint()` to update disclosure chrome after view changes. Changing one visible control keeps its header in place as pages reflow. Scrolling cancels this adjustment. Explicit navigation into hidden text opens its enclosing controls. Local text edits reveal hidden content within the selection before changing it.
 
+If your component borrows painted elements, use the page indices passed to `beforePaint`. Keep borrowed elements connected on those pages. Restore elements on other pages before paint. Restore all elements when the argument is absent.
+
 Peer edits do not open another reader's controls. Deleting a control or its exact summary removes that entry. Host moves preserve the view. Loading another document resets it.
 
 ### Caret movement in content-locked controls

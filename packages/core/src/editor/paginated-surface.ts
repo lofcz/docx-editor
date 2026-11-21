@@ -2822,7 +2822,6 @@ export function mountPaginatedSurface(
       viewportOnly && currentLayout === paintedLayout
         ? retainAdjacentPages(currentLayout, viewportSet, materializedSet)
         : viewportSet;
-    if (!viewportOnly) paintObservers.beforePaint();
     // Shared furniture: keep the visual occurrence on a built page before paint marks
     // `data-docx-hf-active`, so scroll cannot leave the caret host on a dematerialized sheet.
     hfScope?.reconcileOccurrence();
@@ -2863,7 +2862,7 @@ export function mountPaginatedSurface(
         ...(contentControlChrome ? { contentControlChrome } : {}),
       },
       reviewAuthors.get().value,
-      viewportOnly ? paintObservers.beforePaint : undefined
+      paintObservers.preparePaint()
     );
     // Paint just rebuilt every span, so the caret's field lost its mark with the old DOM.
     textboxEditing?.syncDom();

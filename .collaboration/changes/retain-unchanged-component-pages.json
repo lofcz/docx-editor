@@ -1,0 +1,13 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Hosts received retained page indices only when scrolling repainted the viewport.",
+  "after": "Hosts also receive retained page indices when local or remote edits repaint the document.",
+  "reason": "The painter reports its existing page reuse decision. Shared operations, document geometry, and saved content stay the same.",
+  "tests": [
+    "packages/core/src/editor/__tests__/paginated-surface-layout.test.ts",
+    "packages/pro/src/collaboration/__tests__/mdx-document-views.test.ts"
+  ],
+  "changeset": "retain-unchanged-component-pages",
+  "migration": null
+}

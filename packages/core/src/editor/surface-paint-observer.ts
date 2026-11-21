@@ -16,7 +16,7 @@ export interface SurfacePaintFrame {
  * @public
  */
 export interface SurfacePaintObserver {
-  /** A viewport paint keeps the native nodes on these materialized pages in place. */
+  /** Paint keeps native nodes on these materialized pages. Restore all borrowed nodes when the set is absent. */
   beforePaint?(retainedPages?: ReadonlySet<number>): void;
   afterPaint(frame: SurfacePaintFrame): void;
   /** Release host resources when this surface is destroyed or its document is replaced. */
@@ -45,6 +45,9 @@ export function destroyPaintObservers(observers: Set<SurfacePaintObserver>): voi
 export function createPaintObservers(repaint: () => void, parked: () => boolean) {
   const observers = new Set<SurfacePaintObserver>();
   let lastFrame: SurfacePaintFrame | null = null;
+  function beforePaint(retainedPages: ReadonlySet<number>): void {
+    for (const observer of observers) observer.beforePaint?.(retainedPages);
+  }
   return {
     subscribe(observer: SurfacePaintObserver) {
       observers.add(observer);
@@ -54,9 +57,11 @@ export function createPaintObservers(repaint: () => void, parked: () => boolean)
         if (observers.delete(observer)) observer.beforePaint?.();
       };
     },
-    beforePaint(retainedPages?: ReadonlySet<number>) {
+    preparePaint() {
       lastFrame = null;
-      for (const observer of observers) observer.beforePaint?.(retainedPages);
+      // Only compute retained pages when a host borrows painted elements.
+      for (const observer of observers) if (observer.beforePaint) return beforePaint;
+      return undefined;
     },
     afterPaint(frame: SurfacePaintFrame) {
       lastFrame = frame;
