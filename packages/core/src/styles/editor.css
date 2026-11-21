@@ -3430,6 +3430,12 @@ a.docx-hyperlink:focus-visible {
   user-select: text;
   -webkit-user-select: text;
 }
+@media screen {
+  .docx-paginated-surface .docx-page[data-table-overflow] {
+    contain: layout style;
+    clip-path: inset(0 var(--docx-table-clip-right) 0 var(--docx-table-clip-left));
+  }
+}
 /* The caret and the TEXT highlight are the BROWSER's, so they follow real glyph shapes and
    per-line metrics instead of the uniform band a hand-drawn rectangle produces. */
 :is(.docx-paginated-surface, .docx-preview-surface) .docx-pages {

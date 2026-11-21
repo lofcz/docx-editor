@@ -9,6 +9,8 @@ function syntheticLayout(
     readonly width: number;
     readonly y?: number;
     readonly height?: number;
+    readonly margin?: number;
+    readonly table?: { x: number; width: number };
   }>
 ): SemanticLayout {
   return {
@@ -21,10 +23,10 @@ function syntheticLayout(
         width: page.width,
         height: page.height ?? 100,
       },
-      contentBox: { x: 0, y: 0, width: page.width, height: 100 },
-      fragments: [],
+      contentBox: { x: (page.x ?? 0) + (page.margin ?? 0), y: 0, width: page.width, height: 100 },
+      fragments: page.table ? [{ kind: 'table', box: { ...page.table, y: 0, height: 20 } }] : [],
     })),
-  } as SemanticLayout;
+  } as unknown as SemanticLayout;
 }
 
 describe('surfaceExtent width aggregation', () => {
@@ -60,6 +62,27 @@ describe('surfaceExtent width aggregation', () => {
     expect(extent.width).toBe(792);
     expect(extent.pageOffsetX.get(0)).toBe(90);
     expect(extent.pageOffsetX.get(1)).toBe(0);
+  });
+
+  test('includes columns beyond the right paper edge only when that sheet is built', () => {
+    const layout = syntheticLayout([
+      { index: 0, x: 10, width: 600, margin: 36, table: { x: 12, width: 700 } },
+      { index: 1, width: 600 },
+    ]);
+    expect(surfaceExtent(layout, new Set([0])).width).toBe(758);
+    expect(surfaceExtent(layout, new Set([1])).width).toBe(600);
+    expect(layout.pages[0]!.box.width).toBe(600);
+  });
+
+  test('keeps both edges reachable for a wide centred table and offsets all sheets together', () => {
+    const layout = syntheticLayout([
+      { index: 0, width: 600, margin: 36, table: { x: -136, width: 800 } },
+      { index: 1, width: 700 },
+    ]);
+    const extent = surfaceExtent(layout, undefined);
+    expect(extent.width).toBe(800);
+    expect(extent.pageOffsetX.get(0)).toBe(100);
+    expect(extent.pageOffsetX.get(1)).toBe(50);
   });
 
   test('handles more pages than the spread argument limit without throwing', () => {

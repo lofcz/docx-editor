@@ -226,6 +226,26 @@ export interface SurfaceExtent {
   readonly pageOffsetX: ReadonlyMap<number, number>;
 }
 
+type SurfacePage = SemanticLayout['pages'][number];
+const noTableSpill = { left: 0, right: 0 };
+const tableSpills = new WeakMap<SurfacePage, { left: number; right: number }>();
+function tableSpill(page: SurfacePage) {
+  if (!page.fragments.length) return noTableSpill;
+  let spill = tableSpills.get(page);
+  if (spill) return spill;
+  let left = 0;
+  let right = 0;
+  for (const block of page.fragments) {
+    if (block.kind !== 'table') continue;
+    const start = page.contentBox.x - page.box.x + block.box.x;
+    left = Math.max(left, -start);
+    right = Math.max(right, start + block.box.width - page.box.width);
+  }
+  spill = { left, right };
+  tableSpills.set(page, spill);
+  return spill;
+}
+
 export function surfaceExtent(
   layout: SemanticLayout,
   materialize: ReadonlySet<number> | undefined
@@ -236,14 +256,33 @@ export function surfaceExtent(
     ? layout.pages.filter((page) => materialize.has(page.index))
     : layout.pages;
   let width = 0;
-  for (const page of widthPages) width = Math.max(width, page.box.x + page.box.width);
+  const wideTables = [];
+  for (const page of widthPages) {
+    width = Math.max(width, page.box.x + page.box.width);
+    const spill = tableSpill(page);
+    if (spill.left || spill.right) wideTables.push({ page, spill });
+  }
   const pageOffsetX = new Map<number, number>();
   if (new Set(widthPages.map((page) => page.box.width)).size > 1) {
     for (const page of layout.pages) {
       pageOffsetX.set(page.index, (width - page.box.width) / 2 - page.box.x);
     }
   }
-  return { width, height, pageOffsetX };
+  // Keep the paper and its columns at their authored size. Include an exceptional
+  // table's outer cells in the editor's horizontal scroll range.
+  let left = 0;
+  let right = width;
+  for (const { page, spill } of wideTables) {
+    const x = page.box.x + (pageOffsetX.get(page.index) ?? 0);
+    left = Math.min(left, x - spill.left);
+    right = Math.max(right, x + page.box.width + spill.right);
+  }
+  if (left < 0) {
+    for (const page of layout.pages) {
+      pageOffsetX.set(page.index, (pageOffsetX.get(page.index) ?? 0) - left);
+    }
+  }
+  return { width: right - left, height, pageOffsetX };
 }
 
 export function equalSurfaceExtents(left: SurfaceExtent, right: SurfaceExtent): boolean {
@@ -278,5 +317,16 @@ export function applyPageOffsets(
     if (element?.dataset.pageIndex !== String(page.index)) continue;
     const offsetX = extent.pageOffsetX.get(page.index) ?? 0;
     element.style.left = `${(page.box.x + offsetX) * scale}px`;
+    if (element.dataset.materialized !== 'true') continue;
+    const { left, right } = tableSpill(page);
+    if (left || right) {
+      element.style.setProperty('--docx-table-clip-left', `${-left * scale}px`);
+      element.style.setProperty('--docx-table-clip-right', `${-right * scale}px`);
+      element.dataset.tableOverflow = '';
+    } else if (element.hasAttribute('data-table-overflow')) {
+      delete element.dataset.tableOverflow;
+      element.style.removeProperty('--docx-table-clip-left');
+      element.style.removeProperty('--docx-table-clip-right');
+    }
   }
 }

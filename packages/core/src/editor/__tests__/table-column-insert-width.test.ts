@@ -113,6 +113,14 @@ for (const example of [
       surface.setSelection({ head: position, anchor: position });
       const before = read(editor);
       expect(before.width).toBe(example.width);
+      const sheet = container.querySelector<HTMLElement>('.docx-page')!;
+      const extendsPastPaper = example.width === 15000;
+      expect(sheet.hasAttribute('data-table-overflow')).toBe(extendsPastPaper);
+      if (extendsPastPaper) {
+        expect(parseFloat(sheet.style.getPropertyValue('--docx-table-clip-right'))).toBeLessThan(0);
+        const pages = container.querySelector<HTMLElement>('.docx-pages')!;
+        expect(parseFloat(pages.style.width)).toBeGreaterThan(parseFloat(sheet.style.width));
+      }
       const fingerprint = canonicalOoxmlFingerprint(surface.session.part());
       expect(editor.exec({ type: 'insertColumn', where: 'right' }).ok).toBe(true);
       const first = read(editor);
