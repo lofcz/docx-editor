@@ -5,7 +5,7 @@ import type {
   SurfaceContentControlCollapse,
 } from '@docx-editor.dev/core/editor';
 import { paragraphTextOf, type OoxmlPackage } from '@docx-editor.dev/core/store';
-import { createDisclosureReader, type MdxDocumentComponent } from './document';
+import { createDisclosureReader, type MdxDocumentComponent } from './document-reader';
 import {
   cancelDisclosureMotion,
   changeDisclosure,

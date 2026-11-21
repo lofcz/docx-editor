@@ -37,6 +37,14 @@
       },
       "types": "./dist/node.d.ts",
       "import": "./dist/node.js"
+    },
+    "./mdx/view": {
+      "require": {
+        "types": "./types/mdx-view.d.cts",
+        "default": "./dist/mdx-view.cjs"
+      },
+      "types": "./dist/mdx-view.d.ts",
+      "import": "./dist/mdx-view.js"
     }
   },
   "files": [

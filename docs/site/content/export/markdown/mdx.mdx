@@ -42,10 +42,12 @@ When you open or close a disclosure, the body boundary and the following page co
 
 ## Add a project view
 
+When you open an existing Word document, import its display functions from `@docx-editor.dev/docx-to-markdown/mdx/view`. This entry reads stored component metadata without loading the Markdown parser. Load the conversion entry when you import or export MDX text.
+
 Use `mountMdxComponents` to attach a trusted view to a visible component. The editor supplies a host element at the component's page position. Each visible fragment receives a separate host. Its `fragmentIndex` keeps its position within the component when earlier pages scroll out of view.
 
 ```ts
-import { mountMdxComponents } from '@docx-editor.dev/docx-to-markdown/mdx';
+import { mountMdxComponents } from '@docx-editor.dev/docx-to-markdown/mdx/view';
 
 const releaseViews = mountMdxComponents(
   editor,

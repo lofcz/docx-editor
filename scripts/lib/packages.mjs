@@ -316,6 +316,7 @@ export const PACKAGES = [
         node: ['MarkdownExportResult'],
         // MDX conversion and view mounting accept the existing public engine objects.
         mdx: ['DocxEditorInstance', 'OoxmlContentControlNode', 'OoxmlPackage'],
+        'mdx-view': ['DocxEditorInstance', 'OoxmlContentControlNode', 'OoxmlPackage'],
         index: [
           'BlockFragmentRecord',
           'ContentControlBoundaryRecord',

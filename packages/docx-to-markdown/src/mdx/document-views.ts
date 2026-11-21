@@ -4,7 +4,7 @@ import {
   type OoxmlContentControlNode,
   type OoxmlPackage,
 } from '@docx-editor.dev/core/store';
-import { describeComponent, indexedComponents, type MdxDocumentComponent } from './document';
+import { describeComponent, indexedComponents, type MdxDocumentComponent } from './document-reader';
 import { COMPONENT_TAG, type WordComponent } from './document-components';
 import { paintedComponentFragments, paintedPageContents } from './document-painted-pages';
 

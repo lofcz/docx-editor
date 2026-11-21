@@ -3,7 +3,12 @@ import { withDeclarations } from '../../scripts/build-declarations.mjs';
 
 export default defineConfig(
   withDeclarations(import.meta.url, {
-    entry: { index: 'src/index.ts', node: 'src/node.ts', mdx: 'src/mdx.ts' },
+    entry: {
+      index: 'src/index.ts',
+      node: 'src/node.ts',
+      mdx: 'src/mdx.ts',
+      'mdx-view': 'src/mdx-view.ts',
+    },
     platform: 'node',
     format: ['cjs', 'esm'],
     // Advanced live-view types share browser contracts with Core. Declare that type-only
