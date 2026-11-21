@@ -13,6 +13,7 @@ import {
   type OoxmlPackage,
 } from '@docx-editor.dev/core/store';
 import {
+  configureMdxDisclosures,
   createMdxComponentRegistry,
   exportMdxDocument,
   importMdxDocument,
@@ -360,6 +361,29 @@ function mount(source: string, parent = document.body) {
   });
   return { container, editor, surface: editor.surface! };
 }
+
+test('the first layout respects authored disclosure states before the buttons mount', async () => {
+  const source =
+    '<details><summary>Closed</summary>Hidden data</details>\n\n<details open><summary>Open</summary>Visible data</details>';
+  const container = document.createElement('div');
+  document.body.append(container);
+  const editor = createDocxEditor({
+    container,
+    document: importMdxDocument(source),
+    configureInitialBlockView: configureMdxDisclosures,
+  });
+  cleanups.push(() => {
+    editor.destroy();
+    container.remove();
+  });
+  const initial = editor.surface!.collapsedContentControls();
+  expect(initial).toHaveLength(1);
+  expect(container.textContent).toContain('Visible data');
+  expect(container.textContent).not.toContain('Hidden data');
+  cleanups.push(mountMdxDisclosures(editor));
+  expect(editor.surface!.collapsedContentControls()).toBe(initial);
+  expect(exportMdxDocument(new Uint8Array(await editor.save()))).toContain('Hidden data');
+});
 
 test('rich summaries keep their own children and views follow only edits inside their control', async () => {
   const source = [

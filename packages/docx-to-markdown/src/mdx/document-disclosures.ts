@@ -2,6 +2,7 @@ import type {
   ContentControlCollapseTarget,
   DocxEditorInstance,
   SurfacePaintFrame,
+  SurfaceContentControlCollapse,
 } from '@docx-editor.dev/core/editor';
 import { paragraphTextOf, type OoxmlPackage } from '@docx-editor.dev/core/store';
 import { createDisclosureReader, type MdxDocumentComponent } from './document';
@@ -18,6 +19,59 @@ export interface MdxDisclosureOptions {
   readonly initiallyOpen?: (component: MdxDocumentComponent) => boolean;
   /** Announce an unsupported collapse, for example a section break inside a disclosure. */
   readonly onRefusal?: (component: MdxDocumentComponent, reason: string) => void;
+}
+
+function currentFolds(view: SurfaceContentControlCollapse) {
+  const values = new Map<string, ContentControlCollapseTarget>();
+  for (const item of view.collapsedContentControls())
+    values.set(
+      item.controlId,
+      item.placeholderHeightPt === undefined
+        ? item.summaryParagraphId
+        : { placeholderHeightPt: item.placeholderHeightPt }
+    );
+  return values;
+}
+
+function initiallyOpen(item: MdxDocumentComponent, options: MdxDisclosureOptions): boolean {
+  const value = item.attributes.open;
+  return options.initiallyOpen?.(item) ??
+    (value === true ||
+      typeof value === 'string' ||
+      (value !== null && typeof value === 'object' && 'value' in value && value.value === 'true'));
+}
+
+function applyFolds(
+  view: SurfaceContentControlCollapse,
+  items: readonly MdxDocumentComponent[],
+  options: MdxDisclosureOptions
+): void {
+  if (!items.length) return;
+  const next = currentFolds(view);
+  const pending = items.filter((item) => next.get(item.controlId) !== item.summaryParagraphId);
+  if (!pending.length) return;
+  for (const item of pending) next.set(item.controlId, item.summaryParagraphId);
+  if (view.setCollapsedContentControls(next).ok) return;
+  for (const item of pending) {
+    const single = currentFolds(view);
+    single.set(item.controlId, item.summaryParagraphId);
+    const attempt = view.setCollapsedContentControls(single);
+    if (!attempt.ok) options.onRefusal?.(item, attempt.reason);
+  }
+}
+
+/** Apply authored disclosure states before first layout. Existing host folds are preserved. @public */
+export function configureMdxDisclosures(
+  pkg: OoxmlPackage,
+  view: SurfaceContentControlCollapse,
+  options: MdxDisclosureOptions = {}
+): void {
+  const items = createDisclosureReader()(pkg);
+  applyFolds(
+    view,
+    items.filter((item) => item.summaryParagraphId && !initiallyOpen(item, options)),
+    options
+  );
 }
 
 /**
@@ -40,17 +94,7 @@ export function mountMdxDisclosures(
   let summaries = new Map<string, MdxDocumentComponent>();
   let previousPackage: OoxmlPackage | undefined;
   let disposed = false;
-  function folds() {
-    const values = new Map<string, ContentControlCollapseTarget>();
-    for (const item of surface!.collapsedContentControls())
-      values.set(
-        item.controlId,
-        item.placeholderHeightPt === undefined
-          ? item.summaryParagraphId
-          : { placeholderHeightPt: item.placeholderHeightPt }
-      );
-    return values;
-  }
+  const folds = () => currentFolds(surface);
   function refresh() {
     const pkg = surface!.session.currentPackage();
     if (pkg === previousPackage) return;
@@ -62,33 +106,11 @@ export function mountMdxDisclosures(
       next.set(item.summaryParagraphId, item);
       if (!known.has(item.controlId)) {
         known.add(item.controlId);
-        const value = item.attributes.open;
-        const open =
-          options.initiallyOpen?.(item) ??
-          (value === true ||
-            typeof value === 'string' ||
-            (value !== null &&
-              typeof value === 'object' &&
-              'value' in value &&
-              value.value === 'true'));
-        if (!open) initial.push(item);
+        if (!initiallyOpen(item, options)) initial.push(item);
       }
     }
     summaries = next;
-    if (initial.length) {
-      const view = folds();
-      for (const item of initial) view.set(item.controlId, item.summaryParagraphId);
-      const result = surface!.setCollapsedContentControls(view);
-      if (!result.ok) {
-        // An invalid imported component must not prevent its siblings from opening or closing.
-        for (const item of initial) {
-          const single = folds();
-          single.set(item.controlId, item.summaryParagraphId);
-          const attempt = surface!.setCollapsedContentControls(single);
-          if (!attempt.ok) options.onRefusal?.(item, attempt.reason);
-        }
-      }
-    }
+    applyFolds(surface!, initial, options);
   }
   function makeButton(doc: Document, summary: string) {
     const button = doc.createElement('button');

@@ -9,6 +9,7 @@ import { createDocxEditor, setSurfaceInlineWidgetMetrics } from '@docx-editor.de
 import { contentControlTextOf } from '@docx-editor.dev/core/store';
 import { caretAt, hitTestSemantic } from '@docx-editor.dev/core/layout';
 import {
+  configureMdxDisclosures,
   exportMdxDocument,
   importMdxDocument,
   mountMdxComponents,
@@ -35,6 +36,7 @@ function mount(bytes: Uint8Array, peer?: Peer) {
   const editor = createDocxEditor({
     container,
     document: bytes,
+    configureInitialBlockView: configureMdxDisclosures,
     zoom: 1,
     modules: peer ? [collaborationModule({ session: peer.room.session })] : [],
   });

@@ -8,7 +8,11 @@ export {
   type MdxDocumentComponent,
   type MdxDocumentOptions,
 } from './mdx/document.ts';
-export { mountMdxDisclosures, type MdxDisclosureOptions } from './mdx/document-disclosures.ts';
+export {
+  configureMdxDisclosures,
+  mountMdxDisclosures,
+  type MdxDisclosureOptions,
+} from './mdx/document-disclosures.ts';
 export {
   mountMdxComponents,
   type MdxComponentRenderer,

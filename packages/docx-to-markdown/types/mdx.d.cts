@@ -5,5 +5,6 @@ export declare const exportMdxDocument: typeof API.exportMdxDocument;
 export declare const importMdxDocument: typeof API.importMdxDocument;
 export declare const isMdxDocument: typeof API.isMdxDocument;
 export declare const readMdxComponents: typeof API.readMdxComponents;
+export declare const configureMdxDisclosures: typeof API.configureMdxDisclosures;
 export declare const mountMdxDisclosures: typeof API.mountMdxDisclosures;
 export declare const mountMdxComponents: typeof API.mountMdxComponents;

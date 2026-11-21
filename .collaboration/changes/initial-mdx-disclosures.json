@@ -1,0 +1,13 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Mounting disclosure buttons initialized each reader's view after layout.",
+  "after": "Each reader can apply authored folds before layout and mount disclosure buttons afterward.",
+  "reason": "Local folds use the same validated surface state and leave shared document operations unchanged.",
+  "tests": [
+    "packages/docx-to-markdown/test/mdx-document.test.ts",
+    "packages/pro/src/collaboration/__tests__/mdx-document-views.test.ts"
+  ],
+  "changeset": "initial-mdx-disclosures",
+  "migration": null
+}

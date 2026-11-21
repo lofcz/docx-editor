@@ -11,6 +11,7 @@ The MDX entry point converts Markdown and JSX into a Word document. Headings, li
 ```ts
 import { createDocxEditor } from '@docx-editor.dev/core/editor';
 import {
+  configureMdxDisclosures,
   exportMdxDocument,
   importMdxDocument,
   mountMdxDisclosures,
@@ -20,7 +21,11 @@ const bytes = importMdxDocument(
   '# Inspection\n\n<Procedure title="Test the valve">\n\n1. Open the valve.\n2. Record the pressure.\n\n</Procedure>',
   { disclosureTags: ['Procedure'] }
 );
-const editor = createDocxEditor({ container, document: bytes });
+const editor = createDocxEditor({
+  container,
+  document: bytes,
+  configureInitialBlockView: configureMdxDisclosures,
+});
 const release = mountMdxDisclosures(editor);
 
 // After editing, export the current Word paragraphs and component attributes.
