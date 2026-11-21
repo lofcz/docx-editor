@@ -2,8 +2,7 @@
 //
 // A table edit that changes column widths replaces every page the table crosses. Page-field
 // finalize then projects each page's footer again, so a footer showing PAGE is a new record
-// with the same content. Adoption must keep those sheets, and must still rebuild one whose
-// furniture or content-control chrome really changed.
+// with the same content. Adoption keeps those sheets and updates changed furniture or controls.
 
 import { GlobalRegistrator } from '@happy-dom/global-registrator';
 if (!GlobalRegistrator.isRegistered) GlobalRegistrator.register();
@@ -213,6 +212,8 @@ describe('content-control chrome over a moved cell', () => {
       const boundary = () =>
         container.querySelector<HTMLElement>('.docx-content-control-boundary')!.style.left;
       const left = boundary();
+      const sheet = container.querySelector('.docx-page');
+      const controlLayer = container.querySelector('.docx-content-control-chrome');
       const op = applyTreeOp(part, {
         op: 'insertText',
         paragraphId: cellParagraphId(part, 1, 0),
@@ -225,6 +226,8 @@ describe('content-control chrome over a moved cell', () => {
       paintSemanticLayout(container, after, options);
       expect(container.innerHTML).toBe(coldPaint(after, options));
       expect(boundary()).not.toBe(left);
+      expect(container.querySelector('.docx-page')).toBe(sheet);
+      expect(container.querySelector('.docx-content-control-chrome')).not.toBe(controlLayer);
     });
   }
 });

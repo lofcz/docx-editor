@@ -163,6 +163,7 @@ describe('content-control boundary paint seam', () => {
         .hasAttribute('data-active')
     ).toBe(false);
 
+    const text = container.querySelector('.docx-page-content [data-start]')!.firstChild;
     paintSemanticLayout(container, layout, {
       scale: 1,
       contentControlChrome: { showAll: true, activeIds: new Set([control.id]) },
@@ -173,10 +174,42 @@ describe('content-control boundary paint seam', () => {
         .hasAttribute('data-active')
     ).toBe(true);
     expect(container.querySelector('.docx-content-control-label')?.textContent).toBe('Name');
+    expect(container.querySelector('.docx-page-content [data-start]')!.firstChild).toBe(text);
   });
 
   test('PaintOptions has no show-content-controls flag in this slice', () => {
     const options: PaintOptions = { scale: 1, ariaHidden: true };
     expect('showContentControls' in options).toBe(false);
+  });
+
+  test('updating an extra boundary preserves other controls and their editable text', () => {
+    const layout = layoutSemanticDocument(
+      load(
+        '<w:sdt><w:sdtPr><w:alias w:val="Name"/></w:sdtPr>' +
+          '<w:sdtContent><w:p><w:r><w:t>Ada</w:t></w:r></w:p></w:sdtContent></w:sdt>'
+      ),
+      1,
+      { measurer: createFixedMeasurer(6, 14) }
+    );
+    const original = layout.contentControls![0]!;
+    const container = document.createElement('div');
+    const paint = (alias: string) =>
+      paintSemanticLayout(container, layout, {
+        contentControlChrome: {
+          additionalBoundaries: [{ ...original, id: 'extra', alias }],
+        },
+      });
+    paint('First');
+    const native = container.querySelector('.docx-content-control-chrome');
+    const text = container.querySelector('[data-start]')!.firstChild;
+    paint('Second');
+    expect(
+      container.querySelector('[data-docx-content-control="extra"]')?.getAttribute('aria-label')
+    ).toBe('Second');
+    expect(container.querySelector('.docx-content-control-chrome')).toBe(native);
+    expect(container.querySelector('[data-start]')!.firstChild).toBe(text);
+    paintSemanticLayout(container, layout);
+    expect(container.querySelector('[data-docx-content-control="extra"]')).toBeNull();
+    expect(container.querySelector('.docx-content-control-chrome')).toBe(native);
   });
 });

@@ -61,6 +61,8 @@ export interface ChangedPageParts {
   readonly blocks: boolean;
   /** The header or footer story, present on both records. */
   readonly furniture: boolean;
+  /** The content-control boundaries and value widgets above the body. */
+  readonly controls: boolean;
 }
 
 /**
@@ -72,6 +74,7 @@ export function changedPageParts(previous: PageRecord, next: PageRecord): Change
   if (previous === next) return null;
   let blocks = false;
   let furniture = false;
+  let controls = false;
   const keys = new Set([...Object.keys(previous), ...Object.keys(next)]);
   for (const key of keys) {
     // Paint never reads the page-field source: the header, footer and body field records that
@@ -84,11 +87,15 @@ export function changedPageParts(previous: PageRecord, next: PageRecord): Change
       continue;
     }
     if (samePageValue(a, b)) continue;
+    if (key === 'contentControls') {
+      controls = true;
+      continue;
+    }
     if ((key === 'header' || key === 'footer') && a && b) {
       furniture = true;
       continue;
     }
     return null;
   }
-  return { blocks, furniture };
+  return { blocks, furniture, controls };
 }

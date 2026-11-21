@@ -8,6 +8,8 @@ import type {
   PageRecord,
 } from '@docx-editor.dev/core/layout';
 import type { PaintOptions } from './semantic-paint.ts';
+import { CHANGE_BARS_CLASS } from './semantic-paint-change-bars.ts';
+import { sameDataWithin } from './semantic-paint-record-equality.ts';
 
 /**
  * Height of the control label tab, in SCREEN pixels: `.docx-content-control-label` is 14px of
@@ -36,6 +38,15 @@ const WIDGET_TYPES = new Set<ContentControlMappedType>([
   'picture',
   'buildingBlockGallery',
 ]);
+
+interface PaintedControl {
+  readonly record: ContentControlBoundaryRecord;
+  readonly flags: string;
+  readonly element: HTMLElement;
+}
+
+// A retained sheet keeps its origin and zoom. Only a changed control needs new furniture.
+const paintedControls = new WeakMap<HTMLElement, readonly PaintedControl[]>();
 
 /**
  * Paint on-demand content-control boundary furniture onto a page sheet.
@@ -66,7 +77,10 @@ export function paintContentControlChrome(
         !pageControls.some((control) => control.id === candidate.id)
     ),
   ];
-  if (controls.length === 0) return;
+  const previous = paintedControls.get(pageElement) ?? [];
+  if (!controls.length && !previous.length) return;
+  const byId = new Map(previous.map((item) => [item.record.id, item]));
+  const next: PaintedControl[] = [];
   const showAll = chrome?.showAll === true;
   const activeIds = chrome?.activeIds;
   const hoverIds = chrome?.hoverIds;
@@ -75,20 +89,44 @@ export function paintContentControlChrome(
     const isToc = tocControlIds?.has(control.id) === true;
     const active = !isToc && activeIds?.has(control.id) === true;
     const hovered = hoverIds?.has(control.id) === true;
-    pageElement.append(
-      paintContentControlBoundary(
+    const visible = showAll || active || (isToc && hovered);
+    const checked = chrome?.checkedIds?.has(control.id) === true;
+    const readOnly = chrome?.readOnly === true;
+    const flags = [active, hovered, visible, checked, isToc, readOnly].join(',');
+    const old = byId.get(control.id);
+    byId.delete(control.id);
+    if (old?.flags === flags && sameDataWithin(old.record, control, 20_000)) {
+      next.push({ record: control, flags, element: old.element });
+      continue;
+    }
+    next.push({
+      record: control,
+      flags,
+      element: paintContentControlBoundary(
         document,
         page,
         control,
         options.scale,
         active,
         hovered,
-        showAll || active || (isToc && hovered),
-        chrome?.checkedIds?.has(control.id),
+        visible,
+        checked,
         isToc,
-        chrome?.readOnly === true
-      )
-    );
+        readOnly
+      ),
+    });
+  }
+  paintedControls.set(pageElement, next);
+  const kept = new Set(next.map((item) => item.element));
+  let anchor: ChildNode | null =
+    previous.at(-1)?.element.nextSibling ??
+    pageElement.querySelector(`:scope > .${CHANGE_BARS_CLASS}`);
+  for (const item of previous) if (!kept.has(item.element)) item.element.remove();
+  for (let i = next.length - 1; i >= 0; i--) {
+    const el = next[i]!.element;
+    if (el.parentElement !== pageElement || el.nextSibling !== anchor)
+      pageElement.insertBefore(el, anchor);
+    anchor = el;
   }
 }
 

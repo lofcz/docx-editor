@@ -84,6 +84,7 @@ import type {
 } from '@docx-editor.dev/core/layout';
 import { paintPageNoteAreas } from './semantic-paint-notes.ts';
 import { paintContentControlChrome } from './semantic-paint-content-controls.ts';
+import { sameDataWithin } from './semantic-paint-record-equality.ts';
 import {
   paintPageChangeBars,
   reconcilePageChangeBars,
@@ -330,9 +331,8 @@ export interface PaintOptions {
   /**
    * On-demand content-control boundary chrome (show-all and/or caret-entry).
    *
-   * Furniture only — never contributes layout records or changes page geometry. Omitted or
-   * empty means no control chrome is painted. Folded into the paint-reuse key so a toggle
-   * rebuilds furniture without a layout pass.
+   * Boundary furniture never changes page geometry. Inactive controls remain discoverable.
+   * Updating a boundary preserves unaffected controls and editable page content.
    */
   readonly contentControlChrome?: {
     readonly showAll?: boolean;
@@ -2103,6 +2103,8 @@ interface RetainedPage {
 interface RetainedPaint {
   /** Paint parameters folded into reuse: a zoom or a11y change rebuilds every page. */
   readonly parameters: string;
+  readonly chromeKey: string;
+  readonly additionalBoundaries?: readonly ContentControlBoundaryRecord[];
   readonly pages: readonly RetainedPage[];
 }
 
@@ -2289,24 +2291,12 @@ export function paintSemanticLayoutWithAuthorSlots(
     options.imageUrlPort !== undefined
       ? drawingUrlRegistryFor(container, options.imageUrlPort)
       : null;
-  const additionalKey = chrome?.additionalBoundaries
-    ? chrome.additionalBoundaries
-        .flatMap((boundary) =>
-          boundary.fragments.map(
-            (fragment) =>
-              `${boundary.id}:${fragment.pageIndex}:${fragment.box.x}:${fragment.box.y}:${fragment.box.width}:${fragment.box.height}`
-          )
-        )
-        .sort()
-        .join(',')
-    : '';
   const readOnlyKey = options.readOnlyParagraphIds
     ? [...options.readOnlyParagraphIds].sort().join(',')
     : '';
   const emptyTocKey = options.emptyTocPlaceholderIds
     ? [...options.emptyTocPlaceholderIds].sort().join(',')
     : '';
-  const tocKey = chrome?.tocControlIds ? [...chrome.tocControlIds].sort().join(',') : '';
   // Once per paint, from the WHOLE layout, so every page shares one author→slot map and an
   // incremental repaint cannot disagree with a full one.
   const revisionStyles = revisionStyleContextOf(
@@ -2364,15 +2354,13 @@ export function paintSemanticLayoutWithAuthorSlots(
   // registered must not be reused verbatim afterwards. Header/footer occurrence is
   // applied in place (see applyHeaderFooterPaintChrome) so entering a header, or
   // moving the caret across shared furniture copies, does not rebuild body sheets.
-  // Content-control chrome is furniture only, but toggling it must rebuild painted pages
-  // so show-all / caret chrome appear. Hover is the one other exception: it is applied
-  // to the painted nodes in place, because a pointer crossing a region may not move it.
+  // Control boundaries have their own layer. Showing a field or moving its label
+  // does not invalidate the body nodes, including text that a host has borrowed.
   const parameters =
     `${resolved.scale}|${resolved.ariaHidden}|${options.includePartial ?? false}|` +
     `${resolved.fontAlias ? aliasIdentity(resolved.fontAlias) : ''}|` +
     `${resolved.serifHangulFace ? aliasIdentity(resolved.serifHangulFace) : ''}|` +
     `${resolved.defaultFontFamily ?? ''}|` +
-    `cc:${chromeKey}:${additionalKey}|toc:${tocKey}|` +
     `ro:${readOnlyKey}|tocEmpty:${emptyTocKey}|` +
     `${options.imageUrlPort ? 'url' : ''}|` +
     `${drawingPaintStringsCacheToken(drawingStrings)}|` +
@@ -2383,6 +2371,9 @@ export function paintSemanticLayoutWithAuthorSlots(
     `${resolved.breakMarks ? `breaks:${breakMarkStringsCacheToken(breakStrings)}:${resolved.breakMarks.token}|` : ''}` +
     `bars:${resolved.changeBars}:${resolved.changeBarsToggle}`;
   const previous = retainedPaints.get(container);
+  const chromeChanged =
+    previous?.chromeKey !== chromeKey ||
+    !sameDataWithin(previous.additionalBoundaries, chrome?.additionalBoundaries, 20_000);
   const parametersUnchanged = previous?.parameters === parameters;
   const reusable = parametersUnchanged
     ? new Map(previous.pages.map((entry) => [entry.record, entry]))
@@ -2394,7 +2385,12 @@ export function paintSemanticLayoutWithAuthorSlots(
   if (beforePaint) {
     const retained = new Set<number>();
     for (const page of layout.pages) {
-      if (reusable?.get(page)?.materialized && (options.materialize?.has(page.index) ?? true))
+      // Hosts may borrow control widgets too. They must release those before an overlay update.
+      if (
+        !chromeChanged &&
+        reusable?.get(page)?.materialized &&
+        (options.materialize?.has(page.index) ?? true)
+      )
         retained.add(page.index);
     }
     beforePaint(retained);
@@ -2403,7 +2399,11 @@ export function paintSemanticLayoutWithAuthorSlots(
   const pages: RetainedPage[] = layout.pages.map((page) => {
     const materialized = options.materialize?.has(page.index) ?? true;
     const kept = reusable?.get(page);
-    if (kept && kept.materialized === materialized) return kept;
+    if (kept && kept.materialized === materialized) {
+      if (materialized && chromeChanged)
+        paintContentControlChrome(document, kept.element, page, resolved);
+      return kept;
+    }
     const prior = previousByIndex?.get(page.index);
     if (
       !materialized &&
@@ -2435,7 +2435,11 @@ export function paintSemanticLayoutWithAuthorSlots(
           furniturePainter(document, furniture)
         );
       const adopted = kept ? adoptPageBlocks(document, prior, page, resolved) : null;
-      if (adopted) return adopted;
+      if (adopted) {
+        if (moved.controls || chromeChanged)
+          paintContentControlChrome(document, adopted.element, page, resolved);
+        return adopted;
+      }
     }
     const painted: { content?: HTMLElement; blocks?: Map<BlockFragmentRecord, HTMLElement> } = {};
     const element = paintPage(document, page, resolved, materialized, painted);
@@ -2447,7 +2451,12 @@ export function paintSemanticLayoutWithAuthorSlots(
       ...(painted.blocks ? { blocks: painted.blocks } : {}),
     };
   });
-  retainedPaints.set(container, { parameters, pages });
+  retainedPaints.set(container, {
+    parameters,
+    chromeKey,
+    additionalBoundaries: chrome?.additionalBoundaries,
+    pages,
+  });
   container.dataset.revision = String(layout.revision);
 
   if (urlRegistry) {

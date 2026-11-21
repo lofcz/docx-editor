@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Changes to content-control boundaries could replace complete pages in either editor.",
+  "after": "Editors update the affected control furniture and retain unrelated page content.",
+  "reason": "This change affects local DOM painting. Document operations, geometry, presence and saved content keep their existing behavior.",
+  "tests": [
+    "packages/core/src/output/__tests__/content-control-boundaries.test.ts",
+    "packages/core/src/output/__tests__/page-adoption-furniture.test.ts",
+    "packages/pro/src/collaboration/__tests__/mdx-document-views.test.ts"
+  ],
+  "changeset": "content-control-paint-retention",
+  "migration": null
+}
