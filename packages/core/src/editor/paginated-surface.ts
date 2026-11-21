@@ -1804,7 +1804,7 @@ export function mountPaginatedSurface(
       // An edit during an opening lays out the prefix so far; the opening slices go on after it.
       const steps = furnitureLaterSteps(
         layoutDocumentSteps(scope.revision, scope, undefined, openingBlockLimit ?? undefined),
-        visiblePages()
+        visiblePages
       );
       const layout = deferredLayout.run(steps, scope.revision, timedLayout(scope));
       openingBlockLimit = bodyBlockLimitAfter(layoutSession, openingBlockLimit);

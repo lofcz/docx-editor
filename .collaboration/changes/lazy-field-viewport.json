@@ -1,0 +1,14 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Each scheduled layout read the local scroll pane before it examined the document.",
+  "after": "The editor reads local scroll bounds when page fields or background pagination need them.",
+  "reason": "Viewport measurements affect local scheduling. Document operations, page field values, and collaboration messages keep their existing formats.",
+  "tests": [
+    "packages/core/src/editor/__tests__/surface-furniture-later.test.ts",
+    "packages/core/src/editor/__tests__/deferred-layout.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-footer-page-number-frame.test.ts"
+  ],
+  "changeset": "lazy-field-viewport",
+  "migration": null
+}

@@ -181,7 +181,7 @@ export function createDeferredLayout(host: DeferredLayoutHost): DeferredLayout {
       const owed = timed ? carried : 0;
       if (timed) carried = 0;
       const deadline = began + foregroundMs;
-      const after = pageAfterViewForTest ?? host.pageAfterView();
+      let after: number | null | undefined = null;
       const previous = host.current();
       const partial = host.partial?.() === true;
       let progress: LayoutProgress | null = null;
@@ -195,14 +195,17 @@ export function createDeferredLayout(host: DeferredLayoutHost): DeferredLayout {
         if (
           after === undefined ||
           !progress?.finalize ||
-          progress.pages.length <= after ||
-          host.now() < deadline ||
           !previous ||
           (!partial &&
             !progress.settled &&
-            previous.pages.length - progress.pages.length < MIN_DEFERRED_PAGES)
+            previous.pages.length - progress.pages.length < MIN_DEFERRED_PAGES) ||
+          host.now() < deadline
         )
           continue;
+        // Reading the scroll pane can force browser layout. A short pass finishes
+        // without needing the viewport. A long pass captures its boundary once.
+        if (after === null) after = pageAfterViewForTest ?? host.pageAfterView();
+        if (after === undefined || progress.pages.length <= after) continue;
         // The completed pages, then the previous layout's pages after them, until the pass
         // ends. Each keeps the index it is painted at. A settled pass has every page.
         const pages = progress.settled

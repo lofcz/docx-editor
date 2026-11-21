@@ -28,17 +28,27 @@ const PAGES_PER_STEP = 100;
  */
 export function* furnitureLaterSteps(
   steps: LayoutSteps<SemanticLayout>,
-  visible: ReadonlySet<number> | undefined
+  visiblePages: () => ReadonlySet<number> | undefined
 ): LayoutSteps<SemanticLayout> {
-  if (!visible || visible.size === 0) return yield* steps;
+  // Most passes have no page fields to project. Capture the viewport only when a field
+  // needs it, then use that same window in every slice and prefix finalizer of this pass.
+  let captured = false;
   let low = Infinity;
   let high = -Infinity;
-  for (const index of visible) {
-    low = Math.min(low, index);
-    high = Math.max(high, index);
-  }
+  const hasWindow = (): boolean => {
+    if (!captured) {
+      captured = true;
+      const visible = visiblePages();
+      if (visible)
+        for (const page of visible) {
+          low = Math.min(low, page);
+          high = Math.max(high, page);
+        }
+    }
+    return low <= high;
+  };
   const later = (index: number): boolean =>
-    index < low - NEAR_SCREEN_PAGES || index > high + NEAR_SCREEN_PAGES;
+    hasWindow() && (index < low - NEAR_SCREEN_PAGES || index > high + NEAR_SCREEN_PAGES);
   let layout: SemanticLayout;
   for (;;) {
     const next = withFurnitureLater(later, () => steps.next());
@@ -54,7 +64,7 @@ export function* furnitureLaterSteps(
   }
   const count = layout.pages.length;
   let from = layout.pages.findIndex((page) => pageFurnitureStale(page, count));
-  if (from < 0) return layout;
+  if (from < 0 || !hasWindow()) return layout;
   for (; from < count; from += PAGES_PER_STEP) {
     const shown = layout;
     // The session already holds this pass's end; only the projection is left.
