@@ -35,7 +35,7 @@ function bottomEdge(surface: PaginatedSurface, pages: HTMLElement, id: string, p
   const sheet = layout.pages[end.pageIndex];
   if (!page || !sheet) return undefined;
   const box = page.getBoundingClientRect();
-  const scale = box.width / sheet.box.width;
+  const scale = box.height / sheet.box.height;
   const bottom = box.top + (sheet.contentBox.y - sheet.box.y + end.box.y + end.box.height) * scale;
   return Math.max(0, Math.min(pane.height, bottom - pane.top));
 }

@@ -791,7 +791,7 @@ async function checkDisclosureViewport(wrapperOverflow: string) {
       this.classList.contains('docx-page')
     ) {
       const page = surface.publishedLayout().pages[0]!;
-      return new win.DOMRect(0, 0, page.box.width * scale, page.box.height * scale);
+      return new win.DOMRect(0, 0, page.box.width, page.box.height * scale);
     }
     if (this.hasAttribute('data-docx-mdx-disclosure'))
       return new win.DOMRect(
