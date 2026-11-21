@@ -380,7 +380,14 @@ test('the first layout respects authored disclosure states before the buttons mo
   expect(initial).toHaveLength(1);
   expect(container.textContent).toContain('Visible data');
   expect(container.textContent).not.toContain('Hidden data');
+  let pagePaints = 0;
+  cleanups.push(editor.surface!.observePaint({ afterPaint: () => pagePaints++ }));
+  const paintsBeforeMount = pagePaints;
   cleanups.push(mountMdxDisclosures(editor));
+  expect(
+    container.querySelector('button[aria-label="Closed"]')?.getAttribute('aria-expanded')
+  ).toBe('false');
+  expect(pagePaints).toBe(paintsBeforeMount);
   expect(editor.surface!.collapsedContentControls()).toBe(initial);
   expect(exportMdxDocument(new Uint8Array(await editor.save()))).toContain('Hidden data');
 });

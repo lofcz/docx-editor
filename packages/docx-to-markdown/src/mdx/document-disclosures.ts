@@ -203,8 +203,10 @@ export function mountMdxDisclosures(
     }
     buttons.clear();
   }
+  const foldsBeforeMount = surface.collapsedContentControls();
   refresh();
   const stop = surface.observePaint({
+    replayCurrentFrame: foldsBeforeMount === surface.collapsedContentControls(),
     beforePaint() {
       const active = ownerDocument?.activeElement as HTMLElement | null;
       const summary = active?.dataset.mdxSummaryId;
