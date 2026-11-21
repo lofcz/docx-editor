@@ -87,7 +87,7 @@ function sameParagraphPaint(
   paint: ParagraphReflowPaint
 ): boolean {
   if (after.borders || after.bottomBorder || after.marker?.picture) return false;
-  if (before.box.height !== after.box.height) return false;
+  // The container writes the outer box. Line, shading and marker heights are checked below.
   if (before.lines.length !== after.lines.length) return false;
   if (!sameRecordExcept(before, after, FRAGMENT_GEOMETRY)) return false;
   if ((before.shadingBox === undefined) !== (after.shadingBox === undefined)) return false;
@@ -119,7 +119,7 @@ function sameParagraphPaint(
  *
  * `element` must be the element painted for `before` at the same scale and paint parameters.
  * The paragraph's own box belongs to its container, which places and sizes it after this
- * succeeds; only its height is required to be unchanged.
+ * succeeds. Every child still has to match, including its painted height.
  * Returns false, without touching the element, when anything painted would differ.
  */
 export function reflowParagraph(

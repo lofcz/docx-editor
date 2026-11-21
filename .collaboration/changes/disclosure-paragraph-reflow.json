@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Moving a paragraph during a local disclosure could replace its painted lines.",
+  "after": "Paragraphs with the same text and supported line geometry keep their painted lines on the same sheet.",
+  "reason": "The painter moves local elements. Document operations, cursor geometry, and saved content keep their existing behavior.",
+  "tests": [
+    "packages/core/src/editor/__tests__/content-control-collapse.test.ts",
+    "packages/core/src/output/__tests__/table-reflow-paint.test.ts",
+    "packages/pro/src/collaboration/__tests__/mdx-document-views.test.ts"
+  ],
+  "changeset": "disclosure-paragraph-reflow",
+  "migration": null
+}

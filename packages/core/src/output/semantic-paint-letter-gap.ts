@@ -7,7 +7,7 @@
 // revision marks then run on across the gap. The PDF writer extends the same marks over the
 // same gaps, so both outputs read one rule, {@link followingGapPaint}.
 import { segmentGraphemes } from '../layout/grapheme.ts';
-import type { StyleSpanRecord } from '../layout/semantic-records.ts';
+import type { LineRecord, StyleSpanRecord } from '../layout/semantic-records.ts';
 import { syntheticBoldAdvancePt, unspacedBlankRuns } from '../layout/synthetic-bold.ts';
 import { withoutTrailingZeroWidthSpaces } from '../layout/trailing-spaces.ts';
 import { browserBoldWideningPx } from './synthetic-bold-widening.ts';
@@ -282,4 +282,34 @@ export interface PlacedSpan {
   readonly box: { readonly x: number; readonly width: number };
   readonly style: { readonly shaping?: { readonly level?: number } | null };
   readonly wrapAdvanceBefore?: number;
+}
+
+/** The layout-published gap before one span, excluding separately painted advances. */
+export function interSpanGapBefore(
+  line: LineRecord,
+  index: number,
+  rankOf: (paragraphId: string) => number
+): number {
+  if (index <= 0 || index >= line.spans.length) return 0;
+  const previous = line.spans[index - 1]!;
+  const current = line.spans[index]!;
+  // A drawing occupies this gap exactly when its spacer is FLUSHED between these two spans,
+  // so the test is the same reader-order window `appendDrawingAdvancesBefore` walks: rank
+  // first, then offset. Matching the raw offset alone was wrong twice on a resolved join
+  // line, where each half counts offsets from zero: a second-half drawing whose offset fell
+  // inside a first-half hole zeroed a gap it does not occupy, and a second-half drawing
+  // BEFORE its own text — numerically below the first half's ranges — was flushed here yet
+  // not counted, so its advance was painted twice.
+  const previousRank = rankOf(previous.range.paragraphId);
+  const currentRank = rankOf(current.range.paragraphId);
+  const drawingOccupiesGap = line.drawings?.some((drawing) => {
+    const rank = rankOf(drawing.paragraphId);
+    const afterPrevious =
+      rank > previousRank || (rank === previousRank && drawing.start >= previous.range.start);
+    const beforeCurrent =
+      rank < currentRank || (rank === currentRank && drawing.start < current.range.start);
+    return afterPrevious && beforeCurrent;
+  });
+  if (drawingOccupiesGap) return 0;
+  return paintedGapBetween(previous, current);
 }

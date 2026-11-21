@@ -64,9 +64,14 @@ test('collapse removes body flow while canonical content, history, and saved sem
     const revision = doc.surface.session.packageRevision();
     const afterY = doc.caret('After')!.y;
     const summaryY = doc.caret('Summary')!.y;
+    const followingLine = () =>
+      doc.container.querySelector(`.docx-line[data-paragraph-id="${doc.idOf('After')}"]`);
+    const originalLine = followingLine();
+    expect(originalLine).not.toBeNull();
     const requests = new Map([[doc.ownerOf('Summary'), doc.idOf('Summary')]]);
     expect(doc.surface.setCollapsedContentControls(requests)).toEqual({ ok: true });
     expect(doc.caret('After')!.y).toBeLessThan(afterY);
+    expect(followingLine()).toBe(originalLine);
     expect(doc.caret('Summary')!.y).toBe(summaryY);
     expect(doc.caret('Hidden body')).toBeNull();
     expect(
@@ -83,6 +88,7 @@ test('collapse removes body flow while canonical content, history, and saved sem
     expect(doc.surface.collapsedContentControls()).toBe(snapshot);
     expect(doc.surface.setCollapsedContentControls(new Map())).toEqual({ ok: true });
     expect(doc.caret('After')!.y).toBe(afterY);
+    expect(followingLine()).toBe(originalLine);
   } finally {
     doc.close();
   }

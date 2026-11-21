@@ -1,6 +1,13 @@
 // A block whose new record says exactly what its painted element already shows.
 
 import type { BlockFragmentRecord } from '../layout/semantic-records.ts';
+import {
+  moveRelativeBox,
+  reflowParagraph,
+  type ParagraphReflowPaint,
+} from './semantic-paint-paragraph-reflow.ts';
+
+const PAGE_ORIGIN = { x: 0, y: 0 };
 
 /** Values compared before a block is repainted instead; a long table is cheaper to paint. */
 const COMPARISON_BUDGET = 20_000;
@@ -50,11 +57,34 @@ function sameRecord(left: unknown, right: unknown, budget: { left: number }): bo
 export function equalBlockElement(
   previous: ReadonlyMap<BlockFragmentRecord, HTMLElement>,
   fragment: BlockFragmentRecord,
-  claimed: readonly HTMLElement[]
+  claimed: readonly HTMLElement[],
+  paint?: ParagraphReflowPaint
 ): HTMLElement | undefined {
   for (const [record, element] of previous) {
     if (record.id !== fragment.id || claimed.includes(element)) continue;
-    return sameRecord(record, fragment, { left: COMPARISON_BUDGET }) ? element : undefined;
+    if (sameRecord(record, fragment, { left: COMPARISON_BUDGET })) return element;
+    // A disclosure can move a following paragraph down the same sheet. Its line and
+    // run positions are relative to that paragraph once painted, as in table cells.
+    if (
+      paint &&
+      record.kind === 'paragraph' &&
+      fragment.kind === 'paragraph' &&
+      record.box.y !== fragment.box.y &&
+      record.box.x === fragment.box.x &&
+      record.box.width === fragment.box.width &&
+      reflowParagraph(element, record, fragment, paint)
+    ) {
+      moveRelativeBox(
+        element.style,
+        record.box,
+        PAGE_ORIGIN,
+        fragment.box,
+        PAGE_ORIGIN,
+        paint.scale
+      );
+      return element;
+    }
+    return undefined;
   }
   return undefined;
 }
