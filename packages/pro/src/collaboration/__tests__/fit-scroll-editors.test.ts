@@ -50,13 +50,15 @@ test('automatic fit preserves each participant’s own viewport and document sel
     expect(bob.scroller.scrollTop).toBe(320);
     expect(alice.editor.exec({ type: 'insertText', text: 'X' }).ok).toBe(true);
     pair.alice.room.session.flushPendingJournals();
-    await expect.poll(() => bob.editor.surface!.session.bodyText()).toBe('heXllo');
+    pair.bob.room.session.flushPendingJournals();
+    expect(bob.editor.surface!.session.bodyText()).toBe('heXllo');
     const reopened = openTreeSession(new Uint8Array(await bob.editor.save()));
     if (!reopened.ok) throw new Error(reopened.reason);
     expect(reopened.session.bodyText()).toBe('heXllo');
     expect(alice.editor.exec({ type: 'undo' }).ok).toBe(true);
     pair.alice.room.session.flushPendingJournals();
-    await expect.poll(() => bob.editor.surface!.session.bodyText()).toBe('hello');
+    pair.bob.room.session.flushPendingJournals();
+    expect(bob.editor.surface!.session.bodyText()).toBe('hello');
     expect(bob.scroller.scrollTop).toBe(320);
   } finally {
     for (const { editor, scroller } of [alice, bob]) {
