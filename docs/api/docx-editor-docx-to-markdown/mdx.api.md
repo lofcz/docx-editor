@@ -44,7 +44,7 @@ export interface BlockTagDefinition {
 }
 
 // @public
-export function configureMdxDisclosures(pkg: OoxmlPackage, view: SurfaceContentControlCollapse, options?: MdxDisclosureOptions): void;
+export function configureMdxDisclosures(pkg: OoxmlPackage, view: Pick<NonNullable<DocxEditorInstance['surface']>, 'collapsedContentControls' | 'setCollapsedContentControls'>, options?: MdxDisclosureOptions): void;
 
 // @public
 export function createMdxComponentRegistry(input: MdxRegistryInput): MdxRegistryResult;

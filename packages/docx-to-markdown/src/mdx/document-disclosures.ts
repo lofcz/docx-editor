@@ -35,10 +35,12 @@ function currentFolds(view: SurfaceContentControlCollapse) {
 
 function initiallyOpen(item: MdxDocumentComponent, options: MdxDisclosureOptions): boolean {
   const value = item.attributes.open;
-  return options.initiallyOpen?.(item) ??
+  return (
+    options.initiallyOpen?.(item) ??
     (value === true ||
       typeof value === 'string' ||
-      (value !== null && typeof value === 'object' && 'value' in value && value.value === 'true'));
+      (value !== null && typeof value === 'object' && 'value' in value && value.value === 'true'))
+  );
 }
 
 function applyFolds(
@@ -63,7 +65,10 @@ function applyFolds(
 /** Apply authored disclosure states before first layout. Existing host folds are preserved. @public */
 export function configureMdxDisclosures(
   pkg: OoxmlPackage,
-  view: SurfaceContentControlCollapse,
+  view: Pick<
+    NonNullable<DocxEditorInstance['surface']>,
+    'collapsedContentControls' | 'setCollapsedContentControls'
+  >,
   options: MdxDisclosureOptions = {}
 ): void {
   const items = createDisclosureReader()(pkg);
