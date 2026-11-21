@@ -68,8 +68,8 @@ function mount(bytes: Uint8Array, peer?: Peer) {
 }
 
 type Mounted = ReturnType<typeof mount>;
-async function room() {
-  const pair = await harness.pair(importMdxDocument(source));
+async function room(mdx = source) {
+  const pair = await harness.pair(importMdxDocument(mdx));
   const alice = mount(pair.alice.room.document, pair.alice);
   const bob = mount(pair.bob.room.document, pair.bob);
   const flush = () => {
@@ -109,6 +109,62 @@ function write(host: Mounted, text: string, offset: number, inserted: string) {
   host.surface.setSelection({ anchor: position, head: position });
   expect(host.editor.exec({ type: 'insertText', text: inserted }).ok).toBe(true);
 }
+
+test('unchanged nested views and disclosure anchors stay mounted during peer edits', async () => {
+  const blocks = Array.from(
+    { length: 8 },
+    (_, i) =>
+      '<details open>\n<summary>Panel ' +
+      i +
+      '</summary>\n\n' +
+      '<UnknownGroup>\n\n<ProjectPlot>\n\nPlot ' +
+      i +
+      '\n\n</ProjectPlot>\n\n' +
+      '<details open>\n<summary>Nested ' +
+      i +
+      '</summary>\n\nShared body\n\n</details>\n\n</UnknownGroup>\n\n</details>'
+  );
+  const { alice, bob, flush, converge } = await room([...blocks, 'Tail text'].join('\n\n'));
+  const hosts = [alice, bob];
+  const views = hosts.map(({ container }) =>
+    container.querySelector('[data-mdx-component="ProjectPlot"]')
+  );
+  const anchors = hosts.map(({ container }) =>
+    container.querySelector('button[aria-label="Nested 0"]')
+  );
+  expect(views.every(Boolean)).toBe(true);
+  expect(anchors.every(Boolean)).toBe(true);
+  const layers = hosts.map(({ container }) => container.querySelector('.docx-pages')!);
+  const scans = { pageBodies: 0, summaries: 0 };
+  const original = Element.prototype.querySelectorAll;
+  try {
+    Element.prototype.querySelectorAll = function (selector: string) {
+      if (layers.includes(this)) {
+        if (selector === '.docx-page-content') scans.pageBodies++;
+        if (selector === '.docx-paragraph-fragment[data-fragment-index="0"]') scans.summaries++;
+      }
+      return original.call(this, selector);
+    };
+    for (let i = 0; i < 10; i++) {
+      write(hosts[i % 2]!, 'Tail text', 0, String(i));
+      flush();
+    }
+  } finally {
+    Element.prototype.querySelectorAll = original;
+  }
+  converge();
+  write(alice, 'Plot 0', 0, 'Nested ');
+  flush();
+  write(bob, 'Nested 0', 0, 'Changed ');
+  converge();
+  for (const [i, host] of hosts.entries()) {
+    expect(host.container.querySelector('[data-mdx-component="ProjectPlot"]')).toBe(views[i]);
+    expect(views[i]?.querySelector('button')?.title).toBe('Nested Plot 0');
+    expect(host.container.querySelector('button[aria-label="Changed Nested 0"]')).toBe(anchors[i]);
+    expect(exportMdxDocument(host.pkg())).toContain('0123456789Tail text');
+  }
+  expect(scans).toEqual({ pageBodies: 0, summaries: 0 });
+});
 
 async function reopen(host: Mounted) {
   const saved = new Uint8Array(await host.editor.save());

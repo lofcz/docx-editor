@@ -6,6 +6,7 @@ import {
 } from '@docx-editor.dev/core/store';
 import { describeComponent, indexedComponents, type MdxDocumentComponent } from './document';
 import { COMPONENT_TAG, type WordComponent } from './document-components';
+import { paintedPageContents } from './document-painted-pages';
 
 /** The screen-only host of one component fragment on a visible Word page. @public */
 export interface MdxComponentView {
@@ -71,13 +72,13 @@ export function mountMdxComponents(
       index = indexedComponents(pkg);
       previous = pkg;
     }
-    const pages = new Map<number, HTMLElement>();
-    for (const content of frame.pagesLayer.querySelectorAll<HTMLElement>('.docx-page-content')) {
-      const page = content.closest<HTMLElement>('.docx-page');
-      if (page) pages.set(Number(page.dataset.pageIndex), content);
+    if (!index.size || !renderers.size) {
+      for (const [key, mount] of mounts) remove(key, mount);
+      return;
     }
+    const pages = paintedPageContents(frame);
     const visible = new Set<string>();
-    for (const control of index.size ? (frame.layout.contentControls ?? []) : []) {
+    for (const control of frame.layout.contentControls ?? []) {
       if (!control.tag?.startsWith(COMPONENT_TAG)) continue;
       const record = index.get(control.tag.slice(COMPONENT_TAG.length));
       if (!record) throw new Error('Missing MDX component metadata for ' + control.tag + '.');

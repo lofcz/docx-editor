@@ -172,17 +172,42 @@ export function exportMdxDocument(source: Uint8Array | OoxmlPackage): string {
 export function readMdxComponents(
   source: Uint8Array | OoxmlPackage
 ): readonly MdxDocumentComponent[] {
-  const pkg = open(source);
+  return componentsIn(open(source));
+}
+
+type DisclosureCache = WeakMap<
+  OoxmlContentControlNode,
+  { index: ReadonlyMap<string, WordComponent>; component?: MdxDocumentComponent }
+>;
+
+/** An ordinary Word edit keeps the identities of untouched controls and the metadata index. */
+export function createDisclosureReader(): (pkg: OoxmlPackage) => readonly MdxDocumentComponent[] {
+  const cache: DisclosureCache = new WeakMap();
+  return (pkg) => componentsIn(pkg, cache);
+}
+
+function componentsIn(pkg: OoxmlPackage, disclosures?: DisclosureCache): MdxDocumentComponent[] {
   const part = pkg.parts.get(pkg.mainDocumentPart);
   const index = indexedComponents(pkg);
   if (!part || !index.size) return [];
   const components: MdxDocumentComponent[] = [];
   for (const { node } of contentControlsIn(part.root)) {
+    const prior = disclosures?.get(node);
+    if (prior?.index === index) {
+      if (prior.component) components.push(prior.component);
+      continue;
+    }
     const tag = contentControlPropertiesOf(node).tag;
-    if (!tag?.startsWith(COMPONENT_TAG)) continue;
-    const record = index.get(tag.slice(COMPONENT_TAG.length));
-    if (!record) throw new Error('Missing MDX component metadata for ' + tag + '.');
-    components.push(describeComponent(part, node, record, index));
+    let component: MdxDocumentComponent | undefined;
+    if (tag?.startsWith(COMPONENT_TAG)) {
+      const record = index.get(tag.slice(COMPONENT_TAG.length));
+      if (!record) throw new Error('Missing MDX component metadata for ' + tag + '.');
+      if (!disclosures || record.disclosure) {
+        component = describeComponent(part, node, record, index);
+        components.push(component);
+      }
+    }
+    disclosures?.set(node, { index, component });
   }
   return components;
 }

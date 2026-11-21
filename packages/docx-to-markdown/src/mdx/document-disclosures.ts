@@ -4,8 +4,9 @@ import type {
   SurfacePaintFrame,
 } from '@docx-editor.dev/core/editor';
 import { paragraphTextOf, type OoxmlPackage } from '@docx-editor.dev/core/store';
-import { readMdxComponents, type MdxDocumentComponent } from './document';
+import { createDisclosureReader, type MdxDocumentComponent } from './document';
 import { revealDisclosureBody } from './document-motion';
+import { disclosureAnchors } from './document-painted-pages';
 
 /** The local reading preferences of a mounted editor. @public */
 export interface MdxDisclosureOptions {
@@ -33,6 +34,7 @@ export function mountMdxDisclosures(
   let arrow: { summary: string; opening: boolean } | undefined;
   let ownerDocument: Document | undefined;
   const known = new Set<string>();
+  const readDisclosures = createDisclosureReader();
   let summaries = new Map<string, MdxDocumentComponent>();
   let previousPackage: OoxmlPackage | undefined;
   let disposed = false;
@@ -53,8 +55,8 @@ export function mountMdxDisclosures(
     previousPackage = pkg;
     const next = new Map<string, MdxDocumentComponent>();
     const initial: MdxDocumentComponent[] = [];
-    for (const item of readMdxComponents(pkg)) {
-      if (!item.disclosure || !item.summaryParagraphId) continue;
+    for (const item of readDisclosures(pkg)) {
+      if (!item.summaryParagraphId) continue;
       next.set(item.summaryParagraphId, item);
       if (!known.has(item.controlId)) {
         known.add(item.controlId);
@@ -134,12 +136,8 @@ export function mountMdxDisclosures(
     if (!summaries.size && !buttons.size) return;
     const closed = folds();
     const seen = new Set<string>();
-    for (const element of frame.pagesLayer.querySelectorAll<HTMLElement>(
-      '.docx-paragraph-fragment[data-fragment-index="0"]'
-    )) {
-      const summary = element.dataset.paragraphId;
-      const item = summary && summaries.get(summary);
-      if (!summary || !item) continue;
+    for (const [summary, element] of disclosureAnchors(frame, summaries, buttons)) {
+      const item = summaries.get(summary)!;
       const button = buttons.get(summary) ?? makeButton(element.ownerDocument, summary);
       const label = paragraphTextOf(frame.part, summary) || item.name;
       const expanded = String(!closed.has(item.controlId));
