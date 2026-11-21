@@ -601,6 +601,12 @@ export interface ContentControlEntry {
 }
 
 const defaultContentControlsInCache = new WeakMap<OoxmlNode, readonly ContentControlEntry[]>();
+// Includes the outer control itself. Its descendants have the same ancestors wherever
+// the immutable control occurs at depth zero.
+const topLevelControlEntries = new WeakMap<
+  OoxmlContentControlNode,
+  readonly ContentControlEntry[]
+>();
 
 function collectContentControlsIn(
   root: OoxmlNode,
@@ -615,8 +621,21 @@ function collectContentControlsIn(
       if (entries.length >= limit) return;
       if (child.kind === 'contentControl') {
         if (depth >= maxDepth) continue;
+        const topLevel = composeFromSubtrees && depth === 0;
+        const previous = topLevel && topLevelControlEntries.get(child);
+        if (previous) {
+          for (const entry of previous) {
+            if (entries.length >= limit) return;
+            entries.push(entry);
+          }
+          continue;
+        }
+        const start = entries.length;
         entries.push({ node: child, depth, ancestors: [...ancestors] });
         walk(child, depth + 1, [...ancestors, child]);
+        // A nearly full enclosing scan can stop midway through this control.
+        if (topLevel && entries.length < limit)
+          topLevelControlEntries.set(child, entries.slice(start));
         continue;
       }
       // OUTSIDE any control, a paragraph's or table's entries are a pure function of that
@@ -650,6 +669,7 @@ function freezeContentControlEntries(
   entries: readonly ContentControlEntry[]
 ): readonly ContentControlEntry[] {
   for (const entry of entries) {
+    if (Object.isFrozen(entry)) continue;
     Object.freeze(entry.ancestors);
     Object.freeze(entry);
   }

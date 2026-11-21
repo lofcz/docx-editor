@@ -43,6 +43,23 @@ function nestedDoc(): OoxmlPart {
 }
 
 describe('contentControlsIn default-option cache', () => {
+  test('editing a sibling reuses complete outer-control scans and keeps nested ancestry', () => {
+    const part = parseDoc(
+      '<w:sdt><w:sdtContent>' +
+        nestedBody +
+        '</w:sdtContent></w:sdt>' +
+        '<w:p><w:r><w:t>Other</w:t></w:r></w:p>'
+    );
+    const before = contentControlsIn(part.root);
+    const other = storyParagraphs(bodyStoryRoot(part)!).at(-1)!;
+    const edited = apply(part, { op: 'insertText', paragraphId: other.id, offset: 0, text: 'X' });
+    const after = contentControlsIn(edited.root);
+    expect(after).toEqual(contentControlsIn(edited.root, {}));
+    expect(after[0]).toBe(before[0]);
+    expect(after[1]).toBe(before[1]);
+    expect(after[1]!.ancestors).toEqual([after[0]!.node]);
+  });
+
   test('table row reuse preserves control ancestry and invalidates edited cells', () => {
     const control = (tag: string, content: string) =>
       `<w:sdt><w:sdtPr><w:tag w:val="${tag}"/></w:sdtPr><w:sdtContent>${content}</w:sdtContent></w:sdt>`;

@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "An edit rescanned the descendants of each outer control.",
+  "after": "An unchanged outer control retains its complete list of descendants and their ancestors.",
+  "reason": "Immutable tree identities determine reuse. Peers still apply the same operations and lock checks.",
+  "tests": [
+    "packages/core/src/store/__tests__/content-control-nodes-cache.test.ts",
+    "packages/core/src/store/__tests__/content-control-lock.test.ts",
+    "packages/pro/src/collaboration/__tests__/mdx-document-views.test.ts"
+  ],
+  "changeset": "reuse-top-level-controls",
+  "migration": null
+}
