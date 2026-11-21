@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Automatic page fitting could scroll away from the top during opening or resizing.",
+  "after": "Each editor keeps its top edge during automatic fitting when its viewport starts at the top.",
+  "reason": "Viewport scroll and fit mode belong to each editor. Peers share document operations and model selection positions.",
+  "tests": [
+    "packages/core/src/editor/__tests__/zoom-controller.test.ts",
+    "packages/pro/src/collaboration/__tests__/fit-scroll-editors.test.ts"
+  ],
+  "changeset": "fit-document-top",
+  "migration": null
+}
