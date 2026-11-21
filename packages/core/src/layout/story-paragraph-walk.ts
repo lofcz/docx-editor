@@ -17,6 +17,24 @@ interface RowParagraphs {
 const rowParagraphs = new WeakMap<OoxmlNode, { plain?: RowParagraphs; merged?: RowParagraphs }>();
 
 const NO_COLUMNS: ReadonlySet<number> = new Set();
+const DEFAULT_TABLE_DEPTH = 8;
+const firstTableParagraphs = new WeakMap<OoxmlElement, OoxmlElement | null>();
+
+/** The first visible paragraph of a native table, in story reading order. @internal */
+export function firstTableParagraph(table: OoxmlElement): OoxmlElement | undefined {
+  if (table.kind !== 'table') return undefined;
+  const cached = firstTableParagraphs.get(table);
+  if (cached !== undefined) return cached ?? undefined;
+  const paragraphs: OoxmlElement[] = [];
+  let mergedAbove = NO_COLUMNS;
+  for (const row of flattenContentControls(table.children)) {
+    if (row.kind !== 'tableRow') continue;
+    mergedAbove = pushRowParagraphs(row, DEFAULT_TABLE_DEPTH, mergedAbove, paragraphs, true);
+    if (paragraphs.length) break;
+  }
+  firstTableParagraphs.set(table, paragraphs[0] ?? null);
+  return paragraphs[0];
+}
 
 /**
  * Collect story paragraphs, preserving table depth limits across immutable row reuse.
@@ -28,7 +46,7 @@ const NO_COLUMNS: ReadonlySet<number> = new Set();
  */
 export function walkStoryParagraphs(
   blocks: readonly OoxmlElement[],
-  maxTableDepth = 8,
+  maxTableDepth = DEFAULT_TABLE_DEPTH,
   skipMergedCells = false
 ): OoxmlElement[] {
   const out: OoxmlElement[] = [];

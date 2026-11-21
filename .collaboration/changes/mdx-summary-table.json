@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "A table at the start of an MDX summary prevented the editor from showing its disclosure button.",
+  "after": "Each editor can fold the disclosure and edit any summary cell while the body is closed.",
+  "reason": "The first visible cell paragraph supplies the canonical anchor. Fold state stays local and cell edits use existing operations.",
+  "tests": [
+    "packages/core/src/layout/__tests__/content-control-collapse-layout.test.ts",
+    "packages/docx-to-markdown/test/mdx-document.test.ts",
+    "packages/pro/src/collaboration/__tests__/mdx-document-views.test.ts"
+  ],
+  "changeset": "mdx-summary-table",
+  "migration": null
+}

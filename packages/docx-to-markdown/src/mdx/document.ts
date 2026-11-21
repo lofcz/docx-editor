@@ -1,3 +1,4 @@
+import { firstTableParagraph } from '@docx-editor.dev/core/layout';
 import {
   contentControlContentNodeOf,
   contentControlTextOf,
@@ -205,6 +206,7 @@ export function describeComponent(
       anchor = undefined;
     while (anchor?.kind === 'contentControl')
       anchor = contentControlContentNodeOf(anchor)?.children[0];
+    if (anchor?.kind === 'table') anchor = firstTableParagraph(anchor);
   }
   const attributes = Object.fromEntries(
     attributesOf(record.node).map(({ name, value }) => [name, value ?? true])

@@ -426,6 +426,7 @@ export {
   type ResolvedListItem,
 } from './list-resolve.ts';
 export { createFixedMeasurer } from './fixed-measurer.ts';
+export { firstTableParagraph } from './story-paragraph-walk.ts';
 export type { CjkTypographySettings } from './cjk-typography.ts';
 export {
   layoutEquation,

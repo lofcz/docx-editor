@@ -13,6 +13,7 @@ import type {
   ContentControlCollapseResult,
   ContentControlCollapseTarget,
 } from '../contracts/content-control-collapse.ts';
+import { firstTableParagraph } from './story-paragraph-walk.ts';
 
 const MAX_CONTROLS = 4096;
 const MAX_NODES = 500_000;
@@ -24,12 +25,17 @@ export interface PreparedContentControlCollapse extends CollapsedContentControl 
   readonly placeholder?: OoxmlElement;
 }
 
-/** Find the first flow paragraph without entering tables or unsupported wrappers. */
-function firstParagraph(node: OoxmlNode | undefined, depth = 0): OoxmlElement | undefined {
+/** Only a retained summary control can own a table anchor. A blank placeholder needs a flow paragraph. */
+function firstParagraph(
+  node: OoxmlNode | undefined,
+  allowTable = false,
+  depth = 0
+): OoxmlElement | undefined {
   if (!node || depth > MAX_DEPTH) return undefined;
   if (node.kind === 'paragraph') return node;
   if (node.kind === 'contentControl')
-    return firstParagraph(contentControlContentNodeOf(node)?.children[0], depth + 1);
+    return firstParagraph(contentControlContentNodeOf(node)?.children[0], allowTable, depth + 1);
+  if (allowTable && node.kind === 'table') return firstTableParagraph(node);
   return undefined;
 }
 
@@ -92,7 +98,10 @@ export function prepareContentControlCollapse(
     if (refusal) return refusal;
     const content = contentControlContentNodeOf(owner);
     const first = content?.children[0];
-    const summary = summaryParagraphId === null ? undefined : firstParagraph(first);
+    const summary =
+      summaryParagraphId === null
+        ? undefined
+        : firstParagraph(first, first?.kind === 'contentControl');
     const placeholder =
       summaryParagraphId === null && placeholderHeightPt !== 0 ? firstParagraph(first) : undefined;
     if (

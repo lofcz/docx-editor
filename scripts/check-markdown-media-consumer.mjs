@@ -132,6 +132,7 @@ main().catch(error => { console.error(error); process.exitCode = 1; });
     `
 import { exportMarkdown, createMarkdownZip, toMarkdownJSON } from '@docx-editor.dev/docx-to-markdown';
 import { inspectMdxHost } from './mdx-consumer.mjs';
+import '@docx-editor.dev/core/styles/editor.css';
 window.inspectMdxHost = inspectMdxHost;
 window.runImageExport = async () => {
   const result = await exportMarkdown(new Uint8Array(await (await fetch('/input.docx')).arrayBuffer()), { images: true });
@@ -165,6 +166,21 @@ window.runImageExport = async () => {
   });
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
+  await page.exposeFunction('verifyTableSummaryKeys', async () => {
+    const button = page.getByRole('button', { name: 'Report', exact: true });
+    const cell = page.locator('.docx-paragraph-fragment').filter({ hasText: 'Maximum' });
+    const body = page.locator('[data-mdx-component] button');
+    await button.click({ trial: true });
+    await button.press('Enter');
+    await page.getByRole('button', { name: 'Report', expanded: false }).waitFor();
+    assert.ok(await cell.isVisible());
+    await body.waitFor({ state: 'detached' });
+    assert.ok(await button.evaluate((el) => el === el.ownerDocument.activeElement));
+    await button.press('Space');
+    await page.getByRole('button', { name: 'Report', expanded: true }).waitFor();
+    await body.waitFor();
+    assert.ok(await button.evaluate((el) => el === el.ownerDocument.activeElement));
+  });
   await page.goto(server.resolvedUrls.local[0]);
   await page.waitForFunction(() => typeof window.runImageExport === 'function');
   for (const host of [

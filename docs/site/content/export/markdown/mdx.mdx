@@ -31,7 +31,7 @@ editor.destroy();
 
 HTML `details` and `summary` work without registration. Each reader can open or close a section independently. Word includes the complete content when you save or print the document. A registered disclosure can use a literal `title`, `summary`, or `label` for its editable summary.
 
-A multiline `summary` keeps its paragraphs, lists, tables, and nested components. The disclosure button uses its first flow paragraph. Start the summary with a paragraph or heading to enable the button. Closing the disclosure keeps the complete summary visible.
+A multiline `summary` keeps its paragraphs, lists, tables, and nested components. If the summary starts with a table, the disclosure button uses the first visible cell paragraph. Press Enter or Space on the button to open or close the body. The complete summary stays visible and editable.
 
 Opening a disclosure fades in the body and moves it down three pixels. The summary stays in place. Readers who request reduced motion see the body immediately.
 

@@ -445,6 +445,38 @@ test('rich summaries keep their own children and views follow only edits inside 
   );
 });
 
+test('a closed disclosure keeps its leading summary table editable through save and MDX export', async () => {
+  const source =
+    '<details>\n<summary>\n\n| Limit | Unit |\n| --- | --- |\n| **Maximum** | <Unit>kPa</Unit> |\n\nCaption\n\n</summary>\n\nPressure reading\n\n</details>';
+  const { container, editor, surface } = mount(source);
+  cleanups.push(mountMdxDisclosures(editor));
+  surface.flushPendingInput();
+  const [details] = readMdxComponents(surface.session.currentPackage());
+  expect(details!.summaryParagraphId).toBe(editor.findMatches('Limit')[0]!.blockId);
+  const toggle = container.querySelector<HTMLButtonElement>('button[aria-label="Limit"]')!;
+  expect(toggle.getAttribute('aria-expanded')).toBe('false');
+  const painted = () =>
+    Array.from(container.querySelectorAll('.docx-paragraph-fragment')).map(
+      (node) => node.textContent
+    );
+  expect(painted()).toEqual(['Limit', 'Unit', 'Maximum', 'kPa', 'Caption']);
+  const point = { paragraphId: editor.findMatches('kPa')[0]!.blockId, offset: 1 };
+  surface.setSelection({ anchor: point, head: point });
+  expect(editor.exec({ type: 'insertText', text: '!' }).ok).toBe(true);
+  surface.flushPendingInput();
+  expect(painted()).toContain('k!Pa');
+  const saved = new Uint8Array(await editor.save());
+  expect(parseDocumentSyntax(exportMdxDocument(saved))).toEqual(
+    parseDocumentSyntax(source.replace('kPa', 'k!Pa'))
+  );
+  expect(semanticDigest(open(saved).parts.values())).toEqual(
+    semanticDigest(surface.session.currentPackage().parts.values())
+  );
+  toggle.click();
+  surface.flushPendingInput();
+  expect(painted()).toContain('Pressure reading');
+});
+
 test('a wrapped inline namespaced component gets a separate host on each native line', () => {
   const label = 'north station '.repeat(20).trimEnd();
   const source = 'Read **the <lab:Mark title="' + label + '" /> gauge** here.';

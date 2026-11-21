@@ -6,6 +6,7 @@ import {
   removeNode,
   replaceNode,
   readOoxmlPart,
+  storyParagraphs,
   type OoxmlPart,
 } from '@docx-editor.dev/core/store';
 import {
@@ -120,6 +121,41 @@ test('placeholder folds retain one blank header through nested labels and table 
     expect(
       layoutSemanticDocument(part, 1, options).pages.flatMap(paragraphFragmentsOf)
     ).toHaveLength(4);
+  }
+});
+
+test('only the leading summary control can retain its table with the first visible cell paragraph', () => {
+  const row = '<w:tr><w:tc>' + sdt(p('Limit')) + '</w:tc><w:tc>' + p('Unit') + '</w:tc></w:tr>';
+  const table = '<w:tbl>' + sdt(row) + '</w:tbl>';
+  const part = load(sdt(sdt(table + p('Caption')) + p('Body')) + sdt(table + p('Tail')));
+  const root = body(part);
+  const [owner, bare] = root.children;
+  const ids = storyParagraphs(root).map(({ id }) => id);
+  const collapse = createContentControlCollapseState();
+  expect(collapse.set(part, new Map([[owner!.id, ids[0]!]])).ok).toBe(true);
+  const previous = collapse.current();
+  const layout = layoutSemanticDocument(part, 1, {
+    ...options,
+    contentControlCollapse: collapse.option(),
+  });
+  const visible = layout.pages
+    .flatMap(paragraphFragmentsOf)
+    .map((fragment) => fragment.paragraphId);
+  expect(visible).toEqual(ids.filter((id) => id !== ids[3]));
+  for (const [control, anchor] of [
+    [owner!, ids[1]!],
+    [owner!, ids[2]!],
+    [owner!, ids[4]!],
+    [bare!, ids[4]!],
+    [owner!, null],
+    [bare!, null],
+    [bare!, { placeholderHeightPt: 12 }],
+  ] as const) {
+    expect(collapse.set(part, new Map([[control.id, anchor]]))).toEqual({
+      ok: false,
+      reason: 'invalid-summary',
+    });
+    expect(collapse.current()).toBe(previous);
   }
 });
 

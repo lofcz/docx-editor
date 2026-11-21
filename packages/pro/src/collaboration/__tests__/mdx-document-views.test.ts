@@ -20,7 +20,7 @@ import { createPeerHarness, type Peer } from './document-peer-support.ts';
 import { loadPackage, packageDigest, packageFingerprint } from './document-support.ts';
 
 const source =
-  '<details open>\n<summary>\n\nLimits\n\nSummary detail\n\n</summary>\n\n<ProjectPlot>\n\nObserved value\n\n</ProjectPlot>\n\n</details>\n\nShared tail';
+  '<details open>\n<summary>\n\n| Limits | Unit |\n| --- | --- |\n| Maximum | kPa |\n\nSummary detail\n\n</summary>\n\n<ProjectPlot>\n\nObserved value\n\n</ProjectPlot>\n\n</details>\n\nShared tail';
 const harness = createPeerHarness('mdx-document-views', { offlineEditing: true });
 const cleanups: (() => void)[] = [];
 afterEach(() => {
@@ -127,6 +127,14 @@ test('each editor uses its own folds and visible selection geometry during concu
   expect(packageFingerprint(alice.pkg())).toBe(fingerprint);
   expect(alice.fold().getAttribute('aria-expanded')).toBe('false');
   expect(bob.fold().getAttribute('aria-expanded')).toBe('true');
+  write(alice, 'kPa', 0, '1 ');
+  converge();
+  expect(visiblePoint(bob, '1 kPa', 2).offset).toBe(2);
+  expect(alice.fold().getAttribute('aria-expanded')).toBe('false');
+  expect(bob.fold().getAttribute('aria-expanded')).toBe('true');
+  expect(alice.editor.exec({ type: 'undo' }).ok).toBe(true);
+  converge();
+  expect(exportMdxDocument(bob.pkg())).toBe(original);
   const plot = '[data-mdx-component="ProjectPlot"]';
   expect(alice.container.querySelector(plot)).toBeNull();
   expect(bob.container.querySelector(plot)).not.toBeNull();

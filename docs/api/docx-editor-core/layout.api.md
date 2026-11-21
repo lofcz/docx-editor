@@ -1294,6 +1294,9 @@ export function findSeparatorNote(part: OoxmlPart | null | undefined, kind: 'sep
 // @public
 export function firstReviewRange(item: ReviewItem): ReviewRange | null;
 
+// @internal
+export function firstTableParagraph(table: OoxmlElement): OoxmlElement | undefined;
+
 // @public
 export type FixedPoint = number & {
     readonly [FIXED_POINT]: true;

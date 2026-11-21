@@ -38,7 +38,9 @@ export async function inspectMdxHost({ project, containerTag, action, caption })
     '<details open>',
     '<summary>',
     '',
-    'Report',
+    '| Report | Unit |',
+    '| --- | --- |',
+    '| **Maximum** | kPa |',
     '',
     '- Label $x$',
     '',
@@ -117,6 +119,7 @@ export async function inspectMdxHost({ project, containerTag, action, caption })
       if (toggle?.getAttribute('aria-expanded') !== expanded)
         throw new Error('Unexpected initial disclosure state for ' + label);
     }
+    await window.verifyTableSummaryKeys();
     const selector = '[data-mdx-component="' + containerTag + '"] button';
     const button = container.querySelector(selector);
     button.click();
@@ -156,7 +159,7 @@ export async function inspectMdxHost({ project, containerTag, action, caption })
       translatedBody: fading.some(
         (element) => element.textContent.includes('D!epth') && movesDown(element)
       ),
-      animatedSummary: fading.some((element) => element.textContent.includes('Label')),
+      animatedSummary: fading.some((element) => /Report|Maximum|Label/.test(element.textContent)),
       childText: observed.includes('D!epth'),
       registeredFallback: observed.includes(caption),
       roundTrip: exportMdxDocument(new Uint8Array(await editor.save())) === expected,
