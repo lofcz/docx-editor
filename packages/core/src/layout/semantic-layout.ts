@@ -214,6 +214,7 @@ import {
   markerLineStart,
   publishListMarker,
 } from './list-marker.ts';
+import { reuseAfterText } from './paragraph-tail-reuse.ts';
 import { FlowCheckpointOwner, flowCheckpointsMatch } from './flow-checkpoint.ts';
 import { sectionReserveResume } from './note-reserve-resume.ts';
 import {
@@ -1879,6 +1880,7 @@ function* layoutBlocksPass(
   let convergedAt = prepared.length;
   /** Whole pages the convergence tail moved by; reused checkpoints shift with it. */
   let convergedPageDelta = 0;
+  let textTail: ReturnType<typeof reuseAfterText> = null;
   let reportedPages = 0;
   for (let index = startIndex; index < prepared.length; index += 1) {
     // A live pass reports each completed page, so a host can show them before it ends.
@@ -1923,7 +1925,20 @@ function* layoutBlocksPass(
           hasExclusionZones:
             (options.drawingExclusionZonesByPage?.size ?? 0) > 0 || liveZones.sawLiveZones,
         });
-        if (shiftable && flowCheckpointsMatch(mark, checkpoints[index]!)) {
+        if (
+          shiftable &&
+          delta === 0 &&
+          !pageBottomReserves &&
+          index === prepared.length - commonSuffix &&
+          prepared.length === session.keys.length
+        )
+          textTail = reuseAfterText(
+            session.checkpoints,
+            index,
+            checkpoints[index]!,
+            previous!.pages[mark.pageCount]
+          );
+        if (shiftable && (textTail || flowCheckpointsMatch(mark, checkpoints[index]!))) {
           if (shiftedTail) reserveResume.adoptShiftedTail(shiftedTail);
           const tail =
             delta === 0
@@ -1933,8 +1948,9 @@ function* layoutBlocksPass(
                   .map((page, offset) =>
                     remapPage(page, pages.length + offset, pageBox(pages.length + offset).y)
                   );
+          if (textTail) tail[0] = textTail.page;
           pages.push(...tail);
-          reusedPages += tail.length;
+          reusedPages += tail.length - (textTail ? 1 : 0);
           converged = true;
           convergedAt = index;
           convergedPageDelta = delta;
@@ -2856,6 +2872,7 @@ function* layoutBlocksPass(
           pageDelta: convergedPageDelta,
         })
       : checkpoints;
+    textTail?.updateCheckpoints(session.checkpoints);
     session.keys = flowKeys;
     reserveResume.publish(session, pages.length);
     session.producer = producer;

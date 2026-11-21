@@ -1,0 +1,15 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Typing in an early paragraph could repeat placement of unchanged blocks through the next page.",
+  "after": "Placement can reuse the remaining blocks when a complete text paragraph keeps the same flow.",
+  "reason": "Reused pages and checkpoints contain the fresh paragraph. Editing operations and collaboration data retain their existing format.",
+  "tests": [
+    "packages/core/src/layout/__tests__/incremental-semantic-layout.test.ts",
+    "packages/core/src/layout/__tests__/randomized-store-driven-layout.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-caret-word-format.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-composition-preview.test.ts"
+  ],
+  "changeset": "reuse-layout-after-text",
+  "migration": null
+}

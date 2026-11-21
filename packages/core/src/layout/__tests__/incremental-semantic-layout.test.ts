@@ -165,6 +165,22 @@ describe('work is bounded, measured structurally (tasks 9.3, 9.6)', () => {
     expect(session.stats.reusedPages).toBeLessThanOrEqual(first.pages.length);
   });
 
+  test('same-height text edits reuse the remaining paragraphs and keep later checkpoints fresh', () => {
+    const session = createLayoutSession();
+    let body = DOCUMENT;
+    lay(load(body), 1, session);
+    for (const [before, after] of [
+      ['paragraph 1 ', 'edited item 1 '],
+      ['paragraph 3 ', 'edited item 3 '],
+      ['edited item 1 ', 'paragraph 1 '],
+    ] as const) {
+      body = body.replace(before, after);
+      const incremental = lay(load(body), 2, session);
+      expect(incremental.pages).toEqual(lay(load(body), 2).pages);
+      expect(session.stats.placed).toBeLessThanOrEqual(2);
+    }
+  });
+
   test('a line-count change reconverges after an explicit page break', () => {
     const pageBreak = `<w:p><w:r><w:br w:type="page"/></w:r></w:p>`;
     const withReset = DOCUMENT.replace(
