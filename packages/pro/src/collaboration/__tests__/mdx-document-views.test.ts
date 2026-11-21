@@ -6,6 +6,7 @@ Production use requires a commercial agreement: licensing@eigenpal.com
 import { afterEach, expect, test } from 'bun:test';
 import { applyAwarenessUpdate, encodeAwarenessUpdate } from 'y-protocols/awareness';
 import { createDocxEditor } from '@docx-editor.dev/core/editor';
+import { contentControlTextOf } from '@docx-editor.dev/core/store';
 import { caretAt, hitTestSemantic } from '@docx-editor.dev/core/layout';
 import {
   exportMdxDocument,
@@ -19,7 +20,7 @@ import { createPeerHarness, type Peer } from './document-peer-support.ts';
 import { loadPackage, packageDigest, packageFingerprint } from './document-support.ts';
 
 const source =
-  '<details open>\n<summary>Limits</summary>\n\n<ProjectPlot>\n\nObserved value\n\n</ProjectPlot>\n\n</details>\n\nShared tail';
+  '<details open>\n<summary>\n\nLimits\n\nSummary detail\n\n</summary>\n\n<ProjectPlot>\n\nObserved value\n\n</ProjectPlot>\n\n</details>\n\nShared tail';
 const harness = createPeerHarness('mdx-document-views', { offlineEditing: true });
 const cleanups: (() => void)[] = [];
 afterEach(() => {
@@ -49,10 +50,13 @@ function mount(bytes: Uint8Array, peer?: Peer) {
       new Map([
         [
           'ProjectPlot',
-          ({ element }) => {
+          ({ element, observeContent }) => {
             const button = element.ownerDocument.createElement('button');
             button.textContent = 'Inspect plot';
             element.append(button);
+            return observeContent((control) => {
+              button.title = contentControlTextOf(control);
+            });
           },
         ],
       ])
@@ -126,6 +130,9 @@ test('each editor uses its own folds and visible selection geometry during concu
   const plot = '[data-mdx-component="ProjectPlot"]';
   expect(alice.container.querySelector(plot)).toBeNull();
   expect(bob.container.querySelector(plot)).not.toBeNull();
+  const button = bob.container.querySelector<HTMLButtonElement>(plot + ' button')!;
+  expect(button.title).toBe('Observed value');
+  expect(visiblePoint(alice, 'Summary detail', 2).offset).toBe(2);
   expect(caretAt(alice.surface.layout(), point(alice, 'Observed value', 0))).toBeNull();
   expect(caretAt(bob.surface.layout(), point(bob, 'Observed value', 0))).not.toBeNull();
   const head = visiblePoint(alice, 'Shared tail', 6);
@@ -173,6 +180,8 @@ test('each editor uses its own folds and visible selection geometry during concu
     .replace('Observed value', 'Bob Observed value')
     .replace('Shared tail', 'Alice Shared tail');
   expect(exportMdxDocument(alice.pkg())).toBe(both);
+  expect(bob.container.querySelector(plot + ' button')).toBe(button);
+  expect(button.title).toBe('Bob Observed value');
   expect(alice.fold().getAttribute('aria-expanded')).toBe('false');
   expect(bob.fold().getAttribute('aria-expanded')).toBe('true');
   expect(alice.editor.exec({ type: 'undo' }).ok).toBe(true);
@@ -209,13 +218,13 @@ test('removing a project control while its child is edited removes the edit and 
   pair.resume();
   converge();
   for (const host of [alice, bob]) {
-    expect(readMdxComponents(host.pkg()).map(({ name }) => name)).toEqual(['details']);
+    expect(readMdxComponents(host.pkg()).map(({ name }) => name)).toEqual(['details', 'summary']);
     expect(host.editor.findMatches('Observed value')).toHaveLength(0);
     expect(host.editor.findMatches('Concurrent')).toHaveLength(0);
     expect(host.container.querySelector(view)).toBeNull();
     const saved = await reopen(host);
     expect(saved.editor.findMatches('Shared tail')).toHaveLength(1);
-    expect(readMdxComponents(saved.pkg()).map(({ name }) => name)).toEqual(['details']);
+    expect(readMdxComponents(saved.pkg()).map(({ name }) => name)).toEqual(['details', 'summary']);
   }
   expect(originals.every((el) => !el.isConnected)).toBe(true);
 });

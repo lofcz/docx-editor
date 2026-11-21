@@ -1,6 +1,11 @@
 import type { DocxEditorInstance, SurfacePaintFrame } from '@docx-editor.dev/core/editor';
-import type { OoxmlPackage } from '@docx-editor.dev/core/store';
-import { readMdxComponents, type MdxDocumentComponent } from './document';
+import {
+  findNode,
+  type OoxmlContentControlNode,
+  type OoxmlPackage,
+} from '@docx-editor.dev/core/store';
+import { describeComponent, indexedComponents, type MdxDocumentComponent } from './document';
+import { COMPONENT_TAG, type WordComponent } from './document-components';
 
 /** The screen-only host of one component fragment on a visible Word page. @public */
 export interface MdxComponentView {
@@ -10,6 +15,12 @@ export interface MdxComponentView {
   readonly pageIndex: number;
   /** Zero-based fragment of this control in document order. */
   readonly fragmentIndex: number;
+  /**
+   * Read this Word control immediately and after a paint that changes its subtree.
+   * The node includes the editable children and nested controls. Return value stops observation.
+   * Removing the view also stops observation.
+   */
+  readonly observeContent: (listener: (control: OoxmlContentControlNode) => void) => () => void;
 }
 
 /** Mount a trusted project view. Return a cleanup function for listeners or framework roots. @public */
@@ -28,16 +39,25 @@ export function mountMdxComponents(
 ): () => void {
   const surface = editor.surface;
   if (!surface) throw new Error('Attach the document editor before mounting components.');
-  type Mount = { element: HTMLElement; signature: string; stop?: () => void };
+  type Listener = (control: OoxmlContentControlNode) => void;
+  type Mount = {
+    element: HTMLElement;
+    signature: string;
+    node: OoxmlContentControlNode;
+    listeners: Set<Listener>;
+    stop?: () => void;
+  };
   const mounts = new Map<string, Mount>();
-  let previous: OoxmlPackage | undefined;
-  let byControl = new Map<
-    string,
-    { component: MdxDocumentComponent; signature: string; render: MdxComponentRenderer }
+  const descriptions = new WeakMap<
+    OoxmlContentControlNode,
+    { record: WordComponent; component: MdxDocumentComponent; signature: string }
   >();
+  let previous: OoxmlPackage | undefined;
+  let index: ReadonlyMap<string, WordComponent> = new Map();
   let disposed = false;
   function remove(key: string, mount: Mount) {
     mounts.delete(key);
+    mount.listeners.clear();
     try {
       mount.stop?.();
     } finally {
@@ -48,17 +68,8 @@ export function mountMdxComponents(
     const pkg = surface!.session.currentPackage();
     if (disposed || pkg.parts.get(frame.part.name) !== frame.part) return;
     if (pkg !== previous) {
+      index = indexedComponents(pkg);
       previous = pkg;
-      byControl = new Map();
-      for (const component of readMdxComponents(pkg)) {
-        const render = renderers.get(component.name);
-        if (render)
-          byControl.set(component.controlId, {
-            component,
-            render,
-            signature: JSON.stringify(component),
-          });
-      }
     }
     const pages = new Map<number, HTMLElement>();
     for (const content of frame.pagesLayer.querySelectorAll<HTMLElement>('.docx-page-content')) {
@@ -66,13 +77,24 @@ export function mountMdxComponents(
       if (page) pages.set(Number(page.dataset.pageIndex), content);
     }
     const visible = new Set<string>();
-    for (const control of frame.layout.contentControls ?? []) {
-      const entry = byControl.get(control.id);
-      if (!entry) continue;
+    for (const control of index.size ? (frame.layout.contentControls ?? []) : []) {
+      if (!control.tag?.startsWith(COMPONENT_TAG)) continue;
+      const record = index.get(control.tag.slice(COMPONENT_TAG.length));
+      if (!record) throw new Error('Missing MDX component metadata for ' + control.tag + '.');
+      const render = renderers.get(record.node.name ?? record.node.type);
+      if (!render) continue;
       for (const [fragmentIndex, fragment] of control.fragments.entries()) {
         const { box, pageIndex } = fragment;
         const page = pages.get(pageIndex);
         if (!page) continue;
+        const node = findNode(frame.part, control.id);
+        if (node?.kind !== 'contentControl') continue;
+        let entry = descriptions.get(node);
+        if (!entry || entry.record !== record) {
+          const component = describeComponent(frame.part, node, record, index);
+          entry = { record, component, signature: JSON.stringify(component) };
+          descriptions.set(node, entry);
+        }
         const key = control.id + '/' + pageIndex + '/' + fragmentIndex;
         visible.add(key);
         let mount = mounts.get(key);
@@ -86,7 +108,7 @@ export function mountMdxComponents(
           element.contentEditable = 'false';
           element.setAttribute('data-docx-host-ui', '');
           element.dataset.mdxComponent = entry.component.name;
-          mount = { element, signature: entry.signature };
+          mount = { element, signature: entry.signature, node, listeners: new Set() };
           mounts.set(key, mount);
         }
         const { element } = mount;
@@ -100,17 +122,28 @@ export function mountMdxComponents(
         if (first && !mount.stop) {
           try {
             mount.stop =
-              entry.render({
+              render({
                 element,
                 component: entry.component,
                 editor,
                 pageIndex,
                 fragmentIndex,
+                observeContent(listener) {
+                  if (mounts.get(key) !== mount) return () => {};
+                  listener(mount.node);
+                  mount.listeners.add(listener);
+                  return () => {
+                    mount.listeners.delete(listener);
+                  };
+                },
               }) ?? (() => {});
           } catch (error) {
             remove(key, mount);
             throw error;
           }
+        } else if (mount.node !== node) {
+          mount.node = node;
+          for (const listener of mount.listeners) listener(node);
         }
       }
     }

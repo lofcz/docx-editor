@@ -12,6 +12,8 @@ import {
   writeOoxmlPackage,
   writeZip,
   type OoxmlPackage,
+  type OoxmlContentControlNode,
+  type OoxmlPart,
 } from '@docx-editor.dev/core/store';
 import {
   attributesOf,
@@ -95,7 +97,7 @@ export function isMdxDocument(source: Uint8Array | OoxmlPackage): boolean {
 }
 
 const indexes = new WeakMap<object, ReadonlyMap<string, WordComponent>>();
-function indexedComponents(pkg: OoxmlPackage): ReadonlyMap<string, WordComponent> {
+export function indexedComponents(pkg: OoxmlPackage): ReadonlyMap<string, WordComponent> {
   const part = findCustomXmlDataPart(pkg, pkg.mainDocumentPart, METADATA_NS);
   const tree = part && pkg.parts.get(part.partName);
   if (!tree || !part) return new Map();
@@ -179,27 +181,49 @@ export function readMdxComponents(
     if (!tag?.startsWith(COMPONENT_TAG)) continue;
     const record = index.get(tag.slice(COMPONENT_TAG.length));
     if (!record) throw new Error('Missing MDX component metadata for ' + tag + '.');
-    const first = contentControlContentNodeOf(node)?.children[0];
-    const attributes = Object.fromEntries(
-      attributesOf(record.node).map(({ name, value }) => [name, value ?? true])
-    );
-    const display = record.fallbackAttribute ?? record.captionAttribute;
-    const value = record.fallbackAttribute
-      ? contentControlTextOf(node, '\n')
-      : record.caption === 'attribute' && first?.kind === 'paragraph'
-        ? (paragraphTextOf(part, first.id) ?? '')
-        : undefined;
-    if (display && value !== undefined) attributes[display] = value;
-    components.push({
-      id: record.id,
-      controlId: node.id,
-      name: record.node.name ?? record.node.type,
-      ...(record.node.value === undefined ? {} : { value: record.node.value }),
-      jsxAttributes: attributeSyntax(record.node, display, value),
-      attributes: Object.freeze(attributes),
-      disclosure: record.disclosure,
-      summaryParagraphId: record.disclosure && first?.kind === 'paragraph' ? first.id : null,
-    });
+    components.push(describeComponent(part, node, record, index));
   }
   return components;
+}
+
+export function describeComponent(
+  part: OoxmlPart,
+  node: OoxmlContentControlNode,
+  record: WordComponent,
+  index: ReadonlyMap<string, WordComponent>
+): MdxDocumentComponent {
+  const first = contentControlContentNodeOf(node)?.children[0];
+  let anchor = first;
+  if (record.disclosure && !record.caption) {
+    // A block summary owns its original Markdown children. The first flow paragraph anchors the button.
+    const tag = first?.kind === 'contentControl' && contentControlPropertiesOf(first).tag;
+    if (
+      !tag ||
+      !tag.startsWith(COMPONENT_TAG) ||
+      index.get(tag.slice(COMPONENT_TAG.length))?.node.name !== 'summary'
+    )
+      anchor = undefined;
+    while (anchor?.kind === 'contentControl')
+      anchor = contentControlContentNodeOf(anchor)?.children[0];
+  }
+  const attributes = Object.fromEntries(
+    attributesOf(record.node).map(({ name, value }) => [name, value ?? true])
+  );
+  const display = record.fallbackAttribute ?? record.captionAttribute;
+  const value = record.fallbackAttribute
+    ? contentControlTextOf(node, '\n')
+    : record.caption === 'attribute' && first?.kind === 'paragraph'
+      ? (paragraphTextOf(part, first.id) ?? '')
+      : undefined;
+  if (display && value !== undefined) attributes[display] = value;
+  return {
+    id: record.id,
+    controlId: node.id,
+    name: record.node.name ?? record.node.type,
+    ...(record.node.value === undefined ? {} : { value: record.node.value }),
+    jsxAttributes: attributeSyntax(record.node, display, value),
+    attributes: Object.freeze(attributes),
+    disclosure: record.disclosure,
+    summaryParagraphId: record.disclosure && anchor?.kind === 'paragraph' ? anchor.id : null,
+  };
 }

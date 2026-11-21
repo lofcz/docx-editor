@@ -186,7 +186,7 @@ These creation options and props change lock behavior. The editor reads each one
 
 Host chrome can collapse a block content control through `editor.surface`. This surface operation changes one reader's view. It leaves document content, collaboration history, and exported content unchanged.
 
-Pass canonical node IDs for the control and its first direct paragraph:
+Pass canonical node IDs for the control and its first flow paragraph.
 
 ```ts
 const result = editor.surface?.setCollapsedContentControls(
@@ -197,7 +197,7 @@ if (result && !result.ok) {
 }
 ```
 
-The map replaces the complete collapse view. An empty map opens every control. Validation refuses the complete request before changing existing entries. The first paragraph remains visible. Later content leaves the page flow. Canonical list numbering and bookmark references still include hidden content.
+The map replaces the complete collapse view. An empty map opens every control. Validation refuses the complete request before changing existing entries. The first paragraph remains visible. If a leading block control contains that paragraph, its complete content remains visible. Later siblings leave the page flow. Canonical list numbering and bookmark references still include hidden content.
 
 Pass `null` instead of a summary paragraph ID to hide the complete body behind a blank, 24-point local header. Host chrome can place a disclosure button in that header. The first flow paragraph can sit inside nested controls. A leading table refuses this mode. The header preserves the original paragraph identity but contains no answer text, formatting, or list marker. Saving and exporting retain the complete canonical content.
 

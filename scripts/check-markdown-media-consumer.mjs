@@ -123,10 +123,16 @@ main().catch(error => { console.error(error); process.exitCode = 1; });
     path.join(consumer, 'index.html'),
     '<!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="worker-src \'none\'"></head><body><main>Image export smoke test</main><script type="module" src="/main.js"></script></body></html>'
   );
+  await cp(
+    path.join(root, 'scripts/test/mdx-consumer.mjs'),
+    path.join(consumer, 'mdx-consumer.mjs')
+  );
   await writeFile(
     path.join(consumer, 'main.js'),
     `
 import { exportMarkdown, createMarkdownZip, toMarkdownJSON } from '@docx-editor.dev/docx-to-markdown';
+import { inspectMdxHost } from './mdx-consumer.mjs';
+window.inspectMdxHost = inspectMdxHost;
 window.runImageExport = async () => {
   const result = await exportMarkdown(new Uint8Array(await (await fetch('/input.docx')).arrayBuffer()), { images: true });
   const asset = result.media[0];
@@ -161,6 +167,39 @@ window.runImageExport = async () => {
   const page = await browser.newPage();
   await page.goto(server.resolvedUrls.local[0]);
   await page.waitForFunction(() => typeof window.runImageExport === 'function');
+  for (const host of [
+    {
+      project: 'survey',
+      containerTag: 'Borehole',
+      action: 'Plot depth',
+      caption: 'Instrument log',
+      motion: 'no-preference',
+    },
+    {
+      project: 'museum',
+      containerTag: 'Collection',
+      action: 'Open catalog',
+      caption: 'Accession record',
+      motion: 'reduce',
+    },
+  ]) {
+    await page.emulateMedia({ reducedMotion: host.motion });
+    const inspected = await page.evaluate((host) => window.inspectMdxHost(host), host);
+    assert.deepEqual(inspected, {
+      clicks: 1,
+      action: host.action,
+      retained: true,
+      closed: true,
+      animatedBody: host.motion === 'no-preference',
+      animatedSummary: false,
+      childText: true,
+      registeredFallback: true,
+      roundTrip: true,
+    });
+  }
+  console.log(
+    'Packed browser MDX: survey and museum views, nested edits, disclosure, fallbacks, and save/reopen OK'
+  );
   const result = await page.evaluate(() => window.runImageExport());
   assert.equal(result.bytes, 789);
   assert.ok(result.width > 0);

@@ -92,7 +92,7 @@ export function prepareContentControlCollapse(
     if (refusal) return refusal;
     const content = contentControlContentNodeOf(owner);
     const first = content?.children[0];
-    const summary = summaryParagraphId === null ? undefined : first;
+    const summary = summaryParagraphId === null ? undefined : firstParagraph(first);
     const placeholder =
       summaryParagraphId === null && placeholderHeightPt !== 0 ? firstParagraph(first) : undefined;
     if (
@@ -110,7 +110,12 @@ export function prepareContentControlCollapse(
     if (content!.children.length > MAX_NODES - budget.visited)
       return { ok: false, reason: 'limit-exceeded' };
     const hiddenIds = new Set<string>();
-    const pending = content!.children.map((node) => ({ node, hidden: node !== summary, depth: 0 }));
+    // A leading block control owns the entire rich summary, including its later paragraphs.
+    const pending = content!.children.map((node) => ({
+      node,
+      hidden: !summary || node !== first,
+      depth: 0,
+    }));
     while (pending.length) {
       const current = pending.pop()!;
       if (++budget.visited > MAX_NODES || current.depth > MAX_DEPTH)

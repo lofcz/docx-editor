@@ -2,7 +2,7 @@
 export interface CollapsedContentControl {
   /** Canonical content-control node ID in the main document story. */
   readonly controlId: string;
-  /** First direct paragraph ID, or null for a blank local header hiding the whole body. */
+  /** First flow paragraph ID, or null for a blank local header. A leading summary control stays visible. */
   readonly summaryParagraphId: string | null;
   /** Explicit local header height. Zero hides all body flow. Omitted means 24 points. */
   readonly placeholderHeightPt?: number;

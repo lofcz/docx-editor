@@ -2,6 +2,7 @@ import { afterEach, expect, test } from 'bun:test';
 import { createDocxEditor, type SurfacePaintFrame } from '@docx-editor.dev/core/editor';
 import {
   bodyStoryRoot,
+  contentControlTextOf,
   paragraphTextOf,
   readOoxmlPackage,
   semanticDigest,
@@ -18,6 +19,7 @@ import {
   mountMdxComponents,
   mountMdxDisclosures,
   readMdxComponents,
+  type BlockPayload,
   type MdxComponentParser,
   type MdxComponentView,
 } from '../src/mdx.ts';
@@ -82,6 +84,73 @@ function wordParagraphs(pkg: OoxmlPackage) {
 }
 
 const instruments = '<Reading reading="12" />\n\nSee <Stamp reading="7" /> below.';
+
+test('registered math fallbacks preserve formula source inside native lists and table cells', () => {
+  const payload = (
+    type: string,
+    id: string,
+    value: BlockPayload['attributes']['value']
+  ): BlockPayload => ({
+    version: 1,
+    id,
+    type,
+    attributes: { value },
+  });
+  const result = createMdxComponentRegistry({
+    storage: project('lab', 'mm').storage,
+    components: [
+      {
+        type: 'display',
+        kind: 'block',
+        content: 'none',
+        markdown: {
+          types: ['math'],
+          fromMarkdown: (node, id) => payload('display', id, node.value),
+          matches: () => true,
+        },
+        wordFallback: ({ attributes }) => ({ lines: ['Equation: ' + attributes.value] }),
+      },
+      {
+        type: 'formula',
+        kind: 'inline',
+        content: 'none',
+        inline: {
+          atom: 'formula',
+          types: ['inlineMath'],
+          fromMarkdown: (node, id) => payload('formula', id, node.value),
+          fallback: (data) => ({ payload: data, text: 'Variable ' + data.attributes.value }),
+        },
+      },
+    ],
+  });
+  if (!result.ok) throw new Error(result.detail);
+  const source = '<Panel>\n\n- Read $v$.\n\n| Value |\n| --- |\n| $p$ |\n\n$$\nx+y\n$$\n\n</Panel>';
+  const pkg = open(importMdxDocument(source, { registry: result.registry }));
+  const paragraphs = wordParagraphs(pkg);
+  expect(paragraphs.map((p) => p.text)).toEqual([
+    'Read Variable v.',
+    'Value',
+    'Variable p',
+    'Equation: x+y',
+  ]);
+  expect(parseDocumentSyntax(exportMdxDocument(writeOoxmlPackage(pkg)))).toEqual(
+    parseDocumentSyntax(source)
+  );
+  const store = new TreeDocumentStore(pkg.parts.get(pkg.mainDocumentPart)!);
+  expect(
+    store.transact((ctx) =>
+      ctx.apply({
+        op: 'insertText',
+        paragraphId: paragraphs.at(-1)!.id,
+        offset: 2,
+        text: '!',
+      })
+    ).ok
+  ).toBe(true);
+  expect(() => exportMdxDocument(withPart(pkg, store.part))).toThrow(
+    /Cannot map edited display text/
+  );
+});
 test.each([
   ['weather', 'hPa'],
   ['audio', 'dB'],
@@ -291,6 +360,90 @@ function mount(source: string, parent = document.body) {
   });
   return { container, editor, surface: editor.surface! };
 }
+
+test('rich summaries keep their own children and views follow only edits inside their control', async () => {
+  const source = [
+    '<details open>',
+    '<summary>',
+    '',
+    'Read **first**',
+    '',
+    '- Label $x$',
+    '',
+    '</summary>',
+    '',
+    '<Series>',
+    '',
+    '| Point | Value |',
+    '| --- | --- |',
+    '| <Unit><Unknown>Depth</Unknown></Unit> | $y$ |',
+    '',
+    '</Series>',
+    '',
+    '</details>',
+    '',
+    'Tail',
+  ].join('\n');
+  const { container, editor, surface } = mount(source);
+  const calls = new Map<string, string[]>();
+  const render = ({ element, component, observeContent }: MdxComponentView) => {
+    const button = element.ownerDocument.createElement('button');
+    element.append(button);
+    const values: string[] = [];
+    calls.set(component.name, values);
+    return observeContent((control) => {
+      const value = contentControlTextOf(control);
+      values.push(value);
+      button.title = value;
+    });
+  };
+  cleanups.push(
+    mountMdxComponents(
+      editor,
+      new Map([
+        ['Series', render],
+        ['Unknown', render],
+      ])
+    )
+  );
+  cleanups.push(mountMdxDisclosures(editor));
+  surface.flushPendingInput();
+  const series = calls.get('Series')!;
+  const unknown = calls.get('Unknown')!;
+  expect(unknown).toEqual(['Depth']);
+  expect(series).toHaveLength(1);
+  const button = container.querySelector('[data-mdx-component="Unknown"] button');
+  expect(button).not.toBeNull();
+  const edit = (needle: string) => {
+    const hit = editor.findMatches(needle)[0]!;
+    const point = { paragraphId: hit.blockId, offset: hit.start + 1 };
+    surface.setSelection({ anchor: point, head: point });
+    expect(editor.exec({ type: 'insertText', text: '!' }).ok).toBe(true);
+    surface.flushPendingInput();
+  };
+  edit('Tail');
+  expect(series).toHaveLength(1);
+  expect(unknown).toHaveLength(1);
+  edit('Depth');
+  expect(unknown).toEqual(['Depth', 'D!epth']);
+  expect(series).toHaveLength(2);
+  expect(series[1]).toContain('D!epth');
+  expect(container.querySelector('[data-mdx-component="Unknown"] button')).toBe(button);
+  const toggle = () =>
+    container.querySelector<HTMLButtonElement>('button[aria-label="Read first"]')!;
+  toggle().click();
+  surface.flushPendingInput();
+  expect(toggle().getAttribute('aria-expanded')).toBe('false');
+  expect(button!.isConnected).toBe(false);
+  const id = editor.findMatches('Label')[0]!.blockId;
+  expect(container.querySelector(`[data-paragraph-id="${id}"]`)).not.toBeNull();
+  const saved = new Uint8Array(await editor.save());
+  const expected = source.replace('Depth', 'D!epth').replace('Tail', 'T!ail');
+  expect(parseDocumentSyntax(exportMdxDocument(saved))).toEqual(parseDocumentSyntax(expected));
+  expect(semanticDigest(open(saved).parts.values())).toEqual(
+    semanticDigest(surface.session.currentPackage().parts.values())
+  );
+});
 
 test('a wrapped inline namespaced component gets a separate host on each native line', () => {
   const label = 'north station '.repeat(20).trimEnd();

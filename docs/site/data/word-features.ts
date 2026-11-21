@@ -88,7 +88,7 @@ export const wordFeatures: WordFeature[] = [
     roundTrip: 'partial',
     tier: 'community',
     notes:
-      'Import Markdown and component children as native Word content. Add interactive views and disclosures in your project. JavaScript expressions remain source text.',
+      'Import Markdown and component children as native Word content. Interactive views can follow child edits, and disclosures can show rich summaries. JavaScript expressions remain source text.',
     docsLink: '/docs/2.x/export/markdown/mdx',
   },
   {

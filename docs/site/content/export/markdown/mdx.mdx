@@ -31,6 +31,8 @@ editor.destroy();
 
 HTML `details` and `summary` work without registration. Each reader can open or close a section independently. Word includes the complete content when you save or print the document. A registered disclosure can use a literal `title`, `summary`, or `label` for its editable summary.
 
+A multiline `summary` keeps its paragraphs, lists, tables, and nested components. The disclosure button uses its first flow paragraph. Start the summary with a paragraph or heading to enable the button. Closing the disclosure keeps the complete summary visible.
+
 ## Add a project view
 
 Use `mountMdxComponents` to attach a trusted view to a visible component. The editor supplies a host element at the component's page position. A component that continues on another page receives a separate host there.
@@ -60,11 +62,31 @@ const releaseViews = mountMdxComponents(
 
 Call `releaseViews()` when you remove the host. You can also mount a framework component and return its unmount function. Use the reader's reduced-motion preference for animations. Screen controls stay outside the saved Word content.
 
+Call `view.observeContent` when your view depends on editable children. The listener receives the native Word control immediately. It runs again after a paint that changes that control. Each visible fragment keeps its own view state during child edits. Removing the fragment stops its listeners.
+
+```ts
+import { contentControlTextOf } from '@docx-editor.dev/core/store';
+import type { MdxComponentRenderer } from '@docx-editor.dev/docx-to-markdown/mdx';
+
+const renderReading: MdxComponentRenderer = ({ element, observeContent }) => {
+  const button = element.ownerDocument.createElement('button');
+  button.type = 'button';
+  button.textContent = 'Inspect';
+  button.style.pointerEvents = 'auto';
+  element.append(button);
+  return observeContent((control) => {
+    button.title = contentControlTextOf(control, '\n');
+  });
+};
+```
+
 ## Choose a printable representation
 
 Pass a component registry to `importMdxDocument` to provide a readable Word representation for components without children. Keep each project's registry in its host. A container with children keeps its native paragraphs, nested components, and tables.
 
 Without a registered representation, an empty component displays its alternate text, title, label, summary, or name. Editing a literal display attribute in Word updates its MDX value. The exporter reports an error when it cannot represent changes to generated text or formatting.
+
+Register a `math` Markdown binding or an `inlineMath` inline binding to supply readable formula text. The Word file retains the source formula. The exporter refuses edits to generated formula text.
 
 The importer preserves JavaScript expressions and imports as source. It never executes document code or fetches a remote image. Use a trusted project view when a component needs application behavior.
 

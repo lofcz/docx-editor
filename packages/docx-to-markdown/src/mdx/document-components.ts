@@ -10,6 +10,7 @@ import type {
   JsonObject,
   JsonValue,
   MdxAttribute,
+  MdxComponentDefinition,
   MdxComponentRegistry,
   TargetAstNode,
 } from './registry';
@@ -120,25 +121,49 @@ function summaryOf(first: DocumentNode | undefined): DocumentNode | undefined {
   return undefined;
 }
 
+function registeredLines(
+  definition: MdxComponentDefinition,
+  payload: BlockPayload,
+  name: string
+): string[] | undefined {
+  if (definition.valid && !definition.valid(payload))
+    throw new TypeError('Invalid component payload for ' + name + '.');
+  if (definition.wordFallback) return [...definition.wordFallback(payload).lines];
+  if (definition.inline) return [definition.inline.fallback(payload).text];
+  return undefined;
+}
+
 /** Materialize a readable Word fallback for an atomic component with no authored children. */
 function fallbackOf(
   node: DocumentNode,
   id: string,
   registry?: MdxComponentRegistry
 ): { lines: string[]; attribute?: string } {
-  if (!jsxNode(node)) return { lines: [node.value ?? ''] };
+  const ast = node as unknown as TargetAstNode;
+  if (!jsxNode(node)) {
+    const definition =
+      node.type === 'inlineMath'
+        ? registry?.inlineMarkdown.get(node.type)
+        : node.type === 'math'
+          ? registry?.markdown.get(node.type)
+          : undefined;
+    const payload =
+      node.type === 'inlineMath'
+        ? definition?.inline?.fromMarkdown?.(ast, id)
+        : definition?.markdown?.fromMarkdown(ast, id);
+    const lines = definition && payload && registeredLines(definition, payload, node.type);
+    return { lines: lines ?? [node.value ?? ''] };
+  }
   const name = node.name ?? '';
   const attrs = attributesOf(node);
   const entry = registry?.parsers.get(name);
   const definition = entry?.atomic ?? entry?.container;
   if (definition?.parse) {
-    const attributes = definition.parse.read(attrs, node as unknown as TargetAstNode);
+    const attributes = definition.parse.read(attrs, ast);
     if (attributes === null) throw new TypeError('The component registry refused ' + name + '.');
     const payload: BlockPayload = { version: 1, id, type: definition.type, attributes };
-    if (definition.valid && !definition.valid(payload))
-      throw new TypeError('Invalid component payload for ' + name + '.');
-    if (definition.wordFallback) return { lines: [...definition.wordFallback(payload).lines] };
-    if (definition.inline) return { lines: [definition.inline.fallback(payload).text] };
+    const lines = registeredLines(definition, payload, name);
+    if (lines) return { lines };
   }
   const display = displayAttribute(attrs, ['alt', 'title', 'label', 'summary', 'name']);
   if (display && typeof display.value === 'string')
@@ -181,11 +206,11 @@ export function prepareComponentSyntax(
     const children = [...(source.children ?? [])];
     if (disclosure) {
       const summary = source.name === 'details' ? summaryOf(children[0]) : undefined;
-      if (summary) {
+      if (summary?.type === 'mdxJsxTextElement') {
         record.caption = 'summary';
         record.summary = withoutChildren(summary);
         children[0] = { type: 'paragraph', children: summary.children ?? [] };
-      } else {
+      } else if (!summary) {
         const attribute = displayAttribute(attributesOf(source), ['title', 'summary', 'label']);
         record.caption = attribute ? 'attribute' : 'name';
         record.captionAttribute = attribute?.name;

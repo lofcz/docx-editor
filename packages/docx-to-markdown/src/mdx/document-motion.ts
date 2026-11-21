@@ -16,7 +16,8 @@ export function revealDisclosureBody(frame: SurfacePaintFrame, id: string, summa
       for (const child of node.children) collect(child);
     }
   }
-  collect(content);
+  // The entire leading block stays visible when the summary spans several paragraphs.
+  for (const child of content.children.slice(1)) collect(child);
   for (const element of frame.pagesLayer.querySelectorAll<HTMLElement>(
     '.docx-paragraph-fragment, .docx-table-fragment'
   )) {
