@@ -1,0 +1,15 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Formatting commands checked the story for content locks at each caret position.",
+  "after": "Single-paragraph formatting checks the selected paragraph and its enclosing controls directly.",
+  "reason": "The permission check uses the current canonical document. The operations, positions, and history format stay the same.",
+  "tests": [
+    "packages/core/src/editor/__tests__/content-lock-format-admission.test.ts",
+    "packages/core/src/editor/__tests__/paragraph-format-lock-admission.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-content-lock-formatting.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-session-locked-paragraph-format.test.ts"
+  ],
+  "changeset": "format-current-paragraph",
+  "migration": null
+}

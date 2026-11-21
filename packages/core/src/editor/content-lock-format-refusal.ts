@@ -121,10 +121,19 @@ export function contentLockFormatRefusal(
     selection.anchor.offset === selection.head.offset;
   if (runsPass && !clearing && !atCaret) return null;
   const refusal = { ok: false as const, code: 'locked' as const, reason: LOCKED_FORMAT_REASON };
-  for (const span of selectedSpans(surface)) {
+  const spans = selectedSpans(surface);
+  let previousPart: OoxmlPart | undefined;
+  let mayHaveLock = true;
+  for (const span of spans) {
     // A pure ancestry read of the story that holds the paragraph.
     const part = partOfNodeId(surface.session, span.paragraphId) ?? surface.session.part();
-    if (!storyHasContentLock(part)) continue;
+    // A single paragraph needs only its ancestors and its own inline controls. For a
+    // range, a lock-free story can skip the ancestry checks for every paragraph.
+    if (spans.length > 1 && part !== previousPart) {
+      mayHaveLock = storyHasContentLock(part);
+      previousPart = part;
+    }
+    if (!mayHaveLock) continue;
     const paragraph = findNode(part, span.paragraphId);
     if (!paragraph || paragraph.kind !== 'paragraph') continue;
     if (effectiveContentLockAt(part, span.paragraphId).content) return refusal;

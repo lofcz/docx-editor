@@ -14,6 +14,7 @@ import {
   lockForbidsEdit,
 } from '../store/package/content-control-nodes.ts';
 import { directParagraphProperties, propertyContainer } from '../store/store/direct-properties.ts';
+import { contentControlLockAt } from '../store/store/tree-op-content-controls.ts';
 import { validateTreeOp } from '../store/store/tree-op-validate.ts';
 import type { TreeDocOp } from '../store/store/tree-op-types.ts';
 import { paragraphsInCells } from '../layout/semantic-cell-selection.ts';
@@ -245,11 +246,19 @@ export function paragraphFormatLockRefusal(
   // A selection stays in one story, and the writer writes every paragraph into that part.
   const head = surface.state().selection.head.paragraphId;
   const part = partOfNodeId(surface.session, head) ?? surface.session.part();
-  const locked = lockedParagraphs(part);
-  if (locked.size === 0) return null;
+  const ids = selectedParagraphIds(surface);
+  // Typing changes the story root. A command on one paragraph can check its indexed
+  // ancestors directly, without building a new set for the whole story.
+  let affected = ids;
+  if (ids.length === 1) {
+    if (!lockForbidsEdit(contentControlLockAt(part, ids[0]!))) return null;
+  } else {
+    const locked = lockedParagraphs(part);
+    if (!locked.size) return null;
+    affected = ids.filter((id) => locked.has(id));
+  }
   const listItems = commandReach === 'indentStep' ? listItemParagraphs(surface.layout()) : null;
-  for (const paragraphId of selectedParagraphIds(surface)) {
-    if (!locked.has(paragraphId)) continue;
+  for (const paragraphId of affected) {
     // Increase Indent moves a list item's level, which the lock keeps, and indents the rest.
     const reach: Exclude<LockReach, 'indentStep'> =
       commandReach !== 'indentStep'
