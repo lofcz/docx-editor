@@ -11,12 +11,17 @@ interface FoldTransition {
 // A document owns one browser snapshot transition. Different windows have independent transitions.
 const active = new WeakMap<Document, FoldTransition>();
 
-function visiblePane(pages: HTMLElement, win: Window): HTMLElement {
+function scrollPane(pages: HTMLElement, win: Window): HTMLElement | null {
+  let candidate: HTMLElement | null = null;
   for (let el = pages.parentElement; el && el !== pages.ownerDocument.body; el = el.parentElement) {
-    if (/(auto|scroll|hidden|clip)/.test(win.getComputedStyle(el).overflowY) && el.clientHeight)
-      return el;
+    if (!['auto', 'scroll'].includes(win.getComputedStyle(el).overflowY) || !el.clientHeight)
+      continue;
+    if (el.scrollHeight > el.clientHeight) return el;
+    candidate ??= el;
   }
-  return pages;
+  const root = pages.ownerDocument.scrollingElement;
+  // An empty pane can gain its first scrollbar when the disclosure opens.
+  return root && root.scrollHeight > root.clientHeight ? null : candidate;
 }
 
 /** The last native fragment can end on a later page, including one outside the scroll pane. */
@@ -65,15 +70,20 @@ export function changeDisclosure(
   const previous = active.get(doc);
   const motion = win?.matchMedia?.('(prefers-reduced-motion: no-preference)');
   const pages = button.closest<HTMLElement>('.docx-pages');
-  const pane = pages && win ? visiblePane(pages, win) : null;
+  const scroller = pages && win ? scrollPane(pages, win) : null;
+  const pane = scroller ?? pages;
+  const scrollTarget = scroller ?? doc;
+  const scrollElement = scroller ?? doc.scrollingElement;
+  let anchoredTop = scrollElement?.scrollTop;
   function apply() {
     const top = button.getBoundingClientRect().top;
     if (!change()) return false;
     surface.flushPendingInput();
-    if (pane && pane !== pages && button.isConnected) {
+    if (scrollElement && button.isConnected) {
       const delta = button.getBoundingClientRect().top - top;
-      if (Math.abs(delta) > 0.5) pane.scrollTop += delta;
+      if (Math.abs(delta) > 0.5) scrollElement.scrollTop += delta;
     }
+    anchoredTop = scrollElement?.scrollTop;
     return true;
   }
   if (previous?.button === button && previous.reverse(opening, apply)) return;
@@ -124,6 +134,7 @@ export function changeDisclosure(
     motion.removeEventListener('change', cancel);
     pane.removeEventListener('wheel', cancel);
     pane.removeEventListener('touchmove', cancel);
+    scrollTarget.removeEventListener('scroll', onScroll);
     if (active.get(doc) !== state) return;
     active.delete(doc);
     root.classList.remove(motionClass);
@@ -137,6 +148,11 @@ export function changeDisclosure(
     transition.skipTransition();
     applyPending();
     finish();
+  }
+  function onScroll() {
+    // Browsers can retarget wheel input to the transition pseudo-element. The real
+    // scroll offset still changes. Ignore a delayed event from our own header correction.
+    if (scrollElement?.scrollTop !== anchoredTop) cancel();
   }
   const state: FoldTransition = {
     button,
@@ -165,6 +181,7 @@ export function changeDisclosure(
   motion.addEventListener('change', cancel);
   pane.addEventListener('wheel', cancel, { once: true, passive: true });
   pane.addEventListener('touchmove', cancel, { once: true, passive: true });
+  scrollTarget.addEventListener('scroll', onScroll, { passive: true });
   void transition.ready.then(
     () => {
       ready = true;

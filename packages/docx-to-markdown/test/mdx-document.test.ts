@@ -737,9 +737,17 @@ test('disclosure buttons name their native caption and local folds preserve the 
   expect(button()).toBeNull();
 });
 
-test('rapid input reverses the live disclosure snapshot before replacing its Word layout', async () => {
+async function checkDisclosureViewport(wrapperOverflow: string) {
+  const viewport = document.createElement('section');
+  const wrapper = document.createElement('div');
+  viewport.style.overflowY = wrapperOverflow === 'document' ? 'visible' : 'auto';
+  wrapper.style.overflowY = wrapperOverflow === 'document' ? 'clip' : wrapperOverflow;
+  document.body.append(viewport);
+  viewport.append(wrapper);
+  cleanups.push(() => viewport.remove());
   const { editor, container, surface } = mount(
-    '<details>\n<summary>Observation</summary>\n\nFirst reading\n\nSecond reading\n\n</details>\n\nFollowing text'
+    '<details>\n<summary>Observation</summary>\n\nFirst reading\n\nSecond reading\n\n</details>\n\nFollowing text',
+    wrapper
   );
   const doc = container.ownerDocument;
   const win = doc.defaultView!;
@@ -754,6 +762,12 @@ test('rapid input reverses the live disclosure snapshot before replacing its Wor
   }
   const captures: { update: () => void; finish: () => void; ready: () => void }[] = [];
   let reversals = 0;
+  replace(viewport, 'clientHeight', 360);
+  replace(viewport, 'scrollHeight', 1800);
+  replace(wrapper, 'clientHeight', 1800);
+  replace(doc, 'scrollingElement', doc.documentElement);
+  const scrollNode = wrapperOverflow === 'document' ? doc.documentElement : viewport;
+  const scrollTarget = wrapperOverflow === 'document' ? doc : viewport;
   replace(win, 'matchMedia', () => ({
     matches: true,
     addEventListener() {},
@@ -770,10 +784,21 @@ test('rapid input reverses the live disclosure snapshot before replacing its Wor
   ]);
   const rect = win.HTMLElement.prototype.getBoundingClientRect;
   replace(win.HTMLElement.prototype, 'getBoundingClientRect', function (this: HTMLElement) {
-    if (this.classList.contains('docx-pages') || this.classList.contains('docx-page')) {
+    if (
+      this === viewport ||
+      this.classList.contains('docx-pages') ||
+      this.classList.contains('docx-page')
+    ) {
       const page = surface.publishedLayout().pages[0]!;
       return new win.DOMRect(0, 0, page.box.width, page.box.height);
     }
+    if (this.hasAttribute('data-docx-mdx-disclosure'))
+      return new win.DOMRect(
+        0,
+        (this.getAttribute('aria-expanded') === 'true' ? 12 : 0) - scrollNode.scrollTop,
+        22,
+        22
+      );
     return rect.call(this);
   });
   try {
@@ -784,8 +809,16 @@ test('rapid input reverses the live disclosure snapshot before replacing its Wor
     button.focus();
     button.click();
     expect(captures).toHaveLength(1);
+    const snapshotPane =
+      wrapperOverflow === 'document'
+        ? container.querySelector<HTMLElement>('.docx-pages')!
+        : viewport;
+    expect(snapshotPane.style.viewTransitionName).toBe('docx-mdx-paper');
     expect(doc.documentElement.classList.contains('docx-mdx-opening')).toBe(true);
     captures[0]!.update();
+    expect(scrollNode.scrollTop).toBe(12);
+    scrollTarget.dispatchEvent(new win.Event('scroll'));
+    expect(doc.documentElement.classList.contains('docx-mdx-opening')).toBe(true);
     captures[0]!.ready();
     await Promise.resolve();
     expect(button.getAttribute('aria-expanded')).toBe('true');
@@ -801,7 +834,19 @@ test('rapid input reverses the live disclosure snapshot before replacing its Wor
     expect(doc.activeElement).toBe(button);
     expect(doc.documentElement.classList.contains('docx-mdx-opening')).toBe(false);
     expect(exportMdxDocument(new Uint8Array(await editor.save()))).toBe(saved);
+    button.click();
+    captures[1]!.update();
+    scrollNode.scrollTop += 32;
+    scrollTarget.dispatchEvent(new win.Event('scroll'));
+    expect(doc.documentElement.classList.contains('docx-mdx-opening')).toBe(false);
+    expect(button.getAttribute('aria-expanded')).toBe('true');
   } finally {
+    scrollNode.scrollTop = 0;
     for (const undo of restore.reverse()) undo();
   }
-});
+}
+
+test.each(['clip', 'hidden', 'visible', 'document'])(
+  'rapid input reverses the disclosure inside its scroll viewport (%s)',
+  checkDisclosureViewport
+);
