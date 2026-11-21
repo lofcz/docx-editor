@@ -94,6 +94,33 @@ test('collapse removes body flow while canonical content, history, and saved sem
   }
 });
 
+test('a returning disclosure reuses its layout and checks changed host reservations', () => {
+  const doc = open(p('Before') + sdt(p('Summary'), p('Answer')) + p('After'));
+  const owner = doc.ownerOf('Summary');
+  const folded = new Map([[owner, doc.idOf('Summary')]]);
+  const change = (open: boolean) => {
+    expect(doc.surface.setCollapsedContentControls(open ? new Map() : folded).ok).toBe(true);
+    doc.surface.flushPendingInput();
+  };
+  try {
+    change(false);
+    change(true);
+    const expandedY = doc.caret('After')!.y;
+    change(false);
+    change(true);
+    expect(doc.surface.state().perf.placed).toBe(0);
+    expect(doc.caret('After')!.y).toBe(expandedY);
+
+    change(false);
+    doc.surface.setBlockReservations(new Map([[doc.idOf('Answer'), 40]]));
+    change(true);
+    expect(doc.surface.state().perf.placed).toBeGreaterThan(0);
+    expect(doc.caret('After')!.y).toBeCloseTo(expandedY + 40);
+  } finally {
+    doc.close();
+  }
+});
+
 test('a null summary replaces the whole answer with a local header and reveals before typing', async () => {
   const doc = open(p('Before') + sdt(p('Secret answer'), p('Hidden details')) + p('After'));
   try {
@@ -442,18 +469,19 @@ test('hidden footnote references reserve no note pages and save their complete c
     expect(doc.surface.layout().pages.some((page) => (page.footnotes?.notes.length ?? 0) > 0)).toBe(
       true
     );
-    doc.surface.setCollapsedContentControls(
-      new Map([[doc.ownerOf('Summary'), doc.idOf('Summary')]])
-    );
-    doc.surface.flushPendingInput();
-    expect(doc.surface.layout().pages).toHaveLength(1);
-    expect(
-      doc.surface.layout().pages.every((page) => (page.footnotes?.notes.length ?? 0) === 0)
-    ).toBe(true);
-    expect(await digest(new Uint8Array(await doc.editor.save()))).toEqual(saved);
-    doc.surface.setCollapsedContentControls(new Map());
-    doc.surface.flushPendingInput();
-    expect(doc.surface.layout().pages).toHaveLength(pageCount);
+    const folded = new Map([[doc.ownerOf('Summary'), doc.idOf('Summary')]]);
+    for (let visit = 0; visit < 2; visit++) {
+      doc.surface.setCollapsedContentControls(folded);
+      doc.surface.flushPendingInput();
+      expect(doc.surface.layout().pages).toHaveLength(1);
+      expect(
+        doc.surface.layout().pages.every((page) => (page.footnotes?.notes.length ?? 0) === 0)
+      ).toBe(true);
+      expect(await digest(new Uint8Array(await doc.editor.save()))).toEqual(saved);
+      doc.surface.setCollapsedContentControls(new Map());
+      doc.surface.flushPendingInput();
+      expect(doc.surface.layout().pages).toHaveLength(pageCount);
+    }
   } finally {
     doc.close();
   }

@@ -178,6 +178,11 @@ test('each editor uses its own folds and visible selection geometry during concu
   const { pair, alice, bob, flush, converge } = await room();
   const original = exportMdxDocument(alice.pkg());
   const fingerprint = packageFingerprint(alice.pkg());
+  // Both layouts have been visited when the next shared edit arrives.
+  alice.fold().click();
+  flush();
+  alice.fold().click();
+  flush();
   alice.fold().click();
   converge();
   expect(packageFingerprint(alice.pkg())).toBe(fingerprint);

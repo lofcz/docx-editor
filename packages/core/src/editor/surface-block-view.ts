@@ -7,6 +7,7 @@ import type { SurfaceBlockReservations } from './surface-block-reservations.ts';
 import type { SurfaceContentControlCollapse } from './surface-content-control-collapse.ts';
 
 import { changedDisclosure } from './disclosure-viewport.ts';
+import { createDisclosureLayoutHistory } from './surface-disclosure-layout.ts';
 
 interface SurfaceBlockViewDeps {
   anchor(id: string | undefined): void;
@@ -56,6 +57,7 @@ export function createSurfaceBlockView(
   };
   return {
     commands,
+    resumeDisclosureLayout: createDisclosureLayoutHistory(state.current),
     collapseOption: state.option,
     reservations: reservations.option,
     reconcile: () => state.reconcile(part(), deps.resolveNodeId),

@@ -1794,8 +1794,10 @@ export function mountPaginatedSurface(
     // layout after the first comes through here rather than through `layoutOnce`.
     run: (scope: LayoutScope) => {
       const began = now();
+      const settled = openingBlockLimit === null && !deferredLayout.pending();
       finishOpeningPass();
       deferredLayout.abandon();
+      blockView.resumeDisclosureLayout(layoutSession, scope, settled);
       // An edit during an opening lays out the prefix so far; the opening slices go on after it.
       const steps = furnitureLaterSteps(
         layoutDocumentSteps(scope.revision, scope, undefined, openingBlockLimit ?? undefined),
