@@ -1,13 +1,20 @@
 // Copied into the packed consumer's Vite project. Every import resolves from installed tarballs.
 import { createDocxEditor } from '@docx-editor.dev/core/editor';
 import { contentControlTextOf } from '@docx-editor.dev/core/store';
+import { exportMdxDocument, importMdxDocument } from '@docx-editor.dev/docx-to-markdown/mdx';
 import {
   createMdxComponentRegistry,
-  exportMdxDocument,
-  importMdxDocument,
   mountMdxComponents,
   mountMdxDisclosures,
-} from '@docx-editor.dev/docx-to-markdown/mdx';
+} from '@docx-editor.dev/docx-to-markdown/mdx/view';
+
+async function untilFrame(check) {
+  const deadline = performance.now() + 5000;
+  while (!check()) {
+    if (performance.now() > deadline) throw new Error('Disclosure did not settle');
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+  }
+}
 
 export async function inspectMdxHost({ project, containerTag, action, caption }) {
   const registry = createMdxComponentRegistry({
@@ -120,46 +127,50 @@ export async function inspectMdxHost({ project, containerTag, action, caption })
         throw new Error('Unexpected initial disclosure state for ' + label);
     }
     await window.verifyTableSummaryKeys();
+    const root = document.documentElement;
+    const settled = () => !root.matches('.docx-mdx-opening, .docx-mdx-closing');
+    await untilFrame(settled);
     const selector = '[data-mdx-component="' + containerTag + '"] button';
     const button = container.querySelector(selector);
     button.click();
     surface.flushPendingInput();
     const retained = button === container.querySelector(selector);
-    container.querySelector('button[aria-label="Report"]').click();
-    surface.flushPendingInput();
-    const closed = !container.contains(button);
-    container.querySelector('button[aria-label="Report"]').click();
-    surface.flushPendingInput();
-    const fading = Array.from(
-      container.querySelectorAll('.docx-paragraph-fragment, .docx-table-fragment')
-    ).filter((element) =>
-      element
+    const toggle = container.querySelector('button[aria-label="Report"]');
+    toggle.click();
+    await untilFrame(() => !container.contains(button) && settled());
+    const closed = !container.querySelector(selector);
+    const summaryTop = () => toggle.getBoundingClientRect().top;
+    const closedTop = summaryTop();
+    let animatedSummary = false;
+    let clippedBody = false;
+    let translatedBody = false;
+    toggle.click();
+    await untilFrame(() => {
+      animatedSummary ||= Math.abs(summaryTop() - closedTop) > 1;
+      const movement = document
         .getAnimations()
-        .some((animation) =>
-          animation.effect?.getKeyframes().some((frame) => frame.opacity !== undefined)
-        )
-    );
-    const movesDown = (element) =>
-      element.getAnimations().some((animation) => {
-        const frames = animation.effect.getKeyframes();
-        return (
-          frames.length === 2 &&
-          Number(frames[0].opacity) < Number(frames[1].opacity) &&
-          / -3px$/.test(frames[0].translate) &&
-          frames[0].translate !== frames[1].translate &&
-          frames.every((frame) => frame.transform === undefined)
-        );
-      });
+        .find((a) => a.animationName === 'docx-mdx-move-following');
+      if (movement) {
+        clippedBody ||= getComputedStyle(
+          root,
+          '::view-transition-old(docx-mdx-paper)'
+        ).clipPath.startsWith('inset(');
+        const frames = movement.effect.getKeyframes();
+        translatedBody ||=
+          frames.length >= 2 &&
+          frames[0].transform !== frames.at(-1).transform &&
+          parseFloat(root.style.getPropertyValue('--docx-mdx-travel')) > 0;
+      }
+      return container.querySelector(selector) && settled();
+    });
     return {
       clicks,
       action: button.textContent,
       retained,
       closed,
-      animatedBody: fading.some((element) => element.textContent.includes('D!epth')),
-      translatedBody: fading.some(
-        (element) => element.textContent.includes('D!epth') && movesDown(element)
-      ),
-      animatedSummary: fading.some((element) => /Report|Maximum|Label/.test(element.textContent)),
+      clippedBody,
+      translatedBody,
+      animatedSummary,
       childText: observed.includes('D!epth'),
       registeredFallback: observed.includes(caption),
       roundTrip: exportMdxDocument(new Uint8Array(await editor.save())) === expected,

@@ -36,13 +36,14 @@ try {
     )[0];
     dependencies[`@docx-editor.dev/${name}`] = `file:${path.join(temporary, packed.filename)}`;
   }
+  const overrides = { ...dependencies };
   dependencies['@types/node'] = '22.19.17';
   dependencies.typescript = JSON.parse(
     await readFile(path.join(root, 'node_modules/typescript/package.json'), 'utf8')
   ).version;
   await writeFile(
     path.join(consumer, 'package.json'),
-    JSON.stringify({ private: true, type: 'module', dependencies })
+    JSON.stringify({ private: true, type: 'module', dependencies, overrides })
   );
   run('bun', ['install', '--ignore-scripts']);
   await cp(
@@ -55,11 +56,21 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import * as api from '@docx-editor.dev/docx-to-markdown';
 import { writeMarkdownBundle } from '@docx-editor.dev/docx-to-markdown/node';
+import * as view from '@docx-editor.dev/docx-to-markdown/mdx/view';
 async function main() {
   const mdx = await import('@docx-editor.dev/docx-to-markdown/mdx');
   const word = mdx.importMdxDocument('<Instrument serial="A1">Read the dial.</Instrument>');
-  assert.ok(mdx.isMdxDocument(word));
-  assert.equal(mdx.readMdxComponents(word)[0]?.attributes.serial, 'A1');
+  assert.ok(view.isMdxDocument(word));
+  const components: readonly view.MdxDocumentComponent[] = view.readMdxComponents(word);
+  assert.equal(components[0]?.attributes.serial, 'A1');
+  const views = new Map<string, view.MdxComponentRenderer>();
+  assert.equal(views.size, 0);
+  assert.equal(typeof view.configureMdxDisclosures, 'function');
+  assert.equal(typeof view.mountMdxDisclosures, 'function');
+  assert.equal(typeof view.mountMdxComponents, 'function');
+  // A CJS program loads the CJS reader. Compare identity only within one module format.
+  const esmView = await import('@docx-editor.dev/docx-to-markdown/mdx/view');
+  assert.equal(esmView.createMdxComponentRegistry, mdx.createMdxComponentRegistry);
   assert.ok(mdx.exportMdxDocument(word).includes('Read the dial.'));
   const error: api.MarkdownMediaError = new api.MarkdownMediaError('media-limit', 'Limit');
   const bundleError: api.MarkdownBundleError = new api.MarkdownBundleError('output-not-empty', 'Folder');
@@ -108,9 +119,36 @@ main().catch(error => { console.error(error); process.exitCode = 1; });
     await rm(path.join(consumer, `output-${extension}`), { recursive: true });
     run('bun', [`compiled-${extension}/consumer.${extension === 'mts' ? 'mjs' : 'cjs'}`]);
   }
+  // Check the installed reader graph before tree shaking can discard unused parser modules.
+  await writeFile(
+    path.join(consumer, 'view-only.js'),
+    "export * from '@docx-editor.dev/docx-to-markdown/mdx/view';"
+  );
+  await build({
+    configFile: false,
+    root: consumer,
+    logLevel: 'error',
+    plugins: [
+      {
+        name: 'reader-without-parser',
+        enforce: 'pre',
+        resolveId(id) {
+          if (/^(?:remark(?:-|$)|unified(?:\/|$)|@mdx-js\/|micromark(?:-|$)|mdast-util-)/.test(id))
+            this.error(`The installed MDX reader requested a parser dependency: ${id}`);
+        },
+      },
+    ],
+    build: {
+      write: false,
+      lib: { entry: path.join(consumer, 'view-only.js'), formats: ['es'] },
+      rollupOptions: { external: (id) => id.startsWith('@docx-editor.dev/core') },
+    },
+  });
   const requireMdx = `
     const assert = require('node:assert/strict');
     const mdx = require('@docx-editor.dev/docx-to-markdown/mdx');
+    const view = require('@docx-editor.dev/docx-to-markdown/mdx/view');
+    assert.equal(view.createMdxComponentRegistry, mdx.createMdxComponentRegistry);
     assert.ok(mdx.isMdxDocument(mdx.importMdxDocument('# Service record')));
   `;
   if (process.features.require_module) run('node', ['-e', requireMdx]);
@@ -206,7 +244,7 @@ window.runImageExport = async () => {
       action: host.action,
       retained: true,
       closed: true,
-      animatedBody: host.motion === 'no-preference',
+      clippedBody: host.motion === 'no-preference',
       translatedBody: host.motion === 'no-preference',
       animatedSummary: false,
       childText: true,
