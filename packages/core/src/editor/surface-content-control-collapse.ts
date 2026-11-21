@@ -1,3 +1,5 @@
+import type { OoxmlPackage } from '@docx-editor.dev/core/store';
+import type { SurfaceBlockReservations } from './surface-block-reservations.ts';
 import type {
   CollapsedContentControl,
   ContentControlCollapseResult,
@@ -42,3 +44,14 @@ export interface SurfaceContentControlCollapse {
     controls: ReadonlyMap<string, ContentControlCollapseTarget>
   ): ContentControlCollapseResult;
 }
+
+/**
+ * Configure local folds and insets before the first layout. The view is valid only during
+ * this synchronous call. Read the collapse result to handle an unsupported target.
+ * Moving an existing surface preserves its view without calling this function again.
+ * @public
+ */
+export type ConfigureInitialBlockView = (
+  pkg: OoxmlPackage,
+  view: SurfaceContentControlCollapse & Pick<SurfaceBlockReservations, 'setBlockInsets'>
+) => void;

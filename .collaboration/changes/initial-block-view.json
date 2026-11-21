@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Each host configured folds and insets after the first layout.",
+  "after": "Each host can configure folds and insets before the first layout.",
+  "reason": "The existing local view owns both settings. Edits, history, shared operations, and package serialization retain their existing semantics.",
+  "tests": [
+    "packages/core/src/editor/__tests__/initial-block-view.test.ts",
+    "packages/pro/src/collaboration/__tests__/initial-block-view.test.ts"
+  ],
+  "changeset": "initial-block-view",
+  "migration": null
+}

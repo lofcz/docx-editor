@@ -1006,14 +1006,19 @@ export function mountPaginatedSurface(
   // Layout, furniture, and formatting writes share the view's current projection (#497).
   let showFieldCodes = false;
   const disclosureViewport = createDisclosureViewport(() => container);
-  const blockView = createSurfaceBlockView(session, {
-    anchor: (id) => disclosureViewport.capture(id, currentLayout, scale, session.packageRevision()),
-    scope: storyScope,
-    destroyed: () => destroyed,
-    resolveNodeId: (id) => collaborationSession?.resolveNodeId?.(id),
-    invalidate: (reason) => scheduler.invalidateAll(session.packageRevision(), reason),
-    flush: flushLayout,
-  });
+  const blockView = createSurfaceBlockView(
+    session,
+    {
+      anchor: (id) =>
+        disclosureViewport.capture(id, currentLayout, scale, session.packageRevision()),
+      scope: storyScope,
+      destroyed: () => destroyed,
+      resolveNodeId: (id) => collaborationSession?.resolveNodeId?.(id),
+      invalidate: (reason) => scheduler.invalidateAll(session.packageRevision(), reason),
+      flush: flushLayout,
+    },
+    options.configureInitialBlockView
+  );
   const reviewView = createReviewViewState(
     options.revisionDisplayMode,
     !!options.reviewModel,

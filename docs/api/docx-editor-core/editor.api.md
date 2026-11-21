@@ -2030,6 +2030,9 @@ export function computeResizedImageExtentEmu(startWidthEmu: number, startHeightE
 };
 
 // @public
+export type ConfigureInitialBlockView = (pkg: OoxmlPackage, view: SurfaceContentControlCollapse & Pick<SurfaceBlockReservations, 'setBlockInsets'>) => void;
+
+// @public
 export const CONTENT_CONTROL_PICTURE_ACCEPT = "image/png,image/jpeg,image/gif,image/bmp,image/webp";
 
 // @public
@@ -2314,6 +2317,7 @@ export function documentThemeHexes(entries: readonly {
 export interface DocxEditorConfig {
     // (undocumented)
     author?: string;
+    readonly configureInitialBlockView?: ConfigureInitialBlockView;
     container?: HTMLElement;
     contentLockPolicy?: ContentLockPolicy;
     document?: DocumentSource;
@@ -3937,6 +3941,7 @@ export interface PaginatedSurfaceOptions {
     readonly author?: string;
     readonly bookmarkMarks?: BookmarkMarkOptionsSource;
     readonly collaborationModel?: CollaborationModuleContribution;
+    readonly configureInitialBlockView?: ConfigureInitialBlockView;
     readonly contentLockPolicy?: ContentLockPolicy;
     readonly defaultFontFamily?: string;
     readonly drawingStrings?: DrawingPaintStrings;

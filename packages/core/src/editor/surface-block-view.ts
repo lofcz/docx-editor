@@ -4,7 +4,10 @@ import type { StoryScope } from '@docx-editor.dev/core/store';
 import { createBlockReservationState } from '../layout/block-reservations.ts';
 import { createContentControlCollapseState } from '../layout/content-control-collapse-state.ts';
 import type { SurfaceBlockReservations } from './surface-block-reservations.ts';
-import type { SurfaceContentControlCollapse } from './surface-content-control-collapse.ts';
+import type {
+  ConfigureInitialBlockView,
+  SurfaceContentControlCollapse,
+} from './surface-content-control-collapse.ts';
 
 import { changedDisclosure } from './disclosure-viewport.ts';
 import { createDisclosureLayoutHistory } from './surface-disclosure-layout.ts';
@@ -21,7 +24,8 @@ interface SurfaceBlockViewDeps {
 /** Bind local block views to one canonical session and its existing layout scheduler. */
 export function createSurfaceBlockView(
   session: Pick<TreeDocxSessionView, 'currentPackage' | 'paragraphIdsIn'>,
-  deps: SurfaceBlockViewDeps
+  deps: SurfaceBlockViewDeps,
+  configureInitialBlockView?: ConfigureInitialBlockView
 ) {
   const state = createContentControlCollapseState();
   const reservations = createBlockReservationState();
@@ -29,6 +33,33 @@ export function createSurfaceBlockView(
     const pkg = session.currentPackage();
     return pkg.parts.get(pkg.mainDocumentPart)!;
   };
+  if (configureInitialBlockView) {
+    const pkg = session.currentPackage();
+    const initialPart = pkg.parts.get(pkg.mainDocumentPart)!;
+    let active = true;
+    const checkActive = () => {
+      if (!active) throw new Error('The initial block view is closed.');
+    };
+    try {
+      configureInitialBlockView(pkg, {
+        collapsedContentControls() {
+          checkActive();
+          return state.current();
+        },
+        setCollapsedContentControls(next) {
+          checkActive();
+          const result = state.set(initialPart, next);
+          return result.ok ? { ok: true } : result;
+        },
+        setBlockInsets(insets) {
+          checkActive();
+          reservations.setInsets(insets);
+        },
+      });
+    } finally {
+      active = false;
+    }
+  }
   const reveal = (paragraphIds: readonly string[]) => {
     if (!state.reveal(part(), paragraphIds)) return;
     deps.anchor(undefined);

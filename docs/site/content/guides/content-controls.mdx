@@ -197,6 +197,8 @@ if (result && !result.ok) {
 }
 ```
 
+Use `configureInitialBlockView(pkg, view)` in the editor configuration to set folds and insets before the first layout. The callback receives the parsed package for each new surface. Call `view.setCollapsedContentControls(controls)` and check its result. Use `view.collapsedContentControls()` to read accepted entries before calling `view.setBlockInsets(insets)`. The view expires when the callback returns. Moving the surface between containers keeps its local settings.
+
 The map replaces the complete collapse view. An empty map opens every control. Validation refuses the complete request before changing existing entries. The first paragraph remains visible. If a leading block control contains that paragraph, its complete content remains visible. For a table at the start of that control, use the first visible cell paragraph. Later siblings leave the page flow. Canonical list numbering and bookmark references still include hidden content.
 
 Pass `null` instead of a summary paragraph ID to hide the complete body behind a blank, 24-point local header. Host chrome can place a disclosure button in that header. The first flow paragraph can sit inside nested controls. A leading table refuses this mode. The header preserves the original paragraph identity but contains no answer text, formatting, or list marker. Saving and exporting retain the complete canonical content.

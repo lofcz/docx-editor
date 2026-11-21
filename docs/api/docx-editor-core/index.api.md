@@ -80,6 +80,14 @@ export interface BlankDocumentOptions {
 export type Block = Paragraph | Table | ContentControl;
 
 // @public
+export interface BlockInset {
+    readonly bottom?: number;
+    readonly left: number;
+    readonly right: number;
+    readonly top?: number;
+}
+
+// @public
 export interface BookmarkChromeHandlers {
     readonly onRequest?: () => void;
 }
@@ -1324,6 +1332,13 @@ export interface CollaborationStatusDiagnostic extends DiagnosticBase {
 }
 
 // @public
+export interface CollapsedContentControl {
+    readonly controlId: string;
+    readonly placeholderHeightPt?: number;
+    readonly summaryParagraphId: string | null;
+}
+
+// @public
 export type CollectReviewItems = (input: ReviewModelInput) => readonly ReviewItem[];
 
 // @public
@@ -1574,6 +1589,9 @@ export interface ComposeFontOriginsOptions {
 }
 
 // @public
+export type ConfigureInitialBlockView = (pkg: OoxmlPackage, view: SurfaceContentControlCollapse & Pick<SurfaceBlockReservations, 'setBlockInsets'>) => void;
+
+// @public
 export type ContainerRef = {
     part: 'body';
 } | {
@@ -1601,6 +1619,22 @@ export interface ContentControl {
     // (undocumented)
     readonly tag?: string;
 }
+
+// @public
+export interface ContentControlCollapsePlaceholder {
+    readonly placeholderHeightPt: number;
+}
+
+// @public
+export type ContentControlCollapseResult = {
+    readonly ok: true;
+} | {
+    readonly ok: false;
+    readonly reason: 'document-not-ready' | 'invalid-owner' | 'invalid-summary' | 'invalid-placeholder-height' | 'unsupported-content' | 'limit-exceeded';
+};
+
+// @public
+export type ContentControlCollapseTarget = string | null | ContentControlCollapsePlaceholder;
 
 // @public
 export interface ContentControlFilter {
@@ -2152,6 +2186,7 @@ export interface DocxDocumentJSON {
 export interface DocxEditorConfig {
     // (undocumented)
     author?: string;
+    readonly configureInitialBlockView?: ConfigureInitialBlockView;
     container?: HTMLElement;
     contentLockPolicy?: ContentLockPolicy;
     document?: DocumentSource;
@@ -5067,6 +5102,18 @@ export interface StyleDefinitions {
 
 // @public
 export type SupportedImageMime = 'image/png' | 'image/jpeg' | 'image/gif' | 'image/bmp' | 'image/webp';
+
+// @public
+export interface SurfaceBlockReservations {
+    setBlockInsets(insets: ReadonlyMap<string, BlockInset>): void;
+    setBlockReservations(reservations: ReadonlyMap<string, number>): void;
+}
+
+// @public
+export interface SurfaceContentControlCollapse {
+    collapsedContentControls(): readonly CollapsedContentControl[];
+    setCollapsedContentControls(controls: ReadonlyMap<string, ContentControlCollapseTarget>): ContentControlCollapseResult;
+}
 
 // @public
 export interface SurfaceEquation {

@@ -1,3 +1,4 @@
+import type { ConfigureInitialBlockView } from './surface-content-control-collapse.ts';
 import type { UnsupportedElementRule } from '../layout/unsupported-content-types.ts';
 import type {
   RevisionMarkupOptions,
@@ -56,6 +57,8 @@ import type { BookmarkStory } from '../contracts/editor-bookmarks.ts';
  * @public
  */
 export interface DocxEditorConfig {
+  /** Configure local folds and insets on the parsed package before the first layout of each new surface. */
+  readonly configureInitialBlockView?: ConfigureInitialBlockView;
   /**
    * The element the paginated surface mounts into. The surface owns this subtree.
    *

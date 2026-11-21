@@ -252,6 +252,7 @@ export {
 export type { SurfaceBlockReservations } from './surface-block-reservations.ts';
 export type {
   SurfaceContentControlCollapse,
+  ConfigureInitialBlockView,
   CollapsedContentControl,
   ContentControlCollapseResult,
   ContentControlCollapsePlaceholder,

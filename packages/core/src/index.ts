@@ -32,6 +32,14 @@ export {
   type BlankDocumentOptions,
   type DocxEditorInstance,
   type DocxEditorConfig,
+  type ConfigureInitialBlockView,
+  type SurfaceContentControlCollapse,
+  type SurfaceBlockReservations,
+  type BlockInset,
+  type CollapsedContentControl,
+  type ContentControlCollapseResult,
+  type ContentControlCollapseTarget,
+  type ContentControlCollapsePlaceholder,
 } from './editor/index.ts';
 // Map a range of `ParagraphText.acceptedText` to highlight ranges, for proofing tools.
 export {

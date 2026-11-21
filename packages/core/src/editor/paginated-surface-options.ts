@@ -1,3 +1,4 @@
+import type { ConfigureInitialBlockView } from './surface-content-control-collapse.ts';
 import type { UnsupportedElementRule } from '../layout/unsupported-content-types.ts';
 import type { ParagraphAppearanceContribution } from '../contracts/paragraph-appearance.ts';
 import type { ResolvedRevisionMarkup } from '../contracts/revision-markup.ts';
@@ -50,6 +51,8 @@ export type LockedControlNavigation = 'characters' | 'atomic';
  * on a server, or leave it off in a browser to get the canvas measurer.
  */
 export interface PaginatedSurfaceOptions {
+  /** Configure local folds and insets on the parsed package before the first layout of each new surface. */
+  readonly configureInitialBlockView?: ConfigureInitialBlockView;
   /** Native drop notifications run before the default insertion. @internal */
   readonly onDragEvent?: (
     kind: 'dragOver' | 'drop',
