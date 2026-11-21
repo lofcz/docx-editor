@@ -5,7 +5,11 @@ import type {
 } from '@docx-editor.dev/core/editor';
 import { paragraphTextOf, type OoxmlPackage } from '@docx-editor.dev/core/store';
 import { createDisclosureReader, type MdxDocumentComponent } from './document';
-import { revealDisclosureBody } from './document-motion';
+import {
+  cancelDisclosureMotion,
+  changeDisclosure,
+  pendingDisclosureState,
+} from './document-motion';
 import { disclosureAnchors } from './document-painted-pages';
 
 /** The local reading preferences of a mounted editor. @public */
@@ -30,8 +34,6 @@ export function mountMdxDisclosures(
   if (!surface) throw new Error('Attach the document editor before mounting disclosures.');
   const buttons = new Map<string, HTMLButtonElement>();
   let focusedSummary: string | undefined;
-  let reveal: { id: string; summary: string } | undefined;
-  let arrow: { summary: string; opening: boolean } | undefined;
   let ownerDocument: Document | undefined;
   const known = new Set<string>();
   const readDisclosures = createDisclosureReader();
@@ -112,20 +114,24 @@ export function mountMdxDisclosures(
       event.stopPropagation();
       const item = summaries.get(summary);
       if (!item || disposed) return;
-      const next = folds();
-      const opening = next.delete(item.controlId);
-      if (!opening) next.set(item.controlId, summary);
-      reveal = opening ? { id: item.controlId, summary } : undefined;
-      arrow = { summary, opening };
+      const pending = pendingDisclosureState(button);
+      const opening = pending === undefined ? folds().has(item.controlId) : !pending;
       const keyboardFocus = doc.activeElement === button;
-      if (keyboardFocus) focusedSummary = summary;
-      const result = surface!.setCollapsedContentControls(next);
-      if (!result.ok) {
-        reveal = undefined;
-        arrow = undefined;
-        options.onRefusal?.(item, result.reason);
-      } else button.setAttribute('aria-expanded', String(!next.has(item.controlId)));
-      if (keyboardFocus) buttons.get(summary)?.focus({ preventScroll: true });
+      changeDisclosure(surface!, item.controlId, button, opening, () => {
+        if (disposed || !summaries.has(summary)) return false;
+        const next = folds();
+        if (opening) next.delete(item.controlId);
+        else next.set(item.controlId, summary);
+        if (keyboardFocus) focusedSummary = summary;
+        const result = surface!.setCollapsedContentControls(next);
+        if (!result.ok) {
+          options.onRefusal?.(item, result.reason);
+          return false;
+        }
+        button.setAttribute('aria-expanded', String(opening));
+        if (keyboardFocus) buttons.get(summary)?.focus({ preventScroll: true });
+        return true;
+      });
     });
     return button;
   }
@@ -140,29 +146,11 @@ export function mountMdxDisclosures(
       const item = summaries.get(summary)!;
       const button = buttons.get(summary) ?? makeButton(element.ownerDocument, summary);
       const label = paragraphTextOf(frame.part, summary) || item.name;
-      const expanded = String(!closed.has(item.controlId));
+      const expanded = String(pendingDisclosureState(button) ?? !closed.has(item.controlId));
       if (button.getAttribute('aria-label') !== label) button.setAttribute('aria-label', label);
       if (button.getAttribute('aria-expanded') !== expanded)
         button.setAttribute('aria-expanded', expanded);
       if (button.parentElement !== element) element.append(button);
-      if (arrow?.summary === summary && arrow.opening === !closed.has(item.controlId)) {
-        const glyph = button.firstElementChild;
-        if (
-          glyph &&
-          ownerDocument.defaultView?.matchMedia?.('(prefers-reduced-motion: no-preference)').matches
-        ) {
-          for (const previous of glyph.getAnimations?.() ?? []) previous.cancel();
-          const angles = arrow.opening ? [0, 90] : [90, 0];
-          glyph.animate?.(
-            angles.map((angle) => ({ transform: 'rotate(' + angle + 'deg)' })),
-            {
-              duration: 140,
-              easing: 'ease-out',
-            }
-          );
-        }
-        arrow = undefined;
-      }
       buttons.set(summary, button);
       seen.add(summary);
     }
@@ -179,14 +167,13 @@ export function mountMdxDisclosures(
         button.focus({ preventScroll: true });
       focusedSummary = undefined;
     }
-    if (reveal && !closed.has(reveal.id)) {
-      revealDisclosureBody(frame, reveal.id, reveal.summary);
-      reveal = undefined;
-    }
   }
   function clear() {
     disposed = true;
-    for (const button of buttons.values()) button.remove();
+    for (const button of buttons.values()) {
+      cancelDisclosureMotion(button);
+      button.remove();
+    }
     buttons.clear();
   }
   refresh();

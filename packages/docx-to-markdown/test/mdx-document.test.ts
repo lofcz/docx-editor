@@ -736,3 +736,71 @@ test('disclosure buttons name their native caption and local folds preserve the 
   expect(visible()).toBe(true);
   expect(button()).toBeNull();
 });
+
+test('rapid input reverses the live disclosure snapshot before replacing its Word layout', async () => {
+  const { editor, container, surface } = mount(
+    '<details>\n<summary>Observation</summary>\n\nFirst reading\n\nSecond reading\n\n</details>\n\nFollowing text'
+  );
+  const doc = container.ownerDocument;
+  const win = doc.defaultView!;
+  const restore: (() => void)[] = [];
+  function replace(target: object, key: string, value: unknown) {
+    const prior = Object.getOwnPropertyDescriptor(target, key);
+    Object.defineProperty(target, key, { value, configurable: true });
+    restore.push(() => {
+      if (prior) Object.defineProperty(target, key, prior);
+      else Reflect.deleteProperty(target, key);
+    });
+  }
+  const captures: { update: () => void; finish: () => void; ready: () => void }[] = [];
+  let reversals = 0;
+  replace(win, 'matchMedia', () => ({
+    matches: true,
+    addEventListener() {},
+    removeEventListener() {},
+  }));
+  replace(doc, 'startViewTransition', (update: () => void) => {
+    const ready = Promise.withResolvers<void>();
+    const finished = Promise.withResolvers<void>();
+    captures.push({ update, ready: ready.resolve, finish: finished.resolve });
+    return { ready: ready.promise, finished: finished.promise, skipTransition: finished.resolve };
+  });
+  replace(doc, 'getAnimations', () => [
+    { animationName: 'docx-mdx-move-following', playState: 'running', reverse: () => reversals++ },
+  ]);
+  const rect = win.HTMLElement.prototype.getBoundingClientRect;
+  replace(win.HTMLElement.prototype, 'getBoundingClientRect', function (this: HTMLElement) {
+    if (this.classList.contains('docx-pages') || this.classList.contains('docx-page')) {
+      const page = surface.publishedLayout().pages[0]!;
+      return new win.DOMRect(0, 0, page.box.width, page.box.height);
+    }
+    return rect.call(this);
+  });
+  try {
+    cleanups.push(mountMdxDisclosures(editor));
+    surface.flushPendingInput();
+    const button = container.querySelector<HTMLButtonElement>('button[aria-label="Observation"]')!;
+    const saved = exportMdxDocument(surface.session.currentPackage());
+    button.focus();
+    button.click();
+    expect(captures).toHaveLength(1);
+    captures[0]!.update();
+    captures[0]!.ready();
+    await Promise.resolve();
+    expect(button.getAttribute('aria-expanded')).toBe('true');
+    expect(surface.collapsedContentControls()).toHaveLength(0);
+    button.click();
+    expect(reversals).toBe(1);
+    expect(captures).toHaveLength(1);
+    expect(button.getAttribute('aria-expanded')).toBe('false');
+    expect(surface.collapsedContentControls()).toHaveLength(0);
+    captures[0]!.finish();
+    await Promise.resolve();
+    expect(surface.collapsedContentControls()).toHaveLength(1);
+    expect(doc.activeElement).toBe(button);
+    expect(doc.documentElement.dataset.docxMdxMotion).toBeUndefined();
+    expect(exportMdxDocument(new Uint8Array(await editor.save()))).toBe(saved);
+  } finally {
+    for (const undo of restore.reverse()) undo();
+  }
+});
