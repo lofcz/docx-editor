@@ -132,6 +132,9 @@ export function prepareParagraphRootPaint(
           !(materialize?.has(index) ?? true)
         )
           return false;
+        // Chrome may change while the sheet keeps every body paragraph and table.
+        // Only hosts that reserve paragraph roots can keep their loans in this case.
+        if (prior.record === page) return accepts(new Set());
         const delta = changedPageParts(prior.record, page);
         if (!delta?.blocks || delta.furniture || delta.controls) return false;
         plan = planParagraphRootPaint(prior, page, (fragment) => paint(page, fragment));

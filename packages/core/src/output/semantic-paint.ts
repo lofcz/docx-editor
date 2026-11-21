@@ -2331,7 +2331,7 @@ export function paintSemanticLayoutWithAuthorSlots(
       layout.pages,
       options.materialize,
       chromeChanged ? null : reusable,
-      parametersUnchanged && !chromeChanged ? previousByIndex : null,
+      parametersUnchanged ? previousByIndex : null,
       beforePaint,
       (page, fragment) =>
         paintFragment(document, fragment, {

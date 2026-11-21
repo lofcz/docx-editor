@@ -48,6 +48,17 @@ interface PaintedControl {
 // A retained sheet keeps its origin and zoom. Only a changed control needs new furniture.
 const paintedControls = new WeakMap<HTMLElement, readonly PaintedControl[]>();
 
+function setBoundaryState(
+  element: HTMLElement,
+  active: boolean,
+  hovered: boolean,
+  visible: boolean
+) {
+  element.toggleAttribute('data-active', active);
+  element.toggleAttribute('data-hover', hovered);
+  element.toggleAttribute('data-boundary-visible', visible);
+}
+
 /**
  * Paint on-demand content-control boundary furniture onto a page sheet.
  *
@@ -92,10 +103,11 @@ export function paintContentControlChrome(
     const visible = showAll || active || (isToc && hovered);
     const checked = chrome?.checkedIds?.has(control.id) === true;
     const readOnly = chrome?.readOnly === true;
-    const flags = [active, hovered, visible, checked, isToc, readOnly].join(',');
+    const flags = [checked, isToc, readOnly].join(',');
     const old = byId.get(control.id);
     byId.delete(control.id);
     if (old?.flags === flags && sameDataWithin(old.record, control, 20_000)) {
+      setBoundaryState(old.element, active, hovered, visible);
       next.push({ record: control, flags, element: old.element });
       continue;
     }
@@ -209,9 +221,7 @@ function paintContentControlBoundary(
   // Lets the stylesheet drop the "fill me in" hover invite without a second source of truth
   // for what read-only means.
   if (readOnly) layer.dataset.readOnly = '';
-  if (active) layer.dataset.active = '';
-  if (hovered) layer.dataset.hover = '';
-  if (boundaryVisible) layer.dataset.boundaryVisible = '';
+  setBoundaryState(layer, active, hovered, boundaryVisible);
   layer.setAttribute('contenteditable', 'false');
   layer.setAttribute('role', 'group');
   // Alias and tag are document-authored control metadata.

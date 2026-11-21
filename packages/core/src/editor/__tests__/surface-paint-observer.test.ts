@@ -256,6 +256,55 @@ test('a host can retain its paragraph roots while paint replaces edited text', (
   }
 });
 
+test('field visibility keeps an opted-in body loan and its field widget connected', () => {
+  const container = document.createElement('div');
+  document.body.append(container);
+  const field = `<w:sdt><w:sdtPr><w:alias w:val="Choice"/><w:dropDownList/></w:sdtPr><w:sdtContent>${p('Alpha')}</w:sdtContent></w:sdt>`;
+  const editor = createDocxEditor({ container, document: docx(field + p('Beta')) });
+  const surface = editor.surface!;
+  const paragraphId = surface.session.paragraphIds()[1]!;
+  const point = { paragraphId, offset: 2 };
+  surface.setSelection({ anchor: point, head: point });
+  const decisions: boolean[] = [];
+  const whole: boolean[] = [];
+  const root = container.querySelector<HTMLElement>('.docx-paragraph-fragment')!;
+  const widget = container.querySelector<HTMLElement>('.docx-content-control-widget')!;
+  const chrome = widget.closest<HTMLElement>('.docx-content-control-chrome')!;
+  const slot = document.createElement('section');
+  const marker = document.createComment('borrowed paragraph');
+  const stop = surface.observePaint({
+    beforePaint(retained, reserve) {
+      if (root.parentNode !== slot) return;
+      whole.push(retained?.has(0) === true);
+      const accepted = reserve?.(0, (changed) => changed.size === 0) === true;
+      decisions.push(accepted);
+      if (!accepted) marker.replaceWith(root);
+    },
+    afterPaint() {
+      if (root.parentNode === slot) return;
+      root.before(marker, slot);
+      slot.append(root);
+    },
+  });
+  try {
+    const layout = surface.publishedLayout();
+    for (const show of [true, false]) {
+      surface.contentControls.setShowAll(show);
+      expect(container.querySelector('.docx-content-control-widget')).toBe(widget);
+      expect(chrome.hasAttribute('data-boundary-visible')).toBe(show);
+      expect(root.parentElement).toBe(slot);
+      expect(surface.publishedLayout()).toBe(layout);
+      expect(surface.state().selection).toEqual({ anchor: point, head: point });
+    }
+    expect(whole).toEqual([false, false]);
+    expect(decisions).toEqual([true, true]);
+  } finally {
+    stop();
+    editor.destroy();
+    container.remove();
+  }
+});
+
 test('changed tables, new paragraphs and invalid painted roots use normal paint', () => {
   const table =
     '<w:tbl><w:tblGrid><w:gridCol w:w="2000"/></w:tblGrid><w:tr><w:tc>' +
