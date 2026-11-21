@@ -1,0 +1,13 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Mounted MDX views could show stale child text. The importer refused block content in a disclosure summary.",
+  "after": "A view can observe edits to its own Word control. Each reader can fold a disclosure with a rich summary.",
+  "reason": "Word controls and the existing journal carry edits. Component listeners, disclosure state, and animations belong to each editor.",
+  "tests": [
+    "packages/docx-to-markdown/test/mdx-document.test.ts",
+    "packages/pro/src/collaboration/__tests__/mdx-document-views.test.ts"
+  ],
+  "changeset": "mdx-observe-component-children",
+  "migration": null
+}

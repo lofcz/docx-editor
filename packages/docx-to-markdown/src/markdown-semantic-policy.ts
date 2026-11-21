@@ -182,6 +182,7 @@ const MARKDOWN_SEMANTIC_POLICY_RATCHETS = Object.freeze({
     box: 'layout-only',
     level: 'represented',
     numId: 'represented',
+    abstractNumId: 'represented',
     numFmt: 'represented',
     ordinal: 'represented',
     picture: 'layout-only',

@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "A new Word numbering instance could remove the exported Markdown indentation from a nested list.",
+  "after": "The exporter retains ancestor widths across instances of a shared numbering definition.",
+  "reason": "Layout reads the numbering definition from the document. The marker and the exported Markdown are derived output.",
+  "tests": [
+    "packages/docx-to-markdown/test/markdown-restarted-lists.test.ts",
+    "packages/docx-to-markdown/test/markdown-records.test.ts"
+  ],
+  "changeset": "markdown-nested-list-restarts",
+  "migration": null
+}
