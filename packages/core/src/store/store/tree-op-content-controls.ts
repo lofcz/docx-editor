@@ -71,7 +71,7 @@ import {
   type ParagraphOffsetIndex,
 } from './tree-op-segments.ts';
 import { scopedRevisionRoot } from './tree-op-revision-scope.ts';
-import { appendsOutsideExistingCells } from './table-append-reach.ts';
+import { insertsOutsideCellContents } from './table-insert-reach.ts';
 import { strikesWholeControl } from './tree-op-control-strike.ts';
 import { holdsRevisionContainer } from './revision-container-presence.ts';
 import {
@@ -566,7 +566,7 @@ export function treeOpReach(op: TreeDocOp, part?: OoxmlPart): TreeOpReach {
   if (
     part &&
     (op.op === 'insertTableRow' || op.op === 'insertTableColumn') &&
-    appendsOutsideExistingCells(part, op)
+    insertsOutsideCellContents(part, op)
   )
     return { kind: 'nodes', targets: [{ nodeId: op.tableId }] };
   const classify = TREE_OP_REACH[op.op] as ((one: TreeDocOp) => TreeOpReach) | undefined;

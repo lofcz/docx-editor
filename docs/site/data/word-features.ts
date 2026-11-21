@@ -513,7 +513,7 @@ export const wordFeatures: WordFeature[] = [
     roundTrip: 'full',
     tier: 'community',
     notes:
-      'Both adapters let you insert, delete, and resize rows and columns. Some merged cells limit resizing and automated row insertion. Suggesting mode does not support moving or deleting a whole table. The toggleHeaderRow command preserves table styling. Row and column selections include intersecting merged cells. Resizing and vertical alignment preserve imported metadata and element IDs. Vertical alignment follows inherited and conditional styles. Native splits retain existing grid widths. Merged content remains editable across rows. Tracked row values retain inherited formatting after acceptance.',
+      'Both adapters let you insert, delete, and resize rows and columns. In a regular grid, blank rows and columns can be inserted beside protected inline fields. Wide tables scroll horizontally in the editor. Some merged cells limit resizing and automated row insertion. Suggesting mode does not support moving or deleting a whole table. The toggleHeaderRow command preserves table styling. Row and column selections include intersecting merged cells. Resizing and vertical alignment preserve imported metadata and element IDs. Vertical alignment follows inherited and conditional styles. Native splits retain existing grid widths. Merged content remains editable across rows. Tracked row values retain inherited formatting after acceptance.',
   },
   {
     id: 'tables.borders-shading',

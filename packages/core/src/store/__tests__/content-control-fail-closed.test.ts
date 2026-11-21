@@ -473,6 +473,33 @@ describe('table and TOC ops meet the controls their tables hold', () => {
 
   const tableId = (part: OoxmlPart): string => nodesOfKind(part, 'table')[0]!.id;
 
+  test('blank siblings leave an inline field intact and still respect structural protection', () => {
+    const field = `<w:sdt><w:sdtPr>${contentLocked}</w:sdtPr><w:sdtContent><w:r><w:t>held</w:t></w:r></w:sdtContent></w:sdt>`;
+    const table =
+      '<w:tbl><w:tblGrid><w:gridCol w:w="1200"/><w:gridCol w:w="1800"/></w:tblGrid>' +
+      `<w:tr><w:tc><w:p>${field}</w:p></w:tc><w:tc><w:p/></w:tc></w:tr></w:tbl>`;
+    const insert = (part: OoxmlPart): TreeDocOp => ({
+      op: 'insertTableColumn',
+      tableId: tableId(part),
+      where: 'right',
+      referenceCellId: nodesOfKind(part, 'tableCell')[0]!.id,
+    });
+    const plain = parseDoc(table);
+    expect(refusal(plain, insert(plain))).toBeNull();
+    expect(formsProtectionRefusal(plain, protectedSettings(), insert(plain))).toBe('locked');
+    for (const body of [
+      `<w:sdt><w:sdtPr>${contentLocked}</w:sdtPr><w:sdtContent>${table}</w:sdtContent></w:sdt>`,
+      table.replace('<w:tc>', '<w:tc><w:tcPr><w:gridSpan w:val="2"/></w:tcPr>'),
+      table.replace('<w:tr>', '<w:tr><w:trPr><w:gridBefore w:val="1"/></w:trPr>'),
+      table
+        .replace('<w:tc>', '<w:sdt><w:sdtPr/><w:sdtContent><w:tc>')
+        .replace('</w:tc>', '</w:tc></w:sdtContent></w:sdt>'),
+    ]) {
+      const part = parseDoc(body);
+      expect(refusal(part, insert(part))).toBe('locked');
+    }
+  });
+
   test('adding a row is refused while the table holds a control that forbids content edits', () => {
     const part = tableHolding(contentLocked);
     const rows = nodesOfKind(part, 'tableRow');

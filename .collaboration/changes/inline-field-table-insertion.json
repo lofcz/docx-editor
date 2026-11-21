@@ -1,0 +1,10 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "A protected inline field could block insertion between existing rows or columns.",
+  "after": "In a regular grid, an editable cell can gain a blank sibling while its protected inline fields remain in place.",
+  "reason": "The existing insert operations add blank cells. Peers receive their ordinary OOXML and retain the original controls and locks.",
+  "tests": ["packages/pro/src/collaboration/__tests__/document-table-skipped-columns.test.ts"],
+  "changeset": "inline-field-table-insertion",
+  "migration": null
+}

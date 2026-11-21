@@ -156,3 +156,50 @@ test('a divider drag in a table its stated width stretches converges at the drag
   const restored = tableOf(alice).columnEdges;
   expect(restored[1]! - restored[0]!).toBeCloseTo(200, 4);
 });
+
+test('inserting and resizing beside a locked inline field preserves it on both peers', async () => {
+  const field =
+    '<w:sdt><w:sdtPr><w:tag w:val="equation"/><w:lock w:val="sdtContentLocked"/></w:sdtPr>' +
+    '<w:sdtContent><w:r><w:t>3 + 4</w:t></w:r></w:sdtContent></w:sdt>';
+  const held = cell('field').replace('<w:r><w:t>field</w:t></w:r>', field);
+  const { peers, alice, bob, tableOf, converge, select } = await pair(
+    '<w:tblW w:w="6000" w:type="dxa"/><w:tblLayout w:type="fixed"/>',
+    [2000, 2000, 2000],
+    `<w:tr>${cell('A')}${held}${cell('C')}</w:tr><w:tr>${cell('D')}${cell('E')}${cell('F')}</w:tr>`
+  );
+  select(alice, 'A');
+  expect(alice.exec({ type: 'insertColumn', where: 'right' }).ok).toBe(true);
+  converge();
+  expect(tableOf(bob).rows.every((row) => row.cells.length === 4)).toBe(true);
+  select(bob, 'E');
+  expect(bob.exec({ type: 'insertRow', where: 'above' }).ok).toBe(true);
+  converge();
+  const table = tableOf(alice);
+  const row = table.rows[0]!;
+  expect(table.rows).toHaveLength(3);
+  const target = tableColumnDividerResizeTargetFrom(
+    alice.surface!.layout().revision,
+    { table, row, rowIndex: 0 },
+    row.cells[0]!.gridColumnId!,
+    row.cells[1]!.gridColumnId!
+  );
+  expect(
+    alice.exec({
+      type: 'commitTableColumnDividerResize',
+      target,
+      leftWidthTwips: 2400,
+      rightWidthTwips: 1600,
+    }).ok
+  ).toBe(true);
+  converge();
+  expect(tableOf(bob).box.width).toBe(table.box.width);
+  expect(tableOf(bob).columnEdges[1]).not.toBe(table.columnEdges[1]);
+  expect(bob.findMatches('3 + 4')).toHaveLength(1);
+  select(bob, '3 + 4');
+  expect(bob.exec({ type: 'deleteColumn' }).ok).toBe(false);
+  expect(bob.findMatches('3 + 4')).toHaveLength(1);
+  const late = await harness.join(peers.alice, 'late');
+  expect(saveReopenDigest(late.store.currentPackage())).toEqual(
+    saveReopenDigest(alice.surface!.session.currentPackage())
+  );
+});

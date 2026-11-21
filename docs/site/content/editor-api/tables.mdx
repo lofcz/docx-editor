@@ -55,6 +55,8 @@ Whole-cell replacement refuses multiline values, nested blocks, and complex cont
 
 ## Add or remove rows and columns
 
+In an editable rectangular grid, the editor can insert a blank row or column beside a cell with protected inline fields. Each field keeps its value and lock. A content lock around the table still protects its structure.
+
 Each row or column addition or deletion runs alone in its sync, even across tables:
 
 ```ts
