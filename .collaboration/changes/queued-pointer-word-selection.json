@@ -1,0 +1,14 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "A delayed pointer handler could collapse a word selection to a caret.",
+  "after": "The editor uses the physical press times to select a word before replacing it.",
+  "reason": "Click recognition is local. Peers receive the existing selection range and standard text operations.",
+  "tests": [
+    "packages/core/src/editor/__tests__/surface-pointer.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-viewing-selection.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-selection-edits.test.ts"
+  ],
+  "changeset": "queued-pointer-word-selection",
+  "migration": null
+}

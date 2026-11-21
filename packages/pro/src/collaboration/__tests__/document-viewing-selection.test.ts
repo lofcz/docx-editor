@@ -11,6 +11,7 @@ import { afterEach, expect, test } from 'bun:test';
 import { GlobalRegistrator } from '@happy-dom/global-registrator';
 import { applyAwarenessUpdate, encodeAwarenessUpdate } from 'y-protocols/awareness';
 import { createDocxEditor } from '@docx-editor.dev/core/editor';
+import { caretAt } from '@docx-editor.dev/core/layout';
 import { collaborationModule } from '../collaboration-module.ts';
 import { createPeerHarness, zipDocument, type Peer } from './document-peer-support.ts';
 import { packageFingerprint, saveReopenDigest } from './document-support.ts';
@@ -89,6 +90,55 @@ test('a viewing selection is published as that range', async () => {
   expect(pair.bob.room.session.remoteSelections()).toMatchObject([
     { actorId: expect.any(String), anchor: { offset: 0 }, head: { offset: 10 } },
   ]);
+});
+
+test('a double-clicked word reaches the peer before keyboard replacement and save', async () => {
+  const { pair, alice, bob, converge } = await peers();
+  caret(bob.editor, 0, 2);
+  const surface = bob.editor.surface!;
+  const pages = bob.container.querySelector('.docx-pages')!;
+  const layout = surface.layout();
+  const box = caretAt(layout, surface.state().selection.head)!;
+  const page = layout.pages[box.pageIndex]!;
+  const origin = pages.getBoundingClientRect();
+  const { paintScale, pageOffsetX } = surface.overlayCoordinates();
+  const clientX =
+    origin.left + (page.contentBox.x + (pageOffsetX.get(box.pageIndex) ?? 0) + box.x) * paintScale;
+  const clientY = origin.top + (page.contentBox.y + box.y + box.height / 2) * paintScale;
+  const location = surface.pointAt(clientX, clientY)?.hit.position;
+  expect(location).toEqual(surface.state().selection.head);
+  for (const time of [100, 130]) {
+    for (const type of ['pointerdown', 'pointerup']) {
+      const event = new PointerEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        pointerId: 1,
+        pointerType: 'mouse',
+        clientX,
+        clientY,
+      });
+      Object.defineProperty(event, 'timeStamp', { value: time });
+      pages.dispatchEvent(event);
+    }
+  }
+  expect(bob.editor.query({ type: 'selectedText' })).toBe('alpha');
+  syncPresence(pair.bob, pair.alice);
+  expect(pair.alice.room.session.remoteSelections()).toMatchObject([
+    { anchor: { offset: 0 }, head: { offset: 5 } },
+  ]);
+  pages.dispatchEvent(
+    new InputEvent('beforeinput', {
+      bubbles: true,
+      cancelable: true,
+      inputType: 'insertText',
+      data: 'First',
+    })
+  );
+  surface.flushPendingInput();
+  converge();
+  expect(alice.editor.surface!.session.bodyText()).toBe('First beta\ngamma delta');
+  const reopened = mount({ document: new Uint8Array(await alice.editor.save()) });
+  expect(reopened.editor.surface!.session.bodyText()).toBe('First beta\ngamma delta');
 });
 
 test('edits from the editing peer reach a viewer holding a selection, and its writes refuse', async () => {
