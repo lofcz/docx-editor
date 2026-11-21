@@ -119,6 +119,7 @@ export interface SurfaceCaret {
 /** Appearance — width, colour, blink — lives in the stylesheet under these names. */
 const CARET_CLASS = 'docx-editor-one-surface__caret';
 const STEADY_CLASS = 'docx-editor-one-surface__caret--steady';
+const OFFSCREEN_CLASS = 'docx-editor-one-surface__caret--offscreen';
 
 /** `Node.TEXT_NODE`, as a number: a node from another window is no instance of this one's. */
 const TEXT_NODE = 3;
@@ -183,10 +184,32 @@ export function createSurfaceCaret(
   // The pages' own window: an opener's timers are throttled while the opener is hidden.
   const timers = hostTimers(() => pagesLayer);
   let steadyTimer: number | null = null;
+  let observedDocument: Document | null = null;
+  let visibilityObserver: IntersectionObserver | null = null;
   /** The geometry last painted, so a repaint in place is told from a real move. */
   let placed: string | null = null;
   /** Last scoped host whose native caret was suppressed. */
   let suppressedHost: HTMLElement | null = null;
+
+  // A materialized selection page can be far outside the scroll container. An
+  // offscreen opacity animation still causes style updates in that case.
+  function observeVisibility(): void {
+    const owner = element.ownerDocument;
+    if (observedDocument === owner) return;
+    observedDocument = owner;
+    visibilityObserver?.disconnect();
+    element.classList.remove(OFFSCREEN_CLASS);
+    const Observer = owner.defaultView?.IntersectionObserver;
+    visibilityObserver = Observer
+      ? new Observer((entries, observer) => {
+          const entry = entries.at(-1);
+          if (entry && observer === visibilityObserver) {
+            element.classList.toggle(OFFSCREEN_CLASS, !entry.isIntersecting);
+          }
+        })
+      : null;
+    visibilityObserver?.observe(element);
+  }
 
   function hasFocus(): boolean {
     const active = pagesLayer.ownerDocument.activeElement;
@@ -219,7 +242,10 @@ export function createSurfaceCaret(
       timers.clearTimeout(steadyTimer);
       steadyTimer = null;
     }
-    element.classList.remove(STEADY_CLASS);
+    visibilityObserver?.disconnect();
+    visibilityObserver = null;
+    observedDocument = null;
+    element.classList.remove(STEADY_CLASS, OFFSCREEN_CLASS);
     element.remove();
   }
 
@@ -413,6 +439,7 @@ export function createSurfaceCaret(
     element.style.transformOrigin = at.bottomToTop ? '0 0' : '';
     element.style.transform = at.bottomToTop ? 'rotate(-90deg)' : '';
     if (element.parentNode !== host) host.append(element);
+    observeVisibility();
     // Suppress the native caret only while ours is up, and inline so it beats the
     // `[contenteditable='true']` rule in the stylesheet — pages layer AND scoped story.
     if (pagesLayer.style.caretColor !== 'transparent') pagesLayer.style.caretColor = 'transparent';

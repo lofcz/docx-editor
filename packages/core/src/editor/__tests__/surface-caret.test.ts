@@ -462,6 +462,56 @@ describe('the painted caret', () => {
     expect(pages.style.caretColor).toBe('transparent');
   });
 
+  test('only the visible painted caret blinks and stale visibility events cannot restart it', () => {
+    type Entry = { isIntersecting: boolean };
+    const observers: CaretObserver[] = [];
+    class CaretObserver {
+      target: Element | null = null;
+
+      constructor(readonly report: (entries: Entry[], observer: CaretObserver) => void) {
+        observers.push(this);
+      }
+      observe(target: Element): void {
+        this.target = target;
+      }
+      disconnect(): void {
+        this.target = null;
+      }
+    }
+    const view = document.defaultView!;
+    const original = Object.getOwnPropertyDescriptor(view, 'IntersectionObserver');
+    Object.defineProperty(view, 'IntersectionObserver', {
+      configurable: true,
+      value: CaretObserver,
+    });
+    const { surface, container, pages } = mount(paragraph('hello world'));
+    try {
+      const painted = caretElement(container)!;
+      const observer = observers.at(-1)!;
+      expect(observer.target).toBe(painted);
+      const selected = surface.state().selection;
+      observer.report([{ isIntersecting: false }], observer);
+      expect(painted.classList.contains('docx-editor-one-surface__caret--offscreen')).toBe(true);
+      expect(surface.state().selection).toEqual(selected);
+      observer.report([{ isIntersecting: false }, { isIntersecting: true }], observer);
+      expect(painted.classList.contains('docx-editor-one-surface__caret--offscreen')).toBe(false);
+      pages.dispatchEvent(new Event('compositionstart'));
+      expect(observer.target).toBeNull();
+      expect(caretElement(container)).toBeNull();
+      pages.dispatchEvent(new Event('compositionend'));
+      const next = observers.at(-1)!;
+      expect(next).not.toBe(observer);
+      expect(next.target).toBe(caretElement(container));
+      observer.report([{ isIntersecting: false }], observer);
+      expect(painted.classList.contains('docx-editor-one-surface__caret--offscreen')).toBe(false);
+    } finally {
+      surface.destroy();
+      container.remove();
+      if (original) Object.defineProperty(view, 'IntersectionObserver', original);
+      else Reflect.deleteProperty(view, 'IntersectionObserver');
+    }
+  });
+
   test('it holds steady while it is moving, then lets the blink resume', async () => {
     const { surface, container } = mount(paragraph('hello world'));
     putCaret(surface, 2);
