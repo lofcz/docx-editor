@@ -209,6 +209,8 @@ This subset supports body controls with paragraphs, tables, and nested block con
 
 If your component borrows painted elements, use the page indices passed to `beforePaint`. Keep borrowed elements connected on those pages. Restore elements on other pages before paint. Restore all elements when the argument is absent.
 
+A host can also request stable paragraph roots for a changed page. The optional second `beforePaint` argument accepts a page index and a predicate. The predicate receives the paragraph elements whose children paint will replace. Accept only when the host can keep its loans and position markers through those replacements. A successful request keeps the block roots in their current positions for this paint. A declined request uses normal restoration. Whole-page retention still uses the first argument.
+
 Peer edits do not open another reader's controls. Deleting a control or its exact summary removes that entry. Host moves preserve the view. Loading another document resets it.
 
 ### Caret movement in content-locked controls

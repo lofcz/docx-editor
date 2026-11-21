@@ -4423,6 +4423,9 @@ export function positionInputFromPropertiesCommand(command: {
 } | null): DrawingPositionInput;
 
 // @public
+export type PreserveParagraphRoots = (pageIndex: number, accepts: (changedRoots: ReadonlySet<HTMLElement>) => boolean) => boolean;
+
+// @public
 export function probeTableChromeCommand(slot: TableChromeSlotId, draft?: TableChromeDraft): EditorCommand | null;
 
 // @public
@@ -5833,7 +5836,8 @@ export interface SurfacePaintFrame {
 export interface SurfacePaintObserver {
     // (undocumented)
     afterPaint(frame: SurfacePaintFrame): void;
-    beforePaint?(retainedPages?: ReadonlySet<number>): void;
+    beforePaint?(retainedPages?: ReadonlySet<number>,
+    preserveParagraphRoots?: PreserveParagraphRoots): void;
     destroyed?(): void;
 }
 

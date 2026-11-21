@@ -768,7 +768,11 @@ export type {
   RevisionMarkupTextStyle,
 } from '../contracts/revision-markup.ts';
 export type { RevisionMarkupDialog, RevisionMarkupDialogHost } from '../contracts/modules.ts';
-export type { SurfacePaintObserver, SurfacePaintFrame } from './surface-paint-observer.ts';
+export type {
+  PreserveParagraphRoots,
+  SurfacePaintObserver,
+  SurfacePaintFrame,
+} from './surface-paint-observer.ts';
 export type { CompareDocumentsDialog, CompareDocumentsDialogHost } from '../contracts/modules.ts';
 export type {
   CompareDocumentsChromeHandlers,

@@ -1,0 +1,13 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Editing a paragraph on a borrowed page could detach every loan on that page.",
+  "after": "Opted-in hosts can preserve their native paragraph roots during an eligible text edit.",
+  "reason": "This local paint change preserves collaboration operations, selection positions and serialized content.",
+  "tests": [
+    "packages/core/src/editor/__tests__/surface-paint-observer.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-composition-preview.test.ts"
+  ],
+  "changeset": "native-paragraph-root-loans",
+  "migration": null
+}

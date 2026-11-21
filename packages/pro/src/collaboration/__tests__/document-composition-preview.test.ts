@@ -93,64 +93,79 @@ function composeStep(peer: Mounted, head: string, step: string): HTMLElement {
   return node.parentElement!.closest<HTMLElement>('[data-start]')!;
 }
 
-test('a remote edit during a composition keeps the composed and the remote text', async () => {
-  const bytes = zipDocument(
-    '<w:p><w:r><w:t xml:space="preserve">우리나라 </w:t></w:r></w:p>' +
-      '<w:p><w:r><w:t xml:space="preserve">second</w:t></w:r></w:p>'
-  );
-  const peers = await harness.pair(bytes);
-  const [alice, bob] = [peers.alice, peers.bob].map((peer) => {
-    peer.detach();
-    return mount({
-      document: peer.room.document,
-      modules: [collaborationModule({ session: peer.room.session })],
-    });
-  }) as [Mounted, Mounted];
-  const converge = () => {
-    peers.alice.room.session.flushPendingJournals();
-    peers.bob.room.session.flushPendingJournals();
-    expect(packageFingerprint(alice.editor.surface!.session.currentPackage())).toBe(
-      packageFingerprint(bob.editor.surface!.session.currentPackage())
+test.each([false, true])(
+  'a remote edit during composition keeps both texts (preserve paragraph roots: %s)',
+  async (preserveRoots) => {
+    const bytes = zipDocument(
+      '<w:p><w:r><w:t xml:space="preserve">우리나라 </w:t></w:r></w:p>' +
+        '<w:p><w:r><w:t xml:space="preserve">second</w:t></w:r></w:p>'
     );
-  };
+    const peers = await harness.pair(bytes);
+    const [alice, bob] = [peers.alice, peers.bob].map((peer) => {
+      peer.detach();
+      return mount({
+        document: peer.room.document,
+        modules: [collaborationModule({ session: peer.room.session })],
+      });
+    }) as [Mounted, Mounted];
+    let retainedChanges = 0;
+    if (preserveRoots) {
+      for (const peer of [alice, bob]) {
+        peer.editor.surface!.observePaint({
+          beforePaint(_kept, preserve) {
+            if (preserve?.(0, (changed) => changed.size > 0)) retainedChanges++;
+          },
+          afterPaint() {},
+        });
+      }
+    }
+    const converge = () => {
+      peers.alice.room.session.flushPendingJournals();
+      peers.bob.room.session.flushPendingJournals();
+      expect(packageFingerprint(alice.editor.surface!.session.currentPackage())).toBe(
+        packageFingerprint(bob.editor.surface!.session.currentPackage())
+      );
+    };
 
-  caret(alice.editor, 0, 5);
-  const pages = alice.container.querySelector<HTMLElement>('.docx-pages')!;
-  pages.focus();
-  caret(alice.editor, 0, 5);
-  const space = caretRun()!;
-  expect(space.textContent).toBe(' ');
-  expect(clipped(space)).toBe(true);
-  pages.dispatchEvent(compositionEvent('compositionstart'));
-  expect(clipped(composeStep(alice, ' ', 'ㅇ'))).toBe(false);
+    caret(alice.editor, 0, 5);
+    const pages = alice.container.querySelector<HTMLElement>('.docx-pages')!;
+    pages.focus();
+    caret(alice.editor, 0, 5);
+    const space = caretRun()!;
+    expect(space.textContent).toBe(' ');
+    expect(clipped(space)).toBe(true);
+    pages.dispatchEvent(compositionEvent('compositionstart'));
+    expect(clipped(composeStep(alice, ' ', 'ㅇ'))).toBe(false);
 
-  // Bob edits the other paragraph, and his edit reaches Alice mid-composition.
-  remoteEdit(bob, 1, 6, '!');
-  converge();
-  expect(alice.editor.surface!.session.bodyText()).toBe('우리나라 \nsecond!');
-  await settle();
-  expect(document.getSelection()!.focusNode!.isConnected).toBe(true);
+    // Bob edits the other paragraph, and his edit reaches Alice mid-composition.
+    remoteEdit(bob, 1, 6, '!');
+    converge();
+    expect(alice.editor.surface!.session.bodyText()).toBe('우리나라 \nsecond!');
+    await settle();
+    expect(document.getSelection()!.focusNode!.isConnected).toBe(true);
 
-  // The composition goes on in whatever run the caret is in now, and stays visible.
-  const run = composeStep(alice, ' ', '아');
-  expect(clipped(run)).toBe(false);
-  pages.dispatchEvent(compositionEvent('compositionend', '아'));
-  converge();
-  expect(alice.editor.surface!.session.bodyText()).toBe('우리나라 아\nsecond!');
-  expect(bob.editor.surface!.session.bodyText()).toBe('우리나라 아\nsecond!');
+    // The composition goes on in whatever run the caret is in now, and stays visible.
+    const run = composeStep(alice, ' ', '아');
+    expect(clipped(run)).toBe(false);
+    pages.dispatchEvent(compositionEvent('compositionend', '아'));
+    converge();
+    expect(alice.editor.surface!.session.bodyText()).toBe('우리나라 아\nsecond!');
+    expect(bob.editor.surface!.session.bodyText()).toBe('우리나라 아\nsecond!');
 
-  // The composition is one undo step, and only Alice's own.
-  expect(alice.editor.exec({ type: 'undo' }).ok).toBe(true);
-  converge();
-  expect(bob.editor.surface!.session.bodyText()).toBe('우리나라 \nsecond!');
-  expect(alice.editor.exec({ type: 'redo' }).ok).toBe(true);
-  converge();
-  const reopened = mount({ document: new Uint8Array(await bob.editor.save()) });
-  expect(reopened.editor.surface!.session.bodyText()).toBe('우리나라 아\nsecond!');
-  expect(saveReopenDigest(reopened.editor.surface!.session.currentPackage())).toEqual(
-    saveReopenDigest(bob.editor.surface!.session.currentPackage())
-  );
-});
+    // The composition is one undo step, and only Alice's own.
+    expect(alice.editor.exec({ type: 'undo' }).ok).toBe(true);
+    converge();
+    expect(bob.editor.surface!.session.bodyText()).toBe('우리나라 \nsecond!');
+    expect(alice.editor.exec({ type: 'redo' }).ok).toBe(true);
+    converge();
+    const reopened = mount({ document: new Uint8Array(await bob.editor.save()) });
+    expect(reopened.editor.surface!.session.bodyText()).toBe('우리나라 아\nsecond!');
+    expect(saveReopenDigest(reopened.editor.surface!.session.currentPackage())).toEqual(
+      saveReopenDigest(bob.editor.surface!.session.currentPackage())
+    );
+    if (preserveRoots) expect(retainedChanges).toBeGreaterThan(0);
+  }
+);
 
 test('a remote edit in the composing paragraph keeps both texts', async () => {
   const bytes = zipDocument('<w:p><w:r><w:t xml:space="preserve">우리나라 </w:t></w:r></w:p>');

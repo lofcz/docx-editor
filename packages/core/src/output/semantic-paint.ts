@@ -2047,29 +2047,6 @@ const PLACEHOLDER_BAND_PT = 30;
 /** Where the band starts from the sheet edge — `w:pgMar` header/footer default (720 twips). */
 const PLACEHOLDER_DISTANCE_PT = 36;
 
-/**
- * One painted page, retained so an unchanged page never has to be rebuilt.
- *
- * Incremental layout keeps the RECORD of an untouched page identical across revisions —
- * same object, by design — so record identity is a complete reuse test: same record, same
- * materialization, same paint parameters means the element in hand is already exactly what
- * this pass would build. Rebuilding every sheet per commit made the browser restyle the
- * whole document on each keystroke, which at several hundred pages cost more than layout
- * and paint together.
- */
-interface RetainedPage {
-  readonly record: PageRecord;
-  readonly materialized: boolean;
-  readonly element: HTMLElement;
-  /**
-   * The body content layer and its block elements by RECORD, kept so the next pass can
-   * repaint the one block that moved instead of the sheet it sits on. Absent on a page
-   * that was never materialized.
-   */
-  readonly content?: HTMLElement;
-  readonly blocks?: ReadonlyMap<BlockFragmentRecord, HTMLElement>;
-}
-
 interface RetainedPaint {
   /** Paint parameters folded into reuse: a zoom or a11y change rebuilds every page. */
   readonly parameters: string;
@@ -2189,19 +2166,6 @@ function adoptPageBlocks(
     }
     content.insertBefore(element, cursor);
   }
-  // The margin rules are a page-level overlay over the adopted blocks, so they are the one
-  // piece of the sheet a block change can move; left alone when it did not.
-  reconcilePageChangeBars(
-    document,
-    retained.element,
-    page,
-    options.scale,
-    options.changeBars,
-    options.changeBarsToggle,
-    options.revisionMarkup,
-    options.facingPages,
-    options.revisionStyles
-  );
   return { record: page, materialized: true, element: retained.element, content, blocks };
 }
 
@@ -2250,7 +2214,10 @@ export function paintSemanticLayoutWithAuthorSlots(
   layout: SemanticLayout,
   options: PaintOptions,
   authorSlots?: ReadonlyMap<string, number>,
-  beforePaint?: (retainedPages: ReadonlySet<number>) => void
+  beforePaint?: (
+    retainedPages: ReadonlySet<number>,
+    preserveParagraphRoots: PreserveParagraphRoots
+  ) => void
 ): void {
   captureUnsupportedElementFocus(container);
   container.classList.toggle('docx-show-paragraph-marks', options.showParagraphMarks ?? false);
@@ -2357,19 +2324,22 @@ export function paintSemanticLayoutWithAuthorSlots(
     ? new Map(previous.pages.map((entry) => [entry.record.index, entry]))
     : null;
 
-  if (beforePaint) {
-    const retained = new Set<number>();
-    for (const page of layout.pages) {
-      // Hosts may borrow control widgets too. They must release those before an overlay update.
-      if (
-        !chromeChanged &&
-        reusable?.get(page)?.materialized &&
-        (options.materialize?.has(page.index) ?? true)
-      )
-        retained.add(page.index);
-    }
-    beforePaint(retained);
-  }
+  const reservedRoots =
+    beforePaint &&
+    prepareParagraphRootPaint(
+      container,
+      layout.pages,
+      options.materialize,
+      chromeChanged ? null : reusable,
+      parametersUnchanged && !chromeChanged ? previousByIndex : null,
+      beforePaint,
+      (page, fragment) =>
+        paintFragment(document, fragment, {
+          ...resolved,
+          paintInstance: `p${page.index}`,
+          tabLeaderOriginXPt: page.contentBox.x - page.box.x,
+        })
+    );
 
   const pages: RetainedPage[] = layout.pages.map((page) => {
     const materialized = options.materialize?.has(page.index) ?? true;
@@ -2409,8 +2379,26 @@ export function paintSemanticLayoutWithAuthorSlots(
           page,
           furniturePainter(document, furniture)
         );
-      const adopted = kept ? adoptPageBlocks(document, prior, page, resolved) : null;
+      const roots = reservedRoots?.get(page.index);
+      const adopted = roots
+        ? { ...prior, record: page, blocks: roots.apply() }
+        : kept
+          ? adoptPageBlocks(document, prior, page, resolved)
+          : null;
       if (adopted) {
+        // The margin rules are a page-level overlay over the adopted blocks, so they are the one
+        // piece of the sheet a block change can move; left alone when it did not.
+        reconcilePageChangeBars(
+          document,
+          adopted.element,
+          page,
+          resolved.scale,
+          resolved.changeBars,
+          resolved.changeBarsToggle,
+          resolved.revisionMarkup,
+          resolved.facingPages,
+          resolved.revisionStyles
+        );
         if (moved.controls || chromeChanged)
           paintContentControlChrome(document, adopted.element, page, resolved);
         return adopted;
@@ -2470,4 +2458,9 @@ export function paintSemanticLayoutWithAuthorSlots(
   notifyUnsupportedElementsPaint(container);
 }
 import { tabLeaderPattern } from '../layout/tab-leader-pattern.ts';
+import {
+  prepareParagraphRootPaint,
+  type RetainedPage,
+  type PreserveParagraphRoots,
+} from './semantic-paint-paragraph-roots.ts';
 import { equalBlockElement } from './semantic-paint-block-reuse.ts';

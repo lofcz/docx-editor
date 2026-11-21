@@ -1,3 +1,5 @@
+import type { PreserveParagraphRoots } from '../output/semantic-paint-paragraph-roots.ts';
+export type { PreserveParagraphRoots } from '../output/semantic-paint-paragraph-roots.ts';
 import type { OoxmlPart } from '../store/package/ooxml-tree.ts';
 import type { SemanticLayout } from '../layout/semantic-records.ts';
 
@@ -17,7 +19,12 @@ export interface SurfacePaintFrame {
  */
 export interface SurfacePaintObserver {
   /** Paint keeps native nodes on these materialized pages. Restore all borrowed nodes when the set is absent. */
-  beforePaint?(retainedPages?: ReadonlySet<number>): void;
+  beforePaint?(
+    retainedPages?: ReadonlySet<number>,
+    /** Opt in per page. The supplied roots keep their identity, but paint replaces their children.
+     * Return false from the predicate to restore the host's loans normally. Valid only during this call. */
+    preserveParagraphRoots?: PreserveParagraphRoots
+  ): void;
   afterPaint(frame: SurfacePaintFrame): void;
   /** Release host resources when this surface is destroyed or its document is replaced. */
   destroyed?(): void;
@@ -45,8 +52,8 @@ export function destroyPaintObservers(observers: Set<SurfacePaintObserver>): voi
 export function createPaintObservers(repaint: () => void, parked: () => boolean) {
   const observers = new Set<SurfacePaintObserver>();
   let lastFrame: SurfacePaintFrame | null = null;
-  function beforePaint(retainedPages: ReadonlySet<number>): void {
-    for (const observer of observers) observer.beforePaint?.(retainedPages);
+  function beforePaint(retainedPages: ReadonlySet<number>, preserve: PreserveParagraphRoots): void {
+    for (const observer of observers) observer.beforePaint?.(retainedPages, preserve);
   }
   return {
     subscribe(observer: SurfacePaintObserver) {

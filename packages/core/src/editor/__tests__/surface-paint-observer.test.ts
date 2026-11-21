@@ -189,3 +189,113 @@ test('the surface reads its viewport before a host prepares its widgets for pain
     scroller.remove();
   }
 });
+
+test('a host can retain its paragraph roots while paint replaces edited text', () => {
+  const container = document.createElement('div');
+  document.body.append(container);
+  const editor = createDocxEditor({ container, document: docx(p('Alpha') + p('Beta')) });
+  const surface = editor.surface!;
+  const root = () => container.querySelector<HTMLElement>('.docx-paragraph-fragment')!;
+  let marker: Comment | null = null;
+  let slot: HTMLElement | null = null;
+  let borrowed: HTMLElement | null = null;
+  const accepted: HTMLElement[][] = [];
+  const retainedPages: boolean[] = [];
+  let decline = false;
+  let expired: (() => boolean) | undefined;
+  const stop = surface.observePaint({
+    beforePaint(kept, preserve) {
+      if (preserve) expired = () => preserve(0, () => true);
+      if (
+        preserve?.(0, (changed) => {
+          if (!borrowed || !changed.has(borrowed) || decline) return false;
+          accepted.push([...changed]);
+          retainedPages.push(kept?.has(0) ?? false);
+          return true;
+        })
+      )
+        return;
+      if (borrowed && marker?.parentNode) marker.replaceWith(borrowed);
+      slot?.remove();
+      marker = slot = borrowed = null;
+    },
+    afterPaint() {
+      if (borrowed) return;
+      borrowed = root();
+      marker = document.createComment('paragraph');
+      slot = document.createElement('section');
+      borrowed.before(marker, slot);
+      slot.append(borrowed);
+    },
+  });
+  try {
+    const original = root(),
+      originalSlot = slot;
+    const id = surface.session.paragraphIds()[0]!;
+    surface.setSelection({
+      anchor: { paragraphId: id, offset: 0 },
+      head: { paragraphId: id, offset: 0 },
+    });
+    surface.type('x');
+    expect(accepted).toContainEqual([original]);
+    expect(retainedPages).not.toContain(true);
+    expect(root()).toBe(original);
+    expect(root().parentElement).toBe(originalSlot);
+    expect(root().textContent).toContain('xAlpha');
+    expect(expired?.()).toBe(false);
+    decline = true;
+    surface.type('y');
+    expect(root()).not.toBe(original);
+    expect(root().textContent).toContain('xyAlpha');
+    expect(editor.exec({ type: 'undo' }).ok).toBe(true);
+    expect(paragraphTextOf(surface.session.part(), id)).toBe('xAlpha');
+  } finally {
+    stop();
+    editor.destroy();
+    container.remove();
+  }
+});
+
+test('changed tables, new paragraphs and invalid painted roots use normal paint', () => {
+  const table =
+    '<w:tbl><w:tblGrid><w:gridCol w:w="2000"/></w:tblGrid><w:tr><w:tc>' +
+    p('Cell') +
+    '</w:tc></w:tr></w:tbl>';
+  const container = document.createElement('div');
+  document.body.append(container);
+  const editor = createDocxEditor({ container, document: docx(p('Alpha') + table) });
+  const surface = editor.surface!;
+  let decisions: boolean[] = [];
+  const stop = surface.observePaint({
+    beforePaint(_kept, preserve) {
+      if (preserve) decisions.push(preserve(0, () => true));
+    },
+    afterPaint() {},
+  });
+  try {
+    const [first, cell] = surface.session.paragraphIds();
+    const point = { paragraphId: cell!, offset: 2 };
+    surface.setSelection({ anchor: point, head: point });
+    decisions = [];
+    surface.type('x');
+    expect(decisions).toContain(false);
+    expect(decisions).not.toContain(true);
+    expect(paragraphTextOf(surface.session.part(), cell!)).toBe('Cexll');
+    const start = { paragraphId: first!, offset: 1 };
+    surface.setSelection({ anchor: start, head: start });
+    decisions = [];
+    surface.splitParagraph();
+    expect(decisions).toContain(false);
+    expect(decisions).not.toContain(true);
+    const root = container.querySelector<HTMLElement>('.docx-table-fragment')!;
+    root.dataset.tableId = 'stale';
+    decisions = [];
+    surface.type('z');
+    expect(decisions).toContain(false);
+    expect(decisions).not.toContain(true);
+  } finally {
+    stop();
+    editor.destroy();
+    container.remove();
+  }
+});
