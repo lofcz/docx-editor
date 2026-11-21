@@ -109,12 +109,26 @@ export async function inspectMdxHost({ project, containerTag, action, caption })
           animation.effect?.getKeyframes().some((frame) => frame.opacity !== undefined)
         )
     );
+    const movesDown = (element) =>
+      element.getAnimations().some((animation) => {
+        const frames = animation.effect.getKeyframes();
+        return (
+          frames.length === 2 &&
+          Number(frames[0].opacity) < Number(frames[1].opacity) &&
+          / -3px$/.test(frames[0].translate) &&
+          frames[0].translate !== frames[1].translate &&
+          frames.every((frame) => frame.transform === undefined)
+        );
+      });
     return {
       clicks,
       action: button.textContent,
       retained,
       closed,
       animatedBody: fading.some((element) => element.textContent.includes('D!epth')),
+      translatedBody: fading.some(
+        (element) => element.textContent.includes('D!epth') && movesDown(element)
+      ),
       animatedSummary: fading.some((element) => element.textContent.includes('Label')),
       childText: observed.includes('D!epth'),
       registeredFallback: observed.includes(caption),
