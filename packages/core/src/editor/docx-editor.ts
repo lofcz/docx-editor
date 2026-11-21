@@ -920,7 +920,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
     refreshHost?.contentMounted(bytes);
     // Check the fitted scale after mount. A viewport-changing host can receive a fit event
     // here, so install its document subscription before this call.
-    zoomLane.attach();
+    mountZoom.attach();
     // The document arrived: an external store subscribed to `change`/`selectionChange`
     // must learn about it, exactly as it learns about any later commit. Without these a
     // store bound before `load()` never re-reads and keeps rendering "no document".

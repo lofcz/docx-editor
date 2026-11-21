@@ -1,0 +1,14 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "An editor measured its viewport again after painting at the opening fit.",
+  "after": "An editor that measured its opening fit confirms that viewport at its first resize notification.",
+  "reason": "The measurement belongs to the local viewport. Document geometry in points and collaborative selections keep their existing meaning.",
+  "tests": [
+    "packages/core/src/editor/__tests__/zoom-controller.test.ts",
+    "packages/pro/src/collaboration/__tests__/fit-scroll-editors.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-composition-preview.test.ts"
+  ],
+  "changeset": "confirm-opening-fit-on-resize",
+  "migration": null
+}

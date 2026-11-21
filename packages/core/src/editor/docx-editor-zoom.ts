@@ -16,6 +16,7 @@ import type { OoxmlPart } from '../store/package/ooxml-tree.ts';
 import { layoutProjectionOf, type ReviewDisplayMode } from '../layout/revision-projection.ts';
 import type { ExecResult, ZoomMode } from '../contracts/editor.ts';
 import type { PaginatedSurface } from './paginated-surface.ts';
+import { surfaceScroller } from './surface-pages.ts';
 import { setPaginatedSurfaceScale } from './surface-scale.ts';
 import { createZoomController } from './zoom-controller.ts';
 import {
@@ -47,6 +48,7 @@ export interface ZoomLane {
   beginMount(): {
     initialScale(part: OoxmlPart, mode?: ReviewDisplayMode): number;
     accept(): void;
+    attach(): void;
   };
   zoom(): number;
   mode(): ZoomMode;
@@ -151,20 +153,26 @@ export function createZoomLane(config: ZoomLaneConfig, host: ZoomLaneHost): Zoom
   return {
     beginMount() {
       let initialZoom = zoom;
+      let fitted: HTMLElement | null = null;
       return {
         initialScale(part, displayMode) {
-          initialZoom =
-            controller.measureFit(() => {
-              const first = enumerateDocumentSections(
-                part,
-                layoutProjectionOf(displayMode ?? 'all-markup')
-              )[0];
-              return first ? geometryOfSection(first.properties).width * (96 / 72) : null;
-            }, true) ?? zoom;
+          const measured = controller.measureFit(() => {
+            const first = enumerateDocumentSections(
+              part,
+              layoutProjectionOf(displayMode ?? 'all-markup')
+            )[0];
+            return first ? geometryOfSection(first.properties).width * (96 / 72) : null;
+          }, true);
+          initialZoom = measured ?? zoom;
+          const container = host.container();
+          fitted = measured !== null && container ? surfaceScroller(container) : null;
           return initialZoom * (96 / 72);
         },
         accept() {
           zoom = initialZoom;
+        },
+        attach() {
+          if (isFitMode(mode)) controller.attach(fitted);
         },
       };
     },

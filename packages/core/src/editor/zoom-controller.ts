@@ -54,7 +54,7 @@ export interface ZoomController {
   /** Compute a fit without applying it or changing the last observed page. */
   measureFit(pageWidth: () => number | null, opening?: boolean): number | null;
   /** Start observing. Safe to call again; the previous observation is dropped first. */
-  attach(): void;
+  attach(fittedScroller?: HTMLElement | null): void;
   /** Recompute now — after a load, a page-setup change, or a mode change. */
   refit(): void;
   /**
@@ -209,7 +209,7 @@ export function createZoomController(host: ZoomControllerHost): ZoomController {
       refit();
     },
 
-    attach(): void {
+    attach(fittedScroller): void {
       this.detach();
       const container = host.container();
       if (!container) return;
@@ -221,8 +221,20 @@ export function createZoomController(host: ZoomControllerHost): ZoomController {
       // The scroller's own window: an observer from another one never reports its boxes.
       const view = hostWindowOf(scroller);
       if (typeof view.ResizeObserver === 'function') {
-        observer = new view.ResizeObserver(schedule);
+        let opening = scroller === fittedScroller;
+        observer = new view.ResizeObserver(() => {
+          if (observed !== scroller) return;
+          if (!opening) return schedule();
+          // The browser has laid out the painted sheets. Confirm the opening fit now,
+          // including space taken by a scrollbar that appeared with the document.
+          opening = false;
+          refit();
+        });
         observer.observe(scroller);
+        if (scroller === fittedScroller) {
+          fittedPageWidthTwips = host.pageWidthTwips();
+          return;
+        }
       }
       refit();
     },

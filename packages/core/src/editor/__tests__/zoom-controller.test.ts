@@ -203,6 +203,41 @@ describe('the default mode', () => {
     expect(harness.editor.getZoom()).toBeGreaterThan(0.5);
   });
 
+  test('a measured opening confirms the painted width at the first resize delivery', async () => {
+    const { editor, scroller, settle } = mount({ zoomMode: { type: 'fit', fit: 'pageWidth' } });
+    const reads: boolean[] = [];
+    Object.defineProperty(scroller, 'clientWidth', {
+      configurable: true,
+      get() {
+        const painted = !!scroller.querySelector('.docx-page');
+        reads.push(painted);
+        return painted ? 900 : 1000;
+      },
+    });
+    editor.load(docx(''));
+    const opening = editor.getZoom();
+    expect(reads).toContain(false);
+    expect(reads).not.toContain(true);
+    await settle();
+    expect(reads).toContain(true);
+    expect(editor.getZoom()).toBeLessThan(opening);
+  });
+
+  test('a host without a resize observer confirms the painted width during mount', () => {
+    (globalThis as { ResizeObserver?: unknown }).ResizeObserver = undefined;
+    const { editor, scroller } = mount({ zoomMode: { type: 'fit', fit: 'pageWidth' } });
+    let confirmed = false;
+    Object.defineProperty(scroller, 'clientWidth', {
+      configurable: true,
+      get() {
+        confirmed ||= !!scroller.querySelector('.docx-page');
+        return confirmed ? 900 : 1000;
+      },
+    });
+    editor.load(docx(''));
+    expect(confirmed).toBe(true);
+  });
+
   test('a configured zoom means the embedder pinned it, so the mode is fixed', () => {
     const { editor } = mount({ zoom: 1.5 });
     expect(editor.getZoomMode()).toEqual({ type: 'fixed' });
