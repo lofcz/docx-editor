@@ -7253,13 +7253,16 @@ p.docx-review__refused {
 /* Highlight sets with a `kind`: the covered text joins a shared `spelling-error` or
  * `grammar-error` highlight where the browser has the CSS Custom Highlight API. The browser
  * exposes that type to assistive technology; this rule draws the usual wavy underline. The
- * overlay marks above still paint the set's own color and classes in every browser. */
-.docx-editor ::highlight(docx-spelling-error) {
+ * overlay marks above still paint the set's own color and classes in every browser.
+ * A span can contain ranges of both kinds while reporting one aria-invalid value. */
+.docx-editor
+  :where([aria-invalid='spelling'], [aria-invalid='grammar'])::highlight(docx-spelling-error) {
   text-decoration: underline wavy var(--doc-proofing-spelling-color);
   text-decoration-skip-ink: none;
 }
 
-.docx-editor ::highlight(docx-grammar-error) {
+.docx-editor
+  :where([aria-invalid='spelling'], [aria-invalid='grammar'])::highlight(docx-grammar-error) {
   text-decoration: underline wavy var(--doc-proofing-grammar-color);
   text-decoration-skip-ink: none;
 }
