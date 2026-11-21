@@ -42,7 +42,10 @@ function editXml(bytes: Uint8Array, part: string, edit: (xml: string) => string)
 
 test('offline images use native inline pictures, links, dimensions, and original media after save', () => {
   const source = `A [**![Red & blue](${png} "Diagram")**](https://example.org/guide) and ![](${jpeg}).\n`;
-  const saved = writeOoxmlPackage(open(importMdxDocument(source)));
+  const initial = open(importMdxDocument(source));
+  expect(validatePackageInvariants(initial).ok).toBe(true);
+  expect(parseDocumentSyntax(exportMdxDocument(initial))).toEqual(parseDocumentSyntax(source));
+  const saved = writeOoxmlPackage(initial);
   const pkg = open(saved);
   expect(validatePackageInvariants(pkg).ok).toBe(true);
   expect(

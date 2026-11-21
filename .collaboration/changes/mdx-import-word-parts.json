@@ -1,0 +1,14 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Import rewrote every generated Word part after adding component metadata.",
+  "after": "Import reuses validated Word parts and serializes the new metadata and changed relationships.",
+  "reason": "The importer produces the same canonical document. Shared edits, history, and selections use the existing engine.",
+  "tests": [
+    "packages/docx-to-markdown/test/mdx-document.test.ts",
+    "packages/docx-to-markdown/test/mdx-embedded-images.test.ts",
+    "packages/pro/src/collaboration/__tests__/mdx-document-views.test.ts"
+  ],
+  "changeset": "mdx-import-word-parts",
+  "migration": null
+}

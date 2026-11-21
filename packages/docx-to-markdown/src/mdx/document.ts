@@ -10,7 +10,7 @@ import {
   readOoxmlPackage,
   withCustomXmlDataPart,
   withCustomXmlNode,
-  writeOoxmlPackage,
+  serializeOoxmlPart,
   writeZip,
   type OoxmlPackage,
   type OoxmlContentControlNode,
@@ -86,9 +86,19 @@ export function importMdxDocument(source: string, options: MdxDocumentOptions = 
   const data = JSON.stringify(items);
   if (data.length > MAX_SOURCE_BYTES * 4)
     throw new RangeError('MDX metadata exceeds the document limit.');
-  return writeOoxmlPackage(
-    withCustomXmlNode(store.pkg, store.part.partName, { id: 'components', label: '', data })
-  );
+  const completed = withCustomXmlNode(store.pkg, store.part.partName, {
+    id: 'components',
+    label: '',
+    data,
+  });
+  // The Word writer just created and validated these entries. Adding metadata changes
+  // only the custom XML store, its relationships, and the package content types.
+  const entries = new Map(completed.partBytes);
+  const encoder = new TextEncoder();
+  for (const [name, part] of completed.parts) {
+    if (pkg.parts.get(name) !== part) entries.set(name, encoder.encode(serializeOoxmlPart(part)));
+  }
+  return writeZip(entries);
 }
 
 /** Return whether a Word document contains the metadata created by importMdxDocument. @public */
