@@ -191,6 +191,7 @@ window.runImageExport = async () => {
       retained: true,
       closed: true,
       animatedBody: host.motion === 'no-preference',
+      translatedBody: host.motion === 'no-preference',
       animatedSummary: false,
       childText: true,
       registeredFallback: true,

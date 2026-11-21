@@ -23,6 +23,12 @@ export function revealDisclosureBody(frame: SurfacePaintFrame, id: string, summa
   )) {
     const block = element.dataset.tableId ?? element.dataset.paragraphId;
     if (block && blocks.has(block))
-      element.animate?.([{ opacity: 0.35 }, { opacity: 1 }], { duration: 140, easing: 'ease-out' });
+      element.animate?.(
+        [
+          { opacity: 0.35, translate: '0 -3px' },
+          { opacity: 1, translate: '0 0' },
+        ],
+        { duration: 140, easing: 'ease-out' }
+      );
   }
 }

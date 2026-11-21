@@ -163,6 +163,7 @@ export interface MdxComponentView {
     // (undocumented)
     readonly element: HTMLElement;
     readonly fragmentIndex: number;
+    readonly observeContent: (listener: (control: OoxmlContentControlNode) => void) => () => void;
     // (undocumented)
     readonly pageIndex: number;
 }

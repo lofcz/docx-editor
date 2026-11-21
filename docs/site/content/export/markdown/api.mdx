@@ -22,8 +22,6 @@ const result = await exportMarkdown(await readFile('contract.docx'), {
 
 ## Set options
 
-Nested lists keep their indentation when Word restarts a counter under the same numbering definition. A page that starts with a child item displays it at the left margin until a parent appears.
-
 | Option | Default | Behavior |
 | --- | --- | --- |
 | `displayMode` | `'all-markup'` | `'proposed'` hides deletions. `'original'` hides insertions. Never modifies the DOCX. |
@@ -43,6 +41,8 @@ Nested lists keep their indentation when Word restarts a counter under the same 
 Import `ParagraphAppearanceContribution`, `ParagraphAppearanceContext`, `ParagraphAppearanceControl`, and `ParagraphAppearanceDefaults` from this package to type appearance callbacks.
 
 ## Read the result
+
+Nested lists keep their indentation when Word restarts a counter under the same numbering definition. A page that starts with a child item displays it at the left margin until a parent appears.
 
 | Field | Meaning |
 | --- | --- |
