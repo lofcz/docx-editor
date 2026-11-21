@@ -55,9 +55,25 @@ export async function inspectMdxHost({ project, containerTag, action, caption })
     '</' + containerTag + '>',
     '',
     '</details>',
+    '',
+    '<details open={false}>',
+    '<summary>Explicitly closed</summary>',
+    '',
+    'Closed body',
+    '',
+    '</details>',
+    '',
+    '<details>',
+    '<summary>Default state</summary>',
+    '',
+    'Default body',
+    '',
+    '</details>',
   ].join('\n');
   const bytes = importMdxDocument(source, { registry: registry.registry });
-  const original = exportMdxDocument(bytes);
+  const expected = exportMdxDocument(
+    importMdxDocument(source.replace('Depth', 'D!epth'), { registry: registry.registry })
+  );
   const container = document.createElement('section');
   document.body.append(container);
   const editor = createDocxEditor({ container, document: bytes, zoom: 1 });
@@ -74,7 +90,13 @@ export async function inspectMdxHost({ project, containerTag, action, caption })
           button.type = 'button';
           button.textContent = action;
           button.style.pointerEvents = 'auto';
-          button.onclick = () => ++clicks;
+          button.onclick = () => {
+            clicks++;
+            const match = editor.findMatches('Depth')[0];
+            const point = { paragraphId: match.blockId, offset: match.start + 1 };
+            editor.surface.setSelection({ anchor: point, head: point });
+            if (!editor.exec({ type: 'insertText', text: '!' }).ok) throw new Error('Edit refused');
+          };
           element.append(button);
           return observeContent((control) => {
             observed = contentControlTextOf(control);
@@ -86,13 +108,18 @@ export async function inspectMdxHost({ project, containerTag, action, caption })
   try {
     const surface = editor.surface;
     surface.flushPendingInput();
+    for (const [label, expanded] of [
+      ['Report', 'true'],
+      ['Explicitly closed', 'false'],
+      ['Default state', 'false'],
+    ]) {
+      const toggle = container.querySelector('button[aria-label="' + label + '"]');
+      if (toggle?.getAttribute('aria-expanded') !== expanded)
+        throw new Error('Unexpected initial disclosure state for ' + label);
+    }
     const selector = '[data-mdx-component="' + containerTag + '"] button';
     const button = container.querySelector(selector);
     button.click();
-    const match = editor.findMatches('Depth')[0];
-    const point = { paragraphId: match.blockId, offset: match.start + 1 };
-    surface.setSelection({ anchor: point, head: point });
-    if (!editor.exec({ type: 'insertText', text: '!' }).ok) throw new Error('Edit refused');
     surface.flushPendingInput();
     const retained = button === container.querySelector(selector);
     container.querySelector('button[aria-label="Report"]').click();
@@ -132,9 +159,7 @@ export async function inspectMdxHost({ project, containerTag, action, caption })
       animatedSummary: fading.some((element) => element.textContent.includes('Label')),
       childText: observed.includes('D!epth'),
       registeredFallback: observed.includes(caption),
-      roundTrip:
-        exportMdxDocument(new Uint8Array(await editor.save())) ===
-        original.replace('Depth', 'D!epth'),
+      roundTrip: exportMdxDocument(new Uint8Array(await editor.save())) === expected,
     };
   } finally {
     stopViews();
