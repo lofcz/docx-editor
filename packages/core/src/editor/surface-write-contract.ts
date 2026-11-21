@@ -6,7 +6,7 @@ import type { TreeDocOp } from '../store/store/tree-op-types.ts';
 
 /** The surface with the internal members that other editor modules reach by cast. */
 export type ScaleMutableSurface = PaginatedSurface & {
-  setScale(nextScale: number): boolean;
+  setScale(nextScale: number, preserveStartEdges?: boolean): boolean;
   /**
    * Why the mode rules would refuse these automation ops now, or null: the check
    * `applyAutomationOps` makes, without writing. A preview fork asks it so it refuses what a

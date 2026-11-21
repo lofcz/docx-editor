@@ -1,4 +1,5 @@
 import type { PaginatedSurface } from './paginated-surface-contract.ts';
+import type { ScaleMutableSurface } from './surface-write-contract.ts';
 
 /**
  * Rescale a mounted surface in place, or report that this one cannot be.
@@ -7,8 +8,12 @@ import type { PaginatedSurface } from './paginated-surface-contract.ts';
  * for a surface that does not carry one — a stub or a foreign implementation. `false`, not a
  * TypeError: the caller is a host asking for zoom, and "cannot" is an answer it can render.
  */
-export function setPaginatedSurfaceScale(surface: PaginatedSurface, scale: number): boolean {
-  const rescale = (surface as Partial<{ setScale(nextScale: number): boolean }>).setScale;
+export function setPaginatedSurfaceScale(
+  surface: PaginatedSurface,
+  scale: number,
+  preserveStartEdges = false
+): boolean {
+  const rescale = (surface as Partial<ScaleMutableSurface>).setScale;
   if (typeof rescale !== 'function') return false;
-  return rescale.call(surface, scale);
+  return rescale.call(surface, scale, preserveStartEdges);
 }

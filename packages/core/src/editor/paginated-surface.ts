@@ -302,8 +302,7 @@ import {
   applyPageOffsets,
   equalPageSets,
   equalSurfaceExtents,
-  centreViewportOn,
-  viewportCentreX,
+  viewportAnchorForZoom,
   surfaceExtent,
   surfaceScroller,
   visiblePageSet,
@@ -4440,7 +4439,7 @@ export function mountPaginatedSurface(
 
     automationWriteRefusal: (ops, edits) =>
       writeRefusal(ops.some(isDocumentEdit) || edits, ops, false),
-    setScale(nextScale) {
+    setScale(nextScale, preserveStartEdges = false) {
       if (!(nextScale > 0) || !Number.isFinite(nextScale)) return false;
       if (nextScale === scale) return true;
 
@@ -4450,14 +4449,7 @@ export function mountPaginatedSurface(
       // rescale touches — the anchor read, the measurer resolution, layout, paint — is inside
       // the guard, and the rollback carries its own.
       try {
-        const scroller = surfaceScroller(container);
-        // Preserve the viewport centre in layout coordinates across the reflow.
-        const anchor = scroller
-          ? {
-              x: viewportCentreX(container, scroller, scale),
-              y: (scroller.scrollTop - container.offsetTop + scroller.clientHeight / 2) / scale,
-            }
-          : null;
+        const restoreScroll = viewportAnchorForZoom(container, scale, preserveStartEdges);
         scale = nextScale;
         if (!options.measurer) {
           defaults = defaultMeasurer();
@@ -4471,16 +4463,8 @@ export function mountPaginatedSurface(
         scheduler.invalidateAll(session.packageRevision(), 'zoom');
         scheduler.flush();
         payOwedPaint();
-        if (scroller && anchor) {
-          const targetTop = Math.max(
-            0,
-            anchor.y * scale + container.offsetTop - scroller.clientHeight / 2
-          );
-          const maxTop = Number.isFinite(scroller.scrollHeight)
-            ? Math.max(0, scroller.scrollHeight - scroller.clientHeight)
-            : null;
-          centreViewportOn(container, scroller, anchor.x, scale);
-          scroller.scrollTop = maxTop === null ? targetTop : Math.min(targetTop, maxTop);
+        if (restoreScroll) {
+          restoreScroll(scale);
           // The paint above chose its pages for the scroll offset the viewport had BEFORE the
           // restore. Building the destination band here keeps the zoom to one turn; leaving it
           // to the scroll listener showed the user shells for a frame.

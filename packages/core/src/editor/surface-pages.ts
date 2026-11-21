@@ -113,6 +113,35 @@ export function centreViewportOn(
   setInlineScrollOffset(scroller, inlineScrollOffset(scroller) + drift);
 }
 
+/** Capture the reader's position before rescaling, then restore it after the new pages are painted. */
+export function viewportAnchorForZoom(
+  container: HTMLElement,
+  scale: number,
+  preserveStartEdges: boolean
+): ((nextScale: number) => void) | null {
+  const scroller = surfaceScroller(container);
+  if (!scroller) return null;
+  const x =
+    preserveStartEdges && scroller.scrollLeft === 0
+      ? null
+      : viewportCentreX(container, scroller, scale);
+  const y =
+    preserveStartEdges && scroller.scrollTop === 0
+      ? null
+      : (scroller.scrollTop - container.offsetTop + scroller.clientHeight / 2) / scale;
+  return (nextScale) => {
+    const top =
+      y === null ? 0 : Math.max(0, y * nextScale + container.offsetTop - scroller.clientHeight / 2);
+    const max =
+      top > 0 && Number.isFinite(scroller.scrollHeight)
+        ? Math.max(0, scroller.scrollHeight - scroller.clientHeight)
+        : null;
+    if (x !== null) centreViewportOn(container, scroller, x, nextScale);
+    else if (scroller.scrollLeft !== 0) scroller.scrollLeft = 0;
+    scroller.scrollTop = max === null ? top : Math.min(top, max);
+  };
+}
+
 /**
  * Scroll the host's scroller back to the document start. A NEW document opens at its first
  * page: the scroller survives the remount, so the previous document's offset would otherwise

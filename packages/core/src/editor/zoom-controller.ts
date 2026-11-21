@@ -172,12 +172,7 @@ export function createZoomController(host: ZoomControllerHost): ZoomController {
       ...(mode.maxZoom !== undefined ? { maxZoom: mode.maxZoom } : {}),
     });
     if (next === null || next === host.zoom()) return;
-    // A rescale keeps the viewport centre in place, which scrolls sideways once the page is
-    // wider than the box (`overflow: 'scroll'`). A reader at the start edge stays there.
-    const scroller = surfaceScroller(container);
-    const atStart = scroller !== null && scroller.scrollLeft === 0;
     host.applyZoom(next);
-    if (atStart && scroller && scroller.scrollLeft !== 0) scroller.scrollLeft = 0;
   }
 
   function schedule(): void {

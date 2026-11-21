@@ -69,6 +69,7 @@ class FakeResizeObserver {
 
 interface Harness {
   editor: DocxEditorInstance;
+  scroller: HTMLElement;
   /** Set the scroller's border-box width, as a window resize would. */
   resize(width: number): void;
   /** Reserve room at the inline end, exactly as the open comments rail's padding does. */
@@ -99,12 +100,17 @@ function mount(options: Parameters<typeof createDocxEditor>[0] = {}): Harness {
 
   let width = 1600;
   Object.defineProperty(scroller, 'clientWidth', { get: () => width, configurable: true });
+  Object.defineProperties(scroller, {
+    clientHeight: { value: 600 },
+    scrollHeight: { value: 4000 },
+  });
 
   const editor = createDocxEditor({ container, document: docx(''), ...options });
   mounted.push(editor);
 
   return {
     editor,
+    scroller,
     resize(next) {
       width = next;
     },
@@ -204,6 +210,37 @@ describe('the default mode', () => {
 });
 
 describe('tracking the viewport', () => {
+  test('first fit and resize keep the top edge, then preserve a scrolled reader’s centre', async () => {
+    const { editor, scroller, resize, settle } = mount({
+      zoomMode: { type: 'fit', fit: 'pageWidth' },
+    });
+    const surface = editor.surface!;
+    const initial = editor.getZoom();
+    expect(initial).toBeGreaterThan(1);
+    expect(scroller.scrollTop).toBe(0);
+    const selection = surface.state().selection;
+    const revision = surface.session.packageRevision();
+    resize(1000);
+    await settle();
+    const smaller = editor.getZoom();
+    expect(smaller).toBeLessThan(initial);
+    resize(1150);
+    await settle();
+    const larger = editor.getZoom();
+    expect(larger).toBeGreaterThan(smaller);
+    expect(scroller.scrollTop).toBe(0);
+    scroller.scrollTop = 380;
+    resize(1000);
+    await settle();
+    expect(scroller.scrollTop).toBeCloseTo((380 + 300) * (smaller / larger) - 300, 3);
+    expect(surface.state().selection).toEqual(selection);
+    expect(surface.session.packageRevision()).toBe(revision);
+    scroller.scrollTop = 0;
+    expect(editor.setZoom(2).ok).toBe(true);
+    expect(scroller.scrollTop).toBeCloseTo(300 * (2 / smaller) - 300, 3);
+    expect(surface.state().selection).toEqual(selection);
+  });
+
   test('a resize refits', async () => {
     const harness = mount();
     harness.resize(700);

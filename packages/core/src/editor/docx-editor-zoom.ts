@@ -96,13 +96,14 @@ export function createZoomLane(config: ZoomLaneConfig, host: ZoomLaneHost): Zoom
    * caller that changes the mode in the same breath does not emit a snapshot carrying the new
    * scale beside the old mode.
    */
-  function applyZoom(next: number, alsoCommit?: () => void): boolean {
+  function applyZoom(next: number, source: 'fit' | 'manual', alsoCommit?: () => void): boolean {
     if (next === zoom) {
       alsoCommit?.();
       return true;
     }
     const surface = host.surface();
-    if (surface && !setPaginatedSurfaceScale(surface, next * (96 / 72))) return false;
+    if (surface && !setPaginatedSurfaceScale(surface, next * (96 / 72), source === 'fit'))
+      return false;
     zoom = next;
     alsoCommit?.();
     host.bump();
@@ -134,7 +135,7 @@ export function createZoomLane(config: ZoomLaneConfig, host: ZoomLaneHost): Zoom
     pageWidthTwips: () => host.surface()?.sectionProperties().pageSize.widthTwips ?? null,
     zoom: () => zoom,
     applyZoom: (next) => {
-      applyZoom(next);
+      applyZoom(next, 'fit');
     },
     reviewPaneScrolls: () => host.reviewPaneScrolls?.() === true,
   });
@@ -181,7 +182,7 @@ export function createZoomLane(config: ZoomLaneConfig, host: ZoomLaneHost): Zoom
       // observer installed, unpublished, while the refused `ok: false` gave the caller no
       // reason to re-assert anything: a toolbar with "Automatic" ticked over an editor that
       // had silently stopped tracking.
-      if (!applyZoom(next, wasFit ? leaveFit : undefined)) {
+      if (!applyZoom(next, 'manual', wasFit ? leaveFit : undefined)) {
         return {
           ok: false,
           code: 'unsupported',
