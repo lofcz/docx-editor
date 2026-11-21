@@ -2779,10 +2779,8 @@ function* layoutBlocksPass(
     }
     flushFragment(true);
     releasePlacedBreaks(paragraphId);
-    previousSpaceAfter = collapsingSpaceAfter(
-      endedWithPageBreak ? 0 : spacing.after + reservedAfter,
-      styleCascade
-    );
+    // The cursor already includes the widget. Only Word paragraph spacing collapses.
+    previousSpaceAfter = collapsingSpaceAfter(endedWithPageBreak ? 0 : spacing.after, styleCascade);
     if (savedFrameFlow) {
       cursorY = savedFrameFlow.cursorY;
       previousSpaceAfter = savedFrameFlow.previousSpaceAfter;

@@ -57,8 +57,8 @@ const BODY =
   '<w:p><w:r><w:t xml:space="preserve">gamma delta</w:t></w:r></w:p>';
 
 /** Alice reads in viewing mode; Bob edits. */
-async function peers() {
-  const pair = await harness.pair(zipDocument(BODY));
+async function peers(body = BODY) {
+  const pair = await harness.pair(zipDocument(body));
   const open = (peer: Peer, viewer: boolean) => {
     peer.detach();
     return mount({
@@ -78,6 +78,35 @@ async function peers() {
   };
   return { pair, alice, bob, converge };
 }
+
+test('a local widget preserves the shared Word gap and the peer selection', async () => {
+  const body =
+    '<w:p><w:pPr><w:spacing w:after="80"/></w:pPr><w:r><w:t>Widget</w:t></w:r></w:p>' +
+    '<w:p><w:pPr><w:spacing w:before="400"/></w:pPr><w:r><w:t>Next</w:t></w:r></w:p>';
+  const { pair, alice, bob, converge } = await peers(body);
+  const viewer = alice.editor.surface!;
+  const writer = bob.editor.surface!;
+  const [widget, next] = writer.session.paragraphIds();
+  const position = { paragraphId: next!, offset: 0 };
+  const y = (surface: typeof viewer) => caretAt(surface.layout(), position)!.y;
+  const nativeY = y(writer);
+  viewer.setBlockReservations(new Map([[widget!, 24]]));
+  expect(y(viewer)).toBe(nativeY + 24);
+  expect(y(writer)).toBe(nativeY);
+  writer.setSelection({ anchor: position, head: position });
+  syncPresence(pair.bob, pair.alice);
+  expect(pair.alice.room.session.remoteSelections()).toMatchObject([
+    { head: { nodeId: position.paragraphId, offset: position.offset } },
+  ]);
+  writer.insertPlainText('Changed ');
+  writer.flushPendingInput();
+  converge();
+  expect(viewer.session.bodyText()).toBe('Widget\nChanged Next');
+  expect(y(viewer)).toBe(y(writer) + 24);
+  const reopened = mount({ document: new Uint8Array(await alice.editor.save()) }).editor.surface!;
+  expect(y(reopened)).toBe(nativeY);
+  expect(reopened.session.bodyText()).toBe(viewer.session.bodyText());
+});
 
 test('a viewing selection is published as that range', async () => {
   const { pair, alice } = await peers();

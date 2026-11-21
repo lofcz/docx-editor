@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Widget height could consume the following paragraph's authored spacing.",
+  "after": "Each editor reserves its widget height in addition to the native paragraph gap.",
+  "reason": "Only local view geometry changes. Peers retain their document positions and authored spacing.",
+  "tests": [
+    "packages/core/src/editor/__tests__/block-reservations.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-viewing-selection.test.ts"
+  ],
+  "changeset": "preserve-widget-paragraph-spacing",
+  "migration": null
+}

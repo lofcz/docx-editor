@@ -92,6 +92,22 @@ test('contextual spacing never absorbs a reservation', async () => {
   }
 });
 
+test('reserved content height preserves the collapsed Word gap between paragraphs', async () => {
+  const first = '<w:p><w:pPr><w:spacing w:after="80"/></w:pPr><w:r><w:t>Widget</w:t></w:r></w:p>';
+  const next = '<w:p><w:pPr><w:spacing w:before="400"/></w:pPr><w:r><w:t>Next</w:t></w:r></w:p>';
+  const doc = open(docx(first + next));
+  try {
+    const firstY = doc.yOf('Widget');
+    const nextY = doc.yOf('Next');
+    doc.surface.setBlockReservations(new Map([[doc.idOf('Widget'), 24]]));
+    await settle();
+    expect(doc.yOf('Widget')).toBe(firstY);
+    expect(doc.yOf('Next') - nextY).toBe(24);
+  } finally {
+    doc.close();
+  }
+});
+
 test('equal or noisy measurements never relayout, and values round up to a quarter point', async () => {
   expect(quantizeBlockReservation(10.1)).toBe(10.25);
   expect(quantizeBlockReservation(10.25)).toBe(10.25);
