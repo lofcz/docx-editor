@@ -13,6 +13,8 @@ if (!GlobalRegistrator.isRegistered) GlobalRegistrator.register();
 
 import { describe, expect, test } from 'bun:test';
 import { zipSync, unzipSync, strToU8 } from 'fflate';
+import { initializeHarfBuzz, sha256FontBytes } from '../../layout/index.ts';
+import type { FontFaceRequest } from '../../contracts/editor.ts';
 import { createDocxEditor } from '../docx-editor.ts';
 import { trackedDocx } from './paginated-surface-fixtures.ts';
 import { stubReviewModule } from './review-test-module.ts';
@@ -93,6 +95,85 @@ async function until(check: () => boolean, timeoutMs = 3000): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, 10));
   }
 }
+
+describe('font preparation before the first layout', () => {
+  async function regularFont() {
+    await initializeHarfBuzz();
+    const bytes = await Bun.file(
+      new URL('../../layout/__tests__/fixtures/fonts/DejaVuSans.ttf', import.meta.url)
+    ).bytes();
+    return {
+      sources: [
+        {
+          request: { family: 'DejaVu Sans', weight: 400, style: 'normal' as const },
+          bytes,
+          faceIndex: 0,
+          hash: sha256FontBytes(bytes),
+          id: 'regular',
+        },
+      ],
+    };
+  }
+
+  test('a ready resolver shapes the first layout and receives only the authored face', async () => {
+    const fonts = await regularFont();
+    let faces: readonly FontFaceRequest[] | undefined;
+    const editor = createDocxEditor({
+      container: document.createElement('div'),
+      document: docx(
+        '<w:p><w:r><w:rPr><w:rFonts w:ascii="DejaVu Sans"/></w:rPr><w:t>Ready</w:t></w:r></w:p>'
+      ),
+      fontPreparationWaitMs: 2000,
+      fonts: (request) => {
+        faces ??= request.faces;
+        return Promise.resolve(fonts);
+      },
+    });
+    try {
+      expect(editor.snapshot().isOpening).toBe(true);
+      await until(() => editor.surface !== null, 10000);
+      expect(editor.fontMeasurement().measurer).toBe('shaped');
+      expect(editor.surface!.state().perf.fullPasses).toBe(1);
+      expect(faces?.filter((face) => face.family === 'DejaVu Sans')).toEqual([
+        fonts.sources[0]!.request,
+      ]);
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  test('a slow resolver preserves edits and undo when it updates the fallback layout', async () => {
+    const fonts = await regularFont();
+    let release!: () => void;
+    const wait = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const editor = createDocxEditor({
+      container: document.createElement('div'),
+      document: SMALL,
+      fonts: async () => {
+        await wait;
+        return fonts;
+      },
+      fontPreparationWaitMs: 1,
+    });
+    try {
+      await until(() => editor.surface !== null, 10000);
+      const surface = editor.surface!;
+      expect(editor.fontMeasurement().measurer).toBe('fixed');
+      surface.type('X');
+      expect(surface.session.bodyText()).toBe('Xsmall document body');
+      release();
+      await until(() => editor.fontMeasurement().measurer === 'shaped', 10000);
+      expect(editor.surface).toBe(surface);
+      surface.undo();
+      expect(surface.session.bodyText()).toBe('small document body');
+    } finally {
+      release();
+      editor.destroy();
+    }
+  });
+});
 
 describe('deferred open of a large document', () => {
   test('a text-heavy document defers on its CONTENT size, not its zipped size', async () => {

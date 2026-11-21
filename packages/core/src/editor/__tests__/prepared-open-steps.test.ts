@@ -5,7 +5,12 @@
 import { expect, test } from 'bun:test';
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
 import { openTreeSession } from '../../binding/tree-session.ts';
-import { openSteps } from '../docx-editor-prepared-open.ts';
+import {
+  createPreparedSessions,
+  openSteps,
+  prepareOpenSteps,
+  takePreparedOpen,
+} from '../docx-editor-prepared-open.ts';
 import { resolverGlyphFontFamilies } from '../resolver-glyph-font-families.ts';
 import { docx } from './paginated-surface-fixtures.ts';
 
@@ -138,4 +143,30 @@ test('a long table scanned a few rows at a time finds what a cold scan finds', (
   );
   while (typeof result === 'function') result = (result as () => unknown)();
   expect(families).toEqual(cold);
+});
+
+test('concurrent opens of the same bytes keep each prepared session with its editor', () => {
+  const source = docx('<w:p/>');
+  const first = createPreparedSessions();
+  const second = createPreparedSessions();
+  function prepare(sessions: typeof first) {
+    let found: ReturnType<typeof openTreeSession> | undefined;
+    let step: unknown = prepareOpenSteps(
+      source,
+      {},
+      (opened) => {
+        found = opened;
+      },
+      sessions
+    );
+    while (typeof step === 'function') step = step();
+    return found;
+  }
+  const a = prepare(first);
+  const b = prepare(second);
+  expect(a?.ok).toBe(true);
+  expect(b?.ok).toBe(true);
+  expect(a).not.toBe(b);
+  expect(takePreparedOpen(source, first)).toEqual({ openedSession: a, progressiveOpen: false });
+  expect(takePreparedOpen(source, second).openedSession).toBe(b);
 });

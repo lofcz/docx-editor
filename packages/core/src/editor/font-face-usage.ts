@@ -22,6 +22,7 @@ export const MAX_USED_FONT_FACES = 512;
 
 /** Records the faces of the text that the wrapped measurers measure. @internal */
 export interface FontFaceUsage {
+  note(style: ResolvedRunStyle): void;
   /** A measurer that records each face it measures, then measures with `measurer`. */
   wrap(measurer: TextMeasurer): TextMeasurer;
   /** The faces recorded, in the order layout first measured them. */
@@ -69,6 +70,7 @@ export function createFontFaceUsage(): FontFaceUsage {
     list = [...faces.values()];
   };
   return {
+    note,
     wrap(measurer) {
       const known = wrapped.get(measurer);
       if (known) return known;

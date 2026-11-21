@@ -1,3 +1,4 @@
+import { createFontFaceUsage, type UsedFontFace } from './font-face-usage.ts';
 import { numberingFontInputs } from './numbering-font-inputs.ts';
 import type { OoxmlElement } from '../store/package/ooxml-tree.ts';
 import type { ThemeFonts } from '../layout/run-style.ts';
@@ -27,6 +28,26 @@ const scanners = new WeakMap<
   TreeDocxSessionView,
   ReturnType<typeof createEastAsianLanguageFontScanner>
 >();
+
+const openingFaces = new WeakMap<TreeDocxSessionView, () => readonly UsedFontFace[]>();
+
+/** Record the first font request during the existing pre-mount cascade scan. */
+export function collectOpeningFontFaces(session: TreeDocxSessionView): void {
+  const usage = createFontFaceUsage();
+  let observe: typeof usage.note | undefined = usage.note;
+  scanners.set(
+    session,
+    createEastAsianLanguageFontScanner((style) => observe?.(style))
+  );
+  openingFaces.set(session, () => {
+    observe = undefined;
+    return usage.faces();
+  });
+}
+
+export function openingFontFacesOf(session: TreeDocxSessionView | null) {
+  return session ? openingFaces.get(session)?.() : undefined;
+}
 
 function scannerOf(session: TreeDocxSessionView) {
   let scanner = scanners.get(session);

@@ -9,6 +9,8 @@ The editor shapes text with HarfBuzz when it has usable font bytes. Without them
 
 CSS fonts and font picker entries do not supply font bytes. Only a configured font source makes measurement accurate.
 
+With `createDocxEditor`, set `fontPreparationWaitMs` to wait for fonts before the first layout. Use a value from 1 to 2000 milliseconds. The editor schedules the open and reports `snapshot().isOpening`. If fonts take longer, you can edit with fallback metrics. The editor updates the layout when fonts arrive.
+
 ## Configure document fonts
 
 Pass resolvers to `useDocxSource`. Vue provides the same API.

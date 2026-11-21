@@ -88,6 +88,13 @@ export interface DocxEditorConfig {
    * requests — the engine never supplies one, so that stays your call.
    */
   fonts?: FontConfiguration | FontConfigurationFragment | FontResolver;
+  /**
+   * Schedule opening behind a frame and wait up to this many milliseconds for configured
+   * fonts before the first layout. Accepts 1–2000. Other values use the normal size-based
+   * opening policy. A slow or failed resolver leaves the document editable with fallback
+   * metrics. When the fonts arrive, layout updates without replacing editing history.
+   */
+  fontPreparationWaitMs?: number;
   /** Explicit shaping execution limits. Omitted, the per-face byte ceiling remains 16 MiB. */
   fontShaping?: FontShapingOptions;
   author?: string;

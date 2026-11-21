@@ -11,6 +11,7 @@ import {
 import { readOoxmlPackageSteps } from '../store/package/ooxml-package.ts';
 import type { TreeDocxSessionView } from '../binding/tree-session-contract.ts';
 import type { OoxmlElement, OoxmlNode } from '../store/package/ooxml-tree.ts';
+import { isLargeOpen } from './docx-editor-open-scheduler.ts';
 import { nodeIndexSteps } from '../store/package/ooxml-edit.ts';
 import { contentLockPolicyOf } from '../store/store/content-lock-policy.ts';
 import {
@@ -34,7 +35,11 @@ export type FontSession = Pick<
   'embeddedFonts' | 'currentPackage' | 'stylesRoot' | 'documentThemeFonts'
 >;
 
-const prepared = new WeakMap<Uint8Array, OpenTreeSessionResult>();
+export function createPreparedSessions() {
+  return new WeakMap<Uint8Array, OpenTreeSessionResult>();
+}
+
+const prepared = createPreparedSessions();
 
 /** The session options a prepared open must share with the mount it stands in for. */
 export type PreparedOpenOptions = Pick<OpenTreeSessionOptions, 'reviewModel' | 'contentLockPolicy'>;
@@ -69,7 +74,8 @@ export function prepareOpen(
 export function prepareOpenSteps(
   bytes: Uint8Array,
   options: PreparedOpenOptions,
-  then: (opened: OpenTreeSessionResult) => ReturnType<Step>
+  then: (opened: OpenTreeSessionResult) => ReturnType<Step>,
+  sessions = prepared
 ): Step {
   const reader = readOoxmlPackageSteps(bytes);
   const step: Step = () => {
@@ -78,7 +84,7 @@ export function prepareOpenSteps(
       const next = reader.next();
       if (next.done) {
         const opened = openTreeSessionFromPackage(next.value, options);
-        prepared.set(bytes, opened);
+        sessions.set(bytes, opened);
         return then(opened);
       }
       if (performance.now() >= deadline) return step;
@@ -88,17 +94,21 @@ export function prepareOpenSteps(
 }
 
 /**
- * The mount options for a prepared open of `bytes`, or nothing. Removes the entry. A prepared
- * open is a large one, so its first layout also runs in slices after the mount.
+ * The mount options for a prepared open of `bytes`, or nothing. Removes the entry. Only a large
+ * document needs its first layout to run in slices after the mount.
  */
-export function takePreparedOpen(bytes: Uint8Array): {
+export function takePreparedOpen(
+  bytes: Uint8Array,
+  sessions = prepared
+): {
   readonly openedSession?: OpenTreeSessionResult;
   readonly progressiveOpen?: boolean;
 } {
-  const openedSession = prepared.get(bytes);
+  const cache = sessions.has(bytes) ? sessions : prepared;
+  const openedSession = cache.get(bytes);
   if (openedSession === undefined) return {};
-  prepared.delete(bytes);
-  return { openedSession, progressiveOpen: true };
+  cache.delete(bytes);
+  return { openedSession, progressiveOpen: isLargeOpen(bytes) };
 }
 
 /**
@@ -108,13 +118,19 @@ export function takePreparedOpen(bytes: Uint8Array): {
 export function preparedOpenHook(
   sessionOptions: () => PreparedOpenOptions,
   adopt: (bytes: Uint8Array, session: TreeDocxSessionView) => (() => boolean) | null,
-  startFonts: () => void | Promise<unknown>
+  startFonts: () => void | Promise<unknown>,
+  sessions = prepared
 ): (bytes: Uint8Array) => Step {
   return (bytes) =>
-    prepareOpenSteps(bytes, sessionOptions(), (opened) => {
-      const current = opened.ok ? adopt(bytes, opened.session) : null;
-      return opened.ok && current ? openSteps(opened.session, current, startFonts) : undefined;
-    });
+    prepareOpenSteps(
+      bytes,
+      sessionOptions(),
+      (opened) => {
+        const current = opened.ok ? adopt(bytes, opened.session) : null;
+        return opened.ok && current ? openSteps(opened.session, current, startFonts) : undefined;
+      },
+      sessions
+    );
 }
 
 export { progressiveOpenPending as stillOpening } from './surface-progressive-open.ts';

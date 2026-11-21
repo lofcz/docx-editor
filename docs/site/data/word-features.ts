@@ -181,7 +181,7 @@ export const wordFeatures: WordFeature[] = [
     roundTrip: 'full',
     tier: 'community',
     notes:
-      'Choose fonts and sizes from the picker, or configure custom, packaged, and Google Fonts sources. Accurate line wrapping requires font files; substitute fonts can change line breaks. Fonts can load in the background, but export waits for them.',
+      'Choose fonts and sizes from the picker, or configure custom, packaged, and Google Fonts sources. Accurate line wrapping requires font files; substitute fonts can change line breaks. Fonts can load before or after the first layout, and export waits for them.',
     docsLink: '/docs/2.x/guides/fonts',
   },
   {

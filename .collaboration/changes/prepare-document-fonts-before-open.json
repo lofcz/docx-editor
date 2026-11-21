@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Small documents mounted before the editor requested their configured fonts.",
+  "after": "A host can prepare the document's fonts before mounting and limit the wait for an unavailable face.",
+  "reason": "Font requests and editing readiness are local. The engine preserves the existing session, operations, and revision history.",
+  "tests": [
+    "packages/core/src/editor/__tests__/deferred-open.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-composition-preview.test.ts"
+  ],
+  "changeset": "prepare-document-fonts-before-open",
+  "migration": null
+}

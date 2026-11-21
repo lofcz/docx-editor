@@ -10,10 +10,12 @@ import {
 } from './style-cascade.ts';
 import { piecesOfParagraph } from './field-projection.ts';
 import { readTableStructure } from './semantic-table.ts';
-import type { ThemeFonts } from './run-style.ts';
+import { styleForFontSlot } from './script-itemization.ts';
+import type { ResolvedRunStyle, ThemeFonts } from './run-style.ts';
 import { createFontFamilyTreeCache, fontScanChildren } from './font-family-tree-cache.ts';
 
 interface ScanContext {
+  readonly observeStyle?: (style: ResolvedRunStyle) => void;
   readonly key: string;
   readonly baseKey: string;
   readonly styles: StyleCascadeTable;
@@ -74,6 +76,7 @@ function inspectFontNode(node: OoxmlElement, context: ScanContext) {
       theme
     )) {
       if (!piece.text) continue;
+      context.observeStyle?.(styleForFontSlot(piece.style, piece.fontSlot));
       if (piece.fontSlot !== 'eastAsia' && !supplementalFamilies.has(piece.style.fontFamily ?? ''))
         continue;
       const family = validFontFamily(
@@ -110,7 +113,9 @@ export type EastAsianLanguageFontScanner = ((
 };
 
 /** Reusable discovery belongs to the live editor session that needs incremental updates. */
-export function createEastAsianLanguageFontScanner(): EastAsianLanguageFontScanner {
+export function createEastAsianLanguageFontScanner(
+  observeStyle?: (style: ResolvedRunStyle) => void
+): EastAsianLanguageFontScanner {
   const scan = createFontFamilyTreeCache(inspectFontNode);
   let previousContext: ScanContext | undefined;
   let previousStylesRoot: OoxmlElement | null | undefined;
@@ -119,6 +124,7 @@ export function createEastAsianLanguageFontScanner(): EastAsianLanguageFontScann
       const styles = buildStyleCascadeTable(stylesRoot, theme);
       previousStylesRoot = stylesRoot;
       previousContext = {
+        observeStyle,
         key: `${styles.cacheToken}|0|undefined`,
         baseKey: styles.cacheToken,
         styles,

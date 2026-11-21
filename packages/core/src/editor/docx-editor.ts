@@ -16,6 +16,7 @@ import { createPlacementKeeper, createReviewRanker } from './review-ranking.ts';
 import { browserFallbackMeasurer, resolvedFontMeasurement } from './resolved-font-measurement.ts';
 import { updateSurfaceMeasurement, usedFontFacesOf } from './surface-measurement.ts';
 import { usedFamiliesCovered } from './font-face-usage.ts';
+import { collectOpeningFontFaces, openingFontFacesOf } from './resolver-glyph-font-families.ts';
 import { fontInstallKey } from './font-install-key.ts';
 import {
   createLiveFontResolution,
@@ -331,17 +332,21 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
   /** Pending input belongs to these exact remount bytes, including a deferred mount. */
   let pendingTextFormInputs = new WeakMap<Uint8Array, PendingTextFormInput>();
   /** Defers a big document's open behind a painted frame; see `docx-editor-open-scheduler.ts`. */
+  const preparedSessions = preparedOpen.createPreparedSessions();
   const openScheduler = createOpenScheduler({
+    fontWaitMs: () => (configuredFonts ? config.fontPreparationWaitMs : undefined),
     mount: (bytes) => mountBytes(bytes),
     // Fonts resolved before the mount are laid out once, by the mount; see `preparedOpenHook`.
     prepare: preparedOpen.preparedOpenHook(
       () => preparedOpen.sessionOpenOptions(reviewModelOption(modules, reportDiagnostic), config),
       (bytes, session) => {
         if (deferredRefreshBytes === bytes) return null;
+        if (openScheduler.fontWaitMs() !== undefined) collectOpeningFontFaces(session);
         preparedFontSession = session;
         return () => preparedFontSession === session;
       },
-      () => liveFonts.schedule(true)
+      () => liveFonts.schedule(true),
+      preparedSessions
     ),
     scheduled: () => {
       bump();
@@ -473,14 +478,15 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
       if (destroyed || !session) return null;
       // A document still preparing has laid out nothing: the surface is the previous one.
       const laidOut = preparedFontSession ? undefined : surface;
+      const faces = () =>
+        laidOut ? usedFontFacesOf(laidOut) : openingFontFacesOf(preparedFontSession);
       const caret = laidOut && (snapshotNow().formatting ?? undefined);
       const defaultFamily = liveFontDefaultFamily();
       return {
         generation: fontLifetime.generation,
         dynamic: typeof configuredFonts === 'function',
         families: () => liveFontFamilies(session, caret?.fontFamily, defaultFamily),
-        faces: () =>
-          requestFaces(laidOut ? usedFontFacesOf(laidOut) : undefined, defaultFamily, caret),
+        faces: () => requestFaces(faces(), defaultFamily, caret),
         defaultFamily,
       };
     },
@@ -778,7 +784,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
       revisionDisplayMode: reviewEnabled ? reviewDisplayMode : 'proposed',
       paragraphAppearance: modules.paragraphAppearance ?? undefined,
       ...diagnostics.surfaceHooks(suggesting, () => surface),
-      ...preparedOpen.takePreparedOpen(bytes),
+      ...preparedOpen.takePreparedOpen(bytes, preparedSessions),
       ...(modules.collaboration ? { collaborationModel: modules.collaboration } : {}),
       onHostMoved: followHost,
       onDragEvent: (kind, event, position) => {
@@ -912,13 +918,8 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
       defer: (run) => events.defer(run, true),
     });
     refreshHost?.contentMounted(bytes);
-    // The page's size is only knowable now — it comes from this document's section properties
-    // — so a fit mode resolves here. Synchronous on purpose: it lands in the same task as the
-    // mount, so the browser paints once at the fitted scale, not at 100% and then corrected.
-    //
-    // AFTER the subscription above, because a fit that moves the scale EMITS, and a host
-    // handler that throws from that emit would otherwise abort this function with the surface
-    // assigned but `unsubscribeSession` unset — an editor that types but never re-renders.
+    // Check the fitted scale after mount. A viewport-changing host can receive a fit event
+    // here, so install its document subscription before this call.
     zoomLane.attach();
     // The document arrived: an external store subscribed to `change`/`selectionChange`
     // must learn about it, exactly as it learns about any later commit. Without these a

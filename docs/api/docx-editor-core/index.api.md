@@ -2156,6 +2156,7 @@ export interface DocxEditorConfig {
     contentLockPolicy?: ContentLockPolicy;
     document?: DocumentSource;
     fieldResults?: FieldResultsMode;
+    fontPreparationWaitMs?: number;
     fonts?: FontConfiguration | FontConfigurationFragment | FontResolver;
     fontShaping?: FontShapingOptions;
     imageDecodePort?: ImageDecodePort;

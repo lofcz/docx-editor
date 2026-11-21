@@ -70,6 +70,13 @@ function zipContentExceeds(bytes: Uint8Array, limit: number): boolean {
   return false;
 }
 
+export function isLargeOpen(bytes: Uint8Array): boolean {
+  return (
+    bytes.byteLength >= OPEN_PAINT_YIELD_CONTENT_BYTES ||
+    zipContentExceeds(bytes, OPEN_PAINT_YIELD_CONTENT_BYTES)
+  );
+}
+
 /**
  * The longest a mount waits for its prepare work. The page stays responsive while it waits,
  * and a mount that starts without the work still completes; it only pays for it later.
@@ -82,6 +89,8 @@ type PrepareStep = () => void | Promise<unknown> | PrepareStep;
 
 /** What the facade hands the scheduler; both close over facade-owned state. */
 export interface OpenSchedulerHooks {
+  /** A host can give a font-backed opening a bounded font wait at any document size. */
+  readonly fontWaitMs?: () => number | undefined;
   /** The real synchronous mount (`mountBytes`). */
   readonly mount: (bytes: Uint8Array) => void;
   /**
@@ -128,6 +137,7 @@ const OPEN_SLICE_MS = 40;
 
 /** The deferred-mount window, owned by the facade. See the module comment. */
 export interface OpenScheduler {
+  readonly fontWaitMs: () => number | undefined;
   /** Whether this open is worth (and able to get) a painted frame before the mount. */
   shouldYield(bytes: Uint8Array): boolean;
   /** Schedule the mount behind one painted frame and report the state move. */
@@ -146,6 +156,10 @@ export interface OpenScheduler {
 
 export function createOpenScheduler(hooks: OpenSchedulerHooks): OpenScheduler {
   let scheduled: ScheduledOpen | null = null;
+  const fontWait = () => {
+    const ms = hooks.fontWaitMs?.();
+    return typeof ms === 'number' && ms >= 1 && ms <= PREPARED_WORK_WAIT_MS ? ms : undefined;
+  };
   const viewOf = (): Window => hostWindowOf(hooks.node?.() ?? null);
 
   const cancel = (): Uint8Array | null => {
@@ -157,13 +171,13 @@ export function createOpenScheduler(hooks: OpenSchedulerHooks): OpenScheduler {
   };
 
   return {
+    fontWaitMs: fontWait,
     // The zipped size is a shortcut, not the measure: a file already past the limit
     // zipped cannot be under it unpacked in any way that mounts fast.
     shouldYield: (bytes) =>
       typeof viewOf().requestAnimationFrame === 'function' &&
       typeof viewOf().cancelAnimationFrame === 'function' &&
-      (bytes.byteLength >= OPEN_PAINT_YIELD_CONTENT_BYTES ||
-        zipContentExceeds(bytes, OPEN_PAINT_YIELD_CONTENT_BYTES)),
+      (fontWait() !== undefined || isLargeOpen(bytes)),
 
     // `requestAnimationFrame` fires BEFORE the pending paint, so the heavy work goes
     // into a task queued from inside it — the first slot guaranteed to run after the
@@ -221,7 +235,7 @@ export function createOpenScheduler(hooks: OpenSchedulerHooks): OpenScheduler {
             if (timer !== null) timers.clearTimeout(timer);
             timer = timers.setTimeout(run, 0);
           };
-          timer = timers.setTimeout(proceed, PREPARED_WORK_WAIT_MS);
+          timer = timers.setTimeout(proceed, fontWait() ?? PREPARED_WORK_WAIT_MS);
           work.then(proceed, proceed);
           return;
         }
