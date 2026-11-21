@@ -768,6 +768,7 @@ async function checkDisclosureViewport(wrapperOverflow: string) {
   replace(doc, 'scrollingElement', doc.documentElement);
   const scrollNode = wrapperOverflow === 'document' ? doc.documentElement : viewport;
   const scrollTarget = wrapperOverflow === 'document' ? doc : viewport;
+  const scale = wrapperOverflow === 'clip' ? 0.65 : 1;
   replace(win, 'matchMedia', () => ({
     matches: true,
     addEventListener() {},
@@ -790,7 +791,7 @@ async function checkDisclosureViewport(wrapperOverflow: string) {
       this.classList.contains('docx-page')
     ) {
       const page = surface.publishedLayout().pages[0]!;
-      return new win.DOMRect(0, 0, page.box.width, page.box.height);
+      return new win.DOMRect(0, 0, page.box.width * scale, page.box.height * scale);
     }
     if (this.hasAttribute('data-docx-mdx-disclosure'))
       return new win.DOMRect(
@@ -806,6 +807,14 @@ async function checkDisclosureViewport(wrapperOverflow: string) {
     surface.flushPendingInput();
     const button = container.querySelector<HTMLButtonElement>('button[aria-label="Observation"]')!;
     const saved = exportMdxDocument(surface.session.currentPackage());
+    const layout = surface.publishedLayout();
+    const closed = layout.contentControls
+      ?.find((record) => record.id === surface.collapsedContentControls()[0]?.controlId)!
+      .fragments.at(-1)!;
+    const sheet = layout.pages[closed.pageIndex]!;
+    const closedPercent =
+      (100 * (sheet.contentBox.y - sheet.box.y + closed.box.y + closed.box.height)) /
+      sheet.box.height;
     button.focus();
     button.click();
     expect(captures).toHaveLength(1);
@@ -816,6 +825,9 @@ async function checkDisclosureViewport(wrapperOverflow: string) {
     expect(snapshotPane.style.viewTransitionName).toBe('docx-mdx-paper');
     expect(doc.documentElement.classList.contains('docx-mdx-opening')).toBe(true);
     captures[0]!.update();
+    const motionEdge = doc.documentElement.style.getPropertyValue('--docx-mdx-closed-edge');
+    expect(motionEdge.endsWith('%')).toBe(true);
+    expect(Number.parseFloat(motionEdge)).toBeCloseTo(closedPercent, 5);
     expect(scrollNode.scrollTop).toBe(12);
     scrollTarget.dispatchEvent(new win.Event('scroll'));
     expect(doc.documentElement.classList.contains('docx-mdx-opening')).toBe(true);

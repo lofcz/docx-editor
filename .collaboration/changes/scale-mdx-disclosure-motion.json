@@ -1,0 +1,13 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "A scaled editor pane applied its scale twice to the moving disclosure boundary.",
+  "after": "Each editor animates the boundary at its own display scale.",
+  "reason": "Snapshot coordinates affect only the local display. Folds and motion do not create document operations.",
+  "tests": [
+    "packages/docx-to-markdown/test/mdx-document.test.ts",
+    "packages/pro/src/collaboration/__tests__/mdx-document-views.test.ts"
+  ],
+  "changeset": "scale-mdx-disclosure-motion",
+  "migration": null
+}

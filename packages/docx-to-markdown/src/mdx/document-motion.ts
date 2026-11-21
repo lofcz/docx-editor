@@ -117,18 +117,29 @@ export function changeDisclosure(
   }
   const transition = doc.startViewTransition(() => {
     applyPending();
-    const after = bottomEdge(surface, pages, controlId, rect);
+    const nextRect = pane.getBoundingClientRect();
+    const after = bottomEdge(surface, pages, controlId, nextRect);
+    const closedHeight = opening ? rect.height : nextRect.height;
     if (
       !accepted ||
       active.get(doc) !== state ||
       after === undefined ||
+      !closedHeight ||
       Math.abs(after - before) < 1
     ) {
       transition.skipTransition();
       return;
     }
-    root.style.setProperty('--docx-mdx-closed-edge', Math.min(after, before) + 'px');
-    root.style.setProperty('--docx-mdx-travel', Math.abs(after - before) + 'px');
+    // The browser applies ancestor transforms to the snapshot. Its clip and translation
+    // use the snapshot's own coordinates, even when the open paper has a different height.
+    root.style.setProperty(
+      '--docx-mdx-closed-edge',
+      (100 * Math.min(after, before)) / closedHeight + '%'
+    );
+    root.style.setProperty(
+      '--docx-mdx-travel',
+      (100 * Math.abs(after - before)) / closedHeight + '%'
+    );
   });
   const finish = () => {
     motion.removeEventListener('change', cancel);
