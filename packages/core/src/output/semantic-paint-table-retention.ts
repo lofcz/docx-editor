@@ -1,3 +1,4 @@
+import { retainPaintedParagraph } from './semantic-paint-paragraph-children.ts';
 import type {
   BlockFragmentRecord,
   LayoutBox,
@@ -207,7 +208,11 @@ function reflowBlocks(
         : repaint.block(block);
     fresh.style.left = `${(block.box.x - after.box.x) * scale}px`;
     fresh.style.top = `${(block.box.y - after.box.y) * scale}px`;
-    blocks.push(fresh);
+    blocks.push(
+      block.kind === 'paragraph' && prior?.kind === 'paragraph'
+        ? retainPaintedParagraph(element, fresh)
+        : fresh
+    );
   }
   return blocks;
 }

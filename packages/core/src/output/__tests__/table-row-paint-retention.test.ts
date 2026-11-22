@@ -20,6 +20,7 @@ test('typing preserves unchanged row elements and matches a cold paint', () => {
   const paragraphs = (rowElement: Element) =>
     Array.from(rowElement.querySelectorAll('.docx-paragraph-fragment'));
   const [edited, untouched] = paragraphs(before[3]!);
+  const editedText = edited!.querySelector('.layout-run-text')!.firstChild;
   const node = part.root.children
     .find((n) => n.kind === 'body')!
     .children.find((n) => n.kind === 'table')! as OoxmlElement;
@@ -30,9 +31,11 @@ test('typing preserves unchanged row elements and matches a cold paint', () => {
   paintSemanticLayout(container, updated, { scale: 1 });
   const after = Array.from(container.querySelectorAll('.docx-table-row'));
   expect(after[0]).toBe(before[0]);
-  // The edited row keeps its element; only the edited paragraph inside it is rebuilt.
+  // Preserve the text node inside the edited cell as well as the neighboring cells.
   expect(after[3]).toBe(before[3]);
-  expect(paragraphs(after[3]!)[0]).not.toBe(edited);
+  expect(paragraphs(after[3]!)[0]).toBe(edited);
+  expect(edited!.querySelector('.layout-run-text')!.firstChild).toBe(editedText);
+  expect(editedText!.textContent).toContain('X');
   expect(paragraphs(after[3]!)[1]).toBe(untouched);
   expect(after[4]).toBe(before[4]);
   const cold = document.createElement('div');
