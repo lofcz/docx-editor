@@ -136,6 +136,11 @@ test('unchanged nested views and disclosure anchors stay mounted during peer edi
   );
   expect(views.every(Boolean)).toBe(true);
   expect(anchors.every(Boolean)).toBe(true);
+  const observers = views.map((view) => {
+    const observer = new MutationObserver(() => {});
+    observer.observe(view!.parentElement!, { childList: true });
+    return observer;
+  });
   const layers = hosts.map(({ container }) => container.querySelector('.docx-pages')!);
   const scans = { pageBodies: 0, summaries: 0 };
   const original = Element.prototype.querySelectorAll;
@@ -153,6 +158,11 @@ test('unchanged nested views and disclosure anchors stay mounted during peer edi
     }
   } finally {
     Element.prototype.querySelectorAll = original;
+    for (const [i, observer] of observers.entries()) {
+      const removed = observer.takeRecords().flatMap((event) => [...event.removedNodes]);
+      observer.disconnect();
+      expect(removed).not.toContain(views[i]);
+    }
   }
   converge();
   write(alice, 'Plot 0', 0, 'Nested ');

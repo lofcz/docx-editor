@@ -658,8 +658,15 @@ test('trusted views keep their host and state across paint and release each hidd
   const tail = editor.findMatches('Tail')[0]!;
   const point = { paragraphId: tail.blockId, offset: 0 };
   surface.setSelection({ anchor: point, head: point });
+  const observer = new MutationObserver(() => {});
+  observer.observe(first.element.parentElement!, { childList: true });
   expect(editor.exec({ type: 'insertText', text: 'Changed ' }).ok).toBe(true);
   surface.flushPendingInput();
+  const detached = observer
+    .takeRecords()
+    .some((record) => [...record.removedNodes].includes(first.element));
+  observer.disconnect();
+  expect(detached).toBe(false);
   expect(container.querySelector('[aria-pressed="true"]')?.parentElement).toBe(first.element);
   expect(mounts).toHaveLength(1);
   expect(released).toHaveLength(0);

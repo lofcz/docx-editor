@@ -2172,7 +2172,11 @@ function adoptPageBlocks(
   while (child) {
     const next = child.nextSibling;
     const element = child as HTMLElement;
-    if (!kept.has(element) && element.classList?.contains(COLUMN_SEPARATOR_CLASS) !== true) {
+    if (
+      !kept.has(element) &&
+      element.classList?.contains(COLUMN_SEPARATOR_CLASS) !== true &&
+      !element.hasAttribute?.('data-docx-host-ui')
+    ) {
       (child as ChildNode).remove();
     }
     child = next;
