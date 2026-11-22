@@ -23,8 +23,8 @@ export interface SurfacePaintObserver {
   /** Paint keeps native nodes on these materialized pages. Restore all borrowed nodes when the set is absent. */
   beforePaint?(
     retainedPages?: ReadonlySet<number>,
-    /** Opt in per page. The supplied roots keep their identity, but paint replaces their children.
-     * Return false from the predicate to restore the host's loans normally. Valid only during this call. */
+    /** Request a page plan during this call. Restore your loans when the request returns false.
+     * A structural plan can replace or remove the affected roots. Recheck slot membership after paint. */
     preserveParagraphRoots?: PreserveParagraphRoots
   ): void;
   afterPaint(frame: SurfacePaintFrame): void;

@@ -4465,7 +4465,8 @@ export function positionInputFromPropertiesCommand(command: {
 } | null): DrawingPositionInput;
 
 // @public
-export type PreserveParagraphRoots = (pageIndex: number, accepts: (changedRoots: ReadonlySet<HTMLElement>) => boolean) => boolean;
+export type PreserveParagraphRoots = (pageIndex: number, accepts: (changedRoots: ReadonlySet<HTMLElement>, structural?: boolean) => boolean,
+homeOf?: (root: HTMLElement) => ChildNode) => boolean;
 
 // @public
 export function probeTableChromeCommand(slot: TableChromeSlotId, draft?: TableChromeDraft): EditorCommand | null;

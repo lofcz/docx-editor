@@ -213,7 +213,9 @@ If your component borrows painted elements, use the page indices passed to `befo
 
 Set `replayCurrentFrame: true` when a new observer can borrow from an existing page. It receives the completed frame immediately. Later paints still call `beforePaint` to restore borrowed elements.
 
-A host can also request stable paragraph roots for a changed page. The optional second `beforePaint` argument accepts a page index and a predicate. The predicate receives the paragraph elements whose children paint will replace. Accept only when the host can keep its loans and position markers through those replacements. A successful request keeps the block roots in their current positions for this paint. A declined request uses normal restoration. Whole-page retention still uses the first argument.
+A host can also request stable paragraph roots for a changed page. The second `beforePaint` argument accepts a page index and a predicate. The predicate receives the roots that paint must change. Accept only when the host can keep its loans and position markers through those changes. Restore your own loans when the request returns false.
+
+To retain surviving roots when blocks enter or leave a page, supply a third argument to the request. This function returns the original page-position comment for each borrowed root and the element itself for an unborrowed root. The predicate receives `true` as its second argument for a structural change. After paint, update your slots to match the new block order. An accepted request keeps its guarantee if another observer returns its own loans.
 
 Peer edits do not open another reader's controls. Deleting a control or its exact summary removes that entry. Host moves preserve the view. Loading another document resets it.
 

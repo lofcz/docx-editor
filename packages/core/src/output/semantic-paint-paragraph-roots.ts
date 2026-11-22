@@ -4,8 +4,9 @@ import type {
   ParagraphFragmentRecord,
 } from '../layout/semantic-records.ts';
 import { changedPageParts } from './semantic-paint-page-diff.ts';
-import { reconcileParagraphChildren } from './semantic-paint-paragraph-children.ts';
 import { sameDataWithin } from './semantic-paint-record-equality.ts';
+import { reconcileParagraphChildren } from './semantic-paint-paragraph-children.ts';
+import { planStructuralRoots } from './semantic-paint-structural-roots.ts';
 
 /**
  * Reserve a page only if the host can keep its loans across these child replacements.
@@ -13,7 +14,9 @@ import { sameDataWithin } from './semantic-paint-record-equality.ts';
  */
 export type PreserveParagraphRoots = (
   pageIndex: number,
-  accepts: (changedRoots: ReadonlySet<HTMLElement>) => boolean
+  accepts: (changedRoots: ReadonlySet<HTMLElement>, structural?: boolean) => boolean,
+  /** The original position of a borrowed body fragment. Keep this marker until after paint. */
+  homeOf?: (root: HTMLElement) => ChildNode
 ) => boolean;
 
 /**
@@ -106,12 +109,13 @@ export function prepareParagraphRootPaint(
   reusable: ReadonlyMap<PageRecord, RetainedPage> | null,
   previousByIndex: ReadonlyMap<number, RetainedPage> | null,
   beforePaint: (retained: ReadonlySet<number>, preserve: PreserveParagraphRoots) => void,
-  paint: (page: PageRecord, fragment: ParagraphFragmentRecord) => HTMLElement
+  paint: (page: PageRecord, fragment: BlockFragmentRecord) => HTMLElement
 ) {
   type Plan = NonNullable<ReturnType<typeof planParagraphRootPaint>>;
   const reserved = new Map<number, Plan>();
-  const retained = new Set<number>();
+  const structuralPages = new Set<number>();
   const declinedPages = new Set<number>();
+  const retained = new Set<number>();
   for (const page of pages) {
     if (reusable?.get(page)?.materialized && (materialize?.has(page.index) ?? true))
       retained.add(page.index);
@@ -119,26 +123,51 @@ export function prepareParagraphRootPaint(
   const plans = new Map<number, Plan | null>();
   let accepting = true;
   try {
-    beforePaint(retained, (index, accepts) => {
-      if (!accepting || retained.has(index)) return false;
+    beforePaint(retained, (index, accepts, homeOf) => {
+      if (!accepting || retained.has(index) || declinedPages.has(index)) return false;
+      const granted = reserved.get(index);
+      if (granted) {
+        const structural = structuralPages.has(index);
+        if (structural && !homeOf) return false;
+        // Each observer owns its own loans. A later observer can return them without
+        // revoking an earlier observer's accepted plan and retained DOM.
+        return accepts(granted.changedRoots, structural);
+      }
       let plan = plans.get(index);
+      const prior = previousByIndex?.get(index),
+        page = pages[index];
+      if (
+        page?.index !== index ||
+        !prior?.materialized ||
+        prior.element.parentElement !== container ||
+        !(materialize?.has(index) ?? true)
+      )
+        return false;
+      // Chrome can change while the sheet keeps every body block.
+      if (prior.record === page) return accepts(new Set());
+      const delta = changedPageParts(prior.record, page);
+      if (!delta?.blocks || delta.furniture) return false;
       if (plan === undefined) {
-        const prior = previousByIndex?.get(index),
-          page = pages[index];
-        if (
-          page?.index !== index ||
-          !prior?.materialized ||
-          prior.element.parentElement !== container ||
-          !(materialize?.has(index) ?? true)
-        )
-          return false;
-        // Chrome may change while the sheet keeps every body paragraph and table.
-        // Only hosts that reserve paragraph roots can keep their loans in this case.
-        if (prior.record === page) return accepts(new Set());
-        const delta = changedPageParts(prior.record, page);
-        if (!delta?.blocks || delta.furniture || delta.controls) return false;
-        plan = planParagraphRootPaint(prior, page, (fragment) => paint(page, fragment));
+        plan = delta.controls
+          ? null
+          : planParagraphRootPaint(prior, page, (fragment) => paint(page, fragment));
         plans.set(index, plan);
+      }
+      if (!plan && homeOf) {
+        const structural = planStructuralRoots(
+          prior,
+          page,
+          (fragment) => paint(page, fragment),
+          homeOf
+        );
+        if (!structural) return false;
+        if (!accepts(structural.changedRoots, true)) {
+          declinedPages.add(index);
+          return false;
+        }
+        reserved.set(index, structural);
+        structuralPages.add(index);
+        return true;
       }
       if (!plan) return false;
       if (!accepts(plan.changedRoots)) {

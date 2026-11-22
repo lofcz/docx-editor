@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "A change in page fragment count returned every borrowed block to the page.",
+  "after": "Hosts can retain surviving fragments across local folds using their original page markers.",
+  "reason": "Each editor owns its local fragment markers. The change preserves shared operations and selection coordinates.",
+  "tests": [
+    "packages/core/src/editor/__tests__/surface-structural-roots.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-composition-preview.test.ts"
+  ],
+  "changeset": "structural-paragraph-root-loans",
+  "migration": null
+}
