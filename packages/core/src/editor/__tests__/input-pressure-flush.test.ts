@@ -28,11 +28,11 @@ function tick(): Promise<void> {
 }
 
 /** Queued browser input, for as long as the returned restore has not run. */
-function stubInputPending(): () => void {
+function stubInputPending(pending: () => boolean = () => true): () => void {
   const descriptor = Object.getOwnPropertyDescriptor(window.navigator, 'scheduling');
   Object.defineProperty(window.navigator, 'scheduling', {
     configurable: true,
-    value: { isInputPending: () => true },
+    value: { isInputPending: pending },
   });
   return () => {
     if (descriptor) Object.defineProperty(window.navigator, 'scheduling', descriptor);
@@ -98,6 +98,35 @@ function withPressureAndExpensiveLayout(
 }
 
 describe('commit-tail layout deferral under input pressure', () => {
+  test('an isolated browser key lands before the timer, but queued keys share their task', async () => {
+    let pending = false;
+    const restore = stubInputPending(() => pending);
+    const { surface, container } = mount(paragraph('tail'));
+    try {
+      putCaret(surface, 0);
+      keystroke(container, 'a');
+      await Promise.resolve();
+      expect(surface.session.bodyText()).toBe('atail');
+      keystroke(container, 'b');
+      pending = true;
+      await Promise.resolve();
+      expect(surface.session.bodyText()).toBe('atail');
+      keystroke(container, 'c');
+      await tick();
+      expect(surface.session.bodyText()).toBe('abctail');
+      pending = false;
+      surface.enqueueType('d');
+      await Promise.resolve();
+      expect(surface.session.bodyText()).toBe('abctail');
+      await tick();
+      expect(surface.session.bodyText()).toBe('abcdtail');
+    } finally {
+      surface.destroy();
+      container.remove();
+      restore();
+    }
+  });
+
   test('an expensive commit under pressure defers layout to its own task, then paints', async () => {
     await withPressureAndExpensiveLayout(async (surface, container) => {
       putCaret(surface, 0);

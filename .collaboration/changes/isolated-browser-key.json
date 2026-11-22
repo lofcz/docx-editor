@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Browser typing used a timer to commit isolated keys and queued text.",
+  "after": "An isolated browser key can commit at the next microtask when the browser confirms the discrete input queue is empty.",
+  "reason": "Both schedules use the existing typing transaction, selection and undo group. Peers receive the same operations.",
+  "tests": [
+    "packages/core/src/editor/__tests__/input-pressure-flush.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-equal-letter-typing.test.ts"
+  ],
+  "changeset": "isolated-browser-key",
+  "migration": null
+}

@@ -73,6 +73,53 @@ async function typingPair(clientIds: Readonly<Record<string, number>>) {
   return { alice, bob, sync, type, typed };
 }
 
+test('browser keys land before the timer and converge with concurrent typing', async () => {
+  const { alice, bob, sync, typed } = await typingPair(ORDERS[0]!);
+  const descriptor = Object.getOwnPropertyDescriptor(window.navigator, 'scheduling');
+  Object.defineProperty(window.navigator, 'scheduling', {
+    configurable: true,
+    value: { isInputPending: () => false },
+  });
+  try {
+    for (const [editor, data] of [
+      [alice, 'a'],
+      [bob, 'b'],
+    ] as const) {
+      editor
+        .surface!.hostElement()
+        .querySelector('.docx-pages')!
+        .dispatchEvent(
+          new InputEvent('beforeinput', {
+            bubbles: true,
+            cancelable: true,
+            inputType: 'insertText',
+            data,
+          })
+        );
+    }
+    await Promise.resolve();
+    expect(alice.surface!.session.bodyText()).toContain(LEAD + 'a');
+    expect(bob.surface!.session.bodyText()).toContain(LEAD + 'b');
+    sync();
+    expect(['ab', 'ba']).toContain(typed(alice));
+    expect(typed(bob)).toBe(typed(alice));
+    alice.exec({ type: 'undo' });
+    sync();
+    expect(typed(bob)).toBe('b');
+    alice.exec({ type: 'redo' });
+    sync();
+    const reopened = createDocxEditor({
+      container: document.createElement('div'),
+      document: new Uint8Array(await bob.save()),
+    });
+    editors.push(reopened);
+    expect(typed(reopened)).toBe(typed(alice));
+  } finally {
+    if (descriptor) Object.defineProperty(window.navigator, 'scheduling', descriptor);
+    else Reflect.deleteProperty(window.navigator, 'scheduling');
+  }
+});
+
 test.each(ORDERS)(
   'a letter typed before an equal letter of a peer keeps its caret after it %o',
   async (order) => {

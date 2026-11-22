@@ -9,6 +9,14 @@
  * programmatic write, so that gate asks for discrete input (keys, clicks) only.
  */
 export function browserInputPending(container: Element, includeContinuous = true): boolean {
+  return pendingBrowserInput(container, includeContinuous) ?? false;
+}
+
+/** An unavailable input queue cannot confirm that a buffered key is the last key. */
+export function pendingBrowserInput(
+  container: Element,
+  includeContinuous: boolean
+): boolean | undefined {
   const scheduling = (
     container.ownerDocument.defaultView?.navigator as
       | (Navigator & {
@@ -18,5 +26,5 @@ export function browserInputPending(container: Element, includeContinuous = true
         })
       | undefined
   )?.scheduling;
-  return scheduling?.isInputPending?.({ includeContinuous }) ?? false;
+  return scheduling?.isInputPending?.({ includeContinuous });
 }

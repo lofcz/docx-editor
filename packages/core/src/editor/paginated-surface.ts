@@ -48,7 +48,7 @@ import { refreshWriteBlocked, registerRefreshComposition } from './refresh-write
 import { UNEXPLAINED_WRITE_REFUSAL, writeBlockReason } from './refresh-write-guard.ts';
 import { createLegacyDropdownInteraction } from './surface-legacy-dropdown.ts';
 import { listSeparatorEnter } from './list-separator-enter.ts';
-import { browserInputPending } from './surface-input-pending.ts';
+import { browserInputPending, pendingBrowserInput } from './surface-input-pending.ts';
 export { setPaginatedSurfaceScale } from './surface-scale.ts';
 import { REPLICABLE_REVIEW_WRITES } from './surface-review-writes.ts';
 import { listParagraphStyleId } from './surface-list-style.ts';
@@ -6026,8 +6026,21 @@ export function mountPaginatedSurface(
   });
   const onBeforeInput = documentInputHandler((event: InputEvent): void => {
     selectionSync.adoptBeforeInput();
+    const previousTimer = typeFlushTimer;
     dispatchBeforeInput(event);
     if (!selectionSync.isComposing()) inputMethod.repair.watch(event);
+    const timer = typeFlushTimer;
+    if (event.inputType === 'insertText' && previousTimer === null && timer !== null) {
+      // Give an isolated key the next presentation opportunity. A queued burst or a browser
+      // without queue visibility retains the normal task that combines pending keystrokes.
+      queueMicrotask(
+        fieldScope.wrap(() => {
+          if (typeFlushTimer === timer && pendingBrowserInput(container, false) === false) {
+            flushTypeBuffer();
+          }
+        })
+      );
+    }
   });
 
   // One header and footer entry for the pointer and the drawing presses: no scroll, unlike the
