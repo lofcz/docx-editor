@@ -1,5 +1,6 @@
 // Bounded package trust boundary: OPC names, content types, relationships
 // (document-engine tasks 2.2, 2.6).
+export { blankDocumentBytes, type BlankDocumentOptions } from './blank-document.ts';
 export {
   ATOMIC_CONTENT_NAMESPACE,
   isAtomicContentControl,

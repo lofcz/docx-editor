@@ -1,6 +1,11 @@
 import { expect, test } from 'bun:test';
 import { strFromU8, unzipSync } from 'fflate';
 import { blankDocumentBytes } from '../blank-document.ts';
+import { blankDocumentBytes as createBlankPackage } from '../../store/index.ts';
+
+test('headless and editor callers share the same blank package builder', () => {
+  expect(createBlankPackage).toBe(blankDocumentBytes);
+});
 
 const parts = (bytes: Uint8Array) => {
   const files = unzipSync(bytes);

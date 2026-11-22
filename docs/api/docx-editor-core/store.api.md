@@ -183,6 +183,15 @@ export interface AuthorizationPort {
 export function beginOperation(init: OperationInit): OperationContext;
 
 // @public
+export function blankDocumentBytes(options?: BlankDocumentOptions): Uint8Array;
+
+// @public
+export interface BlankDocumentOptions {
+    readonly bidiLanguage?: string;
+    readonly direction?: 'ltr' | 'rtl';
+}
+
+// @public
 export function blockStoryContainerChildren(node: OoxmlNode): readonly OoxmlNode[] | null;
 
 // @public
