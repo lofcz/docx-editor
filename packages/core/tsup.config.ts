@@ -182,6 +182,9 @@ export default defineConfig([
   {
     ...shared,
     format: ['esm'],
+    // A separate split point keeps the stateful grapheme reader out of the pagination chunk.
+    // The public layout entry and all engine callers import the same generated module.
+    entry: { ...shared.entry, 'internal/grapheme': 'src/layout/grapheme.ts' },
     // Declarations are not built by tsup. `scripts/build-core-declarations.mjs` emits
     // them after this build, in a quarter of the memory tsup's declaration bundler
     // needs. Every `types` condition in package.json points at that one graph,

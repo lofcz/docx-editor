@@ -313,6 +313,7 @@ export default defineConfig({ plugins: [react()] });
     { cwd: reactAppDir }
   );
   assertNoConverters(reactAppDir);
+  run('node', [path.join(ROOT, 'scripts/test/grapheme-consumer.mjs'), reactAppDir]);
   run('npm', ['run', 'build'], { cwd: reactAppDir });
   // Server integrations must resolve from the same tarball without entering the browser bundle.
   run('npm', ['install', '--ignore-scripts', '@hocuspocus/server', '@types/node'], {

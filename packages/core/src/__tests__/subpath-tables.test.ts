@@ -98,12 +98,12 @@ describe('the published subpath tables agree', () => {
     expect({ missingBuildEntry: missing }).toEqual({ missingBuildEntry: [] });
   });
 
-  test('every build entry is an exported subpath', () => {
-    // The other direction: an entry nobody can import is dead weight in every bundle that
-    // shares its chunks, and reads as a public surface when it is not one.
+  test('only the ESM grapheme split point is private', () => {
     const exported = new Set(jsSubpaths.map(asEntryKey));
-    const orphans = Object.keys(config.entry).filter((entry) => !exported.has(entry));
-    expect({ unexportedBuildEntry: orphans }).toEqual({ unexportedBuildEntry: [] });
+    const privateEntries = configs.map((build) =>
+      Object.keys(build.entry).filter((entry) => !exported.has(entry))
+    );
+    expect(privateEntries).toEqual([['internal/grapheme'], []]);
   });
 
   test('the build alias table and the tsconfig paths name the same specifiers', () => {
@@ -155,7 +155,10 @@ describe('the published subpath tables agree', () => {
 
     expect(configs).toHaveLength(2);
     for (const build of configs.slice(1)) {
-      expect(build.entry).toEqual(config.entry);
+      expect(config.entry).toEqual({
+        ...build.entry,
+        'internal/grapheme': 'src/layout/grapheme.ts',
+      });
       expect(selfReferenceAliases(build)).toEqual(selfReferenceAliases(config));
     }
   });
