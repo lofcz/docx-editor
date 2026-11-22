@@ -1363,7 +1363,7 @@ export const wordFeatures: WordFeature[] = [
     roundTrip: 'full',
     tier: 'community',
     notes:
-      'Automatic zoom fits the available width between 50% and 100% by default. Hosts can choose fixed zoom, uncapped width fitting, or smaller pages beside the review pane. Automatic fitting keeps the top of the document in view when you start there.',
+      'Automatic zoom fits a resized viewport before paint, between 50% and 100% by default. Hosts can choose fixed zoom, uncapped width fitting, or smaller pages beside the review pane. Automatic fitting keeps the top of the document in view when you start there.',
   },
   {
     id: 'collab.document-refresh',

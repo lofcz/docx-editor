@@ -84,7 +84,7 @@ interface Harness {
   strip(px: number): void;
   /** Publish the review gutter's start half, as the viewport's `--docx-review-gutter-start` does. */
   gutterStart(px: number): void;
-  /** Deliver the resize callback and let the coalescing frame run. */
+  /** Deliver resize notifications and settle surface updates. */
   settle(): Promise<void>;
 }
 
@@ -134,7 +134,7 @@ function mount(options: Parameters<typeof createDocxEditor>[0] = {}): Harness {
     },
     async settle() {
       for (const callback of [...observerCallbacks]) callback();
-      // Two frames: one for the controller's coalescing rAF, one to be sure it ran.
+      // Let other surface observers finish their queued paint work.
       await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     },
   };
@@ -292,12 +292,17 @@ describe('tracking the viewport', () => {
     expect(surface.state().selection).toEqual(selection);
   });
 
-  test('a resize refits', async () => {
+  test('a narrower viewport fits during resize delivery and an identical delivery keeps the zoom', async () => {
     const harness = mount();
-    harness.resize(700);
     await harness.settle();
-
-    expect(harness.editor.getZoom()).toBeLessThan(1);
+    harness.resize(700);
+    for (const callback of [...observerCallbacks]) callback();
+    const zoom = harness.editor.getZoom();
+    expect(zoom).toBeLessThan(1);
+    const snapshot = harness.editor.snapshot();
+    for (const callback of [...observerCallbacks]) callback();
+    expect(harness.editor.getZoom()).toBe(zoom);
+    expect(harness.editor.snapshot()).toBe(snapshot);
   });
 
   // The feature behind "opening comments shrinks the document". Nothing here tells the engine

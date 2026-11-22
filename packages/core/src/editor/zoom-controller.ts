@@ -1,8 +1,8 @@
 // Keeping a fit mode fitted: measure the room, ask `zoom-fit.ts` for the scale, apply it.
 //
 // Split out of `docx-editor.ts` because that file is already near its max-lines cap and this
-// is the DOM half of the feature — a `ResizeObserver`, a computed-style read and a frame
-// callback. The arithmetic lives next door and is testable without any of it.
+// is the DOM half of the feature — a `ResizeObserver`, a computed-style read and a scale
+// change. The arithmetic lives next door and is testable without any of it.
 //
 // THE MEASUREMENT IS THE CONTENT BOX, not the width. `clientWidth` includes padding, and
 // padding on the scroll container is exactly how the chrome around the page reserves room:
@@ -19,7 +19,7 @@ import {
   isFitMode,
   reviewPaneEntitledZoom,
 } from './zoom-fit.ts';
-import { hostTimers, hostWindowOf } from './host-realm.ts';
+import { hostWindowOf } from './host-realm.ts';
 
 /** What the controller needs from the editor it serves. */
 export interface ZoomControllerHost {
@@ -66,7 +66,7 @@ export interface ZoomController {
    * and a real refit only on one that moved the page.
    */
   refitIfPageResized(): void;
-  /** Stop observing and cancel any pending frame. */
+  /** Stop observing the viewport. */
   detach(): void;
 }
 
@@ -127,9 +127,8 @@ function availableWidth(container: HTMLElement, reviewPaneScrolls = false): numb
 /**
  * Drive one editor's fit.
  *
- * COALESCED TO A FRAME. A `ResizeObserver` on a dragged window delivers a callback per frame
- * and a fit re-lays out the document, so an uncoalesced controller would re-paginate sixty
- * times a second. One pending frame at a time; the last measurement wins.
+ * ResizeObserver batches changes and runs before paint. Apply the fit in that delivery
+ * so the browser never draws the previous sheet width inside the resized viewport.
  *
  * IDEMPOTENT AT THE APPLY. `fitZoom` quantizes to whole percent, and a recomputation equal to
  * the scale already in force applies nothing. That is what breaks the scrollbar loop: fitting
@@ -140,17 +139,8 @@ function availableWidth(container: HTMLElement, reviewPaneScrolls = false): numb
 export function createZoomController(host: ZoomControllerHost): ZoomController {
   let observer: ResizeObserver | null = null;
   let observed: HTMLElement | null = null;
-  // Cancelled on the window that issued it: the scroller can move to another one in between.
-  const frames = hostTimers(() => observed);
-  let frame: number | null = null;
   /** The authored page width the last fit was computed against; see `refitIfPageResized`. */
   let fittedPageWidthTwips: number | null = null;
-
-  function cancelFrame(): void {
-    if (frame === null) return;
-    frames.cancelAnimationFrame(frame);
-    frame = null;
-  }
 
   function measureFit(pageWidth: () => number | null, opening = false): number | null {
     const mode = host.mode();
@@ -186,21 +176,6 @@ export function createZoomController(host: ZoomControllerHost): ZoomController {
     host.applyZoom(next);
   }
 
-  function schedule(): void {
-    // No rAF (headless, a detached document) means measure now. Losing the coalescing is a
-    // performance cost; losing the fit is a correctness one.
-    if (!observed || typeof hostWindowOf(observed).requestAnimationFrame !== 'function') {
-      refit();
-      return;
-    }
-    frames.migrate();
-    if (frame !== null) return;
-    frame = frames.requestAnimationFrame(() => {
-      frame = null;
-      refit();
-    });
-  }
-
   return {
     measureFit,
     refitIfPageResized(): void {
@@ -221,14 +196,8 @@ export function createZoomController(host: ZoomControllerHost): ZoomController {
       // The scroller's own window: an observer from another one never reports its boxes.
       const view = hostWindowOf(scroller);
       if (typeof view.ResizeObserver === 'function') {
-        let opening = scroller === fittedScroller;
         observer = new view.ResizeObserver(() => {
-          if (observed !== scroller) return;
-          if (!opening) return schedule();
-          // The browser has laid out the painted sheets. Confirm the opening fit now,
-          // including space taken by a scrollbar that appeared with the document.
-          opening = false;
-          refit();
+          if (observed === scroller) refit();
         });
         observer.observe(scroller);
         if (scroller === fittedScroller) {
@@ -240,7 +209,6 @@ export function createZoomController(host: ZoomControllerHost): ZoomController {
     },
     refit,
     detach(): void {
-      cancelFrame();
       observer?.disconnect();
       observer = null;
       observed = null;
