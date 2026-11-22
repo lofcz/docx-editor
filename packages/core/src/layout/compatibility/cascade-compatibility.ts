@@ -7,6 +7,7 @@ import type { CompatibilityProfile } from './compatibility-profile.ts';
 export interface CascadeCompatibility {
   readonly noColumnBalance?: true;
   readonly preserveExactLineBaseline?: true;
+  readonly cssHalfLeading?: true;
   readonly adjustLineHeightInTable?: true;
   readonly ignoreIndentAsNumberingTabStop?: true;
   readonly doNotBreakWrappedTables?: true;
@@ -20,6 +21,7 @@ export interface CascadeCompatibility {
 const CASCADE_RULES = [
   'noColumnBalance',
   'preserveExactLineBaseline',
+  'cssHalfLeading',
   'adjustLineHeightInTable',
   'ignoreIndentAsNumberingTabStop',
   'doNotBreakWrappedTables',

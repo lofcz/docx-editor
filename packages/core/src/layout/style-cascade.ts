@@ -126,6 +126,8 @@ export interface StyleCascadeTable {
   readonly distributedSpacing?: 'characters' | 'legacyCharacters';
   /** Legacy noExtraLineSpacing behavior, included in the producer fingerprint. */
   readonly preserveExactLineBaseline?: true;
+  /** Engine `cssHalfLeading`: extra line height splits evenly around the text. */
+  readonly cssHalfLeading?: true;
   /** `w:adjustLineHeightInTable`: cell paragraphs snap to the section line grid too. */
   readonly adjustLineHeightInTable?: true;
   /** `w:doNotUseIndentAsNumberingTabStop`, carried onto each paragraph's tab stops. */

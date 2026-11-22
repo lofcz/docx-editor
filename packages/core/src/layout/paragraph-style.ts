@@ -153,6 +153,8 @@ export interface ParagraphLineSpacing {
    * @internal
    */
   readonly descentAnchored?: true;
+  /** Engine `cssHalfLeading`: exact and at-least extra height splits evenly around the text. */
+  readonly halfLeading?: true;
   /**
    * Active section line-grid pitch in points (`w:docGrid/@w:linePitch`). Present only when
    * the paragraph snaps to the grid; only with `auto`. See `line-grid.ts`.
@@ -163,11 +165,17 @@ export interface ParagraphLineSpacing {
 /** The document-level line rules a style cascade turns on for every paragraph it resolves. */
 export function cascadeLineSpacingFlags(
   cascade:
-    { readonly preserveExactLineBaseline?: true; readonly drawingTextLines?: true } | undefined
-): Pick<ParagraphLineSpacing, 'preserveExactBaseline' | 'descentAnchored'> {
+    | {
+        readonly preserveExactLineBaseline?: true;
+        readonly drawingTextLines?: true;
+        readonly cssHalfLeading?: true;
+      }
+    | undefined
+): Pick<ParagraphLineSpacing, 'preserveExactBaseline' | 'descentAnchored' | 'halfLeading'> {
   return {
     ...(cascade?.preserveExactLineBaseline ? { preserveExactBaseline: true as const } : {}),
     ...(cascade?.drawingTextLines ? { descentAnchored: true as const } : {}),
+    ...(cascade?.cssHalfLeading ? { halfLeading: true as const } : {}),
   };
 }
 
@@ -479,6 +487,12 @@ export function applyLineSpacing(
       : spacing.rule === 'exact'
         ? spacing.value
         : Math.max(naturalHeight, spacing.value);
+  // CSS half-leading: the text band sits centred in a taller (or shorter) exact/atLeast box.
+  if (spacing.halfLeading && spacing.rule !== 'auto' && !spacing.preserveExactBaseline) {
+    const half = (height - naturalHeight) / 2;
+    if (spacing.rule === 'exact' || half > 0)
+      return { height, baseline: naturalBaseline + half, trailing: Math.max(0, half) };
+  }
   // Exact-height lines use a fixed 80/20 baseline split, independent of the face.
   // Legacy noExtraLineSpacing retains the natural baseline (clamped to the box).
   if (spacing.rule === 'exact') {

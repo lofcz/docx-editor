@@ -21,6 +21,11 @@ import {
 } from './compatibility-rules.ts';
 
 const WORD_URI = 'http://schemas.microsoft.com/office/word';
+/**
+ * The engine's own `w:compatSetting` namespace. Word keeps settings under a URI it does not know
+ * and ignores them, so a document can ask this engine for screen behavior Word does not have.
+ */
+export const ENGINE_COMPAT_URI = 'urn:docx-editor.dev:layout';
 
 /**
  * How each option is read, as the reader it replaced read it. `on-or-missing`: a missing value
@@ -62,6 +67,8 @@ export interface CompatibilityProfile {
   readonly modeRefused: boolean;
   readonly legacy: Readonly<Partial<Record<LegacyOption, boolean>>>;
   readonly settings: Readonly<Partial<Record<WordSetting, boolean | 'ambiguous'>>>;
+  /** Engine settings under {@link ENGINE_COMPAT_URI}. */
+  readonly engine: Readonly<{ cssHalfLeading?: boolean }>;
   has(rule: CompatibilityRuleName): boolean;
 }
 
@@ -82,6 +89,7 @@ export function compatibilityProfileFromSettings(root: OoxmlElement | null): Com
   const isSettings = root?.namespaceUri === WML_NAMESPACE_URI && root.localName === 'settings';
   const legacy: Partial<Record<LegacyOption, boolean>> = {};
   const settings: Partial<Record<WordSetting, boolean | 'ambiguous'>> = {};
+  const engine: { cssHalfLeading?: boolean } = {};
   let modeDeclarations = 0;
   let modeValue: number | undefined;
   let firstCompat = true;
@@ -97,6 +105,14 @@ export function compatibilityProfileFromSettings(root: OoxmlElement | null): Com
       if (option.kind === 'textValue' || option.namespaceUri !== WML_NAMESPACE_URI) continue;
       if (option.localName === 'compatSetting') {
         const name = attribute(option, 'name');
+        if (
+          isSettings &&
+          name === 'cssHalfLeading' &&
+          attribute(option, 'uri') === ENGINE_COMPAT_URI
+        ) {
+          engine.cssHalfLeading = onOff(attribute(option, 'val'), 'not-off');
+          continue;
+        }
         if (name === undefined || attribute(option, 'uri') !== WORD_URI) continue;
         const raw = attribute(option, 'val');
         if (name === 'compatibilityMode') {
@@ -160,6 +176,7 @@ export function compatibilityProfileFromSettings(root: OoxmlElement | null): Com
     modeRefused,
     legacy,
     settings,
+    engine,
     has: (rule) =>
       Object.hasOwn(MODE_RULES, rule)
         ? MODE_RULES[rule as ModeRuleName].mode === profile.modeClass

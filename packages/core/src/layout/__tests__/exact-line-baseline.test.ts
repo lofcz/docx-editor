@@ -92,3 +92,49 @@ test('baseline policy reaches body and cell lines and invalidates reused paragra
     }
   }
 });
+
+test('the engine cssHalfLeading setting centres the text band in exact and at-least lines', () => {
+  const engine = (val = '1') =>
+    settings(
+      15,
+      `<w:compatSetting w:name="cssHalfLeading" w:uri="urn:docx-editor.dev:layout" w:val="${val}"/>`
+    );
+  expect(compatibilityProfileFromSettings(engine()).has('cssHalfLeading')).toBe(true);
+  expect(compatibilityProfileFromSettings(engine('0')).has('cssHalfLeading')).toBe(false);
+  expect(compatibilityProfileFromSettings(settings(15)).has('cssHalfLeading')).toBe(false);
+  // A Word URI does not turn it on.
+  expect(
+    compatibilityProfileFromSettings(
+      settings(
+        15,
+        '<w:compatSetting w:name="cssHalfLeading" w:uri="http://schemas.microsoft.com/office/word" w:val="1"/>'
+      )
+    ).has('cssHalfLeading')
+  ).toBe(false);
+  // 19.5 pt line, 14.5 pt text band with an 11.6 pt ascent: 2.5 pt above and below.
+  expect(applyLineSpacing({ rule: 'atLeast', value: 19.5, halfLeading: true }, 14.5, 11.6)).toEqual(
+    {
+      height: 19.5,
+      baseline: 14.1,
+      trailing: 2.5,
+    }
+  );
+  expect(applyLineSpacing({ rule: 'exact', value: 19.5, halfLeading: true }, 14.5, 11.6)).toEqual({
+    height: 19.5,
+    baseline: 14.1,
+    trailing: 2.5,
+  });
+  // A shorter exact line overlaps the band evenly; an at-least value below the text is natural.
+  expect(applyLineSpacing({ rule: 'exact', value: 12.5, halfLeading: true }, 14.5, 11.6)).toEqual({
+    height: 12.5,
+    baseline: 10.6,
+    trailing: 0,
+  });
+  expect(applyLineSpacing({ rule: 'atLeast', value: 10, halfLeading: true }, 14.5, 11.6)).toEqual({
+    height: 14.5,
+    baseline: 11.6,
+    trailing: 0,
+  });
+  // Without the setting Word's placement stays: at-least extra above, exact 80/20.
+  expect(applyLineSpacing({ rule: 'atLeast', value: 19.5 }, 14.5, 11.6).baseline).toBeCloseTo(16.6);
+});

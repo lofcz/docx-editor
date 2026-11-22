@@ -310,6 +310,12 @@ export const PROFILE_RULES = {
     source: 'ECMA-376 Part 4 §14.8.3 splitPgBreakAndParaMark',
     applies: (p) => p.legacy.splitPgBreakAndParaMark === true && p.modeClass === 'legacy',
   },
+  cssHalfLeading: {
+    behavior:
+      'An exact or at-least line taller than its text splits the extra height evenly above and below the text, as CSS half-leading does, instead of placing it as Word does',
+    source: 'docx-editor engine setting cssHalfLeading (urn:docx-editor.dev:layout)',
+    applies: (p) => p.engine.cssHalfLeading === true,
+  },
   preserveExactLineBaseline: {
     behavior:
       'With `w:noExtraLineSpacing`, an exact-height line keeps the face baseline in every compatibility mode, also a refused one',
