@@ -81,6 +81,35 @@ const prefixKeyframes = {
   },
 };
 
+// The expanded utilities carry generic names (`.rounded-md`, `.flex`, `.bg-primary`).
+// Scoped under `.docx-editor` they still beat a host's same-named utilities on host
+// markup rendered INSIDE the editor (widgets, embedded views): an unlayered rule outranks
+// every layered one, and Tailwind v4 hosts layer their utilities. Moving ours into the
+// cascade layer `base` gives them the lowest author priority: a layered host appends them
+// to its own `base` layer, before its `components` and `utilities`, and an unlayered
+// host outranks them everywhere. Chrome that must not yield uses component rules instead.
+const layerUtilities = {
+  postcssPlugin: 'layer-utilities',
+  OnceExit(cssRoot) {
+    let start, end;
+    cssRoot.each((node) => {
+      if (node.type !== 'comment') return;
+      if (node.text.includes('docx-editor-utilities:start')) start = node;
+      if (node.text.includes('docx-editor-utilities:end')) end = node;
+    });
+    if (!start || !end) throw new Error('core: utility markers missing from editor.css');
+    const layer = postcss.atRule({ name: 'layer', params: 'base' });
+    let node = start.next();
+    while (node && node !== end) {
+      const next = node.next();
+      layer.append(node.remove());
+      node = next;
+    }
+    start.replaceWith(layer);
+    end.remove();
+  },
+};
+
 // The shipped file is minified. Tailwind emits every utility the config generates,
 // pretty-printed, which is ~three times the bytes a host actually downloads.
 //
@@ -110,6 +139,7 @@ const compiled = await postcss([
   tailwindcss({ config: join(root, 'tailwind.dist.config.cjs') }),
   scopeTailwindDefaults,
   prefixKeyframes,
+  layerUtilities,
   autoprefixer(),
 ]).process(input, { from, map: false });
 

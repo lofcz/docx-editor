@@ -27,7 +27,9 @@
  * preflight disabled purely for the `--tw-*` custom-property defaults.
  */
 
+/*! docx-editor-utilities:start */
 @tailwind utilities;
+/*! docx-editor-utilities:end */
 
 /* ============================================================================
   * CSS CUSTOM PROPERTIES (shadcn theme)
