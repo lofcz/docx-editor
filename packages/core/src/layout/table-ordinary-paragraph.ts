@@ -72,7 +72,7 @@ function ordinaryParagraph(root: OoxmlNode, policy: keyof typeof paragraphCaches
       if (visited > MAX_PART_SCAN_ELEMENTS) return false;
       if (
         !props.children.every(
-          (c) =>
+          (c: OoxmlNode) =>
             c.kind !== 'textValue' &&
             c.namespaceUri === WML_NAMESPACE_URI &&
             controlMetadata.has(c.localName) &&
