@@ -1154,6 +1154,9 @@ export type EditorCommand = {
 
 // @public
 export interface EditorCommands extends EditorCommandShape<DocEdits>, EditorHeaderFooterCommands, EditorNoteCommands, EditorFormatPainterCommands, EditorBookmarkCommands, EditorChartCommands {
+    changeCase: {
+        mode: 'sentence' | 'lowercase' | 'uppercase' | 'capitalizeWords' | 'toggle';
+    };
     clearFormatting: Record<never, never>;
     commitTableColumnDividerResize: {
         leftWidthTwips: number;

@@ -71,6 +71,7 @@ const EXPECTED_SLOTS: readonly ChromeSlotId[] = [
   'styles.style',
   'font.family',
   'font.size',
+  'font.changeCase',
   'text.bold',
   'text.italic',
   'text.underline',
@@ -211,6 +212,7 @@ describe('legacy chrome descriptor', () => {
       'chart.title',
       'chart.type',
       'chart.valueAxisTitle',
+      'font.changeCase',
       'font.family',
       'font.size',
       'image.altText',
@@ -385,7 +387,7 @@ describe('legacy chrome descriptor', () => {
   });
 
   test('the count is stable, so a dropped control fails rather than passing quietly', () => {
-    expect(chromeControlCount()).toBe(100);
+    expect(chromeControlCount()).toBe(101);
   });
 
   test('the table group is contextual and carries border, fill, merge, and split slots', () => {

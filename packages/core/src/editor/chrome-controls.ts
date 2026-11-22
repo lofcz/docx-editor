@@ -247,6 +247,8 @@ export const CHROME_GROUPS = [
         id: 'changeCase',
         shape: 'dropdown',
         labelKey: 'font.changeCase',
+        valueKey: 'font.changeCase',
+        valueText: 'Aa',
         paths: null,
         defaultToolbar: false,
         state: { kind: 'value' },
