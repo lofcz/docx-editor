@@ -4,7 +4,12 @@ const ownedChildren = new WeakMap<HTMLElement, readonly HTMLElement[]>();
 export function recordParagraphChildren(root: HTMLElement): HTMLElement {
   const children = Array.from(root.children) as HTMLElement[];
   for (const child of children) {
-    if (child.dataset.lineId) ownedChildren.set(child, Array.from(child.children) as HTMLElement[]);
+    if (!child.dataset.lineId) continue;
+    const runs = Array.from(child.children) as HTMLElement[];
+    ownedChildren.set(child, runs);
+    for (const run of runs) {
+      if (run.dataset.docxLink) ownedChildren.set(run, Array.from(run.children) as HTMLElement[]);
+    }
   }
   ownedChildren.set(root, children);
   return root;
@@ -66,6 +71,39 @@ function reconcileOwned(
   ownedChildren.set(root, next);
 }
 
+function runIdentity(run: HTMLElement): string | undefined {
+  if (run.dataset.docxLink) return `link:${run.dataset.docxLink}`;
+  if (run.dataset.docxInlineWidget) return `widget:${run.dataset.docxInlineWidget}`;
+  return undefined;
+}
+
+function updateRuns(parent: HTMLElement, fresh: HTMLElement): void {
+  const runs = ownedChildren.get(parent)!;
+  const keyed = new Map<string, HTMLElement | null>();
+  for (const run of runs) {
+    const key = runIdentity(run);
+    if (key) keyed.set(key, keyed.has(key) ? null : run);
+  }
+  const used = new Set<HTMLElement>();
+  reconcileOwned(parent, fresh, (child, index) => {
+    const key = runIdentity(child);
+    const old = (key && keyed.get(key)) || runs[index];
+    if (!old || used.has(old) || old.parentNode !== parent || runIdentity(old) !== key)
+      return child;
+    if (child.dataset.docxLink && ownedChildren.has(old)) {
+      used.add(old);
+      copyAttributes(old, child);
+      updateRuns(old, child);
+      return old;
+    }
+    if (!plainRun(old) || !plainRun(child)) return child;
+    used.add(old);
+    copyAttributes(old, child);
+    setRunText(old.firstChild as Text, child.textContent ?? '');
+    return old;
+  });
+}
+
 /** Keep text and its browser selection connected. Replace opaque paint at its own position. */
 export function reconcileParagraphChildren(root: HTMLElement, fresh: HTMLElement): void {
   const old = ownedChildren.get(root)!;
@@ -77,13 +115,7 @@ export function reconcileParagraphChildren(root: HTMLElement, fresh: HTMLElement
     const runs = line && ownedChildren.get(line);
     if (!line || line.parentNode !== root || !runs) return source;
     copyAttributes(line, source);
-    reconcileOwned(line, source, (child, i) => {
-      const run = runs[i];
-      if (!plainRun(run) || run.parentNode !== line || !plainRun(child)) return child;
-      copyAttributes(run, child);
-      setRunText(run.firstChild as Text, child.textContent ?? '');
-      return run;
-    });
+    updateRuns(line, source);
     return line;
   });
 }

@@ -28,3 +28,29 @@ test('typing keeps the connected line, text node, and paragraph control', () => 
     container.remove();
   }
 });
+
+test('inserting a word before a link keeps the link and its text attached', () => {
+  const container = document.createElement('div');
+  document.body.append(container);
+  const body =
+    '<w:p><w:r><w:t xml:space="preserve">Read </w:t></w:r>' +
+    '<w:hyperlink w:anchor="target"><w:r><w:t>here</w:t></w:r></w:hyperlink></w:p>';
+  const editor = createDocxEditor({ container, document: docx(body) });
+  try {
+    const surface = editor.surface!;
+    const link = container.querySelector('a.docx-hyperlink')!;
+    const run = link.querySelector('.layout-run-text')!;
+    const text = run.firstChild!;
+    const point = { paragraphId: surface.session.paragraphIds()[0]!, offset: 0 };
+    surface.setSelection({ anchor: point, head: point });
+    surface.insertPlainText('Now ');
+    surface.flushPendingInput();
+    expect(container.querySelector('a.docx-hyperlink')).toBe(link);
+    expect(text.isConnected).toBe(true);
+    expect(run.getAttribute('data-start')).toBe('9');
+    expect(link.getAttribute('href')).toBe('#target');
+  } finally {
+    editor.destroy();
+    container.remove();
+  }
+});
