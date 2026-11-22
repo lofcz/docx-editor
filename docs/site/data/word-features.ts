@@ -133,7 +133,8 @@ export const wordFeatures: WordFeature[] = [
     rendering: 'full',
     roundTrip: 'full',
     tier: 'community',
-    notes: 'Change the case of selected letters across runs and paragraphs. Rectangular cell selections and split graphemes are unsupported.',
+    notes:
+      'Change the case of selected letters across runs and paragraphs. Rectangular cell selections and split graphemes are unsupported.',
   },
   {
     id: 'text.input-method',
