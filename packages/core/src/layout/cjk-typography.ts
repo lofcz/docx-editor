@@ -25,11 +25,22 @@ export interface CjkTypographySettings {
    */
   readonly eastAsianSpacing?: false;
   /**
-   * A legacy compatibility mode (`lineEndPunctuationAtEveryAlignment`): line-end punctuation
-   * hangs at every paragraph alignment, and the paragraph kinsoku switch does not stop it.
+   * A legacy compatibility mode (`w:compatSetting` `compatibilityMode` 14 or earlier, or none;
+   * rule `lineEndPunctuationAtEveryAlignment`). Line-end punctuation hangs at every paragraph
+   * alignment, and the paragraph kinsoku switch does not stop it. With punctuation compression
+   * (`w:characterSpacingControl`), compression fits lines at every alignment within the
+   * half-advance limit (`exceedsLegacyAdmission`), Korean marks keep their advances
+   * (`legacyKoreanMarks`), and a hyphen-minus glues to the text after it.
    * @internal
    */
   readonly legacyLineEndPunctuation?: true;
+  /**
+   * The compatibility rule `alternateLineEndFit` (`w:useAltKinsokuLineBreakRules` in a legacy
+   * mode): a line-end mark outside its language's hanging set never hangs. It may give up a
+   * blank right half to fit, as `alternateLineEndAdvance` describes.
+   * @internal
+   */
+  readonly alternateLineEndFit?: true;
   /**
    * The compatibility setting `w:balanceSingleByteDoubleByteWidth`: a space beside East Asian
    * text, and each space of a run of spaces, takes the balanced width (`balanced-space-widths.ts`).

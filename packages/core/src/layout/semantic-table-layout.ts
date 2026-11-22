@@ -15,6 +15,7 @@ import { cellContextualSpacing, contextualCellNeighbours } from './contextual-pa
 import { emitNestedTable } from './nested-table-layout.ts';
 import { alignCellContent, createCellFloats, withCellFloatBox } from './cell-float-tables.ts';
 import { paragraphIsRtl } from './rtl-paragraph.ts';
+import { tocLinkRangesOf } from './toc-link-formatting.ts';
 import { paragraphBoxOutdent } from './paragraph-indent.ts';
 import { lineContentX, pendingLineExclusionSkipAtPlacement } from './pending-line.ts';
 import { emptyParagraphStyleFields } from './empty-paragraph-style.ts';
@@ -272,8 +273,8 @@ export interface TableFlowDeps {
   readonly showFieldCodes?: boolean;
   /** @internal */
   readonly fieldCodeRanges?: import('./field-code-toc.ts').FieldCodeRanges;
-  /** @internal Word TOC character-style suppression. */
-  readonly tocLinkStyleRanges?: import('./toc-link-formatting.ts').TocLinkRanges;
+  /** TOC link ranges by paragraph id. Required: outside a TOC, pass `undefined`. @internal */
+  readonly tocLinkStyleRanges: import('./toc-link-formatting.ts').TocLinkRanges | undefined;
   /** Document properties for document-property fields; the same object every flow shares. */
   readonly documentProperties?: import('@docx-editor.dev/core/store').DocumentProperties;
   /**
@@ -565,7 +566,7 @@ function placeCellParagraph(
           ...(deps.projectFieldLink ? { projectFieldLink: deps.projectFieldLink } : {}),
           showFieldCodes: deps.showFieldCodes,
           fieldCodeRanges: deps.fieldCodeRanges?.get(paragraphId),
-          tocLinkStyleRanges: deps.tocLinkStyleRanges?.get(paragraphId),
+          tocLinkStyleRanges: tocLinkRangesOf(paragraph, deps.tocLinkStyleRanges),
           suppressEmptyPlaceholderLine: deps.fieldCodeRanges
             ?.get(paragraphId)
             ?.some((range) => range.suppressParagraph),
@@ -770,6 +771,7 @@ function placeCellParagraph(
         : pendingLine.baseline,
       leading: collapseHeight ? 0 : pendingLine.leading,
       trailingSpacing: collapseHeight ? 0 : pendingLine.trailingSpacing,
+      ...(pendingLine.hangingMarkBlank ? { hangingMarkBlank: pendingLine.hangingMarkBlank } : {}),
       ...(pendingLine.characterFillBand && !collapseHeight
         ? { characterFillBand: pendingLine.characterFillBand }
         : {}),

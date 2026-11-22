@@ -8,6 +8,7 @@ import {
 } from '@docx-editor.dev/core/store';
 import {
   createFixedMeasurer,
+  buildStyleCascadeTable,
   emptyTocPlaceholderParagraphIds,
   layoutSemanticDocument,
   paragraphFragmentsOf,
@@ -46,8 +47,62 @@ const EMPTY_TOC_FIELD =
   '<w:p><w:r><w:fldChar w:fldCharType="begin"/><w:instrText> TOC \\o "1-5" \\h </w:instrText><w:fldChar w:fldCharType="separate"/></w:r></w:p>' +
   '<w:p><w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>';
 
+test('TOC result formatting ignores the Hyperlink style with a numeric style ID', () => {
+  const styles = readOoxmlPart(
+    '<w:styles xmlns:w="' +
+      W +
+      '"><w:style w:styleId="37" w:type="character"><w:name w:val="Hyperlink"/>' +
+      '<w:rPr><w:color w:val="0563C1"/><w:u w:val="single"/></w:rPr></w:style>' +
+      '<w:style w:styleId="Custom" w:type="character"><w:name w:val="Custom link"/>' +
+      '<w:rPr><w:color w:val="008033"/><w:u w:val="single"/></w:rPr></w:style></w:styles>',
+    { name: '/word/styles.xml', contentType: 'application/xml' }
+  );
+  if (!styles.ok) throw new Error(styles.reason);
+  const run = (text: string, id = '37', direct = '') =>
+    '<w:r><w:rPr><w:rStyle w:val="' + id + '"/>' + direct + '</w:rPr><w:t>' + text + '</w:t></w:r>';
+  const row =
+    '<w:p><w:pPr><w:tabs><w:tab w:val="right" w:leader="dot" w:pos="4800"/></w:tabs></w:pPr>' +
+    '<w:r><w:fldChar w:fldCharType="begin"/><w:instrText> HYPERLINK \\l "_TocAlpha" </w:instrText>' +
+    '<w:fldChar w:fldCharType="separate"/></w:r>' +
+    run('Entry') +
+    '<w:r><w:tab/><w:t>2</w:t><w:fldChar w:fldCharType="end"/></w:r></w:p>';
+  const toc = CHROME_ONLY_OPENING.replace(
+    '<w:p><w:pPr><w:pStyle w:val="TOC1"/></w:pPr><w:r><w:t>Introduction</w:t></w:r></w:p>',
+    row +
+      '<w:p>' +
+      run('Authored', '37', '<w:color w:val="A02030"/>') +
+      run('Custom', 'Custom') +
+      '</w:p>'
+  );
+  const layout = layoutSemanticDocument(load(toc + '<w:p>' + run('Outside') + '</w:p>'), 1, {
+    measurer: createFixedMeasurer(6, 14),
+    styleCascade: buildStyleCascadeTable(styles.part.root),
+  });
+  const spans = layout.pages
+    .flatMap((page) => paragraphFragmentsOf(page))
+    .flatMap((fragment) => fragment.lines)
+    .flatMap((line) => line.spans);
+  const entry = spans.find((span) => span.text === 'Entry')!;
+  const leader = spans.find((span) => span.tabLeader === 'dot')!;
+  expect(entry.style).toMatchObject({ color: null, underline: null });
+  expect(leader.style.underline).toBeNull();
+  // Outside a link the style stays: direct color wins, and the style still adds its underline.
+  expect(spans.find((span) => span.text === 'Authored')!.style).toMatchObject({
+    color: 'A02030',
+    underline: { variant: 'single' },
+  });
+  expect(spans.find((span) => span.text === 'Custom')!.style).toMatchObject({
+    color: '008033',
+    underline: { variant: 'single' },
+  });
+  expect(spans.find((span) => span.text === 'Outside')!.style).toMatchObject({
+    color: '0563C1',
+    underline: { variant: 'single' },
+  });
+});
+
 describe('TOC field chrome layout', () => {
-  test('an opening that carries the first entry keeps its row while ending chrome stays suppressed', () => {
+  test('an opening that carries the first entry keeps its row above the closing line', () => {
     const part = load(`<w:sdt><w:sdtPr/><w:sdtContent>${TOC_FIELD}</w:sdtContent></w:sdt>`);
     const toc = detectBodyTocs(part)[0]!;
     const layout = layoutSemanticDocument(part, 1, { measurer: createFixedMeasurer(6, 14) });
@@ -60,9 +115,40 @@ describe('TOC field chrome layout', () => {
     expect(
       opening!.lines.flatMap((line) => line.spans.map((span) => span.text)).join('')
     ).toContain('Introduction');
-    expect(
-      fragments.find((fragment) => fragment.paragraphId === toc.endParagraphId)
-    ).toBeUndefined();
+    // The separate closing paragraph holds only the end field character, but its mark
+    // still occupies the line below the entry, also inside a content control.
+    const closing = fragments.find((fragment) => fragment.paragraphId === toc.endParagraphId);
+    expect(closing?.box.y).toBe(opening!.box.y + opening!.box.height);
+  });
+
+  test('a bare populated TOC keeps the height of its separate closing paragraph before a table', () => {
+    const end = '<w:fldChar w:fldCharType="end"/>';
+    const closing = TOC_FIELD.replace(
+      `<w:p><w:r>${end}</w:r></w:p>`,
+      `<w:p><w:pPr><w:spacing w:line="360" w:lineRule="exact"/></w:pPr><w:r>${end}</w:r></w:p>`
+    );
+    const inline = TOC_FIELD.replace(
+      `</w:p><w:p><w:r>${end}</w:r></w:p>`,
+      `<w:r>${end}</w:r></w:p>`
+    );
+    const table =
+      '<w:tbl><w:tblGrid><w:gridCol w:w="2400"/></w:tblGrid>' +
+      '<w:tr><w:tc><w:p><w:r><w:t>Following table</w:t></w:r></w:p></w:tc></w:tr></w:tbl>';
+    const render = (field: string) => {
+      const part = load(field + table);
+      const layout = layoutSemanticDocument(part, 1, { measurer: createFixedMeasurer(6, 14) });
+      const firstPage = layout.pages[0]!;
+      const ending = paragraphFragmentsOf(firstPage).find(
+        (fragment) => fragment.paragraphId === detectBodyTocs(part)[0]!.endParagraphId
+      );
+      return {
+        closingHeight: ending?.box.height,
+        tableTop: firstPage.fragments.find((fragment) => fragment.kind === 'table')!.box.y,
+      };
+    };
+    const authored = render(closing);
+    expect(authored.closingHeight).toBe(18);
+    expect(authored.tableTop - render(inline).tableTop).toBe(18);
   });
 
   test('an opening holding only field chrome contributes no row', () => {

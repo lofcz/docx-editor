@@ -45,6 +45,7 @@ import {
   insertionSiteAfterAtom,
 } from './tree-op-field-end-site.ts';
 import { continuedRevisionRun } from './same-revision.ts';
+import { siteBeforeFieldBegin } from './tree-op-field-edge.ts';
 import {
   besideRestrictedControl,
   holdsContentControl,
@@ -580,7 +581,8 @@ export function insertionSite(
     owner === null && bias === 'left'
       ? leadingPromptSite(paragraph, offset, paragraphOffsetIndex(paragraph))
       : null;
-  const raw = before ?? rawInsertionSite(paragraph, offset, owner, bias);
+  const resolved = before ?? rawInsertionSite(paragraph, offset, owner, bias);
+  const raw = siteBeforeFieldBegin(paragraph, offset, owner, resolved); // tree-op-field-edge.ts
   if (owner !== null) {
     // A named link owns its wrapper, not the protected controls nested inside it.
     // Keep edge insertions in that link while preserving every outer protection gate.

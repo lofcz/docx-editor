@@ -71,7 +71,12 @@ import {
 import { DEFAULT_REVISION_DISPLAY_MODE, revisionsVisible } from './revision-projection.ts';
 import type { ParagraphLayoutCache } from './layout-cache.ts';
 import { cjkChopCutAllowedAt, wordBoundaries } from './cjk-line-break.ts';
-import { cjkParagraphBreaks, protectedSeamAfter, protectsSeam } from './cjk-paragraph-breaks.ts';
+import {
+  cjkParagraphBreaks,
+  protectedSeamAfter,
+  protectsSeam,
+  spacesJoinProtectedGroup,
+} from './cjk-paragraph-breaks.ts';
 import { createParagraphCjkOpticalFitter, appendOpticalCjkCandidate } from './cjk-optical-fit.ts';
 import {
   compressCjkPieces,
@@ -136,7 +141,7 @@ import { collectLineChangeSites } from './paragraph-change-sites.ts';
 import { rebreakForEarlierOwnBands } from './top-and-bottom-earlier-lines.ts';
 // Ignore subpixel rounding: a tab that ends exactly at the margin must not wrap.
 const OVERFLOW_TOLERANCE_PT = 0.001;
-import type { ParagraphFlowOptions } from './paragraph-flow-options.ts';
+import type { TocParagraphFlowOptions } from './paragraph-flow-options.ts';
 import { ignoreCellColumnBreaks } from './table-cell-column-breaks.ts';
 export type { ParagraphFlowOptions } from './paragraph-flow-options.ts';
 export { propertiesOf };
@@ -187,9 +192,9 @@ export function breakParagraph(
   cacheKey: string | null,
   inheritedRunProperties: readonly OoxmlProperty[] = [],
   tabStops: ResolvedTabStops = EMPTY_TAB_STOPS,
-  pageContext?: FieldPageContext,
-  cascadeRuns?: RunPropertyCascader,
-  flow?: ParagraphFlowOptions,
+  pageContext: FieldPageContext | undefined,
+  cascadeRuns: RunPropertyCascader | undefined,
+  flow: TocParagraphFlowOptions,
   advances: LineLocalAdvances = { preserveColonAdvances: false }
 ): readonly PendingLine[] {
   const cached = cacheKey !== null && cache ? cache.get(cacheKey) : undefined;
@@ -205,27 +210,27 @@ export function breakParagraph(
   // Content a resolved view removed leaves no piece either; its site is collected the same
   // way, for the Simple Markup change bar. Kept content carries its sites on the piece.
   const changeSites: MutableChangeSite[] = [];
-  const displayPieces = piecesOfParagraphForDisplay(
+  const displayPieces = piecesOfParagraphForDisplay({
     paragraph,
     inheritedRunProperties,
     pageContext,
     cascadeRuns,
-    flow?.projectLink,
-    flow?.noteMarks,
-    flow?.displayMode ?? DEFAULT_REVISION_DISPLAY_MODE,
+    projectLink: flow?.projectLink,
+    noteMarks: flow?.noteMarks,
+    displayMode: flow?.displayMode ?? DEFAULT_REVISION_DISPLAY_MODE,
     deletedRanges,
-    flow?.inlineDrawingLayout,
-    flow?.themeFonts,
-    flow?.projectFieldLink,
-    flow?.documentProperties,
-    flow?.bodyPageFields ?? false,
-    flow?.refFields,
-    flow?.revisionAuthorFilter,
-    flow?.showFieldCodes,
-    flow?.fieldCodeRanges,
-    flow?.tocLinkStyleRanges,
-    changeSites
-  );
+    inlineDrawingLayout: flow?.inlineDrawingLayout,
+    themeFonts: flow?.themeFonts,
+    projectFieldLink: flow?.projectFieldLink,
+    documentProperties: flow?.documentProperties,
+    bodyPageFields: flow?.bodyPageFields ?? false,
+    refFields: flow?.refFields,
+    authorFilter: flow?.revisionAuthorFilter,
+    showFieldCodes: flow?.showFieldCodes,
+    fieldCodeRanges: flow?.fieldCodeRanges,
+    tocLinkStyleRanges: flow?.tocLinkStyleRanges,
+    changeSites,
+  });
   const rawPieces = ignoreCellColumnBreaks(
     displayPieces,
     flow?.cellAnchorScope?.inTableCell === true
@@ -1364,8 +1369,11 @@ export function breakParagraph(
                 lineOrigin() + line.width,
                 // Reserve the source-owned advance before any optical line mutation.
                 lineAvailable() - automaticGap(),
+                // Spaces fit only inside a protected group; before a word that wraps they trail.
                 !lineEndSpaces.isCollapsibleLineEndWhitespace(candidate) ||
-                  (opensWord && placeableSuffixes[pieceIndex]![boundary] === 1)
+                  (opensWord &&
+                    placeableSuffixes[pieceIndex]![boundary] === 1 &&
+                    spacesJoinProtectedGroup(cjkBreaks, pieces, pieceIndex, boundary))
               );
               if (fit) {
                 width = fit.width;

@@ -503,7 +503,7 @@
     {
       "files": ["packages/core/src/layout/semantic-records.ts"],
       "rules": {
-        "max-lines": ["error", { "max": 1100, "skipBlankLines": false, "skipComments": false }]
+        "max-lines": ["error", { "max": 1120, "skipBlankLines": false, "skipComments": false }]
       }
     },
     // Upstream 2.34 and the fork's inline-widget, block-reservation, and run-origin hooks each

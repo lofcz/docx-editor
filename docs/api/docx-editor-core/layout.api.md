@@ -416,6 +416,8 @@ export type CellVerticalAlign = 'top' | 'center' | 'bottom';
 export interface CjkTypographySettings {
     readonly after: Readonly<Record<string, string>>;
     // @internal
+    readonly alternateLineEndFit?: true;
+    // @internal
     readonly balancedSpaceShrink?: true;
     // @internal
     readonly balancedWidths?: true;
@@ -2173,6 +2175,8 @@ export interface LineRecord {
     readonly contentX: number;
     readonly deletedRanges?: readonly ModelRange[];
     readonly drawings?: readonly InlineDrawingRecord[];
+    // @internal
+    readonly hangingMarkBlank?: number;
     // (undocumented)
     readonly id: string;
     readonly leading: number;
