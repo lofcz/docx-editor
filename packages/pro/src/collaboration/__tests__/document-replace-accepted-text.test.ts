@@ -264,3 +264,79 @@ test('a fix at the end of a hyperlink stays in the link for every peer', async (
     a.close();
   }
 });
+
+test('case changes preserve peer text, tracked ownership, undo and late join', async () => {
+  const a = await peer('Alice'),
+    b = await peer('Bob', a);
+  let joined: Peer | undefined;
+  try {
+    const id = first(a).blockId;
+    a.editor.surface!.setSelection({
+      anchor: { paragraphId: id, offset: 3 },
+      head: { paragraphId: id, offset: 0 },
+    });
+    const second = b.editor.getParagraphs()[1]!;
+    b.editor.surface!.setSelection({
+      anchor: { paragraphId: second.blockId, offset: 0 },
+      head: { paragraphId: second.blockId, offset: 0 },
+    });
+    expect(b.editor.exec({ type: 'insertText', text: 'Peer ' }).ok).toBe(true);
+    expect(a.editor.exec({ type: 'changeCase', mode: 'uppercase' }).ok).toBe(true);
+    sync(a, b);
+    await converged(a, b);
+    expect(first(b).acceptedText).toBe('THE agrement holds.');
+    expect(b.editor.getParagraphText(second.blockId)?.text).toBe('Peer Second paragraph.');
+    expect(a.editor.exec({ type: 'undo' }).ok).toBe(true);
+    sync(a, b);
+    expect(first(b).acceptedText).toBe('The agrement holds.');
+    expect(a.editor.exec({ type: 'redo' }).ok).toBe(true);
+    sync(a, b);
+    expect(a.editor.exec({ type: 'setEditingMode', mode: 'suggesting' }).ok).toBe(true);
+    a.editor.surface!.setSelection({
+      anchor: { paragraphId: id, offset: 3 },
+      head: { paragraphId: id, offset: 0 },
+    });
+    expect(a.editor.exec({ type: 'changeCase', mode: 'lowercase' }).ok).toBe(true);
+    sync(a, b);
+    await converged(a, b);
+    expect(first(b).acceptedText).toBe('the agrement holds.');
+    expect(await revisions(b)).toContain('insert Alice');
+    joined = await peer('Later', a);
+    await converged(a, joined);
+    const reopened = await peer('Reopened', undefined, new Uint8Array(await b.editor.save()));
+    try {
+      expect(reopened.editor.getParagraphs()[0]?.acceptedText).toBe('the agrement holds.');
+    } finally {
+      reopened.close();
+    }
+  } finally {
+    joined?.close();
+    b.close();
+    a.close();
+  }
+});
+
+test('case conversion and a concurrent deletion converge without changing adjacent text', async () => {
+  const a = await peer('Alice'),
+    b = await peer('Bob', a);
+  try {
+    const id = first(a).blockId;
+    a.editor.surface!.setSelection({
+      anchor: { paragraphId: id, offset: 0 },
+      head: { paragraphId: id, offset: 3 },
+    });
+    b.editor.surface!.setSelection({
+      anchor: { paragraphId: id, offset: 1 },
+      head: { paragraphId: id, offset: 3 },
+    });
+    expect(a.editor.exec({ type: 'changeCase', mode: 'uppercase' }).ok).toBe(true);
+    expect(b.editor.exec({ type: 'deleteText' }).ok).toBe(true);
+    sync(a, b);
+    await converged(a, b);
+    expect(first(a).acceptedText.endsWith(' agrement holds.')).toBe(true);
+    expect(a.editor.getParagraphs()[1]?.acceptedText).toBe('Second paragraph.');
+  } finally {
+    b.close();
+    a.close();
+  }
+});

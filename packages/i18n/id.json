@@ -170,7 +170,8 @@
     "serif": "Serif",
     "monospace": "Monospace",
     "documentFonts": "Font dokumen",
-    "search": "Cari font"
+    "search": "Cari font",
+    "changeCase": null
   },
   "fontSize": {
     "decrease": "Perkecil ukuran font",

@@ -140,6 +140,16 @@ export const wordFeatures: WordFeature[] = [
       'Apply formatting to selected text or the word at the caret. At a word boundary or in an empty paragraph, formatting applies to the next text you type.',
   },
   {
+    id: 'text.change-case',
+    name: 'Change case',
+    category: 'text',
+    editing: 'partial',
+    rendering: 'full',
+    roundTrip: 'full',
+    tier: 'community',
+    notes: 'Change the case of selected letters across runs and paragraphs. Rectangular cell selections and split graphemes are unsupported.',
+  },
+  {
     id: 'text.input-method',
     name: 'Input-method composition',
     category: 'text',

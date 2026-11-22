@@ -175,7 +175,8 @@
     "serif": "Serif",
     "monospace": "Monospace",
     "documentFonts": "Шрифты документа",
-    "search": "Поиск шрифтов"
+    "search": "Поиск шрифтов",
+    "changeCase": null
   },
   "fontSize": {
     "decrease": "Уменьшить размер шрифта",

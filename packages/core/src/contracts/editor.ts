@@ -1232,6 +1232,9 @@ export interface EditorCommands
   /** Fix a range of `ParagraphText.acceptedText`, editing only the letters that differ. */
   replaceAcceptedText: ReplaceAcceptedTextCommand;
 
+  /** Change the case of selected letters. Keeps native run formatting and paragraph boundaries. */
+  changeCase: { mode: 'sentence' | 'lowercase' | 'uppercase' | 'capitalizeWords' | 'toggle' };
+
   /**
    * Replace every match of `query` with `text` (empty deletes) in one undo step, across the
    * stories {@link Editor.findMatches} searches; tracked in suggesting mode. Skips and refusals:

@@ -1,0 +1,13 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "The editor had no command to change selected letters to a different case.",
+  "after": "Changing case commits native text replacements as one undo step.",
+  "reason": "The command uses existing text operations, review tracking, and collaboration journals.",
+  "tests": [
+    "packages/core/src/editor/__tests__/change-case.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-replace-accepted-text.test.ts"
+  ],
+  "changeset": "change-selection-case",
+  "migration": null
+}

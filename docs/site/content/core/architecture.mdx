@@ -68,3 +68,7 @@ Edits go back into the tree as transactions. Layout and paint then run again for
 - [Core package overview](/docs/2.x/core)
 - [DOCX fidelity](/docs/2.x/docx-fidelity)
 - [Editor mount modes](/docs/2.x/core/mount-modes)
+
+### Change selected text to a different case
+
+Use `editor.exec({ type: 'changeCase', mode: 'uppercase' })` for a nonempty text selection. Choose `sentence`, `lowercase`, `uppercase`, `capitalizeWords`, or `toggle`. The command uses the text's language and Unicode word and sentence boundaries. It preserves links, run formatting, and the selection direction. Undo reverts the selection in one step. A protected change, rectangular cell selection, or character split across incompatible text boundaries returns a refusal.

@@ -1,3 +1,4 @@
+import { changeSelectionCase } from './selection-case.ts';
 import type { CanResult, EditorCommand, ParagraphText } from '../contracts/editor.ts';
 import { replaceAcceptedTextRefusal } from './docx-editor-replace-accepted-text.ts';
 import { replaceMatchTarget } from './docx-editor-replace-match.ts';
@@ -12,6 +13,8 @@ export function replaceCommandRefusal(
   surface: PaginatedSurface,
   readParagraph: (blockId: string) => ParagraphText | null
 ): CanResult | null {
+  if (command.type === 'changeCase')
+    return changeSelectionCase(surface, readParagraph, command.mode, false);
   if (command.type === 'replaceMatch') {
     const target = replaceMatchTarget(surface, command.match);
     return target.ok ? null : target;

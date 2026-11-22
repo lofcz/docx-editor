@@ -546,6 +546,12 @@ export function classifyCommand(command: EditorCommand): CommandSupport {
       return mutatingUnlessRefused(replaceAllMatchesArgumentRefusal(command));
     case 'replaceMatch':
       return mutatingUnlessRefused(replaceMatchArgumentRefusal(command));
+    case 'changeCase':
+      return mutatingUnlessRefused(
+        ['sentence', 'lowercase', 'uppercase', 'capitalizeWords', 'toggle'].includes(command.mode)
+          ? null
+          : 'unknown case conversion'
+      );
     case 'replaceAcceptedText':
       return mutatingUnlessRefused(replaceAcceptedTextArgumentRefusal(command));
     case 'navigateHighlight': {

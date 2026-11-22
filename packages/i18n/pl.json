@@ -170,7 +170,8 @@
     "serif": "Serif",
     "monospace": "Monospace",
     "documentFonts": "Czcionki dokumentu",
-    "search": "Szukaj czcionek"
+    "search": "Szukaj czcionek",
+    "changeCase": null
   },
   "fontSize": {
     "decrease": "Zmniejsz rozmiar czcionki",

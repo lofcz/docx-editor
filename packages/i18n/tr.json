@@ -170,7 +170,8 @@
     "serif": "Serif",
     "monospace": "Eş aralıklı",
     "documentFonts": "Belge yazı tipleri",
-    "search": "Yazı tipi ara"
+    "search": "Yazı tipi ara",
+    "changeCase": null
   },
   "fontSize": {
     "decrease": "Yazı tipi boyutunu küçült",

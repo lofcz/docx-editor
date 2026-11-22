@@ -278,6 +278,7 @@
     "listParagraph": "List Paragraph"
   },
   "font": {
+    "changeCase": "Change case",
     "selectAriaLabel": "Select font family",
     "sansSerif": "Sans Serif",
     "serif": "Serif",

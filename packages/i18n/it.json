@@ -256,7 +256,8 @@
     "serif": "Con grazie",
     "monospace": "A spaziatura fissa",
     "documentFonts": "Caratteri del documento",
-    "search": "Cerca caratteri"
+    "search": "Cerca caratteri",
+    "changeCase": null
   },
   "fontSize": {
     "decrease": "Riduci dimensione carattere",

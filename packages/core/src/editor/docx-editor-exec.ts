@@ -1,3 +1,4 @@
+import { changeSelectionCase } from './selection-case.ts';
 import { insertTextbox } from './textbox-commands.ts';
 import { execChartCommand } from './chart-commands.ts';
 import { execSetWatermark } from './docx-editor-watermark.ts';
@@ -435,6 +436,13 @@ export function execEditorCommand(
     }
     case 'replaceMatch':
       return execReplaceMatch(mounted, command);
+    case 'changeCase':
+      return changeSelectionCase(
+        mounted,
+        (id) => options?.editor?.getParagraphText(id) ?? null,
+        command.mode,
+        true
+      );
     case 'replaceAcceptedText':
       return execReplaceAcceptedText(
         mounted,

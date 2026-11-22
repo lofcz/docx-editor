@@ -256,7 +256,8 @@
     "serif": "Serif",
     "monospace": "أحادي المسافة",
     "documentFonts": "خطوط المستند",
-    "search": "البحث عن خطوط"
+    "search": "البحث عن خطوط",
+    "changeCase": null
   },
   "fontSize": {
     "decrease": "تصغير حجم الخط",

@@ -170,7 +170,8 @@
     "serif": "Serif",
     "monospace": "Monospace",
     "documentFonts": "दस्तावेज़ फ़ॉन्ट",
-    "search": "फ़ॉन्ट खोजें"
+    "search": "फ़ॉन्ट खोजें",
+    "changeCase": null
   },
   "fontSize": {
     "decrease": "फ़ॉन्ट आकार घटाएं",

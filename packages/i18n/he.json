@@ -171,7 +171,8 @@
     "serif": "Serif",
     "monospace": "Monospace",
     "documentFonts": "גופני המסמך",
-    "search": "חיפוש גופנים"
+    "search": "חיפוש גופנים",
+    "changeCase": null
   },
   "fontSize": {
     "decrease": "הקטנת גופן",

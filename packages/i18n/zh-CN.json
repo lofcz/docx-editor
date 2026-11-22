@@ -170,7 +170,8 @@
     "serif": "Serif",
     "monospace": "Monospace",
     "documentFonts": "文档字体",
-    "search": "搜索字体"
+    "search": "搜索字体",
+    "changeCase": null
   },
   "fontSize": {
     "decrease": "减小字号",

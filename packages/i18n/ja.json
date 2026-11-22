@@ -256,7 +256,8 @@
     "serif": "Serif",
     "monospace": "Monospace",
     "documentFonts": "文書のフォント",
-    "search": "フォントの検索"
+    "search": "フォントの検索",
+    "changeCase": null
   },
   "fontSize": {
     "decrease": "フォント サイズを小さくする",

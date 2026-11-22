@@ -243,6 +243,14 @@ export const CHROME_GROUPS = [
         valueKey: 'fontSize.label',
         state: { kind: 'value' },
       },
+      {
+        id: 'changeCase',
+        shape: 'dropdown',
+        labelKey: 'font.changeCase',
+        paths: null,
+        defaultToolbar: false,
+        state: { kind: 'value' },
+      },
     ],
   },
   {
@@ -683,6 +691,7 @@ export type ChromeSlotId =
   | 'history.redo'
   | 'zoom.level'
   | 'styles.style'
+  | 'font.changeCase'
   | 'font.family'
   | 'font.size'
   | 'text.bold'

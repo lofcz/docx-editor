@@ -229,6 +229,7 @@ const VALUE_SLOT_MARKS: Partial<Record<ChromeSlotId, { mark: string; attr: strin
  * options come from `getDocumentStyles`, so a real pick always exists.
  */
 const VALUE_SLOT_PROBES: Partial<Record<ChromeSlotId, unknown>> = {
+  'font.changeCase': 'uppercase',
   'font.family': 'Arial',
   'font.size': 22,
   'text.color': '000000',
@@ -272,11 +273,13 @@ export function commandForTableChromeSlotValue(
  * @public
  */
 export function commandForSlotValue(slotId: ChromeSlotId, value: unknown): EditorCommand | null {
-  // The style picker is value-typed but not a MARK: its value is a paragraph styleId.
-  // Passed through unvalidated like the mark values — the engine's own gate refuses a
-  // malformed one (`classifyCommand`) and an unknown one (`exec`), with typed reasons.
-  // The editing-mode pill: its command carries the chosen mode, so it is value-typed even
-  // though the value is not a mark.
+  // Pickers pass the chosen value to the command gate for validation.
+  if (slotId === 'font.changeCase') {
+    return {
+      type: 'changeCase',
+      mode: value as Extract<EditorCommand, { type: 'changeCase' }>['mode'],
+    };
+  }
   if (slotId === 'review.editingMode') {
     return { type: 'setEditingMode', mode: value as 'editing' | 'suggesting' | 'viewing' };
   }
