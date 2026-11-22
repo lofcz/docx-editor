@@ -31,7 +31,6 @@ import { windowedContentRows, withLegacyContentAlignment } from './table-content
 import {
   flattenContentControls,
   healedTableView,
-  type OoxmlElement,
   type OoxmlNode,
 } from '@docx-editor.dev/core/store';
 import { readFlag } from './table-row-properties.ts';
