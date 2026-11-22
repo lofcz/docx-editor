@@ -48,7 +48,7 @@ import { refreshWriteBlocked, registerRefreshComposition } from './refresh-write
 import { UNEXPLAINED_WRITE_REFUSAL, writeBlockReason } from './refresh-write-guard.ts';
 import { createLegacyDropdownInteraction } from './surface-legacy-dropdown.ts';
 import { listSeparatorEnter } from './list-separator-enter.ts';
-import { browserInputPending, pendingBrowserInput } from './surface-input-pending.ts';
+import { browserInputPending, createIsolatedKeyFlush } from './surface-input-pending.ts';
 export { setPaginatedSurfaceScale } from './surface-scale.ts';
 import { REPLICABLE_REVIEW_WRITES } from './surface-review-writes.ts';
 import { listParagraphStyleId } from './surface-list-style.ts';
@@ -1650,6 +1650,7 @@ export function mountPaginatedSurface(
   /** Lands composed text queued before the buffer, one land at a time (`landingGuard`). */
   let landComposedText = (): void => {};
   let typeFlushTimer: number | null = null;
+  const afterKey = createIsolatedKeyFlush(fieldScope, () => typeFlushTimer);
   let flushingTypeBuffer = false;
   const landing = landingGuard();
 
@@ -6015,9 +6016,8 @@ export function mountPaginatedSurface(
   const dispatchBeforeInput = createBeforeInputHandler(surface, {
     isComposing: () => selectionSync.isComposing(),
     insertPlainText,
-    // The browser parked its own selection over the text a substitution replaced. Rewrite
-    // the DOM selection now for a park that already happened, and flag the queued echo for
-    // one that has not.
+    // Restore the selection after a browser substitution. Mark the pending selection event
+    // so it cannot restore the replaced range.
     onBrowserSelectionFixup: () => {
       selectionSync.mirrorToDom();
       selectionSync.noteBrowserSelectionFixup();
@@ -6029,18 +6029,7 @@ export function mountPaginatedSurface(
     const previousTimer = typeFlushTimer;
     dispatchBeforeInput(event);
     if (!selectionSync.isComposing()) inputMethod.repair.watch(event);
-    const timer = typeFlushTimer;
-    if (event.inputType === 'insertText' && previousTimer === null && timer !== null) {
-      // Give an isolated key the next presentation opportunity. A queued burst or a browser
-      // without queue visibility retains the normal task that combines pending keystrokes.
-      queueMicrotask(
-        fieldScope.wrap(() => {
-          if (typeFlushTimer === timer && pendingBrowserInput(container, false) === false) {
-            flushTypeBuffer();
-          }
-        })
-      );
-    }
+    afterKey(event.inputType, previousTimer, () => container, flushTypeBuffer);
   });
 
   // One header and footer entry for the pointer and the drawing presses: no scroll, unlike the

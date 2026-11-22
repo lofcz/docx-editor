@@ -2,6 +2,29 @@
 // `navigator.scheduling.isInputPending`). Every other engine answers false, which keeps the
 // surface on its synchronous paths.
 
+import type { FieldResultsScope } from './field-results-scope.ts';
+
+/** Keep a queued burst on its timer. Commit one confirmed isolated key before the next paint. */
+export function createIsolatedKeyFlush(
+  scope: FieldResultsScope,
+  currentTimer: () => number | null
+): (
+  inputType: string,
+  previousTimer: number | null,
+  container: () => Element,
+  flush: () => void
+) => void {
+  return (inputType, previousTimer, container, flush) => {
+    const timer = currentTimer();
+    if (inputType !== 'insertText' || previousTimer !== null || timer === null) return;
+    queueMicrotask(
+      scope.wrap(() => {
+        if (currentTimer() === timer && pendingBrowserInput(container(), false) === false) flush();
+      })
+    );
+  };
+}
+
 /**
  * `includeContinuous` folds mousemove/wheel into the answer. Paint deferral wants that
  * (any input beats a repaint); the commit-tail LAYOUT deferral must not — a moving
