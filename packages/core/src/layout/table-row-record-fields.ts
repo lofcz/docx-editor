@@ -40,11 +40,13 @@ export function authoredCellFields(
     gridColumn: cell.gridColumn,
     ...(cell.logicalGridColumn === undefined ? {} : { logicalGridColumn: cell.logicalGridColumn }),
     ...(cell.gridColumnId ? { gridColumnId: cell.gridColumnId } : {}),
-    ...(cell.resolvedGridColumn === undefined ? {} : {
-      resolvedGridColumn: cell.resolvedGridColumn,
-      resolvedGridSpan: cell.resolvedGridSpan,
-      resolvedGridColumnCount: cell.resolvedGridColumnCount,
-    }),
+    ...(cell.resolvedGridColumn === undefined
+      ? {}
+      : {
+          resolvedGridColumn: cell.resolvedGridColumn,
+          resolvedGridSpan: cell.resolvedGridSpan,
+          resolvedGridColumnCount: cell.resolvedGridColumnCount,
+        }),
     ...(cell.lastGridColumnId ? { lastGridColumnId: cell.lastGridColumnId } : {}),
     vAlign: cell.vAlign,
     gridSpan: cell.gridSpan,

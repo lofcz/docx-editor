@@ -13,7 +13,13 @@ import {
   type OoxmlNode,
 } from '@docx-editor.dev/core/store';
 import type { resolvedTableGrid } from './resolved-table-grid.ts';
-import { visibleRowCells, receivedGridSpan, withReceivedWidth, rowRevisionOmitted, resolvedVMerge } from './table-cell-revision-view.ts';
+import {
+  visibleRowCells,
+  receivedGridSpan,
+  withReceivedWidth,
+  rowRevisionOmitted,
+  resolvedVMerge,
+} from './table-cell-revision-view.ts';
 import { hiddenRowCollapses } from './table-hidden-row.ts';
 import { readConditionalCellBorders } from './conditional-cell-borders.ts';
 import {
@@ -254,7 +260,10 @@ function readRowPlan(
       readGridSpan(cellPr) + receivedGridSpan(donors),
       MAX_TABLE_COLUMNS - start // ≥ 1: `start` never exceeds the last column
     );
-    const width = withReceivedWidth(readPreferredWidth(cellPr && childNamed(cellPr, 'tcW')), donors);
+    const width = withReceivedWidth(
+      readPreferredWidth(cellPr && childNamed(cellPr, 'tcW')),
+      donors
+    );
     starts.push(start);
     spans.push(span);
     preferred.push(width);
@@ -532,7 +541,9 @@ function resolveRow(
     cells.push({
       id: cellNode.id,
       ...context.resolvedGrid?.get(cellNode.id),
-      ...(gridSpan > 1 && context.gridColumnIds[gridColumn + gridSpan - 1] ? {lastGridColumnId: context.gridColumnIds[gridColumn + gridSpan - 1]} : {}),
+      ...(gridSpan > 1 && context.gridColumnIds[gridColumn + gridSpan - 1]
+        ? { lastGridColumnId: context.gridColumnIds[gridColumn + gridSpan - 1] }
+        : {}),
       ...revisionCellMetadata(cellProperties, displayMode, authorFilter, plan.revision),
       gridSpan,
       gridColumn,

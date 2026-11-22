@@ -57,11 +57,7 @@ import {
   type TableCellStyleFormatting,
 } from './style-cascade.ts';
 import { mergeTableBorders } from './table-border-cascade.ts';
-import {
-  EMPTY_TABLE_BORDER_BOX,
-  readTableBorders,
-  type TableBorderBox,
-} from './table-borders.ts';
+import { EMPTY_TABLE_BORDER_BOX, readTableBorders, type TableBorderBox } from './table-borders.ts';
 import {
   gridColumnElements,
   preferredLengthPt,

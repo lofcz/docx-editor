@@ -95,7 +95,12 @@ export function inlineExtentSpacing(
 ): InlineExtentSpacing {
   const hasUnscaledInlineExtent =
     line.drawings.length > 0 ||
-    line.spans.some((span) => span.equation !== undefined || span.unsupported !== undefined || span.inlineWidget !== undefined);
+    line.spans.some(
+      (span) =>
+        span.equation !== undefined ||
+        span.unsupported !== undefined ||
+        span.inlineWidget !== undefined
+    );
   const gridFitsDrawing = spacing.gridPitch !== undefined && line.drawings.length > 0;
   const scalesTextBandOnly = spacing.rule === 'auto' && hasUnscaledInlineExtent && !gridFitsDrawing;
   const holdsUnscaledPicture =
