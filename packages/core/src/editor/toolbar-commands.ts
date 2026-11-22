@@ -3,8 +3,6 @@ import {
   type ToolbarValueSlot,
   type ToolbarValueMap,
 } from './toolbar-values.ts';
-// Toolbar command wiring (interactive-paginated-editing M4.0 / M5.1).
-//
 // Shared by both adapters: the can-before-exec rule is one implementation, so
 // React and Vue toolbars cannot drift on when a control is enabled.
 //

@@ -233,17 +233,7 @@ import { preparedBlocks } from './prepared-block-memo.ts';
 import { tableTopLeads } from './cell-edge-neighbours.ts';
 import { type BlockLayoutResult } from './column-balance-layout.ts';
 
-export {
-  createLayoutSession,
-  type LayoutSession,
-  type LayoutSessionStats,
-} from './layout-session.ts';
-// Both types moved to `page-furniture-insets.ts` with the per-page resolution that reads them;
-// they are re-exported here because this module is the import site every caller already has.
-export { type HeaderFooterVariantName, type PageFurniture } from './page-furniture-insets.ts';
-
 import type { SemanticLayoutOptions, BlockLayoutOptions } from './semantic-layout-options.ts';
-export type { SemanticLayoutOptions, BlockLayoutOptions } from './semantic-layout-options.ts';
 import type { PreparedBlock, SectionPrepass } from './section-prepass-types.ts';
 import { sectionFlowKeys } from './section-flow-keys.ts';
 

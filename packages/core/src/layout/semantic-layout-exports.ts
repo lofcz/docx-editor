@@ -14,5 +14,5 @@ export {
 // Both types moved to `page-furniture-insets.ts` with the per-page resolution that reads them;
 // they are re-exported from `semantic-layout.ts`, the import site every caller already has.
 export { type HeaderFooterVariantName, type PageFurniture } from './page-furniture-insets.ts';
-export type { SemanticLayoutOptions } from './semantic-layout-options.ts';
+export type { SemanticLayoutOptions, BlockLayoutOptions } from './semantic-layout-options.ts';
 export type { SectionPrepass } from './section-prepass-types.ts';

@@ -7,7 +7,13 @@
 
 import type { OoxmlElement, OoxmlPart } from '../store/package/ooxml-tree.ts';
 import { enumerateDocumentSectionsFromBlocks, type DocumentSection } from './section-properties.ts';
-import type { SectionBreakMarkRecord, SemanticLayout } from './semantic-records.ts';
+import type { SemanticLayout } from './semantic-records.ts';
+
+/** The paragraph whose `w:sectPr` ends a section, and how the next section starts. */
+export interface SectionBreakMarkRecord {
+  readonly paragraphId: string;
+  readonly kind: import('./section-properties.ts').SectionBreakType;
+}
 
 /** The section breaks of one body, in document order. */
 export function sectionBreakMarks(

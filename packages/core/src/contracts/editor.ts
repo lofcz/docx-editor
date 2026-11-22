@@ -59,6 +59,7 @@ export type { EditorReviewHits, ReviewItemHit } from './editor-review-hits.ts';
 export type {
   DocumentChange,
   EditorEvents,
+  EditorError,
   EditorHostChange,
   EditorHostDocument,
   ParagraphsChangeEvent,
@@ -1690,16 +1691,4 @@ export interface EditorSnapshot {
    * carry is a mode no toolbar can reflect. Optional and additive.
    */
   readonly formatPainter?: FormatPainterSurfaceState;
-}
-
-/**
- * An error the engine raised, carrying a machine-readable `code` alongside the message.
- *
- * `code` is optional because an `Error` from deeper down (a parser, a codec) is surfaced as-is
- * rather than wrapped in a fabricated code. The editor's own codes: `invalidTarget` (`attach`
- * cannot mount there), `unsupported` (a source it refuses to open), and `hostCallback` (a host
- * callback such as a bookmark mark's `decorate` threw; the editor kept its default behavior).
- */
-export interface EditorError extends Error {
-  readonly code?: string;
 }

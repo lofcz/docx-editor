@@ -1,6 +1,6 @@
 import type { EditorDropEvent } from './editor-drop.ts';
 import type { ResolvedRevisionMarkup } from './revision-markup.ts';
-import type { EditorError, EditorSnapshot } from './editor.ts';
+import type { EditorSnapshot } from './editor.ts';
 import type { HistoryDiagnostic } from './editor-scope.ts';
 import type { EditorDiagnostic } from './diagnostics.ts';
 import type { RevisionBatchSkipDetail } from './types.ts';
@@ -243,4 +243,16 @@ export interface DocumentChange {
   readonly created?: readonly string[];
   readonly deleted?: readonly string[];
   readonly dirty?: readonly string[];
+}
+
+/**
+ * An error the engine raised, carrying a machine-readable `code` alongside the message.
+ *
+ * `code` is optional because an `Error` from deeper down (a parser, a codec) is surfaced as-is
+ * rather than wrapped in a fabricated code. The editor's own codes: `invalidTarget` (`attach`
+ * cannot mount there), `unsupported` (a source it refuses to open), and `hostCallback` (a host
+ * callback such as a bookmark mark's `decorate` threw; the editor kept its default behavior).
+ */
+export interface EditorError extends Error {
+  readonly code?: string;
 }

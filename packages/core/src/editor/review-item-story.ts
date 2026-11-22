@@ -3,6 +3,9 @@ import { firstReviewRange, type ReviewItem } from '../store/index.ts';
 import { resolveNotesPart } from '../store/package/note-references.ts';
 import type { PaginatedSurface } from './paginated-surface-contract.ts';
 
+import type { SemanticLayout } from '../layout/semantic-records.ts';
+import { noteScopeIndexOf } from './layout-paragraph-indexes.ts';
+
 type Session = PaginatedSurface['session'];
 
 /**
@@ -51,4 +54,14 @@ export function noteStoryScopeOfItem(
     }
   }
   return null;
+}
+
+/** The note whose subtree contains the review item's first paragraph. */
+export function noteHomeOfItem(
+  layout: SemanticLayout | null | undefined,
+  item: ReviewItem
+): string | null {
+  const range = firstReviewRange(item);
+  if (!range || !layout) return null;
+  return noteScopeIndexOf(layout).get(range.start.paragraphId) ?? null;
 }

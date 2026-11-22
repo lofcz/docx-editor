@@ -92,7 +92,7 @@ import {
 import type { StoryScope } from '@docx-editor.dev/core/store';
 import { parseNoteScopeId } from '../store/package/note-nodes.ts';
 import { resolveNotesPart } from '../store/package/note-references.ts';
-import { furnitureHomeOfItem, noteStoryScopeOfItem } from './review-item-story.ts';
+import { furnitureHomeOfItem, noteHomeOfItem, noteStoryScopeOfItem } from './review-item-story.ts';
 import { partOfNodeId } from './surface-scope.ts';
 import type {
   CanResult,
@@ -118,7 +118,7 @@ import {
   findDocumentMatches,
   selectDocumentSearchMatch,
 } from './docx-editor-story-navigation.ts';
-import { noteScopeIndexOf, paragraphOrderOf } from './layout-paragraph-indexes.ts';
+import { paragraphOrderOf } from './layout-paragraph-indexes.ts';
 import {
   classifyCommand,
   deepFreezeValue,
@@ -1534,20 +1534,7 @@ export function createDocxEditor(config: DocxEditorConfig): DocxEditorInstance {
   const furnitureHomeOf = (item: ReviewItem) => furnitureHomeOfItem(surface?.session, item);
   const noteStoryScopeOf = (item: ReviewItem) => noteStoryScopeOfItem(surface?.session, item);
 
-  /**
-   * The note a card's range sits in, as the scope id `enterNote` takes.
-   *
-   * A note is a story like a header, but it is addressed by the NOTE rather than by the
-   * part: one `footnotes.xml` holds every footnote, and entering it means entering one of
-   * them. So the walk is part → note → its paragraphs, and the answer is the note whose
-   * subtree holds the card's paragraph.
-   */
-  function noteHomeOf(item: ReviewItem): string | null {
-    const range = firstReviewRange(item);
-    const layout = surface?.publishedLayout();
-    if (!range || !layout) return null;
-    return noteScopeIndexOf(layout).get(range.start.paragraphId) ?? null;
-  }
+  const noteHomeOf = (item: ReviewItem) => noteHomeOfItem(surface?.publishedLayout(), item);
 
   /** The story a card's range lives in, for a write that must land in that part. */
   function storyScopeOfReviewItem(item: ReviewItem): StoryScope {

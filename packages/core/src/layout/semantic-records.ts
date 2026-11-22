@@ -1075,14 +1075,10 @@ export interface SemanticLayout {
    */
   readonly controlContextToken?: string;
   /** Body section breaks in document order, each named by the section that FOLLOWS it. */
-  readonly sectionBreaks?: readonly SectionBreakMarkRecord[];
+  readonly sectionBreaks?: readonly import('./section-break-marks.ts').SectionBreakMarkRecord[];
 }
 
-/** The paragraph whose `w:sectPr` ends a section, and how the next section starts. */
-export interface SectionBreakMarkRecord {
-  readonly paragraphId: string;
-  readonly kind: import('./section-properties.ts').SectionBreakType;
-}
+export type { SectionBreakMarkRecord } from './section-break-marks.ts';
 
 export { DEFAULT_PAGE_GEOMETRY, type PageGeometry } from './page-geometry.ts';
 
