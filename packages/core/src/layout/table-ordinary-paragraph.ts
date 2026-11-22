@@ -42,13 +42,17 @@ const allowedElements = new Set([
   'shd',
   'highlight',
 ]);
-const ordinaryParagraphs = new WeakMap<OoxmlNode, boolean>();
-const drawingParagraphs = new WeakMap<OoxmlNode, boolean>();
-const revisionParagraphs = new WeakMap<OoxmlNode, boolean>();
+const paragraphCaches = {
+  ordinary: new WeakMap<OoxmlNode, boolean>(),
+  drawing: new WeakMap<OoxmlNode, boolean>(),
+  revisions: new WeakMap<OoxmlNode, boolean>(),
+  probe: new WeakMap<OoxmlNode, boolean>(),
+};
+const controlMetadata = new Set(['alias', 'tag', 'id', 'lock']);
 const numberingElements = new Set(['numPr', 'numId', 'ilvl']);
 
-function ordinaryParagraph(root: OoxmlNode, numbering: boolean, revisions = false): boolean {
-  const cache = revisions ? revisionParagraphs : numbering ? drawingParagraphs : ordinaryParagraphs;
+function ordinaryParagraph(root: OoxmlNode, policy: keyof typeof paragraphCaches): boolean {
+  const cache = paragraphCaches[policy];
   const known = cache.get(root);
   if (known !== undefined) return known;
   let visited = 0;
@@ -56,13 +60,35 @@ function ordinaryParagraph(root: OoxmlNode, numbering: boolean, revisions = fals
     if (++visited > MAX_PART_SCAN_ELEMENTS || depth > MAX_XML_DEPTH) return false;
     if (node.kind === 'textValue') return true;
     if (node.namespaceUri !== WML_NAMESPACE_URI) return false;
+    if (policy === 'probe' && node.kind === 'contentControl' && parent === 'p') {
+      const [props, content] = node.children;
+      if (
+        node.children.length !== 2 ||
+        props?.kind !== 'contentControlProperties' ||
+        content?.kind !== 'contentControlContent'
+      )
+        return false;
+      visited += 2 + props.children.length;
+      if (visited > MAX_PART_SCAN_ELEMENTS) return false;
+      if (
+        !props.children.every(
+          (c) =>
+            c.kind !== 'textValue' &&
+            c.namespaceUri === WML_NAMESPACE_URI &&
+            controlMetadata.has(c.localName) &&
+            c.children.length === 0
+        )
+      )
+        return false;
+      return content.children.every((c) => c.kind === 'run' && visit(c, depth + 2, 'sdtContent'));
+    }
     // A saved pagination marker carries no content or break instruction.
     if (node.localName === 'lastRenderedPageBreak') return node.children.length === 0;
     if (
       !allowedElements.has(node.localName) &&
-      !(numbering && numberingElements.has(node.localName)) &&
+      !(policy === 'drawing' && numberingElements.has(node.localName)) &&
       !(
-        revisions &&
+        policy === 'revisions' &&
         ((['ins', 'del'].includes(node.localName) && ['p', 'ins', 'del'].includes(parent)) ||
           node.localName === 'delText')
       )
@@ -76,15 +102,20 @@ function ordinaryParagraph(root: OoxmlNode, numbering: boolean, revisions = fals
 }
 
 export function ordinaryTableParagraph(root: OoxmlNode): boolean {
-  return ordinaryParagraph(root, false);
+  return ordinaryParagraph(root, 'ordinary');
 }
 
 /** Numbering affects paragraph flow, but does not introduce projected drawing atoms. */
 export function ordinaryDrawingParagraph(root: OoxmlNode): boolean {
-  return ordinaryParagraph(root, true);
+  return ordinaryParagraph(root, 'drawing');
 }
 
 /** Ordinary cell content with inline insertion and deletion wrappers. */
 export function editableTableParagraph(root: OoxmlNode): boolean {
-  return ordinaryParagraph(root, false, true);
+  return ordinaryParagraph(root, 'revisions');
+}
+
+/** Plain inline content controls can share a row measurement within one layout pass. */
+export function ordinaryRowProbeParagraph(root: OoxmlNode): boolean {
+  return ordinaryParagraph(root, 'probe');
 }

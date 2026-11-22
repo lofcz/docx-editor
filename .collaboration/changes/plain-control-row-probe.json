@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Table layout measured and placed cells containing plain inline controls separately.",
+  "after": "A row can reuse its measurement during the same layout pass when placement inputs match.",
+  "reason": "The resulting geometry and line identifiers match fresh placement. Shared operations, positions and protection are unchanged.",
+  "tests": [
+    "packages/core/src/layout/__tests__/table-row-probe-reuse.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-table-skipped-columns.test.ts"
+  ],
+  "changeset": "plain-control-row-probe",
+  "migration": null
+}

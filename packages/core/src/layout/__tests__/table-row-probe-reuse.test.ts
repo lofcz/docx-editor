@@ -168,3 +168,30 @@ test('probe dependency comparison handles removed, undefined, and inherited keys
   probe.measure(source, 0, 0, base);
   expect(probe.take(source, 0, 0, inherited)).not.toBeNull();
 });
+
+test('plain inline controls share one placement and keep their content ranges and line ids', () => {
+  const content =
+    '<w:sdtPr><w:tag w:val="atom"/><w:id w:val="4"/><w:lock w:val="sdtContentLocked"/></w:sdtPr>';
+  const cell = (text: string) =>
+    '<w:p><w:sdt>' + content + '<w:sdtContent>' + text + '</w:sdtContent></w:sdt></w:p>';
+  const s = fixture(row('control', { first: cell('<w:r><w:t>Equation</w:t></w:r>') }));
+  const p = createRowProbeReuse(s.columnWidthsPt, s.cellSpacingPt);
+  const d = deps(),
+    source = s.rows[0]!;
+  p.measure(source, 0, 25, d);
+  const result = p.take(source, 0, 25, d);
+  expect(result).not.toBeNull();
+  expect(result).toEqual(
+    layoutRowFragment(source, s.columnWidthsPt, 0, 25, false, 0, deps(), s.cellSpacingPt)
+  );
+  for (const special of [
+    cell('<w:fldSimple w:instr="PAGE"><w:r><w:t>1</w:t></w:r></w:fldSimple>'),
+    cell('<w:r><w:drawing/></w:r>'),
+    cell('<w:r><w:t>Placeholder</w:t></w:r>').replace('<w:id', '<w:showingPlcHdr/><w:id'),
+  ]) {
+    const other = fixture(row('special', { first: special }));
+    const q = createRowProbeReuse(other.columnWidthsPt, other.cellSpacingPt);
+    q.measure(other.rows[0]!, 0, 25, d);
+    expect(q.take(other.rows[0]!, 0, 25, d)).toBeNull();
+  }
+});

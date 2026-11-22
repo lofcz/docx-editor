@@ -1,4 +1,4 @@
-import { ordinaryTableParagraph } from './table-ordinary-paragraph.ts';
+import { ordinaryRowProbeParagraph, ordinaryTableParagraph } from './table-ordinary-paragraph.ts';
 import { measuringFlowDeps } from './table-probe-deps.ts';
 import {
   layoutRowFragment,
@@ -6,6 +6,7 @@ import {
   type TableFlowDeps,
 } from './semantic-table-layout.ts';
 import type { SemanticTableRow } from './semantic-table.ts';
+import type { OoxmlElement } from '../store/package/ooxml-tree.ts';
 import {
   placementFromPrevious,
   rememberRowPlacement,
@@ -41,6 +42,21 @@ function sameProbeDeps(a: TableFlowDeps, b: TableFlowDeps): boolean {
   return true;
 }
 
+function horizontalParagraphRow(
+  row: SemanticTableRow,
+  accept: (p: OoxmlElement) => boolean
+): boolean {
+  return (
+    !row.isHeader &&
+    row.cells.every(
+      (cell) =>
+        !cell.vMergeContinue &&
+        cell.textDirection === 'horizontal' &&
+        cell.blocks.every((block) => block.kind === 'paragraph' && accept(block))
+    )
+  );
+}
+
 /** Keep only the latest ordinary row probe until its placement, without retaining prior rows. */
 export function createRowProbeReuse(
   cols: readonly number[],
@@ -55,14 +71,7 @@ export function createRowProbeReuse(
     const facts = rowFacts(row);
     if (facts.ordinary === undefined) {
       noteRowFactRead('ordinary');
-      facts.ordinary =
-        !row.isHeader &&
-        row.cells.every(
-          (cell) =>
-            !cell.vMergeContinue &&
-            cell.textDirection === 'horizontal' &&
-            cell.blocks.every((b) => b.kind === 'paragraph' && ordinaryTableParagraph(b))
-        );
+      facts.ordinary = horizontalParagraphRow(row, ordinaryTableParagraph);
     }
     return (
       facts.ordinary && !row.cells.some((c) => c.blocks.some((b) => deps.listItems?.has(b.id)))
@@ -72,7 +81,17 @@ export function createRowProbeReuse(
     measure(row: SemanticTableRow, left: number, top: number, deps: TableFlowDeps): number {
       probe = undefined;
       const zones = !!deps.pageExclusionZones?.().length;
-      if (zones || !ordinary(row, deps)) {
+      const plain = !zones && ordinary(row, deps);
+      // An inline control can acquire new geometry between layout passes. Only the probe
+      // made in this pass, with matching placement inputs, may supply its final row.
+      const reusableControlRow =
+        !zones &&
+        !plain &&
+        horizontalParagraphRow(
+          row,
+          (block) => !deps.listItems?.has(block.id) && ordinaryRowProbeParagraph(block)
+        );
+      if (!plain && !reusableControlRow) {
         return measureRowHeight(
           row,
           cols,
@@ -85,7 +104,7 @@ export function createRowProbeReuse(
         );
       }
       // An unchanged row at its old top: the exact probe result, rebuilt for the new widths.
-      const before = cellSpacingPt === 0 ? previous?.get(row.id) : undefined;
+      const before = plain && cellSpacingPt === 0 ? previous?.get(row.id) : undefined;
       const reused = before ? placementFromPrevious(row, before, cols, left, top, deps) : null;
       // Keep the real origin: translating a zero-origin probe changes floating-point geometry.
       const result =
@@ -101,7 +120,7 @@ export function createRowProbeReuse(
           cellSpacingPt
         );
       // A row rebuilt at a new top is remembered there, so the next pass can move it in place.
-      if (cellSpacingPt === 0 && (!reused || previousRowRecord(before!).box.y !== top))
+      if (plain && cellSpacingPt === 0 && (!reused || previousRowRecord(before!).box.y !== top))
         rememberRowPlacement(row, result, top, deps);
       if (result.remainder === null) probe = { row, result, deps, left, top };
       return result.record.box.height;
