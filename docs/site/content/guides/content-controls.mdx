@@ -215,7 +215,7 @@ Set `replayCurrentFrame: true` when a new observer can borrow from an existing p
 
 A host can also request stable paragraph roots for a changed page. The second `beforePaint` argument accepts a page index and a predicate. The predicate receives the roots that paint must change. Accept only when the host can keep its loans and position markers through those changes. Restore your own loans when the request returns false.
 
-To retain surviving roots when blocks enter or leave a page, supply a third argument to the request. This function returns the original page-position comment for each borrowed root and the element itself for an unborrowed root. The predicate receives `true` as its second argument for a structural change. After paint, update your slots to match the new block order. An accepted request keeps its guarantee if another observer returns its own loans.
+To retain surviving roots when blocks enter or leave a page, supply a third argument to the request. This function returns the original page-position comment for each borrowed root and the element itself for an unborrowed root. The predicate receives `true` as its second argument for a structural change. After paint, update your slots to match the new block order. An accepted request keeps its guarantee if another observer returns its own loans. The painter can reuse rows inside a changed table on the same sheet. Return any loans inside that table before its rows change.
 
 Peer edits do not open another reader's controls. Deleting a control or its exact summary removes that entry. Host moves preserve the view. Loading another document resets it.
 

@@ -7,6 +7,7 @@ import { afterEach, expect, test } from 'bun:test';
 import { GlobalRegistrator } from '@happy-dom/global-registrator';
 import { applyAwarenessUpdate, encodeAwarenessUpdate } from 'y-protocols/awareness';
 import { createDocxEditor } from '@docx-editor.dev/core/editor';
+import { contentControlsIn, paragraphTextOf } from '@docx-editor.dev/core/store';
 import { caretAt } from '@docx-editor.dev/core/layout';
 import { collaborationModule } from '../collaboration-module.ts';
 import { createPeerHarness, zipDocument } from './document-peer-support.ts';
@@ -121,4 +122,80 @@ test('table empty-line geometry converges after edits, history, concurrent delet
   expect(saveReopenDigest(late.store.currentPackage())).toEqual(
     saveReopenDigest(alice.surface!.session.currentPackage())
   );
+});
+
+test('a local fold preserves remote selection in the following table', async () => {
+  const body =
+    '<w:sdt><w:sdtPr/><w:sdtContent>' +
+    paragraph('Summary') +
+    Array.from({ length: 8 }, (_, i) => paragraph(`Detail ${i}`)).join('') +
+    '</w:sdtContent></w:sdt><w:tbl><w:tblGrid><w:gridCol w:w="3000"/></w:tblGrid>' +
+    Array.from(
+      { length: 14 },
+      (_, i) => '<w:tr><w:tc>' + paragraph(`Cell ${i}`) + '</w:tc></w:tr>'
+    ).join('') +
+    '</w:tbl><w:p/><w:sectPr><w:pgSz w:w="7000" w:h="4200"/>' +
+    '<w:pgMar w:top="400" w:bottom="400" w:left="400" w:right="400"/></w:sectPr>';
+  const peers = await harness.pair(zipDocument(body));
+  const [alice, bob] = [peers.alice, peers.bob].map((peer) => {
+    peer.detach();
+    const editor = createDocxEditor({
+      container: document.createElement('div'),
+      document: peer.room.document,
+      modules: [collaborationModule({ session: peer.room.session })],
+    });
+    editors.push(editor);
+    return editor.surface!;
+  });
+  const part = alice!.session.part();
+  const ids = alice!.session.paragraphIds();
+  const summary = ids[0]!;
+  const owner = contentControlsIn(part.root)[0]!.node.id;
+  const id = ids.find((id) => paragraphTextOf(part, id) === 'Cell 9')!;
+  const point = { paragraphId: id, offset: 2 };
+  bob!.setSelection({ anchor: point, head: point });
+  applyAwarenessUpdate(
+    peers.alice.awareness,
+    encodeAwarenessUpdate(peers.bob.awareness, [peers.bob.ydoc.clientID]),
+    'test'
+  );
+  const remote = () => peers.alice.room.session.remoteSelections()[0]!.head;
+  const pageCount = alice!.layout().pages.length;
+  const stop = alice!.observePaint({
+    beforePaint(_whole, reserve) {
+      for (let i = 0; i < pageCount; i++)
+        reserve?.(
+          i,
+          () => true,
+          (root) => root
+        );
+    },
+    afterPaint() {},
+  });
+  try {
+    const original = caretAt(alice!.layout(), point)!;
+    expect(remote().nodeId).toBe(id);
+    expect(alice!.setCollapsedContentControls(new Map([[owner, summary]])).ok).toBe(true);
+    alice!.flushPendingInput();
+    const folded = caretAt(alice!.layout(), point)!;
+    expect([folded.pageIndex, folded.y]).not.toEqual([original.pageIndex, original.y]);
+    expect(bob!.state().selection.head).toEqual(point);
+    expect(remote().offset).toBe(point.offset);
+    bob!.type('X');
+    peers.bob.room.session.flushPendingJournals();
+    expect(paragraphTextOf(alice!.session.part(), id)).toBe('CeXll 9');
+    expect(editors.at(-1)!.exec({ type: 'undo' }).ok).toBe(true);
+    peers.bob.room.session.flushPendingJournals();
+    expect(paragraphTextOf(alice!.session.part(), id)).toBe('Cell 9');
+    expect(editors.at(-1)!.exec({ type: 'redo' }).ok).toBe(true);
+    peers.bob.room.session.flushPendingJournals();
+    expect(alice!.setCollapsedContentControls(new Map()).ok).toBe(true);
+    alice!.flushPendingInput();
+    expect(caretAt(alice!.layout(), point)).toEqual(caretAt(bob!.layout(), point));
+    expect(saveReopenDigest(alice!.session.currentPackage())).toEqual(
+      saveReopenDigest(bob!.session.currentPackage())
+    );
+  } finally {
+    stop();
+  }
 });

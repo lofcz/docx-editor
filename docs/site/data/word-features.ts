@@ -1176,7 +1176,7 @@ export const wordFeatures: WordFeature[] = [
     roundTrip: 'full',
     tier: 'community',
     notes:
-      'Hosts can collapse body controls before the first layout or during editing, including controls in table cells. A visible header keeps its position during pagination, and hosts can keep controls connected on unchanged pages. Section boundaries and unsupported wrappers prevent collapse.',
+      'Hosts can collapse body controls before the first layout or during editing, including controls in table cells. Pagination preserves visible header positions, controls on unchanged pages, and compatible table rows on the same sheet. Section boundaries and unsupported wrappers prevent collapse.',
     docsLink: '/docs/2.x/guides/content-controls',
   },
   {

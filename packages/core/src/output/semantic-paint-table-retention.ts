@@ -70,7 +70,13 @@ export interface TableRepaint extends ParagraphReflowPaint {
   moved?: PageMovedRows;
 }
 
-const TABLE_GEOMETRY: ReadonlySet<string> = new Set(['rows', 'box', 'columnEdges']);
+const TABLE_GEOMETRY: ReadonlySet<string> = new Set([
+  'rows',
+  'box',
+  'columnEdges',
+  'id',
+  'fragmentIndex',
+]);
 // Gap bands and the frame paint from `spacingShading` and `spacingFrame` as the fragment's
 // leading layers, not the row. Paint never reads `rowIndex`: a row inserted or deleted above
 // renumbers every later row, and those rows must still keep their elements.
@@ -460,6 +466,8 @@ export function reflowTableFragment(
   if (!previous) return null;
   const before = previous.fragment;
   if (!sameRecordExcept(before, fragment, TABLE_GEOMETRY)) return null;
+  if (before.fragmentIndex !== fragment.fragmentIndex)
+    element.dataset.fragmentIndex = String(fragment.fragmentIndex);
   // A key two old rows share names neither: both repaint rather than guess.
   const candidates = new Map<string, readonly [TableRowFragmentRecord, HTMLElement] | null>();
   for (const [record, row] of previous.rows) {

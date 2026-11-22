@@ -10,11 +10,14 @@ import { sameDataWithin } from './semantic-paint-record-equality.ts';
 export function planStructuralRoots(
   prior: RetainedPage,
   page: PageRecord,
-  paint: (fragment: BlockFragmentRecord) => HTMLElement,
+  paint: (fragment: BlockFragmentRecord, previousTable?: HTMLElement) => HTMLElement,
   homeOf: (element: HTMLElement) => ChildNode
 ) {
   const { content, blocks } = prior;
   if (!content || !blocks || content.parentElement !== prior.element) return null;
+  // A continuation can become the first fragment on this sheet. Its table still owns the rows.
+  const keyOf = (record: BlockFragmentRecord) =>
+    record.kind === 'table' ? `table:${record.tableId}` : `block:${record.id}`;
   const existing = new Map<
     string,
     { record: BlockFragmentRecord; root: HTMLElement; home: ChildNode }
@@ -34,25 +37,34 @@ export function planStructuralRoots(
         ? root.dataset.paragraphId !== record.paragraphId
         : root.dataset.tableId !== record.tableId) ||
       (previous && previous.compareDocumentPosition(home) !== home.DOCUMENT_POSITION_FOLLOWING) ||
-      existing.has(record.id)
+      existing.has(keyOf(record))
     )
       return null;
-    existing.set(record.id, { record, root, home });
+    existing.set(keyOf(record), { record, root, home });
     previous = home;
   }
-  const planned: { fragment: BlockFragmentRecord; root?: HTMLElement }[] = [];
+  const planned: {
+    fragment: BlockFragmentRecord;
+    root?: HTMLElement;
+    table?: { root: HTMLElement; home: ChildNode };
+  }[] = [];
+  const seen = new Set<string>();
   const updates = new Map<HTMLElement, HTMLElement>();
   const survivors = new Map<HTMLElement, ChildNode>();
   previous = undefined;
   for (const fragment of page.fragments) {
-    const old = existing.get(fragment.id);
+    const key = keyOf(fragment);
+    if (seen.has(key)) return null;
+    seen.add(key);
+    const old = existing.get(key);
     const same = old?.record.kind === fragment.kind && sameDataWithin(old.record, fragment, 20000);
     // Paint added blocks and replacement tables only after the host accepts this plan.
     const fresh =
       !same && old?.record.kind === 'paragraph' && fragment.kind === 'paragraph'
         ? paint(fragment)
         : undefined;
-    if (old && (same || (fresh && canRetainPaintedParagraph(old.root, fresh)))) {
+    const table = old?.record.kind === 'table' && fragment.kind === 'table' && !same;
+    if (old && (same || table || (fresh && canRetainPaintedParagraph(old.root, fresh)))) {
       // A reorder can change a host's ownership. Use the regular reconciliation for that page.
       if (
         previous &&
@@ -60,17 +72,30 @@ export function planStructuralRoots(
       )
         return null;
       previous = old.home;
-      survivors.set(old.root, old.home);
-      planned.push({ fragment, root: old.root });
-      if (fresh) updates.set(old.root, fresh);
+      if (table) {
+        // Borrowers must release descendants that the ordinary table painter can replace.
+        planned.push({ fragment, table: old });
+      } else {
+        survivors.set(old.root, old.home);
+        planned.push({ fragment, root: old.root });
+        if (fresh) updates.set(old.root, fresh);
+      }
     } else planned.push({ fragment, root: fresh });
   }
-  if (!survivors.size) return null;
+  if (!survivors.size && !planned.some((entry) => entry.table)) return null;
   const changedRoots = new Set(updates.keys());
   for (const { root } of existing.values()) if (!survivors.has(root)) changedRoots.add(root);
   return {
     changedRoots,
     apply() {
+      // Reflow accepted table rows while the old table is still connected.
+      const nextBlocks = new Map(
+        planned.map(({ fragment, root, table }) => {
+          const element = root ?? paint(fragment, table?.root);
+          if (table?.root === element) survivors.set(element, table.home);
+          return [fragment, element] as const;
+        })
+      );
       for (const { root, home } of existing.values()) {
         if (survivors.has(root)) continue;
         if (home !== root) home.remove();
@@ -78,9 +103,6 @@ export function planStructuralRoots(
       }
       for (const [root, fresh] of updates) retainPaintedParagraph(root, fresh);
       let before: ChildNode | null = null;
-      const nextBlocks = new Map(
-        planned.map(({ fragment, root }) => [fragment, root ?? paint(fragment)])
-      );
       const ordered = [...nextBlocks.values()];
       for (let i = ordered.length - 1; i >= 0; i--) {
         const root = ordered[i]!;

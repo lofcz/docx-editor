@@ -2363,7 +2363,7 @@ export function paintSemanticLayoutWithAuthorSlots(
       chromeChanged ? null : reusable,
       parametersUnchanged ? previousByIndex : null,
       beforePaint,
-      (page, fragment: BlockFragmentRecord) => {
+      (page, fragment: BlockFragmentRecord, previousTable) => {
         const context = {
           ...resolved,
           paintInstance: `p${page.index}`,
@@ -2371,7 +2371,7 @@ export function paintSemanticLayoutWithAuthorSlots(
         };
         return fragment.kind === 'paragraph'
           ? paintFragment(document, fragment, context)
-          : paintTableFragment(document, fragment, context);
+          : paintTableFragment(document, fragment, context, previousTable);
       }
     );
 

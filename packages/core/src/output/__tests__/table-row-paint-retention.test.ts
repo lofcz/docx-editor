@@ -6,8 +6,8 @@ import type { OoxmlElement } from '@docx-editor.dev/core/store';
 import { createLayoutSession } from '../../layout/layout-session.ts';
 import { createParagraphLayoutCache } from '../../layout/layout-cache.ts';
 import { readTableStructure } from '../../layout/semantic-table.ts';
-import { load, lay, row, table } from '../../layout/__tests__/table-row-keep-fixtures.ts';
-import { paintSemanticLayout } from '../semantic-paint.ts';
+import { load, lay, para, row, table } from '../../layout/__tests__/table-row-keep-fixtures.ts';
+import { paintSemanticLayout, paintSemanticLayoutWithAuthorSlots } from '../semantic-paint.ts';
 
 test('typing preserves unchanged row elements and matches a cold paint', () => {
   const part = load(table(Array.from({ length: 30 }, (_, i) => row(`Row${i}`))));
@@ -125,4 +125,40 @@ test('a page break above a table moves its rows to the next page with their elem
   for (const [id, element] of before) if (after.get(id) === element) kept += 1;
   // A row now opening a page takes its top border there, but keeps its element.
   expect(kept).toBe(before.size);
+});
+
+test('a borrowed table keeps its rows when its continuation becomes the first fragment', () => {
+  const grid = table(Array.from({ length: 8 }, (_, i) => row(`Row${i}`)));
+  const part = load(para('Before', 8) + grid);
+  const layout = lay(part);
+  const container = document.createElement('div');
+  paintSemanticLayout(container, layout, { scale: 1 });
+  const sheet = container.children[1]!;
+  const old = sheet.querySelector<HTMLElement>('.docx-table-fragment')!;
+  expect(old.dataset.fragmentIndex).toBe('1');
+  const cellText = old.querySelector('.layout-run-text')!;
+  const rows = [...old.querySelectorAll('.docx-table-row')];
+  const marker = document.createComment('table home');
+  const slot = document.createElement('section');
+  old.before(marker, slot);
+  slot.append(old);
+  const next = lay(load(para('Before', 12) + grid));
+  let offered = false;
+  paintSemanticLayoutWithAuthorSlots(container, next, { scale: 1 }, undefined, (_kept, reserve) => {
+    offered = reserve(
+      1,
+      (changed) => changed.has(old),
+      (root) => (root === old ? marker : root)
+    );
+  });
+  expect(offered).toBe(true);
+  expect(slot.firstElementChild).toBe(old);
+  expect(old.dataset.fragmentIndex).toBe('0');
+  expect(old.contains(cellText)).toBe(true);
+  expect([...old.querySelectorAll('.docx-table-row')].slice(-rows.length)).toEqual(rows);
+  marker.replaceWith(old);
+  slot.remove();
+  const cold = document.createElement('div');
+  paintSemanticLayout(cold, next, { scale: 1 });
+  expect(container.innerHTML).toBe(cold.innerHTML);
 });

@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Structural page reconciliation rebuilt changed table fragments.",
+  "after": "Structural page reconciliation can retain rows owned by the same table on the same sheet.",
+  "reason": "The painter reuses local elements. Shared operations and cursor addresses stay the same.",
+  "tests": [
+    "packages/core/src/output/__tests__/table-row-paint-retention.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-table-caret.test.ts"
+  ],
+  "changeset": "table-rows-in-structural-paint",
+  "migration": null
+}

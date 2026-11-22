@@ -109,7 +109,11 @@ export function prepareParagraphRootPaint(
   reusable: ReadonlyMap<PageRecord, RetainedPage> | null,
   previousByIndex: ReadonlyMap<number, RetainedPage> | null,
   beforePaint: (retained: ReadonlySet<number>, preserve: PreserveParagraphRoots) => void,
-  paint: (page: PageRecord, fragment: BlockFragmentRecord) => HTMLElement
+  paint: (
+    page: PageRecord,
+    fragment: BlockFragmentRecord,
+    previousTable?: HTMLElement
+  ) => HTMLElement
 ) {
   type Plan = NonNullable<ReturnType<typeof planParagraphRootPaint>>;
   const reserved = new Map<number, Plan>();
@@ -157,7 +161,7 @@ export function prepareParagraphRootPaint(
         const structural = planStructuralRoots(
           prior,
           page,
-          (fragment) => paint(page, fragment),
+          (fragment, table) => paint(page, fragment, table),
           homeOf
         );
         if (!structural) return false;
