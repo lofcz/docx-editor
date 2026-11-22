@@ -54,20 +54,6 @@ export function rememberPaintedCell(
   cells.set(element, { cell, host, strokes, blocks });
 }
 
-export function previousTableElement(
-  blocks: ReadonlyMap<BlockFragmentRecord, HTMLElement>,
-  fragment: TableFragmentRecord
-): HTMLElement | undefined {
-  for (const [previous, element] of blocks)
-    if (
-      previous.kind === 'table' &&
-      previous.tableId === fragment.tableId &&
-      previous.fragmentIndex === fragment.fragmentIndex
-    )
-      return element;
-  return undefined;
-}
-
 /** Cold painters for the parts of a table reuse cannot keep, plus the paragraph paint rules. */
 export interface TableRepaint extends ParagraphReflowPaint {
   row(row: TableRowFragmentRecord): HTMLElement;

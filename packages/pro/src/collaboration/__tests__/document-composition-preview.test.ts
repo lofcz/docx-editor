@@ -396,3 +396,36 @@ test('a remote edit while composing in a text box keeps both texts once', async 
     packageFingerprint(bob.editor.surface!.session.currentPackage())
   );
 });
+
+test('a remote text edit leaves a focused paragraph control and the painted text connected', async () => {
+  const peers = await harness.pair(zipDocument('<w:p><w:r><w:t>Alpha</w:t></w:r></w:p>'));
+  const [alice, bob] = [peers.alice, peers.bob].map((peer) => {
+    peer.detach();
+    return mount({
+      document: peer.room.document,
+      modules: [collaborationModule({ session: peer.room.session })],
+    });
+  }) as [Mounted, Mounted];
+  const root = alice.container.querySelector<HTMLElement>('.docx-paragraph-fragment')!;
+  const text = root.querySelector('.layout-run-text')!.firstChild!;
+  const button = root.appendChild(document.createElement('button'));
+  button.setAttribute('contenteditable', 'false');
+  caret(bob.editor, 0, 2);
+  button.focus();
+  expect(bob.editor.exec({ type: 'insertText', text: 'Z' }).ok).toBe(true);
+  peers.bob.room.session.flushPendingJournals();
+  await settle();
+  expect(text.textContent).toBe('AlZpha');
+  expect(text.isConnected).toBe(true);
+  expect(button.isConnected).toBe(true);
+  expect(document.activeElement).toBe(button);
+  expect(bob.editor.exec({ type: 'undo' }).ok).toBe(true);
+  peers.bob.room.session.flushPendingJournals();
+  await settle();
+  expect(text.textContent).toBe('Alpha');
+  expect(bob.editor.exec({ type: 'redo' }).ok).toBe(true);
+  peers.bob.room.session.flushPendingJournals();
+  await settle();
+  const reopened = mount({ document: new Uint8Array(await alice.editor.save()) });
+  expect(reopened.editor.surface!.session.bodyText()).toBe('AlZpha');
+});

@@ -55,13 +55,13 @@ function sameRecord(left: unknown, right: unknown, budget: { left: number }): bo
  * the element in hand is what painting would build.
  */
 export function equalBlockElement(
-  previous: ReadonlyMap<BlockFragmentRecord, HTMLElement>,
+  prior: readonly [BlockFragmentRecord, HTMLElement] | undefined,
   fragment: BlockFragmentRecord,
-  claimed: readonly HTMLElement[],
   paint?: ParagraphReflowPaint
 ): HTMLElement | undefined {
-  for (const [record, element] of previous) {
-    if (record.id !== fragment.id || claimed.includes(element)) continue;
+  if (prior) {
+    const [record, element] = prior;
+    if (record.id !== fragment.id) return undefined;
     if (sameRecord(record, fragment, { left: COMPARISON_BUDGET })) return element;
     // A disclosure can move a following paragraph down the same sheet. Its line and
     // run positions are relative to that paragraph once painted, as in table cells.

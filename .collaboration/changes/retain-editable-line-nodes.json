@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Text edits could replace paragraph and line elements on the edited page.",
+  "after": "The painter updates compatible lines and their text nodes in place.",
+  "reason": "Both peers paint the same canonical text and selection offsets. The change affects local DOM ownership only.",
+  "tests": [
+    "packages/core/src/editor/__tests__/surface-line-identity.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-composition-preview.test.ts"
+  ],
+  "changeset": "retain-editable-line-nodes",
+  "migration": null
+}

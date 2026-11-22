@@ -15,7 +15,6 @@ import {
   reflowTableFragment,
   rememberPaintedCell,
   rememberPaintedTable,
-  previousTableElement,
   type MovedTableRows,
   type PageMovedRows,
   type TableRepaint,
@@ -1388,7 +1387,7 @@ function paintFragment(
     element.dataset.docxMarker = '';
     element.dataset.docxCollapsePlaceholder = '';
     element.setAttribute('contenteditable', 'false');
-    return element;
+    return recordParagraphChildren(element);
   }
   if (!ctx.unbound) applyParagraphFormatAnchor(element, fragment);
   if (ctx.readOnlyParagraphIds?.has(fragment.paragraphId)) {
@@ -1461,7 +1460,7 @@ function paintFragment(
       )
     );
   }
-  return element;
+  return recordParagraphChildren(element);
 }
 
 /**
@@ -2122,11 +2121,13 @@ function adoptPageBlocks(
     readonly activeHeaderFooterPageIndex?: number;
     readonly contentControlChrome?: PaintOptions['contentControlChrome'];
   },
-  moved: MovedTableRows | undefined
+  moved: MovedTableRows | undefined,
+  retainParagraphs: boolean
 ): RetainedPage | null {
   const content = retained.content;
   const previousBlocks = retained.blocks;
   if (!content || !previousBlocks || content.parentElement !== retained.element) return null;
+  const byId = new Map(Array.from(previousBlocks, (entry) => [entry[0].id, entry] as const));
   const blockOptions = {
     ...options,
     paintInstance: `p${page.index}`,
@@ -2141,18 +2142,25 @@ function adoptPageBlocks(
   };
   const pageMoved = moved?.page(blockOptions.tabLeaderOriginXPt);
   for (const fragment of page.fragments) {
+    const prior = byId.get(fragment.id);
+    byId.delete(fragment.id);
     const element =
       previousBlocks.get(fragment) ??
-      equalBlockElement(previousBlocks, fragment, elements, paragraphPaint) ??
+      equalBlockElement(prior, fragment, paragraphPaint) ??
       (fragment.kind === 'table'
         ? paintTableFragment(
             document,
             fragment,
             blockOptions,
-            previousTableElement(previousBlocks, fragment),
+            prior?.[0].kind === 'table' ? prior[1] : undefined,
             pageMoved
           )
-        : paintFragment(document, fragment, blockOptions));
+        : retainPaintedParagraph(
+            retainParagraphs && prior?.[0].kind === 'paragraph' && prior[1].parentNode === content
+              ? prior[1]
+              : undefined,
+            paintFragment(document, fragment, blockOptions)
+          ));
     blocks.set(fragment, element);
     elements.push(element);
   }
@@ -2351,12 +2359,16 @@ export function paintSemanticLayoutWithAuthorSlots(
       chromeChanged ? null : reusable,
       parametersUnchanged ? previousByIndex : null,
       beforePaint,
-      (page, fragment) =>
-        paintFragment(document, fragment, {
+      (page, fragment: BlockFragmentRecord) => {
+        const context = {
           ...resolved,
           paintInstance: `p${page.index}`,
           tabLeaderOriginXPt: page.contentBox.x - page.box.x,
-        })
+        };
+        return fragment.kind === 'paragraph'
+          ? paintFragment(document, fragment, context)
+          : paintTableFragment(document, fragment, context);
+      }
     );
 
   const pages: RetainedPage[] = layout.pages.map((page) => {
@@ -2401,7 +2413,14 @@ export function paintSemanticLayoutWithAuthorSlots(
       const adopted = roots
         ? { ...prior, record: page, blocks: roots.apply() }
         : kept
-          ? adoptPageBlocks(document, prior, page, resolved, movedRows)
+          ? adoptPageBlocks(
+              document,
+              prior,
+              page,
+              resolved,
+              movedRows,
+              !reservedRoots?.declinedPages.has(page.index)
+            )
           : null;
       if (adopted) {
         // The margin rules are a page-level overlay over the adopted blocks, so they are the one
@@ -2481,4 +2500,8 @@ import {
   type RetainedPage,
   type PreserveParagraphRoots,
 } from './semantic-paint-paragraph-roots.ts';
+import {
+  recordParagraphChildren,
+  retainPaintedParagraph,
+} from './semantic-paint-paragraph-children.ts';
 import { equalBlockElement } from './semantic-paint-block-reuse.ts';

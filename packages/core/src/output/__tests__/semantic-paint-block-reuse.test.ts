@@ -22,27 +22,21 @@ const element = (): HTMLElement => ({}) as HTMLElement;
 describe('equalBlockElement', () => {
   test('an equal record of the same block keeps the element', () => {
     const painted = element();
-    const previous = new Map([[fragment('p1', 10), painted]]);
-    expect(equalBlockElement(previous, fragment('p1', 10), [])).toBe(painted);
+    const previous = [fragment('p1', 10), painted] as const;
+    expect(equalBlockElement(previous, fragment('p1', 10))).toBe(painted);
   });
 
   test('a moved, changed or other block is repainted', () => {
-    const previous = new Map([[fragment('p1', 10), element()]]);
-    expect(equalBlockElement(previous, fragment('p1', 11), [])).toBeUndefined();
-    expect(equalBlockElement(previous, fragment('p1', 10, 'other '), [])).toBeUndefined();
-    expect(equalBlockElement(previous, fragment('p2', 10), [])).toBeUndefined();
-  });
-
-  test('an element already in use is not handed out twice', () => {
-    const painted = element();
-    const previous = new Map([[fragment('p1', 10), painted]]);
-    expect(equalBlockElement(previous, fragment('p1', 10), [painted])).toBeUndefined();
+    const previous = [fragment('p1', 10), element()] as const;
+    expect(equalBlockElement(previous, fragment('p1', 11))).toBeUndefined();
+    expect(equalBlockElement(previous, fragment('p1', 10, 'other '))).toBeUndefined();
+    expect(equalBlockElement(previous, fragment('p2', 10))).toBeUndefined();
   });
 
   test('objects that are not plain data compare by identity only', () => {
     const withMap = (map: Map<string, string>) =>
       ({ ...fragment('p1', 10), extra: map }) as unknown as BlockFragmentRecord;
-    const previous = new Map([[withMap(new Map([['a', '1']])), element()]]);
-    expect(equalBlockElement(previous, withMap(new Map([['a', '2']])), [])).toBeUndefined();
+    const previous = [withMap(new Map([['a', '1']])), element()] as const;
+    expect(equalBlockElement(previous, withMap(new Map([['a', '2']])))).toBeUndefined();
   });
 });

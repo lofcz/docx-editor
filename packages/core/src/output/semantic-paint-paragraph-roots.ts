@@ -4,6 +4,7 @@ import type {
   ParagraphFragmentRecord,
 } from '../layout/semantic-records.ts';
 import { changedPageParts } from './semantic-paint-page-diff.ts';
+import { reconcileParagraphChildren } from './semantic-paint-paragraph-children.ts';
 import { sameDataWithin } from './semantic-paint-record-equality.ts';
 
 /**
@@ -53,7 +54,7 @@ function planParagraphRootPaint(
   )
     return null;
   const nextBlocks = new Map<BlockFragmentRecord, HTMLElement>();
-  const updates = new Map<HTMLElement, DocumentFragment>();
+  const updates = new Map<HTMLElement, HTMLElement>();
   let previous: HTMLElement | undefined;
   for (let i = 0; i < page.fragments.length; i++) {
     const from = prior.record.fragments[i]!;
@@ -84,16 +85,14 @@ function planParagraphRootPaint(
         Array.from(fresh.attributes).some((attr) => root.getAttribute(attr.name) !== attr.value)
       )
         return null;
-      const children = fresh.ownerDocument.createDocumentFragment();
-      while (fresh.firstChild) children.append(fresh.firstChild);
-      updates.set(root, children);
+      updates.set(root, fresh);
     }
     nextBlocks.set(to, root);
   }
   return {
     changedRoots: new Set(updates.keys()),
     apply() {
-      for (const [root, children] of updates) root.replaceChildren(children);
+      for (const [root, fresh] of updates) reconcileParagraphChildren(root, fresh);
       return nextBlocks;
     },
   };
@@ -112,6 +111,7 @@ export function prepareParagraphRootPaint(
   type Plan = NonNullable<ReturnType<typeof planParagraphRootPaint>>;
   const reserved = new Map<number, Plan>();
   const retained = new Set<number>();
+  const declinedPages = new Set<number>();
   for (const page of pages) {
     if (reusable?.get(page)?.materialized && (materialize?.has(page.index) ?? true))
       retained.add(page.index);
@@ -140,12 +140,16 @@ export function prepareParagraphRootPaint(
         plan = planParagraphRootPaint(prior, page, (fragment) => paint(page, fragment));
         plans.set(index, plan);
       }
-      if (!plan || !accepts(plan.changedRoots)) return false;
+      if (!plan) return false;
+      if (!accepts(plan.changedRoots)) {
+        declinedPages.add(index);
+        return false;
+      }
       reserved.set(index, plan);
       return true;
     });
   } finally {
     accepting = false;
   }
-  return reserved;
+  return Object.assign(reserved, { declinedPages });
 }
