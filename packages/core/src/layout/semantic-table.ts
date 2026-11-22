@@ -2,21 +2,14 @@ import { resolvedTableGrid } from './resolved-table-grid.ts';
 import type { SemanticTableCell } from './semantic-table-cell.ts';
 export type { SemanticTableCell } from './semantic-table-cell.ts';
 import { cachedTableStructure } from './table-structure-cache.ts';
-import { hiddenRowCollapses } from './table-hidden-row.ts';
+import {
+  planTableRow,
+  resolveTableRows,
+  withTableRowReuseFor,
+  withoutTableRowReuse,
+  type TableRowPlan,
+} from './table-structure-rows.ts';
 import { tableHasHidableRevisions } from './table-revision-markup.ts';
-import { readConditionalCellBorders } from './conditional-cell-borders.ts';
-import {
-  receivedGridSpan,
-  resolvedVMerge,
-  visibleRowCells,
-  rowRevisionOmitted,
-  withReceivedWidth,
-} from './table-cell-revision-view.ts';
-import {
-  revisionCellMetadata,
-  wmlRevisionChild,
-  wmlRevisionAttribute,
-} from './revision-cell-shading.ts';
 import { mirroredAlignment, tableAlignmentOf, tableIndentNode } from './table-alignment.ts';
 import {
   autoWidthOuterRulePt,
@@ -24,7 +17,7 @@ import {
   withSharedGridLineSideRules,
 } from './legacy-table-side-rules.ts';
 import { nestedAutofitStructure, widenedTableStructure } from './table-widened-structure.ts';
-import { withRowMinimumContentInsets } from './table-row-minimum-insets.ts';
+import { windowedContentRows, withLegacyContentAlignment } from './table-content-rows.ts';
 // Bounded table structure over the typed canonical tree.
 //
 // Reads `w:tbl`/`w:tr`/`w:tc` into the bounded structure consumed by table layout. All widths
@@ -41,13 +34,7 @@ import {
   type OoxmlElement,
   type OoxmlNode,
 } from '@docx-editor.dev/core/store';
-import {
-  readFlag,
-  readGridSkip,
-  readGridSpan,
-  readRowHeight,
-  exactRowHeightWithBottomMargin,
-} from './table-row-properties.ts';
+import { readFlag } from './table-row-properties.ts';
 import { readTableFloatPosition, type TableFloatPosition } from './table-float-properties.ts';
 export type {
   TableFloatAnchor,
@@ -56,13 +43,10 @@ export type {
   TableFloatYSpec,
 } from './table-float-properties.ts';
 import {
-  revisionNodeIncluded,
-  revisionNodeProjectionMode,
   type RevisionAttribution,
   type RevisionAuthorFilter,
   type RevisionDisplayMode,
 } from './revision-projection.ts';
-import { mergedFlowBlocks } from './story-roots.ts';
 import {
   EMPTY_TABLE_CELL_STYLE_FORMATTING,
   EMPTY_TABLE_FORMATTING,
@@ -72,25 +56,15 @@ import {
   type StyleCascadeTable,
   type TableCellStyleFormatting,
 } from './style-cascade.ts';
+import { mergeTableBorders } from './table-border-cascade.ts';
 import {
-  mergeCellBorders,
-  mergeCellDiagonalBorders,
-  mergeTableBorders,
-} from './table-border-cascade.ts';
-import {
-  EMPTY_CELL_BORDER_BOX,
   EMPTY_TABLE_BORDER_BOX,
-  readCellBorders,
   readTableBorders,
-  rowExceptionBorders,
   type TableBorderBox,
 } from './table-borders.ts';
 import {
-  AUTO_PREFERRED_WIDTH,
-  MAX_TABLE_COLUMNS,
   gridColumnElements,
   preferredLengthPt,
-  readPreferredWidth,
   readTableIndentPt,
   readTablePreferredWidth,
   resolveColumnWidthsPt,
@@ -103,27 +77,20 @@ import {
   DEFAULT_CELL_MARGINS,
   MAX_CELL_MARGIN_PT,
   mergeMargins,
-  raiseRowTopMargins,
   readMarginSides,
-  rowExceptionMargins,
   type CellMarginsPt,
 } from './table-cell-margins.ts';
-import { readCellTextDirection } from './table-cell-text-direction.ts';
-import { cellVerticalAlign } from './table-cell-vertical-align.ts';
 import { tableRowIsHeader } from './table-row-header-style.ts';
-import { cellIgnoresEndMark, cellNoWrap } from './table-cell-hide-mark.ts';
 import { uniformRowCellSpacingPt } from './table-row-cell-spacing.ts';
 import { modernSharedPercentWidth, resolveTableWidthPlacement } from './table-width-placement.ts';
 import { legacyFixedTableContentOffset } from './legacy-fixed-table-content.ts';
-import { rowExceptionAlignment, withLegacyRowPlacement } from './legacy-row-placement.ts';
+import { withLegacyRowPlacement } from './legacy-row-placement.ts';
 import { withLegacyTableSideRules } from './legacy-table-side-rules.ts';
 import {
-  conditionalTypesFor,
   headerBlockRowCount,
   readTableLook,
   rowConditionTypes,
 } from './table-conditional-formats.ts';
-import { cellShading } from './table-cell-shading.ts';
 import { withRowSpacingShading } from './table-spacing-shading.ts';
 import type { TableSpacingFrame, TableSpacingShading } from './semantic-records.ts';
 import {
@@ -187,7 +154,6 @@ export type TableRowHeight =
   { readonly rule: 'auto' } | { readonly rule: 'atLeast' | 'exact'; readonly valuePt: number };
 
 /** Highest grid column a cell may start on; keeps a row's total span bounded. */
-const LAST_GRID_COLUMN = MAX_TABLE_COLUMNS - 1;
 
 /** Bound conditional cell formatting per immutable resolved table style. */
 const MAX_CELL_CONDITION_SETS = 256;
@@ -414,7 +380,59 @@ export function readTableStructure(
   return widenedTableStructure(base, widths, { compatibilityMode, depth, contentWidthPt });
 }
 
+/**
+ * @internal The structure of `table` read from nothing: no cached structure and no rows of an
+ * earlier read. Tests compare it with what {@link readTableStructure} returns.
+ */
+export function readTableStructureFresh(
+  table: OoxmlNode,
+  contentWidthPt: number,
+  styleCascade?: StyleCascadeTable,
+  compatibilityMode?: number,
+  displayMode: RevisionDisplayMode = 'all-markup'
+): SemanticTableStructure | null {
+  return withoutTableRowReuse(() =>
+    readTableStructureUncached(
+      table,
+      contentWidthPt,
+      0,
+      styleCascade,
+      displayMode,
+      undefined,
+      compatibilityMode
+    )
+  );
+}
+
 function readTableStructureUncached(
+  source: OoxmlNode,
+  contentWidthPt: number,
+  depth: number,
+  styleCascade: StyleCascadeTable | undefined,
+  displayMode: RevisionDisplayMode,
+  authorFilter?: RevisionAuthorFilter,
+  compatibilityMode?: number,
+  textBox = false
+): SemanticTableStructure | null {
+  if (source.kind !== 'table') return null;
+  let rows = 0;
+  for (const node of flattenContentControls(source.children))
+    if (node.kind === 'tableRow') rows += 1;
+  return withTableRowReuseFor(rows, () =>
+    readTableRows(
+      source,
+      contentWidthPt,
+      depth,
+      styleCascade,
+      displayMode,
+      authorFilter,
+      compatibilityMode,
+      textBox
+    )
+  );
+}
+
+function readTableRows(
   source: OoxmlNode,
   contentWidthPt: number,
   depth: number,
@@ -491,19 +509,7 @@ function readTableStructureUncached(
   // thousands of maximum-span cells would otherwise walk millions of grid intervals in the
   // border pass. Fails closed like the ownership and vMerge budgets: the overflow cells
   // pile onto the last column instead of extending the grid.
-  interface RowPlan {
-    readonly node: OoxmlElement;
-    readonly revision: OoxmlElement | undefined;
-    readonly changeSites: readonly RevisionAttribution[] | undefined;
-    /** The row's cells with any `CT_SdtCell` wrapper unwrapped, so both passes see one list. */
-    readonly cells: readonly OoxmlNode[];
-    readonly properties: OoxmlElement | undefined;
-    readonly starts: readonly number[];
-    readonly spans: readonly number[];
-    readonly preferred: readonly PreferredWidth[];
-    readonly gridColumns: number;
-  }
-  const plans: RowPlan[] = [];
+  const plans: TableRowPlan[] = [];
   const claims: CellWidthClaim[] = [];
   let hasOmittedRows = false,
     hasOmittedCells = false;
@@ -515,108 +521,16 @@ function readTableStructureUncached(
   // see the same row and cell lists they would see in a table that carried no controls at all.
   for (const rowNode of flattenContentControls(table.children)) {
     if (rowNode.kind !== 'tableRow') continue;
-    const properties = wmlRevisionChild(rowNode, 'trPr');
-    const authoredRevision = properties
-      ? (wmlRevisionChild(properties, 'ins') ?? wmlRevisionChild(properties, 'del'))
-      : undefined;
-    const revisionKind = authoredRevision?.localName;
-    const revisionAuthor = authoredRevision
-      ? (wmlRevisionAttribute(authoredRevision, 'author') ?? '')
-      : undefined;
-    const projectedMode =
-      authoredRevision && revisionAuthor !== undefined && authorFilter
-        ? revisionNodeProjectionMode(authorFilter, authoredRevision.id, revisionAuthor, displayMode)
-        : displayMode;
-    if (
-      rowRevisionOmitted(properties, displayMode, authorFilter) ||
-      hiddenRowCollapses(rowNode, properties, projectedMode, authorFilter)
-    ) {
+    const plan = planTableRow(rowNode, displayMode, authorFilter);
+    if (!plan) {
       hasOmittedRows = true;
       continue;
     }
-    const revision = projectedMode === 'all-markup' ? authoredRevision : undefined;
-    // A resolved view that KEEPS a tracked row (an accepted insertion) still owes the reader
-    // a change bar beside it, unless the reviewer filter hides the decision.
-    const changeSites =
-      authoredRevision &&
-      projectedMode !== 'all-markup' &&
-      revisionAuthor !== undefined &&
-      (!authorFilter || revisionNodeIncluded(authorFilter, authoredRevision.id, revisionAuthor))
-        ? [
-            {
-              kind: revisionKind === 'ins' ? ('insert' as const) : ('delete' as const),
-              id: wmlRevisionAttribute(authoredRevision, 'id') ?? '',
-              author: revisionAuthor,
-              ...(wmlRevisionAttribute(authoredRevision, 'date') === undefined
-                ? {}
-                : { date: wmlRevisionAttribute(authoredRevision, 'date')! }),
-              nodeId: authoredRevision.id,
-            },
-          ]
-        : undefined;
-    const starts: number[] = [];
-    const spans: number[] = [];
-    const preferred: PreferredWidth[] = [];
-    const gridBefore = Math.min(readGridSkip(properties, 'gridBefore'), LAST_GRID_COLUMN);
-    // 17.18.87: "the initial number of grid units before the row starts is skipped. The
-    // width of the skipped grid columns is set using the wBefore property." Without this the
-    // skipped band is a column nothing states, and it absorbs the leftover as a phantom
-    // gutter wider than the cells it precedes.
-    if (gridBefore > 0) {
-      claims.push({
-        start: 0,
-        span: gridBefore,
-        preferred: readPreferredWidth(properties && childNamed(properties, 'wBefore')),
-      });
-    }
-    let cursor = gridBefore;
-    // A resolved view omits pending cell insertions or deletions; see `table-cell-revision-view.ts`.
-    const nativeCells = flattenContentControls(rowNode.children);
-    const visible = visibleRowCells(nativeCells, displayMode, authorFilter);
-    hasOmittedCells ||= visible.cells !== nativeCells;
-    const rowCells = visible.cells;
-    for (const cellNode of rowCells) {
-      if (cellNode.kind !== 'tableCell') continue;
-      const cellPr = childNamed(cellNode, 'tcPr');
-      const start = Math.min(cursor, LAST_GRID_COLUMN);
-      const donors = visible.receivedFrom.get(cellNode);
-      const span = Math.min(
-        readGridSpan(cellPr) + receivedGridSpan(donors),
-        MAX_TABLE_COLUMNS - start // ≥ 1: `start` never exceeds the last column
-      );
-      const width = withReceivedWidth(
-        readPreferredWidth(cellPr && childNamed(cellPr, 'tcW')),
-        donors
-      );
-      starts.push(start);
-      spans.push(span);
-      preferred.push(width);
-      claims.push({ start, span, preferred: width });
-      cursor = start + span;
-    }
-    const gridAfter = readGridSkip(properties, 'gridAfter');
-    const gridColumns = Math.min(cursor + gridAfter, MAX_TABLE_COLUMNS);
-    // 17.4.85, the trailing counterpart of `w:wBefore`.
-    if (gridAfter > 0 && cursor < MAX_TABLE_COLUMNS) {
-      claims.push({
-        start: cursor,
-        span: Math.min(gridAfter, MAX_TABLE_COLUMNS - cursor),
-        preferred: readPreferredWidth(properties && childNamed(properties, 'wAfter')),
-      });
-    }
-    if (gridColumns > derivedColumns) derivedColumns = gridColumns;
-    if (cursor > cellEnd) cellEnd = cursor;
-    plans.push({
-      node: rowNode,
-      revision,
-      changeSites,
-      cells: rowCells,
-      properties,
-      starts,
-      spans,
-      preferred,
-      gridColumns,
-    });
+    hasOmittedCells ||= plan.hasOmittedCells;
+    for (const claim of plan.claims) claims.push(claim);
+    if (plan.gridColumns > derivedColumns) derivedColumns = plan.gridColumns;
+    if (plan.cellEnd > cellEnd) cellEnd = plan.cellEnd;
+    plans.push(plan);
   }
 
   const authoredGrid = gridColumnElements(table);
@@ -627,12 +541,6 @@ function readTableStructureUncached(
   const bodyRows = plans.length;
   const resolvedGrid = resolvedTableGrid(plans, hasOmittedRows || hasOmittedCells);
 
-  const rows: SemanticTableRow[] = [];
-  // Grid columns where the previous row has a cell with `w:vMerge`. A continuation only
-  // continues such a cell (17.4.85). Below an unmerged cell, or in the first row, it has
-  // nothing to continue, so it starts its own merge and paints its own content.
-  let mergedAbove = new Set<number>();
-  let cellsAbove: SemanticTableCell[] = [];
   const rowConditionsFor = (rowIndex: number, headerRows: number): readonly string[] =>
     rowConditionTypes(look, rowIndex, bodyRows, headerRows, styleColumns);
   // A row's own repeat flag is read with only row 0 as the header row.
@@ -643,122 +551,28 @@ function readTableStructureUncached(
       plans[rowIndex]!.properties
     )
   );
-  for (let rowIndex = 0; rowIndex < plans.length; rowIndex += 1) {
-    const plan = plans[rowIndex]!;
-    const rowNode = plan.node;
-    const rowProperties = plan.properties;
-    const rowConditions = rowConditionsFor(rowIndex, headerRows);
-    const isHeader = tableRowIsHeader(tableStyle, rowConditions, rowProperties);
-    const rowTableBorders = rowExceptionBorders(rowNode, tableBorders);
-    const rowMargins = rowExceptionMargins(rowNode, defaultMargins);
-    let cellIndex = 0;
-    const cells: SemanticTableCell[] = [];
-    const mergedHere = new Set<number>();
-    for (const cellNode of plan.cells) {
-      if (cellNode.kind !== 'tableCell') continue;
-      const cellProperties = childNamed(cellNode, 'tcPr');
-      const gridColumn = plan.starts[cellIndex]!;
-      const gridSpan = plan.spans[cellIndex]!;
-      // Read alongside its siblings, before `cellIndex` moves on — the plan loop and this
-      // one skip the same non-cell children, and the indices must stay in lockstep.
-      const preferredWidth = plan.preferred[cellIndex] ?? AUTO_PREFERRED_WIDTH;
-      const conditions = conditionalTypesFor({
-        look,
-        rowIndex,
-        rowCount: bodyRows,
-        headerRows,
-        gridColumn: gridColumn + lead,
-        gridSpan,
-        columnCount: styleColumns,
-      });
-      cellIndex += 1;
-      let conditionalBorders = EMPTY_CELL_BORDER_BOX;
-      // Whole-table tcPr and basedOn layers contribute diagonals before conditions.
-      for (const node of tableStyle.tableCellPropertyNodes ?? []) {
-        conditionalBorders = mergeCellDiagonalBorders(conditionalBorders, readCellBorders(node));
-      }
-      for (const conditionType of conditions) {
-        const format = tableStyle.conditional.get(conditionType);
-        if (!format) continue;
-        const conditionTcPr = childNamed(format, 'tcPr');
-        conditionalBorders = mergeCellBorders(
-          conditionalBorders,
-          readConditionalCellBorders(
-            conditionTcPr,
-            tableStyle.conditionalStyleLayers?.get(conditionType)
-          )
-        );
-      }
-      const shading = cellShading(tableStyle, conditions, cellProperties);
-      const cellMargins = mergeMargins(
-        rowMargins,
-        readMarginSides(cellProperties && childNamed(cellProperties, 'tcMar'))
-      );
-      // Content controls inside a cell flatten transparently — same rule as body
-      // `storyBlocks`. Without this a `w:sdt` wrapping the cell's paragraphs leaves the
-      // cell empty in layout while the tree still holds the text.
-      // Through the shared collector: a cell is a story like any other, so a tracked mark
-      // merges inside it and a paragraph a revision removed leaves no blank line behind.
-      const blocks = mergedFlowBlocks(cellNode.children, displayMode, authorFilter);
-      const ownBorders = cellProperties ? readCellBorders(cellProperties) : EMPTY_CELL_BORDER_BOX;
-      const vMerge = resolvedVMerge(cellProperties, displayMode, authorFilter);
-      if (vMerge !== 'none') mergedHere.add(gridColumn);
-      if (vMerge === 'continue' && mergedAbove.has(gridColumn)) {
-        const above = cellsAbove.findIndex((c) => c.gridColumn === gridColumn);
-        const head = cellsAbove[above];
-        if (head && !head.vMergeContinue && !head.headsVerticalMerge)
-          cellsAbove[above] = { ...head, headsVerticalMerge: true };
-      }
-      cells.push({
-        id: cellNode.id,
-        ...resolvedGrid.get(cellNode.id),
-        ...revisionCellMetadata(cellProperties, displayMode, authorFilter, plan.revision),
-        gridSpan,
-        gridColumn,
-        ...(gridCols[gridColumn]?.id ? { gridColumnId: gridCols[gridColumn]!.id } : {}),
-        ...(gridSpan > 1 && gridCols[gridColumn + gridSpan - 1]
-          ? { lastGridColumnId: gridCols[gridColumn + gridSpan - 1]!.id }
-          : {}),
-        vMergeContinue: vMerge === 'continue' && mergedAbove.has(gridColumn),
-        hideEndMark: cellIgnoresEndMark(tableStyle, conditions, cellProperties),
-        ...(cellNoWrap(tableStyle, conditions, cellProperties) ? { noWrap: true as const } : {}),
-        vAlign: cellVerticalAlign(tableStyle, conditions, cellProperties),
-        textDirection: readCellTextDirection(cellProperties),
-        margins: cellMargins,
-        borders: mergeCellBorders(conditionalBorders, ownBorders),
-        ...(rowTableBorders ? { rowTableBorders } : {}),
-        ...(shading === undefined ? {} : { shading }),
-        preferredWidth,
-        styleFormatting: styleFormattingFor(conditions),
-        blocks,
-      });
-    }
-    raiseRowTopMargins(cells);
-    mergedAbove = mergedHere;
-    cellsAbove = cells;
-    const rowRevision = plan.revision;
-    const rowRevisionKind = rowRevision
-      ? rowRevision.localName === 'ins'
-        ? ('insert' as const)
-        : ('delete' as const)
-      : undefined;
-    const rowRevisionId = rowRevision && wmlRevisionAttribute(rowRevision, 'id');
-    const rowRevisionAuthor = rowRevision && wmlRevisionAttribute(rowRevision, 'author');
-    const rowRevisionDate = rowRevision && wmlRevisionAttribute(rowRevision, 'date');
-    rows.push({
-      id: rowNode.id,
-      ...(rowRevisionKind ? { revisionKind: rowRevisionKind } : {}),
-      ...(rowRevisionId !== undefined ? { revisionId: rowRevisionId } : {}),
-      ...(rowRevisionAuthor !== undefined ? { revisionAuthor: rowRevisionAuthor } : {}),
-      ...(rowRevisionDate !== undefined ? { revisionDate: rowRevisionDate } : {}),
-      ...(plan.changeSites ? { changeSites: plan.changeSites } : {}),
-      isHeader,
-      cantSplit: readFlag(rowProperties, 'cantSplit'),
-      ...rowExceptionAlignment(rowNode),
-      height: exactRowHeightWithBottomMargin(readRowHeight(rowProperties), cells),
-      cells,
-    });
-  }
+  // A continuation only continues a cell with `w:vMerge` in the row above (17.4.85). Below
+  // an unmerged cell, or in the first row, it starts its own merge and paints its own content.
+  const rows = resolveTableRows(
+    {
+      tableStyle,
+      look,
+      lead,
+      resolvedGrid: resolvedGrid.size ? resolvedGrid : undefined,
+      gridColumnIds: gridCols.map((column) => column.id),
+      styleColumns,
+      bodyRows,
+      headerRows,
+      tableBorders,
+      defaultMargins,
+      displayMode,
+      authorFilter,
+    },
+    plans,
+    (rowIndex) => rowConditionsFor(rowIndex, headerRows),
+    styleFormattingFor,
+    tblPr
+  );
 
   const style = readStyleTableProperties(tableStyle.tablePropertyNodes, {
     indentPt: MAX_TABLE_INDENT_PT,
@@ -824,9 +638,8 @@ function readTableStructureUncached(
     ? { ...tableBorders, left: tableBorders.right, right: tableBorders.left }
     : tableBorders;
   const collapsed = cellSpacingPt === 0;
-  let contentRows = withTableContentBorders(visualRows, visualBorders, columnCount, collapsed);
-  contentRows = withRowMinimumContentInsets(
-    contentRows,
+  let contentRows = windowedContentRows(
+    tblPr ?? source,
     visualRows,
     visualBorders,
     columnCount,
@@ -911,13 +724,7 @@ function readTableStructureUncached(
       ...(statedOut.widths
         ? { statedColumnWidthsPt: visualOrder(statedOut.widths, bidiVisual) }
         : {}),
-      rows:
-        legacyWidth === undefined
-          ? shadedRows
-          : shadedRows.map((row) => ({
-              ...row,
-              cells: row.cells.map((cell) => ({ ...cell, legacyContentAlignment: true as const })),
-            })),
+      rows: legacyWidth === undefined ? shadedRows : shadedRows.map(withLegacyContentAlignment),
       ...(legacyWidth === undefined ? {} : { legacyContentAlignment: true as const }),
       ...(legacy?.trailingOuterEdge ? { legacyTrailingOuterEdge: true as const } : {}),
       ...(outerRuleOffsetPt === undefined ? {} : { outerRuleOffsetPt }),
@@ -941,7 +748,7 @@ function readTableStructureUncached(
     { compatibilityMode, depth, contentWidthPt }
   );
 }
-import { physicalTableRows, withTableContentBorders } from './table-content-borders.ts';
+import { physicalTableRows } from './table-content-borders.ts';
 import { withSpacingFrame } from './table-spacing-frame.ts';
 import { claimsWithinGrid, leadingSkipPt, reachedGrid } from './table-reached-grid.ts';
 import { readStyleTableProperties } from './table-style-properties.ts';
