@@ -134,6 +134,7 @@ import type {
   EditorFormatPainterCommands,
   FormatPainterSurfaceState,
 } from './editor-format-painter.ts';
+import type { TableLook } from '../store/table-look.ts';
 import type { ImageWrapTarget } from '../store/package/drawing-projection.ts';
 import type { DocumentProtectionState } from '../store/package/document-protection.ts';
 import type { SupportedImageMime } from '../store/package/image-resources.ts';
@@ -1169,7 +1170,7 @@ export interface EditorCommands
     /** Apply a table style defined in this document. */
     styleId?: string;
     /** Change the conditional regions of the applied table style. */
-    styleOptions?: Partial<import('../store/table-look.ts').TableLook>;
+    styleOptions?: Partial<TableLook>;
     width?: number | null;
     widthType?: string | null;
     justification?: 'left' | 'center' | 'right' | null;
