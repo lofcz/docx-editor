@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from 'bun:test';
 import { serializeOoxmlPart } from '@docx-editor.dev/core/store';
-import { commandForSlotValue, toolbarCommandState } from '../toolbar-commands.ts';
+import { runToolbarCommand, toolbarCommandState } from '../toolbar-commands.ts';
 import { docx } from './paginated-surface-fixtures.ts';
 import { openReviewEditor } from './replace-accepted-text-fixture.ts';
 
@@ -29,7 +29,7 @@ test.each([
     anchor: { paragraphId: id, offset: 14 },
     head: { paragraphId: id, offset: 0 },
   });
-  const result = editor.exec(commandForSlotValue('font.changeCase', mode)!);
+  const result = runToolbarCommand(editor, 'font.changeCase', mode);
   expect(result).toMatchObject({ ok: true });
   const actual = editor.getParagraphText(id)!.text;
   expect(actual).toBe(expected);

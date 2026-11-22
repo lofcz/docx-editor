@@ -346,6 +346,8 @@ export const CHROME_GROUPS: readonly [{
         readonly state: {
             readonly kind: 'value';
         };
+        readonly valueKey: 'font.changeCase';
+        readonly valueText: 'Aa';
     }];
     readonly id: 'font';
     readonly labelKey: 'formattingBar.groups.font';
@@ -5358,6 +5360,10 @@ export function toolbarCommandState(editor: Editor | null, id: ChromeSlotId): To
 
 // @public
 export interface ToolbarValueMap extends ObjectSlotValueMap {
+    // (undocumented)
+    'font.changeCase': Extract<EditorCommand, {
+        type: 'changeCase';
+    }>['mode'];
     // (undocumented)
     'font.family': string;
     // (undocumented)

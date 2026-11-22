@@ -1,4 +1,4 @@
-import type { Editor, EditorExecOptions } from '../contracts/editor.ts';
+import type { Editor, EditorCommand, EditorExecOptions } from '../contracts/editor.ts';
 import type { ImageWrapTarget } from '../contracts/editor.ts';
 import type { TableChromeSlotId } from './table-chrome.ts';
 import type { ObjectSlotValueMap } from './object-chrome-slots.ts';
@@ -8,6 +8,7 @@ import type { ObjectSlotValueMap } from './object-chrome-slots.ts';
  * `chart.*` values are `ObjectSlotValueMap`'s. @public
  */
 export interface ToolbarValueMap extends ObjectSlotValueMap {
+  'font.changeCase': Extract<EditorCommand, { type: 'changeCase' }>['mode'];
   'font.family': string;
   'font.size': number;
   'text.color': string;

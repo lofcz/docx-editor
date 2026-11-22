@@ -1,23 +1,9 @@
 /**
- * DOCX feature support matrix: single source of truth.
- *
- * Rendered on docx-editor.dev at /docs/2.x/docx-fidelity via the site's
- * <FeatureMatrix> / <FeatureBadge> components (the site syncs this file at
- * build time, same pipeline as docs/site/content). The `tier` field exists
- * so the same data can drive feature access and pricing pages.
- *
- * Status axes:
- * - editing:   can the user (or code driving the editor) change it in the editor?
- * - rendering: does it display as the OOXML specification and the document settings define?
- * - roundTrip: does it survive open -> edit -> save -> reopen without loss?
- *
- * Honesty rule: when in doubt, downgrade. A "partial" that turns out to be
- * full delights; a "full" that turns out to be partial burns trust.
- *
- * Notes rule: notes render inside a table cell. Use at most three short sentences. Write
- * Simplified Technical English: active voice, one idea per sentence, 20 words
- * or fewer per sentence. Name the observable behavior, not the internal lane,
- * change proposal, or code path.
+ * The fidelity page and feature badges use this support matrix. The tier identifies access.
+ * Editing covers user and API changes. Rendering follows OOXML and document settings.
+ * Round-trip support covers preservation after open, edit, and save.
+ * Use conservative support levels. Notes describe observable behavior in up to three sentences.
+ * Use active voice, one idea per sentence, and at most 20 words per sentence.
  */
 
 export type FeatureStatus =
