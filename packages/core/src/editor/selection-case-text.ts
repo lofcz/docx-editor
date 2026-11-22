@@ -37,12 +37,21 @@ export function caseLetters(
     (end !== text.length && boundaries.containing(end)?.index !== end)
   )
     return null;
-  for (const span of languages) {
+  for (let i = 0; i < languages.length; i++) {
+    const span = languages[i]!;
+    const lang = span.lang ?? 'und';
+    let limit = span.acceptedStart + span.length;
+    // Proofing can split a word without changing its casing language.
+    while (i + 1 < languages.length) {
+      const next = languages[i + 1]!;
+      if (next.acceptedStart !== limit || (next.lang ?? 'und') !== lang) break;
+      limit += next.length;
+      i++;
+    }
     const from = Math.max(start, span.acceptedStart);
-    const to = Math.min(end, span.acceptedStart + span.length);
+    const to = Math.min(end, limit);
     if (from >= to) continue;
     const part = text.slice(from, to);
-    const lang = span.lang ?? 'und';
     let lower: string;
     try {
       lower = part.toLocaleLowerCase(lang);

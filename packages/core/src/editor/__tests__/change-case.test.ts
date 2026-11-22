@@ -79,6 +79,19 @@ test('suggests the casing and refuses a selection crossing a content lock atomic
   expect(serializeOoxmlPart(s.session.part())).toContain('<w:ins ');
 });
 
+test('retains contextual casing across a spellcheck exclusion', () => {
+  const editor = open(
+    '<w:p><w:r><w:t>Ο</w:t></w:r><w:r><w:rPr><w:noProof/></w:rPr><w:t>Σ</w:t></w:r></w:p>'
+  );
+  const id = editor.getParagraphs()[0]!.blockId;
+  editor.surface!.setSelection({
+    anchor: { paragraphId: id, offset: 0 },
+    head: { paragraphId: id, offset: 2 },
+  });
+  expect(editor.exec({ type: 'changeCase', mode: 'lowercase' }).ok).toBe(true);
+  expect(editor.getParagraphText(id)!.text).toBe('ος');
+});
+
 test('uses authored language, preserves inline objects and refuses split characters', () => {
   const editor = open(
     '<w:p><w:r><w:rPr><w:lang w:val="tr-TR"/></w:rPr><w:t>Iİ</w:t><w:tab/><w:t>Iİ</w:t></w:r></w:p>' +
