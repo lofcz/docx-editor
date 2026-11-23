@@ -1205,7 +1205,7 @@ export function breakParagraph(
           holdsContent() &&
           tabClosesLine(
             replayScope,
-            pageBreaksIgnored,
+            flow?.edgeStopKeepsTrailingTabs === true && flow?.cellAnchorScope?.inTableCell !== true,
             !paragraphRtl &&
               !piece.positionalTab &&
               (activeExclusionZones().length === 0 ||
