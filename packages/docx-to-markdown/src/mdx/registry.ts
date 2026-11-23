@@ -158,6 +158,24 @@ export interface MdxComponentDefinition {
     readonly suppressLists?: boolean;
     /** A leading `1. ` typed into a paragraph is presentation, not text. */
     readonly stripNumberPrefix?: boolean;
+    /**
+     * A leading part of a paragraph's MDX text that the native paragraph shows at its end, such
+     * as a reference code written before its description. `fromSource` splits MDX text: the
+     * native text is `text.slice(start, end) + suffix`. `fromNative` splits native text: the
+     * MDX text is `prefix + text.slice(0, end)`. Both get the container's attributes and return
+     * null to keep a paragraph as written. Each must undo the other, so an unchanged paragraph
+     * reads back unchanged. Only plain-text paragraphs move.
+     */
+    readonly trailingPrefix?: {
+      readonly fromSource: (
+        text: string,
+        attributes: JsonObject
+      ) => { readonly start: number; readonly end: number; readonly suffix: string } | null;
+      readonly fromNative: (
+        text: string,
+        attributes: JsonObject
+      ) => { readonly end: number; readonly prefix: string } | null;
+    };
   };
   /**
    * The Word-readable paragraphs that stand for a new atomic block. `code` sets them in the

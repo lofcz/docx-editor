@@ -84,6 +84,17 @@ export interface MdxComponentDefinition {
     readonly contentRules?: {
         readonly stripNumberPrefix?: boolean;
         readonly suppressLists?: boolean;
+        readonly trailingPrefix?: {
+            readonly fromSource: (text: string, attributes: JsonObject) => {
+                readonly start: number;
+                readonly end: number;
+                readonly suffix: string;
+            } | null;
+            readonly fromNative: (text: string, attributes: JsonObject) => {
+                readonly end: number;
+                readonly prefix: string;
+            } | null;
+        };
     };
     // (undocumented)
     readonly diff?: DomainDiffStrategy;
