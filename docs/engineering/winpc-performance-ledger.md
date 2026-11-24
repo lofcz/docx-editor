@@ -369,6 +369,15 @@ Across 27 pages, 2,640 horizontal positions differed by at most 0.125 CSS pixels
 Widths differed at 950 positions by at most 0.015625 CSS pixels.
 The first page contained 2,339 character positions before editing. [Browser measurements and character audits](profiles/winpc-merged-opening-320.jsonl)
 
+### Click the final paragraph while the document opens
+
+Before `3fbf2c913`, the engine painted page 27 twice during opening in six Chrome traces.
+In two traces, paragraph 318 moved under the pointer before the first click. A second click reached paragraph 320.
+With the change, the engine painted page 27 once in all three traces.
+Every first click reached paragraph 320 at the expected text offset of 149.
+The first and last paragraph edits preserved all 67,298 character rectangles across 27 pages.
+The initial 2,339 character rectangles also matched at 1/64 CSS pixel precision. [Chrome pointer events and character audits](profiles/winpc-opening-final-page.jsonl)
+
 ## Memory allocation during multiline paste
 
 Chrome sampled JavaScript allocation during one 158,633-character paste per editor at `87dcdfb44`.
