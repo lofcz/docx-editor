@@ -1,4 +1,4 @@
-import type { OoxmlElement, OoxmlNode } from '@docx-editor.dev/core/store';
+import { contentControlsIn, type OoxmlElement, type OoxmlNode } from '@docx-editor.dev/core/store';
 import type {
   InlineWidgetMetrics,
   InlineWidgetMetricsProvider,
@@ -58,6 +58,16 @@ function tokensForBlocks(
   return new Map([...entries].map(([id, keys]) => [id, framedTokenJoin(keys.sort())]));
 }
 
+function hasFurnitureWidgets(furniture: SemanticLayoutOptions['furniture']) {
+  if (!furniture) return false;
+  for (const variants of [furniture.headers, furniture.footers]) {
+    for (const story of variants.values()) {
+      if (!story.part || contentControlsIn(story.part.root).length) return true;
+    }
+  }
+  return false;
+}
+
 /** Use paragraph keys only when every published box has a known direct body owner. */
 export function indexedWidgetProjection(
   options: SemanticLayoutOptions,
@@ -65,13 +75,11 @@ export function indexedWidgetProjection(
 ) {
   const source = options.measurer.inlineWidgets;
   const boxes = source && byProvider.get(source.measure);
-  const hasFurniture = (f: SemanticLayoutOptions['furniture']) =>
-    Boolean(f && (f.headers.size || f.footers.size));
   if (
     !boxes ||
     options.notes ||
-    hasFurniture(options.furniture) ||
-    options.sectionFurniture?.some(hasFurniture)
+    hasFurnitureWidgets(options.furniture) ||
+    options.sectionFurniture?.some(hasFurnitureWidgets)
   )
     return undefined;
   let cached = projections.get(boxes);
