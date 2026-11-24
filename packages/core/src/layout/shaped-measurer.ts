@@ -50,6 +50,7 @@ import {
   layoutRunHalfPointsOf,
   layoutRunSizeFactorOf,
   shapeLayoutStyleRun,
+  measureLayoutStyleRun,
   type LayoutShapingEnvironment,
 } from './layout-run-shape.ts';
 import {
@@ -435,18 +436,27 @@ export function createShapedMeasurer(
           ) {
             return unshapedWidth(text, style, syntheticBold);
           }
-          const shaped = shapeLayoutStyleRun(shaper, baseEnvironment, font, style, text);
-          // Missing-glyph advances do not describe the browser's fallback ink.
-          if (shaped.glyphs.some((glyph) => glyph.id === 0))
-            return unshapedWidth(text, style, syntheticBold);
-          for (const glyph of shaped.glyphs) total += glyph.advanceX;
-          // A face without bold widens each inked glyph when it draws the bold itself.
-          if (syntheticBold)
-            total +=
-              syntheticBoldGlyphCount(shaped) *
-              (layoutRunHalfPointsOf(style) / 2) *
-              SYNTHETIC_BOLD_ADVANCE_EM *
-              baseEnvironment.fixedPointScale;
+          const shaped = (syntheticBold ? shapeLayoutStyleRun : measureLayoutStyleRun)(
+            shaper,
+            baseEnvironment,
+            font,
+            style,
+            text
+          );
+          if (typeof shaped === 'number') total = shaped;
+          else {
+            // Missing-glyph advances do not describe the browser's fallback ink.
+            if (shaped.glyphs.some((glyph) => glyph.id === 0))
+              return unshapedWidth(text, style, syntheticBold);
+            for (const glyph of shaped.glyphs) total += glyph.advanceX;
+            // A face without bold widens each inked glyph when it draws the bold itself.
+            if (syntheticBold)
+              total +=
+                syntheticBoldGlyphCount(shaped) *
+                (layoutRunHalfPointsOf(style) / 2) *
+                SYNTHETIC_BOLD_ADVANCE_EM *
+                baseEnvironment.fixedPointScale;
+          }
         } catch {
           // Shaping refuses malformed or oversized input by design. Falling back keeps a
           // hostile font from taking the document down with it.

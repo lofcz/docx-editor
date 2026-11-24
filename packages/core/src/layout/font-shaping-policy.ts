@@ -1,3 +1,4 @@
+import { shapeForWidth, registerShapeWidth } from './shape-width.ts';
 import { HARD_MAX_FONT_BYTES, assertValidatedResolvedFont } from './font-resource.ts';
 import { HarfBuzzShapingError } from './harfbuzz-shaper.ts';
 import {
@@ -40,17 +41,20 @@ export function withFontShapingPolicy(
   ownsShaper = false
 ): TextShaper & { dispose(): void } {
   let disposed = false;
+  function check(input: ShapeInput) {
+    if (disposed) throw new HarfBuzzShapingError('disposed');
+    const font = input.environment.font;
+    assertValidatedResolvedFont(font);
+    if (font.byteLength > policy.maxFontBytes) {
+      throw new HarfBuzzShapingError('fontOverLimit', {
+        limit: policy.maxFontBytes,
+        actual: font.byteLength,
+      });
+    }
+  }
   const wrapped = Object.freeze({
     shape(input: ShapeInput) {
-      if (disposed) throw new HarfBuzzShapingError('disposed');
-      const font = input.environment.font;
-      assertValidatedResolvedFont(font);
-      if (font.byteLength > policy.maxFontBytes) {
-        throw new HarfBuzzShapingError('fontOverLimit', {
-          limit: policy.maxFontBytes,
-          actual: font.byteLength,
-        });
-      }
+      check(input);
       return shaper.shape(input);
     },
     dispose() {
@@ -58,6 +62,10 @@ export function withFontShapingPolicy(
       disposed = true;
       if (ownsShaper) (shaper as TextShaper & { dispose?: () => void }).dispose?.();
     },
+  });
+  registerShapeWidth(wrapped, (input) => {
+    check(input);
+    return shapeForWidth(shaper, input);
   });
   // It only refuses input; the runs it returns are the wrapped shaper's.
   return preservesShapingFace(shaper) ? markFacePreservingShaper(wrapped) : wrapped;

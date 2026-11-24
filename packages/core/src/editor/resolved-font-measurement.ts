@@ -1,3 +1,4 @@
+import { shapeForWidth, registerShapeWidth } from '../layout/shape-width.ts';
 import { EditorFontError, type FontConfiguration } from '../contracts/editor.ts';
 import {
   createLayoutShapedMeasurer,
@@ -56,39 +57,46 @@ export function resolvedFontMeasurement(
     const { family, weight, style } = font.request;
     return `${font.identity}|${family}|${weight}|${style}`;
   };
+  function observe<T>(input: ShapeInput, execute: () => T): T {
+    try {
+      return execute();
+    } catch (error) {
+      const font = input.environment.font;
+      if (
+        error instanceof HarfBuzzShapingError &&
+        error.code === 'fontOverLimit' &&
+        !reportedFonts.has(reportKey(font))
+      ) {
+        reportedFonts.add(reportKey(font));
+        // The face's own bytes exceed a limit: the same answer as an admission cap, not
+        // a shaper that failed to initialize.
+        const { family, weight, style } = font.request;
+        try {
+          onFontError?.(
+            new EditorFontError('overLimit', error.message, {
+              request: Object.freeze({ family, weight, style }),
+              diagnostic: error.diagnostic ?? error.message,
+              cause: error,
+            })
+          );
+        } catch {
+          // A host diagnostic callback must not replace a shaping refusal.
+        }
+      }
+      throw error;
+    }
+  }
   const observed = onFontError
     ? {
         shape(input: ShapeInput) {
-          try {
-            return shaping.shaper.shape(input);
-          } catch (error) {
-            const font = input.environment.font;
-            if (
-              error instanceof HarfBuzzShapingError &&
-              error.code === 'fontOverLimit' &&
-              !reportedFonts.has(reportKey(font))
-            ) {
-              reportedFonts.add(reportKey(font));
-              // The face's own bytes exceed a limit: the same answer as an admission cap, not
-              // a shaper that failed to initialize.
-              const { family, weight, style } = font.request;
-              try {
-                onFontError(
-                  new EditorFontError('overLimit', error.message, {
-                    request: Object.freeze({ family, weight, style }),
-                    diagnostic: error.diagnostic ?? error.message,
-                    cause: error,
-                  })
-                );
-              } catch {
-                // A host diagnostic callback must not replace a shaping refusal.
-              }
-            }
-            throw error;
-          }
+          return observe(input, () => shaping.shaper.shape(input));
         },
       }
     : shaping.shaper;
+  if (observed !== shaping.shaper)
+    registerShapeWidth(observed, (input) =>
+      observe(input, () => shapeForWidth(shaping.shaper, input))
+    );
   // It only reports a refusal and rethrows it, so its runs are the wrapped shaper's.
   const shaper =
     observed !== shaping.shaper && preservesShapingFace(shaping.shaper)
