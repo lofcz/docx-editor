@@ -189,6 +189,7 @@ export default defineConfig([
       'internal/grapheme': 'src/layout/grapheme.ts',
       // Keep the eager public schema export outside chunks used by the native surface.
       'internal/projection-schema': 'src/binding/tree-schema.ts',
+      'internal/projection-definition': 'src/binding/tree-schema-definition.ts',
     },
     // Declarations are not built by tsup. `scripts/build-core-declarations.mjs` emits
     // them after this build, in a quarter of the memory tsup's declaration bundler
