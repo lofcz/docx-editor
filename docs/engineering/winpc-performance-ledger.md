@@ -24,6 +24,20 @@ The installer checked all five archives, 766 installed files, and the lockfile. 
 All 33 editing, typography, and collaboration tests passed with 489 assertions.
 All 77 installed runtime files matched their package bytes. [Paired browser measurements](profiles/winpc-installed-267e-history.jsonl)
 
+Four more pairs typed 59 characters into the same word of a stored lesson. The keyboard delay was 65 ms.
+Each timing below is the median of four trial results. Each trial measured 59 keypresses.
+
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| Typing renderer CPU, 789.25 ms | 596.20 ms | 32.4% more CPU time |
+| Typing elapsed with pauses, 5,463.40 ms | 5,451.65 ms | 0.2% more time |
+| Median time from keypress to frame, 8.20 ms | 6.80 ms | 1.40 ms longer |
+| 95th-percentile time from keypress to frame, 16.47 ms | 15.89 ms | 0.58 ms longer |
+| Exact text, caret, and backward selection, 4/4 | 4/4 | Equal |
+| Follow-up input-method check, 4/4 | 1/4 | 3 more passes |
+
+The follow-up input-method check ran after timing. Plate timed out waiting for the expected composition text in three trials. [Timing and input checks](profiles/winpc-installed-267e-rich-typing.jsonl)
+
 ## Earlier installed comparison
 
 | DOCX | PLATE | RELATIVE |
