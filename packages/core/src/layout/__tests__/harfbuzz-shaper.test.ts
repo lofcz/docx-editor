@@ -102,13 +102,19 @@ describe('HarfBuzz production shaper', () => {
     const probe = widthProbeOf(direct)!;
     try {
       for (const sample of [
-        input('AVATAR '), input('office'), input('a\u0301'),
+        input('AVATAR '),
+        input('office'),
+        input('a\u0301'),
         input('العربية', regular, { script: 'Arab', direction: 'rtl' }),
         input('\u{10ffff}'),
       ]) {
         const measured = probe(sample);
         const glyphs = shaper.shape(sample).glyphs;
-        expect(measured).toBe(glyphs.some((g) => g.id === 0) ? undefined : glyphs.reduce((sum, g) => sum + g.advanceX, 0));
+        expect(measured).toBe(
+          glyphs.some((g) => g.id === 0)
+            ? undefined
+            : glyphs.reduce((sum, g) => sum + g.advanceX, 0)
+        );
       }
     } finally {
       direct.dispose();

@@ -886,10 +886,17 @@ class ProductionHarfBuzzTextShaper implements HarfBuzzTextShaper {
       // A simple monotone run has exactly one cluster and two caret edges per glyph.
       // For width reads its sum already uses the same per-glyph rounding as the complete
       // run. Complex clusters and a run near its storage limit keep complete validation.
-      if (widthOnly && text.length === glyphs.length && glyphs.length > 0 &&
-          environment.direction === 'ltr' &&
-          glyphs.every((glyph, index) => glyph.cluster === index && glyph.id > 0)) {
-        const outlineBytes = [...runOutlines.values()].reduce((sum, o) => sum + outlineStorageBytes(o.path), 0);
+      if (
+        widthOnly &&
+        text.length === glyphs.length &&
+        glyphs.length > 0 &&
+        environment.direction === 'ltr' &&
+        glyphs.every((glyph, index) => glyph.cluster === index && glyph.id > 0)
+      ) {
+        const outlineBytes = [...runOutlines.values()].reduce(
+          (sum, o) => sum + outlineStorageBytes(o.path),
+          0
+        );
         // These bounds cover all run objects, arrays, spans, metrics and caret edges.
         const upperBound = 2048 + text.length * 1024 + outlineBytes;
         if (upperBound <= this.#maxShapedRunBytes) {

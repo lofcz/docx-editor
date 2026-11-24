@@ -438,24 +438,25 @@ export function createShapedMeasurer(
           ) {
             return unshapedWidth(text, style, syntheticBold);
           }
-          const width = !syntheticBold && !style.smallCaps && probeWidth
-            ? probeWidth(layoutStyleShapeInput(baseEnvironment, font, style, text))
-            : undefined;
+          const width =
+            !syntheticBold && !style.smallCaps && probeWidth
+              ? probeWidth(layoutStyleShapeInput(baseEnvironment, font, style, text))
+              : undefined;
           if (width !== undefined) {
             total = width;
           } else {
-          const shaped = shapeLayoutStyleRun(shaper, baseEnvironment, font, style, text);
-          // Missing-glyph advances do not describe the browser's fallback ink.
-          if (shaped.glyphs.some((glyph) => glyph.id === 0))
-            return unshapedWidth(text, style, syntheticBold);
-          for (const glyph of shaped.glyphs) total += glyph.advanceX;
-          // A face without bold widens each inked glyph when it draws the bold itself.
-          if (syntheticBold)
-            total +=
-              syntheticBoldGlyphCount(shaped) *
-              (layoutRunHalfPointsOf(style) / 2) *
-              SYNTHETIC_BOLD_ADVANCE_EM *
-              baseEnvironment.fixedPointScale;
+            const shaped = shapeLayoutStyleRun(shaper, baseEnvironment, font, style, text);
+            // Missing-glyph advances do not describe the browser's fallback ink.
+            if (shaped.glyphs.some((glyph) => glyph.id === 0))
+              return unshapedWidth(text, style, syntheticBold);
+            for (const glyph of shaped.glyphs) total += glyph.advanceX;
+            // A face without bold widens each inked glyph when it draws the bold itself.
+            if (syntheticBold)
+              total +=
+                syntheticBoldGlyphCount(shaped) *
+                (layoutRunHalfPointsOf(style) / 2) *
+                SYNTHETIC_BOLD_ADVANCE_EM *
+                baseEnvironment.fixedPointScale;
           }
         } catch {
           // Shaping refuses malformed or oversized input by design. Falling back keeps a
