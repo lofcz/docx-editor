@@ -744,3 +744,24 @@ Six WinPC trials compared engine `267e76def`, its wrapped-word change from `5a01
 | Multiline CPU, 163.93 ms → 158.92 ms          | 108.69 ms | Candidate used 46.2% more CPU time |
 
 All 18 engine geometry hashes matched across paste, undo, and redo at three sizes. The stored lesson matched all 390 painted text runs. Neither opening invoked the new wrap loop. Both collaboration orders matched all 224 word boxes after reconnect. Both saved and reopened the same Unicode text. [Browser measurements and geometry](profiles/winpc-wrapped-literal-comparison.jsonl)
+
+### Wrapped words at matched zoom
+
+WinPC rebuilt the same two engine packages against the combined Sciobot Home source.
+Both builds matched all 527 opening text rectangles at 100% zoom in isolated browser contexts.
+Six paste trials used every order of the control, candidate, and Plate.
+Each paste contained 158,633 characters. Elapsed time includes two animation frames.
+
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| Single-paragraph paste, 149.90 ms → 133.87 ms | 109.52 ms | Candidate took 22.2% more time |
+| Single-paragraph CPU, 120.14 ms → 106.18 ms | 83.35 ms | Candidate used 27.4% more CPU time |
+| Paste 256 paragraphs, 200.00 ms → 192.46 ms | 141.58 ms | Candidate took 35.9% more time |
+| Multiline CPU, 168.88 ms → 159.06 ms | 108.57 ms | Candidate used 46.5% more CPU time |
+| Open the ordinary document, 550.55 ms → 548.95 ms | 509.05 ms | Candidate took 7.8% more time |
+| Open the lesson, 917.25 ms → 919.65 ms | 905.05 ms | Candidate took 1.6% more time |
+
+Single-paragraph paste saved 16.52 ms elapsed and 13.72 ms CPU in the median matched pair.
+Multiline paste saved 0.97 ms elapsed and 8.55 ms CPU. Both formats used less CPU in all six pairs.
+The single-paragraph paste made 944 HarfBuzz calls, down from 1,293.
+All 18 geometry hashes matched after paste, undo, and redo. Neither opening invoked the wrapped-word loop. [Matched browser measurements](profiles/winpc-wrapped-words-matched.jsonl)
