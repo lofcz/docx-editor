@@ -108,3 +108,20 @@ The four pairs alternated editor order. Times include two animation frames.
 | 3 | 209.6 | 108.6 | 170.7 | 81.9 |
 | 4 | 193.2 | 108.2 | 168.8 | 84.5 |
 | Median | 209.6 | 108.8 | 169.7 | 84.7 |
+
+### Large paste CPU profile
+
+A separate Chromium sampling run used the same consolidated engine and the same 158,633-character paste.
+The native layout call accounted for 99.0 ms of samples. The table divides this time into exclusive groups.
+
+| Native layout work | Sampled time |
+| --- | ---: |
+| Text width measurement inside paragraph breaking | 39.5 ms |
+| Other paragraph breaking | 30.1 ms |
+| Layout outside paragraph breaking | 29.4 ms |
+
+The native selection write separately accounted for 15.2 ms of self samples.
+Plate spent 19.0 ms of self samples in `toSlateRange`. These different functions do different work.
+Profiler times come from one run and can vary from the elapsed medians above.
+
+[Native CPU profile](profiles/consolidated-profile-4096-base-paste.cpuprofile.gz) and [Plate CPU profile](profiles/consolidated-profile-4096-plate-paste.cpuprofile.gz).
