@@ -1,4 +1,5 @@
 import { plainLineForPaint } from './plain-line-paint.ts';
+import { lineWordPainter } from './semantic-paint-word-template.ts';
 import {
   applySyntheticBoldSpacing,
   fieldAnchorStart,
@@ -1232,6 +1233,10 @@ function paintLine(
   const fills = characterFillLayer(document, line, scale);
   // The previous run's automatic gap fill, finished once the run after the gap is painted.
   let finishGapFill: ((next: HTMLElement) => void) | null = null;
+  const paintWord = (span: StyleSpanRecord, band: number) =>
+    paintSpan(document, span, ctx, band, leading);
+  const paintRun =
+    line.spans.length > 1 ? lineWordPainter(paintWord, ctx.unbound === true) : paintWord;
   for (const [spanIndex, span] of line.spans.entries()) {
     const flushed = nextInlineDrawing;
     appendDrawingAdvancesBefore(span.range.paragraphId, span.range.start);
@@ -1245,7 +1250,7 @@ function paintLine(
     const band = Math.min(span.box.height + leading, line.box.height);
     const painted = span.noteSeparator
       ? paintNoteSeparatorSpan(document, span, line, scale)
-      : paintSpan(document, span, ctx, band, leading);
+      : paintRun(span, band);
     finishGapFill?.(painted);
     finishGapFill = null;
     if (bidi) {
