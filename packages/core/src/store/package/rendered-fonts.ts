@@ -431,19 +431,20 @@ function summaryOf(
   depth: number
 ): RenderedFontsSummary {
   const cached = summaryMemos.get(subtree);
-  if (
-    cached &&
-    cached.major === themeFonts.major &&
-    cached.minor === themeFonts.minor &&
-    cached.majorEastAsia === themeFonts.majorEastAsia &&
-    cached.minorEastAsia === themeFonts.minorEastAsia &&
-    cached.majorBidi === themeFonts.majorBidi &&
-    cached.minorBidi === themeFonts.minorBidi
-  ) {
+  if (cached && sameThemeFonts(cached, themeFonts)) {
     return cached.summary;
   }
   let summary: MutableSummary;
-  if (subtree.children.length >= COMPOSE_CHILD_THRESHOLD && depth < MAX_COMPOSE_DEPTH) {
+  // A body with a few content controls can still contain thousands of runs.
+  // Compose across those boundaries so typing reuses the other controls' profiles.
+  const blockContainer =
+    subtree.kind === 'body' ||
+    subtree.kind === 'contentControl' ||
+    subtree.kind === 'contentControlContent';
+  if (
+    (blockContainer || subtree.children.length >= COMPOSE_CHILD_THRESHOLD) &&
+    depth < MAX_COMPOSE_DEPTH
+  ) {
     summary = composedSummary(subtree, themeFonts, depth);
   } else {
     summary = walkSummary(subtree, themeFonts);
@@ -487,7 +488,8 @@ function sameThemeFonts(a: DocumentThemeFonts, b: DocumentThemeFonts): boolean {
 function sameProfiles(a: RenderedFontsSummary | null, b: RenderedFontsSummary | null): boolean {
   if (a === b) return true;
   if (!a || !b || a.profiles.size !== b.profiles.size) return false;
-  for (const key of a.profiles.keys()) if (!b.profiles.has(key)) return false;
+  const previous = b.profiles.keys();
+  for (const key of a.profiles.keys()) if (previous.next().value !== key) return false;
   return true;
 }
 
@@ -787,15 +789,7 @@ function styleIndexOf(stylesRoot: OoxmlElement | null, themeFonts: DocumentTheme
     };
   }
   const cached = styleIndexMemos.get(stylesRoot);
-  if (
-    cached &&
-    cached.major === themeFonts.major &&
-    cached.minor === themeFonts.minor &&
-    cached.majorEastAsia === themeFonts.majorEastAsia &&
-    cached.minorEastAsia === themeFonts.minorEastAsia &&
-    cached.majorBidi === themeFonts.majorBidi &&
-    cached.minorBidi === themeFonts.minorBidi
-  ) {
+  if (cached && sameThemeFonts(cached, themeFonts)) {
     return cached.index;
   }
   const index = buildStyleIndex(stylesRoot, themeFonts);
