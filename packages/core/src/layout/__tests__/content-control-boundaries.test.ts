@@ -20,6 +20,7 @@ import {
 import { collectedControlIndexOf } from '../content-control-boundary-layout.ts';
 import { contentControlContextToken } from '../semantic-layout.ts';
 import { MAX_INLINE_CONTAINER_DEPTH } from '../../store/store/tree-op-segments.ts';
+import { applyTreeOp } from '../../store/store/tree-ops.ts';
 
 const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 const W14 = 'http://schemas.microsoft.com/office/word/2010/wordml';
@@ -253,6 +254,31 @@ describe('multi-page boundary fragments', () => {
 });
 
 describe('metadata-only invalidation', () => {
+  test('typing retains equal boundaries and rebuilds wrapped and displaced controls', () => {
+    const geometry = { ...GEOMETRY, width: 88, height: 52 };
+    const session = createLayoutSession();
+    let part = load(sdt('', p('hi')) + sdt('', p('second')) + sdt('', p('third')));
+    let previous = layoutSemanticDocument(part, 1, { session, geometry, measurer });
+    const first = previous.pages[0]!.fragments[0]!;
+    if (first.kind !== 'paragraph') throw Error('Expected a paragraph.');
+    const originalPages = previous.pages.length;
+    let offset = 0;
+    for (const text of ['z', 'word '.repeat(40)]) {
+      const edit = applyTreeOp(part, { op: 'insertText', paragraphId: first.paragraphId, offset, text });
+      if (!edit.ok) throw Error(edit.reason);
+      part = edit.part;
+      offset += text.length;
+      const warm = layoutSemanticDocument(part, offset + 1, { session, geometry, measurer });
+      const cold = layoutSemanticDocument(structuredClone(part), offset + 1, { geometry, measurer });
+      expect(geometryShape(warm)).toBe(geometryShape(cold));
+      expect(warm.contentControls).toEqual(cold.contentControls);
+      expect(warm.pages.map(p => p.contentControls)).toEqual(cold.pages.map(p => p.contentControls));
+      if (text === 'z') expect(warm.contentControls).toBe(previous.contentControls);
+      else expect(warm.pages.length).toBeGreaterThan(originalPages);
+      previous = warm;
+    }
+  });
+
   test('wrapper-only alias change refreshes boundary records and the control-context token', () => {
     const session = createLayoutSession();
     const firstPart = load(sdt('<w:alias w:val="before"/>', p('stable content')));
