@@ -1,0 +1,380 @@
+{
+  "sciobot": "3be2ff6f1",
+  "subject": "Installed native Home lesson and Plate on WinPC",
+  "clock": "Milliseconds from the physical click in the renderer",
+  "intervals": "RunTask includes nested renderer categories. Categories must not be added.",
+  "samples": [
+    {
+      "mode": "native",
+      "open": true,
+      "markers": [
+        [
+          "disclosure.input",
+          0.0
+        ],
+        [
+          "overview.flushPendingInput.start",
+          13.49
+        ],
+        [
+          "overview.flushPendingInput.end",
+          13.55
+        ],
+        [
+          "overview.setBlockInsets.start",
+          46.85
+        ],
+        [
+          "overview.setBlockInsets.end",
+          46.92
+        ],
+        [
+          "overview.setCollapsedContentControls.start",
+          51.34
+        ],
+        [
+          "overview.setCollapsedContentControls.end",
+          53.27
+        ],
+        [
+          "overview.setBlockInsets.start",
+          53.53
+        ],
+        [
+          "overview.setBlockInsets.end",
+          53.58
+        ],
+        [
+          "disclosure.initial",
+          54.66
+        ],
+        [
+          "overview.paint.7",
+          92.27
+        ],
+        [
+          "overview.flushPendingInput.start",
+          152.29
+        ],
+        [
+          "overview.flushPendingInput.end",
+          152.32
+        ],
+        [
+          "overview.motion.open",
+          154.09
+        ],
+        [
+          "overview.motion.none",
+          268.62
+        ],
+        [
+          "disclosure.settled",
+          301.58
+        ]
+      ],
+      "stages": [
+        {
+          "start": "input",
+          "end": "overview.setCollapsedContentControls.start",
+          "ms": 51.34,
+          "rendererMs": {
+            "RunTask": 51.3,
+            "UpdateLayoutTree": 2.29,
+            "Layout": 15.23,
+            "PrePaint": 0.25,
+            "Paint": 1.36,
+            "Layerize": 0.93
+          }
+        },
+        {
+          "start": "overview.setCollapsedContentControls.start",
+          "end": "overview.paint.7",
+          "ms": 40.92,
+          "rendererMs": {
+            "RunTask": 40.88,
+            "UpdateLayoutTree": 1.58,
+            "Layout": 0.23,
+            "PrePaint": 0.39,
+            "Paint": 0.43,
+            "Layerize": 0.6
+          }
+        },
+        {
+          "start": "overview.paint.7",
+          "end": "overview.motion.none",
+          "ms": 176.35,
+          "rendererMs": {
+            "RunTask": 110.82,
+            "UpdateLayoutTree": 30.86,
+            "Layout": 15.59,
+            "PrePaint": 2.7,
+            "Paint": 2.8,
+            "Layerize": 4.24
+          }
+        },
+        {
+          "start": "overview.motion.none",
+          "end": "settled",
+          "ms": 32.96,
+          "rendererMs": {
+            "RunTask": 4.12,
+            "UpdateLayoutTree": 0.76,
+            "Layout": 0.28,
+            "PrePaint": 0.26,
+            "Paint": 0.46,
+            "Layerize": 0.5
+          }
+        }
+      ]
+    },
+    {
+      "mode": "native",
+      "open": false,
+      "markers": [
+        [
+          "disclosure.input",
+          0.0
+        ],
+        [
+          "overview.motion.close",
+          1.97
+        ],
+        [
+          "disclosure.initial",
+          45.05
+        ],
+        [
+          "overview.setCollapsedContentControls.start",
+          246.17
+        ],
+        [
+          "overview.setCollapsedContentControls.end",
+          246.45
+        ],
+        [
+          "overview.setBlockInsets.start",
+          246.67
+        ],
+        [
+          "overview.setBlockInsets.end",
+          246.72
+        ],
+        [
+          "overview.flushPendingInput.start",
+          246.75
+        ],
+        [
+          "overview.paint.5",
+          266.25
+        ],
+        [
+          "overview.flushPendingInput.end",
+          266.85
+        ],
+        [
+          "overview.motion.none",
+          268.31
+        ],
+        [
+          "disclosure.settled",
+          295.27
+        ]
+      ],
+      "stages": [
+        {
+          "start": "input",
+          "end": "overview.setCollapsedContentControls.start",
+          "ms": 246.17,
+          "rendererMs": {
+            "RunTask": 30.74,
+            "UpdateLayoutTree": 6.22,
+            "Layout": 1.11,
+            "PrePaint": 1.65,
+            "Paint": 2.17,
+            "Layerize": 6.64
+          }
+        },
+        {
+          "start": "overview.setCollapsedContentControls.start",
+          "end": "overview.paint.5",
+          "ms": 20.07,
+          "rendererMs": {
+            "RunTask": 20.07,
+            "UpdateLayoutTree": 0.0,
+            "Layout": 0.0,
+            "PrePaint": 0.0,
+            "Paint": 0.0,
+            "Layerize": 0.0
+          }
+        },
+        {
+          "start": "overview.paint.5",
+          "end": "overview.motion.none",
+          "ms": 2.06,
+          "rendererMs": {
+            "RunTask": 2.06,
+            "UpdateLayoutTree": 0.0,
+            "Layout": 0.0,
+            "PrePaint": 0.0,
+            "Paint": 0.0,
+            "Layerize": 0.0
+          }
+        },
+        {
+          "start": "overview.motion.none",
+          "end": "settled",
+          "ms": 26.97,
+          "rendererMs": {
+            "RunTask": 22.99,
+            "UpdateLayoutTree": 12.94,
+            "Layout": 2.24,
+            "PrePaint": 0.97,
+            "Paint": 1.38,
+            "Layerize": 0.46
+          }
+        }
+      ]
+    },
+    {
+      "mode": "plate",
+      "open": true,
+      "markers": [
+        [
+          "disclosure.input",
+          0.0
+        ],
+        [
+          "overview.css.transitionrun.background-color.BUTTON",
+          25.04
+        ],
+        [
+          "overview.css.transitionstart.background-color.BUTTON",
+          25.13
+        ],
+        [
+          "overview.css.transitionrun.rotate.svg",
+          25.18
+        ],
+        [
+          "overview.css.transitionstart.rotate.svg",
+          25.23
+        ],
+        [
+          "disclosure.initial",
+          39.63
+        ],
+        [
+          "overview.css.transitionend.background-color.BUTTON",
+          188.7
+        ],
+        [
+          "overview.css.transitionend.rotate.svg",
+          239.02
+        ],
+        [
+          "disclosure.settled",
+          256.63
+        ]
+      ],
+      "stages": [
+        {
+          "start": "input",
+          "end": "overview.css.transitionend.rotate.svg",
+          "ms": 239.02,
+          "rendererMs": {
+            "RunTask": 55.08,
+            "UpdateLayoutTree": 6.52,
+            "Layout": 16.0,
+            "PrePaint": 2.85,
+            "Paint": 7.52,
+            "Layerize": 8.88
+          }
+        },
+        {
+          "start": "overview.css.transitionend.rotate.svg",
+          "end": "settled",
+          "ms": 17.61,
+          "rendererMs": {
+            "RunTask": 2.16,
+            "UpdateLayoutTree": 0.1,
+            "Layout": 0.0,
+            "PrePaint": 0.09,
+            "Paint": 0.68,
+            "Layerize": 0.46
+          }
+        }
+      ]
+    },
+    {
+      "mode": "plate",
+      "open": false,
+      "markers": [
+        [
+          "disclosure.input",
+          0.0
+        ],
+        [
+          "overview.css.transitionrun.background-color.BUTTON",
+          11.12
+        ],
+        [
+          "overview.css.transitionstart.background-color.BUTTON",
+          11.22
+        ],
+        [
+          "overview.css.transitionrun.rotate.svg",
+          11.27
+        ],
+        [
+          "overview.css.transitionstart.rotate.svg",
+          11.32
+        ],
+        [
+          "disclosure.initial",
+          43.73
+        ],
+        [
+          "overview.css.transitionend.background-color.BUTTON",
+          177.86
+        ],
+        [
+          "overview.css.transitionend.rotate.svg",
+          226.95
+        ],
+        [
+          "disclosure.settled",
+          243.68
+        ]
+      ],
+      "stages": [
+        {
+          "start": "input",
+          "end": "overview.css.transitionend.rotate.svg",
+          "ms": 226.95,
+          "rendererMs": {
+            "RunTask": 22.37,
+            "UpdateLayoutTree": 2.11,
+            "Layout": 0.29,
+            "PrePaint": 2.05,
+            "Paint": 3.27,
+            "Layerize": 4.38
+          }
+        },
+        {
+          "start": "overview.css.transitionend.rotate.svg",
+          "end": "settled",
+          "ms": 16.73,
+          "rendererMs": {
+            "RunTask": 1.08,
+            "UpdateLayoutTree": 0.06,
+            "Layout": 0.0,
+            "PrePaint": 0.06,
+            "Paint": 0.0,
+            "Layerize": 0.39
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -684,6 +684,21 @@ WinPC passed 13 disclosure tests, 12 timeline tests, and both reversed peer case
 Reduced-motion changes during activation preserved focus and saved content. Consecutive activations of different controls committed both reading states.
 Six rapid reversals per version ended folded with focus on the original trigger. [Timing samples and geometry](profiles/winpc-overview-3be2-timeline.jsonl)
 
+One Chrome trace per editor followed the same lesson through opening and closing. The observers added marks without reading geometry.
+Settled close took 295.3 ms for DOCX and 243.7 ms for Plate. The four-round unprofiled gap was 62.15 ms.
+
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| Close click to fold request, 246.2 ms | Click to final chevron transition, 227.0 ms | 19.2 ms longer |
+| Fold request to motion release, 22.1 ms | No Word page publication | 22.1 ms additional |
+| Motion release to settled observation, 27.0 ms | Final chevron transition to settled observation, 16.7 ms | 10.2 ms longer |
+
+The host preserves its 220 ms closing motion. Plate uses a 200 ms chevron transition.
+Word published five pages 20.07 ms after the fold request. Its motion state cleared 2.06 ms later.
+The renderer then spent 12.94 ms updating styles and 2.24 ms on layout. Plate spent 0.06 ms updating styles.
+During opening, Word published seven pages at 92.27 ms. Motion ended at 268.62 ms against 239.02 ms for Plate.
+Opening settled at 301.58 ms against 256.63 ms for Plate. [Chrome timing marks and renderer intervals](profiles/winpc-overview-3be2-stages.json)
+
 ## Rejected line ownership summary
 
 WinPC tested caching editable offsets and page fields as the layout placed each body line.
