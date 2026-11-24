@@ -8,6 +8,10 @@ import { displayText } from './run-style.ts';
 import { styleForFontSlot } from './script-itemization.ts';
 import type { TextMeasurer } from './text-measurer.ts';
 
+// ECMA-376 Part 1, 17.3.3.31, w:t (CT_Text): keep literal text and its UTF-16 range.
+// Admit basic printable text and Latin letters. Other scripts and combining marks use the general breaker.
+const needsGeneralText = /[^ -~\p{Script=Latin}]|^ | {2}/u;
+
 const textFields = new Set(['text', 'props', 'style', 'start', 'end', 'link', 'fontSlot']);
 
 /**
@@ -28,7 +32,7 @@ export function placeFittingWords(
     piece.start !== 0 ||
     piece.end !== piece.text.length ||
     !piece.text.length ||
-    /[^ -~]|^ | {2}/u.test(piece.text) ||
+    needsGeneralText.test(piece.text) ||
     piece.style.shaping?.context ||
     fitTextGroupOf(piece) !== undefined ||
     Object.keys(piece).some(

@@ -91,6 +91,9 @@ describe('fitting words', () => {
       run('AB C de ', '<w:sz w:val="23"/><w:kern w:val="2"/><w:position w:val="4"/>'),
       run('coOL Text', '<w:vertAlign w:val="superscript"/><w:caps/>'),
       run('short extraordinarilylongword'),
+      run('Žiaci v kruhu pohotovo reagujú'),
+      run('Été, Straße Þór Łódź Őrség'),
+      run('über groß', '<w:caps/><w:kern w:val="2"/>'),
     ]) {
       const node = paragraph(body);
       for (const width of [9, 28, 53, 160, 500]) {
