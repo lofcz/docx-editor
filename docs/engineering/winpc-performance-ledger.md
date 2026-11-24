@@ -92,3 +92,5 @@ Positive values mean the candidate took longer. All 16 exact text and caret chec
 | Stored lesson | +15.80 ms | +18.51 ms | −1.60 ms |
 
 Every stored lesson opening slowed. The experimental application keeps its previous package while we investigate.
+
+WinPC ran 101 focused shaping and retained-selection tests against the consolidated source. All 565 assertions passed.
