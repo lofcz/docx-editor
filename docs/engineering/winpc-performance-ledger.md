@@ -11,7 +11,7 @@ Use `codex/react-block-proof` for progressive integration. Sciobot uses `claude/
 | Redo that paste                             | 17.01 ms |  6.32 ms | Four paired trials, median |
 | Paste 158,633 characters through two frames | 223.4 ms | 121.5 ms | One trial per editor       |
 
-The HarfBuzz change saved 29.0 ms of layout and 28.2 ms of renderer CPU on the largest paste. Both values are median paired differences across four WinPC trials against the native baseline. A direct Plate comparison for the consolidated commit is pending.
+The HarfBuzz change saved 29.0 ms of layout and 28.2 ms of renderer CPU on the largest paste. Both values are median paired differences across four WinPC trials against the native baseline. The direct consolidated comparison appears below.
 
 [Detailed Sciobot ledger and test conditions](https://github.com/sciocz/sciobot-next/blob/f16827cf8/docs/engineering/sciobot-port/evidence/winpc-editor-performance.md)
 
@@ -94,3 +94,17 @@ Positive values mean the candidate took longer. All 16 exact text and caret chec
 Every stored lesson opening slowed. The experimental application keeps its previous package while we investigate.
 
 WinPC ran 101 focused shaping and retained-selection tests against the consolidated source. All 565 assertions passed.
+
+## Consolidated engine against Plate
+
+WinPC built and packed the consolidated engine from `44468bde7`. The later attribution and ledger commits preserve its engine source.
+Both editors used the same Sciobot browser build and pasted 158,633 characters. All eight final documents matched the expected text.
+The four pairs alternated editor order. Times include two animation frames.
+
+| Pair | Native elapsed, ms | Plate elapsed, ms | Native renderer CPU, ms | Plate renderer CPU, ms |
+| ---: | ---: | ---: | ---: | ---: |
+| 1 | 209.6 | 109.0 | 168.5 | 84.9 |
+| 2 | 210.6 | 110.2 | 172.1 | 85.7 |
+| 3 | 209.6 | 108.6 | 170.7 | 81.9 |
+| 4 | 193.2 | 108.2 | 168.8 | 84.5 |
+| Median | 209.6 | 108.8 | 169.7 | 84.7 |
