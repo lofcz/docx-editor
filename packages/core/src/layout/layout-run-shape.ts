@@ -7,6 +7,7 @@ import { glyphSizeFactorOf } from './run-style.ts';
 import type { ResolvedRunStyle } from './run-style.ts';
 import {
   createShapingEnvironment,
+  type ShapeInput,
   type ShapedRun,
   type ShapingEnvironment,
   type ShapingEnvironmentInput,
@@ -62,14 +63,23 @@ export function shapeLayoutStyleRun(
   style: ResolvedRunStyle,
   text: string
 ): ShapedRun {
+  return shaper.shape(layoutStyleShapeInput(environment, font, style, text));
+}
+
+export function layoutStyleShapeInput(
+  environment: LayoutShapingEnvironment,
+  font: ResolvedFont,
+  style: ResolvedRunStyle,
+  text: string
+): ShapeInput {
   const context = style.shaping?.context;
-  return shaper.shape({
+  return {
     text,
     fontSizeHalfPoints: layoutRunHalfPointsOf(style),
     bidiLevel: style.shaping?.direction === 'rtl' ? 1 : 0,
     environment: runShapingEnvironment(environment, font, style),
     ...(context ? { context } : {}),
-  });
+  };
 }
 
 /**

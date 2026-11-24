@@ -25,6 +25,7 @@ import {
   type VersionedShapingLibrary,
 } from './shaped-run.ts';
 import { ShapeCacheKeys } from './shape-cache-key.ts';
+import { measureShapedWidth } from './measure-shaped-width.ts';
 import {
   harfBuzzUnsupportedRuntimeDiagnostic,
   harfBuzzVersionMismatchDiagnostic,
@@ -697,6 +698,19 @@ class ProductionHarfBuzzTextShaper implements HarfBuzzTextShaper {
   }
 
   shape(input: ShapeInput): ShapedRun {
+    return this.#shape(input, false);
+  }
+
+  [measureShapedWidth](input: ShapeInput): number | undefined {
+    const result = this.#shape(input, true);
+    if (typeof result === 'number') return result;
+    if (result.glyphs.some((glyph) => glyph.id === 0)) return undefined;
+    return result.glyphs.reduce((sum, glyph) => sum + glyph.advanceX, 0);
+  }
+
+  #shape(input: ShapeInput, widthOnly: false): ShapedRun;
+  #shape(input: ShapeInput, widthOnly: true): ShapedRun | number;
+  #shape(input: ShapeInput, widthOnly: boolean): ShapedRun | number {
     if (!this.#buffer) throw new HarfBuzzShapingError('disposed');
     assertValidatedResolvedFont(input.environment.font);
     if (input.environment.font.byteLength > this.#maxFontBytes) {
@@ -867,6 +881,24 @@ class ProductionHarfBuzzTextShaper implements HarfBuzzTextShaper {
         return positioned;
       });
       const extents = font.hExtents();
+      // w:sz and w:kern (CT_HpsMeasure, ECMA-376 §17.3.2.38 and §17.3.2.19)
+      // use the same font size and kerning inputs as the complete run.
+      // A simple monotone run has exactly one cluster and two caret edges per glyph.
+      // For width reads its sum already uses the same per-glyph rounding as the complete
+      // run. Complex clusters and a run near its storage limit keep complete validation.
+      if (widthOnly && text.length === glyphs.length && glyphs.length > 0 &&
+          environment.direction === 'ltr' &&
+          glyphs.every((glyph, index) => glyph.cluster === index && glyph.id > 0)) {
+        const outlineBytes = [...runOutlines.values()].reduce((sum, o) => sum + outlineStorageBytes(o.path), 0);
+        // These bounds cover all run objects, arrays, spans, metrics and caret edges.
+        const upperBound = 2048 + text.length * 1024 + outlineBytes;
+        if (upperBound <= this.#maxShapedRunBytes) {
+          convert(extents.ascender);
+          convert(-extents.descender);
+          convert(extents.lineGap);
+          return originX;
+        }
+      }
       const result = createShapedRun(
         {
           text,

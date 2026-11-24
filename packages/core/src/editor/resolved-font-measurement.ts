@@ -8,6 +8,7 @@ import {
 } from '../layout/index.ts';
 import type { LayoutShapingOptions, ResolvedFont, ShapeInput } from '../layout/index.ts';
 import { markFacePreservingShaper, preservesShapingFace } from '../layout/shaped-run.ts';
+import { measureShapedWidth, widthProbeOf } from '../layout/measure-shaped-width.ts';
 import type { OoxmlPackage } from '../store/package/ooxml-package.ts';
 import { fontTableSerifHangulFace } from '../store/package/font-table-alternates.ts';
 import { tryCreateBrowserCanvasContext } from './browser-canvas-context.ts';
@@ -52,12 +53,21 @@ export function resolvedFontMeasurement(
   // Keyed by face and request, not by answer object: a family that falls back to the face
   // gets its own answer object for the same refusal.
   const reportedFonts = new Set<string>();
+  const probeWidth = widthProbeOf(shaping.shaper);
   const reportKey = (font: ResolvedFont): string => {
     const { family, weight, style } = font.request;
     return `${font.identity}|${family}|${weight}|${style}`;
   };
   const observed = onFontError
     ? {
+        [measureShapedWidth](input: ShapeInput) {
+          try {
+            return probeWidth?.(input);
+          } catch {
+            // A refused probe takes the complete shape path, including its diagnostic.
+            return undefined;
+          }
+        },
         shape(input: ShapeInput) {
           try {
             return shaping.shaper.shape(input);

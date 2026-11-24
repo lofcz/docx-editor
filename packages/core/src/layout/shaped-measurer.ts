@@ -50,8 +50,10 @@ import {
   layoutRunHalfPointsOf,
   layoutRunSizeFactorOf,
   shapeLayoutStyleRun,
+  layoutStyleShapeInput,
   type LayoutShapingEnvironment,
 } from './layout-run-shape.ts';
+import { widthProbeOf } from './measure-shaped-width.ts';
 import {
   preservesShapingFace,
   type FixedPointRoundingMode,
@@ -366,6 +368,7 @@ export function createShapedMeasurer(
   // Coverage answers per face and text; the callers ask about single hinted characters.
   const coverageByFont = new WeakMap<ResolvedFont, Map<string, boolean>>();
 
+  const probeWidth = widthProbeOf(shaper);
   const measurer: TextMeasurer = {
     hasResolvedFont(style) {
       return resolveFontCached(style) !== null;
@@ -435,6 +438,12 @@ export function createShapedMeasurer(
           ) {
             return unshapedWidth(text, style, syntheticBold);
           }
+          const width = !syntheticBold && !style.smallCaps && probeWidth
+            ? probeWidth(layoutStyleShapeInput(baseEnvironment, font, style, text))
+            : undefined;
+          if (width !== undefined) {
+            total = width;
+          } else {
           const shaped = shapeLayoutStyleRun(shaper, baseEnvironment, font, style, text);
           // Missing-glyph advances do not describe the browser's fallback ink.
           if (shaped.glyphs.some((glyph) => glyph.id === 0))
@@ -447,6 +456,7 @@ export function createShapedMeasurer(
               (layoutRunHalfPointsOf(style) / 2) *
               SYNTHETIC_BOLD_ADVANCE_EM *
               baseEnvironment.fixedPointScale;
+          }
         } catch {
           // Shaping refuses malformed or oversized input by design. Falling back keeps a
           // hostile font from taking the document down with it.
