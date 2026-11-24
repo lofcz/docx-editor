@@ -267,3 +267,20 @@ The tested DOCX opening change was `54257baba`. Commit `7bec4950d` integrates th
 
 The native control took 708.40 ms through the first edit and 740.00 ms through the last edit.
 Both native builds produced the same target coordinates and final document geometry.
+
+## Memory allocation during multiline paste
+
+Chrome sampled JavaScript allocation during one 158,633-character paste per editor at `87dcdfb44`.
+The profiler included allocations that garbage collection reclaimed during the operation.
+
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| Estimated allocations 92.61 MB | 39.07 MB | DOCX allocated 2.37 times as much |
+
+DOCX allocated an estimated 7.96 MB in text span creation, 3.24 MB copying spans for the break cache,
+and 3.22 MB normalizing clipboard text. These are allocation estimates rather than peak memory.
+The profiler recorded 11,157 DOCX samples and 4,539 Plate samples. Profiling times are excluded from the timing medians.
+
+A separate one-paragraph read trace counted 1,838 placed lines containing 26,155 spans.
+Readers requested the span array eight times on 1,641 lines before the second frame.
+Page-field detection, paragraph lookup, line segments, and revision author collection each read spans outside the viewport.
