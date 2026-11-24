@@ -4,12 +4,12 @@ Use `codex/react-block-proof` for progressive integration. Sciobot uses `claude/
 
 ## Measured results
 
-| Installed native baseline operation         |   Native |    Plate | Sample                     |
-| ------------------------------------------- | -------: | -------: | -------------------------- |
-| Paste 431 characters                        | 35.27 ms | 24.44 ms | Four paired trials, median |
-| Undo that paste                             | 18.20 ms |  8.02 ms | Four paired trials, median |
-| Redo that paste                             | 17.01 ms |  6.32 ms | Four paired trials, median |
-| Paste 158,633 characters through two frames | 223.4 ms | 121.5 ms | One trial per editor       |
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| Paste 431 characters (four paired trials, median), 35.27 ms | 24.44 ms | 44.3% more time |
+| Undo that paste (four paired trials, median), 18.20 ms | 8.02 ms | 126.9% more time |
+| Redo that paste (four paired trials, median), 17.01 ms | 6.32 ms | 169.1% more time |
+| Paste 158,633 characters through two frames (one trial per editor), 223.4 ms | 121.5 ms | 83.9% more time |
 
 The HarfBuzz change saved 29.0 ms of layout and 28.2 ms of renderer CPU on the largest paste. Both values are median paired differences across four WinPC trials against the native baseline. The direct consolidated comparison appears below.
 
@@ -86,10 +86,8 @@ The active source at consolidation includes upstream, shared history, caret prep
 Four paired WinPC trials compared the installed native baseline with the packed width measurement change.
 Positive values mean the candidate took longer. All 16 exact text and caret checks passed.
 
-| Document | Cold opening elapsed change | Cold opening CPU change | Typing CPU change |
-| --- | ---: | ---: | ---: |
-| Ordinary | +9.65 ms | +17.27 ms | −5.95 ms |
-| Stored lesson | +15.80 ms | +18.51 ms | −1.60 ms |
+Ordinary documents changed by +9.65 ms in cold opening time, +17.27 ms in opening CPU, and −5.95 ms in typing CPU.
+Stored lesson documents changed by +15.80 ms in cold opening time, +18.51 ms in opening CPU, and −1.60 ms in typing CPU.
 
 Every stored lesson opening slowed. The experimental application keeps its previous package while we investigate.
 
@@ -101,24 +99,27 @@ WinPC built and packed the consolidated engine from `44468bde7`. The later attri
 Both editors used the same Sciobot browser build and pasted 158,633 characters. All eight final documents matched the expected text.
 The four pairs alternated editor order. Times include two animation frames.
 
-| Pair | Native elapsed, ms | Plate elapsed, ms | Native renderer CPU, ms | Plate renderer CPU, ms |
-| ---: | ---: | ---: | ---: | ---: |
-| 1 | 209.6 | 109.0 | 168.5 | 84.9 |
-| 2 | 210.6 | 110.2 | 172.1 | 85.7 |
-| 3 | 209.6 | 108.6 | 170.7 | 81.9 |
-| 4 | 193.2 | 108.2 | 168.8 | 84.5 |
-| Median | 209.6 | 108.8 | 169.7 | 84.7 |
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| Pair 1, elapsed, 209.6 ms | 109.0 ms | 92.3% more time |
+| Pair 1, renderer CPU, 168.5 ms | 84.9 ms | 98.5% more time |
+| Pair 2, elapsed, 210.6 ms | 110.2 ms | 91.1% more time |
+| Pair 2, renderer CPU, 172.1 ms | 85.7 ms | 100.8% more time |
+| Pair 3, elapsed, 209.6 ms | 108.6 ms | 93.0% more time |
+| Pair 3, renderer CPU, 170.7 ms | 81.9 ms | 108.4% more time |
+| Pair 4, elapsed, 193.2 ms | 108.2 ms | 78.6% more time |
+| Pair 4, renderer CPU, 168.8 ms | 84.5 ms | 99.8% more time |
+| Median, elapsed, 209.6 ms | 108.8 ms | 92.6% more time |
+| Median, renderer CPU, 169.7 ms | 84.7 ms | 100.4% more time |
 
 ### Large paste CPU profile
 
 A separate Chromium sampling run used the same consolidated engine and the same 158,633-character paste.
 The native layout call accounted for 99.0 ms of samples. The table divides this time into exclusive groups.
 
-| Native layout work | Sampled time |
-| --- | ---: |
-| Text width measurement inside paragraph breaking | 39.5 ms |
-| Other paragraph breaking | 30.1 ms |
-| Layout outside paragraph breaking | 29.4 ms |
+- Text width measurement inside paragraph breaking took 39.5 ms.
+- Other paragraph breaking took 30.1 ms.
+- Layout outside paragraph breaking took 29.4 ms.
 
 The native selection write separately accounted for 15.2 ms of self samples.
 Plate spent 19.0 ms of self samples in `toSlateRange`. These different functions do different work.
@@ -132,10 +133,12 @@ Both inputs contained 4,096 sentences and 158,633 characters. The second input r
 Each input used four alternating editor pairs. All resulting documents matched their expected text.
 The two inputs ran in separate batches.
 
-| Numeric text | Native elapsed | Plate elapsed | Native renderer CPU | Plate renderer CPU |
-| --- | ---: | ---: | ---: | ---: |
-| Sequential numbers | 209.6 ms | 108.8 ms | 169.7 ms | 84.7 ms |
-| Zeros of equal length | 177.9 ms | 109.6 ms | 147.4 ms | 82.3 ms |
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| Sequential numbers, elapsed, 209.6 ms | 108.8 ms | 92.6% more time |
+| Sequential numbers, renderer CPU, 169.7 ms | 84.7 ms | 100.4% more time |
+| Zeros of equal length, elapsed, 177.9 ms | 109.6 ms | 62.3% more time |
+| Zeros of equal length, renderer CPU, 147.4 ms | 82.3 ms | 79.1% more time |
 
 Repeated numeric text reduced median native CPU by 22.3 ms. The remaining elapsed gap measured 68.3 ms.
 The sequential input made 4,683 width requests. Only 94 scalar requests repeated an earlier scalar key.
@@ -147,11 +150,11 @@ Six WinPC trials per editor measured first paint, opening through the first exac
 Source candidate `ef45a6578` used smaller early layout steps than native control `f5c7c5f39`.
 All 18 edit targets matched. Both native builds produced the same final geometry digest.
 
-| Median | Native control | Bounded layout | Plate |
-| --- | ---: | ---: | ---: |
-| First paint | 604.0 ms | 516.2 ms | 603.6 ms |
-| Opening through first exact edit | 698.5 ms | 670.9 ms | 666.2 ms |
-| First key latency | 30.1 ms | 42.7 ms | 29.9 ms |
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| First paint, 604.0 ms → 516.2 ms | 603.6 ms | 14.5% less time |
+| Opening through first exact edit, 698.5 ms → 670.9 ms | 666.2 ms | 0.7% more time |
+| First key latency, 30.1 ms → 42.7 ms | 29.9 ms | 42.8% more time |
 
 The bounded candidate displayed text 87.4 ms before Plate. Its first key took 12.8 ms longer.
 The consolidated source has different page preloading behavior. It requires a separate timing run.
@@ -161,10 +164,12 @@ The consolidated source has different page preloading behavior. It requires a se
 The multiline input replaced 255 spaces with newline characters. Both inputs contain 158,633 characters.
 Each row gives the median of four alternating editor pairs on WinPC. The two inputs ran in separate batches.
 
-| Paste input | Native elapsed | Plate elapsed | Native renderer CPU | Plate renderer CPU |
-| --- | ---: | ---: | ---: | ---: |
-| One paragraph | 209.6 ms | 108.8 ms | 169.7 ms | 84.7 ms |
-| 256 paragraphs | 233.3 ms | 142.5 ms | 205.2 ms | 109.4 ms |
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| One paragraph, elapsed, 209.6 ms | 108.8 ms | 92.6% more time |
+| One paragraph, renderer CPU, 169.7 ms | 84.7 ms | 100.4% more time |
+| 256 paragraphs, elapsed, 233.3 ms | 142.5 ms | 63.7% more time |
+| 256 paragraphs, renderer CPU, 205.2 ms | 109.4 ms | 87.6% more time |
 
 Native text matched the LF reference in all four multiline trials.
 Plate readback contained 255 CRLF sequences. Normalizing those sequences to LF produced the exact expected text in every trial.
@@ -274,15 +279,15 @@ The merged build at `de621fb98` used the same 320 paragraphs and the same browse
 WinPC ran six trials per editor on the first paragraph and three on the last paragraph.
 The native control used `44468bde7`.
 
-| Median | Native control | Merged DOCX | Plate |
-| --- | ---: | ---: | ---: |
-| First visible text paint | 602.95 ms | 527.25 ms | 600.05 ms |
-| First paragraph ready for a click | 592.85 ms | 515.85 ms | 574.95 ms |
-| Open through the first exact edit | 710.10 ms | 640.85 ms | 670.80 ms |
-| First key | 30.10 ms | 29.85 ms | 30.15 ms |
-| First wheel response | 16.65 ms | 14.30 ms | 15.80 ms |
-| Open through the last exact edit | 723.60 ms | 774.30 ms | 662.20 ms |
-| Renderer CPU through the last edit | 600.48 ms | 799.60 ms | 557.84 ms |
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| First visible text paint, 602.95 ms → 527.25 ms | 600.05 ms | 12.1% less time |
+| First paragraph ready for a click, 592.85 ms → 515.85 ms | 574.95 ms | 10.3% less time |
+| Open through the first exact edit, 710.10 ms → 640.85 ms | 670.80 ms | 4.5% less time |
+| First key, 30.10 ms → 29.85 ms | 30.15 ms | 1.0% less time |
+| First wheel response, 16.65 ms → 14.30 ms | 15.80 ms | 9.5% less time |
+| Open through the last exact edit, 723.60 ms → 774.30 ms | 662.20 ms | 16.9% more time |
+| Renderer CPU through the last edit, 600.48 ms → 799.60 ms | 557.84 ms | 43.3% more time |
 
 Each trial placed the caret with one click and edited the expected character.
 The two native builds produced identical rectangles for both clicked characters.
@@ -402,17 +407,39 @@ The overview button kept focus while the editor scrolled to the previous text se
 Four WinPC trials compared the installed engine, the rebuilt engine with `9e796864e`, and Plate.
 Each run edited the same paragraph before activating the overview button. The table shows median milliseconds.
 
-| Interaction | Installed DOCX | Fixed DOCX | Plate |
-| --- | ---: | ---: | ---: |
-| Open overview | 150.10 | 90.65 | 41.95 |
-| Close overview | 44.10 | 37.25 | 44.30 |
-| Open until motion stopped | 280.40 | 245.15 | 257.05 |
-| Close until motion stopped | 294.30 | 287.55 | 244.50 |
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| Open overview, 150.10 ms → 90.65 ms | 41.95 ms | 116.1% more time |
+| Close overview, 44.10 ms → 37.25 ms | 44.30 ms | 15.9% less time |
+| Open until motion stopped, 280.40 ms → 245.15 ms | 257.05 ms | 4.6% less time |
+| Close until motion stopped, 294.30 ms → 287.55 ms | 244.50 ms | 17.6% more time |
 
 The fixed editor kept the button at 406 px and the scroll position at zero throughout opening.
 It painted twice. The installed editor painted four times and scrolled 2,804 px. [Timing samples](profiles/winpc-overview-host-focus.jsonl)
 
 The source regression reproduced a 1,771.7 px scroll before the fix. All 103 focused checks passed after the fix.
 Both browser peer orders passed remote edits, reconnect, undo, redo, deletion, and save and reopen.
-Eleven of 13 browser disclosure tests passed. Both engines failed the same wheel-completion and border-travel assertions.
-The border error measured 19.63 px on both engines against a 2 px limit.
+Eleven of 13 browser disclosure tests passed. Both DOCX builds failed the same wheel-completion and border-travel checks.
+The border error measured 19.63 px in both DOCX builds against a 2 px limit.
+
+## Installed consumer after word width batching
+
+Sciobot commit `69ae005f0` pins engine `267e76def`. WinPC tested that package with the typography fix from `8a92a3674`.
+Each action used four alternating browser pairs. Times include two animation frames.
+All 48 final documents matched the expected text. No trial reported a browser error.
+
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| Paste 433 characters, 71.39 ms | 47.93 ms | 48.9% more time |
+| Undo small paste, 33.72 ms | 31.83 ms | 5.9% more time |
+| Redo small paste, 32.03 ms | 32.18 ms | 0.5% less time |
+| Paste 158,633 characters, 156.80 ms | 115.51 ms | 35.7% more time |
+| Undo large paste, 60.35 ms | 42.86 ms | 40.8% more time |
+| Redo large paste, 71.89 ms | 59.92 ms | 20.0% more time |
+| Large paste renderer CPU, 123.97 ms | 84.42 ms | 46.8% more CPU time |
+| Large undo renderer CPU, 24.61 ms | 7.61 ms | 223.4% more CPU time |
+| Large redo renderer CPU, 46.56 ms | 23.77 ms | 95.9% more CPU time |
+
+The installer checked all five archives, 766 installed files, and the lockfile. Both browser builds resolved one engine.
+All 33 editing, typography, and collaboration tests passed with 489 assertions.
+All 77 installed runtime files matched their package bytes. [Paired browser measurements](profiles/winpc-installed-267e-history.jsonl)
