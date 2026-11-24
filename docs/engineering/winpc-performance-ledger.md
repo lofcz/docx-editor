@@ -327,3 +327,19 @@ Large-paste renderer CPU measured 127.97 ms for DOCX and 83.35 ms for Plate.
 Large-paste undo used 24.33 ms and 6.64 ms. Redo used 43.14 ms and 23.60 ms.
 The timing batch included both input sizes and all three operations. Earlier paste-only batches used separate browser processes.
 The raw browser measurements include elapsed time, renderer CPU, text length, exactness, and browser errors. [WinPC measurements](profiles/winpc-installed-87dc-history.jsonl)
+
+## Rejected change to wrapped-word metrics and cached spans
+
+Six WinPC triples tested every order of the native control, proposed change, and Plate.
+The change combined run-local word measurements, clipboard normalization, and direct ownership of cached spans.
+All 18 multiline pastes produced the expected text after line-ending normalization.
+
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| Control elapsed 192.65 ms | 141.95 ms | DOCX took 35.7% longer |
+| Proposed change elapsed 201.16 ms | 141.95 ms | DOCX took 41.7% longer |
+| Control CPU 168.03 ms | 109.40 ms | DOCX used 53.6% more CPU time |
+| Proposed change CPU 170.35 ms | 109.40 ms | DOCX used 55.7% more CPU time |
+
+The proposed change cost 4.43 ms elapsed and 2.41 ms CPU in the median paired comparison.
+The branch retains the separately verified clipboard normalization change.
