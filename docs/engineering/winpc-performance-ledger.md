@@ -2,6 +2,24 @@
 
 Use `codex/react-block-proof` for progressive integration. Sciobot uses `claude/docx-native-cutover`.
 
+## Large paste undo and redo in Chrome
+
+Three paired profiles used engine `5a0194e03` and Plate. Each restored the exact text after a 158,633-character paste.
+The counts include every element in the browser document.
+
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| Elements before undo, 904 | 388 | 516 more |
+| Elements after undo, 770 | 388 | 382 more |
+
+The DOCX undo handler averaged 16.68 ms of CPU samples. Chrome spent 5.73 ms inside `Selection.setBaseAndExtent`.
+The redo handler averaged 26.08 ms. The same selection operation used 7.41 ms.
+These figures include only samples inside the history handler.
+
+A separate inspection found that undo restored the exact original document part and root.
+All three restored pages matched their previous records, but the engine rebuilt every record.
+Redo rebuilt all 49 pages. All 49 matched their previous records. [Chrome profiles and page comparisons](profiles/winpc-history-attribution.zip)
+
 ## Font and review reads during rich typing
 
 WinPC compared engine `5a0194e03`, the font and review change, and Plate in all six orders.
