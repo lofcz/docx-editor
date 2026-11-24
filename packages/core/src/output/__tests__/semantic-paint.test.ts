@@ -537,7 +537,7 @@ describe('only the pages worth building are built (task 9.4)', () => {
     mutations.disconnect();
   });
 
-  test('editing one paragraph repaints that block and keeps every other one', () => {
+  test('editing one paragraph updates its retained text and keeps the other block', () => {
     // The typing path: one block of one page moves. Rebuilding the sheet around it made the
     // browser restyle and lay out the whole page, and dropped the text node the caret sat in.
     const container = document.createElement('div');
@@ -560,6 +560,9 @@ describe('only the pages worth building are built (task 9.4)', () => {
     const page = container.querySelector<HTMLElement>('.docx-page')!;
     const content = page.querySelector<HTMLElement>('.docx-page-content')!;
     const [firstBlock, secondBlock] = [...content.children] as HTMLElement[];
+    const line = secondBlock!.querySelector('.docx-line')!;
+    const text = line.querySelector('.layout-run-text')!.firstChild!;
+    expect(text.textContent).toBe('beta');
 
     paintSemanticLayout(container, next, { scale: 1 });
 
@@ -568,9 +571,11 @@ describe('only the pages worth building are built (task 9.4)', () => {
     const blocks = [...content.children] as HTMLElement[];
     expect(blocks).toHaveLength(2);
     expect(blocks[0]).toBe(firstBlock as never);
-    expect(blocks[1]).not.toBe(secondBlock as never);
-    expect(blocks[1]!.textContent).toContain('betaX');
-    expect(secondBlock!.isConnected).toBe(false);
+    expect(blocks[1]).toBe(secondBlock as never);
+    expect(blocks[1]!.querySelector('.docx-line')).toBe(line);
+    expect(line.querySelector('.layout-run-text')!.firstChild).toBe(text);
+    expect(text.textContent).toBe('betaX');
+    expect(firstBlock!.textContent).toBe('alpha');
   });
 
   test('a page whose furniture changed is rebuilt rather than adopted', () => {
