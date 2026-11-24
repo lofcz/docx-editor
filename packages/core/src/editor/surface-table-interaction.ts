@@ -925,8 +925,6 @@ export function createSurfaceTableInteraction(
         }
         refreshRetainedInsertAfterRelayout(input);
       }
-      layer.style.width = host.pagesLayer.style.width;
-      layer.style.height = host.pagesLayer.style.height;
     },
     cancelDrag,
     refreshLabels() {
