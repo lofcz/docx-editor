@@ -53,7 +53,8 @@ export function paragraphMarkStyles(
     unstyledProps === markProps ? empty : resolveRunStyle(unstyledProps, themeFonts);
   const lineStart = !hasContent
     ? empty
-    : measurer.lineMetrics(unstyledMark).height < measurer.lineMetrics(cascade).height
+    : unstyledMark !== cascade &&
+        measurer.lineMetrics(unstyledMark).height < measurer.lineMetrics(cascade).height
       ? unstyledMark
       : cascade;
   return { empty, cascade, unstyledMark, lineStart };

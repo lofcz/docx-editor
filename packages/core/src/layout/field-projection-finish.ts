@@ -53,7 +53,15 @@ export function finishParagraphPieces(
           options.authorFilter,
           options.changeSites
         );
+  return applyParagraphFontSlots(shown, options.themeFonts);
+}
+
+/** Resolve the same font slots for field results and literal run text. */
+export function applyParagraphFontSlots(
+  pieces: FieldAwarePiece[],
+  themeFonts: ThemeFonts | undefined
+): FieldAwarePiece[] {
   return applyComplexRunDigitFaces(
-    applyHAnsiFontSlots(applyEastAsiaFontSlots(shown, options.themeFonts), options.themeFonts)
+    applyHAnsiFontSlots(applyEastAsiaFontSlots(pieces, themeFonts), themeFonts)
   );
 }

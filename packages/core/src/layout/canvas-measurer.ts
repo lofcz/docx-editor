@@ -378,15 +378,53 @@ export function tryCreateCanvasMeasurer(options: CanvasMeasurerOptions = {}): Te
     return resolved;
   };
 
+  // Successive words usually draw in one face. Keep the last shorthand, while still
+  // observing changes to the host's alias and Korean fallback for that face.
+  let lastFamily: string | null | undefined;
+  let lastSize: number | undefined;
+  let lastBold = false;
+  let lastItalic = false;
+  let lastSmallCaps = false;
+  let lastDeclared: string | null = null;
+  let lastAlias: string | undefined;
+  let lastHangul: boolean | undefined;
+  let lastFont = '';
   const fontOf = (style: ResolvedRunStyle): string => {
     // Re-validated at the sink: a font name is file-derived and this builds a CSS font
     // shorthand, so a name that could close the string is refused rather than escaped.
     // The alias is engine-minted, never file-derived, and is validated on the same rule
     // so one code path cannot become the hole the other closed.
-    const declared = style.fontFamily && FONT_NAME.test(style.fontFamily) ? style.fontFamily : null;
+    const declared =
+      style.fontFamily === lastFamily
+        ? lastDeclared
+        : style.fontFamily && FONT_NAME.test(style.fontFamily)
+          ? style.fontFamily
+          : null;
     const aliased = declared ? fontAlias?.(declared) : undefined;
+    const hangul = declared ? options.serifHangulFace?.(declared) : undefined;
+    const size = style.fontSizePt * glyphSizeFactorOf(style) * scale;
+    if (
+      declared === lastDeclared &&
+      aliased === lastAlias &&
+      hangul === lastHangul &&
+      size === lastSize &&
+      style.bold === lastBold &&
+      style.italic === lastItalic &&
+      style.smallCaps === lastSmallCaps
+    )
+      return lastFont;
+    lastFamily = style.fontFamily;
+    lastSize = size;
+    lastBold = style.bold;
+    lastItalic = style.italic;
+    lastSmallCaps = style.smallCaps;
+    lastDeclared = declared;
+    lastAlias = aliased;
+    lastHangul = hangul;
     const alias = aliased && FONT_NAME.test(aliased) ? aliased : null;
-    const stack = fallbackStackForFamily(declared, fallbackFamily, options.serifHangulFace);
+    const stack = hangul
+      ? SERIF_HANGUL_FALLBACK_STACK
+      : fallbackStackForFamily(declared, fallbackFamily);
     const family = declared
       ? alias
         ? `"${alias}", "${declared}", ${stack}`
@@ -395,8 +433,8 @@ export function tryCreateCanvasMeasurer(options: CanvasMeasurerOptions = {}): Te
     const weight = style.bold ? 'bold' : 'normal';
     const slant = style.italic ? 'italic' : 'normal';
     const variant = style.smallCaps ? 'small-caps' : 'normal';
-    const size = style.fontSizePt * glyphSizeFactorOf(style) * scale;
-    return `${slant} ${variant} ${weight} ${size}px ${family}`;
+    lastFont = `${slant} ${variant} ${weight} ${size}px ${family}`;
+    return lastFont;
   };
 
   /** Painted pixels back to layout units, then the properties layout applies itself. */
