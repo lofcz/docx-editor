@@ -4,6 +4,26 @@ Use `codex/react-block-proof` for progressive integration. Sciobot uses `claude/
 
 ## Current installed comparison
 
+Sciobot commit `18edad0bb` pins engine `5a0194e03`. WinPC ran four alternating pairs for each action.
+The times are medians through two animation frames. All 48 documents had the expected text.
+
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| Paste 433 characters, 64.12 ms | 47.77 ms | 34.2% more time |
+| Undo small paste, 50.84 ms | 59.22 ms | 14.2% less time |
+| Redo small paste, 32.35 ms | 31.67 ms | 2.1% more time |
+| Paste 158,633 characters, 153.12 ms | 127.12 ms | 20.5% more time |
+| Undo large paste, 51.29 ms | 62.03 ms | 17.3% less time |
+| Redo large paste, 65.52 ms | 57.57 ms | 13.8% more time |
+| Large paste renderer CPU, 109.99 ms | 84.13 ms | 30.7% more CPU time |
+| Large undo renderer CPU, 21.36 ms | 7.44 ms | 187.1% more CPU time |
+| Large redo renderer CPU, 33.69 ms | 24.63 ms | 36.8% more CPU time |
+
+All 33 consumer tests passed with 489 assertions. WinPC verified five archives, 766 installed files, and the frozen lockfile.
+Both builds resolved one engine. All 77 runtime files matched the archive. [Paired browser measurements](profiles/winpc-installed-5a019-history.jsonl)
+
+## Previous installed comparison
+
 Sciobot commit `69ae005f0` pins engine `267e76def`. WinPC tested that package with the typography fix from `8a92a3674`.
 Each action used four alternating browser pairs. Times include two animation frames.
 All 48 final documents matched the expected text. No trial reported a browser error.
@@ -488,3 +508,5 @@ Six orders per action produced 72 exact results. Times include two animation fra
 
 The large redo saved 15.88 ms elapsed and 13.02 ms CPU in the median paired comparison.
 The control failed the backward-selection paint test. The change passed it and all 52 focused tests. [Browser measurements](profiles/winpc-restored-history-selection.jsonl)
+WinPC passed 128 additional tests with 489 assertions. Two peers converged in both editing orders after reconnect, undo, redo, and reopen.
+The next character landed at the restored caret in all eight browser checks across DOCX and Plate.
