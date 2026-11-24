@@ -1,3 +1,4 @@
+import { shapeForWidth, type ShapeWidthResult } from './shape-width.ts';
 import { isRunKerningEnabled } from './run-kerning.ts';
 import { runLigatureFeatureKey, runLigatureFeatures } from './run-ligatures.ts';
 // Shared HarfBuzz call used by shaped measurement and non-DOM exporters.
@@ -62,14 +63,33 @@ export function shapeLayoutStyleRun(
   style: ResolvedRunStyle,
   text: string
 ): ShapedRun {
+  return shaper.shape(layoutShapeInput(environment, font, style, text));
+}
+
+export function measureLayoutStyleRun(
+  shaper: TextShaper,
+  environment: LayoutShapingEnvironment,
+  font: ResolvedFont,
+  style: ResolvedRunStyle,
+  text: string
+): ShapeWidthResult {
+  return shapeForWidth(shaper, layoutShapeInput(environment, font, style, text));
+}
+
+function layoutShapeInput(
+  environment: LayoutShapingEnvironment,
+  font: ResolvedFont,
+  style: ResolvedRunStyle,
+  text: string
+) {
   const context = style.shaping?.context;
-  return shaper.shape({
+  return {
     text,
     fontSizeHalfPoints: layoutRunHalfPointsOf(style),
     bidiLevel: style.shaping?.direction === 'rtl' ? 1 : 0,
     environment: runShapingEnvironment(environment, font, style),
     ...(context ? { context } : {}),
-  });
+  };
 }
 
 /**

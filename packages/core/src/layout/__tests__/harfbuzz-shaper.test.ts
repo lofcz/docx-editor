@@ -1,3 +1,4 @@
+import { shapeForWidth } from '../shape-width.ts';
 import { describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import {
@@ -95,6 +96,29 @@ const input = (
 
 describe('HarfBuzz production shaper', () => {
   const shaper = createHarfBuzzTextShaper();
+
+  test('measures admitted glyphs with their actual kerned advances and retains shaping limits', () => {
+    const worker = createHarfBuzzTextShaper();
+    try {
+      worker.shape(input('VA0123456789'));
+      for (const value of ['AV', '13579']) {
+        const req = input(value);
+        const width = shapeForWidth(worker, req);
+        expect(typeof width).toBe('number');
+        expect(width).toBe(worker.shape(req).glyphs.reduce((sum, g) => sum + g.advanceX, 0));
+      }
+      const missing = shapeForWidth(worker, input('\u0378'));
+      expect(typeof missing !== 'number' && missing.glyphs.some((g) => g.id === 0)).toBe(true);
+    } finally {
+      worker.dispose();
+    }
+    const limited = createHarfBuzzTextShaper({ maxShapedRunBytes: 100 });
+    try {
+      expect(() => shapeForWidth(limited, input('123'))).toThrow();
+    } finally {
+      limited.dispose();
+    }
+  });
 
   test('uses the true regular and bold faces without scalar synthesis', () => {
     const regularRun = shaper.shape(input('office', regular));

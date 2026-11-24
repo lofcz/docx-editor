@@ -1,3 +1,4 @@
+import { registerShapeWidth, type ShapeWidthResult } from './shape-width.ts';
 import { fontUnitsConverter, exactFontUnitsConverter } from './harfbuzz-font-units.ts';
 import {
   assertValidatedResolvedFont,
@@ -479,6 +480,7 @@ class ProductionHarfBuzzTextShaper implements HarfBuzzTextShaper {
   constructor(harfBuzz: HarfBuzzModule, options: HarfBuzzTextShaperOptions) {
     // It refuses a fallback order, so every run it shapes is in the environment's face.
     markFacePreservingShaper(this);
+    registerShapeWidth(this, (input) => this.#shape(input, true));
     this.#harfBuzz = harfBuzz;
     this.#maxFontBytes = assertPositiveLimit(
       options.maxFontBytes ?? DEFAULT_MAX_FONT_BYTES,
@@ -697,6 +699,12 @@ class ProductionHarfBuzzTextShaper implements HarfBuzzTextShaper {
   }
 
   shape(input: ShapeInput): ShapedRun {
+    return this.#shape(input, false);
+  }
+
+  #shape(input: ShapeInput, widthOnly: false): ShapedRun;
+  #shape(input: ShapeInput, widthOnly: true): ShapeWidthResult;
+  #shape(input: ShapeInput, widthOnly: boolean): ShapeWidthResult {
     if (!this.#buffer) throw new HarfBuzzShapingError('disposed');
     assertValidatedResolvedFont(input.environment.font);
     if (input.environment.font.byteLength > this.#maxFontBytes) {
@@ -827,6 +835,56 @@ class ProductionHarfBuzzTextShaper implements HarfBuzzTextShaper {
         environment.fixedPointScale,
         environment.roundingMode
       );
+      // ECMA-376 Part 1, 17.3.2.19, w:kern (CT_HpsMeasure): use HarfBuzz's positioned advances.
+      // Only a simple one-glyph-per-code-unit run with previously admitted outlines qualifies.
+      // The conservative size includes every outline occurrence. The full path decides close limits.
+      if (
+        widthOnly &&
+        !soundMarks &&
+        !before &&
+        !after &&
+        !this.#instrumentation &&
+        environment.direction === 'ltr' &&
+        shaped.length === text.length &&
+        shaped.length === positions.length
+      ) {
+        const known = this.#outlines.get(active.identity);
+        let bytes =
+          SHAPED_RUN_OBJECT_BYTES +
+          stringStorageBytes(text) +
+          arrayStorageBytes(glyphCount) * 3 +
+          arrayStorageBytes(1) +
+          FONT_SPAN_OBJECT_BYTES +
+          METRICS_OBJECT_BYTES +
+          glyphCount * (GLYPH_OBJECT_BYTES + CLUSTER_OBJECT_BYTES + arrayStorageBytes(2));
+        let advance = 0;
+        let valid = true;
+        for (let i = 0; i < glyphCount; i++) {
+          const glyph = shaped[i]!;
+          const pos = positions[i]!;
+          const cached = known?.get(glyph.codepoint);
+          if (
+            !cached ||
+            glyph.codepoint === 0 ||
+            glyph.cluster !== i ||
+            pos.xOffset !== 0 ||
+            pos.yOffset !== 0 ||
+            pos.yAdvance !== 0
+          ) {
+            valid = false;
+            break;
+          }
+          bytes += outlineStorageBytes(cached.outline.path);
+          advance = fixedPoint(advance + convert(pos.xAdvance));
+        }
+        if (valid && bytes <= this.#maxShapedRunBytes) {
+          const extents = font.hExtents();
+          convert(extents.ascender);
+          convert(-extents.descender);
+          convert(extents.lineGap);
+          return advance;
+        }
+      }
       const exactAdvance = exactFontUnitsConverter(
         face.upem,
         input.fontSizeHalfPoints,
