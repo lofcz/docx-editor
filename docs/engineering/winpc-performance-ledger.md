@@ -443,3 +443,16 @@ All 48 final documents matched the expected text. No trial reported a browser er
 The installer checked all five archives, 766 installed files, and the lockfile. Both browser builds resolved one engine.
 All 33 editing, typography, and collaboration tests passed with 489 assertions.
 All 77 installed runtime files matched their package bytes. [Paired browser measurements](profiles/winpc-installed-267e-history.jsonl)
+
+## Rejected line ownership summary
+
+WinPC tested caching editable offsets and page fields as the layout placed each body line.
+Six trials used every order of the control, candidate, and Plate on a 158,633-character single-paragraph paste.
+
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| Elapsed, control 160.52 ms → candidate 160.03 ms | 109.46 ms | Candidate took 46.2% more time |
+| Renderer CPU, control 127.85 ms → candidate 127.94 ms | 83.30 ms | Candidate used 53.6% more CPU time |
+
+The median paired change was 0.10 ms more elapsed time and 0.07 ms less CPU time.
+All 18 documents matched the expected text. The candidate did not enter the engine.
