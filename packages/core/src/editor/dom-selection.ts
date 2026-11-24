@@ -720,7 +720,8 @@ export function applySelectionToDom(
   try {
     // `setBaseAndExtent` keeps the anchor/head ORDER, which is what shift-arrow extends
     // from; collapsing and extending would lose the direction.
-    domSelection.setBaseAndExtent(anchor.node, anchor.offset, head.node, head.offset);
+    if (collapsed) domSelection.collapse(anchor.node, anchor.offset);
+    else domSelection.setBaseAndExtent(anchor.node, anchor.offset, head.node, head.offset);
     return true;
   } catch {
     // A detached or replaced node between paint and sync: the next paint re-syncs.
