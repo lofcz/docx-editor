@@ -23,7 +23,7 @@ import {
   splitBlock,
 } from 'prosemirror-commands';
 import type { Node as PMNode } from 'prosemirror-model';
-import { treeSchema } from './tree-schema.ts';
+import { getTreeSchema } from './tree-schema-definition.ts';
 import type { TreeDocxSession } from './tree-session.ts';
 
 /** How a tree surface is mounted. */
@@ -302,7 +302,7 @@ export function mountTreeSurface(
     localName: string,
     attributes?: Record<string, string>
   ): boolean {
-    const markType = treeSchema.marks.runProps;
+    const markType = getTreeSchema().marks.runProps;
     if (!dispatch) return true;
     const { from, to, empty } = state.selection;
     if (empty) return true; // a stored-mark path needs the selection model of section 7
