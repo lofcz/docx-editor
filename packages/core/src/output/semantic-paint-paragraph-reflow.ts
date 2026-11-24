@@ -185,7 +185,15 @@ export function canTranslateParagraph(
   paint: ParagraphReflowPaint
 ): boolean {
   if (before.box.width !== after.box.width || before.box.height !== after.box.height) return false;
-  if (before.marker || after.marker || before.shadingBox || after.shadingBox) return false;
+  const sameDecoration = (a: LayoutBox | undefined, b: LayoutBox | undefined) =>
+    a && b
+      ? a.width === b.width &&
+        a.height === b.height &&
+        a.x - before.box.x === b.x - after.box.x &&
+        a.y - before.box.y === b.y - after.box.y
+      : a === b;
+  if (!sameDecoration(before.marker?.box, after.marker?.box)) return false;
+  if (!sameDecoration(before.shadingBox, after.shadingBox)) return false;
   if (!sameParagraphPaint(before, after, paint)) return false;
   return before.lines.every((line, index) => {
     const next = after.lines[index]!;
