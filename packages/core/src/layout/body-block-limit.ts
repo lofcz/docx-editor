@@ -6,15 +6,25 @@
 
 import type { LayoutSession } from './layout-session.ts';
 
-const bodyBlockCounts = new WeakMap<LayoutSession, number>();
-const bodyBlockLists = new WeakMap<LayoutSession, readonly unknown[]>();
-
 /** A sliced open's cut on a session: the limit it took, and the first block it left out. */
 interface Cut {
   readonly limit: number;
   readonly firstOutId: string | undefined;
 }
-const cuts = new WeakMap<LayoutSession, Cut>();
+interface BodyBlockPass {
+  readonly all: readonly unknown[];
+  readonly cut: Cut | undefined;
+}
+const passes = new WeakMap<LayoutSession, BodyBlockPass>();
+
+/** Put back the visible pass's cut when the host discards an unpublished layout. */
+export function snapshotBodyBlockPass(session: LayoutSession): () => void {
+  const previous = passes.get(session);
+  return () => {
+    if (previous) passes.set(session, previous);
+    else passes.delete(session);
+  };
+}
 
 function idOf(block: unknown): string | undefined {
   return typeof block === 'object' && block !== null && 'id' in block
@@ -46,17 +56,17 @@ export function limitBodyBlocks<T>(
   const session = options.session;
   const requested = options.bodyBlockLimit;
   let limit = requested;
-  const cut = session ? cuts.get(session) : undefined;
-  if (session && requested !== undefined && cut?.limit === requested) {
+  const previous = session ? passes.get(session) : undefined;
+  const cut = previous?.cut;
+  if (requested !== undefined && cut?.limit === requested && previous) {
     const at = cut.firstOutId === undefined ? all.length : indexOfId(all, cut.firstOutId);
-    const previous = bodyBlockCounts.get(session);
-    limit =
-      at >= 0 ? at : Math.max(1, requested + (previous === undefined ? 0 : all.length - previous));
+    limit = at >= 0 ? at : Math.max(1, requested + all.length - previous.all.length);
   }
   if (session) {
-    bodyBlockCounts.set(session, all.length);
-    bodyBlockLists.set(session, all);
-    if (limit !== undefined) cuts.set(session, { limit, firstOutId: idOf(all[limit]) });
+    passes.set(session, {
+      all,
+      cut: limit === undefined ? cut : { limit, firstOutId: idOf(all[limit]) },
+    });
   }
   return { blocks: limit === undefined || limit >= all.length ? all : all.slice(0, limit), all };
 }
@@ -66,15 +76,15 @@ export function limitBodyBlocks<T>(
  * moved it, so the next pass cuts at the same place. Null stays null: the open has finished.
  */
 export function bodyBlockLimitAfter(session: LayoutSession, current: number | null): number | null {
-  return current === null ? null : (cuts.get(session)?.limit ?? current);
+  return current === null ? null : (passes.get(session)?.cut?.limit ?? current);
 }
 
 /** The body block count the last pass on `session` saw, or undefined before any pass. */
 export function bodyBlockCountOf(session: LayoutSession): number | undefined {
-  return bodyBlockCounts.get(session);
+  return passes.get(session)?.all.length;
 }
 
 /** The body blocks the last pass on `session` cut its prefix from, or undefined before any. */
 export function bodyBlocksOf(session: LayoutSession): readonly unknown[] | undefined {
-  return bodyBlockLists.get(session);
+  return passes.get(session)?.all;
 }

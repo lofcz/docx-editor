@@ -14,6 +14,14 @@ import { sha256FontBytes } from '../../layout/index.ts';
 import { createOpenScheduler, PREPARED_WORK_WAIT_MS } from '../docx-editor-open-scheduler.ts';
 import { prepareOpen, takePreparedOpen } from '../docx-editor-prepared-open.ts';
 import { createDocxEditor } from '../docx-editor.ts';
+import {
+  completeProgressiveOpen,
+  continueProgressiveOpen,
+  onOpeningDemand,
+  openingUsesIdleTime,
+  openingViewportMoved,
+  progressiveOpenPending,
+} from '../surface-progressive-open.ts';
 import { docx } from './paginated-surface-fixtures.ts';
 
 const nextTask = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -152,6 +160,118 @@ describe('prepared open', () => {
     expect(prepared.snapshot().parseError).not.toBeNull();
     unprepared.destroy();
     prepared.destroy();
+  });
+
+  test('a prepared paragraph prefix preserves footnote and body geometry after an edit', () => {
+    const bytes = new Uint8Array(
+      readFileSync(
+        new URL('../../../../../e2e/fixtures/footnote-overlap-regression.docx', import.meta.url)
+      )
+    );
+    const ordinary = createDocxEditor({
+      container: document.createElement('div'),
+      document: bytes,
+    });
+    prepareOpen(bytes, {});
+    const prepared = createDocxEditor({
+      container: document.createElement('div'),
+      document: bytes,
+    });
+    try {
+      const surface = prepared.surface!;
+      expect(progressiveOpenPending(surface)).toBe(true);
+      expect(surface.publishedLayout().pages.length).toBeLessThan(
+        ordinary.surface!.layout().pages.length
+      );
+      // Leave the next prefix paused. Editing the first page must not expose that unfinished work.
+      expect(continueProgressiveOpen(surface, 0)).toBe(false);
+      const shown = () =>
+        new Set(
+          surface
+            .publishedLayout()
+            .pages.flatMap((page) =>
+              page.fragments.flatMap((fragment) =>
+                fragment.kind === 'paragraph' ? [fragment.paragraphId] : []
+              )
+            )
+        );
+      const before = shown();
+      for (const editor of [ordinary, prepared]) {
+        editor.surface!.type('Opening edit ');
+        editor.surface!.flushPendingInput();
+      }
+      expect(shown()).toEqual(before);
+      completeProgressiveOpen(surface);
+      const pages = ordinary.surface!.layout().pages;
+      expect(pages.some((page) => page.footnotes?.notes.length)).toBe(true);
+      expect(surface.layout().pages).toEqual(pages);
+    } finally {
+      prepared.destroy();
+      ordinary.destroy();
+    }
+  });
+
+  test('splitting a paragraph keeps the last visible paragraph during a background pass', () => {
+    const bytes = docx(
+      Array.from(
+        { length: 90 },
+        (_, index) => `<w:p><w:r><w:t>Row ${index}</w:t></w:r></w:p>`
+      ).join('')
+    );
+    prepareOpen(bytes, {});
+    const editor = createDocxEditor({ container: document.createElement('div'), document: bytes });
+    try {
+      const surface = editor.surface!;
+      const visible = () =>
+        surface
+          .publishedLayout()
+          .pages.flatMap((page) =>
+            page.fragments.flatMap((fragment) =>
+              fragment.kind === 'paragraph' ? [fragment.paragraphId] : []
+            )
+          );
+      const before = visible();
+      expect(before).toHaveLength(16);
+      expect(continueProgressiveOpen(surface, 0)).toBe(false);
+      surface.splitParagraph();
+      surface.flushPendingInput();
+      const after = visible();
+      expect(after).toHaveLength(before.length + 1);
+      expect(after.at(-1)).toBe(before.at(-1));
+      completeProgressiveOpen(surface);
+      expect(visible()).toEqual(surface.session.paragraphIds());
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  test('the last displayed page wakes the opening without taking ownership of scrolling', () => {
+    const bytes = docx('<w:p><w:r><w:t>Row</w:t></w:r></w:p>'.repeat(90));
+    prepareOpen(bytes, {});
+    const editor = createDocxEditor({ container: document.createElement('div'), document: bytes });
+    try {
+      const surface = editor.surface!;
+      const scroller = document.createElement('div');
+      Object.defineProperties(scroller, {
+        scrollHeight: { value: 2000 },
+        clientHeight: { value: 640 },
+      });
+      let wake = 0;
+      onOpeningDemand(surface, () => wake++);
+      expect(openingUsesIdleTime(surface)).toBe(true);
+      scroller.scrollTop = 1360;
+      openingViewportMoved(surface, scroller);
+      openingViewportMoved(surface, scroller);
+      expect(wake).toBe(1);
+      expect(openingUsesIdleTime(surface)).toBe(false);
+      expect(scroller.scrollTop).toBe(1360);
+      scroller.scrollTop = 800;
+      openingViewportMoved(surface, scroller);
+      expect(openingUsesIdleTime(surface)).toBe(true);
+      expect(scroller.scrollTop).toBe(800);
+    } finally {
+      editor.destroy();
+    }
   });
 });
 

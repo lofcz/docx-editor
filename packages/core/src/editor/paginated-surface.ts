@@ -96,6 +96,8 @@ import {
   PROGRESSIVE_OPEN_FIRST_BLOCKS,
   completeProgressiveOpen,
   openingReveals,
+  openingViewportMoved,
+  preparedParagraphPrefix,
   startOpeningSlices,
 } from './surface-progressive-open.ts';
 import { scrollBandIntoView, type ContentScrollOptions } from './surface-content-scroll.ts';
@@ -1170,6 +1172,7 @@ export function mountPaginatedSurface(
 
   /** Finishes a paused opening prefix pass, and drops the opening; see `startOpeningSlices`. */
   let finishOpeningPass = (): void => undefined;
+  let abandonOpeningForEdit = (): void => undefined;
   let stopOpening = (): void => undefined;
   // The pages after the screen finish after the commit; see `surface-deferred-layout.ts`.
   const deferredLayout = createDeferredLayout({
@@ -1189,9 +1192,12 @@ export function mountPaginatedSurface(
       container.toggleAttribute('data-docx-layout-pending', pending || openingBlockLimit !== null),
     passTimed: (ms) => options.onTiming?.('layout', ms),
   });
-  let openingBlockLimit: number | null = runtimeOptions.progressiveOpen
+  const initialOpeningLimit = runtimeOptions.progressiveOpen
     ? PROGRESSIVE_OPEN_FIRST_BLOCKS
-    : null;
+    : runtimeOptions.openedSession
+      ? preparedParagraphPrefix(session.part().root)
+      : null;
+  let openingBlockLimit: number | null = initialOpeningLimit;
   let currentLayout = layoutOnce();
   // Declared before the first paint can run — `render` reads it.
   let revisionStyles = options.revisionStyles;
@@ -1807,7 +1813,7 @@ export function mountPaginatedSurface(
     run: (scope: LayoutScope) => {
       const began = now();
       const settled = openingBlockLimit === null && !deferredLayout.pending();
-      finishOpeningPass();
+      abandonOpeningForEdit();
       deferredLayout.abandon();
       blockView.resumeDisclosureLayout(layoutSession, scope, settled);
       // An edit during an opening lays out the prefix so far; the opening slices go on after it.
@@ -2944,6 +2950,10 @@ export function mountPaginatedSurface(
     // deferred its pass. Safe: this runs from a scheduled frame, never inside a
     // render.
     flushPendingInputAndLayout();
+    if (openingBlockLimit !== null) {
+      const scroller = surfaceScroller(container);
+      if (scroller) openingViewportMoved(surface, scroller);
+    }
     if (
       currentLayout === paintedLayout &&
       materializedExtent &&
@@ -6266,7 +6276,11 @@ export function mountPaginatedSurface(
     refreshMeasurements('inline-widgets');
   });
   registerRefreshComposition(surface, () => selectionSync.isComposing());
-  ({ finishPaused: finishOpeningPass, stop: stopOpening } = startOpeningSlices(
+  ({
+    finishPaused: finishOpeningPass,
+    abandonForEdit: abandonOpeningForEdit,
+    stop: stopOpening,
+  } = startOpeningSlices(
     surface,
     () => container,
     {
@@ -6284,6 +6298,7 @@ export function mountPaginatedSurface(
       composing: () => selectionSync.isComposing(),
       prefixPass: (limit) =>
         layoutDocumentSteps(session.packageRevision(), undefined, undefined, limit),
+      snapshot: () => snapshotLayoutSession(layoutSession),
       finish: fieldScope.wrap(() => {
         // Cleared first: an edit since the last prefix can have added blocks past it.
         openingBlockLimit = null;
@@ -6291,7 +6306,7 @@ export function mountPaginatedSurface(
         scheduler.flush();
       }),
     },
-    PROGRESSIVE_OPEN_FIRST_BLOCKS
+    initialOpeningLimit ?? PROGRESSIVE_OPEN_FIRST_BLOCKS
   ));
   return { ok: true, surface: fieldScope.methods(surface) };
 }

@@ -6,6 +6,7 @@
 // section session's checkpoints were laid out under. Putting all of that back is what lets a
 // newer edit drop such a pass instead of first finishing it.
 
+import { snapshotBodyBlockPass } from './body-block-limit.ts';
 import type { LayoutSession } from './layout-session.ts';
 import { saveReserveContext, takeReadReserves } from './note-reserve-resume.ts';
 import { takeMovedSeedReserves } from './note-reserves.ts';
@@ -13,6 +14,7 @@ import { takeMovedSeedReserves } from './note-reserves.ts';
 /** Save `session`, its section sessions and its notes memo; the answer puts them back. */
 export function snapshotLayoutSession(session: LayoutSession): () => void {
   const fields = { ...session };
+  const restoreBodyBlocks = snapshotBodyBlockPass(session);
   const restoreReserves = saveReserveContext(session);
   const multi = session.multi;
   const multiFields = multi ? { ...multi } : null;
@@ -21,6 +23,7 @@ export function snapshotLayoutSession(session: LayoutSession): () => void {
   const notesFields = notes ? { ...notes } : null;
   return () => {
     Object.assign(session, fields);
+    restoreBodyBlocks();
     restoreReserves();
     if (multi && multiFields) Object.assign(multi, multiFields);
     for (const restore of sections) restore();

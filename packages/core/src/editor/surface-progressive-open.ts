@@ -18,7 +18,13 @@ export const PROGRESSIVE_OPEN_FIRST_BLOCKS = 64;
 
 /** A surface's opening step; `force` runs it even while an IME composition is open. */
 type OpeningStep = (budgetMs: number, force?: boolean) => boolean;
-const steps = new WeakMap<object, OpeningStep>();
+interface OpeningWork {
+  run: OpeningStep;
+  shortPrefix: boolean;
+  atEnd?: boolean;
+  wake?: () => void;
+}
+const steps = new WeakMap<object, OpeningWork>();
 
 /** A reveal waiting for the opening to lay out its target; see {@link revealWhenLaidOut}. */
 interface PendingReveal {
@@ -41,8 +47,32 @@ export function progressiveOpenStepCount(): number {
 }
 
 /** Register `surface`'s opening step. */
-export function registerProgressiveOpen(surface: object, step: OpeningStep): void {
-  steps.set(surface, step);
+function registerProgressiveOpen(surface: object, step: OpeningStep, shortPrefix: boolean): void {
+  steps.set(surface, { run: step, shortPrefix });
+}
+
+/** A prepared paragraph prefix can yield to input until the reader requests a later page. */
+export function openingUsesIdleTime(surface: object): boolean {
+  const work = steps.get(surface);
+  return work?.shortPrefix === true && !work.atEnd && !pendingReveals.has(surface);
+}
+
+/** A reader can ask for more pages while an idle callback is waiting for the browser. */
+export function onOpeningDemand(surface: object, wake: () => void): void {
+  const work = steps.get(surface);
+  if (work?.shortPrefix) work.wake = wake;
+}
+
+/** Scrolling to the bottom of the visible prefix requests its next pages. */
+export function openingViewportMoved(surface: object, scroller: HTMLElement): void {
+  const work = steps.get(surface);
+  if (!work?.shortPrefix) return;
+  const atEnd =
+    scroller.scrollTop > 0 &&
+    scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight <= 1;
+  if (work.atEnd === atEnd) return;
+  work.atEnd = atEnd;
+  if (atEnd) work.wake?.();
 }
 
 /**
@@ -53,7 +83,7 @@ export function continueProgressiveOpen(surface: object, budgetMs: number): bool
   const step = steps.get(surface);
   if (!step) return true;
   stepCount += 1;
-  const done = step(budgetMs);
+  const done = step.run(budgetMs);
   if (done) steps.delete(surface);
   return done;
 }
@@ -82,6 +112,24 @@ const PREFIX_STEP_CHARACTERS = 60_000;
 const PREFIX_PUBLISH_INTERVAL_MS = 300;
 const MIN_PREFIX_STEP = 16;
 const MAX_PREFIX_STEP = 4096;
+
+/**
+ * Count paragraphs in a prepared w:body (CT_Body, §17.2.2). Each w:p is a CT_P (§17.3.1.22).
+ * Final w:sectPr (CT_SectPr, §17.6.17) follows the paragraphs and does not add a body block.
+ */
+export function preparedParagraphPrefix(root: OoxmlNode): number | null {
+  if (root.kind !== 'document') return null;
+  const body = root.children.find((node) => node.kind === 'body');
+  if (!body || body.children.length <= PROGRESSIVE_OPEN_FIRST_BLOCKS) return null;
+  const last = body.children.at(-1)!;
+  const hasSection = last.namespaceUri === body.namespaceUri && last.localName === 'sectPr';
+  const count = body.children.length - Number(hasSection);
+  if (count <= PROGRESSIVE_OPEN_FIRST_BLOCKS) return null;
+  for (let index = 0; index < count; index += 1) {
+    if (body.children[index]!.kind !== 'paragraph') return null;
+  }
+  return MIN_PREFIX_STEP;
+}
 
 /**
  * The body block limit after `limit`: at least {@link MIN_PREFIX_STEP} more blocks, then more
@@ -153,6 +201,8 @@ export interface OpeningSlicesHost {
   bodyBlockCount(): number | undefined;
   /** A prefix layout to `limit` body blocks, as steps that may pause inside a long table. */
   prefixPass(limit: number): LayoutSteps<unknown>;
+  /** Save the layout session that produced the visible prefix, before extending it. */
+  snapshot(): () => void;
   /** The normal full layout, resumed from the last prefix; it ends the opening. */
   finish(): void;
   /** The body block at `index` of the last pass, for sizing the next step. */
@@ -189,18 +239,32 @@ export function startOpeningSlices(
   container: () => HTMLElement,
   host: OpeningSlicesHost,
   firstGrowth: number
-): { finishPaused(): void; stop(): void } {
+): { finishPaused(): void; abandonForEdit(): void; stop(): void } {
   let growth = firstGrowth;
+  const shortPrefix = firstGrowth < PROGRESSIVE_OPEN_FIRST_BLOCKS;
   let publishedAt = host.now();
   let pass: LayoutSteps<unknown> | null = null;
+  let restorePublished: (() => void) | null = null;
   /** The next limit, chosen before its tables are hashed; see `tableNodesBetween`. */
   let nextLimit: number | null = null;
   let hashQueue: readonly OoxmlNode[] = [];
   let hashed = 0;
   const finishPaused = (): void => {
+    restorePublished = null;
     const paused = pass;
     pass = null;
     if (paused) drainLayoutSteps(paused);
+  };
+  const abandonForEdit = (): void => {
+    if (!restorePublished || host.limit() === null) return finishPaused();
+    // A foreground edit owns the published pages. The background pass can resume from
+    // their checkpoints after the edit, without finishing or painting its unpublished pages.
+    restorePublished();
+    restorePublished = null;
+    pass = null;
+    nextLimit = null;
+    hashQueue = [];
+    hashed = 0;
   };
   const step = (budgetMs: number, force = false): boolean => {
     if (!force && host.composing()) return false;
@@ -241,21 +305,35 @@ export function startOpeningSlices(
           nextLimit = null;
           continue;
         }
+        if (shortPrefix && !restorePublished) {
+          const restore = host.snapshot();
+          const savedGrowth = growth;
+          restorePublished = () => {
+            restore();
+            host.setLimit(limit);
+            growth = savedGrowth;
+          };
+        }
         host.setLimit(nextLimit);
         pass = host.prefixPass(nextLimit);
         nextLimit = null;
       }
-      let result: IteratorResult<unknown, unknown>;
-      do result = pass.next();
-      while (!result.done && host.now() < deadline && !host.inputPending());
-      if (!result.done) return false;
+      let result = pass.next();
+      while (!result.done) {
+        if (result.value?.restorable === false) restorePublished = null;
+        if (host.now() >= deadline || host.inputPending()) return false;
+        result = pass.next();
+      }
       pass = null;
       const waiting = pendingReveals.get(surface);
       const reached = waiting?.covers(result.value) === true;
+      const work = steps.get(surface);
       if (
         host.limit() !== null &&
-        (reached || host.now() - publishedAt >= PREFIX_PUBLISH_INTERVAL_MS)
+        (reached || work?.atEnd || host.now() - publishedAt >= PREFIX_PUBLISH_INTERVAL_MS)
       ) {
+        restorePublished = null;
+        if (work) work.atEnd = false;
         host.publish(result.value);
         publishedAt = host.now();
       }
@@ -270,7 +348,7 @@ export function startOpeningSlices(
     return true;
   };
   container().removeAttribute('data-docx-opening-preview');
-  if (host.limit() === null) return { finishPaused, stop: () => undefined };
+  if (host.limit() === null) return { finishPaused, abandonForEdit, stop: () => undefined };
   // The later pages are still to come, as after an edit whose pass finishes in the background.
   // The host element can change when the surface moves, so it is read at each use.
   container().setAttribute('data-docx-opening-preview', '');
@@ -281,7 +359,8 @@ export function startOpeningSlices(
   const dropReveal = (): void => void pendingReveals.delete(surface);
   const inputs = ['pointerdown', 'keydown', 'wheel'] as const;
   const target = host.pages();
-  for (const type of inputs) target.addEventListener(type, dropReveal, { capture: true });
+  for (const type of inputs)
+    target.addEventListener(type, dropReveal, { capture: true, passive: true });
   let stopped = false;
   const stop = (): void => {
     if (stopped) return;
@@ -290,6 +369,7 @@ export function startOpeningSlices(
     // The surface keeps `finishPaused` for its lifetime: drop what it closes over, or the last
     // table rows hashed and a paused pass keep old revisions of the document alive.
     pass = null;
+    restorePublished = null;
     nextLimit = null;
     hashQueue = [];
     for (const type of inputs) target.removeEventListener(type, dropReveal, true);
@@ -297,19 +377,23 @@ export function startOpeningSlices(
     if (!host.busy()) container().removeAttribute('data-docx-layout-pending');
     indicator.remove();
   };
-  registerProgressiveOpen(surface, (budgetMs, force) => {
-    const done = step(budgetMs, force);
-    if (!done) {
-      indicator.place();
-      return false;
-    }
-    stop();
-    const waiting = pendingReveals.get(surface);
-    pendingReveals.delete(surface);
-    if (!host.destroyed()) waiting?.reveal();
-    return true;
-  });
-  return { finishPaused, stop };
+  registerProgressiveOpen(
+    surface,
+    (budgetMs, force) => {
+      const done = step(budgetMs, force);
+      if (!done) {
+        indicator.place();
+        return false;
+      }
+      stop();
+      const waiting = pendingReveals.get(surface);
+      pendingReveals.delete(surface);
+      if (!host.destroyed()) waiting?.reveal();
+      return true;
+    },
+    shortPrefix
+  );
+  return { finishPaused, abandonForEdit, stop };
 }
 
 /**
@@ -318,7 +402,7 @@ export function startOpeningSlices(
  */
 export function completeProgressiveOpen(surface: object): boolean {
   if (!steps.has(surface)) return false;
-  while (!steps.get(surface)?.(Number.POSITIVE_INFINITY, true) && steps.has(surface));
+  while (!steps.get(surface)?.run(Number.POSITIVE_INFINITY, true) && steps.has(surface));
   return true;
 }
 
@@ -355,6 +439,7 @@ export function revealWhenLaidOut(
       if (Math.abs(scrollTop() - asked) < 1) reveal();
     },
   });
+  steps.get(surface)?.wake?.();
   return true;
 }
 

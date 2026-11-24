@@ -6,7 +6,12 @@
 // surface they started for, and stop once the facade holds another one; a destroyed surface
 // cleans up its own opening state.
 
-import { continueProgressiveOpen, progressiveOpenPending } from './surface-progressive-open.ts';
+import {
+  continueProgressiveOpen,
+  onOpeningDemand,
+  openingUsesIdleTime,
+  progressiveOpenPending,
+} from './surface-progressive-open.ts';
 
 /** The work one background task aims to do, in milliseconds: room for a frame and for input. */
 const OPENING_SLICE_MS = 12;
@@ -22,7 +27,16 @@ export interface OpeningLayoutHooks {
   settled(): void;
 }
 
-function queueTask(run: () => void, view: Window): void {
+function queueTask(run: (budgetMs?: number) => void, view: Window, idle: boolean): void {
+  if (idle && typeof view.requestIdleCallback === 'function') {
+    // Let paint and input run first. A busy window still advances at least one layout step.
+    view.requestIdleCallback(
+      (deadline) =>
+        run(deadline.didTimeout ? 1 : Math.min(OPENING_SLICE_MS, deadline.timeRemaining())),
+      { timeout: 60 }
+    );
+    return;
+  }
   if (typeof MessageChannel === 'function') {
     // A message task, not a timer: a chain of nested timers waits 4 ms between steps.
     const channel = new MessageChannel();
@@ -39,12 +53,30 @@ function queueTask(run: () => void, view: Window): void {
 /** Lay out `surface`'s remaining pages in background tasks, if it has any. */
 export function continueOpeningLayout(surface: object, hooks: OpeningLayoutHooks): void {
   if (!progressiveOpenPending(surface)) return;
-  const slice = (): void => {
-    if (hooks.current() !== surface || !progressiveOpenPending(surface)) return;
-    if (hooks.slice(() => continueProgressiveOpen(surface, OPENING_SLICE_MS))) hooks.settled();
-    else queueTask(slice, hooks.view());
+  let ticket = 0;
+  let waitingForIdle = false;
+  const queue = (): void => {
+    const queued = ++ticket;
+    waitingForIdle = openingUsesIdleTime(surface);
+    queueTask(
+      (budgetMs) => {
+        if (ticket !== queued) return;
+        waitingForIdle = false;
+        slice(budgetMs);
+      },
+      hooks.view(),
+      waitingForIdle
+    );
   };
-  queueTask(slice, hooks.view());
+  const slice = (budgetMs = OPENING_SLICE_MS): void => {
+    if (hooks.current() !== surface || !progressiveOpenPending(surface)) return;
+    if (hooks.slice(() => continueProgressiveOpen(surface, budgetMs))) hooks.settled();
+    else queue();
+  };
+  onOpeningDemand(surface, () => {
+    if (waitingForIdle) queue();
+  });
+  queue();
 }
 
 /** An external refresh still opening when the mount ended: the host hears how the open ended. */

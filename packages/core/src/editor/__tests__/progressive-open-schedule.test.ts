@@ -2,10 +2,31 @@
 // prefixes and publishes the same pagination.
 
 import { describe, expect, test } from 'bun:test';
-import { bodyBlockWeight, nextPrefixLimit } from '../surface-progressive-open.ts';
+import { readOoxmlPart } from '../../store/package/ooxml-tree.ts';
+import {
+  bodyBlockWeight,
+  nextPrefixLimit,
+  preparedParagraphPrefix,
+} from '../surface-progressive-open.ts';
 
 const text = (value: string) => ({ kind: 'textValue', value });
 const paragraph = (length: number) => ({ kind: 'paragraph', children: [text('x'.repeat(length))] });
+
+test('prepared paragraph openings retain the original policy for short and mixed bodies', () => {
+  function prefix(body: string): number | null {
+    const xml = `<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${body}<w:sectPr/></w:body></w:document>`;
+    const loaded = readOoxmlPart(xml, { name: '/word/document.xml', contentType: 'app/xml' });
+    if (!loaded.ok) throw new Error(loaded.reason);
+    return preparedParagraphPrefix(loaded.part.root);
+  }
+  expect(prefix('<w:p/>'.repeat(32))).toBeNull();
+  expect(prefix('<w:p/>'.repeat(64))).toBeNull();
+  expect(prefix('<w:p/>'.repeat(65))).toBe(16);
+  expect(prefix('<w:p/>'.repeat(320))).toBe(16);
+  expect(prefix('<w:p/>'.repeat(320) + '<w:tbl/>')).toBeNull();
+  expect(prefix('<w:p/>'.repeat(70) + '<w:sectPr/><w:p/>')).toBeNull();
+  expect(prefix('<w:p/>'.repeat(70) + '<other:sectPr xmlns:other="urn:example"/>')).toBeNull();
+});
 
 describe('nextPrefixLimit', () => {
   test('a step holds a fixed amount of text, at least a few blocks', () => {
