@@ -107,11 +107,25 @@ function updateRuns(parent: HTMLElement, fresh: HTMLElement): void {
 /** Keep text and its browser selection connected. Replace opaque paint at its own position. */
 export function reconcileParagraphChildren(root: HTMLElement, fresh: HTMLElement): void {
   const old = ownedChildren.get(root)!;
-  const lines = new Map(
-    old.filter((child) => child.dataset.lineId).map((c) => [c.dataset.lineId, c])
-  );
+  const oldLines = old.filter((child) => child.dataset.lineId);
+  const lines = new Map(oldLines.map((line) => [line.dataset.lineId, line]));
+  const nextIds = new Set(Array.from(fresh.children, (child) => (child as HTMLElement).dataset.lineId));
+  let index = 0;
   reconcileOwned(root, fresh, (source) => {
-    const line = lines.get(source.dataset.lineId);
+    const id = source.dataset.lineId;
+    if (!id) return source;
+    const adjacent = oldLines[index++];
+    let line = lines.get(id);
+    // An edit can shift a later line's UTF-16 start without replacing its visual row.
+    // Keep exact matches reserved. Only reuse a row made entirely of painter-owned text.
+    if (!line && adjacent && !nextIds.has(adjacent.dataset.lineId)) {
+      const previous = ownedChildren.get(adjacent);
+      if (
+        previous?.length === adjacent.childNodes.length &&
+        previous.every((run) => run.parentNode === adjacent && plainRun(run))
+      )
+        line = adjacent;
+    }
     const runs = line && ownedChildren.get(line);
     if (!line || line.parentNode !== root || !runs) return source;
     copyAttributes(line, source);

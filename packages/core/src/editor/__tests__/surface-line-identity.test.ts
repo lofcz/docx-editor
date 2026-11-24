@@ -2,6 +2,31 @@ import { expect, test } from 'bun:test';
 import { createDocxEditor } from '../docx-editor.ts';
 import { docx, p } from '../../automation/__tests__/support/protocol.ts';
 
+test('an edit before a line break preserves the following text row at its new offset', () => {
+  const container = document.createElement('div');
+  document.body.append(container);
+  const body = '<w:p><w:r><w:t>Alpha</w:t><w:br/><w:t>Beta</w:t></w:r></w:p>';
+  const editor = createDocxEditor({ container, document: docx(body) });
+  try {
+    const surface = editor.surface!;
+    const rows = () => container.querySelectorAll<HTMLElement>('.docx-line');
+    const second = rows()[1]!;
+    const before = second.dataset.lineId;
+    const text = second.querySelector('.layout-run-text')!.firstChild!;
+    const point = { paragraphId: surface.session.paragraphIds()[0]!, offset: 1 };
+    surface.setSelection({ anchor: point, head: point });
+    surface.insertPlainText('bc');
+    surface.flushPendingInput();
+    expect(rows()[1]).toBe(second);
+    expect(second.dataset.lineId).not.toBe(before);
+    expect(text.isConnected).toBe(true);
+    expect(text.textContent).toBe('Beta');
+  } finally {
+    editor.destroy();
+    container.remove();
+  }
+});
+
 test('typing keeps the connected line, text node, and paragraph control', () => {
   const container = document.createElement('div');
   document.body.append(container);
