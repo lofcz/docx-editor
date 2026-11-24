@@ -697,7 +697,10 @@ export function applySelectionToDom(
   const collapsed = selectionsEqual(selection, { anchor: selection.head, head: selection.head });
   const preferredLineId = collapsed ? options?.preferredLineId : undefined;
   const anchor = domPointFromPosition(root, selection.anchor, preferredPageIndex, preferredLineId);
-  const head = domPointFromPosition(root, selection.head, preferredPageIndex, preferredLineId);
+  // A caret has one endpoint, including on repeated headers and wrapped lines.
+  const head = collapsed
+    ? anchor
+    : domPointFromPosition(root, selection.head, preferredPageIndex, preferredLineId);
   if (!anchor || !head) return false;
   const current = semanticSelectionFromDom(root, domSelection);
   // Already correct: re-setting it would collapse an in-progress drag and fight the user.
