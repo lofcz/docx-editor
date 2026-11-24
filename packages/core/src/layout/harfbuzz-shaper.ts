@@ -1,3 +1,8 @@
+import type {
+  ActiveHarfBuzzFont,
+  HarfBuzzModule,
+  HarfBuzzBuffer,
+} from './harfbuzz-runtime-types.ts';
 import { registerShapeWidth, type ShapeWidthResult } from './shape-width.ts';
 import { fontUnitsConverter, exactFontUnitsConverter } from './harfbuzz-font-units.ts';
 import {
@@ -34,12 +39,6 @@ import {
 } from './harfbuzz-wasm-binary.ts';
 
 export { roundFontUnitToFixedPoint } from './harfbuzz-font-units.ts';
-
-type HarfBuzzModule = typeof import('harfbuzzjs');
-type HarfBuzzBlob = InstanceType<HarfBuzzModule['Blob']>;
-type HarfBuzzBuffer = InstanceType<HarfBuzzModule['Buffer']>;
-type HarfBuzzFace = InstanceType<HarfBuzzModule['Face']>;
-type HarfBuzzFont = InstanceType<HarfBuzzModule['Font']>;
 
 /**
  * The exact HarfBuzz build this engine shapes against.
@@ -358,15 +357,6 @@ const clustersFromGlyphs = (
   }
   return clusters;
 };
-
-interface ActiveHarfBuzzFont {
-  readonly identity: string;
-  readonly blob: HarfBuzzBlob;
-  readonly face: HarfBuzzFace;
-  readonly font: HarfBuzzFont;
-  readonly unitsPerEm: number;
-  readonly byteLength: number;
-}
 
 const OBJECT_OVERHEAD_BYTES = 64;
 const REFERENCE_BYTES = 8;
