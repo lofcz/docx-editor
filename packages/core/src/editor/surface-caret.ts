@@ -401,7 +401,13 @@ export function createSurfaceCaret(
 
   function updateAround(write: () => void): void {
     const input = read();
-    if (placed !== null && !composing && !input.suppress && isCollapsed(input.selection) && hasFocus()) {
+    if (
+      placed !== null &&
+      !composing &&
+      !input.suppress &&
+      isCollapsed(input.selection) &&
+      hasFocus()
+    ) {
       // Selection APIs can require a style update. Leave the visible overlay in place
       // until the browser has mirrored the selection, then read the final focus and state.
       try {
