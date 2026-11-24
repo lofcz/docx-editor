@@ -21,6 +21,8 @@ export interface SurfaceViewportBindingDeps {
 }
 
 export interface SurfaceViewportBinding {
+  /** Direction of consecutive vertical wheel inputs in this viewport. */
+  wheelDirection(): number;
   /** Repaint for the viewport on the next frame, coalesced. */
   schedule(): void;
   /** Re-resolve the scroller whose size is watched: the host may wrap the surface late. */
@@ -50,6 +52,22 @@ export function bindSurfaceViewport(deps: SurfaceViewportBindingDeps): SurfaceVi
   // at all, so scrolling never built the pages it revealed. Also covers StrictMode /
   // provider-first attach before the Content node sits under the scroll container.
   const scheduleRematerialize = frameCoalescer(pagesLayer, deps.rematerialize);
+  let lastWheel = -Infinity;
+  let lastDirection = 0;
+  let continuedDirection = 0;
+  const unlistenWheel = listeners.onDocument(
+    'wheel',
+    (event) => {
+      const scroller = surfaceScroller(deps.container());
+      if (!scroller || !event.composedPath().includes(scroller) || event.ctrlKey) return;
+      const direction = Math.sign(event.deltaY);
+      const time = hostWindowOf(pagesLayer).performance.now();
+      continuedDirection = time - lastWheel <= 650 && direction === lastDirection ? direction : 0;
+      lastDirection = direction;
+      lastWheel = time;
+    },
+    { capture: true, passive: true }
+  );
   const unlistenScroll = listeners.onDocument(
     'scroll',
     (event) => {
@@ -101,9 +119,14 @@ export function bindSurfaceViewport(deps: SurfaceViewportBindingDeps): SurfaceVi
   watchScrollerSize();
 
   return {
+    wheelDirection: () =>
+      continuedDirection && hostWindowOf(pagesLayer).performance.now() - lastWheel <= 650
+        ? continuedDirection
+        : 0,
     schedule: scheduleRematerialize,
     watchScrollerSize,
     rebind() {
+      lastWheel = -Infinity;
       suspended = false;
       watchScrollerSize();
       scheduleRematerialize();
@@ -113,6 +136,7 @@ export function bindSurfaceViewport(deps: SurfaceViewportBindingDeps): SurfaceVi
       disconnect();
     },
     destroy() {
+      unlistenWheel();
       unlistenSelection();
       unlistenScroll();
       unlistenResize();

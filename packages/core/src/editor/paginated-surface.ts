@@ -503,6 +503,7 @@ export function mountPaginatedSurface(
   const mountDocument = container.ownerDocument;
 
   const pagesLayer = createEditablePages(mountDocument, options.translate);
+  let viewportBinding: SurfaceViewportBinding | null = null;
   const hostListeners = createSurfaceHostListeners(() => pagesLayer);
   fieldScope.listeners(pagesLayer);
 
@@ -1984,7 +1985,14 @@ export function mountPaginatedSurface(
     : () => {};
 
   function visiblePages(anchoredTop?: number): ReadonlySet<number> | undefined {
-    const set = visiblePageSet(container, currentLayout, selection, scale, anchoredTop);
+    const set = visiblePageSet(
+      container,
+      currentLayout,
+      selection,
+      scale,
+      anchoredTop,
+      viewportBinding?.wheelDirection()
+    );
     const extra = hfScope?.getActive()?.pageIndex ?? selectionSync.selectionPageIndex();
     if (extra === undefined || set === undefined || set.has(extra)) return set;
     return new Set([...set, extra]);
@@ -2767,7 +2775,6 @@ export function mountPaginatedSurface(
    * reached before its own state exists — the wiring below runs late, and a temporal dead
    * zone would be a ReferenceError thrown out of a repaint.
    */
-  let viewportBinding: SurfaceViewportBinding | null = null;
   const hosting = createSurfaceHosting({
     pagesLayer,
     listeners: hostListeners,

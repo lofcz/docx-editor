@@ -157,6 +157,31 @@ describe('only the pages on screen are built (task 9.4)', () => {
     }
   });
 
+  test('prepares the next page after consecutive wheel inputs in the same direction', async () => {
+    const { surface, scroller, host } = mountInScroller(long);
+    try {
+      Object.defineProperty(scroller, 'clientHeight', { value: 200, configurable: true });
+      const third = surface.layout().pages[2]!;
+      const page = () => host.querySelector<HTMLElement>('.docx-page[data-page-index="2"]')!;
+      scroller.scrollTop = third.box.y - 500;
+      for (const [delta, expected] of [
+        [20, 'false'],
+        [-20, 'false'],
+        [20, 'false'],
+        [20, 'true'],
+      ] as const) {
+        scroller.dispatchEvent(new WheelEvent('wheel', { bubbles: true, deltaY: delta }));
+        scroller.scrollTop += delta;
+        scroller.dispatchEvent(new Event('scroll'));
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        expect(page().dataset.materialized).toBe(expected);
+      }
+    } finally {
+      surface.destroy();
+      scroller.remove();
+    }
+  });
+
   test('scrolling reveals BUILT pages, not shells', async () => {
     // Materialization is decided at paint time, and paint used to happen only on a commit —
     // scrolling a long document showed blank sheets until the next keystroke.

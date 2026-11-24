@@ -194,7 +194,8 @@ export function visiblePageSet(
   layout: SemanticLayout,
   selection: SemanticSelection,
   scale: number,
-  anchoredTop?: number
+  anchoredTop?: number,
+  wheelDirection = 0
 ): ReadonlySet<number> | undefined {
   const scroller = surfaceScroller(container);
   const height = scroller?.clientHeight ?? 0;
@@ -209,10 +210,16 @@ export function visiblePageSet(
     const preceding = layout.pages[first - 1];
     const following = layout.pages[first + pages.size];
     const reach = viewport.height / 2;
-    if (preceding && preceding.box.y + preceding.box.height >= viewport.top - reach) {
+    if (
+      preceding &&
+      (wheelDirection < 0 || preceding.box.y + preceding.box.height >= viewport.top - reach)
+    ) {
       pages.add(preceding.index);
     }
-    if (following && following.box.y <= viewport.top + viewport.height + reach) {
+    if (
+      following &&
+      (wheelDirection > 0 || following.box.y <= viewport.top + viewport.height + reach)
+    ) {
       pages.add(following.index);
     }
   }
