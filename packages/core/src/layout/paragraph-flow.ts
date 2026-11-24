@@ -840,7 +840,7 @@ export function breakParagraph(
     return { extentTopY: layout.extentTopY };
   };
 
-  const closeLine = (): void => {
+  const closeLine = (): PendingLine => {
     previousLineCut = false; // Only the oversized-word cut sets it again.
     placeLeadingIgnoredBreaks(line, pageBreaksIgnored);
     const firstLine = opensFirstLine();
@@ -889,6 +889,7 @@ export function breakParagraph(
     };
     recordTopAndBottomAnchorsOnOpeningLine();
     applyTopAndBottomSkipIfNeeded();
+    return line;
   };
 
   /** Whether the last thing placed was a line break, so the paragraph ends on a fresh line. */
@@ -1157,7 +1158,16 @@ export function breakParagraph(
       !layoutOwned && !piece.measureText
         ? pieceWidthPreparation(measurer, piece.text, boundaries, faceStyle)
         : undefined;
-    for (let at = fitting?.at ?? 0; at < boundaries.length; at++) {
+    const wrapped =
+      !flow?.spaceShrink && !automaticSpacing && !numericTrace && !preserveColonAdvances
+        ? fitting?.wrap?.(contentOriginX + indentLeft, available, closeLine, prepareWidths)
+        : undefined;
+    if (wrapped !== undefined) {
+      consumed = line.end;
+      lastEmitted = line.spans.at(-1)!.text;
+      overflowWidth = undefined;
+    }
+    for (let at = wrapped ?? fitting?.at ?? 0; at < boundaries.length; at++) {
       prepareWidths?.(at);
       if (fitting && overflowWidth === undefined) {
         // The previous boundary used full wrapping. Ordinary words can fit directly again.

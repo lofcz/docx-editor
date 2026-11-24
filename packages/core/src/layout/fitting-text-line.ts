@@ -7,6 +7,7 @@ import { growLineMetricsForText, type PendingLine } from './pending-line.ts';
 import { displayText } from './run-style.ts';
 import { styleForFontSlot } from './script-itemization.ts';
 import type { TextMeasurer } from './text-measurer.ts';
+import { placeWrappedLiteralWords } from './wrapped-literal-words.ts';
 
 const textFields = new Set(['text', 'props', 'style', 'start', 'end', 'link', 'fontSlot']);
 
@@ -74,5 +75,37 @@ export function placeFittingWords(
     }
     return { at, overflowWidth: undefined };
   }
-  return { boundaries, placeUntilOverflow, ...placeUntilOverflow(line, 0, origin, available) };
+  const first = placeUntilOverflow(line, 0, origin, available);
+  const firstWidth = first.overflowWidth;
+  const wrap =
+    firstWidth !== undefined && first.at > 0 && boundaries.length - first.at >= 64
+      ? (
+          nextOrigin: number,
+          nextWidth: number,
+          nextLine: () => PendingLine,
+          prepare: ((boundary: number) => void) | undefined
+        ) => {
+          const next = placeWrappedLiteralWords(
+            {
+              piece,
+              face,
+              paragraphId,
+              boundaries,
+              measurer,
+              tolerance,
+              nextOrigin,
+              nextAvailable: Math.max(1, nextWidth, -nextOrigin),
+              nextLine,
+              prepare,
+            },
+            line,
+            first.at,
+            firstWidth,
+            origin,
+            available
+          );
+          return next === first.at ? undefined : next;
+        }
+      : undefined;
+  return { boundaries, placeUntilOverflow, wrap, ...first };
 }

@@ -69,6 +69,49 @@ describe('literal text projection', () => {
 });
 
 describe('fitting words', () => {
+  test('wraps long literal words with their measured advances, clipped spaces and fallback faces', () => {
+    const base = createFixedMeasurer(5, 12);
+    const fallback = createFixedMeasurer(7, 18);
+    const measurer: typeof base = {
+      ...base,
+      measure(text, face) {
+        const chosen = text.includes('Q') ? fallback : base;
+        return chosen.measure(text, face) + (text.startsWith(' Q') ? -0.625 : 0);
+      },
+      lineMetrics(face, text) {
+        return (text?.includes('Q') ? fallback : base).lineMetrics(face, text);
+      },
+    };
+    const words = Array.from({ length: 90 }, (_, i) => `Quick ${i} map.`).join(' ');
+    for (const text of [words, words + ' ' + 'x'.repeat(75) + ' end', words + ' re-entry end']) {
+      const node = paragraph(run(text, '<w:kern w:val="2"/>'));
+      for (const width of [52, 80.375, 147]) {
+        const layout = () =>
+          breakParagraph(
+            node,
+            node.id,
+            0,
+            width,
+            measurer,
+            undefined,
+            null,
+            [],
+            undefined,
+            undefined,
+            undefined,
+            { firstLineOffset: 5, contentOriginX: 3, firstLineMinimumBaseline: 17 }
+          );
+        const placed = layout();
+        const regular = spyOn(fitting, 'placeFittingWords').mockReturnValue(undefined);
+        try {
+          expect(placed).toEqual(layout());
+        } finally {
+          regular.mockRestore();
+        }
+      }
+    }
+  });
+
   test('uses the same line, span and model records on both sides of a wrap', () => {
     const fixed = createFixedMeasurer(6, 14);
     let metrics = 0;
