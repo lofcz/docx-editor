@@ -309,13 +309,6 @@ export function textIdentities(text: Y.Text): TextIdentities {
       isText && marks.origin('move', item.id.client, clock) !== null;
     const restoredAt = (clock: number): boolean =>
       isText && !movedAt(clock) && marks.origin('restore', item.id.client, clock) !== null;
-    const restoredTypingAt = (clock: number): boolean => {
-      if (!doc || !restoredAt(clock)) return false;
-      const [client, origin] = identityParts(marks, item.id.client, clock);
-      const source = structAt(doc, { client, clock: origin });
-      // Collected strings and formatting clocks can merge. Only their retained parent is stable.
-      return source instanceof Y.Item && source.parent === text;
-    };
     const isRestored = restoredAt(item.id.clock);
     const isCopy = movedAt(item.id.clock) || isRestored;
     // An undo or redo writes typed text again where Yjs put its first write, and that copy
@@ -374,12 +367,22 @@ export function textIdentities(text: Y.Text): TextIdentities {
         clients.push(-1);
         clocks.push(-1);
       }
-      moved.push(movedAt(item.id.clock + offset));
-      const isRestored = restoredAt(item.id.clock + offset);
+      const currentClock = item.id.clock + offset;
+      const isMoved = movedAt(currentClock);
+      const isRestored =
+        isText && !isMoved && marks.origin('restore', item.id.client, currentClock) !== null;
+      moved.push(isMoved);
       restored.push(isRestored);
+      // A restored character follows its original typing only inside the same paragraph.
+      const source =
+        isRestored && doc
+          ? structAt(doc, {
+              client: clients[clients.length - 1]!,
+              clock: clocks[clocks.length - 1]!,
+            })
+          : null;
       followingOriginal.push(
-        !movedAt(item.id.clock + offset) &&
-          (!isRestored || restoredTypingAt(item.id.clock + offset))
+        !isMoved && (!isRestored || (source instanceof Y.Item && source.parent === text))
       );
       deleted.push(
         isText &&
