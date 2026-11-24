@@ -484,6 +484,11 @@ Two connected editors opened with two visible pages each. Both delivery orders c
 After reconnecting, both saved documents reopened with 319 paragraphs and the same digest.
 Remote caret geometry matched on the first and final pages. [Keyboard, wheel, and collaboration checks](profiles/winpc-opening-final-navigation.jsonl)
 
+WinPC ran four repository checks before opening, before the click fix, and after the click fix.
+Workspace type checking passed at all three revisions after building the font declarations.
+Each revision reported the same three formatting files, two fixture license headers, and collaboration release interval.
+[Repository check results](profiles/winpc-opening-hook-comparison.jsonl)
+
 WinPC ran all six orders of the native control, the closing fix, and Plate for each target.
 The control used the merged opening build at `de621fb98`. The candidate included the extraction and `3fbf2c913`.
 Each row gives the median of six trials per editor.
