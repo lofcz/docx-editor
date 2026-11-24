@@ -594,6 +594,38 @@ Four WinPC trials used the same stored lesson and checked the edited paragraph. 
 
 The geometry fix added 38.25 ms to the initial opening response. [Timing samples](profiles/winpc-overview-2fd83-motion.jsonl)
 
+## Move the measured overview timeline into its Word fragment
+
+Sciobot commit `3be2ff6f1` measured the interactive timeline after activation. Word published seven pages once.
+The same timeline control moved into the visible fragment at 668 × 303 px.
+The heading stayed at y=406 px, and the scroll position stayed at zero.
+
+Four balanced rounds compared `2fd83fe0f`, the previous transfer implementation, the live timeline, and Plate on the stored lesson.
+The initial measurement includes two animation frames after the accessibility state changed. All 16 targeted edits matched.
+
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| Initial open, 107.00 ms → 84.55 ms | 40.85 ms | 107.0% more time |
+| Initial close, 45.80 ms → 41.05 ms | 45.20 ms | 9.2% less time |
+| Settled open, 281.55 ms → 274.45 ms | 257.65 ms | 6.5% more time |
+| Settled close, 295.95 ms → 299.30 ms | 237.15 ms | 26.2% more time |
+
+The median paired opening saved 14.45 ms initially and 10.85 ms through settlement.
+Initial close saved 4.90 ms. Settled close added 4.00 ms in the paired comparison.
+The four initial openings ranged from 41.20 to 140.90 ms.
+Two additional observations put median cold paper movement at 165.85 ms before and 166.40 ms after.
+The first visible heading moved from 21.90 to 26.65 ms. Cold settlement moved from 273.35 to 275.25 ms.
+The second opening moved paper at 81.85 ms before and 52.25 ms after.
+
+The first measurement implementation still rendered two timelines. Initial open rose from 118.55 to 122.25 ms.
+Settled open rose from 290.20 to 290.90 ms. Initial and settled close added 0.35 and 0.75 ms.
+Transferring the schedule data then raised initial open from 73.75 to 134.40 ms in its own four rounds.
+Settled open improved by 19.50 ms. Initial and settled close added 0.40 and 1.65 ms.
+
+WinPC passed 13 disclosure tests, 12 timeline tests, and both reversed peer cases with 221 assertions.
+Reduced-motion changes during activation preserved focus and saved content. Consecutive activations of different controls committed both reading states.
+Six rapid reversals per version ended folded with focus on the original trigger. [Timing samples and geometry](profiles/winpc-overview-3be2-timeline.jsonl)
+
 ## Rejected line ownership summary
 
 WinPC tested caching editable offsets and page fields as the layout placed each body line.
