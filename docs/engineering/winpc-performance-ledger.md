@@ -268,6 +268,29 @@ The tested DOCX opening change was `54257baba`. Commit `7bec4950d` integrates th
 The native control took 708.40 ms through the first edit and 740.00 ms through the last edit.
 Both native builds produced the same target coordinates and final document geometry.
 
+### Merged opening, paint, and layout changes
+
+The merged build at `de621fb98` used the same 320 paragraphs and the same browser input.
+WinPC ran six trials per editor on the first paragraph and three on the last paragraph.
+The native control used `44468bde7`.
+
+| Median | Native control | Merged DOCX | Plate |
+| --- | ---: | ---: | ---: |
+| First visible text paint | 602.95 ms | 527.25 ms | 600.05 ms |
+| First paragraph ready for a click | 592.85 ms | 515.85 ms | 574.95 ms |
+| Open through the first exact edit | 710.10 ms | 640.85 ms | 670.80 ms |
+| First key | 30.10 ms | 29.85 ms | 30.15 ms |
+| First wheel response | 16.65 ms | 14.30 ms | 15.80 ms |
+| Open through the last exact edit | 723.60 ms | 774.30 ms | 662.20 ms |
+| Renderer CPU through the last edit | 600.48 ms | 799.60 ms | 557.84 ms |
+
+Each trial placed the caret with one click and edited the expected character.
+The two native builds produced identical rectangles for both clicked characters.
+After each edit, all 67,298 character positions retained their text, source offset, page, vertical position, and height.
+Across 27 pages, 2,640 horizontal positions differed by at most 0.125 CSS pixels.
+Widths differed at 950 positions by at most 0.015625 CSS pixels.
+The first page contained 2,339 character positions before editing. [Browser measurements and character audits](profiles/winpc-merged-opening-320.jsonl)
+
 ## Memory allocation during multiline paste
 
 Chrome sampled JavaScript allocation during one 158,633-character paste per editor at `87dcdfb44`.
