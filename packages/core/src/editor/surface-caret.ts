@@ -104,11 +104,8 @@ export interface SurfaceCaret {
   /** Repaint from the current layout and selection. Safe to call on every render. */
   update(): void;
   /**
-   * Repaint for the selection that `write` is about to put in the browser, then run `write`.
-   *
-   * Whether a range hands the native caret back depends on what the browser shows AFTER the
-   * write, so that decision waits for it, and it is made even when `write` throws. `write`
-   * runs once, after the repaint; a repaint that throws leaves it unrun.
+   * Mirror the selection and repaint its caret. An existing focused insertion point can
+   * move after the write. A range settles native caret ownership after the write.
    */
   updateAround(write: () => void): void;
   /** The insertion point at the selection head in client pixels, or null when unplaced. */
@@ -403,7 +400,18 @@ export function createSurfaceCaret(
   }
 
   function updateAround(write: () => void): void {
-    repaint(true);
+    const input = read();
+    if (placed !== null && !composing && !input.suppress && isCollapsed(input.selection) && hasFocus()) {
+      // Selection APIs can require a style update. Leave the visible overlay in place
+      // until the browser has mirrored the selection, then read the final focus and state.
+      try {
+        write();
+      } finally {
+        update();
+      }
+      return;
+    }
+    repaint(true, input);
     try {
       write();
     } finally {
@@ -411,8 +419,7 @@ export function createSurfaceCaret(
     }
   }
 
-  function repaint(selectionWriteFollows: boolean): void {
-    const input = read();
+  function repaint(selectionWriteFollows: boolean, input = read()): void {
     if (composing || !hasFocus() || input.suppress) {
       hide();
       return;

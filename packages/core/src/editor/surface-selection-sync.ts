@@ -423,9 +423,8 @@ export function createSurfaceSelectionSync(deps: SurfaceSelectionSyncDeps): Surf
 
   function mirrorToDom(claim = false): void {
     if (claim) selectionActivated = true;
-    // Ahead of the ownership guard: the caret is this engine's own, painted whether or not
-    // the browser's selection lives here. It is repainted BEFORE the write and settles its
-    // native counterpart after it.
+    // The engine paints its caret even when another surface owns the browser selection.
+    // Only the selection write passes through the ownership guard.
     deps.repaintCaretAround(() => writeSelectionToDom(claim));
   }
 
