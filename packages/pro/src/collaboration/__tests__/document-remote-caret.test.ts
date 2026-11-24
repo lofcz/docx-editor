@@ -376,6 +376,9 @@ describe('local caret across remote edits', () => {
         anchor: { paragraphId: first!, offset: 10 },
         head: { paragraphId: first!, offset: 14 },
       });
+      surface.redo();
+      expect(textOf(0)).toBe('Big Alpha Xgraph');
+      expect(surface.state().selection.head).toEqual({ paragraphId: first!, offset: 11 });
     } finally {
       cleanup();
     }

@@ -87,6 +87,7 @@ export class DocumentSelectionHistory {
     return () => {
       const key = this.position!.current();
       if (!key || revision === this.revision()) return;
+      this.position!.captureEditSelection?.();
       this.entries.set(key, {
         before: this.entries.get(key)?.before ?? before,
         after: this.save(),

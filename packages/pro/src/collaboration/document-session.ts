@@ -155,7 +155,7 @@ class DocumentSession implements DocumentCollaborationSession {
       captureTimeout: UNDO_CAPTURE_TIMEOUT_MS,
       deleteFilter: registry.undoDeleteFilter(),
     });
-    this.historyGroups = new HistoryGroupCapture(this.undoManager, this);
+    this.historyGroups = new HistoryGroupCapture(this.undoManager, this, () => this.historySelections.captureAfter());
     this.undoGroups = new UndoGroups(this.historyGroups, () => this.flushPendingJournals());
     this.historySelections = new HistorySelection(
       this.undoManager,
@@ -427,8 +427,7 @@ class DocumentSession implements DocumentCollaborationSession {
     const stack = direction === 'undo' ? this.undoManager.undoStack : this.undoManager.redoStack;
     if (stack.length === 0) return false;
     this.historyGroups.reset();
-    this.historySelections.noteBefore();
-    this.historySelections.startPop();
+    this.historySelections.startPop(stack.at(-1)!.meta);
     const from = Y.getState(this.ydoc.store, this.ydoc.clientID);
     this.registry.takeUnlisted();
     stepHistory(this.registry, this.undoManager, direction, () =>

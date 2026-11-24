@@ -31,6 +31,7 @@ export type FindEndpoint = (
   character: EncodedCharacter
 ) => CollaborationLocalSelection['anchor'] | null;
 
+const OPPOSITE_SELECTION = Symbol('oppositeSelection');
 const SELECTION_META = 'docxEditorSelectionBefore';
 
 interface Snapshot {
@@ -52,8 +53,10 @@ export class HistorySelection {
       event.stackItem.meta.set(SELECTION_META, this.before);
     }
   };
-  private readonly onPopped = (event: { stackItem: { meta: Map<unknown, unknown> } }): void => {
+  private readonly onPopped = (event: { type: 'undo' | 'redo'; stackItem: { meta: Map<unknown, unknown> } }): void => {
     const snapshot = event.stackItem.meta.get(SELECTION_META);
+    const opposite = (event.type === 'undo' ? this.undoManager.redoStack : this.undoManager.undoStack).at(-1);
+    opposite?.meta.set(OPPOSITE_SELECTION, snapshot);
     this.restored = (snapshot as Snapshot | null | undefined) ?? null;
   };
 
@@ -104,7 +107,12 @@ export class HistorySelection {
   }
 
   /** Call before an undo or redo, so a stale answer from an earlier step is never reused. */
-  startPop(): void {
+  captureAfter(): void {
+    this.undoManager.undoStack.at(-1)?.meta.set(OPPOSITE_SELECTION, this.latest);
+  }
+
+  startPop(meta: Map<unknown, unknown>): void {
+    this.before = (meta.get(OPPOSITE_SELECTION) as Snapshot | undefined) ?? this.latest;
     this.restored = null;
   }
 

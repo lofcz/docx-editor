@@ -3324,8 +3324,8 @@ export function mountPaginatedSurface(
       // the paint: under input pressure `publishAfterCommit` hands layout to a later task, and
       // a remote caret must not wait on this author's repaint to stop pointing at a position
       // they have left.
-      finishSelectionHistory();
       publishLocalCollaborationSelection();
+      finishSelectionHistory();
     } catch (error) {
       if ((commitRunDepth -= 1) === 0 && commitPaintOwed) {
         try {

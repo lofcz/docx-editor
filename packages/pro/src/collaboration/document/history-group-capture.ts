@@ -49,7 +49,8 @@ export class HistoryGroupCapture {
 
   constructor(
     private readonly undoManager: Y.UndoManager,
-    owner?: object
+    owner?: object,
+    captureEditSelection?: () => void
   ) {
     const noteItem = (event: { stackItem: StackItem; type: 'undo' | 'redo' }): void => {
       if (this.capturing && event.type === 'undo') {
@@ -63,7 +64,7 @@ export class HistoryGroupCapture {
     };
     undoManager.on('stack-item-added', noteItem);
     undoManager.on('stack-item-updated', noteItem);
-    if (owner) bindHistoryPosition(owner, undoManager, () => this.reset());
+    if (owner) bindHistoryPosition(owner, undoManager, () => this.reset(), captureEditSelection);
   }
 
   /**
@@ -149,7 +150,7 @@ export class HistoryGroupCapture {
 }
 
 /** Undo and redo create new CRDT stack items; keep their logical identities stable. */
-function bindHistoryPosition(owner: object, manager: Y.UndoManager, reset: () => void): void {
+function bindHistoryPosition(owner: object, manager: Y.UndoManager, reset: () => void, captureEditSelection?: () => void): void {
   const tokens = new WeakMap<StackItem, object>();
   const token = (item: StackItem): object => {
     let value = tokens.get(item);
@@ -161,6 +162,7 @@ function bindHistoryPosition(owner: object, manager: Y.UndoManager, reset: () =>
     if (counterpart) tokens.set(counterpart, token(stackItem));
   });
   registerUndoHistoryPosition(owner, {
+    captureEditSelection,
     current: () => {
       const top = manager.undoStack.at(-1);
       return top ? token(top) : null;
