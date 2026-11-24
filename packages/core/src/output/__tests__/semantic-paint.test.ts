@@ -537,6 +537,22 @@ describe('only the pages worth building are built (task 9.4)', () => {
     mutations.disconnect();
   });
 
+  test('a virtual sheet receives the same size and accessibility attributes as a fresh paint', () => {
+    const container = document.createElement('div');
+    const layout = layoutOf(long);
+    const materialize = new Set([0]);
+    paintSemanticLayout(container, layout, { scale: 1, materialize, ariaHidden: true });
+    const shell = container.children[1]!;
+    const pages = layout.pages.map((page) => ({ ...page, box: { ...page.box, width: 466.375 } }));
+    const revised = { ...layout, pages };
+    const options = { scale: 1.35, materialize, ariaHidden: false };
+    const fresh = document.createElement('div');
+    paintSemanticLayout(fresh, revised, options);
+    paintSemanticLayout(container, revised, options);
+    expect(container.children[1]).toBe(shell);
+    expect(shell.isEqualNode(fresh.children[1]!)).toBe(true);
+  });
+
   test('editing one paragraph repaints that block and keeps every other one', () => {
     // The typing path: one block of one page moves. Rebuilding the sheet around it made the
     // browser restyle and lay out the whole page, and dropped the text node the caret sat in.

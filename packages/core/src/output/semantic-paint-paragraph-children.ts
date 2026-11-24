@@ -17,7 +17,7 @@ export function recordParagraphChildren(root: HTMLElement): HTMLElement {
   return root;
 }
 
-function copyAttributes(target: HTMLElement, source: HTMLElement): void {
+export function copyAttributes(target: HTMLElement, source: HTMLElement): void {
   for (const name of target.getAttributeNames()) {
     if (!source.hasAttribute(name)) target.removeAttribute(name);
   }

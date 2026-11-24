@@ -2439,6 +2439,12 @@ export function paintSemanticLayoutWithAuthorSlots(
     }
     const painted: { content?: HTMLElement; blocks?: Map<BlockFragmentRecord, HTMLElement> } = {};
     const element = paintPage(document, page, resolved, materialized, painted, movedRows);
+    if (!materialized && prior?.materialized === false && !prior.element.hasChildNodes()) {
+      // An empty sheet owns only its attributes. Keep it connected when CSSOM rounds the
+      // dimensions from w:pgSz (CT_PageSz, ECMA-376 §17.6.13) or the section changes size.
+      copyPaintAttributes(prior.element, element);
+      return { record: page, materialized: false, element: prior.element };
+    }
     return {
       record: page,
       materialized,
@@ -2478,6 +2484,7 @@ import {
   type PreserveParagraphRoots,
 } from './semantic-paint-paragraph-roots.ts';
 import {
+  copyAttributes as copyPaintAttributes,
   recordParagraphChildren,
   retainPaintedParagraph,
 } from './semantic-paint-paragraph-children.ts';
