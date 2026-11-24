@@ -137,6 +137,48 @@ test('a width-based widget takes its measured room on the first layout', () => {
   }
 });
 
+test.each([false, true])(
+  'an unmeasured opening box follows its owner after an edit (owner check: %s)',
+  (checked) => {
+    const editor = createDocxEditor({
+      container: document.createElement('div'),
+      document: docx(p('Outside') + p('Figure') + p('After')),
+      configureInitialBlockView(pkg, view) {
+        const [, figure] = paragraphIdsInDocumentOrder(pkg.parts.get(pkg.mainDocumentPart)!);
+        view.setInitialBlockHeights(
+          new Map([[figure!, () => 150]]),
+          checked
+            ? (current, id) =>
+                paragraphTextOf(current.parts.get(current.mainDocumentPart)!, id) === 'Figure'
+            : undefined
+        );
+      },
+    });
+    try {
+      const surface = editor.surface!;
+      const [outside, figure, after] = surface.session.paragraphIds();
+      const position = () => caretAt(surface.layout(), { paragraphId: after!, offset: 0 })!.y;
+      const opening = position();
+      const edit = (id: string) => {
+        const caret = { paragraphId: id, offset: 0 };
+        surface.setSelection({ anchor: caret, head: caret });
+        surface.type('x');
+        surface.flushPendingInput();
+      };
+      edit(outside!);
+      // A later measurement can reflow an offscreen paragraph after the edit.
+      surface.setBlockInsets(new Map([[figure!, { left: 3, right: 1 }]]));
+      surface.flushPendingInput();
+      if (checked) expect(position()).toBeCloseTo(opening);
+      else expect(position()).toBeLessThan(opening - 100);
+      edit(figure!);
+      expect(position()).toBeLessThan(opening - 100);
+    } finally {
+      editor.destroy();
+    }
+  }
+);
+
 test('opening boxes use section column widths in points independently of zoom', () => {
   for (const [pageWidth, zoom] of [
     [7800, 0.75],

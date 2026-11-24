@@ -57,7 +57,11 @@ export type ConfigureInitialBlockView = (
     Pick<SurfaceBlockReservations, 'setBlockInsets'> & {
       /** Size inline widgets in single body paragraphs before the first paint. Each callback
        * receives the available paragraph width and returns the full widget height, in points.
-       * A live measurement supersedes that paragraph's initial size. */
-      setInitialBlockHeights(heights: ReadonlyMap<string, (widthPt: number) => number>): void;
+       * A live measurement supersedes that paragraph's initial size. After an edit,
+       * an unmeasured size remains valid only when its owner confirms its inputs. */
+      setInitialBlockHeights(
+        heights: ReadonlyMap<string, (widthPt: number) => number>,
+        isCurrent?: (pkg: OoxmlPackage, paragraphId: string) => boolean
+      ): void;
     }
 ) => void;

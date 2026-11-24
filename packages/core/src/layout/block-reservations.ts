@@ -189,7 +189,7 @@ export function paragraphReservation(
 export function createBlockReservationState(): {
   setInitialHeights(
     heights: ReadonlyMap<string, (widthPt: number) => number>,
-    current: () => boolean
+    current: (paragraphId: string) => boolean
   ): void;
   set(next: ReadonlyMap<string, number>): boolean;
   setInsets(next: ReadonlyMap<string, BlockInset>): boolean;
@@ -223,7 +223,7 @@ export function createBlockReservationState(): {
       for (const [id, heightOf] of heights) {
         opening.set(id, {
           key: ++nextInitialBoxKey,
-          current: currentPackage,
+          current: () => currentPackage(id),
           reserve(width, textHeight, pageHeight) {
             const room = quantizeBlockReservation(
               Math.min(pageHeight, heightOf(width)) - textHeight

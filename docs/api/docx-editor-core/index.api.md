@@ -1601,7 +1601,7 @@ export interface ComposeFontOriginsOptions {
 
 // @public
 export type ConfigureInitialBlockView = (pkg: OoxmlPackage, view: SurfaceContentControlCollapse & Pick<SurfaceBlockReservations, 'setBlockInsets'> & {
-    setInitialBlockHeights(heights: ReadonlyMap<string, (widthPt: number) => number>): void;
+    setInitialBlockHeights(heights: ReadonlyMap<string, (widthPt: number) => number>, isCurrent?: (pkg: OoxmlPackage, paragraphId: string) => boolean): void;
 }) => void;
 
 // @public
