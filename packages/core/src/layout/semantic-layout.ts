@@ -191,6 +191,7 @@ import { closingSpaceAfterPt, droppableSpacingPt, keepNoteClosing } from './note
 import * as blockSpace from './block-reservations.ts';
 import { bodyFlowProjectionEpoch, visibleBodyRound } from './content-control-collapse-flow.ts';
 import { passProducerOf } from './pass-producer.ts';
+import { indexedWidgetProjection } from './indexed-inline-widget-metrics.ts';
 import { documentProjectionProducer } from './document-property-context.ts';
 
 import {
@@ -296,12 +297,14 @@ function* layoutInModeSteps(
   // fingerprint into the producer so incremental identity reuse cannot keep stale boundaries.
   const controlToken = contentControlContextToken(part);
   const linkStyleRanges = tocLinkRanges(part, options.styleCascade);
+  const widgetProjection = indexedWidgetProjection(options, allBlocks);
   const optionsWithControlContext: SemanticLayoutOptions = {
     ...options,
+    ...widgetProjection,
     fieldCodeRanges: options.showFieldCodes ? tocCodeRanges(part) : undefined,
     tocLinkStyleRanges: linkStyleRanges,
     displayMode,
-    producer: documentProjectionProducer(options, controlToken, tocLinkStyleToken(linkStyleRanges)),
+    producer: documentProjectionProducer(options, controlToken, tocLinkStyleToken(linkStyleRanges), Boolean(widgetProjection)),
     tocFieldChromeParagraphIds:
       options.tocFieldChromeParagraphIds ?? tocFieldChromeParagraphIds(part),
     emptyTocPlaceholderParagraphIds:

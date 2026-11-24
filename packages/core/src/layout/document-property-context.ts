@@ -53,11 +53,12 @@ export function documentProjectionProducer(
     | 'projectionTokenForParagraph'
   > & { readonly measurer?: SemanticLayoutOptions['measurer'] },
   controlToken: string,
-  tocToken: string
+  tocToken: string,
+  scopedWidgets = false
 ): string {
   const shown = options.showFieldCodes ? `${options.producer ?? ''}|field-codes` : options.producer;
   const base = shown === undefined ? shown : withFieldResultsProducer(shown);
-  const measured = options.measurer ? inlineWidgetProducer(base, options.measurer) : base;
+  const measured = options.measurer && !scopedWidgets ? inlineWidgetProducer(base, options.measurer) : base;
   // Coordinated hosts already invalidate only paragraphs whose projected values changed.
   // A partial projection contract must retain the document-wide fallback.
   const properties =
