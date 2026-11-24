@@ -60,14 +60,21 @@ test('skips viewport reads only when scrolling can retain every sheet and its ho
 });
 
 test('builds nearby and selected sheets without changing the horizontal scroll range', () => {
-  const sheets = Array.from({ length: 5 }, (_, index) => ({ index, y: index * 600, height: 600, width: 400 }));
+  const sheets = Array.from({ length: 5 }, (_, index) => ({
+    index,
+    y: index * 600,
+    height: 600,
+    width: 400,
+  }));
   const layout = syntheticLayout(sheets);
   const start = { top: 0, height: 300 };
   expect([...surfacePagesInViewport(layout, start, [4])]).toEqual([0, 4]);
   expect([...surfacePagesInViewport(layout, { top: 160, height: 300 }, [])]).toEqual([0, 1]);
   expect([...surfacePagesInViewport(layout, { top: 10000, height: 100 }, [])]).toContain(4);
   for (const next of [{ width: 700 }, { table: { x: -50, width: 700 } }]) {
-    const mixed = syntheticLayout(sheets.map((sheet) => sheet.index === 1 ? { ...sheet, ...next } : sheet));
+    const mixed = syntheticLayout(
+      sheets.map((sheet) => (sheet.index === 1 ? { ...sheet, ...next } : sheet))
+    );
     expect([...surfacePagesInViewport(mixed, start, [])]).toEqual([0, 1]);
   }
 });

@@ -230,7 +230,12 @@ export function surfacePagesInViewport(
     const page = layout.pages[index]!;
     const spill = tableSpill(page);
     // Mixed paper widths and overflowing tables determine the horizontal scroll range.
-    if (page.box.x !== first.box.x || page.box.width !== first.box.width || spill.left || spill.right)
+    if (
+      page.box.x !== first.box.x ||
+      page.box.width !== first.box.width ||
+      spill.left ||
+      spill.right
+    )
       return required;
     if (page.box.y + page.box.height >= top && page.box.y <= bottom) {
       nearby.add(index);
@@ -318,12 +323,7 @@ export function canScrollWithoutMeasuringPages(
   const first = pages[0];
   // At either document edge, a one-pixel viewport can keep only its visible sheet
   // and up to retainedNeighbors sheets that are already painted.
-  if (
-    !first ||
-    pages.length > 1 + retainedNeighbors ||
-    built?.size !== pages.length
-  )
-    return false;
+  if (!first || pages.length > 1 + retainedNeighbors || built?.size !== pages.length) return false;
   return pages.every((page) => {
     const spill = tableSpill(page);
     return (
