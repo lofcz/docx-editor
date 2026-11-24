@@ -223,3 +223,17 @@ Four alternating WinPC browser pairs pasted 158,633 characters. Both editors ret
 Across 81 painted lines, the native text spans fell from 486 to 108. All 154 shared browser hit tests gave the same model offsets.
 Chrome compared 7,366 glyph rectangles. Their vertical coordinates and heights matched. The largest horizontal difference was 0.109375 CSS pixels.
 The largest width difference was 0.015625 CSS pixels.
+
+## Paste into 256 paragraphs after the viewport and paint changes
+
+WinPC ran four alternating browser pairs at `87dcdfb44`. The input contained 158,633 characters and 255 paragraph breaks.
+
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| Paste elapsed 207.5 ms | 141.2 ms | DOCX took 47.0% longer |
+| Renderer CPU 177.7 ms | 109.5 ms | DOCX used 62.3% more CPU time |
+| Exact pasted text in 4 of 4 runs | 4 of 4 after CRLF normalization | Equal |
+
+The earlier DOCX median was 233.3 ms. In a separate Chrome CPU profile, document layout used 125.4 ms.
+Paragraph breaking used 76.8 ms within that interval. The edit transaction used another 16.1 ms.
+Two collaborative editors also passed reconnect, undo, redo, save, and reopen in both peer orders.
