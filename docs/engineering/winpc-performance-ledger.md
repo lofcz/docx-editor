@@ -343,3 +343,17 @@ All 18 multiline pastes produced the expected text after line-ending normalizati
 
 The proposed change cost 4.43 ms elapsed and 2.41 ms CPU in the median paired comparison.
 The branch retains the separately verified clipboard normalization change.
+
+## Sciobot typography after reopen
+
+Sciobot commit `8a92a3674` used installed engine `87dcdfb44`.
+
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| Fresh body text 16 px | 16 px | Equal |
+| Fresh heading 30 px | 30 px | Equal |
+
+The previous DOCX sizes were 18.4 px and 34.5 px.
+All 33 consumer tests passed with 489 assertions. The three original test files retained their assertions.
+The reload helper waited for a connected editor through the production load signal.
+Both peer orders passed. Chrome selected Inter Regular Italic after reload and in a fresh browser context.
