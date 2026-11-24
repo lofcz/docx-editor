@@ -80,3 +80,15 @@ The active source at consolidation includes upstream, shared history, caret prep
 | `winpc/combined-layout` | `421383d0956a` | Already integrated |
 | `winpc/combined-layout-final` | `59c4188a4914` | Already integrated |
 | `winpc/fitting-layout` | `d4a1c0a302c6` | Archived |
+
+## HarfBuzz cold opening and typing
+
+Four paired WinPC trials compared the installed native baseline with the packed width measurement change.
+Positive values mean the candidate took longer. All 16 exact text and caret checks passed.
+
+| Document | Cold opening elapsed change | Cold opening CPU change | Typing CPU change |
+| --- | ---: | ---: | ---: |
+| Ordinary | +9.65 ms | +17.27 ms | −5.95 ms |
+| Stored lesson | +15.80 ms | +18.51 ms | −1.60 ms |
+
+Every stored lesson opening slowed. The experimental application keeps its previous package while we investigate.
