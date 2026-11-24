@@ -395,6 +395,13 @@ Every first click reached paragraph 320 at the expected text offset of 149.
 The first and last paragraph edits preserved all 67,298 character rectangles across 27 pages.
 The initial 2,339 character rectangles also matched at 1/64 CSS pixel precision. [Chrome pointer events and character audits](profiles/winpc-opening-final-page.jsonl)
 
+In both native builds, Ctrl+End moved from two visible pages to the final paragraph at offset 153.
+The next key edited that paragraph. Undo restored its text.
+An ordinary wheel scrolled 240 pixels while opening continued. The host handled Ctrl+wheel without scrolling.
+Two connected editors opened with two visible pages each. Both delivery orders converged after concurrent edits, deletion, undo, and redo.
+After reconnecting, both saved documents reopened with 319 paragraphs and the same digest.
+Remote caret geometry matched on the first and final pages. [Keyboard, wheel, and collaboration checks](profiles/winpc-opening-final-navigation.jsonl)
+
 ## Memory allocation during multiline paste
 
 Chrome sampled JavaScript allocation during one 158,633-character paste per editor at `87dcdfb44`.
