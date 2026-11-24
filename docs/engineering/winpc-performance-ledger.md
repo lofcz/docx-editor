@@ -428,6 +428,30 @@ Two connected editors opened with two visible pages each. Both delivery orders c
 After reconnecting, both saved documents reopened with 319 paragraphs and the same digest.
 Remote caret geometry matched on the first and final pages. [Keyboard, wheel, and collaboration checks](profiles/winpc-opening-final-navigation.jsonl)
 
+WinPC ran all six orders of the native control, the closing fix, and Plate for each target.
+The control used the merged opening build at `de621fb98`. The candidate included the extraction and `3fbf2c913`.
+Each row gives the median of six trials per editor.
+
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| First visible text paint, 511.50 ms → 514.80 ms | 609.30 ms | 15.5% less time |
+| First paragraph ready for a click, 499.90 ms → 503.80 ms | 577.95 ms | 12.8% less time |
+| Open through the first exact edit, 624.25 ms → 625.75 ms | 667.75 ms | 6.3% less time |
+| Renderer CPU through the first edit, 652.89 ms → 552.89 ms | 539.65 ms | 2.5% more time |
+| First key, 27.80 ms → 27.10 ms | 28.40 ms | 4.6% less time |
+| First wheel response, 13.65 ms → 15.30 ms | 15.00 ms | 2.0% more time |
+| Final paragraph ready for a click, 682.70 ms → 674.05 ms | 580.10 ms | 16.2% more time |
+| Open through the final exact edit, 759.10 ms → 748.40 ms | 668.30 ms | 12.0% more time |
+| Renderer CPU through the final edit, 668.37 ms → 659.74 ms | 552.37 ms | 19.4% more time |
+| First key in the final paragraph, 29.85 ms → 29.90 ms | 29.80 ms | 0.3% more time |
+| Wheel response from the final paragraph, 16.25 ms → 16.30 ms | 14.95 ms | 9.0% more time |
+
+The control needed a second click in one final-paragraph trial. Its timing includes that retry.
+The candidate and Plate reached both text offsets on the first click in all 12 trials each.
+The native builds produced the same target rectangles and final geometry in every paired trial.
+Three Chrome traces found 27.7–32.6 ms of React work before the first scroll event.
+Browser layout then took 8.3–9.5 ms before pagination resumed. [Direct measurements and scroll traces](profiles/winpc-opening-final-interaction-320.jsonl)
+
 ## Memory allocation during multiline paste
 
 Chrome sampled JavaScript allocation during one 158,633-character paste per editor at `87dcdfb44`.
