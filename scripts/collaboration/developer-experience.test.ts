@@ -229,6 +229,8 @@ test('a closed worker input rejects the request without crashing the parent', ()
   const source = `
     import { Peer } from ${JSON.stringify(pathToFileURL(join(dir, 'scripts/collaboration/peer.mjs')).href)};
     const peer = new Peer(${JSON.stringify(dir)}, 'broken-input');
+    let closed = false;
+    peer.child.once('close', () => { closed = true; });
     peer.child.stdin.on('error', error => console.log('input-error-code:', error.code));
     await new Promise(resolve => peer.child.stdout.once('data', resolve));
     // On Windows, close the writable stream to exercise Node's real
@@ -243,6 +245,7 @@ test('a closed worker input rejects the request without crashing the parent', ()
       console.log('worker-alive:', peer.child.exitCode === null && peer.child.signalCode === null);
     } finally {
       await peer.close();
+      console.log('worker-closed:', closed);
     }
   `;
   // Exercise Node's real input-stream error event in a subprocess, so a regression is
@@ -255,6 +258,7 @@ test('a closed worker input rejects the request without crashing the parent', ()
   expect(result.stderr).toBe('');
   expect(result.stdout).toContain('caught: broken-input: worker input failed:');
   expect(result.stdout).toContain('worker-alive: true');
+  expect(result.stdout).toContain('worker-closed: true');
   if (process.platform === 'win32') {
     expect(result.stdout).toContain('input-error-code: ERR_STREAM_WRITE_AFTER_END');
   }
