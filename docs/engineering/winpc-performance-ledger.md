@@ -140,3 +140,18 @@ The two inputs ran in separate batches.
 Repeated numeric text reduced median native CPU by 22.3 ms. The remaining elapsed gap measured 68.3 ms.
 The sequential input made 4,683 width requests. Only 94 scalar requests repeated an earlier scalar key.
 [Shaping counters and paired observations](https://github.com/sciocz/sciobot-next/blob/9af97f8f1/docs/engineering/sciobot-port/evidence/winpc-shaped-width.json)
+
+## Opening 320 paragraphs with bounded early layout
+
+Six WinPC trials per editor measured first paint, opening through the first exact edit, and first key latency.
+Source candidate `ef45a6578` used smaller early layout steps than native control `f5c7c5f39`.
+All 18 edit targets matched. Both native builds produced the same final geometry digest.
+
+| Median | Native control | Bounded layout | Plate |
+| --- | ---: | ---: | ---: |
+| First paint | 604.0 ms | 516.2 ms | 603.6 ms |
+| Opening through first exact edit | 698.5 ms | 670.9 ms | 666.2 ms |
+| First key latency | 30.1 ms | 42.7 ms | 29.9 ms |
+
+The bounded candidate displayed text 87.4 ms before Plate. Its first key took 12.8 ms longer.
+The consolidated source has different page preloading behavior. It requires a separate timing run.
