@@ -3,9 +3,12 @@
 
 import { describe, expect, test } from 'bun:test';
 import {
+  cachedContentControlPropertiesOf,
+  contentControlPropertiesOf,
   contentControlsIn,
   MAX_CONTENT_CONTROL_NESTING,
 } from '../package/content-control-nodes.ts';
+import { withAtomicContentMarker } from '../package/atomic-content-control.ts';
 import { bodyStoryRoot, readOoxmlPart, storyParagraphs, type OoxmlPart } from '../index.ts';
 import { applyTreeOp } from '../store/tree-op-apply.ts';
 import type { TreeDocOp } from '../store/tree-op-types.ts';
@@ -41,6 +44,19 @@ const nestedBody =
 function nestedDoc(): OoxmlPart {
   return parseDoc(nestedBody);
 }
+
+test('retained property reads follow properties and atomic ownership', () => {
+  const part = parseDoc('<w:sdt><w:sdtPr><w:tag w:val="original"/></w:sdtPr><w:sdtContent/></w:sdt>');
+  const control = contentControlsIn(part.root)[0]!.node;
+  const retained = cachedContentControlPropertiesOf(control);
+  expect(cachedContentControlPropertiesOf({ ...control })).toBe(retained);
+  expect(cachedContentControlPropertiesOf(withAtomicContentMarker(control)).lock).toBe('contentLocked');
+  expect(cachedContentControlPropertiesOf(control).lock).toBe('unlocked');
+  Object.assign(contentControlPropertiesOf(control), { tag: 'caller' });
+  expect(cachedContentControlPropertiesOf(control).tag).toBe('original');
+  const changed = apply(part, { op: 'setContentControlProperties', controlId: control.id, tag: 'changed' });
+  expect(cachedContentControlPropertiesOf(contentControlsIn(changed.root)[0]!.node).tag).toBe('changed');
+});
 
 describe('contentControlsIn default-option cache', () => {
   test('editing a sibling reuses complete outer-control scans and keeps nested ancestry', () => {
