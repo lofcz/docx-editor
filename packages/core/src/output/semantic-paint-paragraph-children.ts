@@ -47,10 +47,10 @@ function plainRun(node: HTMLElement | undefined): node is HTMLElement {
 
 function isTextRowChild(node: HTMLElement): boolean {
   return (
-    plainRun(node) ||
     (node.classList.contains('docx-paragraph-boundary') &&
       node.childNodes.length === 1 &&
-      node.firstElementChild?.tagName === 'BR')
+      node.firstElementChild?.tagName === 'BR') ||
+    plainRun(node)
   );
 }
 
