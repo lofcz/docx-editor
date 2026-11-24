@@ -128,19 +128,7 @@ export function reflowParagraph(
   after: ParagraphFragmentRecord,
   paint: ParagraphReflowPaint
 ): boolean {
-  const apply = planParagraphReflow(element, before, after, paint);
-  if (!apply) return false;
-  apply();
-  return true;
-}
-
-export function planParagraphReflow(
-  element: HTMLElement,
-  before: ParagraphFragmentRecord,
-  after: ParagraphFragmentRecord,
-  paint: ParagraphReflowPaint
-): (() => void) | undefined {
-  if (!sameParagraphPaint(before, after, paint)) return undefined;
+  if (!sameParagraphPaint(before, after, paint)) return false;
   const scale = paint.scale;
   // The painted children, in paint order: shading band, list marker, then one per line. The
   // refused features above are the only other children a paragraph paints.
@@ -148,45 +136,62 @@ export function planParagraphReflow(
   const marked = after.marker !== undefined;
   const first = (shaded ? 1 : 0) + (marked ? 1 : 0);
   const children = element.children;
-  if (children.length !== first + after.lines.length) return undefined;
+  if (children.length !== first + after.lines.length) return false;
   for (let index = 0; index < after.lines.length; index += 1) {
     const line = children[first + index] as HTMLElement;
-    if (line.dataset.lineId !== after.lines[index]!.id) return undefined;
+    if (line.dataset.lineId !== after.lines[index]!.id) return false;
   }
-  if (shaded && !children[0]!.classList.contains('docx-paragraph-shading')) return undefined;
-  if (marked && !children[first - 1]!.classList.contains('docx-list-marker')) return undefined;
+  if (shaded && !children[0]!.classList.contains('docx-paragraph-shading')) return false;
+  if (marked && !children[first - 1]!.classList.contains('docx-list-marker')) return false;
 
-  return () => {
-    if (shaded) {
-      const band = children[0] as HTMLElement;
-      moveRelativeBox(
-        band.style,
-        before.shadingBox!,
-        before.box,
-        after.shadingBox!,
-        after.box,
-        scale
-      );
-    }
-    if (marked) {
-      const marker = children[first - 1] as HTMLElement;
-      moveRelativeBox(
-        marker.style,
-        before.marker!.box,
-        before.box,
-        after.marker!.box,
-        after.box,
-        scale
-      );
-    }
-    for (let index = 0; index < after.lines.length; index += 1) {
-      const a = before.lines[index]!;
-      const b = after.lines[index]!;
-      const line = children[first + index] as HTMLElement;
-      const top = (b.box.y - after.box.y) * scale;
-      if (top !== (a.box.y - before.box.y) * scale) line.style.top = `${top}px`;
-      const left = (b.contentX - after.box.x) * scale;
-      if (left !== (a.contentX - before.box.x) * scale) line.style.left = `${left}px`;
-    }
-  };
+  if (shaded) {
+    const band = children[0] as HTMLElement;
+    moveRelativeBox(
+      band.style,
+      before.shadingBox!,
+      before.box,
+      after.shadingBox!,
+      after.box,
+      scale
+    );
+  }
+  if (marked) {
+    const marker = children[first - 1] as HTMLElement;
+    moveRelativeBox(
+      marker.style,
+      before.marker!.box,
+      before.box,
+      after.marker!.box,
+      after.box,
+      scale
+    );
+  }
+  for (let index = 0; index < after.lines.length; index += 1) {
+    const a = before.lines[index]!;
+    const b = after.lines[index]!;
+    const line = children[first + index] as HTMLElement;
+    const top = (b.box.y - after.box.y) * scale;
+    if (top !== (a.box.y - before.box.y) * scale) line.style.top = `${top}px`;
+    const left = (b.contentX - after.box.x) * scale;
+    if (left !== (a.contentX - before.box.x) * scale) line.style.left = `${left}px`;
+  }
+  return true;
+}
+
+/** Only the outer box moves. Host callbacks may lend or replace descendants before paint. */
+export function canTranslateParagraph(
+  before: ParagraphFragmentRecord,
+  after: ParagraphFragmentRecord,
+  paint: ParagraphReflowPaint
+): boolean {
+  if (before.box.width !== after.box.width || before.box.height !== after.box.height) return false;
+  if (before.marker || after.marker || before.shadingBox || after.shadingBox) return false;
+  if (!sameParagraphPaint(before, after, paint)) return false;
+  return before.lines.every((line, index) => {
+    const next = after.lines[index]!;
+    return (
+      line.contentX - before.box.x === next.contentX - after.box.x &&
+      line.box.y - before.box.y === next.box.y - after.box.y
+    );
+  });
 }

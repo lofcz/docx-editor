@@ -1,4 +1,4 @@
-import { planParagraphReflow, moveRelativeBox, type ParagraphReflowPaint } from './semantic-paint-paragraph-reflow.ts';
+import { canTranslateParagraph, moveRelativeBox, type ParagraphReflowPaint } from './semantic-paint-paragraph-reflow.ts';
 import type { BlockFragmentRecord, PageRecord } from '../layout/semantic-records.ts';
 import type { RetainedPage } from './semantic-paint-paragraph-roots.ts';
 import {
@@ -6,6 +6,17 @@ import {
   retainPaintedParagraph,
 } from './semantic-paint-paragraph-children.ts';
 import { sameDataWithin } from './semantic-paint-record-equality.ts';
+
+// Leave generated fields, format anchors and host-specific styling to the paragraph painter.
+function plainRoot(root: HTMLElement): boolean {
+  return (
+    root.attributes.length === 4 &&
+    root.className === 'docx-paragraph-fragment layout-paragraph' &&
+    root.style.length === 5 &&
+    root.style.position === 'absolute' &&
+    Boolean(root.style.left && root.style.top && root.style.width && root.style.height)
+  );
+}
 
 /** Insert and remove fragments at their canonical page positions, including host-owned markers. */
 export function planStructuralRoots(
@@ -64,7 +75,7 @@ export function planStructuralRoots(
     // Preserve a translated w:p (CT_P, ECMA-376 Part 1 §17.3.1.22) after host acceptance.
     const translate =
       !same && old?.record.kind === 'paragraph' && fragment.kind === 'paragraph'
-        ? planParagraphReflow(old.root, old.record, fragment, paragraphPaint)
+        ? plainRoot(old.root) && canTranslateParagraph(old.record, fragment, paragraphPaint)
         : undefined;
     const fresh =
       !translate && !same && old?.record.kind === 'paragraph' && fragment.kind === 'paragraph'
@@ -87,7 +98,6 @@ export function planStructuralRoots(
         planned.push({ fragment, root: old.root });
         if (translate) {
           updates.set(old.root, () => {
-            translate();
             const origin = { x: 0, y: 0 };
             moveRelativeBox(old.root.style, old.record.box, origin, fragment.box, origin, paragraphPaint.scale);
           });
