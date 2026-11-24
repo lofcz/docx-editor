@@ -16,10 +16,6 @@ import type { ResolvedReviewPane } from './review-pane.ts';
 
 import type { ZoomMode } from './editor-zoom.ts';
 
-/** Keys for the table furniture's accessible names, resolved by `tableInteractionLabel`. */
-export type TableInteractionLabelKey =
-  'table.insertRowBelow' | 'table.insertColumnRight' | 'table.selectTable';
-
 export type { ZoomFitTarget, ZoomMode } from './editor-zoom.ts';
 import type { TextMatch } from './editor-text-match.ts';
 export type { ReplaceAllMatchesOutcome, TextMatch } from './editor-text-match.ts';
@@ -933,6 +929,7 @@ import type {
   TableColumnDividerResizeTarget,
   TableColumnOccurrenceTarget,
   TableContext,
+  TableInteractionLabelKey,
   TableRightEdgeResizeTarget,
   TableRowOccurrenceTarget,
 } from './table-targets.ts';
@@ -953,6 +950,7 @@ export type {
   TableColumnDividerResizeTarget,
   TableColumnOccurrenceTarget,
   TableContext,
+  TableInteractionLabelKey,
   TableRightEdgeResizeTarget,
   TableRowOccurrenceTarget,
 } from './table-targets.ts';

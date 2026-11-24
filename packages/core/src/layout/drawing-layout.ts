@@ -32,6 +32,7 @@ import { pageClipRegion } from './drawing-page-clip.ts';
 import {
   band,
   furniturePageAxes,
+  isOddPageOf,
   paragraphOrLineAlignedTop,
   resolvesInPageContent,
   usableCellBox,
@@ -573,12 +574,6 @@ export interface AnchoredDrawingRecord extends Omit<
   readonly sourceOrder?: number;
   /** Floating VML text art fitted to the box; paint draws it instead of a resource. */
   readonly textArt?: DrawingTextArtRecord;
-}
-
-/** Every parity read goes through here so the host learns the layout depends on it. */
-function isOddPageOf(ctx: DrawingAnchorFrameContext): boolean {
-  ctx.onPageParityRead?.();
-  return ctx.pageNumber % 2 === 1;
 }
 
 function usesCellLayoutBox(

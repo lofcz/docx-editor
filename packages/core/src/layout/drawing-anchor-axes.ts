@@ -1,6 +1,15 @@
 // Which coordinates an anchored drawing's axes resolve in, and the vertical margin bands
 // (ECMA-376 Part 1 §20.4.3.5 ST_RelFromV).
 
+/** Every parity read goes through here so the host learns the layout depends on it. */
+export function isOddPageOf(ctx: {
+  readonly pageNumber: number;
+  readonly onPageParityRead?: () => void;
+}): boolean {
+  ctx.onPageParityRead?.();
+  return ctx.pageNumber % 2 === 1;
+}
+
 /**
  * Whether a vertical frame resolves in page-content coordinates in this story: the page frame
  * always, and the margin bands when the story has no sheet top of its own (body and footer).

@@ -8,6 +8,10 @@
 
 import type { ColorValue } from './types';
 
+/** Keys for the table furniture's accessible names, resolved by `tableInteractionLabel`. */
+export type TableInteractionLabelKey =
+  'table.insertRowBelow' | 'table.insertColumnRight' | 'table.selectTable';
+
 /** Where the caret sits inside a table: its shape and current cell. */
 export interface TableContext {
   readonly rows: number;
