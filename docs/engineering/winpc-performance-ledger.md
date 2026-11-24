@@ -237,3 +237,17 @@ WinPC ran four alternating browser pairs at `87dcdfb44`. The input contained 158
 The earlier DOCX median was 233.3 ms. In a separate Chrome CPU profile, document layout used 125.4 ms.
 Paragraph breaking used 76.8 ms within that interval. The edit transaction used another 16.1 ms.
 Two collaborative editors also passed reconnect, undo, redo, save, and reopen in both peer orders.
+
+## Typing across a line break in the lesson
+
+Four alternating WinPC trials measured 59 keys in the React editor. Commit `dc9a7f260` retains paragraphs that only move vertically.
+
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| Renderer CPU 751.06 ms | 603.43 ms | DOCX used 24.5% more CPU time |
+| Elapsed time including pauses 5,114.25 ms | 4,994.95 ms | DOCX took 2.4% longer |
+| Frame containing the wrap 54.4 ms | 12.55 ms | DOCX took 333.5% longer |
+
+The previous DOCX build used 799.79 ms of CPU and took 5,074.60 ms including pauses.
+The wrap rebuilt 12 paragraphs, down from 42. All 696 geometry and accessibility records matched.
+Both peer orders preserved 57 equations through reconnect, undo, redo, save, and reopen.
