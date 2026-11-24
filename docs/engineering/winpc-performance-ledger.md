@@ -717,6 +717,26 @@ The renderer then spent 12.94 ms updating styles and 2.24 ms on layout. Plate sp
 During opening, Word published seven pages at 92.27 ms. Motion ended at 268.62 ms against 239.02 ms for Plate.
 Opening settled at 301.58 ms against 256.63 ms for Plate. [Chrome timing marks and renderer intervals](profiles/winpc-overview-3be2-stages.json)
 
+## Rejected first-return disclosure layout
+
+The engine trial saved the preceding disclosure layout on its first activation. The first close reused all five pages.
+The control placed 59 blocks. The trial placed zero. Both opened seven pages and placed 66 blocks.
+
+Six balanced rounds compared the same `3be2ff6f1` host and Plate. All 18 targeted edits matched.
+
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| Initial open, 125.30 → 51.00 ms | 39.60 ms | 28.8% more time |
+| Initial close, 44.05 → 33.40 ms | 41.60 ms | 19.7% less time |
+| Settled open, 259.45 → 286.05 ms | 241.95 ms | 18.2% more time |
+| Settled close, 294.15 → 285.30 ms | 228.75 ms | 24.7% more time |
+| Entire settled cycle, 551.35 → 563.05 ms | 470.65 ms | 19.6% more time |
+
+The median paired close saved 6.75 ms. Opening added 23.10 ms. The complete paired cycle added 5.70 ms.
+Four preliminary rounds on the earlier host saved 14.05 ms per paired cycle. Settled opening rose from 273.65 to 274.05 ms.
+Both exact-host origins used 115% zoom. All 908 text boxes, font properties, page boxes, headings, and timeline bounds matched.
+The trial stayed outside the engine. [Paired measurements and geometry](profiles/winpc-overview-first-return.jsonl)
+
 ## Rejected line ownership summary
 
 WinPC tested caching editable offsets and page fields as the layout placed each body line.
