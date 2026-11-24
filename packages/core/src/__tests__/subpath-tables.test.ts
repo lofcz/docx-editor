@@ -98,12 +98,12 @@ describe('the published subpath tables agree', () => {
     expect({ missingBuildEntry: missing }).toEqual({ missingBuildEntry: [] });
   });
 
-  test('only the ESM grapheme split point is private', () => {
+  test('only the ESM grapheme and projection schema split points are private', () => {
     const exported = new Set(jsSubpaths.map(asEntryKey));
     const privateEntries = configs.map((build) =>
       Object.keys(build.entry).filter((entry) => !exported.has(entry))
     );
-    expect(privateEntries).toEqual([['internal/grapheme'], []]);
+    expect(privateEntries).toEqual([['internal/grapheme', 'internal/projection-schema'], []]);
   });
 
   test('the build alias table and the tsconfig paths name the same specifiers', () => {
