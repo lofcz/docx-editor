@@ -251,3 +251,19 @@ Four alternating WinPC trials measured 59 keys in the React editor. Commit `dc9a
 The previous DOCX build used 799.79 ms of CPU and took 5,074.60 ms including pauses.
 The wrap rebuilt 12 paragraphs, down from 42. All 696 geometry and accessibility records matched.
 Both peer orders preserved 57 equations through reconnect, undo, redo, save, and reopen.
+
+## Opening and navigating 320 paragraphs
+
+WinPC ran six alternating trials per editor on the first paragraph. Three trials per editor targeted the last paragraph.
+The tested DOCX opening change was `54257baba`. Commit `7bec4950d` integrates that change.
+
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| First paint 517.55 ms | 594.55 ms | DOCX took 13.0% less time |
+| Open through the first exact edit 636.55 ms | 664.60 ms | DOCX took 4.2% less time |
+| First key 28.95 ms | 29.70 ms | DOCX took 2.5% less time |
+| Wheel response 14.95 ms | 15.90 ms | DOCX took 6.0% less time |
+| Open through the last-paragraph edit 745.10 ms | 663.70 ms | DOCX took 12.3% longer |
+
+The native control took 708.40 ms through the first edit and 740.00 ms through the last edit.
+Both native builds produced the same target coordinates and final document geometry.
