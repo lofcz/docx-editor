@@ -22,6 +22,23 @@ The times are medians through two animation frames. All 48 documents had the exp
 All 33 consumer tests passed with 489 assertions. WinPC verified five archives, 766 installed files, and the frozen lockfile.
 Both builds resolved one engine. All 77 runtime files matched the archive. [Paired browser measurements](profiles/winpc-installed-5a019-history.jsonl)
 
+Four alternating pairs typed 59 characters into the stored lesson, with a 65 ms keyboard delay.
+Plate missed the target word in one additional attempt before timing began. The recorded repeat used the same word.
+The percentiles use linear interpolation within each run. Each entry reports the median across four completed runs.
+
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| Typing renderer CPU, 762.59 ms | 609.90 ms | 25.0% more CPU time |
+| Typing elapsed with pauses, 5,409.15 ms | 5,252.35 ms | 3.0% more time |
+| Median keypress to frame, 8.20 ms | 6.85 ms | 1.35 ms longer |
+| 95th-percentile keypress to frame, 16.08 ms | 15.97 ms | 0.11 ms longer |
+| Selection placement before timing, 4/4 attempts | 4/5 attempts | One fewer failed attempt |
+| Exact text, caret, and backward selection, 4/4 | 4/4 | Equal |
+| Follow-up input-method check, 4/4 | 2/4 | Two more passes |
+
+Browser style recalculation took 33.69 ms for DOCX and 7.63 ms for Plate. Browser layout took 7.20 ms and 7.84 ms.
+These browser counters exclude the DOCX engine's JavaScript layout work. [All attempts](profiles/winpc-installed-5a019-rich-typing.jsonl)
+
 ## Previous installed comparison
 
 Sciobot commit `69ae005f0` pins engine `267e76def`. WinPC tested that package with the typography fix from `8a92a3674`.
