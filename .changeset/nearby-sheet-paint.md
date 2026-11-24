@@ -2,4 +2,4 @@
 '@docx-editor.dev/core': patch
 ---
 
-Build nearby pages as they approach the viewport. Keep selected pages available for editing and preserve horizontal scroll ranges.
+Open the first page before building distant pages. Keep adjacent pages ready during scrolling and preserve horizontal scroll ranges.

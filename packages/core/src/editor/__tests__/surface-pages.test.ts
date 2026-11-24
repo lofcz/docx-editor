@@ -39,7 +39,7 @@ test('skips viewport reads only when scrolling can retain every sheet and its ho
     const layout = syntheticLayout(Array.from({ length }, (_, index) => ({ index, width: 600 })));
     const built = new Set(layout.pages.map((page) => page.index));
     const alwaysRetained = layout.pages.every((page) => {
-      const viewport = { top: page.box.y + 5, height: 1 };
+      const viewport = { top: page.box.y, height: 1 };
       const visible = surfacePagesInViewport(layout, viewport, []);
       return retainAdjacentPages(layout, visible, built)?.size === length;
     });
@@ -70,6 +70,7 @@ test('builds nearby and selected sheets without changing the horizontal scroll r
   const start = { top: 0, height: 300 };
   expect([...surfacePagesInViewport(layout, start, [4])]).toEqual([0, 4]);
   expect([...surfacePagesInViewport(layout, { top: 160, height: 300 }, [])]).toEqual([0, 1]);
+  expect([...surfacePagesInViewport(layout, { top: 650, height: 100 }, [])]).toEqual([0, 1, 2]);
   expect([...surfacePagesInViewport(layout, { top: 10000, height: 100 }, [])]).toContain(4);
   for (const next of [{ width: 700 }, { table: { x: -50, width: 700 } }]) {
     const mixed = syntheticLayout(

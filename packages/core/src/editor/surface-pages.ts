@@ -212,14 +212,16 @@ export function visiblePageSet(
   return surfacePagesInViewport(layout, viewport, pinned);
 }
 
-/** Build a neighboring sheet when the reader comes within half a viewport of it. */
+/** At the document start, build the next sheet when it is within half a viewport. */
 export function surfacePagesInViewport(
   layout: SemanticLayout,
   viewport: { top: number; height: number },
   pinnedPages: readonly number[]
 ): ReadonlySet<number> {
   const required = pagesToMaterialize({ layout, viewport, overscanPages, pinnedPages });
-  if (required.size <= 1) return required;
+  // Once the reader scrolls, prepaint the full neighbor. Its widgets can publish
+  // browser metrics before text on that sheet enters the viewport.
+  if (required.size <= 1 || viewport.top > layout.pages[0]!.box.y) return required;
   const margin = viewport.height / 2;
   const top = viewport.top - margin;
   const bottom = viewport.top + viewport.height + margin;
