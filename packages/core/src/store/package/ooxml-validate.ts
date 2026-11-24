@@ -182,7 +182,21 @@ export function validateOoxmlPartDelta(previous: OoxmlPart, part: OoxmlPart): Oo
   return runValidation(part, previous);
 }
 
+// Bound retained input per validation. Long or uncommon values use the original predicate.
+function reuseValidStrings(validate: (value: string) => boolean) {
+  const accepted = new Set<string>();
+  return (value: string): boolean => {
+    if (typeof value !== 'string' || value.length > 128) return validate(value);
+    if (accepted.has(value)) return true;
+    if (!validate(value)) return false;
+    if (accepted.size < 256) accepted.add(value);
+    return true;
+  };
+}
+
 function runValidation(part: OoxmlPart, previous: OoxmlPart | null): OoxmlInvariantResult {
+  const validName = reuseValidStrings(isXmlNCName);
+  const validText = reuseValidStrings(isValidXmlText);
   const issues: OoxmlInvariantIssue[] = [];
   const ids = new Set<string>();
   // The child-index trail of the node currently being visited. Issue paths are derived from
@@ -213,7 +227,7 @@ function runValidation(part: OoxmlPart, previous: OoxmlPart | null): OoxmlInvari
     else ids.add(node.id);
 
     if (node.kind === 'textValue') {
-      if (!isValidXmlText(node.value)) report('invalid-xml-value', node.id);
+      if (!validText(node.value)) report('invalid-xml-value', node.id);
       return;
     }
 
@@ -226,9 +240,9 @@ function runValidation(part: OoxmlPart, previous: OoxmlPart | null): OoxmlInvari
       for (const binding of node.namespaceBindings) {
         const valid =
           !localPrefixes.has(binding.prefix) &&
-          (binding.prefix === '' || isXmlNCName(binding.prefix)) &&
+          (binding.prefix === '' || validName(binding.prefix)) &&
           binding.prefix !== 'xmlns' &&
-          isValidXmlText(binding.namespaceUri) &&
+          validText(binding.namespaceUri) &&
           binding.namespaceUri !== XMLNS_NAMESPACE_URI &&
           !(binding.prefix === 'xml' && binding.namespaceUri !== XML_NAMESPACE_URI) &&
           !(binding.prefix !== 'xml' && binding.namespaceUri === XML_NAMESPACE_URI) &&
@@ -240,27 +254,27 @@ function runValidation(part: OoxmlPart, previous: OoxmlPart | null): OoxmlInvari
       bindings = own;
     }
 
-    if (!isXmlNCName(node.localName)) report('invalid-name', node.id);
-    if (!isValidXmlText(node.namespaceUri) || node.namespaceUri === XMLNS_NAMESPACE_URI)
+    if (!validName(node.localName)) report('invalid-name', node.id);
+    if (!validText(node.namespaceUri) || node.namespaceUri === XMLNS_NAMESPACE_URI)
       report('invalid-namespace', node.id);
     const elementPrefixValid =
       node.prefix === undefined
         ? (bindings.get('') ?? '') === node.namespaceUri
-        : isXmlNCName(node.prefix) && bindings.get(node.prefix) === node.namespaceUri;
+        : validName(node.prefix) && bindings.get(node.prefix) === node.namespaceUri;
     if (!elementPrefixValid) report('invalid-qname', node.id);
 
     // A single attribute cannot collide with itself, so the duplicate-tracking set is only
     // allocated once a second attribute exists.
     const expandedAttributes = node.attributes.length > 1 ? new Set<string>() : null;
     for (const attribute of node.attributes) {
-      if (!isXmlNCName(attribute.localName)) report('invalid-name', node.id);
-      if (!isValidXmlText(attribute.namespaceUri) || attribute.namespaceUri === XMLNS_NAMESPACE_URI)
+      if (!validName(attribute.localName)) report('invalid-name', node.id);
+      if (!validText(attribute.namespaceUri) || attribute.namespaceUri === XMLNS_NAMESPACE_URI)
         report('invalid-namespace', node.id);
-      if (!isValidXmlText(attribute.value)) report('invalid-xml-value', node.id);
+      if (!validText(attribute.value)) report('invalid-xml-value', node.id);
       const attributePrefixValid =
         attribute.prefix === undefined
           ? attribute.namespaceUri === ''
-          : isXmlNCName(attribute.prefix) &&
+          : validName(attribute.prefix) &&
             bindings.get(attribute.prefix) === attribute.namespaceUri;
       if (!attributePrefixValid) report('invalid-qname', node.id);
       if (expandedAttributes) {
