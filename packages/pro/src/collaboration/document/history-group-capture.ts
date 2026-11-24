@@ -150,7 +150,12 @@ export class HistoryGroupCapture {
 }
 
 /** Undo and redo create new CRDT stack items; keep their logical identities stable. */
-function bindHistoryPosition(owner: object, manager: Y.UndoManager, reset: () => void, captureEditSelection?: () => void): void {
+function bindHistoryPosition(
+  owner: object,
+  manager: Y.UndoManager,
+  reset: () => void,
+  captureEditSelection?: () => void
+): void {
   const tokens = new WeakMap<StackItem, object>();
   const token = (item: StackItem): object => {
     let value = tokens.get(item);

@@ -1,5 +1,6 @@
 /** An editor-local view action must stay between the same document undo entries. */
 export interface UndoHistoryPosition {
+  /** The surface published the final selection for the current edit. */
   captureEditSelection?(): void;
   current(): object | null;
   /** End capture and discard the abandoned redo branch without changing document content. */

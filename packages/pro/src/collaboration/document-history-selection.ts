@@ -9,7 +9,7 @@ Production use requires a commercial agreement: licensing@eigenpal.com
  * Every step remembers the selection its author had before the change, and undo or redo
  * hands that selection back, so a selected word comes back selected and the caret returns to
  * where the author was, rather than to a position guessed from what the step changed. A redo
- * step is created by an undo, so it remembers the selection from before that undo.
+ * restores the recorded post-edit selection when the editor supplied one.
  *
  * Offsets alone go stale: a peer typing before the selection between the change and its undo
  * moves the words the selection named. So each endpoint is kept on the shared character
@@ -53,9 +53,14 @@ export class HistorySelection {
       event.stackItem.meta.set(SELECTION_META, this.before);
     }
   };
-  private readonly onPopped = (event: { type: 'undo' | 'redo'; stackItem: { meta: Map<unknown, unknown> } }): void => {
+  private readonly onPopped = (event: {
+    type: 'undo' | 'redo';
+    stackItem: { meta: Map<unknown, unknown> };
+  }): void => {
     const snapshot = event.stackItem.meta.get(SELECTION_META);
-    const opposite = (event.type === 'undo' ? this.undoManager.redoStack : this.undoManager.undoStack).at(-1);
+    const opposite = (
+      event.type === 'undo' ? this.undoManager.redoStack : this.undoManager.undoStack
+    ).at(-1);
     opposite?.meta.set(OPPOSITE_SELECTION, snapshot);
     this.restored = (snapshot as Snapshot | null | undefined) ?? null;
   };
@@ -106,11 +111,12 @@ export class HistorySelection {
     this.before = this.latest;
   }
 
-  /** Call before an undo or redo, so a stale answer from an earlier step is never reused. */
+  /** Record the selection after a local edit, before later navigation can replace it. */
   captureAfter(): void {
     this.undoManager.undoStack.at(-1)?.meta.set(OPPOSITE_SELECTION, this.latest);
   }
 
+  /** Transfer the opposite endpoint when Yjs creates the inverse history item. */
   startPop(meta: Map<unknown, unknown>): void {
     this.before = (meta.get(OPPOSITE_SELECTION) as Snapshot | undefined) ?? this.latest;
     this.restored = null;

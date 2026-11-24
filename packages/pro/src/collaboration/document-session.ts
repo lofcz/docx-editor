@@ -155,7 +155,9 @@ class DocumentSession implements DocumentCollaborationSession {
       captureTimeout: UNDO_CAPTURE_TIMEOUT_MS,
       deleteFilter: registry.undoDeleteFilter(),
     });
-    this.historyGroups = new HistoryGroupCapture(this.undoManager, this, () => this.historySelections.captureAfter());
+    this.historyGroups = new HistoryGroupCapture(this.undoManager, this, () =>
+      this.historySelections.captureAfter()
+    );
     this.undoGroups = new UndoGroups(this.historyGroups, () => this.flushPendingJournals());
     this.historySelections = new HistorySelection(
       this.undoManager,
