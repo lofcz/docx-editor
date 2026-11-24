@@ -3,8 +3,8 @@ import {
   canScrollWithoutMeasuringPages,
   retainAdjacentPages,
   surfaceExtent,
+  surfacePagesInViewport,
 } from '../surface-pages.ts';
-import { pagesToMaterialize } from '@docx-editor.dev/core/layout';
 import type { SemanticLayout } from '@docx-editor.dev/core/layout';
 
 function syntheticLayout(
@@ -40,7 +40,7 @@ test('skips viewport reads only when scrolling can retain every sheet and its ho
     const built = new Set(layout.pages.map((page) => page.index));
     const alwaysRetained = layout.pages.every((page) => {
       const viewport = { top: page.box.y + 5, height: 1 };
-      const visible = pagesToMaterialize({ layout, viewport });
+      const visible = surfacePagesInViewport(layout, viewport, []);
       return retainAdjacentPages(layout, visible, built)?.size === length;
     });
     expect(canScrollWithoutMeasuringPages(layout, built)).toBe(alwaysRetained);
@@ -56,6 +56,19 @@ test('skips viewport reads only when scrolling can retain every sheet and its ho
     expect(canScrollWithoutMeasuringPages(syntheticLayout([first, second]), new Set([0, 1]))).toBe(
       false
     );
+  }
+});
+
+test('builds nearby and selected sheets without changing the horizontal scroll range', () => {
+  const sheets = Array.from({ length: 5 }, (_, index) => ({ index, y: index * 600, height: 600, width: 400 }));
+  const layout = syntheticLayout(sheets);
+  const start = { top: 0, height: 300 };
+  expect([...surfacePagesInViewport(layout, start, [4])]).toEqual([0, 4]);
+  expect([...surfacePagesInViewport(layout, { top: 160, height: 300 }, [])]).toEqual([0, 1]);
+  expect([...surfacePagesInViewport(layout, { top: 10000, height: 100 }, [])]).toContain(4);
+  for (const next of [{ width: 700 }, { table: { x: -50, width: 700 } }]) {
+    const mixed = syntheticLayout(sheets.map((sheet) => sheet.index === 1 ? { ...sheet, ...next } : sheet));
+    expect([...surfacePagesInViewport(mixed, start, [])]).toEqual([0, 1]);
   }
 });
 

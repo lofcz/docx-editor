@@ -209,7 +209,38 @@ export function visiblePageSet(
     const caret = caretAt(layout, position);
     if (caret) pinned.push(caret.pageIndex);
   }
-  return pagesToMaterialize({ layout, viewport, overscanPages, pinnedPages: pinned });
+  return surfacePagesInViewport(layout, viewport, pinned);
+}
+
+/** Build a neighboring sheet when the reader comes within half a viewport of it. */
+export function surfacePagesInViewport(
+  layout: SemanticLayout,
+  viewport: { top: number; height: number },
+  pinnedPages: readonly number[]
+): ReadonlySet<number> {
+  const required = pagesToMaterialize({ layout, viewport, overscanPages, pinnedPages });
+  if (required.size <= 1) return required;
+  const margin = viewport.height / 2;
+  const top = viewport.top - margin;
+  const bottom = viewport.top + viewport.height + margin;
+  const nearby = new Set<number>();
+  let inBand = false;
+  const first = layout.pages[required.values().next().value!]!;
+  for (const index of required) {
+    const page = layout.pages[index]!;
+    const spill = tableSpill(page);
+    // Mixed paper widths and overflowing tables determine the horizontal scroll range.
+    if (page.box.x !== first.box.x || page.box.width !== first.box.width || spill.left || spill.right)
+      return required;
+    if (page.box.y + page.box.height >= top && page.box.y <= bottom) {
+      nearby.add(index);
+      inBand = true;
+    } else if (pinnedPages.includes(index)) {
+      nearby.add(index);
+    }
+  }
+  // A viewport beyond the document or within a wide page gap still needs the nearest sheet.
+  return inBand && nearby.size < required.size ? nearby : required;
 }
 
 /**
@@ -285,11 +316,11 @@ export function canScrollWithoutMeasuringPages(
 ): boolean {
   const { pages } = layout;
   const first = pages[0];
-  // At either document edge, even a one-pixel viewport keeps the visible sheet,
-  // its overscan, and up to retainedNeighbors sheets that are already painted.
+  // At either document edge, a one-pixel viewport can keep only its visible sheet
+  // and up to retainedNeighbors sheets that are already painted.
   if (
     !first ||
-    pages.length > 1 + overscanPages + retainedNeighbors ||
+    pages.length > 1 + retainedNeighbors ||
     built?.size !== pages.length
   )
     return false;
