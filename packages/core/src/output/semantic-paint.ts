@@ -2354,6 +2354,11 @@ export function paintSemanticLayoutWithAuthorSlots(
       options.materialize,
       chromeChanged ? null : reusable,
       parametersUnchanged ? previousByIndex : null,
+      {
+        scale: resolved.scale,
+        showParagraphMarks: resolved.showParagraphMarks === true,
+        gapOf: (line, index) => interSpanGapBefore(line, index, () => 0),
+      },
       beforePaint,
       (page, fragment: BlockFragmentRecord, previousTable) => {
         const context = {

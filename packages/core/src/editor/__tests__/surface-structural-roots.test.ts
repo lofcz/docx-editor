@@ -155,3 +155,53 @@ test.each([true, false])(
     }
   }
 );
+
+test('a host can change paragraph children after accepting a translated paragraph', () => {
+  const container = document.createElement('div');
+  document.body.append(container);
+  const editor = createDocxEditor({
+    container,
+    document: docx(
+      '<w:sdt><w:sdtPr/><w:sdtContent>' +
+        p('Summary') +
+        p('Answer') +
+        '</w:sdtContent></w:sdt>' +
+        p('After')
+    ),
+  });
+  const surface = editor.surface!;
+  const part = surface.session.part();
+  const owner = contentControlsIn(part.root)[0]!.node.id;
+  const summary = surface.session.paragraphIds()[0]!;
+  const root = container.querySelectorAll<HTMLElement>('.docx-paragraph-fragment')[2]!;
+  const host = document.createElement('i');
+  const previousTop = root.style.top;
+  const stop = surface.observePaint({
+    replayCurrentFrame: true,
+    beforePaint(_whole, reserve) {
+      reserve?.(
+        0,
+        (changed, structural) => {
+          if (!structural || !changed.has(root)) return false;
+          root.prepend(host);
+          return true;
+        },
+        (node) => node
+      );
+    },
+    afterPaint() {},
+  });
+  try {
+    surface.setCollapsedContentControls(new Map([[owner, summary]]));
+    surface.flushPendingInput();
+    expect(host.parentNode).toBe(root);
+    expect(root.isConnected).toBe(true);
+    expect(root.textContent).toBe('After');
+    expect(root.style.top).not.toBe(previousTop);
+    expect(host.style.cssText).toBe('');
+  } finally {
+    stop();
+    editor.destroy();
+    container.remove();
+  }
+});

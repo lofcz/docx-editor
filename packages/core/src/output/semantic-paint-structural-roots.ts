@@ -1,3 +1,8 @@
+import {
+  canTranslateParagraph,
+  moveRelativeBox,
+  type ParagraphReflowPaint,
+} from './semantic-paint-paragraph-reflow.ts';
 import type { BlockFragmentRecord, PageRecord } from '../layout/semantic-records.ts';
 import type { RetainedPage } from './semantic-paint-paragraph-roots.ts';
 import {
@@ -6,12 +11,24 @@ import {
 } from './semantic-paint-paragraph-children.ts';
 import { sameDataWithin } from './semantic-paint-record-equality.ts';
 
+// Leave generated fields, format anchors and host-specific styling to the paragraph painter.
+function plainRoot(root: HTMLElement): boolean {
+  return (
+    root.attributes.length === 4 &&
+    root.className === 'docx-paragraph-fragment layout-paragraph' &&
+    root.style.length === 5 &&
+    root.style.position === 'absolute' &&
+    Boolean(root.style.left && root.style.top && root.style.width && root.style.height)
+  );
+}
+
 /** Insert and remove fragments at their canonical page positions, including host-owned markers. */
 export function planStructuralRoots(
   prior: RetainedPage,
   page: PageRecord,
   paint: (fragment: BlockFragmentRecord, previousTable?: HTMLElement) => HTMLElement,
-  homeOf: (element: HTMLElement) => ChildNode
+  homeOf: (element: HTMLElement) => ChildNode,
+  paragraphPaint: ParagraphReflowPaint
 ) {
   const { content, blocks } = prior;
   if (!content || !blocks || content.parentElement !== prior.element) return null;
@@ -49,7 +66,7 @@ export function planStructuralRoots(
     table?: { root: HTMLElement; home: ChildNode };
   }[] = [];
   const seen = new Set<string>();
-  const updates = new Map<HTMLElement, HTMLElement>();
+  const updates = new Map<HTMLElement, () => void>();
   const survivors = new Map<HTMLElement, ChildNode>();
   previous = undefined;
   for (const fragment of page.fragments) {
@@ -59,12 +76,20 @@ export function planStructuralRoots(
     const old = existing.get(key);
     const same = old?.record.kind === fragment.kind && sameDataWithin(old.record, fragment, 20000);
     // Paint added blocks and replacement tables only after the host accepts this plan.
-    const fresh =
+    // Preserve a translated w:p (CT_P, ECMA-376 Part 1 §17.3.1.22) after host acceptance.
+    const translate =
       !same && old?.record.kind === 'paragraph' && fragment.kind === 'paragraph'
+        ? plainRoot(old.root) && canTranslateParagraph(old.record, fragment, paragraphPaint)
+        : undefined;
+    const fresh =
+      !translate && !same && old?.record.kind === 'paragraph' && fragment.kind === 'paragraph'
         ? paint(fragment)
         : undefined;
     const table = old?.record.kind === 'table' && fragment.kind === 'table' && !same;
-    if (old && (same || table || (fresh && canRetainPaintedParagraph(old.root, fresh)))) {
+    if (
+      old &&
+      (same || translate || table || (fresh && canRetainPaintedParagraph(old.root, fresh)))
+    ) {
       // A reorder can change a host's ownership. Use the regular reconciliation for that page.
       if (
         previous &&
@@ -78,7 +103,19 @@ export function planStructuralRoots(
       } else {
         survivors.set(old.root, old.home);
         planned.push({ fragment, root: old.root });
-        if (fresh) updates.set(old.root, fresh);
+        if (translate) {
+          updates.set(old.root, () => {
+            const origin = { x: 0, y: 0 };
+            moveRelativeBox(
+              old.root.style,
+              old.record.box,
+              origin,
+              fragment.box,
+              origin,
+              paragraphPaint.scale
+            );
+          });
+        } else if (fresh) updates.set(old.root, () => retainPaintedParagraph(old.root, fresh));
       }
     } else planned.push({ fragment, root: fresh });
   }
@@ -101,7 +138,7 @@ export function planStructuralRoots(
         if (home !== root) home.remove();
         root.remove();
       }
-      for (const [root, fresh] of updates) retainPaintedParagraph(root, fresh);
+      for (const apply of updates.values()) apply();
       let before: ChildNode | null = null;
       const ordered = [...nextBlocks.values()];
       for (let i = ordered.length - 1; i >= 0; i--) {
