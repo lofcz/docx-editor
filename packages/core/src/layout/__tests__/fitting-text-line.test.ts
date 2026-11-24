@@ -1,5 +1,7 @@
 import { describe, expect, spyOn, test } from 'bun:test';
 import { readOoxmlPart } from '@docx-editor.dev/core/store';
+import { DEFAULT_REVISION_MARKUP } from '../../contracts/revision-markup.ts';
+import { revisionAuthorFilter } from '../revision-projection.ts';
 import { literalParagraphPieces } from '../literal-paragraph-pieces.ts';
 import { unmergedPiecesOfParagraphForDisplay } from '../field-projection-walk.ts';
 import { breakParagraph } from '../paragraph-flow.ts';
@@ -42,6 +44,26 @@ describe('literal text projection', () => {
         inheritedRunProperties: [{ localName: 'sz', attributes: { val: '32' } }],
       };
       expect(literalParagraphPieces(input)).toEqual(unmergedPiecesOfParagraphForDisplay(input));
+    }
+  });
+
+  test('keeps visible formatting provenance when a resolved view hides a reviewer', () => {
+    const change = (author: string) =>
+      '<w:rPrChange w:id="3" w:author="' + author + '"><w:rPr><w:b/></w:rPr></w:rPrChange>';
+    const node = paragraph(run('first', change('Alice')) + run('last', change('Bob')));
+    const authorFilter = revisionAuthorFilter(['Alice']);
+    for (const displayMode of ['all-markup', 'proposed', 'original'] as const) {
+      const input = { paragraph: node, authorFilter, displayMode };
+      expect(literalParagraphPieces(input)).toEqual(unmergedPiecesOfParagraphForDisplay(input));
+      const withMarkup = {
+        ...input,
+        authorFilter: { ...authorFilter!, revisionMarkup: DEFAULT_REVISION_MARKUP },
+      };
+      if (displayMode === 'all-markup') expect(literalParagraphPieces(withMarkup)).toBeUndefined();
+      else
+        expect(literalParagraphPieces(withMarkup)).toEqual(
+          unmergedPiecesOfParagraphForDisplay(withMarkup)
+        );
     }
   });
 });
