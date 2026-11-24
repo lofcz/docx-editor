@@ -643,6 +643,10 @@
   caret-shape: bar;
 }
 
+.docx-editor .docx-pages[data-docx-pending-caret]:is(:focus, :not(:focus-within)) {
+  caret-color: transparent;
+}
+
 /* Editable runs - the main text editing elements */
 .docx-run-editable[contenteditable='true'] {
   caret-color: #000;
