@@ -125,3 +125,18 @@ Plate spent 19.0 ms of self samples in `toSlateRange`. These different functions
 Profiler times come from one run and can vary from the elapsed medians above.
 
 [Native CPU profile](profiles/consolidated-profile-4096-base-paste.cpuprofile.gz) and [Plate CPU profile](profiles/consolidated-profile-4096-plate-paste.cpuprofile.gz).
+
+### Paste sensitivity to distinct numeric strings
+
+Both inputs contained 4,096 sentences and 158,633 characters. The second input replaced each digit with zero.
+Each input used four alternating editor pairs. All resulting documents matched their expected text.
+The two inputs ran in separate batches.
+
+| Numeric text | Native elapsed | Plate elapsed | Native renderer CPU | Plate renderer CPU |
+| --- | ---: | ---: | ---: | ---: |
+| Sequential numbers | 209.6 ms | 108.8 ms | 169.7 ms | 84.7 ms |
+| Zeros of equal length | 177.9 ms | 109.6 ms | 147.4 ms | 82.3 ms |
+
+Repeated numeric text reduced median native CPU by 22.3 ms. The remaining elapsed gap measured 68.3 ms.
+The sequential input made 4,683 width requests. Only 94 scalar requests repeated an earlier scalar key.
+[Shaping counters and paired observations](https://github.com/sciocz/sciobot-next/blob/9af97f8f1/docs/engineering/sciobot-port/evidence/winpc-shaped-width.json)
