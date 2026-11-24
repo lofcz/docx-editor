@@ -27,7 +27,7 @@ import { isFldSimple } from '../package/field-nodes.ts';
 import { complexFieldNodes } from './field-simple-to-complex.ts';
 import { isOmmlEquationAtom } from '../package/omml-display.ts';
 import {
-  contentControlPropertiesOf,
+  cachedContentControlPropertiesOf,
   resolveContentControlLock,
 } from '../package/content-control-nodes.ts';
 import { strikesWholeControl } from './tree-op-control-strike.ts';
@@ -194,7 +194,7 @@ export function applyDeleteTracked(
       if (node.kind === 'contentControl' && !insideDeletion(stack)) {
         const locks = [...stack, node]
           .filter((owner) => owner.kind === 'contentControl')
-          .map((owner) => contentControlPropertiesOf(owner).lock);
+          .map((owner) => cachedContentControlPropertiesOf(owner).lock);
         const span = { start: from, end: to };
         if (strikesWholeControl(span, { start, end }, resolveContentControlLock(locks), node)) {
           cursor.offset = to;

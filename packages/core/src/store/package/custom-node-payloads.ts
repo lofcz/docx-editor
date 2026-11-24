@@ -16,7 +16,7 @@
 // control this engine treats as bound and does not sweep, which is the fail-closed answer: a
 // payload nothing recognizes is left alone rather than deleted.
 
-import { contentControlPropertiesOf, contentControlsIn } from './content-control-nodes.ts';
+import { cachedContentControlPropertiesOf, contentControlsIn } from './content-control-nodes.ts';
 import { isValidXmlText } from './sinks.ts';
 import { customXmlLabelXPath, customXmlPrefixMappings } from './custom-xml-nodes.ts';
 import type { CustomXmlDataPart } from './custom-xml-part.ts';
@@ -144,7 +144,7 @@ export function boundCustomXmlNodeIdsInPackage(
 
 /** The node id one control binds to in the named store, or null when it binds to nothing there. */
 export function boundCustomXmlNodeIdOf(control: OoxmlNode, storeItemId: string): string | null {
-  const binding = contentControlPropertiesOf(control).dataBinding;
+  const binding = cachedContentControlPropertiesOf(control).dataBinding;
   if (!binding?.xpath || !binding.storeItemID) return null;
   if (!sameStore(binding.storeItemID, storeItemId)) return null;
   const match = AUTHORED_XPATH.exec(binding.xpath);

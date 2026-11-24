@@ -9,7 +9,7 @@ import type { ContentLockPolicy } from '../store/package/ooxml-edit.ts';
 import { findNode } from '../store/package/ooxml-edit.ts';
 import type { OoxmlNode, OoxmlPart } from '../store/package/ooxml-tree.ts';
 import {
-  contentControlPropertiesOf,
+  cachedContentControlPropertiesOf,
   contentControlsIn,
   lockForbidsEdit,
 } from '../store/package/content-control-nodes.ts';
@@ -127,7 +127,7 @@ function lockedParagraphs(part: OoxmlPart): ReadonlySet<string> {
   if (known) return known;
   const locked = new Set<string>();
   for (const entry of contentControlsIn(part.root)) {
-    if (!lockForbidsEdit(contentControlPropertiesOf(entry.node).lock)) continue;
+    if (!lockForbidsEdit(cachedContentControlPropertiesOf(entry.node).lock)) continue;
     const pending: OoxmlNode[] = [entry.node];
     while (pending.length > 0) {
       const node = pending.pop()!;

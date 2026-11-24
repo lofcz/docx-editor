@@ -35,6 +35,7 @@ import { textFormFieldForEdit, textFormFieldsOf } from './text-form-fields.ts';
 import {
   contentControlContentNodeOf,
   contentControlPropertiesContainerOf,
+  cachedContentControlPropertiesOf,
   contentControlPropertiesOf,
   contentControlsIn,
   lockForbidsEdit,
@@ -181,7 +182,7 @@ export function enclosingContentControls(part: OoxmlPart, nodeId: string): reado
 export function contentControlLockAt(part: OoxmlPart, nodeId: string): ContentControlLock {
   return resolveContentControlLock(
     enclosingContentControls(part, nodeId).map(
-      (control) => contentControlPropertiesOf(control).lock
+      (control) => cachedContentControlPropertiesOf(control).lock
     )
   );
 }
@@ -622,7 +623,7 @@ interface ResolvedReach {
 const NOTHING: ResolvedReach = { touches: [], unprotected: [] };
 
 function locksOf(chain: readonly OoxmlNode[]): readonly ContentControlLock[] {
-  return chain.map((control) => contentControlPropertiesOf(control).lock);
+  return chain.map((control) => cachedContentControlPropertiesOf(control).lock);
 }
 
 /**
@@ -1111,7 +1112,7 @@ export function contentControlBindingRefusal(
   for (const touch of resolveReach(part, reach).touches) {
     if (namedControlAnswersForItself && !touch.discarded) continue;
     if (touch.removed || touch.paragraphPropertiesOnly) continue;
-    if (contentControlPropertiesOf(touch.control).dataBinding) return 'bound';
+    if (cachedContentControlPropertiesOf(touch.control).dataBinding) return 'bound';
   }
   return null;
 }
@@ -1642,7 +1643,7 @@ export function applySetContentControlProperties(
     ? resolveContentControlLock(
         enclosingContentControls(part, control.id)
           .slice(0, -1)
-          .map((ancestor) => contentControlPropertiesOf(ancestor).lock)
+          .map((ancestor) => cachedContentControlPropertiesOf(ancestor).lock)
       )
     : lock;
   if (lockForbidsEdit(effective) || lockForbidsRemoval(effective))
@@ -1737,13 +1738,13 @@ export function placeholderControlForInsertion(
   const chain = enclosingContentControls(part, paragraphId);
   for (let index = chain.length - 1; index >= 0; index -= 1) {
     const control = chain[index]!;
-    if (contentControlPropertiesOf(control).showingPlaceholder) return { control, offset: 0 };
+    if (cachedContentControlPropertiesOf(control).showingPlaceholder) return { control, offset: 0 };
   }
   const paragraph = findNode(part, paragraphId);
   if (!paragraph || paragraph.kind !== 'paragraph') return null;
   const index = paragraphOffsetIndex(paragraph);
   for (const entry of contentControlsIn(paragraph)) {
-    if (!contentControlPropertiesOf(entry.node).showingPlaceholder) continue;
+    if (!cachedContentControlPropertiesOf(entry.node).showingPlaceholder) continue;
     const span = index.spanOf(entry.node);
     if (!span) continue;
     if (offset >= span.start && offset <= span.end)

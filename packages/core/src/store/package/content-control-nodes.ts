@@ -428,6 +428,22 @@ function dateOf(typeElement: OoxmlElement): ContentControlDateFormat {
   };
 }
 
+const absentProperties = {};
+const ordinaryPropertyReads = new WeakMap<object, ContentControlProperties>();
+const atomicPropertyReads = new WeakMap<object, ContentControlProperties>();
+
+/** Internal reads share immutable w:sdtPr (CT_SdtPr, ECMA-376 Part 1 §17.5.2.38).
+ * The atomic marker on the enclosing control also affects its effective lock. */
+export function cachedContentControlPropertiesOf(control: OoxmlNode): ContentControlProperties {
+  const properties = contentControlPropertiesContainerOf(control) ?? absentProperties;
+  const cache = isAtomicContentControl(control) ? atomicPropertyReads : ordinaryPropertyReads;
+  const retained = cache.get(properties);
+  if (retained) return retained;
+  const read = contentControlPropertiesOf(control);
+  cache.set(properties, read);
+  return read;
+}
+
 /**
  * Read a control's properties.
  *

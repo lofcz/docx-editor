@@ -26,7 +26,7 @@ import {
 } from '@docx-editor.dev/core/store';
 import type { SemanticPosition, SemanticSelection } from '@docx-editor.dev/core/layout';
 import {
-  contentControlPropertiesOf,
+  cachedContentControlPropertiesOf,
   contentControlsIn,
 } from '../store/package/content-control-nodes.ts';
 import type { OoxmlNode } from '../store/package/ooxml-tree.ts';
@@ -78,14 +78,14 @@ export function promptsIn(
   const paragraph = findNode(part, paragraphId);
   if (!paragraph || paragraph.kind !== 'paragraph') return [];
   const showing = (control: OoxmlNode) =>
-    !removed.has(control.id) && contentControlPropertiesOf(control).showingPlaceholder;
+    !removed.has(control.id) && cachedContentControlPropertiesOf(control).showingPlaceholder;
   const prompt = (control: OoxmlNode, start: number, end: number, block: boolean): Prompt => ({
     control,
     paragraphId,
     start,
     end,
     block,
-    locked: contentControlPropertiesOf(control).lock !== 'unlocked',
+    locked: cachedContentControlPropertiesOf(control).lock !== 'unlocked',
     struck: struckAt(part, block ? paragraph.id : control.id),
   });
   const enclosing = enclosingContentControls(part, paragraphId).find(showing);

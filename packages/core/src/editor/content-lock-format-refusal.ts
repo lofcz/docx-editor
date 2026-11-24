@@ -7,7 +7,7 @@ import type { PaginatedSurface } from './paginated-surface-contract.ts';
 import type { ContentLockPolicy } from '../store/package/ooxml-edit.ts';
 import type { OoxmlPart } from '../store/package/ooxml-tree.ts';
 import {
-  contentControlPropertiesOf,
+  cachedContentControlPropertiesOf,
   contentControlsIn,
   lockForbidsEdit,
   resolveContentControlLock,
@@ -89,7 +89,7 @@ export function selectedSpans(surface: PaginatedSurface): SelectedSpan[] {
 /** Whether any control in the story locks its content: most documents have none. */
 function storyHasContentLock(part: OoxmlPart): boolean {
   return contentControlsIn(part.root).some((entry) =>
-    lockForbidsEdit(contentControlPropertiesOf(entry.node).lock)
+    lockForbidsEdit(cachedContentControlPropertiesOf(entry.node).lock)
   );
 }
 
@@ -154,7 +154,7 @@ export function contentLockFormatRefusal(
         : at.end > span.start && at.start < span.end;
       if (!reached) continue;
       const locks = enclosingContentControls(part, entry.node.id).map(
-        (control) => contentControlPropertiesOf(control).lock
+        (control) => cachedContentControlPropertiesOf(control).lock
       );
       if (lockForbidsEdit(resolveContentControlLock(locks))) return refusal;
     }

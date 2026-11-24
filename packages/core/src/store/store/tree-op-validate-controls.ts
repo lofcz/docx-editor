@@ -5,6 +5,7 @@ import {
   propertiesHoldLineBreaks,
 } from './tree-op-inline-elements.ts';
 import {
+  cachedContentControlPropertiesOf,
   contentControlPropertiesOf,
   contentControlsIn,
   resolveContentControlLock,
@@ -259,7 +260,7 @@ export function controlsStruckWhole(
   const struck = new Set<string>();
   for (const entry of inside) {
     const locks = enclosingContentControls(part, entry.node.id).map(
-      (control) => contentControlPropertiesOf(control).lock
+      (control) => cachedContentControlPropertiesOf(control).lock
     );
     const lock = resolveContentControlLock(locks);
     if (strikesWholeControl(offsets.spanOf(entry.node), { start, end }, lock, entry.node)) {
