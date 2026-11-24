@@ -21,6 +21,30 @@ WinPC alternated editor order across four pairs. Each editor typed the same 59 k
 
 The table uses medians across the four runs per editor. Both participant orders passed reconnect, undo, redo, save, and reopen. [All eight typing runs](profiles/winpc-installed-8f156-rich-typing.jsonl)
 
+## Installed clipboard in Sciobot 24d9b82f0
+
+WinPC alternated editor order across four pairs for each operation and document size.
+Each elapsed time includes two animation frames after the keyboard command.
+
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| Paste 433 characters, 64.92 ms | 48.28 ms | 34.5% more time |
+| Undo small paste, 41.07 ms | 32.29 ms | 27.2% more time |
+| Redo small paste, 32.13 ms | 31.90 ms | 0.7% more time |
+| Paste 158,633 characters, 144.04 ms | 109.65 ms | 31.4% more time |
+| Undo large paste, 49.28 ms | 30.99 ms | 59.0% more time |
+| Redo large paste, 62.06 ms | 54.22 ms | 14.5% more time |
+| Small paste CPU, 33.90 ms | 22.60 ms | 50.0% more CPU time |
+| Small undo CPU, 14.88 ms | 6.46 ms | 130.2% more CPU time |
+| Small redo CPU, 12.97 ms | 5.86 ms | 121.3% more CPU time |
+| Large paste CPU, 108.74 ms | 84.31 ms | 29.0% more CPU time |
+| Large undo CPU, 21.03 ms | 6.75 ms | 211.5% more CPU time |
+| Large redo CPU, 31.67 ms | 23.91 ms | 32.5% more CPU time |
+| Exact final text, 24/24 | 24/24 | Equal |
+
+Every run used the installed package and completed without a browser error.
+All 33 consumer tests passed with 489 assertions. [All 48 clipboard runs](profiles/winpc-installed-8f156-clipboard.jsonl)
+
 ## Large paste undo and redo in Chrome
 
 Three paired profiles used engine `5a0194e03` and Plate. Each restored the exact text after a 158,633-character paste.
