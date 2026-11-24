@@ -264,6 +264,39 @@ async function repaintAfterScroll(scroller: HTMLElement, to: number): Promise<vo
 }
 
 describe('a pointer press never scrolls the viewport', () => {
+  test('a focused page control keeps its viewport during reflow and can still navigate', () => {
+    const { surface, scroller, pages } = mount(longDocument(100));
+    const ids = surface.session.paragraphIds();
+    const caret = { paragraphId: ids[15]!, offset: 0 };
+    pages.focus();
+    surface.setSelection({ anchor: caret, head: caret });
+    const firstPage = caretAt(surface.layout(), caret)!.pageIndex;
+    const button = pages.ownerDocument.createElement('button');
+    button.setAttribute('data-docx-host-ui', '');
+    pages.append(button);
+    button.focus();
+    // A host reattaches its focused control when the painter replaces its page.
+    const stop = surface.observePaint({
+      afterPaint: () => {
+        if (button.isConnected) return;
+        pages.append(button);
+        button.focus({ preventScroll: true });
+      },
+    });
+    scroller.scrollTop = 0;
+
+    surface.setBlockReservations(new Map(ids.slice(0, 15).map((id) => [id, 100])));
+    surface.flushPendingInput();
+    expect(caretAt(surface.layout(), caret)!.pageIndex).toBeGreaterThan(firstPage);
+    expect(pages.ownerDocument.activeElement === button).toBe(true);
+    expect(scroller.scrollTop).toBe(0);
+
+    const destination = { paragraphId: ids.at(-1)!, offset: 0 };
+    surface.setSelection({ anchor: destination, head: destination });
+    expect(scroller.scrollTop).toBeGreaterThan(0);
+    stop();
+  });
+
   test('pressing the blank footer margin leaves the scroll position alone', () => {
     const { surface, scroller, pages } = mount(blankDocumentBytes());
     scroller.scrollTop = SCROLLED_TO_PX;

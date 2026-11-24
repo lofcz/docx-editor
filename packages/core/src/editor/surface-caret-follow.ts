@@ -7,6 +7,7 @@
 
 import type { TextMeasurer } from '@docx-editor.dev/core/layout';
 import { caretAt, type SemanticLayout, type SemanticSelection } from '@docx-editor.dev/core/layout';
+import { isInHostUi } from './dom-selection.ts';
 
 /**
  * Whether the viewport may move to the selection this write leaves behind.
@@ -119,7 +120,10 @@ export function createCaretViewFollower(deps: {
       // reader back to a caret they deliberately scrolled away from. A range in `head` mode
       // records its head, which is where the next collapsed write will be.
       lastCaretPageIndex = geometry.pageIndex;
-      if (mode === 'none' || (!force && !changedPage)) return;
+      // Repagination can move the document caret while the reader uses an embedded control.
+      // Record its new page without scrolling away from the control. An explicit selection
+      // move can still reveal its destination when the control requests navigation.
+      if (mode === 'none' || (!force && (!changedPage || isInHostUi(active)))) return;
 
       const page = layout.pages[geometry.pageIndex];
       const scroller = deps.scroller();
