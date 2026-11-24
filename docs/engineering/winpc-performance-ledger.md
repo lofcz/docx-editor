@@ -278,9 +278,32 @@ The profiler included allocations that garbage collection reclaimed during the o
 | Estimated allocations 92.61 MB | 39.07 MB | DOCX allocated 2.37 times as much |
 
 DOCX allocated an estimated 7.96 MB in text span creation, 3.24 MB copying spans for the break cache,
-and 3.22 MB normalizing clipboard text. These are allocation estimates rather than peak memory.
+and 3.22 MB normalizing clipboard text.
 The profiler recorded 11,157 DOCX samples and 4,539 Plate samples. Profiling times are excluded from the timing medians.
 
 A separate one-paragraph read trace counted 1,838 placed lines containing 26,155 spans.
 Readers requested the span array eight times on 1,641 lines before the second frame.
 Page-field detection, paragraph lookup, line segments, and revision author collection each read spans outside the viewport.
+
+## Shaping independent words together
+
+Six WinPC trials compared the same paste on the DOCX control, the width change, and Plate.
+Commit `267e76def` integrates the width change. The tested native control was `d875c5ece`.
+
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| Paste elapsed 184.2 ms | 115.0 ms | DOCX took 60.2% longer |
+| Renderer CPU 150.6 ms | 83.6 ms | DOCX used 80.1% more CPU time |
+
+Median paired elapsed time fell 15.0 ms. Five of six pairs improved. Median paired CPU fell 6.2 ms.
+The native control medians were 192.8 ms elapsed and 158.4 ms CPU.
+The change reduced HarfBuzz calls from 4,662 to 1,293. All nine paste, undo, and redo geometry checks matched.
+Both peer orders preserved concurrent Unicode and numeric edits through reconnect, undo, redo, save, and reopen.
+Ordinary opening measured 539.6 ms against 533.1 ms for the native control and 530.7 ms for Plate.
+
+## Clipboard text normalization
+
+WinPC compared `1021f9fb7` with the previous normalizer on 69,632 strings. Every result matched.
+Across six trials per input, median normalization time fell from 1.676 to 0.072 ms for one paragraph.
+It fell from 1.988 to 0.103 ms for multiline text and from 4.316 to 0.285 ms for Unicode text.
+These measurements cover normalization alone. The 497 clipboard and paste tests passed in separate file processes.
