@@ -177,7 +177,11 @@ test('header metric revisions invalidate cached furniture widths and retain nati
         .find((span) => span.inlineWidget);
     setSurfaceInlineWidgetMetrics(surface, metrics(40, '1'));
     expect(headerWidget()?.box.width).toBe(30);
-    setSurfaceInlineWidgetMetrics(surface, metrics(64, '2'));
+    const headerId = headerWidget()!.inlineWidget!.controlId;
+    setSurfaceInlineWidgetMetrics(
+      surface,
+      new Map([[headerId, { width: 64, ascent: 20, descent: 4 }]])
+    );
     expect(headerWidget()?.box.width).toBe(48);
     const saved = readOoxmlPackage(new Uint8Array(await editor.save()));
     if (!saved.ok) throw new Error(saved.reason);
@@ -231,5 +235,76 @@ test('measurement publication waits for native IME readback and applies the late
   } finally {
     editor.destroy();
     container.remove();
+  }
+});
+
+test('indexed widget metrics reuse unaffected pages and retain complete layout geometry', () => {
+  const paragraphs = Array.from({ length: 115 }, (_, i) =>
+    i === 94 ? body : '<w:p>' + run('Paragraph ' + i) + '</w:p>'
+  ).join('');
+  const input = docx(paragraphs);
+  const indexed = createDocxEditor({ container: document.createElement('div'), document: input });
+  const full = createDocxEditor({ container: document.createElement('div'), document: input });
+  try {
+    const live = indexed.surface!,
+      reference = full.surface!;
+    const id = live.layout().contentControls!.find((control) => control.tag === 'chip:source')!.id;
+    const box = { width: 40, ascent: 20, descent: 4 };
+    const map = new Map([[id, box]]);
+    // A pending host ID requires a full pass once. Its unchanged size cannot invalidate later edits.
+    map.set('pending-control', { width: 24, ascent: 12, descent: 2 });
+    for (const width of [40, 64, 80]) {
+      box.width = width;
+      setSurfaceInlineWidgetMetrics(live, map);
+      setSurfaceInlineWidgetMetrics(reference, metrics(width, String(width)));
+      expect(live.layout().pages).toEqual(reference.layout().pages);
+      if (width !== 40) {
+        expect(live.layoutSession().stats.placed).toBeLessThan(live.layoutSession().stats.total);
+        expect(live.layoutSession().stats.reusedPages).toBeGreaterThan(0);
+      }
+    }
+    map.clear();
+    setSurfaceInlineWidgetMetrics(live, null);
+    setSurfaceInlineWidgetMetrics(reference, null);
+    expect(live.layout().pages).toEqual(reference.layout().pages);
+  } finally {
+    indexed.destroy();
+    full.destroy();
+  }
+});
+
+test('fixed measurements in a table and unresolved IDs follow full layout across font and zoom changes', () => {
+  const table =
+    '<w:tbl><w:tblPr/><w:tblGrid><w:gridCol w:w="2400"/></w:tblGrid><w:tr><w:tc>' +
+    body +
+    '</w:tc></w:tr></w:tbl>';
+  const doc = docx(body + table);
+  const indexed = createDocxEditor({ container: document.createElement('div'), document: doc });
+  const reference = createDocxEditor({ container: document.createElement('div'), document: doc });
+  try {
+    const live = indexed.surface!,
+      full = reference.surface!;
+    const ids = live
+      .layout()
+      .contentControls!.filter((c) => c.tag === 'chip:source')
+      .map((c) => c.id);
+    expect(ids).toHaveLength(2);
+    const box = { width: 40, ascent: 20, descent: 4 };
+    const sizes = new Map([...ids, 'missing'].map((id) => [id, box]));
+    for (const width of [40, 90]) {
+      box.width = width;
+      setSurfaceInlineWidgetMetrics(live, sizes);
+      setSurfaceInlineWidgetMetrics(full, metrics(width, String(width)));
+      expect(live.layout().pages).toEqual(full.layout().pages);
+      for (const surface of [live, full]) setPaginatedSurfaceScale(surface, 1.5);
+      expect(live.layout().pages).toEqual(full.layout().pages);
+      const measurer = createFixedMeasurer();
+      for (const surface of [live, full])
+        updateSurfaceMeasurement(surface, { measurer, producer: 'new-font' });
+      expect(live.layout().pages).toEqual(full.layout().pages);
+    }
+  } finally {
+    indexed.destroy();
+    reference.destroy();
   }
 });
