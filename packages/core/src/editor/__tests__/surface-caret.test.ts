@@ -90,13 +90,13 @@ interface Mounted {
  * Mount ATTACHED and FOCUSED: the caret is only painted while the surface holds focus, and
  * a detached element cannot become `document.activeElement`.
  */
-function mount(body: string, withNumbering = false): Mounted {
+function mount(body: string, withNumbering = false, focus = true): Mounted {
   const container = document.createElement('div');
   document.body.append(container);
   const opened = mountPaginatedSurface(container, docx(body, withNumbering), { scale: 1 });
   if (!opened.ok) throw new Error(opened.reason);
   const pages = container.querySelector<HTMLElement>('.docx-pages')!;
-  opened.surface.focus();
+  if (focus) opened.surface.focus();
   return { surface: opened.surface, container, pages };
 }
 
@@ -525,6 +525,25 @@ describe('the painted caret', () => {
     expect(painted.classList.contains('docx-editor-one-surface__caret--steady')).toBe(false);
     putCaret(surface, 7);
     expect(painted.classList.contains('docx-editor-one-surface__caret--steady')).toBe(true);
+  });
+
+  test('first focus hands caret ownership to the selected editing surface', () => {
+    for (const tag of ['input', 'textarea', 'select'] as const) {
+      const { surface, container, pages } = mount(paragraph('hello world'), false, false);
+      const control = document.createElement(tag);
+      control.dataset.docxHostUi = '';
+      pages.append(control);
+      expect(pages.hasAttribute('data-docx-pending-caret')).toBe(true);
+      control.focus();
+      pages.dispatchEvent(new FocusEvent('focusin'));
+      expect(pages.hasAttribute('data-docx-pending-caret')).toBe(false);
+      expect(pages.style.caretColor).toBe('');
+      surface.focus();
+      putCaret(surface, 1);
+      expect(pages.style.caretColor).toBe('transparent');
+      surface.destroy();
+      container.remove();
+    }
   });
 
   test('an unfocused surface keeps the native caret and paints nothing', () => {

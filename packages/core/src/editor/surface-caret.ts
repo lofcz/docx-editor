@@ -156,6 +156,19 @@ export function createSurfaceCaret(
   read: () => SurfaceCaretInput
 ): SurfaceCaret {
   const element = pagesLayer.ownerDocument.createElement('div');
+  // The unopened surface has no visible caret. Preserve its inherited color when
+  // the engine takes over on first focus, without masking a focused child control.
+  const pendingAttribute = 'data-docx-pending-caret';
+  let pendingFocus = !pagesLayer.contains(pagesLayer.ownerDocument.activeElement);
+  if (pendingFocus) pagesLayer.setAttribute(pendingAttribute, '');
+
+  function finishInitialFocus(): void {
+    if (pendingFocus) {
+      pendingFocus = false;
+      pagesLayer.removeAttribute(pendingAttribute);
+    }
+  }
+
   element.className = CARET_CLASS;
   // Named for a host that wants to find it; the REFUSAL is the marker attribute below.
   element.dataset.docxCaret = '';
@@ -251,6 +264,8 @@ export function createSurfaceCaret(
 
   /** Stop painting and give the native caret back. */
   function hide(): void {
+    if (pendingFocus && pagesLayer.contains(pagesLayer.ownerDocument.activeElement))
+      finishInitialFocus();
     takeDown();
     nativeCaretOwed = false;
     pagesLayer.style.removeProperty('caret-color');
@@ -420,6 +435,7 @@ export function createSurfaceCaret(
     // A range selection shows the browser's highlight; an insertion point inside it would
     // claim a position the selection does not have.
     if (!isCollapsed(input.selection)) {
+      finishInitialFocus();
       takeDown();
       nativeCaretOwed = true;
       if (!selectionWriteFollows) settle();
@@ -443,6 +459,7 @@ export function createSurfaceCaret(
     // Suppress the native caret only while ours is up, and inline so it beats the
     // `[contenteditable='true']` rule in the stylesheet — pages layer AND scoped story.
     if (pagesLayer.style.caretColor !== 'transparent') pagesLayer.style.caretColor = 'transparent';
+    finishInitialFocus();
     if (suppressedHost && suppressedHost !== scopedHost) {
       suppressedHost.style.removeProperty('caret-color');
     }
@@ -511,6 +528,7 @@ export function createSurfaceCaret(
       pagesLayer.removeEventListener('compositionend', onCompositionEnd);
       pagesLayer.removeEventListener('focusin', onFocusIn);
       pagesLayer.removeEventListener('focusout', onFocusOut);
+      finishInitialFocus();
       hide();
     },
   };
