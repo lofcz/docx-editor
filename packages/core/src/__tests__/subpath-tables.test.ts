@@ -17,7 +17,7 @@
 
 import { describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
-import { dirname, join, relative } from 'node:path';
+import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import tsupConfig, { WASM_URL_EXPRESSION } from '../../tsup.config.ts';
 
@@ -133,7 +133,7 @@ describe('the published subpath tables agree', () => {
     const disagreements: string[] = [];
     for (const subpath of jsSubpaths) {
       const specifier = asSpecifier(subpath);
-      const aliased = relative(CORE, alias[specifier]!);
+      const aliased = relative(CORE, alias[specifier]!).split(sep).join('/');
       const typed = paths[specifier]![0]!.replace(/^\.\//, '');
       const built = config.entry[asEntryKey(subpath)];
       if (aliased !== typed || aliased !== built) {
@@ -161,6 +161,8 @@ describe('the published subpath tables agree', () => {
       expect(config.entry).toEqual({
         ...build.entry,
         'internal/grapheme': 'src/layout/grapheme.ts',
+        'internal/projection-schema': 'src/binding/tree-schema.ts',
+        'internal/projection-definition': 'src/binding/tree-schema-definition.ts',
       });
       expect(selfReferenceAliases(build)).toEqual(selfReferenceAliases(config));
     }
