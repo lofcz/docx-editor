@@ -490,6 +490,26 @@ The native builds produced the same target rectangles and final geometry in ever
 Three Chrome traces found 27.7–32.6 ms of React work before the first scroll event.
 Browser layout then took 8.3–9.5 ms before pagination resumed. [Direct measurements and scroll traces](profiles/winpc-opening-final-interaction-320.jsonl)
 
+### Closed ribbon tooltips during opening
+
+The native ribbon mounted 29 tooltips, seven dropdown menus, and one font-size popover before Chrome delivered the first scroll event.
+The installed `5a0194e03` build kept 32 empty tooltip portals in the document.
+A bundle probe created a portal only while the tooltip appeared. The first hover created one portal, and closing removed it.
+Pointer and keyboard tooltips kept their accessible names, anchor positions, and Escape behavior. The font menu opened and closed.
+
+Six balanced rounds used the original bundle, the tooltip probe, and Plate.
+All 18 trials reached the final word on the first click.
+The two native builds produced identical target rectangles and document geometry. [Browser timings and tooltip checks](profiles/winpc-native-ribbon-portals.jsonl)
+
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| Final paragraph ready for a click, 671.65 ms → 720.15 ms | 583.10 ms | 23.5% more time |
+| Open through the final exact edit, 749.15 ms → 796.05 ms | 674.95 ms | 17.9% more time |
+| Renderer CPU through the final edit, 701.69 ms → 788.33 ms | 611.68 ms | 28.9% more time |
+| First key in the final paragraph, 30.20 ms → 29.40 ms | 29.35 ms | 0.2% more time |
+
+The probe took longer through the final edit in four rounds. Sciobot retained the original tooltip.
+
 ## Memory allocation during multiline paste
 
 Chrome sampled JavaScript allocation during one 158,633-character paste per editor at `87dcdfb44`.
