@@ -31,7 +31,11 @@ export interface CaretViewFollower {
    * repaint — only a caret that layout moved to ANOTHER page is followed, so a scroll never
    * snaps the reader back to a caret that has not moved.
    */
-  follow(force: boolean, mode: CaretFollowMode): void;
+  follow(
+    force: boolean,
+    mode: CaretFollowMode,
+    beforePaint?: { built: ReadonlySet<number>; sizePages(): void }
+  ): number | undefined;
   /**
    * Run `body` with every follow inside it declined — the record still happens, the scroll
    * does not, however deep the call goes.
@@ -75,7 +79,7 @@ export function createCaretViewFollower(deps: {
       }
     },
 
-    follow(force, requested) {
+    follow(force, requested, beforePaint) {
       const mode = held ? 'none' : requested;
       if (deps.storyScopeOpen()) return;
       const selection = deps.selection();
@@ -104,6 +108,8 @@ export function createCaretViewFollower(deps: {
         ...(preferredLineId !== undefined ? { preferredLineId } : {}),
       });
       if (!geometry) return;
+      // A paint only moves the viewport early when it would otherwise build the wrong pages.
+      if (beforePaint && (mode === 'none' || beforePaint.built.has(geometry.pageIndex))) return;
       const changedPage = lastCaretPageIndex !== null && lastCaretPageIndex !== geometry.pageIndex;
       // Recorded whatever happens next, for everything that reaches here — a caller declines
       // the SCROLL, never the record. This is the only writer, and a stale value tells the
@@ -132,11 +138,14 @@ export function createCaretViewFollower(deps: {
         return;
       }
 
+      // A paste can put the caret beyond the old document's scroll limit.
+      beforePaint?.sizePages();
       const maxScroll = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
       const next = Math.max(0, Math.min(target, maxScroll));
       if (Math.abs(next - scroller.scrollTop) < 0.5) return;
       scroller.scrollTop = next;
       deps.scheduleRematerialize();
+      return geometry.pageIndex;
     },
   };
 }

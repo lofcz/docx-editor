@@ -386,6 +386,26 @@ describe('a shift-extended keyboard move brings its head into view', () => {
     expect(scroller.scrollTop).toBeGreaterThan(0);
   });
 
+  test('a paste that moves the caret several pages paints its destination immediately', () => {
+    const { surface, scroller, pages } = mount(longDocument(3));
+    const start = firstLineSheetPoint(surface, 0)!;
+    pressAt(pages, start.x, start.y);
+    const before = surface.state().selection.head;
+    const text = 'Words on the next page. '.repeat(1600);
+    expect(surface.pasteRich(text, null)).toBe(true);
+    const head = surface.state().selection.head;
+    expect(head.offset).toBe(before.offset + text.length);
+    const destination = caretAt(surface.layout(), head)!.pageIndex;
+    expect(destination).toBeGreaterThan(2);
+    expect(scroller.scrollTop).toBeGreaterThan(0);
+    expect(pages.querySelector<HTMLElement>('[data-page-index="0"]')?.dataset.materialized).toBe(
+      'false'
+    );
+    expect(
+      pages.querySelector<HTMLElement>(`[data-page-index="${destination}"]`)?.dataset.materialized
+    ).toBe('true');
+  });
+
   test('plain navigation onto a placeholder prompt still follows it', () => {
     // Landing on a prompt absorbs the whole control, so the move ends on a RANGE — which the
     // caret rule refuses. Ctrl+Home onto a prompt at the top left the view where it started.

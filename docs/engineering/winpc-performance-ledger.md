@@ -197,3 +197,16 @@ The same document and input ran in four alternating browser pairs after word fit
 The full page records matched the previous engine after paste, undo, and redo at all three tested input sizes.
 The inputs contained 9,617, 38,825, and 158,633 characters. The largest produced 49 pages.
 All 288 comparisons against the general line breaker matched across different widths, indents, kerning, and space compression rules.
+
+## Paint the caret destination after a paste
+
+WinPC ran four alternating browser pairs. Each editor pasted 158,633 characters into the same document.
+The destination was page 47. DOCX built its visible pages once. The previous engine built them twice.
+
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| Paste elapsed 160.2 ms | 109.7 ms | DOCX took 46.0% longer |
+| Renderer CPU 136.1 ms | 83.4 ms | DOCX used 63.2% more CPU time |
+| Exact text in 4 of 4 runs | 4 of 4 runs | Equal |
+
+The previous DOCX median was 193.1 ms. The caret position, line, scroll offset, and final page set matched after paste, undo, and redo.

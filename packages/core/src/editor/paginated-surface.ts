@@ -1977,9 +1977,9 @@ export function mountPaginatedSurface(
       })
     : () => {};
 
-  function visiblePages(anchoredTop?: number): ReadonlySet<number> | undefined {
+  function visiblePages(anchoredTop?: number, caretPage?: number): ReadonlySet<number> | undefined {
     const set = visiblePageSet(container, currentLayout, selection, scale, anchoredTop);
-    const extra = hfScope?.getActive()?.pageIndex ?? selectionSync.selectionPageIndex();
+    const extra = hfScope?.getActive()?.pageIndex ?? caretPage ?? selectionSync.selectionPageIndex();
     if (extra === undefined || set === undefined || set.has(extra)) return set;
     return new Set([...set, extra]);
   }
@@ -2831,7 +2831,23 @@ export function mountPaginatedSurface(
       scale,
       session.packageRevision()
     );
-    viewportSet = visiblePages(disclosureScroll?.top);
+    const caretPage =
+      caretFollowPending &&
+      !disclosureScroll &&
+      currentLayout !== paintedLayout &&
+      materializedSet &&
+      materializedSet.size < currentLayout.pages.length
+        ? caretView.follow(true, 'caret', {
+            built: materializedSet,
+            sizePages() {
+              const last = currentLayout.pages.at(-1)!;
+              const height = `${(last.box.y + last.box.height) * scale}px`;
+              container.style.height = height;
+              pagesLayer.style.height = height;
+            },
+          })
+        : undefined;
+    viewportSet = visiblePages(disclosureScroll?.top, caretPage);
     materializedSet =
       viewportOnly && currentLayout === paintedLayout
         ? retainAdjacentPages(currentLayout, viewportSet, materializedSet)
