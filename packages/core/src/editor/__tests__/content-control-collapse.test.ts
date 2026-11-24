@@ -106,6 +106,7 @@ test('a returning disclosure reuses its layout and checks changed host reservati
   try {
     change(false);
     change(true);
+    expect(doc.surface.state().perf.placed).toBe(0);
     const expandedY = doc.caret('After')!.y;
     change(false);
     change(true);

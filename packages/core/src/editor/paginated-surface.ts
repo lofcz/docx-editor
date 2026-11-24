@@ -1511,7 +1511,7 @@ export function mountPaginatedSurface(
     if (!context && bodyBlockLimit === undefined) openingBlockLimit = null;
     drawingBundle.sync(session);
     blockView.reconcile();
-    return yield* layoutDocumentViewSteps({
+    const layout = yield* layoutDocumentViewSteps({
       view: unsupportedProjection.view(session),
       revision,
       measurer: context && !context.live ? inlineWidgets.native(measurer) : measurer,
@@ -1545,6 +1545,9 @@ export function mountPaginatedSurface(
       revisionAuthorFilter: activeAuthorFilter,
       bodyBlockLimit,
     } satisfies LayoutDocumentViewOptions & Record<keyof LayoutDocumentViewOptions, unknown>);
+    if ((!context || context.live) && bodyBlockLimit === undefined)
+      blockView.resumeDisclosureLayout(activeLayoutSession, undefined, true);
+    return layout;
   }
 
   /** Build save-time PAGEREF numbers without mutating the active filtered layout. */

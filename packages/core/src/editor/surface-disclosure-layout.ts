@@ -14,7 +14,13 @@ interface FoldLayout {
 /** Remember the preceding local disclosure's flow checkpoints for its return trip. */
 export function createDisclosureLayoutHistory(readFolds: () => Folds) {
   const histories = new WeakMap<LayoutSession, FoldLayout>();
-  return (session: LayoutSession, scope: LayoutScope, settled: boolean) => {
+  return (session: LayoutSession, scope: LayoutScope | undefined, settled: boolean) => {
+    if (!scope) {
+      const revision = session.previous?.revision;
+      if (revision !== undefined && !histories.has(session))
+        histories.set(session, { revision, folds: readFolds() });
+      return;
+    }
     // The first view of an inline widget can supply its size after disclosure.
     // The next fold can save this newly measured layout, but the preceding
     // checkpoint still belongs to the old measurements.
