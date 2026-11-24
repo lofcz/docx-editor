@@ -187,7 +187,6 @@ export function viewportPage(
   return layout.pages.length;
 }
 
-const overscanPages = 1;
 const retainedNeighbors = 2;
 
 export function visiblePageSet(
@@ -204,12 +203,24 @@ export function visiblePageSet(
     anchoredTop === undefined
       ? viewportInLayout(container, scroller, scale, height)
       : { top: anchoredTop, height: height / scale };
-  const pinned: number[] = [];
+  const pages = pagesToMaterialize({ layout, viewport, overscanPages: 0 });
+  const [first] = pages;
+  if (first !== undefined) {
+    const preceding = layout.pages[first - 1];
+    const following = layout.pages[first + pages.size];
+    const reach = viewport.height / 2;
+    if (preceding && preceding.box.y + preceding.box.height >= viewport.top - reach) {
+      pages.add(preceding.index);
+    }
+    if (following && following.box.y <= viewport.top + viewport.height + reach) {
+      pages.add(following.index);
+    }
+  }
   for (const position of [selection.anchor, selection.head]) {
     const caret = caretAt(layout, position);
-    if (caret) pinned.push(caret.pageIndex);
+    if (caret) pages.add(caret.pageIndex);
   }
-  return pagesToMaterialize({ layout, viewport, overscanPages, pinnedPages: pinned });
+  return pages;
 }
 
 /**
@@ -285,14 +296,8 @@ export function canScrollWithoutMeasuringPages(
 ): boolean {
   const { pages } = layout;
   const first = pages[0];
-  // At either document edge, even a one-pixel viewport keeps the visible sheet,
-  // its overscan, and up to retainedNeighbors sheets that are already painted.
-  if (
-    !first ||
-    pages.length > 1 + overscanPages + retainedNeighbors ||
-    built?.size !== pages.length
-  )
-    return false;
+  // A narrow viewport can keep only its visible page and previously painted neighbors.
+  if (!first || pages.length > 1 + retainedNeighbors || built?.size !== pages.length) return false;
   return pages.every((page) => {
     const spill = tableSpill(page);
     return (
