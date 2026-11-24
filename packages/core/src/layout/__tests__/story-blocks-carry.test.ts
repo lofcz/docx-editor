@@ -37,6 +37,30 @@ function cold(source: OoxmlPart): OoxmlPart {
 const ids = (blocks: readonly { readonly id: string }[]) => blocks.map((block) => block.id);
 
 describe('story blocks after a keystroke', () => {
+  test('retain the projected neighbours and numbering of a paragraph inside nested controls', () => {
+    const control = (body: string) =>
+      `<w:sdt><w:sdtPr/><w:sdtContent>${body}</w:sdtContent></w:sdt>`;
+    const before = part(
+      plain('before') +
+        control(control(numbered('one') + hiddenNumbered + plain('edit'))) +
+        plain('end')
+    );
+    const first = storyBlocks(before);
+    const edited = applyTreeOp(before, {
+      op: 'insertText',
+      paragraphId: first[2]!.id,
+      offset: 2,
+      text: 'x',
+    });
+    if (!edited.ok) throw new Error('edit refused');
+    const incremental = storyBlocks(edited.part);
+    expect(incremental[1]).toBe(first[1]);
+    expect(incremental[2]).not.toBe(first[2]);
+    const fresh = storyBlocks(cold(edited.part));
+    expect(incremental).toEqual(fresh);
+    expect(numberingFlowBlocks(incremental)).toEqual(numberingFlowBlocks(fresh));
+  });
+
   test('keep the paragraphs a hidden mark took out of the flow in the numbering list', () => {
     const before = part(
       numbered('one') + hiddenNumbered + numbered('two') + plain('typed here') + plain('end')

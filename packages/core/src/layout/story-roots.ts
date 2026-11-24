@@ -551,6 +551,53 @@ function markReachesNeighbours(properties: OoxmlNode | undefined): boolean {
 /** Changed children past this many lay the story's blocks out again. */
 const MAX_CARRIED_CHANGES = 8;
 
+type ChangedBlock = readonly [OoxmlNode, OoxmlNode];
+
+function changedFlowBlocks(
+  previous: readonly OoxmlNode[],
+  current: readonly OoxmlNode[],
+  changed: ChangedBlock[],
+  depth: number
+): boolean {
+  if (previous.length !== current.length) return false;
+  for (let index = 0; index < current.length; index++) {
+    const before = previous[index]!;
+    const after = current[index]!;
+    if (before === after) continue;
+    if (before.kind !== 'contentControl' || after.kind !== 'contentControl') {
+      if (changed.length >= MAX_CARRIED_CHANGES) return false;
+      changed.push([before, after]);
+      continue;
+    }
+    // ECMA-376 Part 1 §17.5.2.29 (w:sdt, CT_SdtBlock) and §17.5.2.34
+    // (w:sdtContent, CT_SdtContentBlock). Follow an edit within the same control only
+    // when its properties and every sibling of its content still have the same owner.
+    if (
+      depth >= MAX_CONTENT_CONTROL_NESTING ||
+      unsupportedBlockParagraph(before) ||
+      unsupportedBlockParagraph(after) ||
+      before.id !== after.id ||
+      before.attributes !== after.attributes ||
+      before.children.length !== after.children.length
+    )
+      return false;
+    for (let at = 0; at < after.children.length; at++) {
+      const left = before.children[at]!;
+      const right = after.children[at]!;
+      if (left === right) continue;
+      if (
+        left.kind !== 'contentControlContent' ||
+        right.kind !== 'contentControlContent' ||
+        left.id !== right.id ||
+        left.attributes !== right.attributes ||
+        !changedFlowBlocks(left.children, right.children, changed, depth + 1)
+      )
+        return false;
+    }
+  }
+  return true;
+}
+
 /**
  * The previous block list with each edited paragraph's block swapped in, when the edit cannot
  * have changed anything else. A keystroke makes a new story root whose children are the
@@ -583,12 +630,8 @@ function carriedBlocks(
   const lastList = last?.blocks.deref();
   if (!last || !previous || !lastList || previous.length !== children.length) return undefined;
   if (last.unlisted !== unlisted) return undefined;
-  const changed: number[] = [];
-  for (let index = 0; index < children.length; index += 1) {
-    if (children[index] === previous[index]) continue;
-    if (changed.length >= MAX_CARRIED_CHANGES) return undefined;
-    changed.push(index);
-  }
+  const changed: ChangedBlock[] = [];
+  if (!changedFlowBlocks(previous, children, changed, 0)) return undefined;
   if (changed.length === 0) return lastList;
   let positions = last.positions;
   if (!positions) {
@@ -598,9 +641,7 @@ function carriedBlocks(
   }
   const blocks = [...lastList];
   const replaced = new Map<OoxmlElement, OoxmlElement>();
-  for (const index of changed) {
-    const before = previous[index]!;
-    const after = children[index]!;
+  for (const [before, after] of changed) {
     if (
       before.id !== after.id ||
       !(
