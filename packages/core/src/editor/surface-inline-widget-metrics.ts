@@ -1,3 +1,5 @@
+import type { InlineWidgetMetrics } from '../contracts/inline-widget-metrics.ts';
+import { captureInlineWidgetMetrics } from '../layout/indexed-inline-widget-metrics.ts';
 import type { TextMeasurer } from '../layout/text-measurer.ts';
 import type { PaginatedSurface } from './paginated-surface-contract.ts';
 import { refreshCompositionActive } from './refresh-write-guard.ts';
@@ -85,13 +87,16 @@ export function registerSurfaceInlineWidgetMetrics(
 /**
  * Publish or clear host-only inline geometry. This creates no native edit or undo item.
  * Keep each snapshot and provider result stable until the next publication.
+ * A complete map keyed by canonical control ID uses fixed CSS pixel measurements.
  * During native IME composition, only the latest snapshot applies after readback completes.
  * @public
  */
 export function setSurfaceInlineWidgetMetrics(
   surface: PaginatedSurface,
-  snapshot: InlineWidgetMetricsSnapshot | null
+  measurements: InlineWidgetMetricsSnapshot | ReadonlyMap<string, InlineWidgetMetrics> | null
 ): void {
+  const snapshot =
+    measurements && 'get' in measurements ? captureInlineWidgetMetrics(measurements) : measurements;
   const update = updates.get(surface);
   if (!update) throw new Error('The native surface does not support inline widget measurements.');
   validateSnapshot(snapshot);

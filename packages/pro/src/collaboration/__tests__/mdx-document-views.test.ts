@@ -197,11 +197,11 @@ test('each editor uses its own folds and visible selection geometry during concu
   flush();
   alice.fold().click();
   flush();
-  setSurfaceInlineWidgetMetrics(alice.surface, {
-    measure: ({ fallbackText }) =>
-      fallbackText === 'symbol' ? { width: 64, ascent: 48, descent: 4 } : null,
-    revision: 'measured',
-  });
+  const symbol = readMdxComponents(alice.pkg()).find(({ name }) => name === 'Term')!;
+  setSurfaceInlineWidgetMetrics(
+    alice.surface,
+    new Map([[symbol.controlId, { width: 64, ascent: 48, descent: 4 }]])
+  );
   alice.fold().click();
   flush();
   alice.fold().click();
