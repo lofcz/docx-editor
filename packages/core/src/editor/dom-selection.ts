@@ -17,6 +17,7 @@
 // where anything is; this only decides WHICH characters the user gestured over.
 
 import { PARAGRAPH_BOUNDARY_CLASS } from '../output/semantic-paragraph-boundary.ts';
+import { typingSuffix } from '../output/semantic-paint-typing-text.ts';
 import type { SemanticPosition, SemanticSelection } from '@docx-editor.dev/core/layout';
 
 /** A painted span carries the source range it was laid out from. */
@@ -376,7 +377,12 @@ export function positionFromDomPoint(
     if (identity) {
       return {
         paragraphId: identity.paragraphId,
-        offset: offset > 0 ? identity.end : identity.start,
+        offset:
+          offset === 1 && typingSuffix(element)
+            ? offsetWithin(identity, (element.firstChild as Text).length)
+            : offset > 0
+              ? identity.end
+              : identity.start,
       };
     }
     const resolved = positionFromChildIndex(element, offset);
@@ -393,7 +399,12 @@ export function positionFromDomPoint(
   // one offset it occupies.
   return {
     paragraphId: found.identity.paragraphId,
-    offset: offsetWithin(found.identity, offset),
+    offset: offsetWithin(
+      found.identity,
+      typingSuffix(found.element) === node
+        ? (found.element.firstChild as Text).length + offset
+        : offset
+    ),
   };
 }
 
@@ -570,10 +581,13 @@ function domPointFromPositionIn(
       // model range wherever a field is: one model unit can be 24 glyphs, and asking a text
       // node for character 1 of 24 would put the native selection inside a word the model
       // has no position inside.
-      const point = {
-        node: text,
-        offset: Math.min(position.offset - identity.start, length),
-      };
+      const within = Math.min(position.offset - identity.start, length);
+      const suffix = typingSuffix(span);
+      const leftLength = suffix ? (text as Text).length : length;
+      const point =
+        suffix && within >= leftLength
+          ? { node: suffix, offset: within - leftLength }
+          : { node: text, offset: within };
       if (position.offset < end) return point;
       fallback = point;
     }

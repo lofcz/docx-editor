@@ -1,4 +1,5 @@
 import { PARAGRAPH_BOUNDARY_CLASS } from './semantic-paragraph-boundary.ts';
+import { typingSuffix, updateTypingText } from './semantic-paint-typing-text.ts';
 
 // Only the painter owns the nodes recorded here. Hosts can attach controls to a paragraph.
 const ownedChildren = new WeakMap<HTMLElement, readonly HTMLElement[]>();
@@ -26,23 +27,11 @@ function copyAttributes(target: HTMLElement, source: HTMLElement): void {
   }
 }
 
-function setRunText(node: Text, value: string): void {
-  const before = node.data;
-  if (before === value) return;
-  let start = 0;
-  let end = 0;
-  const common = Math.min(before.length, value.length);
-  while (start < common && before[start] === value[start]) start++;
-  while (end < common - start && before[before.length - end - 1] === value[value.length - end - 1])
-    end++;
-  node.replaceData(start, before.length - start - end, value.slice(start, value.length - end));
-}
-
 function plainRun(node: HTMLElement | undefined): node is HTMLElement {
   return (
     node?.tagName === 'SPAN' &&
     node.classList.contains('layout-run-text') &&
-    node.childNodes.length === 1 &&
+    (node.childNodes.length === 1 || !!typingSuffix(node)) &&
     node.firstChild?.nodeType === 3
   );
 }
@@ -118,7 +107,7 @@ function updateRuns(parent: HTMLElement, fresh: HTMLElement): void {
     if (!plainRun(old) || !plainRun(child)) return child;
     used.add(old);
     copyAttributes(old, child);
-    setRunText(old.firstChild as Text, child.textContent ?? '');
+    updateTypingText(old, child.textContent ?? '');
     return old;
   });
 }
