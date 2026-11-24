@@ -73,6 +73,21 @@ const shapeOf = (layout: SemanticLayout): string =>
   );
 
 describe('an incremental pass equals a clean one (tasks 9.3, 9.6)', () => {
+  test('typing shifts line offsets while retaining the remaining paragraphs on the page', () => {
+    const session = createLayoutSession();
+    const text = 'word '.repeat(16);
+    const trailing = paragraph('following').repeat(12);
+    const first = lay(load(paragraph(text) + trailing), 1, session);
+    const changed = load(paragraph('x' + text) + trailing);
+    const warm = lay(changed, 2, session);
+    expect(shapeOf(warm)).toBe(shapeOf(lay(changed, 2)));
+    const before = first.pages[0]!.fragments[0]!;
+    const after = warm.pages[0]!.fragments[0]!;
+    expect(after.lines.length).toBe(before.lines.length);
+    expect(after.lines[1]!.id).not.toBe(before.lines[1]!.id);
+    expect(warm.pages[0]!.fragments[1]).toBe(first.pages[0]!.fragments[1]);
+  });
+
   test('an unchanged document re-lays out to the identical shape', () => {
     const session = createLayoutSession();
     const part = load(DOCUMENT);

@@ -9,6 +9,7 @@ import type {
 } from './semantic-records.ts';
 import { flowCheckpointsMatch } from './flow-checkpoint.ts';
 import { sameFragments } from './semantic-fragment-signature.ts';
+import { bodyLineId } from './body-line-id.ts';
 
 const TEXT_FIELDS = new Set([
   'id',
@@ -64,8 +65,14 @@ function sameTextFlow(old: ParagraphFragmentRecord, next: ParagraphFragmentRecor
   if (!sameFragments([old], [{ ...next, lines: old.lines, range: old.range }])) return false;
   return old.lines.every((line, i) => {
     const after = next.lines[i]!;
+    // A w:p (CT_P, ECMA-376 Part 1 §17.3.1.22) owns these replacement lines.
+    // Typing can move a later line's start offset without moving its painted box.
+    const sameLine =
+      line.id === after.id ||
+      (line.id === bodyLineId(line.range.paragraphId, line.range.start, i) &&
+        after.id === bodyLineId(after.range.paragraphId, after.range.start, i));
     if (
-      line.id !== after.id ||
+      !sameLine ||
       line.range.paragraphId !== after.range.paragraphId ||
       !ordinaryTextLine(line) ||
       !ordinaryTextLine(after)
