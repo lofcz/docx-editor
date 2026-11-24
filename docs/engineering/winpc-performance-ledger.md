@@ -140,6 +140,18 @@ Another trace showed 58 edits retained the same flow past the edited paragraph. 
 Removing duplicate table sizing eliminated 236 scheduled style invalidations. Browser style time rose from 52.88 to 76.25 ms in that trial.
 The installed comparison below provides repeated end-to-end timings. [WinPC trace counts](profiles/winpc-installed-5a019-rich-work.jsonl)
 
+WinPC then tested one shared toolbar observer with the same controls. Each editor received 59 keys in all six orders.
+
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| Renderer CPU, control 785.28 ms → candidate 777.83 ms | 603.58 ms | Candidate used 28.9% more CPU time |
+| Elapsed with keyboard pauses, 5,198.60 ms → 5,202.15 ms | 5,108.25 ms | Candidate took 1.8% longer |
+| Median key to frame, 8.30 ms → 8.30 ms | 6.75 ms | Candidate took 1.55 ms longer |
+| 95th-percentile key to frame, 16.13 ms → 16.57 ms | 15.61 ms | Candidate took 0.96 ms longer |
+
+The candidate saved CPU in three pairs and improved 95th-percentile frame time in zero pairs.
+The installed editor keeps its existing toolbar observers. [All 18 browser trials](profiles/winpc-toolbar-observer-trials.jsonl)
+
 ## Installed comparison at engine 5a0194e03
 
 Sciobot commit `18edad0bb` pins engine `5a0194e03`. WinPC ran four alternating pairs for each action.
