@@ -2354,6 +2354,7 @@ export function paintSemanticLayoutWithAuthorSlots(
       options.materialize,
       chromeChanged ? null : reusable,
       parametersUnchanged ? previousByIndex : null,
+      resolved.scale,
       beforePaint,
       (page, fragment: BlockFragmentRecord, previousTable) => {
         const context = {

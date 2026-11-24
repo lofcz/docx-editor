@@ -1,17 +1,19 @@
-import type { BlockFragmentRecord, PageRecord } from '../layout/semantic-records.ts';
+import type { BlockFragmentRecord, LayoutBox, PageRecord } from '../layout/semantic-records.ts';
 import type { RetainedPage } from './semantic-paint-paragraph-roots.ts';
 import {
   canRetainPaintedParagraph,
   retainPaintedParagraph,
 } from './semantic-paint-paragraph-children.ts';
 import { sameDataWithin } from './semantic-paint-record-equality.ts';
+import { sameParagraphAtAnotherTop } from './semantic-paint-paragraph-reflow.ts';
 
 /** Insert and remove fragments at their canonical page positions, including host-owned markers. */
 export function planStructuralRoots(
   prior: RetainedPage,
   page: PageRecord,
   paint: (fragment: BlockFragmentRecord, previousTable?: HTMLElement) => HTMLElement,
-  homeOf: (element: HTMLElement) => ChildNode
+  homeOf: (element: HTMLElement) => ChildNode,
+  scale: number
 ) {
   const { content, blocks } = prior;
   if (!content || !blocks || content.parentElement !== prior.element) return null;
@@ -50,6 +52,7 @@ export function planStructuralRoots(
   }[] = [];
   const seen = new Set<string>();
   const updates = new Map<HTMLElement, HTMLElement>();
+  const moves = new Map<HTMLElement, LayoutBox>();
   const survivors = new Map<HTMLElement, ChildNode>();
   previous = undefined;
   for (const fragment of page.fragments) {
@@ -57,14 +60,26 @@ export function planStructuralRoots(
     if (seen.has(key)) return null;
     seen.add(key);
     const old = existing.get(key);
-    const same = old?.record.kind === fragment.kind && sameDataWithin(old.record, fragment, 20000);
+    const move =
+      old?.record.kind === 'paragraph' &&
+      fragment.kind === 'paragraph' &&
+      sameParagraphAtAnotherTop(old.record, fragment) &&
+      old.root.attributes.length === 4 &&
+      old.root.className === 'docx-paragraph-fragment layout-paragraph' &&
+      old.root.style.length === 5 &&
+      old.root.style.position === 'absolute' &&
+      Boolean(
+        old.root.style.left && old.root.style.top && old.root.style.width && old.root.style.height
+      );
+    const same =
+      !move && old?.record.kind === fragment.kind && sameDataWithin(old.record, fragment, 20000);
     // Paint added blocks and replacement tables only after the host accepts this plan.
     const fresh =
-      !same && old?.record.kind === 'paragraph' && fragment.kind === 'paragraph'
+      !move && !same && old?.record.kind === 'paragraph' && fragment.kind === 'paragraph'
         ? paint(fragment)
         : undefined;
     const table = old?.record.kind === 'table' && fragment.kind === 'table' && !same;
-    if (old && (same || table || (fresh && canRetainPaintedParagraph(old.root, fresh)))) {
+    if (old && (move || same || table || (fresh && canRetainPaintedParagraph(old.root, fresh)))) {
       // A reorder can change a host's ownership. Use the regular reconciliation for that page.
       if (
         previous &&
@@ -78,12 +93,13 @@ export function planStructuralRoots(
       } else {
         survivors.set(old.root, old.home);
         planned.push({ fragment, root: old.root });
+        if (move) moves.set(old.root, fragment.box);
         if (fresh) updates.set(old.root, fresh);
       }
     } else planned.push({ fragment, root: fresh });
   }
   if (!survivors.size && !planned.some((entry) => entry.table)) return null;
-  const changedRoots = new Set(updates.keys());
+  const changedRoots = new Set([...updates.keys(), ...moves.keys()]);
   for (const { root } of existing.values()) if (!survivors.has(root)) changedRoots.add(root);
   return {
     changedRoots,
@@ -102,6 +118,12 @@ export function planStructuralRoots(
         root.remove();
       }
       for (const [root, fresh] of updates) retainPaintedParagraph(root, fresh);
+      for (const [root, box] of moves) {
+        root.style.top = `${box.y * scale}px`;
+        root.style.left = `${box.x * scale}px`;
+        root.style.width = `${box.width * scale}px`;
+        root.style.height = `${box.height * scale}px`;
+      }
       let before: ChildNode | null = null;
       const ordered = [...nextBlocks.values()];
       for (let i = ordered.length - 1; i >= 0; i--) {

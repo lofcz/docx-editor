@@ -12,6 +12,7 @@
 // line height, line count or the painted structure.
 
 import type { LayoutBox, LineRecord, ParagraphFragmentRecord } from '../layout/semantic-records.ts';
+import { sameBodyLineAtAnotherTop } from '../layout/body-line-placement.ts';
 import { paragraphIsRtl } from '../layout/rtl-paragraph.ts';
 import { lineTerminatorEdge } from './semantic-paragraph-marks.ts';
 import { sameRecordExcept } from './semantic-paint-record-equality.ts';
@@ -22,6 +23,58 @@ const HEX = /^[0-9A-Fa-f]{6}$/;
 const FRAGMENT_GEOMETRY: ReadonlySet<string> = new Set(['box', 'lines', 'shadingBox', 'marker']);
 const LINE_GEOMETRY: ReadonlySet<string> = new Set(['box', 'contentX', 'spans']);
 const BOX_ONLY: ReadonlySet<string> = new Set(['box']);
+
+function sameRelativeBox(
+  before: LayoutBox | undefined,
+  after: LayoutBox | undefined,
+  firstTop: number,
+  nextTop: number
+): boolean {
+  if (!before || !after) return before === after;
+  return (
+    before.x === after.x &&
+    before.y - firstTop === after.y - nextTop &&
+    before.width === after.width &&
+    before.height === after.height
+  );
+}
+
+/** A w:p (CT_P, ECMA-376 Part 1 §17.3.1.22) whose rendered contents move together. */
+export function sameParagraphAtAnotherTop(
+  before: ParagraphFragmentRecord,
+  after: ParagraphFragmentRecord
+): boolean {
+  const firstTop = before.box.y;
+  const nextTop = after.box.y;
+  if (
+    firstTop === nextTop ||
+    !sameRelativeBox(before.box, after.box, firstTop, nextTop) ||
+    before.lines.length !== after.lines.length ||
+    !after.lines.length ||
+    before.borders ||
+    after.borders ||
+    before.bottomBorder ||
+    after.bottomBorder
+  )
+    return false;
+  for (let i = 0; i < after.lines.length; i++) {
+    const previous = before.lines[i]!;
+    const next = after.lines[i]!;
+    if (
+      !sameBodyLineAtAnotherTop(previous, next) ||
+      previous.box.y - firstTop !== next.box.y - nextTop
+    )
+      return false;
+  }
+  if (!sameRelativeBox(before.shadingBox, after.shadingBox, firstTop, nextTop)) return false;
+  if (before.marker || after.marker) {
+    if (!before.marker || !after.marker || before.marker.picture || after.marker.picture)
+      return false;
+    if (!sameRelativeBox(before.marker.box, after.marker.box, firstTop, nextTop)) return false;
+    if (!sameRecordExcept(before.marker, after.marker, BOX_ONLY)) return false;
+  }
+  return sameRecordExcept(before, after, FRAGMENT_GEOMETRY);
+}
 
 /** What the paragraph painter derives beyond the records themselves. */
 export interface ParagraphReflowPaint {

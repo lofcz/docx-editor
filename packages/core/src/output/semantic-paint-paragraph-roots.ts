@@ -108,6 +108,7 @@ export function prepareParagraphRootPaint(
   materialize: ReadonlySet<number> | undefined,
   reusable: ReadonlyMap<PageRecord, RetainedPage> | null,
   previousByIndex: ReadonlyMap<number, RetainedPage> | null,
+  scale: number,
   beforePaint: (retained: ReadonlySet<number>, preserve: PreserveParagraphRoots) => void,
   paint: (
     page: PageRecord,
@@ -162,7 +163,8 @@ export function prepareParagraphRootPaint(
           prior,
           page,
           (fragment, table) => paint(page, fragment, table),
-          homeOf
+          homeOf,
+          scale
         );
         if (!structural) return false;
         if (!accepts(structural.changedRoots, true)) {

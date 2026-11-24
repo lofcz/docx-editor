@@ -138,6 +138,14 @@ const MAX_KEPT_TOPS = 4;
 
 /** The last placements of each frozen broken line. An entry lives as long as its line does. */
 const keptPlacements = new WeakMap<PendingLine, KeptPlacement>();
+const verticalPlacements = new WeakMap<LineRecord, object>();
+
+/** Both records came from the same placed line. Only their vertical positions can differ. */
+export function sameBodyLineAtAnotherTop(before: LineRecord, after: LineRecord): boolean {
+  if (before === after) return true;
+  const placement = verticalPlacements.get(before);
+  return placement !== undefined && placement === verticalPlacements.get(after);
+}
 
 interface PlacementObserver {
   placed: number;
@@ -353,6 +361,9 @@ export function placeBodyLine(placement: BodyLinePlacement): PlacedBodyLine {
     }
     if (source) {
       const record = shared(atTop(source, y));
+      const placement = verticalPlacements.get(source) ?? {};
+      verticalPlacements.set(source, placement);
+      verticalPlacements.set(record, placement);
       if (kept.tops.length >= MAX_KEPT_TOPS) dropOneTop(kept.tops);
       kept.tops.unshift({ y, record: new WeakRef(record), reused: false });
       if (counts) counts.moved += 1;

@@ -15,6 +15,7 @@ import {
 import {
   bodyLinePlacementTestRecorder,
   placeBodyLine,
+  sameBodyLineAtAnotherTop,
   type BodyLinePlacement,
 } from '../body-line-placement.ts';
 import { createFixedMeasurer } from '../fixed-measurer.ts';
@@ -497,6 +498,7 @@ describe('placeBodyLine', () => {
     expect(counts.moved).toBe(1);
     expect(lower.record).toEqual(plain(placement(line, { y: 240 })));
     expect(lower.record.box.y).toBe(240);
+    expect(sameBodyLineAtAnotherTop(first.record, lower.record)).toBe(true);
     expect(lower.record.spans.every((placed) => placed.box.y === 240)).toBe(true);
     // The first record is untouched, and each top hands its own record back.
     expect(first.record.box.y).toBe(100);
@@ -527,6 +529,7 @@ describe('placeBodyLine', () => {
       expect(counts.placed).toBe(2);
       expect(counts.moved + counts.reused).toBe(0);
       expect(other.record).not.toBe(first.record);
+      expect(sameBodyLineAtAnotherTop(first.record, other.record)).toBe(false);
       expect(other.record).toEqual(plain(placement(line, change)));
     });
   }
