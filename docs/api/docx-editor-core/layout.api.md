@@ -3023,6 +3023,7 @@ export interface ParagraphLineSpacing {
     // @internal
     readonly descentAnchored?: true;
     readonly gridPitch?: number;
+    readonly halfLeading?: true;
     readonly preserveExactBaseline?: true;
     // (undocumented)
     readonly rule: LineSpacingRule;
@@ -4673,6 +4674,7 @@ export interface StyleCascadeTable {
     // @internal
     readonly autoHyphenation?: true;
     readonly cacheToken: string;
+    readonly cssHalfLeading?: true;
     readonly defaultCharacterStyleId: string | null;
     readonly defaultParagraphStyleId: string | null;
     readonly defaultTableStyleId: string | null;
