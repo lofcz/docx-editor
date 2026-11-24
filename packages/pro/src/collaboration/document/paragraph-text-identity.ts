@@ -349,17 +349,19 @@ export function textIdentities(text: Y.Text): TextIdentities {
     // Out of a deleted paragraph, a copy goes where the typing it copies went as one insert.
     const after = isCopy ? copiedAfterOf(marks, insertFollow, walk) : null;
     for (let offset = 0; offset < item.length; offset += 1) {
-      items.push(`${item.id.client}:${item.id.clock + offset}`);
+      const currentClock = item.id.clock + offset;
+      const itemKey = `${item.id.client}:${currentClock}`;
+      items.push(itemKey);
       origins.push(
         offset > 0
-          ? `${item.id.client}:${item.id.clock + offset - 1}`
+          ? items[items.length - 2]!
           : item.origin
             ? `${item.origin.client}:${item.origin.clock}`
             : null
       );
       if (isText) {
         const [client, clock] = identityParts(marks, item.id.client, item.id.clock + offset);
-        ids.push(`${client}:${clock}`);
+        ids.push(client === item.id.client && clock === currentClock ? itemKey : `${client}:${clock}`);
         clients.push(client);
         clocks.push(clock);
       } else {
@@ -367,7 +369,6 @@ export function textIdentities(text: Y.Text): TextIdentities {
         clients.push(-1);
         clocks.push(-1);
       }
-      const currentClock = item.id.clock + offset;
       const isMoved = movedAt(currentClock);
       const isRestored =
         isText && !isMoved && marks.origin('restore', item.id.client, currentClock) !== null;
