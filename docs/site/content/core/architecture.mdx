@@ -75,14 +75,7 @@ Use `editor.exec({ type: 'changeCase', mode: 'uppercase' })` for a nonempty text
 
 ### Initial widget size
 
-Use `configureInitialBlockView` when a widget replaces the text band of one body paragraph.
-Pass `setInitialBlockHeights` a map from paragraph IDs to height functions.
-Use a pure size function for each document load.
-Each function receives the paragraph's available width in points and returns the widget's full height in points.
-The first layout reserves the difference between that height and the native text band.
-The editor limits the reservation to the page's content height.
-Send measured reservations through `setBlockReservations` after the widget mounts.
-These reservations affect the reader's local layout. Saving and collaboration preserve the original Word paragraph.
+Use `configureInitialBlockView` when a widget replaces the text band of one body paragraph. Pass `setInitialBlockHeights` a map from paragraph IDs to height functions. Use a pure size function for each document load. Each function receives the paragraph's available width in points and returns the widget's full height in points. The first layout reserves the difference between that height and the native text band. The editor limits the reservation to the page's content height. Send measured reservations through `setBlockReservations` after the widget mounts. These reservations affect the reader's local layout. Saving and collaboration preserve the original Word paragraph.
 
 ### Fixed inline widget sizes
 

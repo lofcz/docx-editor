@@ -178,7 +178,10 @@ test('header metric revisions invalidate cached furniture widths and retain nati
     setSurfaceInlineWidgetMetrics(surface, metrics(40, '1'));
     expect(headerWidget()?.box.width).toBe(30);
     const headerId = headerWidget()!.inlineWidget!.controlId;
-    setSurfaceInlineWidgetMetrics(surface, new Map([[headerId, { width: 64, ascent: 20, descent: 4 }]]));
+    setSurfaceInlineWidgetMetrics(
+      surface,
+      new Map([[headerId, { width: 64, ascent: 20, descent: 4 }]])
+    );
     expect(headerWidget()?.box.width).toBe(48);
     const saved = readOoxmlPackage(new Uint8Array(await editor.save()));
     if (!saved.ok) throw new Error(saved.reason);
@@ -236,26 +239,32 @@ test('measurement publication waits for native IME readback and applies the late
 });
 
 test('indexed widget metrics reuse unaffected pages and retain complete layout geometry', () => {
-  const paragraphs = Array.from({length: 115}, (_, i) => i === 94 ? body : '<w:p>'+run('Paragraph '+i)+'</w:p>').join('');
+  const paragraphs = Array.from({ length: 115 }, (_, i) =>
+    i === 94 ? body : '<w:p>' + run('Paragraph ' + i) + '</w:p>'
+  ).join('');
   const input = docx(paragraphs);
-  const indexed = createDocxEditor({container: document.createElement('div'),document:input});
-  const full = createDocxEditor({container: document.createElement('div'),document:input});
+  const indexed = createDocxEditor({ container: document.createElement('div'), document: input });
+  const full = createDocxEditor({ container: document.createElement('div'), document: input });
   try {
-    const live = indexed.surface!, reference = full.surface!;
-    const id=live.layout().contentControls!.find(control => control.tag === 'chip:source')!.id;
-    const box = {width:40,ascent:20,descent:4};
-    const map = new Map([[id,box]]);
-    for(const width of [40,64,80]){
-      box.width=width;
-      setSurfaceInlineWidgetMetrics(live,map);
-      setSurfaceInlineWidgetMetrics(reference,metrics(width,String(width)));
+    const live = indexed.surface!,
+      reference = full.surface!;
+    const id = live.layout().contentControls!.find((control) => control.tag === 'chip:source')!.id;
+    const box = { width: 40, ascent: 20, descent: 4 };
+    const map = new Map([[id, box]]);
+    for (const width of [40, 64, 80]) {
+      box.width = width;
+      setSurfaceInlineWidgetMetrics(live, map);
+      setSurfaceInlineWidgetMetrics(reference, metrics(width, String(width)));
       expect(live.layout().pages).toEqual(reference.layout().pages);
       expect(live.layoutSession().stats.placed).toBeLessThan(live.layoutSession().stats.total);
       expect(live.layoutSession().stats.reusedPages).toBeGreaterThan(0);
     }
     map.clear();
-    setSurfaceInlineWidgetMetrics(live,null);
-    setSurfaceInlineWidgetMetrics(reference,null);
+    setSurfaceInlineWidgetMetrics(live, null);
+    setSurfaceInlineWidgetMetrics(reference, null);
     expect(live.layout().pages).toEqual(reference.layout().pages);
-  } finally { indexed.destroy(); full.destroy(); }
+  } finally {
+    indexed.destroy();
+    full.destroy();
+  }
 });

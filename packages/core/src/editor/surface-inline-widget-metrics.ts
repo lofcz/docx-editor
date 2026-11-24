@@ -95,7 +95,8 @@ export function setSurfaceInlineWidgetMetrics(
   surface: PaginatedSurface,
   measurements: InlineWidgetMetricsSnapshot | ReadonlyMap<string, InlineWidgetMetrics> | null
 ): void {
-  const snapshot = measurements && 'get' in measurements ? captureInlineWidgetMetrics(measurements) : measurements;
+  const snapshot =
+    measurements && 'get' in measurements ? captureInlineWidgetMetrics(measurements) : measurements;
   const update = updates.get(surface);
   if (!update) throw new Error('The native surface does not support inline widget measurements.');
   validateSnapshot(snapshot);

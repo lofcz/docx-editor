@@ -304,7 +304,12 @@ function* layoutInModeSteps(
     fieldCodeRanges: options.showFieldCodes ? tocCodeRanges(part) : undefined,
     tocLinkStyleRanges: linkStyleRanges,
     displayMode,
-    producer: documentProjectionProducer(options, controlToken, tocLinkStyleToken(linkStyleRanges), Boolean(widgetProjection)),
+    producer: documentProjectionProducer(
+      options,
+      controlToken,
+      tocLinkStyleToken(linkStyleRanges),
+      Boolean(widgetProjection)
+    ),
     tocFieldChromeParagraphIds:
       options.tocFieldChromeParagraphIds ?? tocFieldChromeParagraphIds(part),
     emptyTocPlaceholderParagraphIds:
