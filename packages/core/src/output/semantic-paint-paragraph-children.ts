@@ -1,3 +1,5 @@
+import { PARAGRAPH_BOUNDARY_CLASS } from './semantic-paragraph-boundary.ts';
+
 // Only the painter owns the nodes recorded here. Hosts can attach controls to a paragraph.
 const ownedChildren = new WeakMap<HTMLElement, readonly HTMLElement[]>();
 
@@ -42,6 +44,14 @@ function plainRun(node: HTMLElement | undefined): node is HTMLElement {
     node.classList.contains('layout-run-text') &&
     node.childNodes.length === 1 &&
     node.firstChild?.nodeType === 3
+  );
+}
+
+function paragraphBoundary(node: HTMLElement): boolean {
+  return (
+    node.classList.contains(PARAGRAPH_BOUNDARY_CLASS) &&
+    node.childNodes.length === 1 &&
+    node.firstElementChild?.tagName === 'BR'
   );
 }
 
@@ -96,6 +106,15 @@ function updateRuns(parent: HTMLElement, fresh: HTMLElement): void {
       updateRuns(old, child);
       return old;
     }
+    if (
+      paragraphBoundary(old) &&
+      paragraphBoundary(child) &&
+      old.firstChild!.isEqualNode(child.firstChild)
+    ) {
+      used.add(old);
+      copyAttributes(old, child);
+      return old;
+    }
     if (!plainRun(old) || !plainRun(child)) return child;
     used.add(old);
     copyAttributes(old, child);
@@ -107,11 +126,30 @@ function updateRuns(parent: HTMLElement, fresh: HTMLElement): void {
 /** Keep text and its browser selection connected. Replace opaque paint at its own position. */
 export function reconcileParagraphChildren(root: HTMLElement, fresh: HTMLElement): void {
   const old = ownedChildren.get(root)!;
-  const lines = new Map(
-    old.filter((child) => child.dataset.lineId).map((c) => [c.dataset.lineId, c])
+  const oldLines = old.filter((child) => child.dataset.lineId);
+  const lines = new Map(oldLines.map((line) => [line.dataset.lineId, line]));
+  const nextIds = new Set(
+    Array.from(fresh.children, (child) => (child as HTMLElement).dataset.lineId)
   );
+  let index = 0;
   reconcileOwned(root, fresh, (source) => {
-    const line = lines.get(source.dataset.lineId);
+    const id = source.dataset.lineId;
+    if (!id) return source;
+    const adjacent = oldLines[index++];
+    let line = lines.get(id);
+    // A preceding insertion changes the start offset in later line IDs.
+    // Reserve exact matches, then keep text rows whose children all belong to paint.
+    if (!line && adjacent && !nextIds.has(adjacent.dataset.lineId)) {
+      const runs = ownedChildren.get(adjacent);
+      if (
+        runs?.length === adjacent.childNodes.length &&
+        runs.every(
+          (run) => run.parentNode === adjacent && (paragraphBoundary(run) || plainRun(run))
+        )
+      ) {
+        line = adjacent;
+      }
+    }
     const runs = line && ownedChildren.get(line);
     if (!line || line.parentNode !== root || !runs) return source;
     copyAttributes(line, source);
