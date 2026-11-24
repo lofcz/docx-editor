@@ -210,3 +210,16 @@ The destination was page 47. DOCX built its visible pages once. The previous eng
 | Exact text in 4 of 4 runs | 4 of 4 runs | Equal |
 
 The previous DOCX median was 193.1 ms. The caret position, line, scroll offset, and final page set matched after paste, undo, and redo.
+
+## Paint words before a clipped space
+
+Four alternating WinPC browser pairs pasted 158,633 characters. Both editors retained the exact text in all runs.
+
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| Paste elapsed 159.0 ms | 110.3 ms | DOCX took 44.2% longer |
+| Renderer CPU 130.7 ms | 83.1 ms | DOCX used 57.2% more CPU time |
+
+Across 81 painted lines, the native text spans fell from 486 to 108. All 154 shared browser hit tests gave the same model offsets.
+Chrome compared 7,366 glyph rectangles. Their vertical coordinates and heights matched. The largest horizontal difference was 0.109375 CSS pixels.
+The largest width difference was 0.015625 CSS pixels.

@@ -1,7 +1,7 @@
 import type { LineRecord, StyleSpanRecord } from '../layout/semantic-records.ts';
 
 /** A word boundary can share a DOM range only when the browser can paint its natural advance. */
-function plainText(span: StyleSpanRecord): boolean {
+function plainText(span: StyleSpanRecord, allowClippedSpace = false): boolean {
   return (
     !span.projected &&
     !span.unsupported &&
@@ -13,7 +13,7 @@ function plainText(span: StyleSpanRecord): boolean {
     !span.revisions?.length &&
     !span.changeSites?.length &&
     !span.syntheticBold &&
-    !span.lineEndWhitespace &&
+    (!span.lineEndWhitespace || allowClippedSpace) &&
     !span.wrapAdvanceBefore &&
     span.glyphOffsetPt === undefined &&
     span.text.length === span.range.end - span.range.start &&
@@ -43,6 +43,10 @@ export function plainLineForPaint(line: LineRecord): LineRecord {
     !plainText(first)
   )
     return line;
+  // A clipped line-end space keeps its own painted width and model range.
+  const last = line.spans.at(-1)!;
+  const clippedSpace = last.lineEndWhitespace && /^ +$/.test(last.text) ? last : undefined;
+  if (clippedSpace && line.spans.length === 2) return line;
   let previous = first;
   for (let index = 1; index < line.spans.length; index++) {
     const span = line.spans[index]!;
@@ -56,20 +60,21 @@ export function plainLineForPaint(line: LineRecord): LineRecord {
       span.box.y !== first.box.y ||
       Math.abs(span.box.x - (previous.box.x + previous.box.width)) > 0.001 ||
       !(previous.text.endsWith(' ') || span.text.startsWith(' ')) ||
-      !plainText(span)
+      !plainText(span, span === clippedSpace)
     )
       return line;
     previous = span;
   }
+  const words = clippedSpace ? line.spans.slice(0, -1) : line.spans;
+  const end = words.at(-1)!;
+  const joined = {
+    ...first,
+    text: words.map((span) => span.text).join(''),
+    range: { ...first.range, end: end.range.end },
+    box: { ...first.box, width: end.box.x + end.box.width - first.box.x },
+  };
   return {
     ...line,
-    spans: [
-      {
-        ...first,
-        text: line.spans.map((span) => span.text).join(''),
-        range: { ...first.range, end: previous.range.end },
-        box: { ...first.box, width: previous.box.x + previous.box.width - first.box.x },
-      },
-    ],
+    spans: clippedSpace ? [joined, clippedSpace] : [joined],
   };
 }
