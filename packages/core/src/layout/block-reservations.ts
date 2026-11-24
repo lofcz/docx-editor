@@ -38,6 +38,21 @@ export interface BlockReservations {
   insetOf?(nodeId: string): BlockInset | undefined;
 }
 
+/** Internal measurement of a single paragraph's inline widget before it mounts. */
+interface InitialBlockBox {
+  readonly key: number;
+  current(): boolean;
+  reserve(width: number, textHeight: number, pageHeight: number): number;
+}
+let nextInitialBoxKey = 0;
+const openingBoxes = new WeakMap<BlockReservations, ReadonlyMap<string, InitialBlockBox>>();
+
+/** Opening metadata belongs to the surface's current reservation snapshot. */
+function initialBlockBoxOf(reservations: BlockReservations | undefined, id: string) {
+  const box = reservations && openingBoxes.get(reservations)?.get(id);
+  return box?.current() ? box : undefined;
+}
+
 /** Quarter-point ceiling of a finite positive value; 0 for anything else. */
 export function quantizeBlockReservation(points: number): number {
   if (typeof points !== 'number' || !Number.isFinite(points) || points <= 0) return 0;
@@ -49,9 +64,11 @@ export function blockReservationToken(
   reservations: BlockReservations | undefined,
   nodeId: string
 ): string {
+  const box = initialBlockBoxOf(reservations, nodeId);
   const extra = reservations?.extraAfter(nodeId) ?? 0;
   const inset = reservations?.insetOf?.(nodeId);
   return (
+    (box ? `|initial:${box.key}` : '') +
     (extra > 0 ? `|reserve:${extra}` : '') +
     (inset ? `|inset:${inset.left},${inset.right},${inset.top ?? 0},${inset.bottom ?? 0}` : '')
   );
@@ -147,47 +164,105 @@ export function reservedAfterOf(
   return reservations?.extraAfter(paragraphId) ?? 0;
 }
 
+/** Opening widgets share the line break and column width from this paragraph layout. */
+export function paragraphReservation(
+  reservations: BlockReservations | undefined,
+  entry: { readonly paragraph: { readonly id: string }; readonly available: number },
+  lines: readonly { readonly height: number }[],
+  pageHeight: () => number
+): number {
+  const id = entry.paragraph.id;
+  const box = initialBlockBoxOf(reservations, id);
+  return box
+    ? box.reserve(
+        entry.available,
+        lines.reduce((sum, line) => sum + line.height, 0),
+        pageHeight()
+      )
+    : reservedAfterOf(reservations, id);
+}
+
 /**
  * Mutable host-side holder. `set` and `setInsets` each replace their whole map and report
  * whether any value changed; `option` is the frozen view a layout pass reads.
  */
 export function createBlockReservationState(): {
+  setInitialHeights(
+    heights: ReadonlyMap<string, (widthPt: number) => number>,
+    current: () => boolean
+  ): void;
   set(next: ReadonlyMap<string, number>): boolean;
   setInsets(next: ReadonlyMap<string, BlockInset>): boolean;
   option(): BlockReservations | undefined;
 } {
   let values = new Map<string, number>();
+  let opening = new Map<string, InitialBlockBox>();
+  const predicted = new Map<string, number>();
   let insets = new Map<string, BlockInset>();
   let generation = 0;
   let current: BlockReservations | undefined;
   const publish = () => {
     generation += 1;
     const frozen = values,
-      frozenInsets = insets;
+      frozenInsets = insets,
+      boxes = opening;
     current =
-      frozen.size === 0 && frozenInsets.size === 0
+      frozen.size === 0 && frozenInsets.size === 0 && boxes.size === 0
         ? undefined
         : Object.freeze({
             epoch: `reserve:${generation}`,
             extraAfter: (paragraphId: string) => frozen.get(paragraphId) ?? 0,
             insetOf: (nodeId: string) => frozenInsets.get(nodeId),
           });
+    if (current && boxes.size) openingBoxes.set(current, boxes);
   };
   return {
+    setInitialHeights(heights, currentPackage) {
+      opening = new Map();
+      predicted.clear();
+      for (const [id, heightOf] of heights) {
+        opening.set(id, {
+          key: ++nextInitialBoxKey,
+          current: currentPackage,
+          reserve(width, textHeight, pageHeight) {
+            const room = quantizeBlockReservation(
+              Math.min(pageHeight, heightOf(width)) - textHeight
+            );
+            predicted.set(id, room);
+            return room;
+          },
+        });
+      }
+      publish();
+    },
     set(next) {
       const normalized = new Map<string, number>();
       for (const [id, points] of next) {
         const value = quantizeBlockReservation(points);
         if (typeof id === 'string' && id && value > 0) normalized.set(id, value);
       }
+      const measuredOpening = opening.size ? [...next.keys()].filter((id) => opening.has(id)) : [];
       if (
+        !measuredOpening.length &&
         normalized.size === values.size &&
         [...normalized].every(([id, value]) => values.get(id) === value)
       )
         return false;
+      // The measured box takes ownership. Equal geometry leaves the painted pages intact.
+      const changed =
+        [...values.keys()].some((id) => !normalized.has(id)) ||
+        [...normalized].some(([id, height]) => (values.get(id) ?? predicted.get(id)) !== height) ||
+        measuredOpening.some((id) => !normalized.has(id) && (predicted.get(id) ?? 0) > 0);
+      if (measuredOpening.length) {
+        opening = new Map(opening);
+        for (const id of measuredOpening) {
+          opening.delete(id);
+          predicted.delete(id);
+        }
+      }
       values = normalized;
       publish();
-      return true;
+      return changed;
     },
     setInsets(next) {
       const normalized = new Map<string, BlockInset>();

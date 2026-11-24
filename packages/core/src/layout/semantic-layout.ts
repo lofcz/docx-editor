@@ -2173,12 +2173,9 @@ function* layoutBlocksPass(
     // remove room reserved for a disclosure header or the surrounding container frame.
     const chromeTop = collapsedMark ? 0 : insetTop;
     const chromeBottom = collapsedMark ? 0 : insetBottom;
-    // A host widget's flow room after the paragraph. It joins after contextual suppression
-    // and stays outside the paragraph's box: the room belongs to the rendered widget, so the
-    // paragraph, its control boundary, and hit testing keep their native extent.
     const reservedAfter = collapsedMark
       ? 0
-      : blockSpace.reservedAfterOf(options.blockReservations, paragraphId);
+      : blockSpace.paragraphReservation(options.blockReservations, entry, lines, contentHeight);
     // Whether a line's own wrapping objects still cross the margin (`wrappedAnchorsEndAtBottomMargin`).
     const pageFit = createOwnAnchorPageFit(paragraph, {
       ...anchorScope,

@@ -90,3 +90,90 @@ test('an unknown initial owner refuses the map and leaves the document visible',
     editor.destroy();
   }
 });
+
+test('a width-based widget takes its measured room on the first layout', () => {
+  const host = document.createElement('div');
+  const control = createDocxEditor({ container: document.createElement('div'), document: bytes });
+  let width = 0;
+  let id = '';
+  const editor = createDocxEditor({
+    container: host,
+    document: bytes,
+    configureInitialBlockView(pkg, view) {
+      id = paragraphIdsInDocumentOrder(pkg.parts.get(pkg.mainDocumentPart)!)[0]!;
+      view.setInitialBlockHeights(
+        new Map([
+          [
+            id,
+            (points) => {
+              width = points;
+              return points / 3;
+            },
+          ],
+        ])
+      );
+    },
+  });
+  try {
+    const surface = editor.surface!;
+    const first = surface.layout();
+    const nextId = surface.session.paragraphIds()[1]!;
+    const y = (layout: typeof first) => caretAt(layout, { paragraphId: nextId, offset: 0 })!.y;
+    const extra = y(first) - y(control.surface!.layout());
+    expect(width).toBeGreaterThan(0);
+    expect(extra).toBeGreaterThan(0);
+    expect(extra).toBeLessThan(width / 3);
+    expect(surface.state().perf.fullPasses).toBe(1);
+    surface.setBlockReservations(new Map([[id, extra]]));
+    surface.flushPendingInput();
+    expect(surface.layout()).toBe(first);
+    surface.setBlockReservations(new Map([[id, 0]]));
+    surface.flushPendingInput();
+    expect(y(surface.layout())).toBeCloseTo(y(control.surface!.layout()));
+    expect(surface.state().canUndo).toBe(false);
+  } finally {
+    editor.destroy();
+    control.destroy();
+  }
+});
+
+test('opening boxes use section column widths in points independently of zoom', () => {
+  for (const [pageWidth, zoom] of [
+    [7800, 0.75],
+    [12240, 1.5],
+  ] as const) {
+    const available = (pageWidth - 1000) / 20;
+    const widthCalls: number[] = [];
+    const word = docx(
+      p('Figure') +
+        p('After') +
+        `<w:sectPr><w:pgSz w:w="${pageWidth}" w:h="15840"/><w:pgMar w:left="500" w:right="500"/></w:sectPr>`
+    );
+    const editor = createDocxEditor({
+      container: document.createElement('div'),
+      document: word,
+      zoom,
+      configureInitialBlockView(pkg, view) {
+        const [id] = paragraphIdsInDocumentOrder(pkg.parts.get(pkg.mainDocumentPart)!);
+        view.setInitialBlockHeights(
+          new Map([
+            [
+              id!,
+              (widthPt) => {
+                widthCalls.push(widthPt);
+                return (widthPt * 2) / 3;
+              },
+            ],
+          ])
+        );
+      },
+    });
+    try {
+      expect(widthCalls[0]).toBeCloseTo(available);
+      expect(editor.getZoom()).toBe(zoom);
+      expect(editor.surface!.state().perf.fullPasses).toBe(1);
+    } finally {
+      editor.destroy();
+    }
+  }
+});

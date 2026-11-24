@@ -51,6 +51,10 @@ export function createSurfaceBlockView(
           const result = state.set(initialPart, next);
           return result.ok ? { ok: true } : result;
         },
+        setInitialBlockHeights(heights) {
+          checkActive();
+          reservations.setInitialHeights(heights, () => session.currentPackage() === pkg);
+        },
         setBlockInsets(insets) {
           checkActive();
           reservations.setInsets(insets);

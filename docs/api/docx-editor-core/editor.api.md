@@ -2053,7 +2053,9 @@ export function computeResizedImageExtentEmu(startWidthEmu: number, startHeightE
 };
 
 // @public
-export type ConfigureInitialBlockView = (pkg: OoxmlPackage, view: SurfaceContentControlCollapse & Pick<SurfaceBlockReservations, 'setBlockInsets'>) => void;
+export type ConfigureInitialBlockView = (pkg: OoxmlPackage, view: SurfaceContentControlCollapse & Pick<SurfaceBlockReservations, 'setBlockInsets'> & {
+    setInitialBlockHeights(heights: ReadonlyMap<string, (widthPt: number) => number>): void;
+}) => void;
 
 // @public
 export const CONTENT_CONTROL_PICTURE_ACCEPT = "image/png,image/jpeg,image/gif,image/bmp,image/webp";

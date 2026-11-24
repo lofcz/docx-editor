@@ -72,3 +72,14 @@ Edits go back into the tree as transactions. Layout and paint then run again for
 ### Change selected text to a different case
 
 Use `editor.exec({ type: 'changeCase', mode: 'uppercase' })` for a nonempty text selection. Choose `sentence`, `lowercase`, `uppercase`, `capitalizeWords`, or `toggle`. The command uses the text's language and Unicode word and sentence boundaries. It preserves links, run formatting, and the selection direction. Undo reverts the selection in one step. A protected change, rectangular cell selection, or character split across incompatible text boundaries returns a refusal.
+
+### Initial widget size
+
+Use `configureInitialBlockView` when a widget replaces the text band of one body paragraph.
+Pass `setInitialBlockHeights` a map from paragraph IDs to height functions.
+Use a pure size function for each document load.
+Each function receives the paragraph's available width in points and returns the widget's full height in points.
+The first layout reserves the difference between that height and the native text band.
+The editor limits the reservation to the page's content height.
+Send measured reservations through `setBlockReservations` after the widget mounts.
+These reservations affect the reader's local layout. Saving and collaboration preserve the original Word paragraph.

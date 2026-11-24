@@ -53,5 +53,11 @@ export interface SurfaceContentControlCollapse {
  */
 export type ConfigureInitialBlockView = (
   pkg: OoxmlPackage,
-  view: SurfaceContentControlCollapse & Pick<SurfaceBlockReservations, 'setBlockInsets'>
+  view: SurfaceContentControlCollapse &
+    Pick<SurfaceBlockReservations, 'setBlockInsets'> & {
+      /** Size inline widgets in single body paragraphs before the first paint. Each callback
+       * receives the available paragraph width and returns the full widget height, in points.
+       * A live measurement supersedes that paragraph's initial size. */
+      setInitialBlockHeights(heights: ReadonlyMap<string, (widthPt: number) => number>): void;
+    }
 ) => void;

@@ -14,7 +14,7 @@ import { collaborationModule } from '../collaboration-module.ts';
 import { createPeerHarness, type Peer } from './document-peer-support.ts';
 import { loadPackage, packageDigest } from './document-support.ts';
 
-test('initial folds and insets stay local through peer edits, history, and saving', async () => {
+test('initial widget height, folds, and insets stay local through peer edits, history, and saving', async () => {
   const harness = createPeerHarness('initial-block-view');
   const { alice, bob } = await harness.pair(
     importMdxDocument('<details>\n<summary>Summary</summary>\n\nAnswer\n\n</details>')
@@ -32,6 +32,7 @@ test('initial folds and insets stay local through peer edits, history, and savin
   }
   const folded = mount(alice, (pkg, view) => {
     const detail = readMdxComponents(pkg).find((v) => v.name === 'details')!;
+    view.setInitialBlockHeights(new Map([[detail.summaryParagraphId!, (width) => width / 4]]));
     expect(
       view.setCollapsedContentControls(new Map([[detail.controlId, detail.summaryParagraphId!]]))
     ).toEqual({ ok: true });
