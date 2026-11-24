@@ -31,22 +31,34 @@ function directOwners(blocks: readonly OoxmlElement[]) {
   return found;
 }
 
+const projections = new WeakMap<ReadonlyMap<string, InlineWidgetMetrics>, WeakMap<readonly OoxmlElement[], ReadonlyMap<string, string> | null>>();
+function tokensForBlocks(boxes: ReadonlyMap<string, InlineWidgetMetrics>, blocks: readonly OoxmlElement[]) {
+  const paragraphs = directOwners(blocks);
+  const entries = new Map<string, string[]>();
+  for (const [id, box] of boxes) {
+    const owner = paragraphs.get(id);
+    if (owner === undefined) return null;
+    const tokens = entries.get(owner) ?? [];
+    tokens.push(JSON.stringify([id,box.width,box.ascent,box.descent]));
+    entries.set(owner,tokens);
+  }
+  return new Map([...entries].map(([id, keys]) => [id, framedTokenJoin(keys.sort())]));
+}
+
 /** Use paragraph keys only when every published box has a known direct body owner. */
 export function indexedWidgetProjection(options: SemanticLayoutOptions, blocks: readonly OoxmlElement[]) {
   const source = options.measurer.inlineWidgets;
   const boxes = source && byProvider.get(source.measure);
   const hasFurniture = (f: SemanticLayoutOptions['furniture']) => Boolean(f && (f.headers.size || f.footers.size));
   if (!boxes || options.notes || hasFurniture(options.furniture) || options.sectionFurniture?.some(hasFurniture)) return undefined;
-  const paragraphs = directOwners(blocks);
-  const entries = new Map<string, string[]>();
-  for (const [id, box] of boxes) {
-    const owner = paragraphs.get(id);
-    if (owner === undefined) return undefined;
-    const tokens = entries.get(owner) ?? [];
-    tokens.push(JSON.stringify([id,box.width,box.ascent,box.descent]));
-    entries.set(owner,tokens);
+  let cached = projections.get(boxes);
+  if (!cached) projections.set(boxes, cached = new WeakMap());
+  let tokens = cached.get(blocks);
+  if (tokens === undefined) {
+    tokens = tokensForBlocks(boxes, blocks);
+    cached.set(blocks, tokens);
   }
-  const tokens = new Map([...entries].map(([id, keys]) => [id, framedTokenJoin(keys.sort())]));
+  if (tokens === null) return undefined;
   const previous = options.projectionTokenForParagraph;
   return {
     projectionEpoch: previous && options.projectionEpoch === undefined ? undefined : framedTokenJoin([options.projectionEpoch ?? '',inlineWidgetProducer('',options.measurer)!]),

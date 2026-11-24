@@ -177,7 +177,8 @@ test('header metric revisions invalidate cached furniture widths and retain nati
         .find((span) => span.inlineWidget);
     setSurfaceInlineWidgetMetrics(surface, metrics(40, '1'));
     expect(headerWidget()?.box.width).toBe(30);
-    setSurfaceInlineWidgetMetrics(surface, metrics(64, '2'));
+    const headerId = headerWidget()!.inlineWidget!.controlId;
+    setSurfaceInlineWidgetMetrics(surface, new Map([[headerId, { width: 64, ascent: 20, descent: 4 }]]));
     expect(headerWidget()?.box.width).toBe(48);
     const saved = readOoxmlPackage(new Uint8Array(await editor.save()));
     if (!saved.ok) throw new Error(saved.reason);
