@@ -13,6 +13,8 @@ An element counts once per style pass. These instrumented counts describe browse
 | Elements styled in the largest pass, 2,859 | 141 | 20.28× as many |
 | Browser layout passes, 61 | 61 | Equal |
 | Animation frame callbacks, 718 | 72 | 9.97× as many |
+| Time inside animation frame callbacks, 13.025 ms | 3.909 ms | 9.116 ms more |
+| Time calculating styles, 60.781 ms | 8.655 ms | 52.126 ms more |
 
 Eight toolbar subscriptions scheduled 472 of the DOCX callbacks.
 Another trace showed 58 edits retained the same flow past the edited paragraph. One edit added a line.
@@ -38,6 +40,10 @@ The times are medians through two animation frames. All 48 documents had the exp
 
 All 33 consumer tests passed with 489 assertions. WinPC verified five archives, 766 installed files, and the frozen lockfile.
 Both builds resolved one engine. All 77 runtime files matched the archive. [Paired browser measurements](profiles/winpc-installed-5a019-history.jsonl)
+
+Sciobot `2fd83fe0f` also pins this engine and includes upstream `925da5ba2`.
+WinPC installed that complete source tree with its frozen lockfile and generated the locale modules.
+All 289 frontend tests and 35 backend tests passed across the 52 changed test files.
 
 Four alternating pairs typed 59 characters into the stored lesson, with a 65 ms keyboard delay.
 Plate missed the target word in one additional attempt before timing began. The recorded repeat used the same word.
