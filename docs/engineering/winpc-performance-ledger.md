@@ -2,6 +2,25 @@
 
 Use `codex/react-block-proof` for progressive integration. Sciobot uses `claude/docx-native-cutover`.
 
+## Installed rich typing in Sciobot 24d9b82f0
+
+Sciobot `24d9b82f0` ships engine `8f1564202`. WinPC verified five archives, 766 installed files, and the frozen lockfile.
+The Home and collaboration builds each resolved one engine. All 77 runtime files matched the package.
+WinPC alternated editor order across four pairs. Each editor typed the same 59 keys with 65 ms pauses.
+
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| Renderer CPU, 772.65 ms | 607.32 ms | 27.2% more CPU time |
+| Elapsed including keyboard pauses, 5,305.15 ms | 5,244.00 ms | 1.2% more time |
+| Median keypress to exact text, 7.00 ms | 1.10 ms | 5.90 ms longer |
+| Median keypress to frame, 8.25 ms | 6.85 ms | 1.40 ms longer |
+| 95th-percentile keypress to frame, 16.07 ms | 15.85 ms | 0.22 ms longer |
+| Wrapping space to frame, 62.65 ms | 14.75 ms | 47.90 ms longer |
+| Correct final text, caret, and backward selection, 4/4 | 4/4 | Equal |
+| Follow-up input-method check, 4/4 | 1/4 | Three more passes |
+
+The table uses medians across the four runs per editor. Both participant orders passed reconnect, undo, redo, save, and reopen. [All eight typing runs](profiles/winpc-installed-8f156-rich-typing.jsonl)
+
 ## Large paste undo and redo in Chrome
 
 Three paired profiles used engine `5a0194e03` and Plate. Each restored the exact text after a 158,633-character paste.
@@ -97,7 +116,7 @@ Another trace showed 58 edits retained the same flow past the edited paragraph. 
 Removing duplicate table sizing eliminated 236 scheduled style invalidations. Browser style time rose from 52.88 to 76.25 ms in that trial.
 The installed comparison below provides repeated end-to-end timings. [WinPC trace counts](profiles/winpc-installed-5a019-rich-work.jsonl)
 
-## Current installed comparison
+## Installed comparison at engine 5a0194e03
 
 Sciobot commit `18edad0bb` pins engine `5a0194e03`. WinPC ran four alternating pairs for each action.
 The times are medians through two animation frames. All 48 documents had the expected text.
