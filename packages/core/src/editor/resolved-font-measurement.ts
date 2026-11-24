@@ -1,4 +1,4 @@
-import { shapeForWidth, registerShapeWidth } from '../layout/shape-width.ts';
+import { partitionWidthsOf, shapeForWidth, registerShapeWidth } from '../layout/shape-width.ts';
 import { EditorFontError, type FontConfiguration } from '../contracts/editor.ts';
 import {
   createLayoutShapedMeasurer,
@@ -94,8 +94,10 @@ export function resolvedFontMeasurement(
       }
     : shaping.shaper;
   if (observed !== shaping.shaper)
-    registerShapeWidth(observed, (input) =>
-      observe(input, () => shapeForWidth(shaping.shaper, input))
+    registerShapeWidth(
+      observed,
+      (input) => observe(input, () => shapeForWidth(shaping.shaper, input)),
+      partitionWidthsOf(shaping.shaper)
     );
   // It only reports a refusal and rethrows it, so its runs are the wrapped shaper's.
   const shaper =

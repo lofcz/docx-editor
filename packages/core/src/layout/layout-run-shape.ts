@@ -76,7 +76,7 @@ export function measureLayoutStyleRun(
   return shapeForWidth(shaper, layoutShapeInput(environment, font, style, text));
 }
 
-function layoutShapeInput(
+export function layoutShapeInput(
   environment: LayoutShapingEnvironment,
   font: ResolvedFont,
   style: ResolvedRunStyle,

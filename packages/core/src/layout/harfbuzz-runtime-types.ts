@@ -1,3 +1,5 @@
+import type { GlyphOutline } from './shaped-run.ts';
+
 export type HarfBuzzModule = typeof import('harfbuzzjs');
 type HarfBuzzBlob = InstanceType<HarfBuzzModule['Blob']>;
 export type HarfBuzzBuffer = InstanceType<HarfBuzzModule['Buffer']>;
@@ -11,4 +13,11 @@ export interface ActiveHarfBuzzFont {
   readonly font: HarfBuzzFont;
   readonly unitsPerEm: number;
   readonly byteLength: number;
+}
+
+export interface CachedOutline {
+  readonly outline: GlyphOutline;
+  readonly bytes: number;
+  readonly identity: string;
+  readonly glyphId: number;
 }

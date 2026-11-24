@@ -1,4 +1,4 @@
-import { shapeForWidth } from '../shape-width.ts';
+import { partitionWidthsOf, shapeForWidth } from '../shape-width.ts';
 import { describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import {
@@ -96,6 +96,32 @@ const input = (
 
 describe('HarfBuzz production shaper', () => {
   const shaper = createHarfBuzzTextShaper();
+
+  test('prepares only independent widths at safe HarfBuzz cluster boundaries', () => {
+    const worker = createHarfBuzzTextShaper();
+    try {
+      worker.shape(input('VA0123456789 '));
+      const partition = partitionWidthsOf(worker)!;
+      const parts = ['12 ', '34 ', '56'];
+      const widths = partition(input(parts.join('')), [3, 6, 8]);
+      expect(widths).toEqual(
+        parts.map((part) =>
+          worker.shape(input(part)).glyphs.reduce((sum, g) => sum + g.advanceX, 0)
+        )
+      );
+      const kerned = input('AV');
+      const separate = ['A', 'V'].map((part) =>
+        worker.shape(input(part)).glyphs.reduce((sum, g) => sum + g.advanceX, 0)
+      );
+      expect(partition(kerned, [1, 2])).toBeUndefined();
+      expect(worker.shape(kerned).glyphs.reduce((sum, glyph) => sum + glyph.advanceX, 0)).not.toBe(
+        separate[0]! + separate[1]!
+      );
+      expect(partition(input('1\u0378'), [1, 2])).toBeUndefined();
+    } finally {
+      worker.dispose();
+    }
+  });
 
   test('measures admitted glyphs with their actual kerned advances and retains shaping limits', () => {
     const worker = createHarfBuzzTextShaper();

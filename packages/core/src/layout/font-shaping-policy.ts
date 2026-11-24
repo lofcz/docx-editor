@@ -1,4 +1,4 @@
-import { shapeForWidth, registerShapeWidth } from './shape-width.ts';
+import { partitionWidthsOf, shapeForWidth, registerShapeWidth } from './shape-width.ts';
 import { HARD_MAX_FONT_BYTES, assertValidatedResolvedFont } from './font-resource.ts';
 import { HarfBuzzShapingError } from './harfbuzz-shaper.ts';
 import {
@@ -63,10 +63,19 @@ export function withFontShapingPolicy(
       if (ownsShaper) (shaper as TextShaper & { dispose?: () => void }).dispose?.();
     },
   });
-  registerShapeWidth(wrapped, (input) => {
-    check(input);
-    return shapeForWidth(shaper, input);
-  });
+  const partition = partitionWidthsOf(shaper);
+  registerShapeWidth(
+    wrapped,
+    (input) => {
+      check(input);
+      return shapeForWidth(shaper, input);
+    },
+    partition &&
+      ((input, ends) => {
+        check(input);
+        return partition(input, ends);
+      })
+  );
   // It only refuses input; the runs it returns are the wrapped shaper's.
   return preservesShapingFace(shaper) ? markFacePreservingShaper(wrapped) : wrapped;
 }

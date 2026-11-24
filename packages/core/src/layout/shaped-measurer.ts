@@ -1,4 +1,6 @@
 import { withAuthoredCjkGapMetric } from './cjk-auto-spacing-metric-port.ts';
+import { registerWidthPreparation, missingWidthParts } from './prepare-text-widths.ts';
+import { partitionWidthsOf } from './shape-width.ts';
 import { authoredLineBox } from './authored-line-boxes.ts';
 import { createResolvedCjkAutoSpacingGapMetric } from './sfnt-auto-spacing-metrics.ts';
 import { isRunKerningEnabled } from './run-kerning.ts';
@@ -50,6 +52,7 @@ import {
   layoutRunHalfPointsOf,
   layoutRunSizeFactorOf,
   shapeLayoutStyleRun,
+  layoutShapeInput,
   measureLayoutStyleRun,
   type LayoutShapingEnvironment,
 } from './layout-run-shape.ts';
@@ -593,6 +596,34 @@ export function createShapedMeasurer(
       return faceLineMetrics(font, style, entry);
     },
   };
+  const partition = partitionWidthsOf(shaper);
+  if (partition)
+    registerWidthPreparation(measurer, (text, boundaries, first, end, style) => {
+      const entry = entryOf(style);
+      const font = entry.font;
+      if (!font || style.smallCaps || isSyntheticBold(style, font)) return;
+      const cache = widthsFor(entry, font, style);
+      const parts = missingWidthParts(text, boundaries, first, end, style, cache);
+      if (parts.size < 2) return;
+      const ends: number[] = [];
+      let joined = '';
+      for (const part of parts) {
+        joined += part;
+        ends.push(joined.length);
+      }
+      // The joint request can exceed a limit even when its separate words fit.
+      // Each individual request remains authoritative when the joint request cannot prove its widths.
+      try {
+        const widths = partition(layoutShapeInput(baseEnvironment, font, style, joined), ends);
+        if (widths) {
+          let i = 0;
+          for (const part of parts)
+            cacheWidth(cache, part, widths[i++]! / baseEnvironment.fixedPointScale);
+        }
+      } catch {
+        return;
+      }
+    });
   return withAuthoredCjkGapMetric(measurer, automaticTextSpacingGap!);
 }
 

@@ -1,9 +1,11 @@
 import type {
   ActiveHarfBuzzFont,
+  CachedOutline,
   HarfBuzzModule,
   HarfBuzzBuffer,
 } from './harfbuzz-runtime-types.ts';
 import { registerShapeWidth, type ShapeWidthResult } from './shape-width.ts';
+import { admittedGlyphWidths } from './admitted-glyph-widths.ts';
 import { fontUnitsConverter, exactFontUnitsConverter } from './harfbuzz-font-units.ts';
 import {
   assertValidatedResolvedFont,
@@ -421,13 +423,6 @@ const shapeCacheEntryStorageBytes = (key: string, retainedRunBytes: number): num
   CACHED_SHAPE_WRAPPER_BYTES +
   retainedRunBytes;
 
-interface CachedOutline {
-  readonly outline: GlyphOutline;
-  readonly bytes: number;
-  readonly identity: string;
-  readonly glyphId: number;
-}
-
 interface CachedShape {
   readonly run: ShapedRun;
   readonly bytes: number;
@@ -470,7 +465,11 @@ class ProductionHarfBuzzTextShaper implements HarfBuzzTextShaper {
   constructor(harfBuzz: HarfBuzzModule, options: HarfBuzzTextShaperOptions) {
     // It refuses a fallback order, so every run it shapes is in the environment's face.
     markFacePreservingShaper(this);
-    registerShapeWidth(this, (input) => this.#shape(input, true));
+    registerShapeWidth(
+      this,
+      (input) => this.#shape(input, true),
+      !options.instrumentation ? (input, ends) => this.#shape(input, true, ends) : undefined
+    );
     this.#harfBuzz = harfBuzz;
     this.#maxFontBytes = assertPositiveLimit(
       options.maxFontBytes ?? DEFAULT_MAX_FONT_BYTES,
@@ -694,7 +693,16 @@ class ProductionHarfBuzzTextShaper implements HarfBuzzTextShaper {
 
   #shape(input: ShapeInput, widthOnly: false): ShapedRun;
   #shape(input: ShapeInput, widthOnly: true): ShapeWidthResult;
-  #shape(input: ShapeInput, widthOnly: boolean): ShapeWidthResult {
+  #shape(
+    input: ShapeInput,
+    widthOnly: true,
+    ends: readonly number[]
+  ): readonly number[] | undefined;
+  #shape(
+    input: ShapeInput,
+    widthOnly: boolean,
+    ends?: readonly number[]
+  ): ShapeWidthResult | readonly number[] | undefined {
     if (!this.#buffer) throw new HarfBuzzShapingError('disposed');
     assertValidatedResolvedFont(input.environment.font);
     if (input.environment.font.byteLength > this.#maxFontBytes) {
@@ -715,6 +723,7 @@ class ProductionHarfBuzzTextShaper implements HarfBuzzTextShaper {
     const cacheKey = this.#keys.keyOf(input, environment);
     const cached = this.#shapeResults.get(cacheKey);
     if (cached) {
+      if (ends) return undefined;
       // Approximate recency: an entry in the younger half stays put, so a hot run survives in
       // at worst a half-size true LRU. A delete and re-insert on every hit was a hot spot.
       if (this.#shapeStamp - cached.stamp >= Math.max(1, this.#shapeResults.size >> 1)) {
@@ -838,8 +847,7 @@ class ProductionHarfBuzzTextShaper implements HarfBuzzTextShaper {
         shaped.length === text.length &&
         shaped.length === positions.length
       ) {
-        const known = this.#outlines.get(active.identity);
-        let bytes =
+        const bytes =
           SHAPED_RUN_OBJECT_BYTES +
           stringStorageBytes(text) +
           arrayStorageBytes(glyphCount) * 3 +
@@ -847,27 +855,16 @@ class ProductionHarfBuzzTextShaper implements HarfBuzzTextShaper {
           FONT_SPAN_OBJECT_BYTES +
           METRICS_OBJECT_BYTES +
           glyphCount * (GLYPH_OBJECT_BYTES + CLUSTER_OBJECT_BYTES + arrayStorageBytes(2));
-        let advance = 0;
-        let valid = true;
-        for (let i = 0; i < glyphCount; i++) {
-          const glyph = shaped[i]!;
-          const pos = positions[i]!;
-          const cached = known?.get(glyph.codepoint);
-          if (
-            !cached ||
-            glyph.codepoint === 0 ||
-            glyph.cluster !== i ||
-            pos.xOffset !== 0 ||
-            pos.yOffset !== 0 ||
-            pos.yAdvance !== 0
-          ) {
-            valid = false;
-            break;
-          }
-          bytes += outlineStorageBytes(cached.outline.path);
-          advance = fixedPoint(advance + convert(pos.xAdvance));
-        }
-        if (valid && bytes <= this.#maxShapedRunBytes) {
+        const advance = admittedGlyphWidths(
+          shaped,
+          positions,
+          this.#outlines.get(active.identity),
+          this.#maxShapedRunBytes - bytes,
+          outlineStorageBytes,
+          convert,
+          ends
+        );
+        if (advance !== undefined) {
           const extents = font.hExtents();
           convert(extents.ascender);
           convert(-extents.descender);
@@ -875,6 +872,7 @@ class ProductionHarfBuzzTextShaper implements HarfBuzzTextShaper {
           return advance;
         }
       }
+      if (ends) return undefined;
       const exactAdvance = exactFontUnitsConverter(
         face.upem,
         input.fontSizeHalfPoints,

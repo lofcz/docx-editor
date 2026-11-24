@@ -2,6 +2,7 @@
 
 import { describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
+import { pieceWidthPreparation } from '../prepare-text-widths.ts';
 import { readOoxmlPart } from '../../store/index.ts';
 import { linesOf } from '../semantic-records.ts';
 import { layoutSemanticDocument } from '../semantic-layout.ts';
@@ -99,6 +100,31 @@ const style = (overrides: Partial<ResolvedRunStyle> = {}): ResolvedRunStyle => (
   ...DEFAULT_RUN_STYLE,
   fontSizePt: 11,
   ...overrides,
+});
+
+test('prepared words keep exact widths through scaling, tracking, and shaping fallback', () => {
+  const prepared = measurer();
+  const separate = measurer();
+  const drawn = style({
+    characterSpacingPt: 0.3,
+    horizontalScalePercent: 142,
+    shaping: { script: 'Latn', direction: 'ltr', wordSpacingPt: 1.75 },
+  });
+  prepared.measure('VA 0123456789', drawn);
+  const sample = ['14 ', '36 ', 'AV ', 'عربي', 'e\u0301', '58'];
+  const parts = Array.from({ length: 12 }, () => sample).flat();
+  let offset = 0;
+  const ends = parts.map((part) => (offset += part.length));
+  const prepare = pieceWidthPreparation(prepared, parts.join(''), ends, drawn);
+  expect(prepare).toBeDefined();
+  prepare!(0);
+  for (const part of sample)
+    expect(prepared.measure(part, drawn)).toBe(separate.measure(part, drawn));
+  const contextual = style({
+    shaping: { script: 'Arab', direction: 'rtl', context: { before: 'ب', after: 'ب' } },
+  });
+  expect(pieceWidthPreparation(prepared, parts.join(''), ends, contextual)).toBeUndefined();
+  expect(prepared.measure('ب', contextual)).toBe(separate.measure('ب', contextual));
 });
 
 test('layout adapter executes the exact environment carried by its operation identity', () => {

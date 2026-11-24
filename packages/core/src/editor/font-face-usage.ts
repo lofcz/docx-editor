@@ -9,6 +9,7 @@
 
 import type { ResolvedRunStyle, TextMeasurer } from '../layout/index.ts';
 import { forwardAuthoredCjkGapMetric } from '../layout/cjk-auto-spacing-metric-port.ts';
+import { forwardWidthPreparation } from '../layout/prepare-text-widths.ts';
 
 /** A face that layout measured. `family` is null for a run that names no font. */
 export interface UsedFontFace {
@@ -100,6 +101,7 @@ export function createFontFaceUsage(): FontFaceUsage {
       );
       // Layout keeps one setting by measurer object, the authored CJK gap: it goes along.
       forwardAuthoredCjkGapMetric(measurer, wrapper as unknown as TextMeasurer);
+      forwardWidthPreparation(measurer, wrapper as unknown as TextMeasurer);
       wrapped.set(measurer, wrapper as unknown as TextMeasurer);
       return wrapper as unknown as TextMeasurer;
     },

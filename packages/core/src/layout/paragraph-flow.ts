@@ -1,5 +1,6 @@
 import { finishParagraphLineMetrics } from './paragraph-line-metrics.ts';
 import { placeFittingWords } from './fitting-text-line.ts';
+import { pieceWidthPreparation } from './prepare-text-widths.ts';
 import { appendEquationSpan } from './inline-atom-flow.ts';
 import {
   inlineWidgetPieces,
@@ -1152,7 +1153,12 @@ export function breakParagraph(
       fitting?.boundaries ??
       cjkBreaks?.boundaries(piece) ??
       wordBoundaries(piece.text, !layoutOwned);
+    const prepareWidths =
+      !layoutOwned && !piece.measureText
+        ? pieceWidthPreparation(measurer, piece.text, boundaries, faceStyle)
+        : undefined;
     for (let at = fitting?.at ?? 0; at < boundaries.length; at++) {
+      prepareWidths?.(at);
       if (fitting && overflowWidth === undefined) {
         // The previous boundary used full wrapping. Ordinary words can fit directly again.
         const next = fitting.placeUntilOverflow(line, at, lineOrigin(), lineAvailable());

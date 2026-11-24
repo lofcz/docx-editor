@@ -1,4 +1,5 @@
 import type { InlineWidgetMetrics } from '../contracts/inline-widget-metrics.ts';
+import { forwardWidthPreparation } from '../layout/prepare-text-widths.ts';
 import { captureInlineWidgetMetrics } from '../layout/indexed-inline-widget-metrics.ts';
 import type { TextMeasurer } from '../layout/text-measurer.ts';
 import type { PaginatedSurface } from './paginated-surface-contract.ts';
@@ -61,6 +62,7 @@ export class SurfaceInlineWidgetMetrics {
     };
     this.wrappers.set(base, { snapshot, measurer: measured });
     this.originals.set(measured, base);
+    forwardWidthPreparation(base, measured);
     return measured;
   }
 }
