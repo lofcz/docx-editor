@@ -396,3 +396,23 @@ The first two rows measure the initial response. The last two include the full a
 
 During a separate Chrome trace, opening the overview moved the scroll position from 0 to 2,804 pixels.
 The overview button kept focus while the editor scrolled to the previous text selection twice. [Paired measurements](profiles/winpc-overview-87dc-pairs.jsonl)
+
+### Focused overview after repagination
+
+Four WinPC trials compared the installed engine, the rebuilt engine with `9e796864e`, and Plate.
+Each run edited the same paragraph before activating the overview button. The table shows median milliseconds.
+
+| Interaction | Installed DOCX | Fixed DOCX | Plate |
+| --- | ---: | ---: | ---: |
+| Open overview | 150.10 | 90.65 | 41.95 |
+| Close overview | 44.10 | 37.25 | 44.30 |
+| Open until motion stopped | 280.40 | 245.15 | 257.05 |
+| Close until motion stopped | 294.30 | 287.55 | 244.50 |
+
+The fixed editor kept the button at 406 px and the scroll position at zero throughout opening.
+It painted twice. The installed editor painted four times and scrolled 2,804 px. [Timing samples](profiles/winpc-overview-host-focus.jsonl)
+
+The source regression reproduced a 1,771.7 px scroll before the fix. All 103 focused checks passed after the fix.
+Both browser peer orders passed remote edits, reconnect, undo, redo, deletion, and save and reopen.
+Eleven of 13 browser disclosure tests passed. Both engines failed the same wheel-completion and border-travel assertions.
+The border error measured 19.63 px on both engines against a 2 px limit.
