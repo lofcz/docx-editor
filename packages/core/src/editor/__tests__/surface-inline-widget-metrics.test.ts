@@ -273,6 +273,38 @@ test('indexed widget metrics reuse unaffected pages and retain complete layout g
   }
 });
 
+test('cell widget measurements reuse earlier pages and keep nested table geometry exact', () => {
+  const cell = (text: string) =>
+    '<w:tbl><w:tblPr/><w:tblGrid><w:gridCol w:w="2400"/></w:tblGrid><w:tr><w:tc>' +
+    text +
+    '</w:tc></w:tr></w:tbl>';
+  const input = docx(
+    Array.from({ length: 115 }, (_, i) =>
+      i === 94 ? cell(cell(body) + '<w:p/>') : '<w:p>' + run('Paragraph ' + i) + '</w:p>'
+    ).join('')
+  );
+  const indexed = createDocxEditor({ container: document.createElement('div'), document: input });
+  const reference = createDocxEditor({ container: document.createElement('div'), document: input });
+  try {
+    const live = indexed.surface!,
+      full = reference.surface!;
+    const id = live.layout().contentControls!.find((control) => control.tag === 'chip:source')!.id;
+    for (const width of [40, 120, 56]) {
+      setSurfaceInlineWidgetMetrics(live, new Map([[id, { width, ascent: 20, descent: 4 }]]));
+      setSurfaceInlineWidgetMetrics(full, metrics(width, String(width)));
+      expect(live.layout().pages).toEqual(full.layout().pages);
+      expect(live.layoutSession().stats.reusedPages).toBeGreaterThan(0);
+      expect(live.layoutSession().stats.placed).toBeLessThan(live.layoutSession().stats.total);
+    }
+    setSurfaceInlineWidgetMetrics(live, null);
+    setSurfaceInlineWidgetMetrics(full, null);
+    expect(live.layout().pages).toEqual(full.layout().pages);
+  } finally {
+    indexed.destroy();
+    reference.destroy();
+  }
+});
+
 test('fixed measurements in a table and unresolved IDs follow full layout across font and zoom changes', () => {
   const table =
     '<w:tbl><w:tblPr/><w:tblGrid><w:gridCol w:w="2400"/></w:tblGrid><w:tr><w:tc>' +

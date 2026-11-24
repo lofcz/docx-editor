@@ -91,4 +91,4 @@ These reservations affect the reader's local layout. Saving and collaboration pr
 
 Pass a complete map of canonical control IDs and CSS pixel sizes to `setSurfaceInlineWidgetMetrics`. Each size specifies width, ascent, and descent at 100% zoom. The surface copies the map and its sizes. Publish a replacement map after a resize, or pass `null` to clear the sizes.
 
-The engine reuses unaffected body pages when a changed control belongs directly to a body paragraph. A change without a direct body owner invalidates all body pages. Request-dependent providers keep their existing revision contract.
+The engine can reuse unaffected pages when a body paragraph or table-cell paragraph directly contains the changed control. A change without a known paragraph owner invalidates all body pages. Request-dependent providers keep their existing revision contract.
