@@ -164,46 +164,38 @@ function normalizeParagraphTextNodes(node: OoxmlNode): OoxmlNode {
   return changed ? ({ ...node, children } as OoxmlNode) : node;
 }
 
-/** Normalize supported text edits inside their existing canonical transaction. */
+/**
+ * Normalize text left by a review decision. Plain edits keep the authored w:t (CT_Text,
+ * ECMA-376 §17.3.3.31) siblings of their w:r (CT_R, §17.3.2.25). Moving an untouched
+ * sibling into the edited text would insert its characters again on each offline peer.
+ */
 export function normalizeCollaborationTextPackage(
   pkg: OoxmlPackage,
   partName: string,
   ops: readonly TreeDocOp[]
 ): OoxmlPackage {
+  if (
+    !ops.some(
+      (op) =>
+        op.op === 'acceptRevision' ||
+        op.op === 'rejectRevision' ||
+        op.op === 'acceptAllRevisions' ||
+        op.op === 'rejectAllRevisions'
+    )
+  )
+    return pkg;
   let part = pkg.parts.get(partName);
   if (!part) return pkg;
   let changed = false;
-  const paragraphIds = new Set<string>();
-  const revisionSites = new Set<string>();
-  let normalizeAllRevisionParagraphs = false;
-  for (const op of ops) {
-    if ((op.op === 'insertText' || op.op === 'deleteText') && !op.revision) {
-      paragraphIds.add(op.paragraphId);
-    }
-    if (
-      op.op === 'acceptRevision' ||
-      op.op === 'rejectRevision' ||
-      op.op === 'acceptAllRevisions' ||
-      op.op === 'rejectAllRevisions'
-    ) {
-      for (const id of op.siteNodeIds ?? []) revisionSites.add(id);
-      // The decision removes revision sites before this post-operation normalizer runs.
-      // Normalize the affected part rather than relying on those removed node identities.
-      normalizeAllRevisionParagraphs = true;
-    }
-  }
-  if (revisionSites.size || normalizeAllRevisionParagraphs) {
-    const collect = (node: OoxmlNode, paragraphId?: string): void => {
-      if (node.kind === 'textValue') return;
-      const currentParagraph =
-        node.namespaceUri === WML_NAMESPACE_URI && node.localName === 'p' ? node.id : paragraphId;
-      if (normalizeAllRevisionParagraphs || revisionSites.has(node.id)) {
-        if (currentParagraph) paragraphIds.add(currentParagraph);
-      }
-      for (const child of node.children) collect(child, currentParagraph);
-    };
-    collect(part.root);
-  }
+  // The decision already removed its revision sites. Read the surviving paragraphs.
+  const paragraphIds: string[] = [];
+  const collect = (node: OoxmlNode): void => {
+    if (node.kind === 'textValue') return;
+    if (node.namespaceUri === WML_NAMESPACE_URI && node.localName === 'p')
+      paragraphIds.push(node.id);
+    for (const child of node.children) collect(child);
+  };
+  collect(part.root);
   for (const paragraphId of paragraphIds) {
     const paragraph = findNode(part, paragraphId);
     if (!paragraph || paragraph.kind === 'textValue') continue;
@@ -319,9 +311,6 @@ export function createCollaborationDocumentPort(
       BODY,
       (context) => {
         for (const op of ops) context.apply(op);
-        context.applyPackage((pkg) =>
-          normalizeCollaborationTextPackage(pkg, pkg.mainDocumentPart, ops)
-        );
       },
       {
         origin: mutation.origin,

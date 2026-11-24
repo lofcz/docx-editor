@@ -1,0 +1,12 @@
+{
+  "impact": "compatible",
+  "fields": [],
+  "before": "Offline edits to one text element could copy unchanged sibling text into both journals.",
+  "after": "Concurrent typing retains the original text elements and applies each insertion once.",
+  "reason": "Plain edits keep their existing XML node identities and use the existing text splice operations.",
+  "tests": [
+    "packages/pro/src/collaboration/__tests__/document-adjacent-text-typing.test.ts"
+  ],
+  "changeset": "offline-adjacent-run-text",
+  "migration": null
+}
