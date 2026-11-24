@@ -42,6 +42,14 @@ export class TypingHistory {
     private readonly now: () => number = () => performance.now()
   ) {}
 
+  /** A rapid continuation must still belong to the same caret and active typing run. */
+  hasRecentTypingAt(selection: SemanticSelection, withinMs: number): boolean {
+    if (!this.group || this.expected === null || caretKey(selection) !== this.expected)
+      return false;
+    const elapsed = this.now() - this.lastTypedAt;
+    return elapsed >= 0 && elapsed < withinMs;
+  }
+
   /** The history group for a flush that starts at `selection`. */
   groupAt(selection: SemanticSelection): HistoryGroup {
     const now = this.now();

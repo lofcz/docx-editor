@@ -108,3 +108,52 @@ for (const place of ['text box', 'body paragraph'] as const) {
     });
   });
 }
+
+test('a browser typing burst survives a concurrent peer edit, undo, redo and reopen', async () => {
+  const { alice, bob, pause, resume, deliver } = await pair('body paragraph');
+  const previous = Object.getOwnPropertyDescriptor(window.navigator, 'scheduling');
+  Object.defineProperty(window.navigator, 'scheduling', {
+    configurable: true,
+    value: { isInputPending: () => false },
+  });
+  try {
+    caretAfterShared(alice);
+    caretAfterShared(bob);
+    pause();
+    const pages = alice.surface!.hostElement().querySelector('.docx-pages')!;
+    for (const letter of 'abc') {
+      pages.dispatchEvent(
+        new InputEvent('beforeinput', {
+          bubbles: true,
+          cancelable: true,
+          inputType: 'insertText',
+          data: letter,
+        })
+      );
+      await Promise.resolve();
+    }
+    expect(bob.exec({ type: 'insertText', text: 'Z' }).ok).toBe(true);
+    alice.surface!.flushPendingInput();
+    deliver();
+    resume();
+    deliver();
+    const edited = sharedText(alice);
+    expect(['SharedabcZ', 'SharedZabc']).toContain(edited);
+    expect(sharedText(bob)).toBe(edited);
+    expect(alice.exec({ type: 'undo' }).ok).toBe(true);
+    deliver();
+    expect(sharedText(bob)).toBe('SharedZ');
+    expect(alice.exec({ type: 'redo' }).ok).toBe(true);
+    deliver();
+    expect(sharedText(bob)).toBe(edited);
+    const reopened = createDocxEditor({
+      container: document.createElement('div'),
+      document: await alice.save(),
+    });
+    editors.push(reopened);
+    expect(sharedText(reopened)).toBe(edited);
+  } finally {
+    if (previous) Object.defineProperty(window.navigator, 'scheduling', previous);
+    else Reflect.deleteProperty(window.navigator, 'scheduling');
+  }
+});

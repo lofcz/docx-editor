@@ -48,7 +48,7 @@ import { refreshWriteBlocked, registerRefreshComposition } from './refresh-write
 import { UNEXPLAINED_WRITE_REFUSAL, writeBlockReason } from './refresh-write-guard.ts';
 import { createLegacyDropdownInteraction } from './surface-legacy-dropdown.ts';
 import { listSeparatorEnter } from './list-separator-enter.ts';
-import { browserInputPending, createIsolatedKeyFlush } from './surface-input-pending.ts';
+import { browserInputPending, createTypeFlushTimer } from './surface-input-pending.ts';
 export { setPaginatedSurfaceScale } from './surface-scale.ts';
 import { REPLICABLE_REVIEW_WRITES } from './surface-review-writes.ts';
 import { listParagraphStyleId } from './surface-list-style.ts';
@@ -1646,9 +1646,8 @@ export function mountPaginatedSurface(
   // N × flush. The DOM input pathway now appends plain `insertText` data here
   // and lands the whole buffer through ONE `type()` call — one transaction,
   // one tracked `w:ins`, one undo step, one layout flush. The flush task is a
-  // plain `setTimeout(0)`: queued input events outrank timers, so every key
-  // already waiting appends before the timer fires, and an isolated keystroke
-  // still lands within the same event-loop turn.
+  // zero-delay timer for the first key. Rapid keys at the same caret can share a
+  // short timer. It starts once per batch, so continuous input cannot postpone paint.
   //
   // The buffer holds TEXT ONLY, no position: `type()` resolves the model
   // selection at flush time, and every other way the selection or document can
@@ -1659,8 +1658,13 @@ export function mountPaginatedSurface(
   let typeBuffer = '';
   /** Lands composed text queued before the buffer, one land at a time (`landingGuard`). */
   let landComposedText = (): void => {};
-  let typeFlushTimer: number | null = null;
-  const afterKey = createIsolatedKeyFlush(fieldScope, () => typeFlushTimer);
+  const typeFlush = createTypeFlushTimer(
+    timers,
+    fieldScope,
+    () => container,
+    flushTypeBuffer,
+    () => typingHistory.hasRecentTypingAt(selection, 34)
+  );
   let flushingTypeBuffer = false;
   const landing = landingGuard();
 
@@ -1671,10 +1675,7 @@ export function mountPaginatedSurface(
     // flush point.
     if (flushingTypeBuffer || landing.active()) return;
     landing.wrap(landComposedText)();
-    if (typeFlushTimer !== null) {
-      timers.clearTimeout(typeFlushTimer);
-      typeFlushTimer = null;
-    }
+    typeFlush.cancel();
     if (typeBuffer.length === 0) return;
     const text = typeBuffer;
     typeBuffer = '';
@@ -1696,14 +1697,7 @@ export function mountPaginatedSurface(
 
   function enqueueType(text: string): void {
     typeBuffer += text;
-    if (typeFlushTimer !== null) return;
-    typeFlushTimer = timers.setTimeout(
-      fieldScope.wrap(() => {
-        typeFlushTimer = null;
-        flushTypeBuffer();
-      }),
-      0
-    );
+    typeFlush.enqueue();
   }
 
   function commitProposedTextChange(
@@ -6015,10 +6009,10 @@ export function mountPaginatedSurface(
   });
   const onBeforeInput = documentInputHandler((event: InputEvent): void => {
     selectionSync.adoptBeforeInput();
-    const previousTimer = typeFlushTimer;
+    const previousTimer = typeFlush.current();
     dispatchBeforeInput(event);
     if (!selectionSync.isComposing()) inputMethod.repair.watch(event);
-    afterKey(event.inputType, previousTimer, () => container, flushTypeBuffer);
+    typeFlush.afterKey(event.inputType, previousTimer);
   });
 
   // One header and footer entry for the pointer and the drawing presses: no scroll, unlike the

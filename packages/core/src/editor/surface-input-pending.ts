@@ -2,26 +2,55 @@
 // `navigator.scheduling.isInputPending`). Every other engine answers false, which keeps the
 // surface on its synchronous paths.
 
+import type { HostTimers } from './host-realm.ts';
 import type { FieldResultsScope } from './field-results-scope.ts';
 
-/** Keep a queued burst on its timer. Commit one confirmed isolated key before the next paint. */
-export function createIsolatedKeyFlush(
+/** Own the paint deadline for one surface's buffered plain text. */
+export function createTypeFlushTimer(
+  timers: HostTimers,
   scope: FieldResultsScope,
-  currentTimer: () => number | null
-): (
-  inputType: string,
-  previousTimer: number | null,
   container: () => Element,
-  flush: () => void
-) => void {
-  return (inputType, previousTimer, container, flush) => {
-    const timer = currentTimer();
-    if (inputType !== 'insertText' || previousTimer !== null || timer === null) return;
-    queueMicrotask(
+  flush: () => void,
+  continuesTyping: () => boolean
+) {
+  let timer: number | null = null;
+  function schedule(delay: number): void {
+    timer = timers.setTimeout(
       scope.wrap(() => {
-        if (currentTimer() === timer && pendingBrowserInput(container(), false) === false) flush();
-      })
+        timer = null;
+        flush();
+      }),
+      delay
     );
+  }
+  function cancel(): void {
+    if (timer === null) return;
+    timers.clearTimeout(timer);
+    timer = null;
+  }
+  return {
+    current: () => timer,
+    cancel,
+    enqueue(): void {
+      if (timer === null) schedule(0);
+    },
+    afterKey(inputType: string, previous: number | null): void {
+      const started = timer;
+      if (inputType !== 'insertText' || previous !== null || started === null) return;
+      queueMicrotask(
+        scope.wrap(() => {
+          if (timer !== started || pendingBrowserInput(container(), false) !== false) return;
+          if (continuesTyping()) {
+            // Keep a rapid continuation for half a 60 Hz frame. Further characters
+            // use this same timer. A continuous stream cannot extend the deadline.
+            cancel();
+            schedule(9);
+          } else {
+            flush();
+          }
+        })
+      );
+    },
   };
 }
 

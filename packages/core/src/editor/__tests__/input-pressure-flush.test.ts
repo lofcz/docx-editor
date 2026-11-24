@@ -127,6 +127,32 @@ describe('commit-tail layout deferral under input pressure', () => {
     }
   });
 
+  test('rapid input after the first paint shares one subsequent transaction', async () => {
+    const restore = stubInputPending(() => false);
+    const clock = stubClock(0);
+    const { surface, container } = mount(paragraph('tail'));
+    try {
+      putCaret(surface, 0);
+      keystroke(container, 'a');
+      await Promise.resolve();
+      const revision = surface.session.packageRevision();
+      expect(surface.session.bodyText()).toBe('atail');
+      keystroke(container, 'b');
+      await Promise.resolve();
+      keystroke(container, 'c');
+      await Promise.resolve();
+      expect(surface.session.packageRevision()).toBe(revision);
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(surface.session.bodyText()).toBe('abctail');
+      expect(surface.session.packageRevision()).toBe(revision + 1);
+    } finally {
+      surface.destroy();
+      container.remove();
+      clock();
+      restore();
+    }
+  });
+
   test('an expensive commit under pressure defers layout to its own task, then paints', async () => {
     await withPressureAndExpensiveLayout(async (surface, container) => {
       putCaret(surface, 0);
