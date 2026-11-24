@@ -101,6 +101,9 @@ The candidate reused the remaining layout after all 58 edits that preserved line
 The median paired CPU saving was 36.76 ms. Four of six pairs used less CPU.
 The 95th-percentile frame time increased in all six pairs. Two participants passed reconnect, undo, redo, save, and reopen in both orders. [All 18 browser runs](profiles/winpc-rich-paragraph-convergence.jsonl)
 
+Across 60 frames, both builds matched 9,450 character rectangles, 3,395 controls, and 2,220 widget bounds.
+The change stayed out of the installed editor because it increased frame time. [Geometry counts and matching hashes](profiles/winpc-rich-paragraph-geometry.json)
+
 ## Clipboard after the Sciobot upstream merge
 
 Sciobot `2fd83fe0f` includes upstream `925da5ba2` and engine `5a0194e03`. WinPC ran four pairs per action and alternated editor order.
