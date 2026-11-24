@@ -285,38 +285,10 @@ export function plainTextFromHtml(html: string): string {
  * agree, or this silently hands the store something it will refuse.
  */
 export function insertableText(text: string): string {
-  let out = '';
-  for (let i = 0; i < text.length; i += 1) {
-    const unit = text.charCodeAt(i);
-    // A page break reads as a paragraph break; CRLF/CR normalize with it.
-    if (unit === 0x0c) {
-      out += '\n';
-      continue;
-    }
-    if (unit === 0x0d) {
-      out += '\n';
-      if (text.charCodeAt(i + 1) === 0x0a) i += 1;
-      continue;
-    }
-    if (unit === 0x09 || unit === 0x0a) {
-      out += text[i]!;
-      continue;
-    }
-    if (unit < 0x20 || unit === 0xfffe || unit === 0xffff) continue;
-    // Surrogates only survive as a well-formed pair; a lone one is refused by the store,
-    // and truncating a payload mid-pair is an easy way to produce one.
-    if (unit >= 0xd800 && unit <= 0xdbff) {
-      const next = text.charCodeAt(i + 1);
-      if (next >= 0xdc00 && next <= 0xdfff) {
-        out += text[i]! + text[i + 1]!;
-        i += 1;
-      }
-      continue;
-    }
-    if (unit >= 0xdc00 && unit <= 0xdfff) continue;
-    out += text[i]!;
-  }
-  return out;
+  // Match code points so a valid surrogate pair stays intact. CRLF is one paragraph break.
+  return text.replace(/\r\n?|[^\t\n\u0020-\uD7FF\uE000-\uFFFD\u{10000}-\u{10FFFF}]/gu, (match) =>
+    match[0] === '\r' || match === '\f' ? '\n' : ''
+  );
 }
 
 /**
