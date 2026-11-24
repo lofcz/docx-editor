@@ -442,7 +442,7 @@ export const wordFeatures: WordFeature[] = [
     tier: 'community',
     docsLink: '/docs/2.x/guides/toolbar#create-and-continue-lists',
     notes:
-      'Create numbered lists with decimal, Roman numeral, letter, and supported script-specific formats. Unsupported script-specific formats use decimal numbers. Document settings control marker spacing and indents.',
+      'Create numbered lists in decimal, Roman, letter, East Asian, Thai, Hindi, Russian, Vietnamese, and enclosed-digit formats. Custom number formats use decimal numbers. Document settings control marker spacing and indents.',
   },
   {
     id: 'lists.custom-numbering',
@@ -1115,7 +1115,7 @@ export const wordFeatures: WordFeature[] = [
     roundTrip: 'preserved',
     tier: 'community',
     notes:
-      'Header STYLEREF fields display text from supported character or paragraph styles by name. Unsupported switches and missing matches keep saved results. References in the body and footers also keep saved results.',
+      'Header STYLEREF fields display the text of a style match by name, or the list number of a paragraph-style match. Unsupported switches and missing matches keep saved results. Body and footer references also keep saved results.',
     docsLink: '/docs/2.x/guides/fields',
   },
   {
@@ -1282,7 +1282,7 @@ export const wordFeatures: WordFeature[] = [
     tier: 'premium',
     docsLink: '/docs/2.x/pro/collaboration',
     notes:
-      'Yjs synchronizes supported document edits, participant cursors, and selections, with separate undo history for each participant. Offline edits merge after reconnection. Formatting can be lost when another participant moves the same text to another paragraph. Explicitly owned local drafts withdraw only their owner’s remote selection while focused.',
+      'Yjs synchronizes supported edits, cursors, and selections after reconnection, with separate undo histories for each participant. Undoing a paragraph’s first formatting change preserves later peer formatting. Moving text between paragraphs can lose formatting, and focused local drafts withdraw only the owner’s remote selection.',
   },
   {
     id: 'collab.find-replace',
