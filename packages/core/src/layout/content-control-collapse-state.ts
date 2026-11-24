@@ -193,8 +193,10 @@ export function createContentControlCollapseState() {
               : resolveNodeId?.(entry.summaryParagraphId);
         if (!controlId || summaryId === undefined) continue;
         const owner = findNode(part, controlId)!;
-        if (collapseOwnerRefusal(part, owner)) continue;
-        if (sourcePart && findNode(sourcePart, entry.controlId) === owner) {
+        if (!owner || collapseOwnerRefusal(part, owner)) continue;
+        // Edits move the node index to the current root. Looking up the owner in
+        // the previous part would rebuild the entire index for each typed character.
+        if (entry.owner === owner) {
           next.push(entry);
           continue;
         }

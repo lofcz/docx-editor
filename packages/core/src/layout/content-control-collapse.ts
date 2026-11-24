@@ -21,6 +21,7 @@ const MAX_DEPTH = 64;
 
 /** Validated ownership and visibility for one local disclosure. @internal */
 export interface PreparedContentControlCollapse extends CollapsedContentControl {
+  readonly owner: OoxmlElement;
   readonly hiddenIds: ReadonlySet<string>;
   readonly placeholder?: OoxmlElement;
 }
@@ -140,6 +141,7 @@ export function prepareContentControlCollapse(
     }
     entries.push(
       Object.freeze({
+        owner,
         controlId,
         summaryParagraphId,
         ...(placeholderHeightPt === undefined ? {} : { placeholderHeightPt }),
