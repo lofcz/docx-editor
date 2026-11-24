@@ -155,3 +155,16 @@ All 18 edit targets matched. Both native builds produced the same final geometry
 
 The bounded candidate displayed text 87.4 ms before Plate. Its first key took 12.8 ms longer.
 The consolidated source has different page preloading behavior. It requires a separate timing run.
+
+## Paste across paragraph boundaries
+
+The multiline input replaced 255 spaces with newline characters. Both inputs contain 158,633 characters.
+Each row gives the median of four alternating editor pairs on WinPC. The two inputs ran in separate batches.
+
+| Paste input | Native elapsed | Plate elapsed | Native renderer CPU | Plate renderer CPU |
+| --- | ---: | ---: | ---: | ---: |
+| One paragraph | 209.6 ms | 108.8 ms | 169.7 ms | 84.7 ms |
+| 256 paragraphs | 233.3 ms | 142.5 ms | 205.2 ms | 109.4 ms |
+
+Native text matched the LF reference in all four multiline trials.
+Plate readback contained 255 CRLF sequences. Normalizing those sequences to LF produced the exact expected text in every trial.
