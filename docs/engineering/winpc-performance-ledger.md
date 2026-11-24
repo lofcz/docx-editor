@@ -2,7 +2,29 @@
 
 Use `codex/react-block-proof` for progressive integration. Sciobot uses `claude/docx-native-cutover`.
 
-## Measured results
+## Current installed comparison
+
+Sciobot commit `69ae005f0` pins engine `267e76def`. WinPC tested that package with the typography fix from `8a92a3674`.
+Each action used four alternating browser pairs. Times include two animation frames.
+All 48 final documents matched the expected text. No trial reported a browser error.
+
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| Paste 433 characters, 71.39 ms | 47.93 ms | 48.9% more time |
+| Undo small paste, 33.72 ms | 31.83 ms | 5.9% more time |
+| Redo small paste, 32.03 ms | 32.18 ms | 0.5% less time |
+| Paste 158,633 characters, 156.80 ms | 115.51 ms | 35.7% more time |
+| Undo large paste, 60.35 ms | 42.86 ms | 40.8% more time |
+| Redo large paste, 71.89 ms | 59.92 ms | 20.0% more time |
+| Large paste renderer CPU, 123.97 ms | 84.42 ms | 46.8% more CPU time |
+| Large undo renderer CPU, 24.61 ms | 7.61 ms | 223.4% more CPU time |
+| Large redo renderer CPU, 46.56 ms | 23.77 ms | 95.9% more CPU time |
+
+The installer checked all five archives, 766 installed files, and the lockfile. Both browser builds resolved one engine.
+All 33 editing, typography, and collaboration tests passed with 489 assertions.
+All 77 installed runtime files matched their package bytes. [Paired browser measurements](profiles/winpc-installed-267e-history.jsonl)
+
+## Earlier installed comparison
 
 | DOCX | PLATE | RELATIVE |
 | --- | --- | --- |
@@ -115,7 +137,7 @@ The four pairs alternated editor order. Times include two animation frames.
 ### Large paste CPU profile
 
 A separate Chromium sampling run used the same consolidated engine and the same 158,633-character paste.
-The native layout call accounted for 99.0 ms of samples. The table divides this time into exclusive groups.
+The native layout call accounted for 99.0 ms of samples across three groups.
 
 - Text width measurement inside paragraph breaking took 39.5 ms.
 - Other paragraph breaking took 30.1 ms.
@@ -422,28 +444,6 @@ Both browser peer orders passed remote edits, reconnect, undo, redo, deletion, a
 Eleven of 13 browser disclosure tests passed. Both DOCX builds failed the same wheel-completion and border-travel checks.
 The border error measured 19.63 px in both DOCX builds against a 2 px limit.
 
-## Installed consumer after word width batching
-
-Sciobot commit `69ae005f0` pins engine `267e76def`. WinPC tested that package with the typography fix from `8a92a3674`.
-Each action used four alternating browser pairs. Times include two animation frames.
-All 48 final documents matched the expected text. No trial reported a browser error.
-
-| DOCX | PLATE | RELATIVE |
-| --- | --- | --- |
-| Paste 433 characters, 71.39 ms | 47.93 ms | 48.9% more time |
-| Undo small paste, 33.72 ms | 31.83 ms | 5.9% more time |
-| Redo small paste, 32.03 ms | 32.18 ms | 0.5% less time |
-| Paste 158,633 characters, 156.80 ms | 115.51 ms | 35.7% more time |
-| Undo large paste, 60.35 ms | 42.86 ms | 40.8% more time |
-| Redo large paste, 71.89 ms | 59.92 ms | 20.0% more time |
-| Large paste renderer CPU, 123.97 ms | 84.42 ms | 46.8% more CPU time |
-| Large undo renderer CPU, 24.61 ms | 7.61 ms | 223.4% more CPU time |
-| Large redo renderer CPU, 46.56 ms | 23.77 ms | 95.9% more CPU time |
-
-The installer checked all five archives, 766 installed files, and the lockfile. Both browser builds resolved one engine.
-All 33 editing, typography, and collaboration tests passed with 489 assertions.
-All 77 installed runtime files matched their package bytes. [Paired browser measurements](profiles/winpc-installed-267e-history.jsonl)
-
 ## Rejected line ownership summary
 
 WinPC tested caching editable offsets and page fields as the layout placed each body line.
@@ -456,3 +456,21 @@ Six trials used every order of the control, candidate, and Plate on a 158,633-ch
 
 The median paired change was 0.10 ms more elapsed time and 0.07 ms less CPU time.
 All 18 documents matched the expected text. The candidate did not enter the engine.
+
+## Paint the restored selection during undo and redo
+
+Commit `e01c9376d` paints the selection after history restores it.
+WinPC compared the change with engine `267e76def` on the same Sciobot build and with Plate.
+Six orders per action produced 72 exact results. Times include two animation frames.
+
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| Undo 433 characters, 33.12 → 32.58 ms | 32.86 ms | 0.9% less time |
+| Redo 433 characters, 40.52 → 44.23 ms | 41.59 ms | 6.3% more time |
+| Undo 158,633 characters, 49.88 → 50.50 ms | 43.29 ms | 16.7% more time |
+| Redo 158,633 characters, 66.69 → 50.81 ms | 73.26 ms | 30.6% less time |
+| Large undo renderer CPU, 25.88 → 21.15 ms | 7.01 ms | 201.7% more CPU time |
+| Large redo renderer CPU, 42.87 → 30.04 ms | 23.68 ms | 26.9% more CPU time |
+
+The large redo saved 15.88 ms elapsed and 13.02 ms CPU in the median paired comparison.
+The control failed the backward-selection paint test. The change passed it and all 52 focused tests. [Browser measurements](profiles/winpc-restored-history-selection.jsonl)
