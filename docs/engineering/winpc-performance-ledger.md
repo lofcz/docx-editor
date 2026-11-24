@@ -2,6 +2,26 @@
 
 Use `codex/react-block-proof` for progressive integration. Sciobot uses `claude/docx-native-cutover`.
 
+## Clipboard after the Sciobot upstream merge
+
+Sciobot `2fd83fe0f` includes upstream `925da5ba2` and engine `5a0194e03`. WinPC ran four pairs per action and alternated editor order.
+Each trial started with a fresh document. Times are medians from the keyboard command through two animation frames.
+
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| Paste 433 characters, 61.45 ms | 47.72 ms | 28.8% more time |
+| Undo small paste, 40.54 ms | 32.58 ms | 24.4% more time |
+| Redo small paste, 32.29 ms | 32.62 ms | 1.0% less time |
+| Paste 158,633 characters, 143.21 ms | 118.67 ms | 20.7% more time |
+| Undo large paste, 49.27 ms | 33.74 ms | 46.0% more time |
+| Redo large paste, 65.66 ms | 48.79 ms | 34.6% more time |
+| Large paste renderer CPU, 108.27 ms | 84.76 ms | 27.7% more CPU time |
+| Large undo renderer CPU, 21.01 ms | 6.98 ms | 201.1% more CPU time |
+| Large redo renderer CPU, 36.57 ms | 23.94 ms | 52.7% more CPU time |
+
+All 48 documents had the expected text. Both production builds matched all 77 packaged engine files.
+All 33 consumer tests passed with 489 assertions. Two peers passed undo, redo, reconnect, save, and reopen in both orders. [Browser measurements](profiles/winpc-merged-2fd83-history.jsonl)
+
 ## Browser work during 59 rich lesson keys
 
 WinPC traced one run per editor on installed engine `5a0194e03`. Both editors received the same 59 keys.
