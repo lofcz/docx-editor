@@ -40,6 +40,11 @@ Responsibilities:
 - **`automation`** — the transport-neutral host port an automation object model programs against (`@docx-editor.dev/editor-api`). It reaches the store, collaboration, layout and export lanes, and contracts only for DOM-free public types such as the editor's `HistoryGroup` handle. A server has to be able to run it, so reaching into binding, output or editor would put a DOM in a headless host.
 - **`editor`** — the browser composition root. Composes the tree session, pagination and the paginated surface into the `Editor`/`EditorHost` contract.
 
+The binding entry exports the same ProseMirror schema that sessions use for projection.
+Browser bundlers that support `import defer` can enable the `docx-defer-projection` resolution condition for core's ESM files.
+With this condition, the first schema read initializes the model synchronously.
+Other hosts use the standard ProseMirror import.
+
 Layout, output, and export share revision markup settings through the runtime-neutral contracts lane. This keeps settings validation and defaults consistent.
 
 Editor part routing reads the live canonical package without opening story stores. Canonical IDs name their part directly. Local collaboration IDs can omit that prefix after history changes. These IDs resolve through native node indexes, with the body checked first. Review decisions therefore keep their target after undo and redo.
