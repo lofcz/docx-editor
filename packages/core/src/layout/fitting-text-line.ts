@@ -23,7 +23,7 @@ export function placeFittingWords(
   available: number,
   measurer: TextMeasurer,
   tolerance: number
-): { readonly boundaries: readonly number[]; readonly overflowWidth?: number } | undefined {
+) {
   if (
     piece.start !== 0 ||
     piece.end !== piece.text.length ||
@@ -38,37 +38,41 @@ export function placeFittingWords(
     return undefined;
   const face = styleForFontSlot(piece.style, piece.fontSlot);
   const measure = (text: string) => measurer.measure(displayText(text, face), face);
-  let start = 0;
-  let previous = '';
   const boundaries = wordBoundaries(piece.text, false);
-  for (const end of boundaries) {
-    const text = piece.text.slice(start, end);
-    const displayed = displayText(text, face);
-    const width = measurer.measure(displayed, face);
-    if (!(width >= 0 && line.width + width <= available + tolerance)) {
-      return { boundaries, overflowWidth: width };
+  function placeUntilOverflow(line: PendingLine, at: number, origin: number, available: number) {
+    let start = at === 0 ? 0 : boundaries[at - 1]!;
+    let previous = line.spans.at(-1)?.text ?? '';
+    for (; at < boundaries.length; at++) {
+      const end = boundaries[at]!;
+      const text = piece.text.slice(start, end);
+      const displayed = displayText(text, face);
+      const width = measurer.measure(displayed, face);
+      if (!(width >= 0 && line.width + width <= available + tolerance)) {
+        return { at, overflowWidth: width };
+      }
+      line.width += spaceKern(previous, text, face, measure);
+      const metrics = measurer.lineMetrics(face, displayed);
+      line.spans.push(
+        automaticTextSpan(
+          piece,
+          { paragraphId, start, end },
+          text,
+          piece.style,
+          origin + line.width,
+          width,
+          metrics.height,
+          0,
+          false
+        )
+      );
+      line.width += width;
+      line.end = end;
+      line.hangingMarkBlank = undefined;
+      growLineMetricsForText(line, metrics, text, face);
+      previous = text;
+      start = end;
     }
-    line.width += spaceKern(previous, text, face, measure);
-    const metrics = measurer.lineMetrics(face, displayed);
-    line.spans.push(
-      automaticTextSpan(
-        piece,
-        { paragraphId, start, end },
-        text,
-        piece.style,
-        origin + line.width,
-        width,
-        metrics.height,
-        0,
-        false
-      )
-    );
-    line.width += width;
-    line.end = end;
-    line.hangingMarkBlank = undefined;
-    growLineMetricsForText(line, metrics, text, face);
-    previous = text;
-    start = end;
+    return { at, overflowWidth: undefined };
   }
-  return { boundaries };
+  return { boundaries, placeUntilOverflow, ...placeUntilOverflow(line, 0, origin, available) };
 }

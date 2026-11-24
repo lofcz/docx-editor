@@ -182,3 +182,18 @@ Elapsed time runs from the paste command through two animation frames. Each timi
 
 Four isolated measurements took 2.80–2.92 ms per scan before the change and 0.021–0.026 ms afterward.
 All 4,000 comparisons produced identical suffix arrays. The previous browser batch used 169.7 ms of DOCX renderer CPU.
+
+## Long paste with word fitting on each line
+
+The paste produced one 159,118-character text run. The previous fitting loop stopped at offset 89.
+The same document and input ran in four alternating browser pairs after word fitting resumed on later lines.
+
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| Paste elapsed 193.1 ms | 109.2 ms | DOCX took 76.9% longer |
+| Renderer CPU 157.0 ms | 84.4 ms | DOCX used 86.0% more CPU time |
+| Exact text in 4 of 4 runs | 4 of 4 runs | Equal |
+
+The full page records matched the previous engine after paste, undo, and redo at all three tested input sizes.
+The inputs contained 9,617, 38,825, and 158,633 characters. The largest produced 49 pages.
+All 288 comparisons against the general line breaker matched across different widths, indents, kerning, and space compression rules.

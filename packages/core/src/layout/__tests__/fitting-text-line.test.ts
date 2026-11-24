@@ -91,6 +91,7 @@ describe('fitting words', () => {
       run('AB C de ', '<w:sz w:val="23"/><w:kern w:val="2"/><w:position w:val="4"/>'),
       run('coOL Text', '<w:vertAlign w:val="superscript"/><w:caps/>'),
       run('short extraordinarilylongword'),
+      run('A word with a clipped space and an oversized-lettergroup near the margin.'),
     ]) {
       const node = paragraph(body);
       for (const width of [9, 28, 53, 160, 500]) {

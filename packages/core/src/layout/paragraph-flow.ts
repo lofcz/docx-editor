@@ -1152,7 +1152,18 @@ export function breakParagraph(
       fitting?.boundaries ??
       cjkBreaks?.boundaries(piece) ??
       wordBoundaries(piece.text, !layoutOwned);
-    for (let at = fitting ? line.spans.length : 0; at < boundaries.length; at++) {
+    for (let at = fitting?.at ?? 0; at < boundaries.length; at++) {
+      if (fitting && overflowWidth === undefined) {
+        // The previous boundary used full wrapping. Ordinary words can fit directly again.
+        const next = fitting.placeUntilOverflow(line, at, lineOrigin(), lineAvailable());
+        if (next.at === boundaries.length) break;
+        if (at !== next.at) {
+          at = next.at;
+          consumed = line.end;
+          lastEmitted = line.spans.at(-1)!.text;
+        }
+        overflowWidth = next.overflowWidth;
+      }
       const boundary = boundaries[at]!;
       const candidate = piece.text.slice(consumed, boundary);
       if (candidate.length === 0) continue;
