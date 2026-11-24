@@ -17,18 +17,21 @@ function plainText(span: StyleSpanRecord): boolean {
     !span.wrapAdvanceBefore &&
     span.glyphOffsetPt === undefined &&
     span.text.length === span.range.end - span.range.start &&
-    /^[\x20-\x7e]+$/.test(span.text)
+    /^[\x20-\x7e\p{Script=Latin}]+$/u.test(span.text)
   );
 }
 
-/** Layout retains each word for hit testing. Plain, contiguous words share one painted text node. */
+/**
+ * Layout retains each word for hit testing. Only equal font slots and styles can share text.
+ * ECMA-376 Part 1 §17.3.3.31 w:t (CT_Text), §17.3.2.26 w:rFonts (CT_Fonts),
+ * and §17.3.2.1 w:b (CT_OnOff). Synthesized bold has its own spacing above.
+ */
 export function plainLineForPaint(line: LineRecord): LineRecord {
   const first = line.spans[0];
   if (!first || line.spans.length < 2 || line.drawings?.length || line.hangingMarkBlank)
     return line;
   const { style } = first;
   if (
-    style.bold ||
     style.italic ||
     style.underline ||
     style.strike ||
