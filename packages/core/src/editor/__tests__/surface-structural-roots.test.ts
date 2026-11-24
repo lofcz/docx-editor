@@ -162,7 +162,11 @@ test('a host can change paragraph children after accepting a translated paragrap
   const editor = createDocxEditor({
     container,
     document: docx(
-      '<w:sdt><w:sdtPr/><w:sdtContent>' + p('Summary') + p('Answer') + '</w:sdtContent></w:sdt>' + p('After')
+      '<w:sdt><w:sdtPr/><w:sdtContent>' +
+        p('Summary') +
+        p('Answer') +
+        '</w:sdtContent></w:sdt>' +
+        p('After')
     ),
   });
   const surface = editor.surface!;
@@ -175,11 +179,15 @@ test('a host can change paragraph children after accepting a translated paragrap
   const stop = surface.observePaint({
     replayCurrentFrame: true,
     beforePaint(_whole, reserve) {
-      reserve?.(0, (changed, structural) => {
-        if (!structural || !changed.has(root)) return false;
-        root.prepend(host);
-        return true;
-      }, node => node);
+      reserve?.(
+        0,
+        (changed, structural) => {
+          if (!structural || !changed.has(root)) return false;
+          root.prepend(host);
+          return true;
+        },
+        (node) => node
+      );
     },
     afterPaint() {},
   });

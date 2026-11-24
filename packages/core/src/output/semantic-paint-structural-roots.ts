@@ -1,4 +1,8 @@
-import { canTranslateParagraph, moveRelativeBox, type ParagraphReflowPaint } from './semantic-paint-paragraph-reflow.ts';
+import {
+  canTranslateParagraph,
+  moveRelativeBox,
+  type ParagraphReflowPaint,
+} from './semantic-paint-paragraph-reflow.ts';
 import type { BlockFragmentRecord, PageRecord } from '../layout/semantic-records.ts';
 import type { RetainedPage } from './semantic-paint-paragraph-roots.ts';
 import {
@@ -82,7 +86,10 @@ export function planStructuralRoots(
         ? paint(fragment)
         : undefined;
     const table = old?.record.kind === 'table' && fragment.kind === 'table' && !same;
-    if (old && (same || translate || table || (fresh && canRetainPaintedParagraph(old.root, fresh)))) {
+    if (
+      old &&
+      (same || translate || table || (fresh && canRetainPaintedParagraph(old.root, fresh)))
+    ) {
       // A reorder can change a host's ownership. Use the regular reconciliation for that page.
       if (
         previous &&
@@ -99,7 +106,14 @@ export function planStructuralRoots(
         if (translate) {
           updates.set(old.root, () => {
             const origin = { x: 0, y: 0 };
-            moveRelativeBox(old.root.style, old.record.box, origin, fragment.box, origin, paragraphPaint.scale);
+            moveRelativeBox(
+              old.root.style,
+              old.record.box,
+              origin,
+              fragment.box,
+              origin,
+              paragraphPaint.scale
+            );
           });
         } else if (fresh) updates.set(old.root, () => retainPaintedParagraph(old.root, fresh));
       }
