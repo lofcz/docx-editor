@@ -7,6 +7,10 @@ import { framedTokenJoin } from './framed-token.ts';
 import { inlineWidgetProducer } from './inline-widget-layout.ts';
 import type { SemanticLayoutOptions } from './semantic-layout-options.ts';
 import { styleSeparatorSourceBlocks } from './style-separator-group.ts';
+import {
+  aggregateParagraphTokensForTableBlock,
+  tableParagraphsInOrder,
+} from './table-paragraph-tokens.ts';
 
 const byProvider = new WeakMap<
   InlineWidgetMetricsProvider,
@@ -28,11 +32,18 @@ function directOwners(blocks: readonly OoxmlElement[]) {
   const saved = owners.get(blocks);
   if (saved) return saved;
   const found = new Map<string, string>();
-  for (const paragraph of styleSeparatorSourceBlocks(blocks)) {
-    if (paragraph.kind !== 'paragraph') continue;
+  const record = (paragraph: OoxmlNode) => {
+    if (paragraph.kind !== 'paragraph') return;
     for (const child of paragraph.children) {
       if (child.kind === 'contentControl') found.set(child.id, paragraph.id);
     }
+  };
+  for (const block of styleSeparatorSourceBlocks(blocks)) {
+    // Cell paragraphs own their inline w:sdt (CT_SdtRun, ECMA-376 §17.5.2.31).
+    // Reuse the table walk that keys w:tc (CT_Tc, §17.4.65) for layout.
+    if (block.kind === 'table') {
+      for (const paragraph of tableParagraphsInOrder(block)) record(paragraph);
+    } else record(block);
   }
   owners.set(blocks, found);
   return found;
@@ -63,6 +74,7 @@ function tokensForBlocks(
   return {
     global: framedTokenJoin(global.sort()),
     paragraphs: new Map([...entries].map(([id, keys]) => [id, framedTokenJoin(keys.sort())])),
+    tables: new WeakMap<OoxmlNode, string>(),
   };
 }
 
@@ -76,7 +88,7 @@ function hasFurnitureWidgets(furniture: SemanticLayoutOptions['furniture']) {
   return false;
 }
 
-/** Changes without a direct body owner invalidate every block. Other boxes retain their paragraph keys. */
+/** Unknown owners invalidate every block. A known box keys its paragraph and enclosing tables. */
 export function indexedWidgetProjection(
   options: SemanticLayoutOptions,
   blocks: readonly OoxmlElement[]
@@ -98,6 +110,7 @@ export function indexedWidgetProjection(
     cached.set(blocks, tokens);
   }
   const previous = options.projectionTokenForParagraph;
+  const widgetToken = (node: OoxmlNode) => tokens.paragraphs.get(node.id) ?? '';
   return {
     global: tokens.global,
     inputs: {
@@ -110,7 +123,18 @@ export function indexedWidgetProjection(
             ]),
       projectionTokenForParagraph: (p: OoxmlNode) => {
         const prior = previous?.(p) ?? '';
-        const token = tokens.paragraphs.get(p.id);
+        const token = widgetToken(p);
+        return token ? framedTokenJoin([prior, token]) : prior;
+      },
+      projectionTokenForTable: (table: OoxmlNode) => {
+        const prior =
+          options.projectionTokenForTable?.(table) ??
+          (previous ? aggregateParagraphTokensForTableBlock(table, previous) : '');
+        let token = tokens.tables.get(table);
+        if (token === undefined) {
+          token = aggregateParagraphTokensForTableBlock(table, widgetToken);
+          tokens.tables.set(table, token);
+        }
         return token ? framedTokenJoin([prior, token]) : prior;
       },
     },

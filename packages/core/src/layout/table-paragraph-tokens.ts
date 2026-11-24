@@ -211,7 +211,7 @@ function rowSegment(
  * mints a new list map. The walk itself only depends on the table, so it runs once per node.
  */
 const tableParagraphs = new WeakMap<OoxmlNode, readonly OoxmlNode[]>();
-function tableParagraphsInOrder(table: OoxmlNode): readonly OoxmlNode[] {
+export function tableParagraphsInOrder(table: OoxmlNode): readonly OoxmlNode[] {
   const cached = tableParagraphs.get(table);
   if (cached) return cached;
   const paragraphs: OoxmlNode[] = [];
