@@ -5502,7 +5502,7 @@ export interface SemanticSelection {
 export function separatorLeadingCost(separatorWidth: number, marginInlineStart: number, marginInlineEnd: number, gap: number): number;
 
 // @public
-export function setSurfaceInlineWidgetMetrics(surface: PaginatedSurface, snapshot: InlineWidgetMetricsSnapshot | null): void;
+export function setSurfaceInlineWidgetMetrics(surface: PaginatedSurface, measurements: InlineWidgetMetricsSnapshot | ReadonlyMap<string, InlineWidgetMetrics> | null): void;
 
 // @public
 export const SHAPE_OUTLINE_DASHES: readonly ShapeOutlineDash[];
