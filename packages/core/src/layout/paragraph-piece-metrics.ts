@@ -73,6 +73,17 @@ export function placeableContentSuffixes(
     suffix[piece.text.length] = follows ? 1 : 0;
     if (piece.inlineDrawing || piece.inlineWidget) {
       suffix.fill(1);
+    } else if (!piece.text.includes('\n') && !piece.text.includes(PAGE_BREAK_CHAR)) {
+      // Without a break the answer can change only once, after the last placeable character.
+      let end = piece.text.length;
+      if (!follows) {
+        while (end > 0) {
+          const ch = piece.text[end - 1]!;
+          if (ch !== '\t' && !lineEndSpaces.isCollapsibleLineEndWhitespace(ch)) break;
+          end -= 1;
+        }
+      }
+      suffix.fill(1, 0, end);
     } else {
       for (let cursor = piece.text.length - 1; cursor >= 0; cursor -= 1) {
         const ch = piece.text[cursor]!;

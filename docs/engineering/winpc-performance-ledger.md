@@ -168,3 +168,17 @@ Each row gives the median of four alternating editor pairs on WinPC. The two inp
 
 Native text matched the LF reference in all four multiline trials.
 Plate readback contained 255 CRLF sequences. Normalizing those sequences to LF produced the exact expected text in every trial.
+
+## Long paste after reducing the trailing-content scan
+
+WinPC ran four alternating browser pairs against the packed engine. Both editors pasted 158,633 characters into the same document.
+Elapsed time runs from the paste command through two animation frames. Each timing is the median for that editor.
+
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| Paste elapsed 200.8 ms | 109.1 ms | DOCX took 84.0% longer |
+| Renderer CPU 171.8 ms | 83.4 ms | DOCX used 106.0% more CPU time |
+| Exact text in 4 of 4 runs | 4 of 4 runs | Equal |
+
+Four isolated measurements took 2.80–2.92 ms per scan before the change and 0.021–0.026 ms afterward.
+All 4,000 comparisons produced identical suffix arrays. The previous browser batch used 169.7 ms of DOCX renderer CPU.
