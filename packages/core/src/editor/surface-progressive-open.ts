@@ -372,11 +372,17 @@ export function startOpeningSlices(
         result = pass.next();
       }
       pass = null;
+      const limit = host.limit();
+      const total = host.bodyBlockCount();
+      // The closing flush validates pending model and resource changes and publishes every page.
+      // Painting the same final prefix here first makes that flush read geometry from a changed DOM.
+      const closing = shortPrefix && total !== undefined && limit !== null && limit >= total;
       const waiting = pendingReveals.get(surface);
-      const reached = waiting?.covers(result.value) === true;
+      const reached = !closing && waiting?.covers(result.value) === true;
       const work = steps.get(surface);
       if (
-        host.limit() !== null &&
+        !closing &&
+        limit !== null &&
         (reached || work?.atEnd || host.now() - publishedAt >= PREFIX_PUBLISH_INTERVAL_MS)
       ) {
         restorePublished = null;

@@ -269,6 +269,25 @@ describe('prepared open', () => {
       openingViewportMoved(surface, scroller);
       expect(openingUsesIdleTime(surface)).toBe(true);
       expect(scroller.scrollTop).toBe(800);
+      const last = surface.session.paragraphIds().at(-1);
+      let finalPaints = 0;
+      const unobserve = surface.observePaint({
+        afterPaint({ layout }) {
+          if (
+            layout.pages.some((page) =>
+              page.fragments.some(
+                (fragment) => fragment.kind === 'paragraph' && fragment.paragraphId === last
+              )
+            )
+          )
+            finalPaints++;
+        },
+      });
+      scroller.scrollTop = 1360;
+      openingViewportMoved(surface, scroller);
+      completeProgressiveOpen(surface);
+      unobserve();
+      expect(finalPaints).toBe(1);
     } finally {
       editor.destroy();
     }
