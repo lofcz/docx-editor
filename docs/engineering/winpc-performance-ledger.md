@@ -307,3 +307,23 @@ WinPC compared `1021f9fb7` with the previous normalizer on 69,632 strings. Every
 Across six trials per input, median normalization time fell from 1.676 to 0.072 ms for one paragraph.
 It fell from 1.988 to 0.103 ms for multiline text and from 4.316 to 0.285 ms for Unicode text.
 These measurements cover normalization alone. The 497 clipboard and paste tests passed in separate file processes.
+
+## Installed Sciobot editor at `7ea4e425f`
+
+Sciobot used its installed `87dcdfb44` engine. Both Home and the two-peer harness resolved one core package.
+Each workload ran in four alternating editor pairs. Each operation ended after two animation frames.
+
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| Paste 433 characters 65.12 ms | 47.49 ms | DOCX took 37.1% longer |
+| Undo the small paste 47.35 ms | 43.86 ms | DOCX took 8.0% longer |
+| Redo the small paste 32.23 ms | 31.92 ms | DOCX took 1.0% longer |
+| Paste 158,633 characters 160.01 ms | 136.40 ms | DOCX took 17.3% longer |
+| Undo the large paste 50.34 ms | 32.02 ms | DOCX took 57.2% longer |
+| Redo the large paste 76.17 ms | 57.60 ms | DOCX took 32.2% longer |
+| Exact final text in 24 of 24 runs | 24 of 24 runs | Equal |
+
+Large-paste renderer CPU measured 127.97 ms for DOCX and 83.35 ms for Plate.
+Large-paste undo used 24.33 ms and 6.64 ms. Redo used 43.14 ms and 23.60 ms.
+The timing batch included both input sizes and all three operations. Earlier paste-only batches used separate browser processes.
+The raw browser measurements include elapsed time, renderer CPU, text length, exactness, and browser errors. [WinPC measurements](profiles/winpc-installed-87dc-history.jsonl)
