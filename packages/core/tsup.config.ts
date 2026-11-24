@@ -211,6 +211,7 @@ export default defineConfig([
     // build. See `src/layout/node-module-shim.ts`.
     esbuildOptions(options) {
       shared.esbuildOptions(options);
+      options.external = [...(options.external ?? []), '#docx-projection-constructor'];
       options.alias = {
         ...options.alias,
         module: resolve(here, 'src/layout/node-module-shim.ts'),

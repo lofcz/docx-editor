@@ -9,6 +9,13 @@
   "engines": {
     "node": "^20.16.0 || >=22.3.0"
   },
+  "imports": {
+    "#docx-projection-constructor": {
+      "types": "./src/binding/runtime/projection-constructor.d.mts",
+      "docx-defer-projection": "./src/binding/runtime/deferred-projection-constructor.mjs",
+      "default": "./src/binding/runtime/projection-constructor.mjs"
+    }
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -135,6 +142,7 @@
   },
   "files": [
     "dist",
+    "src/binding/runtime",
     "docs",
     "licenses",
     "!dist/metafile-*.json",

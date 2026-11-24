@@ -17,7 +17,7 @@ import type { OoxmlProperty, TreeDocOp } from '../store/store/tree-op-types.ts';
 import { createRecentRootCache } from '../store/store/recent-root-cache.ts';
 import { hiddenRetiredParagraphs } from '../store/package/retired-paragraph.ts';
 import { createSubtreeAggregateMemo } from '../store/package/subtree-memo-policy.ts';
-import { Node as PMNode } from 'prosemirror-model';
+import type { Node as PMNode } from 'prosemirror-model';
 import {
   collectStoryParagraphs,
   findNode,
@@ -40,7 +40,7 @@ import {
 } from '../store/package/ooxml-shared.ts';
 import { isLegacyVmlAtom } from '../store/package/legacy-vml-projection.ts';
 import { FIELD_ATOM_CHAR } from '../store/package/field-nodes.ts';
-import { runPropsOf, treeSchema } from './tree-schema.ts';
+import { getTreeSchema, runPropsOf } from './tree-schema-definition.ts';
 
 /**
  * Why an edited projection could not be mapped back into tree ops.
@@ -315,6 +315,7 @@ export function allParagraphs(part: OoxmlPart): OoxmlNode[] {
 
 /** Project one tree revision into a ProseMirror doc (task 6.1). */
 export function treeToDoc(part: OoxmlPart): PMNode {
+  const treeSchema = getTreeSchema();
   const paragraphs = bodyParagraphs(part).map((paragraph) => {
     const pPr =
       paragraph.kind === 'textValue'
@@ -781,5 +782,5 @@ export function reconcileDoc(
     const reusable = previous.get(paragraph.id);
     next.push(reusable && !dirty.has(paragraph.id) ? reusable : projected.child(index));
   }
-  return treeSchema.node('doc', null, next);
+  return getTreeSchema().node('doc', null, next);
 }
