@@ -2355,6 +2355,7 @@ export function paintSemanticLayoutWithAuthorSlots(
       chromeChanged ? null : reusable,
       parametersUnchanged ? previousByIndex : null,
       beforePaint,
+      resolved.showParagraphMarks ? undefined : resolved.scale,
       (page, fragment: BlockFragmentRecord, previousTable) => {
         const context = {
           ...resolved,

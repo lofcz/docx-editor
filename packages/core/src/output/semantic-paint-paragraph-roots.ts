@@ -7,6 +7,7 @@ import { changedPageParts } from './semantic-paint-page-diff.ts';
 import { sameDataWithin } from './semantic-paint-record-equality.ts';
 import { reconcileParagraphChildren } from './semantic-paint-paragraph-children.ts';
 import { planStructuralRoots } from './semantic-paint-structural-roots.ts';
+import { planTextPaint, rememberTextPaint } from './semantic-paint-text-update.ts';
 
 /**
  * Reserve a page only if the host can keep its loans across these child replacements.
@@ -46,6 +47,7 @@ export interface RetainedPage {
 function planParagraphRootPaint(
   prior: RetainedPage,
   page: PageRecord,
+  textScale: number | undefined,
   paint: (fragment: ParagraphFragmentRecord) => HTMLElement
 ) {
   const { content, blocks } = prior;
@@ -57,7 +59,7 @@ function planParagraphRootPaint(
   )
     return null;
   const nextBlocks = new Map<BlockFragmentRecord, HTMLElement>();
-  const updates = new Map<HTMLElement, HTMLElement>();
+  const updates = new Map<HTMLElement, () => void>();
   let previous: HTMLElement | undefined;
   for (let i = 0; i < page.fragments.length; i++) {
     const from = prior.record.fragments[i]!;
@@ -82,20 +84,32 @@ function planParagraphRootPaint(
       return null;
     if (from !== to && !sameDataWithin(from, to, 20000)) {
       if (to.kind !== 'paragraph') return null;
+      const patch =
+        textScale !== undefined &&
+        from.kind === 'paragraph' &&
+        planTextPaint(root, from, to, textScale);
+      if (patch) {
+        updates.set(root, patch);
+        nextBlocks.set(to, root);
+        continue;
+      }
       const fresh = paint(to);
       if (
         root.attributes.length !== fresh.attributes.length ||
         Array.from(fresh.attributes).some((attr) => root.getAttribute(attr.name) !== attr.value)
       )
         return null;
-      updates.set(root, fresh);
+      updates.set(root, () => {
+        if (textScale !== undefined) rememberTextPaint(root, fresh, to);
+        reconcileParagraphChildren(root, fresh);
+      });
     }
     nextBlocks.set(to, root);
   }
   return {
     changedRoots: new Set(updates.keys()),
     apply() {
-      for (const [root, fresh] of updates) reconcileParagraphChildren(root, fresh);
+      for (const update of updates.values()) update();
       return nextBlocks;
     },
   };
@@ -109,6 +123,7 @@ export function prepareParagraphRootPaint(
   reusable: ReadonlyMap<PageRecord, RetainedPage> | null,
   previousByIndex: ReadonlyMap<number, RetainedPage> | null,
   beforePaint: (retained: ReadonlySet<number>, preserve: PreserveParagraphRoots) => void,
+  textScale: number | undefined,
   paint: (
     page: PageRecord,
     fragment: BlockFragmentRecord,
@@ -154,7 +169,7 @@ export function prepareParagraphRootPaint(
       if (plan === undefined) {
         plan = delta.controls
           ? null
-          : planParagraphRootPaint(prior, page, (fragment) => paint(page, fragment));
+          : planParagraphRootPaint(prior, page, textScale, (fragment) => paint(page, fragment));
         plans.set(index, plan);
       }
       if (!plan && homeOf) {

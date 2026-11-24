@@ -26,7 +26,7 @@ function copyAttributes(target: HTMLElement, source: HTMLElement): void {
   }
 }
 
-function setRunText(node: Text, value: string): void {
+export function setRunText(node: Text, value: string): void {
   const before = node.data;
   if (before === value) return;
   let start = 0;
