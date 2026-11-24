@@ -357,3 +357,19 @@ The previous DOCX sizes were 18.4 px and 34.5 px.
 All 33 consumer tests passed with 489 assertions. The three original test files retained their assertions.
 The reload helper waited for a connected editor through the production load signal.
 Both peer orders passed. Chrome selected Inter Regular Italic after reload and in a fresh browser context.
+
+## Lesson overview with the installed editor
+
+Four paired WinPC trials used Sciobot's lesson overview with installed engine `87dcdfb44`.
+Each trial edited the same text at the same offset before opening and closing the overview.
+The first two rows measure the initial response. The last two include the full animation.
+
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| Open overview, 165.45 ms | 40.15 ms | DOCX took 4.12 times as long |
+| Close overview, 43.15 ms | 45.45 ms | DOCX took 5.1% less time |
+| Open until motion stopped, 345.10 ms | 246.00 ms | DOCX took 40.3% longer |
+| Close until motion stopped, 303.10 ms | 228.25 ms | DOCX took 32.8% longer |
+
+During a separate Chrome trace, opening the overview moved the scroll position from 0 to 2,804 pixels.
+The overview button kept focus while the editor scrolled to the previous text selection twice. [Paired measurements](profiles/winpc-overview-87dc-pairs.jsonl)
