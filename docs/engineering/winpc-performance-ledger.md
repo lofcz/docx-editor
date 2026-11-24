@@ -2,6 +2,26 @@
 
 Use `codex/react-block-proof` for progressive integration. Sciobot uses `claude/docx-native-cutover`.
 
+## Reuse after the edited rich paragraph
+
+WinPC ran all six orders of engine `5a0194e03`, the changed line comparison, and Plate.
+Each editor received 59 keys on the same rich lesson. The control and candidate had equal final paint signatures.
+
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| Renderer CPU, 766.41 → 762.31 ms | 623.46 ms | Candidate used 22.3% more CPU time |
+| Elapsed with keyboard pauses, 5,266.05 → 5,239.75 ms | 5,002.65 ms | Candidate took 4.7% more time |
+| Median key to exact text, 7.05 → 6.90 ms | 1.10 ms | Candidate took 5.80 ms longer |
+| Median key to frame, 8.20 → 8.00 ms | 6.75 ms | Candidate took 1.25 ms longer |
+| 95th-percentile key to frame, 15.57 → 16.19 ms | 15.89 ms | Candidate took 0.30 ms longer |
+| Wrapping key to frame, 51.30 → 55.35 ms | 15.55 ms | Candidate took 39.80 ms longer |
+| Exact final text, caret, and backward selection, 6/6 | 6/6 | Equal |
+| Follow-up input-method check, 6/6 | 3/6 | Three more passes |
+
+The candidate reused the remaining layout after all 58 edits that preserved line count. The wrapping edit ran the full path.
+The median paired CPU saving was 36.76 ms. Four of six pairs used less CPU.
+The 95th-percentile frame time increased in all six pairs. Two participants passed reconnect, undo, redo, save, and reopen in both orders. [All 18 browser runs](profiles/winpc-rich-paragraph-convergence.jsonl)
+
 ## Clipboard after the Sciobot upstream merge
 
 Sciobot `2fd83fe0f` includes upstream `925da5ba2` and engine `5a0194e03`. WinPC ran four pairs per action and alternated editor order.
