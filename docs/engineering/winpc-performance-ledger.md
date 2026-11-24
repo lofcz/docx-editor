@@ -800,6 +800,27 @@ Four preliminary rounds on the earlier host saved 14.05 ms per paired cycle. Set
 Both exact-host origins used 115% zoom. All 908 text boxes, font properties, page boxes, headings, and timeline bounds matched.
 The trial stayed outside the engine. [Paired measurements and geometry](profiles/winpc-overview-first-return.jsonl)
 
+## Overview motion on the activation clock
+
+Sciobot commit `5c5ad04c0` uses Plate's 200 ms overview timing. Each host window starts its heading and page motion at activation.
+Six WinPC rounds exercised every order of the control, candidate, and Plate. Both native origins used installed engine `8f1564202`.
+
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| Initial open, 83.30 → 123.35 ms | 40.40 ms | 205.3% more time |
+| Initial close, 43.10 → 44.80 ms | 44.55 ms | 0.6% more time |
+| Settled open, 271.00 → 257.50 ms | 257.00 ms | 0.2% more time |
+| Settled close, 293.10 → 261.75 ms | 243.75 ms | 7.4% more time |
+| Entire settled cycle, 563.85 → 519.55 ms | 501.35 ms | 3.6% more time |
+
+The paired cycle saved 42.60 ms. Five cycles and all six closes improved. Settled close saved 31.65 ms per paired trial.
+Initial opening varied from 43.00 to 129.20 ms. Its paired median saved 0.05 ms, although its separate median rose 40.05 ms.
+The remaining median cycle gap was 18.20 ms. The separate geometry check matched all 908 text boxes across the three views.
+Both origins used 115% zoom and matched all pages, headings, and timeline bounds. [Six matched trials and geometry](profiles/winpc-overview-activation-clock.jsonl)
+
+The original disclosure and timeline tests and both reversed peer cases passed with 221 assertions.
+Reduced motion during activation and consecutive activations preserved focus and content. Type checks covered 217 files. Lint passed.
+
 ## Rejected line ownership summary
 
 WinPC tested caching editable offsets and page fields as the layout placed each body line.
