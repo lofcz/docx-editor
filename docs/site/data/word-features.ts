@@ -1282,7 +1282,7 @@ export const wordFeatures: WordFeature[] = [
     tier: 'premium',
     docsLink: '/docs/2.x/pro/collaboration',
     notes:
-      'Yjs synchronizes supported document edits, participant cursors, and selections, with separate undo history for each participant. Offline edits merge after reconnection. Formatting can be lost when another participant moves the same text to another paragraph. Explicitly owned local drafts withdraw only their owner’s remote selection while focused.',
+      'Yjs synchronizes supported edits, cursors, and selections after reconnection, with separate undo histories for each participant. Undoing a paragraph’s first formatting change preserves later peer formatting. Moving text between paragraphs can lose formatting, and focused local drafts withdraw only the owner’s remote selection.',
   },
   {
     id: 'collab.find-replace',
