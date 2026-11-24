@@ -2166,6 +2166,7 @@ function adoptPageBlocks(
     if (
       !kept.has(element) &&
       element.classList?.contains(COLUMN_SEPARATOR_CLASS) !== true &&
+      !element.hasAttribute?.('data-docx-caret') &&
       !element.hasAttribute?.('data-docx-host-ui')
     ) {
       (child as ChildNode).remove();
