@@ -1,0 +1,12 @@
+{"trial": 1, "mode": "native", "exactTarget": true, "clickAttempts": 1, "recap": [105.70000004768372, 32.40000009536743], "settled": [240.30000019073486, 282]}
+{"trial": 1, "mode": "candidate", "exactTarget": true, "clickAttempts": 1, "recap": [76.79999995231628, 43.80000019073486], "settled": [276.89999985694885, 294.7000000476837]}
+{"trial": 1, "mode": "plate", "exactTarget": true, "clickAttempts": 1, "recap": [44.700000047683716, 31.40000009536743], "settled": [244.40000009536743, 231.70000004768372]}
+{"trial": 2, "mode": "plate", "exactTarget": true, "clickAttempts": 1, "recap": [41.5, 45.09999990463257], "settled": [257.80000019073486, 228.20000004768372]}
+{"trial": 2, "mode": "candidate", "exactTarget": true, "clickAttempts": 1, "recap": [182.40000009536743, 46], "settled": [324.2000000476837, 297]}
+{"trial": 2, "mode": "native", "exactTarget": true, "clickAttempts": 1, "recap": [106.89999985694885, 45.700000047683716], "settled": [242.79999995231628, 295.2000000476837]}
+{"trial": 3, "mode": "candidate", "exactTarget": true, "clickAttempts": 1, "recap": [145.80000019073486, 45.200000047683716], "settled": [289.2000000476837, 294.7000000476837]}
+{"trial": 3, "mode": "plate", "exactTarget": true, "clickAttempts": 1, "recap": [44.80000019073486, 20.5], "settled": [245.10000014305115, 221.5]}
+{"trial": 3, "mode": "native", "exactTarget": true, "clickAttempts": 1, "recap": [78.20000004768372, 45.60000014305115], "settled": [244.90000009536743, 295.90000009536743]}
+{"trial": 4, "mode": "native", "exactTarget": true, "clickAttempts": 1, "recap": [132.29999995231628, 45.200000047683716], "settled": [248.90000009536743, 311.59999990463257]}
+{"trial": 4, "mode": "plate", "exactTarget": true, "clickAttempts": 1, "recap": [43, 46.299999952316284], "settled": [260.80000019073486, 245.70000004768372]}
+{"trial": 4, "mode": "candidate", "exactTarget": true, "clickAttempts": 1, "recap": [143.29999995231628, 46.09999990463257], "settled": [280.59999990463257, 295.7999999523163]}

@@ -495,6 +495,22 @@ Both browser peer orders passed remote edits, reconnect, undo, redo, deletion, a
 Eleven of 13 browser disclosure tests passed. Both DOCX builds failed the same wheel-completion and border-travel checks.
 The border error measured 19.63 px in both DOCX builds against a 2 px limit.
 
+### Overview motion with measured timeline geometry
+
+Sciobot `2fd83fe0f` retained the running animations when Word replaced a paragraph.
+It held the folded positions until the expanded layout included the measured timeline.
+All 13 disclosure tests passed with 91 assertions. The reversed peer order passed 25 assertions.
+Four WinPC trials used the same stored lesson and checked the edited paragraph. The table shows median milliseconds.
+
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| Open overview, 106.30 ms → 144.55 ms | 43.85 ms | 229.6% more time |
+| Close overview, 45.40 ms → 45.60 ms | 38.25 ms | 19.2% more time |
+| Open until motion stopped, 243.85 ms → 284.90 ms | 251.45 ms | 13.3% more time |
+| Close until motion stopped, 295.55 ms → 295.25 ms | 229.95 ms | 28.4% more time |
+
+The geometry fix added 38.25 ms to the initial opening response. [Timing samples](profiles/winpc-overview-2fd83-motion.jsonl)
+
 ## Rejected line ownership summary
 
 WinPC tested caching editable offsets and page fields as the layout placed each body line.
