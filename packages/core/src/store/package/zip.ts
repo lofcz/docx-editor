@@ -6,7 +6,7 @@
 
 import { unzipSync } from 'fflate';
 import { normalizePartName, partNameKey } from './opc-names.ts';
-import { writeZipEntriesSteps } from './zip-write.ts';
+import { writeZipEntriesSteps, type ZipEntryCompressor } from './zip-write.ts';
 
 /**
  * Why a zip was refused at the trust boundary.
@@ -172,7 +172,8 @@ export function writeZip(entries: ReadonlyMap<string, Uint8Array>): Uint8Array {
  * @internal
  */
 export function writeZipSteps(
-  entries: ReadonlyMap<string, Uint8Array>
+  entries: ReadonlyMap<string, Uint8Array>,
+  compress?: ZipEntryCompressor
 ): Generator<void, Uint8Array> {
   const named = new Map<string, Uint8Array>();
   const seen = new Set<string>();
@@ -186,7 +187,7 @@ export function writeZipSteps(
     // Canonical part names carry a leading slash; ZIP entry names do not.
     named.set(norm.partName.replace(/^\//, ''), data);
   }
-  return writeZipEntriesSteps(named, FIXED_ENTRY_MTIME);
+  return writeZipEntriesSteps(named, FIXED_ENTRY_MTIME, compress);
 }
 
 export { strToU8, strFromU8 } from 'fflate';

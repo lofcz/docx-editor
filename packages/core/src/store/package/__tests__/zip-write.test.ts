@@ -1,6 +1,7 @@
 // The ZIP writer works in steps so a long save never holds the page in one task. Its archive
 // layout must stay the one `zipSync` writes, and its output must read back through both the
 // bounded reader and an independent one.
+import { packageCompressor } from '../package-compression.ts';
 import { describe, expect, test } from 'bun:test';
 import { deflateSync, unzipSync, zipSync } from 'fflate';
 import { readZip, writeZip, writeZipSteps } from '../zip.ts';
@@ -54,6 +55,21 @@ describe('ZIP writer', () => {
     const bounded = readZip(value);
     if (!bounded.ok) throw new Error(bounded.reason);
     expect(bounded.entries.get('/word/document.xml')).toEqual(long);
+  });
+
+  test('reuses large parts across saves and detects changes through the original byte view', () => {
+    const media = longEntry(2 * ZIP_WRITE_SLICE_BYTES);
+    const entries = new Map([['/word/media/image.bin', media]]);
+    const write = () => drain(writeZipSteps(entries, packageCompressor(entries))).value;
+    const initial = write();
+    const repeated = write();
+    expect(repeated).toEqual(initial);
+    repeated.fill(0);
+    expect(write()).toEqual(initial);
+    media[media.length - 1] = media[media.length - 1]! ^ 1;
+    const changed = write();
+    expect(changed).toEqual(writeZip(entries));
+    expect(unzipSync(changed)['word/media/image.bin']).toEqual(new Uint8Array(media));
   });
 
   test('refuses unsafe part names before writing anything', () => {

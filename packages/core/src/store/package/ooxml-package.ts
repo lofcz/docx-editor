@@ -18,6 +18,7 @@
 // One deliberate tolerance: a content-type record with malformed MIME syntax is ignored
 // (treated as absent) unless it decides the type of a part the document needs.
 
+import { packageCompressor } from './package-compression.ts';
 import { contentTypeExportPackage } from './content-type-export.ts';
 import { textboxFallbackExportPackageSteps } from './textbox-fallback-export.ts';
 import { retiredParagraphExportPackage } from './retired-paragraph.ts';
@@ -699,7 +700,7 @@ export function* writeOoxmlPackageSteps(
     entries.set(name, yield* serializeOoxmlPartSteps(part));
     yield;
   }
-  return yield* writeZipSteps(entries);
+  return yield* writeZipSteps(entries, packageCompressor(exported.partBytes));
 }
 
 /** A package holding exactly one part, for callers that never open a real one. */
