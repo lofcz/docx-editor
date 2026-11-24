@@ -54,8 +54,11 @@ export function documentProjectionInputs(
   const widgets = indexedWidgetProjection(options, blocks);
   const shown = options.showFieldCodes ? `${options.producer ?? ''}|field-codes` : options.producer;
   const base = shown === undefined ? shown : withFieldResultsProducer(shown);
-  const measured =
-    options.measurer && !widgets ? inlineWidgetProducer(base, options.measurer) : base;
+  const measured = widgets
+    ? widgets.global
+      ? producerWithControlContext(base, widgets.global)
+      : base
+    : inlineWidgetProducer(base, options.measurer);
   // Coordinated hosts already invalidate only paragraphs whose projected values changed.
   // A partial projection contract must retain the document-wide fallback.
   const properties =
@@ -66,5 +69,5 @@ export function documentProjectionInputs(
     producerWithControlContext(producerWithDocumentProperties(measured, properties), controlToken),
     tocLinkStyleToken(linkStyleRanges)
   );
-  return { ...widgets, producer };
+  return { ...widgets?.inputs, producer };
 }

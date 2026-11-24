@@ -40,7 +40,7 @@ function directOwners(blocks: readonly OoxmlElement[]) {
 
 const projections = new WeakMap<
   ReadonlyMap<string, InlineWidgetMetrics>,
-  WeakMap<readonly OoxmlElement[], ReadonlyMap<string, string> | null>
+  WeakMap<readonly OoxmlElement[], ReturnType<typeof tokensForBlocks>>
 >();
 function tokensForBlocks(
   boxes: ReadonlyMap<string, InlineWidgetMetrics>,
@@ -48,14 +48,22 @@ function tokensForBlocks(
 ) {
   const paragraphs = directOwners(blocks);
   const entries = new Map<string, string[]>();
+  const global: string[] = [];
   for (const [id, box] of boxes) {
     const owner = paragraphs.get(id);
-    if (owner === undefined) return null;
+    const key = JSON.stringify([id, box.width, box.ascent, box.descent]);
+    if (owner === undefined) {
+      global.push(key);
+      continue;
+    }
     const tokens = entries.get(owner) ?? [];
-    tokens.push(JSON.stringify([id, box.width, box.ascent, box.descent]));
+    tokens.push(key);
     entries.set(owner, tokens);
   }
-  return new Map([...entries].map(([id, keys]) => [id, framedTokenJoin(keys.sort())]));
+  return {
+    global: framedTokenJoin(global.sort()),
+    paragraphs: new Map([...entries].map(([id, keys]) => [id, framedTokenJoin(keys.sort())])),
+  };
 }
 
 function hasFurnitureWidgets(furniture: SemanticLayoutOptions['furniture']) {
@@ -68,7 +76,7 @@ function hasFurnitureWidgets(furniture: SemanticLayoutOptions['furniture']) {
   return false;
 }
 
-/** Use paragraph keys only when every published box has a known direct body owner. */
+/** Changes without a direct body owner invalidate every block. Other boxes retain their paragraph keys. */
 export function indexedWidgetProjection(
   options: SemanticLayoutOptions,
   blocks: readonly OoxmlElement[]
@@ -89,20 +97,22 @@ export function indexedWidgetProjection(
     tokens = tokensForBlocks(boxes, blocks);
     cached.set(blocks, tokens);
   }
-  if (tokens === null) return undefined;
   const previous = options.projectionTokenForParagraph;
   return {
-    projectionEpoch:
-      previous && options.projectionEpoch === undefined
-        ? undefined
-        : framedTokenJoin([
-            options.projectionEpoch ?? '',
-            inlineWidgetProducer('', options.measurer)!,
-          ]),
-    projectionTokenForParagraph: (p: OoxmlNode) => {
-      const prior = previous?.(p) ?? '';
-      const token = tokens.get(p.id);
-      return token ? framedTokenJoin([prior, token]) : prior;
+    global: tokens.global,
+    inputs: {
+      projectionEpoch:
+        previous && options.projectionEpoch === undefined
+          ? undefined
+          : framedTokenJoin([
+              options.projectionEpoch ?? '',
+              inlineWidgetProducer('', options.measurer)!,
+            ]),
+      projectionTokenForParagraph: (p: OoxmlNode) => {
+        const prior = previous?.(p) ?? '';
+        const token = tokens.paragraphs.get(p.id);
+        return token ? framedTokenJoin([prior, token]) : prior;
+      },
     },
   };
 }

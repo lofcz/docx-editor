@@ -251,13 +251,17 @@ test('indexed widget metrics reuse unaffected pages and retain complete layout g
     const id = live.layout().contentControls!.find((control) => control.tag === 'chip:source')!.id;
     const box = { width: 40, ascent: 20, descent: 4 };
     const map = new Map([[id, box]]);
+    // A pending host ID requires a full pass once. Its unchanged size cannot invalidate later edits.
+    map.set('pending-control', { width: 24, ascent: 12, descent: 2 });
     for (const width of [40, 64, 80]) {
       box.width = width;
       setSurfaceInlineWidgetMetrics(live, map);
       setSurfaceInlineWidgetMetrics(reference, metrics(width, String(width)));
       expect(live.layout().pages).toEqual(reference.layout().pages);
-      expect(live.layoutSession().stats.placed).toBeLessThan(live.layoutSession().stats.total);
-      expect(live.layoutSession().stats.reusedPages).toBeGreaterThan(0);
+      if (width !== 40) {
+        expect(live.layoutSession().stats.placed).toBeLessThan(live.layoutSession().stats.total);
+        expect(live.layoutSession().stats.reusedPages).toBeGreaterThan(0);
+      }
     }
     map.clear();
     setSurfaceInlineWidgetMetrics(live, null);
