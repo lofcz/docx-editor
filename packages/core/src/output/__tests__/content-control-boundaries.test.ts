@@ -200,6 +200,9 @@ describe('content-control boundary paint seam', () => {
         },
       });
     paint('First');
+    const sheet = container.querySelector('.docx-page')!;
+    const changes = new MutationObserver(() => {});
+    changes.observe(sheet, { childList: true });
     const native = container.querySelector('.docx-content-control-chrome');
     const text = container.querySelector('[data-start]')!.firstChild;
     paint('Second');
@@ -210,6 +213,8 @@ describe('content-control boundary paint seam', () => {
     expect(container.querySelector('[data-start]')!.firstChild).toBe(text);
     paintSemanticLayout(container, layout);
     expect(container.querySelector('[data-docx-content-control="extra"]')).toBeNull();
+    expect(changes.takeRecords()).toHaveLength(0);
+    changes.disconnect();
     expect(container.querySelector('.docx-content-control-chrome')).toBe(native);
   });
 });

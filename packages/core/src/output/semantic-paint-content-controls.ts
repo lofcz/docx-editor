@@ -46,7 +46,10 @@ interface PaintedControl {
 }
 
 // A retained sheet keeps its origin and zoom. Only a changed control needs new furniture.
-const paintedControls = new WeakMap<HTMLElement, readonly PaintedControl[]>();
+const paintedControls = new WeakMap<
+  HTMLElement,
+  { readonly root: HTMLElement; readonly controls: readonly PaintedControl[] }
+>();
 
 function setBoundaryState(
   element: HTMLElement,
@@ -88,8 +91,20 @@ export function paintContentControlChrome(
         !pageControls.some((control) => control.id === candidate.id)
     ),
   ];
-  const previous = paintedControls.get(pageElement) ?? [];
-  if (!controls.length && !previous.length) return;
+  const retained = paintedControls.get(pageElement);
+  if (!controls.length) {
+    retained?.root.remove();
+    paintedControls.delete(pageElement);
+    return;
+  }
+  const previous = retained?.controls ?? [];
+  const root = retained?.root ?? document.createElement('div');
+  if (!retained) {
+    // Keep each page's w:sdt boundary furniture in paint order. See CT_SdtBlock in
+    // ECMA-376 Part 1, 17.5.2.29 and CT_SdtRun in Part 1, 17.5.2.31.
+    root.style.display = 'contents';
+    pageElement.insertBefore(root, pageElement.querySelector(`:scope > .${CHANGE_BARS_CLASS}`));
+  }
   const byId = new Map(previous.map((item) => [item.record.id, item]));
   const next: PaintedControl[] = [];
   const showAll = chrome?.showAll === true;
@@ -128,16 +143,13 @@ export function paintContentControlChrome(
       ),
     });
   }
-  paintedControls.set(pageElement, next);
+  paintedControls.set(pageElement, { root, controls: next });
   const kept = new Set(next.map((item) => item.element));
-  let anchor: ChildNode | null =
-    previous.at(-1)?.element.nextSibling ??
-    pageElement.querySelector(`:scope > .${CHANGE_BARS_CLASS}`);
+  let anchor: ChildNode | null = null;
   for (const item of previous) if (!kept.has(item.element)) item.element.remove();
   for (let i = next.length - 1; i >= 0; i--) {
     const el = next[i]!.element;
-    if (el.parentElement !== pageElement || el.nextSibling !== anchor)
-      pageElement.insertBefore(el, anchor);
+    if (el.parentElement !== root || el.nextSibling !== anchor) root.insertBefore(el, anchor);
     anchor = el;
   }
 }
