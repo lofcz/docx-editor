@@ -1,6 +1,7 @@
 // `w:numberingChange` is the legacy record of a list number's old text. It lists as no change,
 // and a bulk decision in either direction drops it and keeps the list.
 import { expect, test } from 'bun:test';
+import { collectRevisionSites, collectRevisionSitesTransient } from '../store/tree-op-revisions.ts';
 import {
   applyTreeOp,
   planRevisionBatch,
@@ -10,6 +11,19 @@ import {
 } from '../index.ts';
 
 const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+test('a legacy list change can be the only revision site', () => {
+  const parsed = readOoxmlPart(
+    `<w:document xmlns:w="${W}"><w:body><w:p><w:pPr><w:numPr>
+    <w:numberingChange w:id="1" w:author="Ann" w:original="%1."/>
+    </w:numPr></w:pPr></w:p></w:body></w:document>`,
+    { name: '/word/document.xml', contentType: 'application/xml' }
+  );
+  if (!parsed.ok) throw Error(parsed.reason);
+  const expected = collectRevisionSitesTransient(parsed.part);
+  expect(expected.map((site) => site.node.localName)).toEqual(['numberingChange']);
+  expect(collectRevisionSites(parsed.part)).toEqual(expected);
+});
+
 const body =
   '<w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/>' +
   '<w:numberingChange w:id="1" w:author="Ann" w:original="%1."/></w:numPr></w:pPr>' +

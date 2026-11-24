@@ -65,6 +65,11 @@ import {
 } from '../package/ooxml-tree.ts';
 import { isContentRevisionKind } from '../package/ooxml-shared.ts';
 import {
+  isNamedRevision,
+  MARK_MOVE_NAMES,
+  mayHaveRevisionSite,
+} from './revision-site-candidates.ts';
+import {
   holdsContent,
   mergeRevisionParagraphs,
   tableParagraphMergeTarget,
@@ -108,24 +113,7 @@ export { namedMoveRanges };
 const PROPERTY_CHANGE_NAMES: ReadonlySet<string> = new Set(REVISION_PROPERTY_CONTAINERS.keys());
 const MATH_NAMESPACE = 'http://schemas.openxmlformats.org/officeDocument/2006/math';
 
-/** The two members of `EG_ParaRPrTrackChanges` that record a MOVE of the paragraph mark. */
-const MARK_MOVE_NAMES: ReadonlySet<string> = new Set(['moveFrom', 'moveTo']);
-
-/** Cheap canonical preflight for an element that may produce a review revision item. @internal */
-export function isPotentialRevisionElement(node: OoxmlNode): boolean {
-  return (
-    node.kind !== 'textValue' &&
-    node.namespaceUri === WML_NAMESPACE_URI &&
-    (isContentRevisionKind(node.kind) ||
-      MARK_MOVE_NAMES.has(node.localName) ||
-      CELL_REVISION_NAMES.has(node.localName) ||
-      PROPERTY_CHANGE_NAMES.has(node.localName) ||
-      node.localName === 'ins' ||
-      node.localName === 'del' ||
-      node.kind === 'moveFromRangeStart' ||
-      node.kind === 'moveToRangeStart')
-  );
-}
+export { isPotentialRevisionElement } from './revision-site-candidates.ts';
 
 /**
  * Parents that make a `w:ins`/`w:del` a STRUCTURAL revision rather than a content one.
@@ -226,16 +214,8 @@ function collectRevisionSitesIn(
       const isContent = isContentRevisionKind(node.kind);
       const markMove =
         parentName === 'rPr' && grandparentName === 'pPr' && MARK_MOVE_NAMES.has(node.localName);
-      const isNamedRevision =
-        isContent ||
-        MARK_MOVE_NAMES.has(node.localName) ||
-        CELL_REVISION_NAMES.has(node.localName) ||
-        PROPERTY_CHANGE_NAMES.has(node.localName) ||
-        node.localName === 'ins' ||
-        node.localName === 'del' ||
-        (node.localName === 'numberingChange' && parentName === 'numPr');
       if (
-        isNamedRevision &&
+        isNamedRevision(node, parentName === 'numPr') &&
         (wmlAttribute(node, 'id') !== undefined || part.root.localName === 'styles')
       ) {
         const misplacedMark =
@@ -327,7 +307,7 @@ function collectRevisionSitesIn(
 
 /** Every revision-bearing element in the part. */
 export function collectRevisionSites(part: OoxmlPart): RevisionSite[] {
-  return collectRevisionSitesIn(part);
+  return mayHaveRevisionSite(part.root) ? collectRevisionSitesIn(part) : [];
 }
 
 /** Export-only cold derivation that does not populate interactive subtree memos. @internal */

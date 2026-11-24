@@ -14,6 +14,7 @@ import { themeFontFamilyOf, type ThemeSchemeFaces } from '../store/package/theme
 import { symbolFontFamily } from '../store/package/run-defaults.ts';
 import { symbolGlyphOf } from '../store/package/symbol-glyph.ts';
 import { weakRefOf, type WeakRefOf } from '../store/package/weak-ref.ts';
+import { keepsSubtreeMemo } from '../store/package/subtree-memo-policy.ts';
 
 /**
  * The same shape `semantic-paint.ts` enforces at the CSS sink (its `FONT_NAME`):
@@ -342,15 +343,14 @@ function subtreeSymbolFontsOf(subtree: OoxmlElement, depth = 0): SubtreeSymbolFa
     subtreeSymbolFontsMemos.set(subtree, answer);
     return answer;
   };
-  // The compose branch never inspects the node itself, so a `w:sym` wide enough to take it
-  // would lose its own face — the same self-check `subtreeFontsOf` makes for `w:rFonts`.
-  // `w:sym` is a generic node, so a hand-built package can give it children. A run never
-  // composes either: its children's memos cannot know that the run hides them.
+  // A body with one content control can hold the whole document. Compose its child
+  // summaries even when that body is narrow. A run owns the visibility of its symbols.
+  // w:sym (CT_Sym, ECMA-376 Part 1, 17.3.3.30) owns its font directly.
   if (
-    subtree.children.length >= COMPOSE_CHILD_THRESHOLD &&
     depth < MAX_COMPOSE_DEPTH &&
     subtree.localName !== 'sym' &&
-    subtree.localName !== 'r'
+    subtree.localName !== 'r' &&
+    keepsSubtreeMemo(subtree)
   ) {
     for (const child of subtree.children) {
       if (!isElement(child)) continue;

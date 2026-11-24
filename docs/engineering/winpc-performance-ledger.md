@@ -2,6 +2,24 @@
 
 Use `codex/react-block-proof` for progressive integration. Sciobot uses `claude/docx-native-cutover`.
 
+## Font and review reads during rich typing
+
+WinPC compared engine `5a0194e03`, the font and review change, and Plate in all six orders.
+Each editor typed 59 keys in the same paragraph. The control and candidate had equal final paint signatures.
+
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| Renderer CPU, 800.24 → 764.03 ms | 605.12 ms | Candidate used 26.3% more CPU time |
+| Elapsed with keyboard pauses, 5,240.45 → 5,192.85 ms | 5,110.30 ms | Candidate took 1.6% more time |
+| Median key to exact text, 7.10 → 7.05 ms | 1.10 ms | Candidate took 5.95 ms longer |
+| Median key to frame, 8.25 → 8.20 ms | 6.85 ms | Candidate took 1.35 ms longer |
+| 95th-percentile key to frame, 16.73 → 16.26 ms | 15.59 ms | Candidate took 0.67 ms longer |
+| Wrapping key to frame, 58.85 → 53.35 ms | 10.55 ms | Candidate took 42.80 ms longer |
+| Follow-up input-method check, 6/6 | 3/6 | Three more passes |
+
+The median paired CPU saving was 39.22 ms. Five of six pairs used less CPU.
+The 95th-percentile frame time fell in all six pairs. All 18 trials finished with the expected text, selection, and caret. [Browser measurements](profiles/winpc-rich-font-review.jsonl)
+
 ## Reuse after the edited rich paragraph
 
 WinPC ran all six orders of engine `5a0194e03`, the changed line comparison, and Plate.
