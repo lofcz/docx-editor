@@ -6,6 +6,8 @@
 // geometry memoizes per page object — a typing pass that reuses 675 of 677 pages walks the
 // spans of the two pages it rebuilt, not the whole document.
 
+import { retainControlBoundaries, type PageGeometryContribution, type PlacedBlockBox, type PlacedSpanBox } from './control-boundary-retention.ts';
+import type { LayoutSession } from './layout-session.ts';
 import { FieldResultsModeMemo } from '../store/package/field-result-mode.ts';
 import type {
   OoxmlElement,
@@ -299,34 +301,6 @@ function collectControlLists(part: OoxmlPart): readonly (readonly CollectedContr
 
 const topLevelBlockControls = new FieldResultsModeMemo<OoxmlNode, readonly CollectedControl[]>();
 
-interface PlacedBlockBox {
-  readonly pageIndex: number;
-  readonly blockId: string;
-  readonly box: LayoutBox;
-}
-
-interface PlacedSpanBox {
-  readonly pageIndex: number;
-  readonly paragraphId: string;
-  readonly start: number;
-  readonly end: number;
-  /**
-   * Ordinal of the line this span sits on, so inline-control fragments can union per LINE.
-   * Uniting per page gave a wrapped control one rectangle covering everything between its
-   * first and last line, including neighbouring words. Composed as page index × 2^20 plus
-   * the line's ordinal WITHIN its page, which keeps document order sortable while letting
-   * an unchanged page's contribution be reused verbatim when other pages move.
-   */
-  readonly line: number;
-  /**
-   * The span's TEXT extent: the raw span box dropped by the line's leading. Span boxes sit
-   * at the line-box top, but non-single `w:spacing` puts the whole leading ABOVE the glyphs,
-   * so a boundary built from raw boxes tints the gap over the text and misses the text
-   * itself.
-   */
-  readonly box: LayoutBox;
-}
-
 /**
  * Deterministic work accounting for boundary generation.
  *
@@ -364,13 +338,6 @@ interface PlacedGeometryIndex {
 
 /** More lines than one page can carry; keeps composite line keys ordered across pages. */
 const PAGE_LINE_ORDINAL_SPAN = 1 << 20;
-
-interface PageGeometryContribution {
-  /** Version of the needed-id sets this contribution was filtered under. */
-  readonly neededStamp: number;
-  readonly blocks: readonly PlacedBlockBox[];
-  readonly spans: readonly PlacedSpanBox[];
-}
 
 /**
  * Per-page geometry contributions, memoized on the immutable page record.
@@ -512,16 +479,12 @@ function pageContribution(
 }
 
 function placedGeometryOf(
-  layout: SemanticLayout,
-  index: CollectedControlIndex,
-  work?: ContentControlBoundaryWork
+  contributions: readonly PageGeometryContribution[]
 ): PlacedGeometryIndex {
-  const stamp = neededStampOf(index.neededToken);
   const blocksById = new Map<string, PlacedBlockBox[]>();
   const spansByParagraph = new Map<string, PlacedSpanBox[]>();
   const repeatedParagraphs = new Set<string>();
-  for (const page of layout.pages) {
-    const contribution = pageContribution(page, index, stamp, work);
+  for (const contribution of contributions) {
     for (const entry of contribution.blocks) {
       const entries = blocksById.get(entry.blockId);
       if (entries) entries.push(entry);
@@ -797,7 +760,8 @@ export function attachContentControlBoundaries(
   layout: SemanticLayout,
   part: OoxmlPart,
   token = contentControlContextToken(part),
-  work?: ContentControlBoundaryWork
+  work?: ContentControlBoundaryWork,
+  session?: LayoutSession
 ): SemanticLayout {
   // The token the CALLER passes is the body part's. A control in a header lives in a different
   // part, whose token the body's does not move with — so the authority is derived here, over
@@ -841,7 +805,29 @@ export function attachContentControlBoundaries(
   }
 
   const index = collectedControlIndexOverParts(parts);
-  const geometry = placedGeometryOf(layout, index, work);
+  const stamp = neededStampOf(index.neededToken);
+  const contributions = layout.pages.map((page) => pageContribution(page, index, stamp, work));
+  const build = () => publishControlGeometry(layout, index, contributions, token, work);
+  return session ? retainControlBoundaries(session, layout, index, contributions, token, sameControlInput, build) : build();
+}
+
+function sameControlInput(left: CollectedControl, right: CollectedControl): boolean {
+  return left === right || (
+    left.paragraphId === right.paragraphId &&
+    left.range?.start === right.range?.start && left.range?.end === right.range?.end &&
+    sameRefs(left.blockIds, right.blockIds) &&
+    sameBoundaryRecord(recordWithoutGeometry(left), recordWithoutGeometry(right))
+  );
+}
+
+function publishControlGeometry(
+  layout: SemanticLayout,
+  index: CollectedControlIndex,
+  contributions: readonly PageGeometryContribution[],
+  token: string,
+  work?: ContentControlBoundaryWork
+): SemanticLayout {
+  const geometry = placedGeometryOf(contributions);
   const contentControls = index.controls.map((entry) => boundaryRecordOf(entry, geometry, work));
   const byPage = new Map<number, ContentControlBoundaryRecord[]>();
   for (const record of contentControls) {

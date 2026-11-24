@@ -5,6 +5,7 @@ import { attachContentControlBoundaries } from './content-control-boundary-layou
 import { withSectionBreakMarks } from './section-break-marks.ts';
 import type { DocumentSection } from './section-properties.ts';
 import { alignSectionPagesVertically, sectionsAlignVertically } from './section-vertical-align.ts';
+import type { LayoutSession } from './layout-session.ts';
 import type { SemanticLayout } from './semantic-records.ts';
 
 /**
@@ -21,11 +22,12 @@ export function publishLayoutPass(
   controlToken: string,
   allBlocks: readonly OoxmlElement[],
   sections: readonly DocumentSection[],
-  blocks: readonly OoxmlElement[]
+  blocks: readonly OoxmlElement[],
+  session?: LayoutSession
 ): { readonly published: SemanticLayout; readonly retained: SemanticLayout } {
   const publish = (pages: SemanticLayout): SemanticLayout =>
     withSectionBreakMarks(
-      attachContentControlBoundaries(pages, part, controlToken),
+      attachContentControlBoundaries(pages, part, controlToken, undefined, session),
       part,
       allBlocks
     );

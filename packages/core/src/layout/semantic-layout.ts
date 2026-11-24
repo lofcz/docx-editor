@@ -391,7 +391,7 @@ function* layoutInModeSteps(
     if (options.session && options.bodyBlockLimit === undefined) {
       projected = relabelListMarkers(projected, optionsWithLists.listItems, options.measurer);
     }
-    const pass = publishLayoutPass(projected, part, controlToken, allBlocks, sections, blocks);
+    const pass = publishLayoutPass(projected, part, controlToken, allBlocks, sections, blocks, options.session);
     carryLayoutReadCaches(layout, pass.published);
     if (options.session) options.session.previous = pass.retained;
     return pass.published;
