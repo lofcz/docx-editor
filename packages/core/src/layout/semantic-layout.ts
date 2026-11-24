@@ -24,7 +24,7 @@ import {
 import { createParagraphDrawingWrap, type ParagraphBreakAt } from './paragraph-drawing-wrap.ts';
 import { continuedPageZones, continuedWrapFlags } from './continued-page-zones.ts';
 import { retainedFurnitureWrap } from './furniture-drawing-exclusion.ts';
-import { tocLinkRanges, tocLinkStyleToken } from './toc-link-formatting.ts';
+import { tocLinkRanges } from './toc-link-formatting.ts';
 import { tocCodeRanges } from './field-code-toc.ts';
 import { tocIdsToken, type TocIdSets } from './toc-id-sets.ts';
 import { createLiveExclusionZones } from './live-exclusion-zones.ts';
@@ -191,8 +191,7 @@ import { closingSpaceAfterPt, droppableSpacingPt, keepNoteClosing } from './note
 import * as blockSpace from './block-reservations.ts';
 import { bodyFlowProjectionEpoch, visibleBodyRound } from './content-control-collapse-flow.ts';
 import { passProducerOf } from './pass-producer.ts';
-import { indexedWidgetProjection } from './indexed-inline-widget-metrics.ts';
-import { documentProjectionProducer } from './document-property-context.ts';
+import { documentProjectionInputs } from './document-property-context.ts';
 
 import {
   DEFAULT_PAGE_GEOMETRY,
@@ -297,19 +296,12 @@ function* layoutInModeSteps(
   // fingerprint into the producer so incremental identity reuse cannot keep stale boundaries.
   const controlToken = contentControlContextToken(part);
   const linkStyleRanges = tocLinkRanges(part, options.styleCascade);
-  const widgetProjection = indexedWidgetProjection(options, allBlocks);
   const optionsWithControlContext: SemanticLayoutOptions = {
     ...options,
-    ...widgetProjection,
     fieldCodeRanges: options.showFieldCodes ? tocCodeRanges(part) : undefined,
     tocLinkStyleRanges: linkStyleRanges,
     displayMode,
-    producer: documentProjectionProducer(
-      options,
-      controlToken,
-      tocLinkStyleToken(linkStyleRanges),
-      Boolean(widgetProjection)
-    ),
+    ...documentProjectionInputs(options, allBlocks, controlToken, linkStyleRanges),
     tocFieldChromeParagraphIds:
       options.tocFieldChromeParagraphIds ?? tocFieldChromeParagraphIds(part),
     emptyTocPlaceholderParagraphIds:

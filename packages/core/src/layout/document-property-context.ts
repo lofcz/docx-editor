@@ -1,7 +1,9 @@
+import { tocLinkStyleToken, type TocLinkRanges } from './toc-link-formatting.ts';
+import { indexedWidgetProjection } from './indexed-inline-widget-metrics.ts';
 import { inlineWidgetProducer } from './inline-widget-layout.ts';
 // Document-property fields change measured text without changing their paragraph nodes.
 import { withFieldResultsProducer } from './field-results-producer.ts';
-import type { DocumentProperties } from '@docx-editor.dev/core/store';
+import type { DocumentProperties, OoxmlElement } from '@docx-editor.dev/core/store';
 import type { DocumentPropertyKey } from './field-doc-property.ts';
 import type { SemanticLayoutOptions } from './semantic-layout-options.ts';
 import { producerWithControlContext } from './pass-producer.ts';
@@ -43,31 +45,26 @@ function producerWithDocumentProperties(
 }
 
 /** Compose document-wide field and control inputs before section measurements. */
-export function documentProjectionProducer(
-  options: Pick<
-    SemanticLayoutOptions,
-    | 'producer'
-    | 'showFieldCodes'
-    | 'documentProperties'
-    | 'projectionEpoch'
-    | 'projectionTokenForParagraph'
-  > & { readonly measurer?: SemanticLayoutOptions['measurer'] },
+export function documentProjectionInputs(
+  options: SemanticLayoutOptions,
+  blocks: readonly OoxmlElement[],
   controlToken: string,
-  tocToken: string,
-  scopedWidgets = false
-): string {
+  linkStyleRanges: TocLinkRanges
+) {
+  const widgets = indexedWidgetProjection(options, blocks);
   const shown = options.showFieldCodes ? `${options.producer ?? ''}|field-codes` : options.producer;
   const base = shown === undefined ? shown : withFieldResultsProducer(shown);
   const measured =
-    options.measurer && !scopedWidgets ? inlineWidgetProducer(base, options.measurer) : base;
+    options.measurer && !widgets ? inlineWidgetProducer(base, options.measurer) : base;
   // Coordinated hosts already invalidate only paragraphs whose projected values changed.
   // A partial projection contract must retain the document-wide fallback.
   const properties =
     options.projectionEpoch !== undefined && options.projectionTokenForParagraph
       ? undefined
       : options.documentProperties;
-  return producerWithControlContext(
+  const producer = producerWithControlContext(
     producerWithControlContext(producerWithDocumentProperties(measured, properties), controlToken),
-    tocToken
+    tocLinkStyleToken(linkStyleRanges)
   );
+  return { ...widgets, producer };
 }
