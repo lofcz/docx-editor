@@ -81,6 +81,23 @@ const styleWithFont = (type: string, id: string, font: string) =>
   `<w:rPr><w:rFonts w:ascii="${font}" w:hAnsi="${font}"/></w:rPr></w:style>`;
 
 describe('collectRenderedFontFamilies', () => {
+  test('typing in a nested control adds its East Asian face and retains the sibling face', () => {
+    const control = (content: string) =>
+      `<w:sdt><w:sdtPr/><w:sdtContent>${content}</w:sdtContent></w:sdt>`;
+    const text =
+      '<w:p><w:r><w:rPr><w:rFonts w:ascii="Garamond" w:eastAsia="DengXian"/></w:rPr><w:t>A</w:t></w:r></w:p>';
+    const session = open(
+      docx({ body: control(control(text)) + control(`<w:p>${run('Verdana', 'B')}</w:p>`) })
+    );
+    expect(session.renderedFontFamilies()).toEqual(['Garamond', 'Verdana']);
+    const [paragraphId] = session.paragraphIds();
+    const applied = session.applyTreeOps([
+      { op: 'insertText', paragraphId: paragraphId!, offset: 1, text: '界' },
+    ]);
+    expect(applied.committed).toBe(true);
+    expect(session.renderedFontFamilies()).toEqual(['DengXian', 'Garamond', 'Verdana']);
+  });
+
   test('a declaration in an unused style is not rendered', () => {
     // The false-positive shape from real Word files: latent Balloon Text names Segoe UI,
     // an unused table style carries a face name as a family; no paragraph uses either.
