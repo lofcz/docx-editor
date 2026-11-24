@@ -40,7 +40,8 @@ test('skips viewport reads only when scrolling can retain every sheet and its ho
     const built = new Set(layout.pages.map((page) => page.index));
     const alwaysRetained = layout.pages.every((page) => {
       const viewport = { top: page.box.y + 5, height: 1 };
-      const visible = pagesToMaterialize({ layout, viewport });
+      // The nearest page edge is five units away, outside the half-viewport prefetch range.
+      const visible = pagesToMaterialize({ layout, viewport, overscanPages: 0 });
       return retainAdjacentPages(layout, visible, built)?.size === length;
     });
     expect(canScrollWithoutMeasuringPages(layout, built)).toBe(alwaysRetained);
