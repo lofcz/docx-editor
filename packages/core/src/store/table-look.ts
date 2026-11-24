@@ -5,7 +5,7 @@ import {
 } from './store/tree-op-table-shared.ts';
 
 /**
- * `w:tblLook` (17.4.56): which conditional formats of the table style are live.
+ * `w:tblLook` (17.4.55): which conditional formats of the table style are live.
  *
  * The element has two encodings: the legacy `w:val` bitmask and six named attributes
  * (`w:firstRow`, `w:lastRow`, `w:firstColumn`, `w:lastColumn`, `w:noHBand`, `w:noVBand`).

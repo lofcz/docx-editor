@@ -94,6 +94,8 @@ describe('readCollaborationDocument', () => {
     ['repairVersion', 4, 'schema-version-mismatch'],
     ['repairVersion', 5, 'schema-version-mismatch'],
     ['repairVersion', 6, 'schema-version-mismatch'],
+    ['repairVersion', 7, 'schema-version-mismatch'],
+    ['repairVersion', 18, 'schema-version-mismatch'],
     ['repairVersion', 17, 'schema-version-mismatch'],
     ['canonicalModelVersion', 1, 'schema-version-mismatch'],
     ['canonicalModelVersion', 3, 'schema-version-mismatch'],

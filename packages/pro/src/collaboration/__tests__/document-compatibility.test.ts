@@ -52,11 +52,11 @@ test('the reconciled contract refuses earlier fork and upstream rooms', () => {
   expect(versions).toEqual({
     protocolVersion: 1,
     sharedSchemaVersion: 10,
-    repairVersion: 18,
+    repairVersion: 19,
     canonicalModelVersion: 2,
   });
-  expect(() => assertCompatible({ ...versions, repairVersion: 17 })).toThrow(
-    'repairVersion: expected 18, received 17'
+  expect(() => assertCompatible({ ...versions, repairVersion: 18 })).toThrow(
+    'repairVersion: expected 19, received 18'
   );
   expect(() => assertCompatible({ ...versions, sharedSchemaVersion: 5, repairVersion: 5 })).toThrow(
     'sharedSchemaVersion: expected 10, received 5'

@@ -2724,6 +2724,9 @@ export const FONT_RESOLVER_BRAND: unique symbol;
 export const FONT_RESOLVER_MARK_KEY = "docx-editor.dev/font-resolver";
 
 // @public
+export const FONT_SIZE_PRESETS_PT: readonly number[];
+
+// @public
 export interface FontConfigurationBase extends FontConfigurationFragment {
     readonly defaultFont?: FontConfiguration['defaultFont'];
     readonly epoch?: number;
@@ -3961,6 +3964,7 @@ export interface PaginatedSurface extends SurfaceBlockReservations, SurfaceConte
     splitParagraph(): void;
     // (undocumented)
     state(): PaginatedSurfaceState;
+    stepFontSize(direction: 'increase' | 'decrease'): string | null;
     // (undocumented)
     storyScope(): StoryScope;
     textMeasurer?(): TextMeasurer;

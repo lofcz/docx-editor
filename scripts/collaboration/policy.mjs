@@ -6,6 +6,7 @@ import {
   FIELDS,
   CATALOG,
   GUIDE,
+  RELEASE_DATA,
   VERSION_SOURCE,
   compareVersions,
   formatOf,
@@ -14,7 +15,7 @@ import {
   read,
   versions,
 } from './common.mjs';
-import { catalog, table } from './catalog.mjs';
+import { catalog, releaseData, table } from './catalog.mjs';
 import { archivedDecisions, archivedFilesAt } from './extension-archives.mjs';
 
 export function relevant(path) {
@@ -403,6 +404,11 @@ export function check(base, release = false) {
     /\{\/\* collaboration-releases:start \*\/\}[\s\S]*?\{\/\* collaboration-releases:end \*\/\}/
   )?.[0];
   assert.equal(generated, table(), 'Release table is stale: run collaboration:catalog --table');
+  assert.equal(
+    existsSync(resolve(ROOT, RELEASE_DATA)) ? read(RELEASE_DATA) : null,
+    releaseData(),
+    'Release data is stale: run collaboration:catalog --table'
+  );
   console.log(
     `Compatibility policy passed: ${records.length} decisions, ${changed.length} format fields changed.`
   );

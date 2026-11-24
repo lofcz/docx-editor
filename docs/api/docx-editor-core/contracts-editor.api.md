@@ -1171,6 +1171,7 @@ export interface EditorCommands extends EditorCommandShape<DocEdits>, EditorHead
     compareDocuments: CompareDocumentsRequest;
     copy: Record<never, never>;
     cut: Record<never, never>;
+    decreaseFontSize: Record<never, never>;
     // (undocumented)
     deleteColumn: {
         target?: TableColumnOccurrenceTarget;
@@ -1186,6 +1187,7 @@ export interface EditorCommands extends EditorCommandShape<DocEdits>, EditorHead
     // (undocumented)
     deleteTable: Record<never, never>;
     editTextFormField: Record<never, never>;
+    increaseFontSize: Record<never, never>;
     // (undocumented)
     insertColumn: {
         target?: TableColumnOccurrenceTarget;
