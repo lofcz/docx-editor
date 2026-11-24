@@ -6,12 +6,16 @@
 // surface contract, like `surface-measurement.ts`.
 
 import { drainLayoutSteps, type LayoutSteps } from '../layout/layout-steps.ts';
+import { bodyBlockCountOf, bodyBlocksOf } from '../layout/body-block-limit.ts';
+import type { LayoutSession } from '../layout/layout-session.ts';
+import { snapshotLayoutSession } from '../layout/layout-session-snapshot.ts';
 import { caretAt } from '../layout/semantic-interaction.ts';
 import type { SemanticPosition } from '../layout/semantic-interaction.ts';
 import type { SemanticLayout } from '../layout/semantic-records.ts';
 import { warmLayoutNodeDigests } from '../layout/layout-cache.ts';
 import type { OoxmlNode } from '@docx-editor.dev/core/store';
 import { showOpeningIndicator } from './surface-opening-indicator.ts';
+import type { PaginatedSurfaceRuntimeOptions } from './surface-runtime-options.ts';
 
 /** Body blocks a sliced opening lays out at mount, before its first yield. */
 export const PROGRESSIVE_OPEN_FIRST_BLOCKS = 64;
@@ -222,6 +226,49 @@ export interface OpeningSlicesHost {
    * which would replace the text the composition is writing into.
    */
   composing(): boolean;
+}
+
+/** Own the opening limit and its continuations from the first layout until the surface closes. */
+export function createSurfaceOpening(
+  options: Pick<PaginatedSurfaceRuntimeOptions, 'progressiveOpen' | 'openedSession'>,
+  root: () => OoxmlNode,
+  session: () => LayoutSession
+) {
+  const first = options.progressiveOpen
+    ? PROGRESSIVE_OPEN_FIRST_BLOCKS
+    : options.openedSession
+      ? preparedParagraphPrefix(root())
+      : null;
+  let slices: ReturnType<typeof startOpeningSlices> | undefined;
+  const opening = {
+    limit: first,
+    finishPaused: () => slices?.finishPaused(),
+    abandonForEdit: () => slices?.abandonForEdit(),
+    stop: () => slices?.stop(),
+    start(
+      surface: object,
+      container: () => HTMLElement,
+      host: Omit<
+        OpeningSlicesHost,
+        'limit' | 'setLimit' | 'bodyBlockCount' | 'bodyBlock' | 'snapshot'
+      >
+    ): void {
+      slices = startOpeningSlices(
+        surface,
+        container,
+        {
+          ...host,
+          limit: () => opening.limit,
+          setLimit: (limit) => (opening.limit = limit),
+          bodyBlockCount: () => bodyBlockCountOf(session()),
+          bodyBlock: (index) => bodyBlocksOf(session())?.[index],
+          snapshot: () => snapshotLayoutSession(session()),
+        },
+        first ?? PROGRESSIVE_OPEN_FIRST_BLOCKS
+      );
+    },
+  };
+  return opening;
 }
 
 /**

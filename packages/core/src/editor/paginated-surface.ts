@@ -93,12 +93,10 @@ import {
   registerUsedFontFaces,
 } from './surface-measurement.ts';
 import {
-  PROGRESSIVE_OPEN_FIRST_BLOCKS,
   completeProgressiveOpen,
+  createSurfaceOpening,
   openingReveals,
   openingViewportMoved,
-  preparedParagraphPrefix,
-  startOpeningSlices,
 } from './surface-progressive-open.ts';
 import { scrollBandIntoView, type ContentScrollOptions } from './surface-content-scroll.ts';
 import { createDeferredLayout } from './surface-deferred-layout.ts';
@@ -106,7 +104,7 @@ import { createCanonicalLayout } from './surface-canonical-layout.ts';
 import { drainLayoutSteps, type LayoutSteps } from '../layout/layout-steps.ts';
 import { createReviewOrderIndex } from './surface-review-order.ts';
 import { litReviewKeys } from './review-replacement-pairs.ts';
-import { bodyBlockCountOf, bodyBlockLimitAfter, bodyBlocksOf } from '../layout/body-block-limit.ts';
+import { bodyBlockLimitAfter } from '../layout/body-block-limit.ts';
 import { snapshotLayoutSession } from '../layout/layout-session-snapshot.ts';
 import { graphemeEndAfter, graphemeStartBefore } from './grapheme-step.ts';
 import { furnitureLaterSteps } from './surface-furniture-later.ts';
@@ -1170,10 +1168,11 @@ export function mountPaginatedSurface(
     },
   };
 
-  /** Finishes a paused opening prefix pass, and drops the opening; see `startOpeningSlices`. */
-  let finishOpeningPass = (): void => undefined;
-  let abandonOpeningForEdit = (): void => undefined;
-  let stopOpening = (): void => undefined;
+  const opening = createSurfaceOpening(
+    runtimeOptions,
+    () => session.part().root,
+    () => layoutSession
+  );
   // The pages after the screen finish after the commit; see `surface-deferred-layout.ts`.
   const deferredLayout = createDeferredLayout({
     now,
@@ -1183,21 +1182,15 @@ export function mountPaginatedSurface(
       return visible && visible.size > 0 ? Math.max(...visible) + 1 : undefined;
     },
     current: () => currentLayout,
-    partial: () => openingBlockLimit !== null,
+    partial: () => opening.limit !== null,
     revision: () => session.packageRevision(),
     publish: (layout) => fieldScope.wrap(() => publishLayout(layout))(),
     snapshot: () => snapshotLayoutSession(layoutSession),
     // Marks the container while later pages still show the previous layout.
     pendingChanged: (pending) =>
-      container.toggleAttribute('data-docx-layout-pending', pending || openingBlockLimit !== null),
+      container.toggleAttribute('data-docx-layout-pending', pending || opening.limit !== null),
     passTimed: (ms) => options.onTiming?.('layout', ms),
   });
-  const initialOpeningLimit = runtimeOptions.progressiveOpen
-    ? PROGRESSIVE_OPEN_FIRST_BLOCKS
-    : runtimeOptions.openedSession
-      ? preparedParagraphPrefix(session.part().root)
-      : null;
-  let openingBlockLimit: number | null = initialOpeningLimit;
   let currentLayout = layoutOnce();
   // Declared before the first paint can run — `render` reads it.
   let revisionStyles = options.revisionStyles;
@@ -1495,7 +1488,7 @@ export function mountPaginatedSurface(
     context?: LayoutDocumentContext,
     bodyBlockLimit?: number
   ): SemanticLayout {
-    finishOpeningPass();
+    opening.finishPaused();
     deferredLayout.finish();
     return drainLayoutSteps(layoutDocumentSteps(revision, scope, context, bodyBlockLimit));
   }
@@ -1514,7 +1507,7 @@ export function mountPaginatedSurface(
     const activeFurnitureSource = usesLive || !context ? furnitureSource : context.furnitureSource;
     if (scope) attachListResolveChangeEvidence(activeLayoutSession, scope);
     // Any full layout of the live session completes an opening still in slices.
-    if (!context && bodyBlockLimit === undefined) openingBlockLimit = null;
+    if (!context && bodyBlockLimit === undefined) opening.limit = null;
     drawingBundle.sync(session);
     blockView.reconcile();
     return yield* layoutDocumentViewSteps({
@@ -1567,7 +1560,7 @@ export function mountPaginatedSurface(
       session.packageRevision(),
       undefined,
       undefined,
-      openingBlockLimit ?? undefined
+      opening.limit ?? undefined
     );
     lastLayoutMs = now() - began;
     return layout;
@@ -1812,17 +1805,17 @@ export function mountPaginatedSurface(
     // layout after the first comes through here rather than through `layoutOnce`.
     run: (scope: LayoutScope) => {
       const began = now();
-      const settled = openingBlockLimit === null && !deferredLayout.pending();
-      abandonOpeningForEdit();
+      const settled = opening.limit === null && !deferredLayout.pending();
+      opening.abandonForEdit();
       deferredLayout.abandon();
       blockView.resumeDisclosureLayout(layoutSession, scope, settled);
       // An edit during an opening lays out the prefix so far; the opening slices go on after it.
       const steps = furnitureLaterSteps(
-        layoutDocumentSteps(scope.revision, scope, undefined, openingBlockLimit ?? undefined),
+        layoutDocumentSteps(scope.revision, scope, undefined, opening.limit ?? undefined),
         visiblePages
       );
       const layout = deferredLayout.run(steps, scope.revision, timedLayout(scope));
-      openingBlockLimit = bodyBlockLimitAfter(layoutSession, openingBlockLimit);
+      opening.limit = bodyBlockLimitAfter(layoutSession, opening.limit);
       lastLayoutMs = now() - began;
       return layout;
     },
@@ -1880,7 +1873,7 @@ export function mountPaginatedSurface(
     revision: () => session.packageRevision(),
     live: () => layoutSession,
     current: () => currentLayout,
-    busy: () => deferredLayout.pending() || openingBlockLimit !== null,
+    busy: () => deferredLayout.pending() || opening.limit !== null,
     pass: (revision, fresh) =>
       layoutDocumentSteps(revision, undefined, {
         authorFilter: revisionFilter(),
@@ -1900,7 +1893,7 @@ export function mountPaginatedSurface(
   // flush then would finish the paused slice and relay the prefix in one task.
   let resourceFlushQueued = false;
   onDrawingResourcesChanged = () => {
-    if (openingBlockLimit !== null) return;
+    if (opening.limit !== null) return;
     scheduler.invalidateAll(session.packageRevision(), 'drawing-resources');
     if (resourceFlushQueued) return;
     resourceFlushQueued = true;
@@ -2779,7 +2772,7 @@ export function mountPaginatedSurface(
     scale: () => scale,
     settle: () => {
       flushToPaint();
-      finishOpeningPass();
+      opening.finishPaused();
       deferredLayout.finish();
       removeExistingContentControlMenu();
       pictureWidget.cancel();
@@ -2950,7 +2943,7 @@ export function mountPaginatedSurface(
     // deferred its pass. Safe: this runs from a scheduled frame, never inside a
     // render.
     flushPendingInputAndLayout();
-    if (openingBlockLimit !== null) {
+    if (opening.limit !== null) {
       const scroller = surfaceScroller(container);
       if (scroller) openingViewportMoved(surface, scroller);
     }
@@ -5723,8 +5716,8 @@ export function mountPaginatedSurface(
     destroy() {
       if (destroyed) return;
       destroyed = true;
-      stopOpening();
-      openingBlockLimit = null; // So cancelling a deferred pass clears the pending marker.
+      opening.stop();
+      opening.limit = null; // So cancelling a deferred pass clears the pending marker.
       deferredLayout.cancel();
       canonicalLayout.cancel();
       // Typed-but-unflushed text lands before teardown, so a detach-then-save
@@ -6276,37 +6269,23 @@ export function mountPaginatedSurface(
     refreshMeasurements('inline-widgets');
   });
   registerRefreshComposition(surface, () => selectionSync.isComposing());
-  ({
-    finishPaused: finishOpeningPass,
-    abandonForEdit: abandonOpeningForEdit,
-    stop: stopOpening,
-  } = startOpeningSlices(
-    surface,
-    () => container,
-    {
-      pages: () => pagesLayer,
-      now,
-      destroyed: () => destroyed,
-      limit: () => openingBlockLimit,
-      setLimit: (limit) => (openingBlockLimit = limit),
-      bodyBlockCount: () => bodyBlockCountOf(layoutSession),
-      bodyBlock: (index) => bodyBlocksOf(layoutSession)?.[index],
-      publish: (layout) => publishLayout(layout as SemanticLayout),
-      inputPending: () => hasPendingBrowserInput(false),
-      busy: () => deferredLayout.pending(),
-      finishBusy: () => deferredLayout.finish(),
-      composing: () => selectionSync.isComposing(),
-      prefixPass: (limit) =>
-        layoutDocumentSteps(session.packageRevision(), undefined, undefined, limit),
-      snapshot: () => snapshotLayoutSession(layoutSession),
-      finish: fieldScope.wrap(() => {
-        // Cleared first: an edit since the last prefix can have added blocks past it.
-        openingBlockLimit = null;
-        scheduler.invalidateAll(session.packageRevision(), 'opening');
-        scheduler.flush();
-      }),
-    },
-    initialOpeningLimit ?? PROGRESSIVE_OPEN_FIRST_BLOCKS
-  ));
+  opening.start(surface, () => container, {
+    pages: () => pagesLayer,
+    now,
+    destroyed: () => destroyed,
+    publish: (layout) => publishLayout(layout as SemanticLayout),
+    inputPending: () => hasPendingBrowserInput(false),
+    busy: () => deferredLayout.pending(),
+    finishBusy: () => deferredLayout.finish(),
+    composing: () => selectionSync.isComposing(),
+    prefixPass: (limit) =>
+      layoutDocumentSteps(session.packageRevision(), undefined, undefined, limit),
+    finish: fieldScope.wrap(() => {
+      // An edit since the last prefix can have added blocks past it.
+      opening.limit = null;
+      scheduler.invalidateAll(session.packageRevision(), 'opening');
+      scheduler.flush();
+    }),
+  });
   return { ok: true, surface: fieldScope.methods(surface) };
 }
