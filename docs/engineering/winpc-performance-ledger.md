@@ -2,6 +2,23 @@
 
 Use `codex/react-block-proof` for progressive integration. Sciobot uses `claude/docx-native-cutover`.
 
+## Browser work during 59 rich lesson keys
+
+WinPC traced one run per editor on installed engine `5a0194e03`. Both editors received the same 59 keys.
+An element counts once per style pass. These instrumented counts describe browser work during typing.
+
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| Elements styled across all passes, 3,387 | 266 | 12.73× as many |
+| Elements styled in the largest pass, 2,859 | 141 | 20.28× as many |
+| Browser layout passes, 61 | 61 | Equal |
+| Animation frame callbacks, 718 | 72 | 9.97× as many |
+
+Eight toolbar subscriptions scheduled 472 of the DOCX callbacks.
+Another trace showed 58 edits retained the same flow past the edited paragraph. One edit added a line.
+Removing duplicate table sizing eliminated 236 scheduled style invalidations. Browser style time rose from 52.88 to 76.25 ms in that trial.
+The installed comparison below provides repeated end-to-end timings. [WinPC trace counts](profiles/winpc-installed-5a019-rich-work.jsonl)
+
 ## Current installed comparison
 
 Sciobot commit `18edad0bb` pins engine `5a0194e03`. WinPC ran four alternating pairs for each action.

@@ -1,0 +1,5 @@
+{"arm":"base","stylePasses":130,"styledElements":3387,"largestPassElements":2859,"styleMs":60.781,"layoutPasses":61,"layoutMs":10.78,"animationFrameCallbacks":718,"trace":"installed-rich-layout-stacks-base.json","fixedToolbarFrameCallbacks":472}
+{"arm":"plate","stylePasses":101,"styledElements":266,"largestPassElements":141,"styleMs":8.655,"layoutPasses":61,"layoutMs":12.535,"animationFrameCallbacks":72,"trace":"installed-rich-layout-stacks-plate.json"}
+{"arm":"installed-rich-invalidation-base.json","tableInvalidations":{"StyleRecalcInvalidationTracking":472,"ScheduleStyleInvalidationTracking":236,"StyleInvalidatorInvalidationTracking":236},"styledElements":3389,"styleMs":52.878}
+{"arm":"one-furniture-recalc-base.json","tableInvalidations":{},"styledElements":3329,"styleMs":76.247}
+{"arm":"installed-tail-probe","counts":{"guard":319,"start":59,"diff":58,"converged":58},"convergences":[{"index":10,"count":34},{"index":9,"count":24}],"changedLineCount":1,"eligibleSameFlow":58}
