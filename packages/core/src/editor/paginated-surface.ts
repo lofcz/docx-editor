@@ -1569,7 +1569,7 @@ export function mountPaginatedSurface(
   /** Timers on the pages' own window: an opener's timers are throttled while it is hidden. */
   const timers = hostTimers(() => pagesLayer);
   let deferredPublishRender: number | null = null;
-  /** Nonzero while `commitNow` applies its ops; see `renderPublishedLayout`. */
+  /** Hold paint until an edit or history step installs its selection in the new layout. */
   let commitRunDepth = 0;
   let commitPaintOwed = false;
   /** The layout the page shows: `currentLayout` until a paint is owed. */
@@ -3444,11 +3444,12 @@ export function mountPaginatedSurface(
     // overwrote the navigation entirely. Building the page first is what makes the write
     // land: `visiblePageSet` pins the pages the selection touches, so this paint brings the
     // target into existence wherever it is.
-    if (!selectionPagesBuilt()) {
+    if (commitPaintOwed || !selectionPagesBuilt()) {
       // The MODEL is the newer of the two until that write lands, so this repaint must not
       // adopt the DOM selection it is about to replace — which is the very stale value the
       // navigation is trying to leave behind.
       selectionSync.noteModelMoved();
+      if (commitPaintOwed && follow === 'caret') caretFollowPending = true;
       // Held for a `none` caller: this render reaches the follower on its own terms, and a
       // caret on a page nothing has built reads as a page CHANGE — enough to scroll, which
       // is exactly what the press asking for `none` refused.
@@ -5801,7 +5802,6 @@ export function mountPaginatedSurface(
     return resolveSelectedDrawingRecord(surface)?.drawingNodeId === drawingNodeId;
   }
 
-  /** After a shared undo: the selection the undone step was made from, else the change. */
   /**
    * Put the caret back where a reversed history entry left it.
    *
@@ -5817,11 +5817,14 @@ export function mountPaginatedSurface(
     pendingFormats = null;
     const formSelection = textFormInteraction?.restoreAfterHistory();
     if (!mark && formSelection) selection = formSelection;
-    // The tree about to be published is not the one the DOM selection was made against, so
-    // the flush below must not read it back: offsets in the reverted tree do not correspond
-    // to offsets in the one that replaced it.
+    // Resolve the history mark against the restored layout before painting its viewport.
     selectionSync.noteModelMoved();
-    flushLayout();
+    commitRunDepth += 1;
+    try {
+      flushLayout();
+    } finally {
+      commitRunDepth -= 1;
+    }
     const order = paragraphOrder();
     setSelection(
       selectionAfterHistory(mark, selection, order, !!collaborationSession, (next) =>
@@ -5832,6 +5835,7 @@ export function mountPaginatedSurface(
       undefined,
       preserveDomSelection
     );
+    payOwedPaint(); // A form can decline the selection and leave this paint pending.
   }
 
   /**
