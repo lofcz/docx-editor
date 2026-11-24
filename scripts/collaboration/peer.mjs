@@ -15,6 +15,7 @@ export class Peer {
       stdio: ['pipe', 'pipe', 'pipe'],
       env: { ...process.env, NODE_PATH: '' },
     });
+    this.closed = new Promise((resolve) => this.child.once('close', resolve));
     this.stderr = '';
     this.child.stderr.on('data', (data) => {
       this.stderr = (this.stderr + data).slice(-8000);
@@ -76,6 +77,7 @@ export class Peer {
     } finally {
       this.child.stdin.end();
       this.child.kill();
+      await this.closed;
     }
   }
 }
