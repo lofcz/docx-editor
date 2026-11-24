@@ -51,6 +51,26 @@ function paintedLine(
   return root;
 }
 
+test('one painted plain line maps every word back to its source offset', () => {
+  const text = 'An ordinary paragraph with several words.';
+  const part = load(
+    `<w:document ${PICTURE_NAMESPACES}><w:body><w:p><w:r><w:rPr><w:sz w:val="24"/></w:rPr><w:t>${text}</w:t></w:r></w:p></w:body></w:document>`
+  );
+  const layout = layoutSemanticDocument(part, 1, { measurer: createFixedMeasurer(5, 12) });
+  const root = document.createElement('div');
+  paintSemanticLayout(root, layout, { scale: 1 });
+  const spans = root.querySelectorAll<HTMLElement>('.docx-line [data-start]');
+  expect(spans).toHaveLength(1);
+  const span = spans[0]!;
+  expect(span.textContent).toBe(text);
+  for (let offset = 0; offset <= text.length; offset++) {
+    expect(positionFromDomPoint(span.firstChild!, offset, root)).toEqual({
+      paragraphId: span.dataset.paragraphId!,
+      offset,
+    });
+  }
+});
+
 const LINE = [
   { text: 'hello ', paragraphId: 'p1', start: 0 },
   { text: 'world', paragraphId: 'p1', start: 6 },

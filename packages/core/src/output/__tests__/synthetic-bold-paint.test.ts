@@ -87,17 +87,23 @@ function paintedOrigins(
 ): number[] {
   const spans = line.spans.filter((span) => span.text !== '');
   let x = spans[0]?.box.x ?? 0;
-  return runs.map((run, index) => {
-    const span = spans[index]!;
+  const origins: number[] = [];
+  for (const run of runs) {
     x += parseFloat(run.style.marginLeft || '0');
-    const origin = x;
-    const text = run.textContent ?? '';
-    x +=
-      natural(span, text) +
-      text.length * parseFloat(run.style.letterSpacing || '0') +
-      wordSeparators(text) * parseFloat(run.style.wordSpacing || '0');
-    return origin;
-  });
+    let remaining = run.textContent ?? '';
+    while (remaining.length > 0) {
+      const span = spans[origins.length]!;
+      expect(remaining.startsWith(span.text)).toBe(true);
+      origins.push(x);
+      const text = remaining.slice(0, span.text.length);
+      remaining = remaining.slice(text.length);
+      x +=
+        natural(span, text) +
+        text.length * parseFloat(run.style.letterSpacing || '0') +
+        wordSeparators(text) * parseFloat(run.style.wordSpacing || '0');
+    }
+  }
+  return origins;
 }
 
 const run = (text: string, properties = '<w:b/>') =>
@@ -133,8 +139,8 @@ function expectRunsAtLayoutX(
     for (let width = 120; width <= 260; width += 7) {
       for (const { line, runs: painted } of paint(runs, jc, width, using)) {
         const spans = line.spans.filter((span) => span.text !== '');
-        expect(painted).toHaveLength(spans.length);
         const origins = paintedOrigins(line, painted, natural);
+        expect(origins).toHaveLength(spans.length);
         spans.forEach((span, index) => {
           expect([jc, width, span.text, origins[index]! - span.box.x]).toEqual([
             jc,

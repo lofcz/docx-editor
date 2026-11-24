@@ -1,0 +1,13 @@
+{
+  "impact": "no-impact",
+  "fields": [],
+  "before": "Each word on a plain line had a separate painted text element.",
+  "after": "Contiguous words with the same formatting can share a painted text element. The element maps every character to its original paragraph offset.",
+  "reason": "The change only affects the local page DOM. Shared operations and selection offsets keep their existing meaning.",
+  "tests": [
+    "packages/core/src/editor/__tests__/dom-selection.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-viewing-selection.test.ts"
+  ],
+  "changeset": "plain-line-paint",
+  "migration": null
+}

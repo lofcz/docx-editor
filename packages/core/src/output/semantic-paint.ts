@@ -1,3 +1,4 @@
+import { plainLineForPaint } from './plain-line-paint.ts';
 import {
   applySyntheticBoldSpacing,
   fieldAnchorStart,
@@ -790,20 +791,6 @@ function positioned(
 }
 
 /**
- * Draw a span as the tracked change it is.
- *
- * Applied to the run BOX rather than the inner text layers: `w:u` and `w:strike` already own
- * those, and a revision's decoration is a second, independent statement about the same glyphs.
- * Word draws both — struck-through text that was also underlined by its author keeps both rules.
- *
- * The colour lands as a custom property on the element rather than a resolved value, so a host
- * restyling `--doc-review-author-N` under `.docx-editor` changes the painted document with it.
- *
- * The dataset attributes are the review surface's join key: a card can find its own text, and
- * the active-item highlight is set by attribute rather than by building a CSS rule out of an
- * id — comment and revision metadata are attacker-controlled.
- */
-/**
  * The grey block Word draws behind a field's result.
  *
  * A view affordance, never document formatting: it says "this text was computed, not typed",
@@ -1075,11 +1062,12 @@ function paintHyperlinkAnchor(
  */
 function paintLine(
   document: Document,
-  line: LineRecord,
+  sourceLine: LineRecord,
   ctx: DrawingPaintHostContext,
   paragraphRtl = false,
   emptyStyle = DEFAULT_RUN_STYLE
 ): HTMLElement {
+  const line = plainLineForPaint(sourceLine);
   const scale = ctx.scale;
   const element = document.createElement('div');
   element.className = 'docx-line layout-line';
