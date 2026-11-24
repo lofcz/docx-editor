@@ -633,14 +633,17 @@ export function openTreeSessionFromPackage(
    * story varies per call and the data owner does not.
    */
   const reviewItemsMemo = createReviewItemsMemo();
-  const customNodePayloadsAcrossStories = (): ReadonlyMap<string, CustomNodePayloadRead> => {
-    const owner = bodyStore().part.name;
+  const customNodePayloadsAcrossStories = (
+    pkg: OoxmlPackage,
+    body: OoxmlPart,
+    furniture: readonly OoxmlPart[]
+  ): ReadonlyMap<string, CustomNodePayloadRead> => {
     const merged = new Map<string, CustomNodePayloadRead>();
-    for (const part of [bodyStore().part, ...furnitureAndNoteParts()]) {
+    for (const part of [body, ...furniture]) {
       for (const [controlId, payload] of customNodePayloadsByControl(
-        currentPackage(),
+        pkg,
         part.name,
-        owner
+        body.name
       )) {
         merged.set(controlId, payload);
       }
@@ -1036,17 +1039,21 @@ export function openTreeSessionFromPackage(
         const commentsExtendedPart = pkg.parts.get(
           commentsExtendedPartNameOf(pkg, store.part.name)
         );
+        const body = store.part;
+        const furnitureParts = furnitureAndNoteParts();
+        let payloads: ReadonlyMap<string, CustomNodePayloadRead> | undefined;
         const memoInputs = {
-          root: store.part.root,
+          root: body.root,
           commentsPart,
           commentsExtendedPart,
           stylesPart: stylesPartOf(pkg),
           numberingRoot: resolveNumberingRoot(),
-          furnitureParts: furnitureAndNoteParts(),
-          // Resolved HERE because a payload lives in a customXml data part: the derivation
-          // receives story parts, and reaching a package part from one is not something a
-          // capability module can do.
-          customNodePayloads: customNodePayloadsAcrossStories(),
+          furnitureParts,
+          // A local review patch needs no w:dataBinding lookup (CT_DataBinding,
+          // ECMA-376 Part 1 §17.5.2.6). A later undo compares this revision's parts.
+          get customNodePayloads() {
+            return (payloads ??= customNodePayloadsAcrossStories(pkg, body, furnitureParts));
+          },
         };
         const { stylesPart, numberingRoot } = memoInputs;
         const filtering = reviewItemFiltering(derive, pkg, memoInputs, reviewCache);
