@@ -44,8 +44,15 @@ async function formatRoom110182(): Promise<{ state: Uint8Array; exported: Uint8A
 const paragraphs = (docx: Uint8Array) => collectKind(loadPackage(docx), 'paragraph').map(nodeText);
 
 describe('upgrade rooms to format 1.10.19.2', () => {
-  test('the current format is 1.10.19.2', () => {
-    expect(COLLABORATION_FORMAT_VERSION).toBe('docx-collaboration:1.10.19.2');
+  test('the saved room reports format 1.10.18.2 before migration', async () => {
+    const { state } = await formatRoom110182();
+    const room = new Y.Doc();
+    try {
+      Y.applyUpdate(room, state);
+      expect(readCollaborationFormatVersion(room)).toBe('docx-collaboration:1.10.18.2');
+    } finally {
+      room.destroy();
+    }
   });
 
   test('this build refuses a format 1.10.18.2 room before reading it, and leaves it unchanged', async () => {

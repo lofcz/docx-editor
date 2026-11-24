@@ -4,7 +4,7 @@ import type { AutomationTextProjection } from './operations.ts';
 // Word paragraph marks can be resolved while collaboration retains their physical fragments.
 // Keep every editable offset in the original canonical fragment.
 import type { OoxmlParagraphNode, OoxmlNode } from '../store/package/ooxml-tree.ts';
-import { isJoinedParagraph } from '../store/package/retired-paragraph.ts';
+import { hiddenRetiredParagraphs, isJoinedParagraph } from '../store/package/retired-paragraph.ts';
 import {
   paragraphMergeSources,
   tableParagraphMergeTarget,
@@ -28,10 +28,12 @@ export function joinedParagraphGroups(reads: AutomationStoryReads): Groups {
   const links = new Map<string, string>();
   const walk = (node: OoxmlNode): void => {
     if (node.kind === 'textValue') return;
-    const sources = paragraphMergeSources(node.children);
+    const hidden = hiddenRetiredParagraphs(node.children);
+    const sources = paragraphMergeSources(node.children, hidden);
     let next: string | null = null;
     for (let index = node.children.length - 1; index >= 0; index--) {
       const child = node.children[index]!;
+      if (hidden.has(child.id)) continue;
       if (child.kind === 'paragraph') {
         if (next && sources.has(child.id) && isJoinedParagraph(child)) links.set(child.id, next);
         next = child.id;

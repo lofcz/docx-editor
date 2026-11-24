@@ -684,6 +684,19 @@ In a test deployment, confirm:
 - [DOCX collaboration reference](/docs/2.x/pro/collaboration)
 - [Hocuspocus server example](https://github.com/eigenpal/docx-editor/tree/main/examples/collaboration-hocuspocus)
 
+## Upgrade fork rooms to format 1.10.20.2
+
+Format `docx-collaboration:1.10.20.2` preserves another participant's formatting when you undo the first formatting change.
+An older client can remove shared property containers that a newer client keeps.
+
+1. Stop writes to repair-19 rooms. Keep their original snapshots and offline updates.
+2. Export each document with the compatible repair-19 deployment. Verify its paragraph text and formatting.
+3. Seed a fresh room from the verified DOCX. Use new document and persistence keys.
+4. Connect two repair-20 clients. Check formatting, undo, and a saved and reopened copy.
+
+The DOCX export omits room history. Resolve pending offline edits as document content before migration.
+The provider refuses mixed-version peers and direct loading of older room snapshots.
+
 ## Upgrade fork rooms to format 1.10.19.2
 
 Format `docx-collaboration:1.10.19.2` preserves paragraph order after concurrent splits inside earlier splits. Clients with repair version 18 can display the same shared text in a different order.

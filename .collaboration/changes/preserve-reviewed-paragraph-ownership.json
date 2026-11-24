@@ -1,0 +1,18 @@
+{
+  "impact": "migration-required",
+  "fields": [
+    "repairVersion"
+  ],
+  "before": "Undoing the first formatting edit could remove another participant’s paragraph properties. A resolved paragraph break could stop at a hidden recovery paragraph.",
+  "after": "Undo retains property containers that hold peer edits. A decision resolves nested copies of merged property containers before removing their tracked mark. Resolved breaks join visible text across empty recovery paragraphs.",
+  "reason": "Repair 19 can delete shared listings that repair 20 retains on the same undo. Peers using different repair versions must refuse to synchronize. Existing node identities and shared fields retain their meanings.",
+  "tests": [
+    "packages/pro/src/collaboration/__tests__/format-110202-migration.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-undo-kept-properties.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-tracked-nested-split.test.ts",
+    "packages/pro/src/collaboration/__tests__/document-undo-split-cycles.test.ts",
+    "packages/core/src/automation/__tests__/joined-paragraph-reads.test.ts"
+  ],
+  "changeset": "preserve-reviewed-paragraph-ownership",
+  "migration": "upgrade-fork-rooms-to-format-110202"
+}

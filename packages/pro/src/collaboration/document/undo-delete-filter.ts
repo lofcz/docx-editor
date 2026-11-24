@@ -16,8 +16,8 @@ export interface NodeDescriptorMaps {
 
 /** The nodes the step being undone created, by the attribute map they describe. */
 const undoingCreations = new WeakMap<Y.Map<string>, ReadonlySet<string>>();
-/** Items the running undo keeps although its step wrote them, by the same map. */
-const undoingKeeps = new WeakMap<Y.Map<string>, (item: Y.Item) => boolean>();
+/** Items the running undo keeps, keyed by the shared node map used by the delete filter. */
+const undoingKeeps = new WeakMap<Y.Map<Y.Map<unknown>>, (item: Y.Item) => boolean>();
 /** The attribute and binding values the running step's writes replaced, by the same map. */
 const steppingReplaced = new WeakMap<Y.Map<string>, Map<Y.Map<string>, Map<string, string>>>();
 
@@ -31,7 +31,7 @@ const steppingReplaced = new WeakMap<Y.Map<string>, Map<Y.Map<string>, Map<strin
  * keeps them too.
  */
 export function whileUndoingCreations<Result>(
-  maps: NodeDescriptorMaps,
+  maps: NodeDescriptorMaps & { readonly nodes: Y.Map<Y.Map<unknown>> },
   created: ReadonlySet<string>,
   run: () => Result,
   /** Items of the step that the undo keeps (`undo-unlisted-text.ts`). */
@@ -39,12 +39,12 @@ export function whileUndoingCreations<Result>(
 ): Result {
   if (created.size === 0 && !keeps) return run();
   undoingCreations.set(maps.attributes, created);
-  if (keeps) undoingKeeps.set(maps.attributes, keeps);
+  if (keeps) undoingKeeps.set(maps.nodes, keeps);
   try {
     return run();
   } finally {
     undoingCreations.delete(maps.attributes);
-    undoingKeeps.delete(maps.attributes);
+    undoingKeeps.delete(maps.nodes);
   }
 }
 
@@ -173,14 +173,14 @@ function carriesType(item: Y.Item): boolean {
  * @param maps - the attribute and binding maps, `PackageSchema.attributes` and `.bindings`.
  */
 export function nodeRecordDeleteFilter(
-  nodes: unknown,
+  nodes: Y.Map<Y.Map<unknown>>,
   maps?: NodeDescriptorMaps
 ): (item: Y.Item) => boolean {
   return (item: Y.Item): boolean => {
     const parent = item.parent;
     if (parent === null) return true;
     if (describesUndoneCreation(item, maps)) return false;
-    if (maps && undoingKeeps.get(maps.attributes)?.(item)) return false;
+    if (undoingKeeps.get(nodes)?.(item)) return false;
     if (
       maps &&
       ((parent as unknown) === maps.attributes || (parent as unknown) === maps.bindings)

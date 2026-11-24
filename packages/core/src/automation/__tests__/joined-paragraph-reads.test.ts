@@ -12,8 +12,12 @@ import { docx, p, table, row, cell } from './support/protocol.ts';
 
 const joined = (value: string) =>
   `<w:p><w:pPr><state:joined xmlns:state="urn:docx-editor.dev:review:retired-paragraph:1"/></w:pPr><w:r><w:t>${value}</w:t></w:r></w:p>`;
+const retired = (content = '') =>
+  `<w:p><w:pPr><state:retired xmlns:state="urn:docx-editor.dev:review:retired-paragraph:1"/></w:pPr>${content}</w:p>`;
 for (const [body, expected] of [
   [joined('A') + p('B'), ['AB']],
+  [joined('A') + retired() + retired() + p('B'), ['AB']],
+  [joined('A') + retired('<w:r><w:t>peer</w:t></w:r>') + p('B'), ['Apeer', 'B']],
   [joined('same') + joined('😀') + p('same'), ['same😀same']],
   [joined('A') + table(row(cell(p('B')), cell(p('C')))), ['AB', 'C']],
   [`<w:sdt><w:sdtContent>${joined('A')}</w:sdtContent></w:sdt>${p('B')}`, ['A', 'B']],

@@ -749,8 +749,12 @@ export function projectJournalToShared(
   // they are shown, after its own, so the edit lands on the property its author saw.
   const mergedWhereShown = new Set<LogicalId>();
   const listMergedWhereShown = (containerId: LogicalId): void => {
-    if (mergedWhereShown.has(containerId)) return;
+    if (mergedWhereShown.has(containerId) || !MERGED_KINDS.has(kindOf(containerId) ?? '')) return;
     mergedWhereShown.add(containerId);
+    // A mark's run properties can themselves be children of merged paragraph properties.
+    // Collect the outer copies first so the inner edit reaches every listing it stands for.
+    const parentId = registry.parentOf(containerId);
+    if (parentId) listMergedWhereShown(parentId);
     const container = raw.node(containerId);
     if (!container || container.isText) return;
     const moved: LogicalId[] = [];
