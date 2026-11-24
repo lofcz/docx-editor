@@ -96,6 +96,7 @@ import {
   PROGRESSIVE_OPEN_FIRST_BLOCKS,
   completeProgressiveOpen,
   openingReveals,
+  preparedParagraphPrefix,
   startOpeningSlices,
 } from './surface-progressive-open.ts';
 import { scrollBandIntoView, type ContentScrollOptions } from './surface-content-scroll.ts';
@@ -1189,9 +1190,12 @@ export function mountPaginatedSurface(
       container.toggleAttribute('data-docx-layout-pending', pending || openingBlockLimit !== null),
     passTimed: (ms) => options.onTiming?.('layout', ms),
   });
-  let openingBlockLimit: number | null = runtimeOptions.progressiveOpen
+  const initialOpeningLimit = runtimeOptions.progressiveOpen
     ? PROGRESSIVE_OPEN_FIRST_BLOCKS
-    : null;
+    : runtimeOptions.openedSession
+      ? preparedParagraphPrefix(session.part().root)
+      : null;
+  let openingBlockLimit: number | null = initialOpeningLimit;
   let currentLayout = layoutOnce();
   // Declared before the first paint can run — `render` reads it.
   let revisionStyles = options.revisionStyles;
@@ -6286,7 +6290,7 @@ export function mountPaginatedSurface(
         scheduler.flush();
       }),
     },
-    PROGRESSIVE_OPEN_FIRST_BLOCKS
+    initialOpeningLimit ?? PROGRESSIVE_OPEN_FIRST_BLOCKS
   ));
   return { ok: true, surface: fieldScope.methods(surface) };
 }

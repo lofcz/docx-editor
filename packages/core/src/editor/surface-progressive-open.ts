@@ -83,6 +83,17 @@ const PREFIX_PUBLISH_INTERVAL_MS = 300;
 const MIN_PREFIX_STEP = 16;
 const MAX_PREFIX_STEP = 4096;
 
+/** Select a short opening prefix for an already prepared stream of ordinary body paragraphs. */
+export function preparedParagraphPrefix(root: OoxmlNode): number | null {
+  if (root.kind !== 'document') return null;
+  const body = root.children.find((node) => node.kind === 'body');
+  if (!body || body.children.length <= PROGRESSIVE_OPEN_FIRST_BLOCKS) return null;
+  const paragraphsOnly = body.children.every(
+    (node) => node.kind === 'paragraph' || ('localName' in node && node.localName === 'sectPr')
+  );
+  return paragraphsOnly ? MIN_PREFIX_STEP : null;
+}
+
 /**
  * The body block limit after `limit`: at least {@link MIN_PREFIX_STEP} more blocks, then more
  * until the step holds {@link PREFIX_STEP_CHARACTERS} of text, at most {@link MAX_PREFIX_STEP}.
@@ -222,10 +233,16 @@ export function startOpeningSlices(
           return true;
         }
         if (nextLimit === null) {
+          // Input must finish a paused pass before it edits the same layout session.
+          // Grow short opening steps gradually so the first edit can still use its prefix.
           nextLimit =
             total === undefined
               ? limit + growth
-              : nextPrefixLimit(limit, total, (index) => host.bodyBlock(index));
+              : nextPrefixLimit(
+                  limit,
+                  firstGrowth < PROGRESSIVE_OPEN_FIRST_BLOCKS ? Math.min(total, limit + growth) : total,
+                  (index) => host.bodyBlock(index)
+                );
           hashQueue = tableNodesBetween(limit, nextLimit, (index) => host.bodyBlock(index));
           hashed = 0;
         }
