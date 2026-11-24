@@ -48,6 +48,70 @@ interface PaintedControl {
 // A retained sheet keeps its origin and zoom. Only a changed control needs new furniture.
 const paintedControls = new WeakMap<HTMLElement, readonly PaintedControl[]>();
 
+interface BoundaryElements {
+  readonly box: HTMLElement;
+  readonly label?: HTMLElement;
+}
+
+const boundaryElements = new WeakMap<HTMLElement, BoundaryElements>();
+
+function setPosition(
+  element: HTMLElement,
+  key: 'left' | 'top' | 'width' | 'height',
+  value: number
+) {
+  const pixels = `${value}px`;
+  if (element.style[key] !== pixels) element.style[key] = pixels;
+}
+
+function positionBoundary(
+  elements: BoundaryElements,
+  page: PageRecord,
+  fragment: ContentControlBoundaryRecord['fragments'][number],
+  scale: number
+) {
+  const left = (page.contentBox.x - page.box.x + fragment.box.x) * scale;
+  const top = (page.contentBox.y - page.box.y + fragment.box.y) * scale;
+  setPosition(elements.box, 'left', left);
+  setPosition(elements.box, 'top', top);
+  setPosition(elements.box, 'width', Math.max(fragment.box.width, 1) * scale);
+  setPosition(elements.box, 'height', Math.max(fragment.box.height, 1) * scale);
+  if (elements.label) {
+    setPosition(elements.label, 'left', left);
+    setPosition(elements.label, 'top', Math.max(0, top - CONTROL_LABEL_HEIGHT));
+  }
+}
+
+function repositionBoundary(
+  old: PaintedControl,
+  control: ContentControlBoundaryRecord,
+  page: PageRecord,
+  scale: number
+): boolean {
+  const previous = old.record;
+  const elements = boundaryElements.get(old.element);
+  const fragment = control.fragments[0];
+  // ECMA-376 Part 1, 17.5.2.1, w:alias (CT_String), supplies the accessible group name.
+  if (
+    !elements ||
+    previous.alias !== control.alias ||
+    previous.tag !== control.tag ||
+    previous.effectiveLock !== control.effectiveLock ||
+    previous.bound !== control.bound ||
+    previous.placeholder !== control.placeholder ||
+    previous.controlType !== control.controlType ||
+    control.fragments.length !== 1 ||
+    fragment?.pageIndex !== page.index ||
+    old.element.firstChild !== elements.box ||
+    elements.box.nextSibling !== (elements.label ?? null) ||
+    elements.box.firstChild ||
+    (elements.label && (elements.label.nextSibling || elements.label.textContent !== control.alias))
+  )
+    return false;
+  positionBoundary(elements, page, fragment, scale);
+  return true;
+}
+
 function setBoundaryState(
   element: HTMLElement,
   active: boolean,
@@ -106,7 +170,11 @@ export function paintContentControlChrome(
     const flags = [checked, isToc, readOnly].join(',');
     const old = byId.get(control.id);
     byId.delete(control.id);
-    if (old?.flags === flags && sameDataWithin(old.record, control, 20_000)) {
+    if (
+      old?.flags === flags &&
+      (sameDataWithin(old.record, control, 20_000) ||
+        repositionBoundary(old, control, page, options.scale))
+    ) {
       setBoundaryState(old.element, active, hovered, visible);
       next.push({ record: control, flags, element: old.element });
       continue;
@@ -238,8 +306,8 @@ function paintContentControlBoundary(
   // content or DOM-selection child indices, therefore translate through the content-box
   // origin before painting. Omitting this offset puts every control in the page's top-left
   // margin (and is especially obvious for controls inside table cells).
-  const contentLeft = page.contentBox.x - page.box.x;
-  const contentTop = page.contentBox.y - page.box.y;
+  let singleBox: HTMLElement | undefined;
+  let singleLabel: HTMLElement | undefined;
   for (const fragment of control.fragments) {
     if (fragment.pageIndex !== page.index) continue;
     const box = document.createElement('div');
@@ -248,10 +316,8 @@ function paintContentControlBoundary(
     box.setAttribute('contenteditable', 'false');
     box.setAttribute('aria-hidden', 'true');
     box.style.position = 'absolute';
-    box.style.left = `${(contentLeft + fragment.box.x) * scale}px`;
-    box.style.top = `${(contentTop + fragment.box.y) * scale}px`;
-    box.style.width = `${Math.max(fragment.box.width, 1) * scale}px`;
-    box.style.height = `${Math.max(fragment.box.height, 1) * scale}px`;
+    positionBoundary({ box }, page, fragment, scale);
+    if (control.fragments.length === 1) singleBox = box;
     box.style.pointerEvents = 'none';
     layer.append(box);
   }
@@ -265,12 +331,13 @@ function paintContentControlBoundary(
     label.setAttribute('aria-hidden', 'true');
     label.textContent = control.alias;
     label.style.position = 'absolute';
-    label.style.left = `${(contentLeft + first.box.x) * scale}px`;
+    singleLabel = label;
+    label.style.left = `${(page.contentBox.x - page.box.x + first.box.x) * scale}px`;
     // The box position scales; the OFFSET does not, and that is deliberate. The label is
     // chrome, not content: its font is a fixed 10px/14px, so the tab is `CONTROL_LABEL_HEIGHT`
     // screen pixels tall at every zoom. Subtracting a scaled height would open a gap between
     // the tab and the box it labels, widening as the reader zooms in.
-    label.style.top = `${Math.max(0, (contentTop + first.box.y) * scale - CONTROL_LABEL_HEIGHT)}px`;
+    label.style.top = `${Math.max(0, (page.contentBox.y - page.box.y + first.box.y) * scale - CONTROL_LABEL_HEIGHT)}px`;
     label.style.pointerEvents = 'none';
     layer.append(label);
   }
@@ -324,5 +391,8 @@ function paintContentControlBoundary(
     layer.append(widget);
   }
 
+  if (singleBox && !WIDGET_TYPES.has(control.controlType)) {
+    boundaryElements.set(layer, { box: singleBox, label: singleLabel });
+  }
   return layer;
 }

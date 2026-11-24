@@ -10,6 +10,8 @@ import { readOoxmlPart } from '@docx-editor.dev/core/store';
 import { createFixedMeasurer, layoutSemanticDocument } from '@docx-editor.dev/core/layout';
 import { paintSemanticLayout, type PaintOptions } from '../semantic-paint.ts';
 
+import { paintContentControlChrome } from '../semantic-paint-content-controls.ts';
+
 const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 const W14 = 'http://schemas.microsoft.com/office/word/2010/wordml';
 
@@ -45,6 +47,48 @@ describe('content-control boundary paint seam', () => {
     expect(chrome).not.toBeNull();
     expect(chrome!.hasAttribute('data-boundary-visible')).toBe(false);
     expect(chrome!.hasAttribute('data-active')).toBe(false);
+  });
+
+  test('retains owned boundary and label nodes while a single fragment moves', () => {
+    const layout = layoutSemanticDocument(
+      load(
+        '<w:sdt><w:sdtPr><w:alias w:val="Name"/></w:sdtPr><w:sdtContent><w:p><w:r><w:t>Ada</w:t></w:r></w:p></w:sdtContent></w:sdt>'
+      ),
+      1,
+      { measurer: createFixedMeasurer(6, 14) }
+    );
+    const page = layout.pages[0]!;
+    const control = page.contentControls![0]!;
+    const fragment = control.fragments[0]!;
+    const root = document.createElement('div');
+    function paint(distance: number) {
+      const record = {
+        ...control,
+        fragments: [{ ...fragment, box: { ...fragment.box, y: fragment.box.y + distance } }],
+      };
+      paintContentControlChrome(
+        document,
+        root,
+        { ...page, contentControls: [record] },
+        { scale: 1.5 }
+      );
+    }
+    paint(0);
+    const group = root.firstElementChild!;
+    const box = group.firstElementChild as HTMLElement;
+    const label = group.lastElementChild!;
+    const top = parseFloat(box.style.top);
+    paint(8);
+    expect(root.firstElementChild).toBe(group);
+    expect(group.firstElementChild).toBe(box);
+    expect(group.lastElementChild).toBe(label);
+    expect(parseFloat(box.style.top)).toBe(top + 12);
+    expect(group.getAttribute('aria-label')).toBe('Name');
+    const replacement = box.cloneNode(true) as HTMLElement;
+    box.replaceWith(replacement);
+    paint(16);
+    expect(root.firstElementChild).not.toBe(group);
+    expect(parseFloat(replacement.style.top)).toBe(top + 12);
   });
 
   test('boundary furniture translates content-local geometry into sheet coordinates', () => {
