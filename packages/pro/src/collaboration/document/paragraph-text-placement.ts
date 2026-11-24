@@ -49,6 +49,9 @@ interface MutableSlot {
 
 /** Where each piece of `shown.incoming` shows. */
 export function placeFollowingText(shown: ShownText): FollowingPlacement {
+  if (shown.incoming.length === 0) {
+    return { atPosition: new Map(), inside: new Map(), atEnd: [], atStart: [] };
+  }
   const firstShown = new Map<string, number>();
   shown.identities.ids.forEach((identity, position) => {
     if (identity && !shown.hidden.has(position) && !firstShown.has(identity)) {

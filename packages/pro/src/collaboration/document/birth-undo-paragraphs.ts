@@ -6,9 +6,7 @@ Production use requires a commercial agreement: licensing@eigenpal.com
 import * as Y from 'yjs';
 import type { DocumentRegistry } from './registry.ts';
 import { asLogicalId, type LogicalId } from './identity.ts';
-import { INLINE_FIELD } from './paragraph-text.ts';
 import { MAX_MARK_CHAIN, marksOfText, type MarkLookup } from './paragraph-text-marks.ts';
-import { fieldOf } from './yjs-items.ts';
 
 /** A restored copy keeps the relocation history of the character it restores. */
 function relocated(marks: MarkLookup, client: number, clock: number): boolean {
@@ -34,10 +32,17 @@ export function independentParagraphBirths(
   born: ReadonlySet<LogicalId>,
   changed: readonly Y.Item[]
 ): ReadonlySet<LogicalId> {
+  const owners = new Map<Y.Text, LogicalId>();
+  for (const id of born) {
+    if (registry.kindOf(id) !== 'paragraph') continue;
+    const text = registry.inline.textOf(id);
+    if (text) owners.set(text, id);
+  }
   const texts = new Map<Y.Text, boolean>();
+  if (owners.size === 0) return new Set();
   for (const item of changed) {
     const text = item.parent;
-    if (!(text instanceof Y.Text) || fieldOf(text) !== INLINE_FIELD || !item.countable) continue;
+    if (!(text instanceof Y.Text) || !owners.has(text) || !item.countable) continue;
     let moved = texts.get(text) ?? false;
     const marks = marksOfText(text);
     for (let clock = item.id.clock; !moved && clock < item.id.clock + item.length; clock += 1)
@@ -55,10 +60,8 @@ export function independentParagraphBirths(
     texts.set(text, moved);
   }
   const independent = new Set<LogicalId>();
-  for (const id of born) {
-    if (registry.kindOf(id) !== 'paragraph') continue;
-    const text = registry.inline.textOf(id);
-    if (text && texts.get(text) === false) independent.add(id);
+  for (const [text, id] of owners) {
+    if (texts.get(text) === false) independent.add(id);
   }
   return independent;
 }
