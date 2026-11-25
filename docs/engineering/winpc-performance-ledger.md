@@ -936,6 +936,36 @@ Six separate CPU traces captured the shorter path. The timeline read its dimensi
 Chrome spent 14.19–21.05 ms in that callback. All renderer work between the final two frames took 45.72 ms median.
 Plate used 2.27 ms in the same interval. [Frame order and CPU profiles](profiles/winpc-overview-first-activation.jsonl)
 
+### Timeline measurement during overview opening
+
+The candidate read the timeline border box after Chrome laid it out. Both versions used the same 200 ms animation.
+Six WinPC trials used every order of the control, candidate, and Plate on each installed host.
+
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| Initial open on `5c5ad04c0`, 123.20 → 79.00 ms | 40.65 ms | 38.35 ms longer |
+| Initial close, 43.15 → 45.95 ms | 44.30 ms | 1.65 ms longer |
+| Settled open, 260.30 → 255.90 ms | 248.30 ms | 7.60 ms longer |
+| Settled close, 260.15 → 262.65 ms | 227.95 ms | 34.70 ms longer |
+| Entire settled cycle, 521.20 → 515.65 ms | 474.35 ms | 41.30 ms longer |
+| Initial open on `b4d22c09f`, 122.60 → 112.80 ms | 42.05 ms | 70.75 ms longer |
+| Initial close, 39.15 → 39.70 ms | 36.60 ms | 3.10 ms longer |
+| Settled open, 265.85 → 247.90 ms | 246.90 ms | 1.00 ms longer |
+| Settled close, 255.00 → 263.25 ms | 231.80 ms | 31.45 ms longer |
+| Entire settled cycle, 522.70 → 507.45 ms | 480.40 ms | 27.05 ms longer |
+
+On the first host, paired opening saved 7.05 ms through settlement. The paired full cycle saved 4.50 ms.
+On the second host, paired initial opening saved 8.70 ms. Settled opening saved 18.60 ms and the full cycle saved 12.75 ms.
+Five of six cycles improved on that host. All twelve settled closes lost across both hosts.
+Their paired median losses were 1.50 ms and 5.55 ms.
+
+Separate visual samples compared two cold and two warm openings per version on each host.
+On the first host, cold paper movement started 12.30 ms earlier. Cold renderer CPU fell 9.74 ms.
+Warm paper movement started 3.90 ms later. On the second host, cold paper movement started 2.95 ms earlier.
+Cold renderer CPU rose 4.24 ms. Warm paper movement started 7.60 ms earlier and renderer CPU fell 9.43 ms.
+Both hosts matched all 908 text boxes across three states at 115% zoom. All 24 reversals preserved focus and finished folded.
+The candidate remained outside the installed editor pending the closing comparison. [Browser samples, geometry, and CPU traces](profiles/winpc-overview-browser-measurement.jsonl)
+
 ## Rejected line ownership summary
 
 WinPC tested caching editable offsets and page fields as the layout placed each body line.
