@@ -2,6 +2,21 @@
 
 Use `codex/react-block-proof` for progressive integration. Sciobot uses `claude/docx-native-cutover`.
 
+## Sciobot native block repairs
+
+WinPC tested Sciobot adapter source `74b46313d` against engine `8f1564202`.
+Remote text edits now retain unrelated block views. Folding releases the child view from its parent's slot.
+The test also detects redundant style writes and checks that repaint restores three damaged properties.
+
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| Original adapter checks, 31/34 → 34/34 passed | — | Three failures resolved |
+| Added content type check and ten block inset checks, 11/11 passed | — | 45/45 total, 1,050 assertions |
+| Narrow toolbar and formatting checks, 28/28 passed | — | Includes wheel scrolling, selection, and undo |
+
+The source type check passed across 2,076 files. The package build kept the engine external.
+The toolbar repair is Sciobot commit `a9eb37343`.
+
 ## Installed rich typing in Sciobot 24d9b82f0
 
 Sciobot `24d9b82f0` ships engine `8f1564202`. WinPC verified five archives, 766 installed files, and the frozen lockfile.
