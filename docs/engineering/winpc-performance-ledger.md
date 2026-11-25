@@ -21,6 +21,29 @@ Sciobot `b4d22c09f` ships the repaired adapter. WinPC verified all five archives
 All 18 adapter outputs and 112 engine outputs matched their archives. Both builds resolved one engine.
 Both participants passed reconnect, undo, redo, save, and reopen with 57 equations and zero duplicate widgets.
 
+### Clipboard in the installed Sciobot build b4d22c09f
+
+WinPC alternated editor order across four pairs per operation. Each elapsed time includes two animation frames.
+
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| Paste 433 characters, 67.82 ms | 77.78 ms | 12.8% less time |
+| Undo small paste, 33.44 ms | 32.36 ms | 3.3% more time |
+| Redo small paste, 31.90 ms | 32.43 ms | 1.6% less time |
+| Paste 158,633 characters, 144.24 ms | 119.84 ms | 20.4% more time |
+| Undo large paste, 51.69 ms | 32.14 ms | 60.8% more time |
+| Redo large paste, 53.44 ms | 75.58 ms | 29.3% less time |
+| Small paste CPU, 33.71 ms | 22.55 ms | 49.5% more CPU |
+| Small undo CPU, 13.65 ms | 6.46 ms | 111.4% more CPU |
+| Small redo CPU, 13.02 ms | 6.06 ms | 114.9% more CPU |
+| Large paste CPU, 112.94 ms | 84.68 ms | 33.4% more CPU |
+| Large undo CPU, 20.36 ms | 6.94 ms | 193.4% more CPU |
+| Large redo CPU, 31.04 ms | 23.63 ms | 31.3% more CPU |
+| Exact final text, 24/24 | 24/24 | Equal |
+
+All 48 trials finished without browser errors. All 33 application editing tests passed with 489 assertions.
+The installed toolbar also passed 28 tests with 208 assertions. [Paired browser measurements](profiles/winpc-installed-b4d22-clipboard.jsonl)
+
 ## Installed rich typing in Sciobot 24d9b82f0
 
 Sciobot `24d9b82f0` ships engine `8f1564202`. WinPC verified five archives, 766 installed files, and the frozen lockfile.
