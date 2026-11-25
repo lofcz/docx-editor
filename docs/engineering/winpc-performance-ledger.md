@@ -229,6 +229,14 @@ WinPC then tested one shared toolbar observer with the same controls. Each edito
 The candidate saved CPU in three pairs and improved 95th-percentile frame time in zero pairs.
 The installed editor keeps its existing toolbar observers. [All 18 browser trials](profiles/winpc-toolbar-observer-trials.jsonl)
 
+WinPC traced the space that moved a table row across a page boundary on engine `8f1564202`.
+Five cells gained a top border. Five cells in the next row lost a top border.
+Updating the border decoration kept all ten paragraphs and their text nodes.
+The baseline kept 1,164 of 1,459 elements. Retaining control layers and page shells kept 1,304.
+The table probe kept 1,367. The corresponding style passes took 55.14 ms, 34.45 ms, and 22.24 ms.
+All 2,105 character rectangles, 106 control parts, and 153 border strokes matched at 1/64 CSS pixel.
+Both peer orders preserved concurrent text after deletion, reconnect, save, and reopen with the installed control-layer change. [Trace and geometry](profiles/winpc-rich-wrap-table-retention.jsonl)
+
 ## Installed comparison at engine 5a0194e03
 
 Sciobot commit `18edad0bb` pins engine `5a0194e03`. WinPC ran four alternating pairs for each action.
