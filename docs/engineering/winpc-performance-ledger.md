@@ -17,6 +17,10 @@ The test also detects redundant style writes and checks that repaint restores th
 The source type check passed across 2,076 files. The package build kept the engine external.
 The toolbar repair is Sciobot commit `a9eb37343`.
 
+Sciobot `b4d22c09f` ships the repaired adapter. WinPC verified all five archives and 766 installed files.
+All 18 adapter outputs and 112 engine outputs matched their archives. Both builds resolved one engine.
+Both participants passed reconnect, undo, redo, save, and reopen with 57 equations and zero duplicate widgets.
+
 ## Installed rich typing in Sciobot 24d9b82f0
 
 Sciobot `24d9b82f0` ships engine `8f1564202`. WinPC verified five archives, 766 installed files, and the frozen lockfile.
@@ -35,6 +39,18 @@ WinPC alternated editor order across four pairs. Each editor typed the same 59 k
 | Follow-up input-method check, 4/4 | 1/4 | Three more passes |
 
 The table uses medians across the four runs per editor. Both participant orders passed reconnect, undo, redo, save, and reopen. [All eight typing runs](profiles/winpc-installed-8f156-rich-typing.jsonl)
+
+Chrome also sampled one 59-key run per editor on WinPC. Both finished with the expected text and zero browser errors.
+
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| Renderer CPU with profiling, 862.46 ms | 674.92 ms | 27.8% more CPU time |
+| Browser selection writes, 50.36 ms sampled | 0.59 ms sampled | 49.77 ms more |
+| Garbage collection, 48.79 ms sampled | 25.97 ms sampled | 22.82 ms more |
+
+The DOCX scheduler used 419.89 ms of samples. Layout computation used 179.15 ms. Layout publication used 239.41 ms.
+Within publication, painting used 66.18 ms, selection and caret updates used 64.55 ms, and post-paint observers used 55.14 ms.
+These measurements include work performed by each function's children. [Paired CPU samples](profiles/winpc-rich-8f156-cpu-samples.json)
 
 ## Installed clipboard in Sciobot 24d9b82f0
 

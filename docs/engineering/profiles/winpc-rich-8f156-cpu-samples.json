@@ -1,0 +1,29 @@
+{
+  "base": {
+    "keys": 59,
+    "rendererCpuMs": 862.4640000000002,
+    "exact": true,
+    "browserErrors": [],
+    "garbageCollectionSamplesMs": 48.79,
+    "setBaseAndExtentSelfMs": 50.36
+  },
+  "plate": {
+    "keys": 59,
+    "rendererCpuMs": 674.9230000000002,
+    "exact": true,
+    "browserErrors": [],
+    "garbageCollectionSamplesMs": 25.97,
+    "setBaseAndExtentSelfMs": 0.59
+  },
+  "DOCX inclusive CPU samples in ms": {
+    "typed text transaction": 485.44,
+    "layout scheduler flush": 419.89,
+    "layout computation": 179.15,
+    "layout publication": 239.41,
+    "page painter including its beforePaint observers": 66.18,
+    "selection and caret after paint": 64.55,
+    "observers after paint": 55.14,
+    "native widget presentation inputs": 18.3,
+    "widget CSS checks": 6.92
+  }
+}
