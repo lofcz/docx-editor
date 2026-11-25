@@ -887,3 +887,24 @@ Single-paragraph paste saved 16.52 ms elapsed and 13.72 ms CPU in the median mat
 Multiline paste saved 0.97 ms elapsed and 8.55 ms CPU. Both formats used less CPU in all six pairs.
 The single-paragraph paste made 944 HarfBuzz calls, down from 1,293.
 All 18 geometry hashes matched after paste, undo, and redo. Neither opening invoked the wrapped-word loop. [Matched browser measurements](profiles/winpc-wrapped-words-matched.jsonl)
+
+### Compact word boxes with eager body placement
+
+WinPC compared installed engine `5a0194e03` and a candidate that stored compact word boxes until body placement.
+Six trials used every order of both packages and Plate. Each paste contained 158,633 characters.
+
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| Single-paragraph paste, 142.56 ms → 151.91 ms | 108.73 ms | Candidate took 39.7% more time |
+| Single-paragraph CPU, 107.37 ms → 118.33 ms | 83.91 ms | Candidate used 41.0% more CPU time |
+| Paste 256 paragraphs, 192.47 ms → 208.69 ms | 142.07 ms | Candidate took 46.9% more time |
+| Multiline CPU, 161.54 ms → 173.62 ms | 107.66 ms | Candidate used 61.3% more CPU time |
+
+The candidate added 9.34 ms elapsed and 5.10 ms CPU in the median single-paragraph pair.
+Multiline paste added 15.37 ms elapsed and 11.59 ms CPU.
+Three allocation profiles showed 57.35 MiB → 49.76 MiB. Sampled garbage collection changed from 7.48 ms to 7.17 ms.
+Body placement rebuilt all word boxes and consumed 7.22 MiB there. The eager version stayed out of the release.
+
+All 18 layout hashes and 527 opening text rectangles matched. Both collaboration orders matched 224 word boxes and reopened identical documents.
+Separate read probes sampled every nineteenth line on this candidate and installed engine `8f1564202`.
+All 93 sampled long-paragraph lines reached the page-field, ownership, and review-author checks. Paint read five. [Samples and reader stacks](profiles/winpc-compact-line-geometry.jsonl)
