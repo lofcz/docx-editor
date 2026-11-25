@@ -1,0 +1,74 @@
+{
+  "no-12-paste": {
+    "pages": 3,
+    "words": 154,
+    "lines": 64,
+    "sha256": "cb05262b71869a40b011c2b4f43aa4e67cb680b919390f8d84e1691e415470a3"
+  },
+  "no-12-undo": {
+    "pages": 3,
+    "words": 137,
+    "lines": 65,
+    "sha256": "6ec4b0a1e613f08f31519958a399a1dbdda5d2675921242ee07eb5b810582306"
+  },
+  "no-12-redo": {
+    "pages": 3,
+    "words": 154,
+    "lines": 64,
+    "sha256": "cb05262b71869a40b011c2b4f43aa4e67cb680b919390f8d84e1691e415470a3"
+  },
+  "no-4096-paste": {
+    "pages": 49,
+    "words": 255,
+    "lines": 140,
+    "sha256": "170a70fb951f2a4ca6b4fbf876a90dcebd21d072df69378375feb5b91e04e6c4"
+  },
+  "no-4096-undo": {
+    "pages": 3,
+    "words": 195,
+    "lines": 84,
+    "sha256": "e172ebd67e592ad24fb226596a485e69027a34bc6b8f88532771674e6198bc03"
+  },
+  "no-4096-redo": {
+    "pages": 49,
+    "words": 255,
+    "lines": 140,
+    "sha256": "170a70fb951f2a4ca6b4fbf876a90dcebd21d072df69378375feb5b91e04e6c4"
+  },
+  "yes-12-paste": {
+    "pages": 3,
+    "words": 154,
+    "lines": 64,
+    "sha256": "cb05262b71869a40b011c2b4f43aa4e67cb680b919390f8d84e1691e415470a3"
+  },
+  "yes-12-undo": {
+    "pages": 3,
+    "words": 137,
+    "lines": 65,
+    "sha256": "6ec4b0a1e613f08f31519958a399a1dbdda5d2675921242ee07eb5b810582306"
+  },
+  "yes-12-redo": {
+    "pages": 3,
+    "words": 154,
+    "lines": 64,
+    "sha256": "cb05262b71869a40b011c2b4f43aa4e67cb680b919390f8d84e1691e415470a3"
+  },
+  "yes-4096-paste": {
+    "pages": 49,
+    "words": 255,
+    "lines": 140,
+    "sha256": "170a70fb951f2a4ca6b4fbf876a90dcebd21d072df69378375feb5b91e04e6c4"
+  },
+  "yes-4096-undo": {
+    "pages": 3,
+    "words": 195,
+    "lines": 84,
+    "sha256": "e172ebd67e592ad24fb226596a485e69027a34bc6b8f88532771674e6198bc03"
+  },
+  "yes-4096-redo": {
+    "pages": 49,
+    "words": 255,
+    "lines": 140,
+    "sha256": "170a70fb951f2a4ca6b4fbf876a90dcebd21d072df69378375feb5b91e04e6c4"
+  }
+}

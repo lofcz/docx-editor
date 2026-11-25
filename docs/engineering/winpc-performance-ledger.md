@@ -78,6 +78,26 @@ A separate inspection found that undo restored the exact original document part 
 All three restored pages matched their previous records, but the engine rebuilt every record.
 Redo rebuilt all 49 pages. All 49 matched their previous records. [Chrome profiles and page comparisons](profiles/winpc-history-attribution.zip)
 
+### Reuse page records during undo and redo
+
+WinPC compared engine `5a0194e03`, a layout checkpoint after every story edit, and Plate in all six orders.
+Each of the 108 trials started with a fresh document. Elapsed times include two animation frames.
+
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| Undo 433 characters, 40.66 → 32.30 ms | 32.38 ms | Candidate took 0.3% less time |
+| Undo 158,633 characters, 63.70 → 50.84 ms | 32.38 ms | Candidate took 57.0% more time |
+| Redo 158,633 characters, 68.55 → 51.38 ms | 59.91 ms | Candidate took 14.2% less time |
+| Large paste CPU, 108.04 → 112.16 ms | 84.39 ms | Candidate used 32.9% more CPU |
+| Large undo CPU, 20.95 → 22.14 ms | 7.53 ms | Candidate used 194.1% more CPU |
+| Large redo CPU, 31.71 → 23.90 ms | 23.51 ms | Candidate used 1.6% more CPU |
+
+Large redo saved CPU in all six pairs. Large paste used more CPU in five pairs.
+The candidate stayed out of the installed editor. [All 108 browser trials](profiles/winpc-history-layout-trials.jsonl)
+
+The builds matched page, text, line, and selection geometry after paste, undo, and redo at both sizes.
+All comparisons also passed after forced garbage collection. Both collaboration orders passed reconnect, undo, redo, save, and reopen. [Geometry counts and hashes](profiles/winpc-history-layout-geometry.json)
+
 ## Font and review reads during rich typing
 
 WinPC compared engine `5a0194e03`, the font and review change, and Plate in all six orders.
