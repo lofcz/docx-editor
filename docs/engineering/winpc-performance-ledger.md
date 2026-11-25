@@ -836,6 +836,21 @@ Both origins used 115% zoom and matched all pages, headings, and timeline bounds
 The original disclosure and timeline tests and both reversed peer cases passed with 221 assertions.
 Reduced motion during activation and consecutive activations preserved focus and content. Type checks covered 217 files. Lint passed.
 
+### First activation on the installed host
+
+Eight openings on `5c5ad04c0` recorded frame order without CPU profiling. Chrome exposed the requested state within 4.1–5.3 ms.
+Three openings reached the second frame before Word changed its page elements. Five reached it after Word and React committed.
+
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| Second frame before Word changed pages, 43.50 ms median | 41.60 ms median | 4.6% more time |
+| Second frame after Word changed pages, 124.40 ms median | 41.60 ms median | 199.0% more time |
+
+The later second frame coincided with earlier settlement, 250.50 ms against 276.00 ms. Both groups changed paper near 75 ms.
+Six separate CPU traces captured the shorter path. The timeline read its dimensions during React's layout effect.
+Chrome spent 14.19–21.05 ms in that callback. All renderer work between the final two frames took 45.72 ms median.
+Plate used 2.27 ms in the same interval. [Frame order and CPU profiles](profiles/winpc-overview-first-activation.jsonl)
+
 ## Rejected line ownership summary
 
 WinPC tested caching editable offsets and page fields as the layout placed each body line.
