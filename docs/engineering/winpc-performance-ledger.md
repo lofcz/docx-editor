@@ -155,6 +155,27 @@ The candidate stayed out of the installed editor. [All 108 browser trials](profi
 The builds matched page, text, line, and selection geometry after paste, undo, and redo at both sizes.
 All comparisons also passed after forced garbage collection. Both collaboration orders passed reconnect, undo, redo, save, and reopen. [Geometry counts and hashes](profiles/winpc-history-layout-geometry.json)
 
+### Capture the opening layout and explicit history steps
+
+WinPC compared engine `8f1564202`, the candidate, and Plate in all six orders.
+The candidate captured the settled opening layout and each undo or redo step.
+The arrows show native control and candidate medians. Elapsed times include two animation frames.
+
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| Paste 433 characters, 63.37 → 64.39 ms | 46.85 ms | Candidate took 37.4% more time |
+| Undo small paste, 32.82 → 32.15 ms | 32.67 ms | Candidate took 1.6% less time |
+| Redo small paste, 37.47 → 33.71 ms | 32.59 ms | Candidate took 3.4% more time |
+| Paste 158,633 characters, 145.27 → 142.81 ms | 120.32 ms | Candidate took 18.7% more time |
+| Undo large paste, 50.66 → 48.84 ms | 32.04 ms | Candidate took 52.4% more time |
+| Redo large paste, 64.36 → 48.99 ms | 59.00 ms | Candidate took 17.0% less time |
+| Large paste CPU, 108.47 → 108.66 ms | 83.41 ms | Candidate used 30.3% more CPU |
+| Large undo CPU, 22.86 → 19.94 ms | 7.03 ms | Candidate used 183.5% more CPU |
+| Large redo CPU, 32.20 → 24.90 ms | 23.95 ms | Candidate used 4.0% more CPU |
+
+Large redo used less CPU than the native control in all six pairs. Small paste took longer in five pairs.
+All 108 trials produced the exact final text with zero browser errors. [WinPC clipboard trials](profiles/winpc-history-boundary-trials.jsonl)
+
 ## Font and review reads during rich typing
 
 WinPC compared engine `5a0194e03`, the font and review change, and Plate in all six orders.
