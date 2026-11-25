@@ -44,6 +44,24 @@ WinPC alternated editor order across four pairs per operation. Each elapsed time
 All 48 trials finished without browser errors. All 33 application editing tests passed with 489 assertions.
 The installed toolbar also passed 28 tests with 208 assertions. [Paired browser measurements](profiles/winpc-installed-b4d22-clipboard.jsonl)
 
+### Rich typing in the installed Sciobot build b4d22c09f
+
+WinPC alternated editor order across four pairs. Each editor received 59 keys with 65 ms pauses.
+Each row gives the median of the four runs per editor.
+
+| DOCX | PLATE | RELATIVE |
+| --- | --- | --- |
+| Renderer CPU, 775.14 ms | 606.14 ms | 27.9% more CPU |
+| Elapsed time including keyboard pauses, 5,268.85 ms | 5,144.55 ms | 2.4% more time |
+| Median keypress to exact text, 6.95 ms | 1.10 ms | 5.85 ms longer |
+| Median keypress to frame, 8.05 ms | 6.80 ms | 1.25 ms longer |
+| 95th-percentile keypress to frame, 16.91 ms | 15.81 ms | 1.10 ms longer |
+| Wrapping space to frame, 46.35 ms | 7.80 ms | 38.55 ms longer |
+| Correct final text, caret, and backward selection, 4/4 | 4/4 | Equal |
+| Successful input method composition, 4/4 | 1/4 | Three more passes |
+
+All eight runs completed without browser errors. [WinPC typing measurements](profiles/winpc-installed-b4d22-rich.jsonl)
+
 ## Installed rich typing in Sciobot 24d9b82f0
 
 Sciobot `24d9b82f0` ships engine `8f1564202`. WinPC verified five archives, 766 installed files, and the frozen lockfile.
